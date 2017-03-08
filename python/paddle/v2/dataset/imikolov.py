@@ -13,6 +13,8 @@
 # limitations under the License.
 """
 imikolov's simple dataset: http://www.fit.vutbr.cz/~imikolov/rnnlm/
+
+Complete comments.
 """
 import paddle.v2.dataset.common
 import tarfile

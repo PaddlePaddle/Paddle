@@ -34,6 +34,10 @@ class WithMetric(object):
 
 
 class TestResult(WithMetric):
+    """
+    Result that trainer.test return.
+    """
+
     def __init__(self, evaluator, cost):
         super(TestResult, self).__init__(evaluator)
         self.cost = cost

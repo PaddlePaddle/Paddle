@@ -1,4 +1,5 @@
 import paddle.v2 as paddle
+import gzip
 
 
 def softmax_regression(img):
@@ -71,7 +72,11 @@ def main():
 
     cost = paddle.layer.classification_cost(input=predict, label=label)
 
-    parameters = paddle.parameters.create(cost)
+    try:
+        with gzip.open('params.tar.gz', 'r') as f:
+            parameters = paddle.parameters.Parameters.from_tar(f)
+    except IOError:
+        parameters = paddle.parameters.create(cost)
 
     optimizer = paddle.optimizer.Momentum(
         learning_rate=0.1 / 128.0,
@@ -86,11 +91,15 @@ def main():
 
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
-            if event.batch_id % 100 == 0:
+            if event.batch_id % 1000 == 0:
                 print "Pass %d, Batch %d, Cost %f, %s" % (
                     event.pass_id, event.batch_id, event.cost, event.metrics)
-        if isinstance(event, paddle.event.EndPass):
-            result = trainer.test(reader=paddle.reader.batched(
+
+                with gzip.open('params.tar.gz', 'w') as f:
+                    parameters.to_tar(f)
+
+        elif isinstance(event, paddle.event.EndPass):
+            result = trainer.test(reader=paddle.batch(
                 paddle.dataset.mnist.test(), batch_size=128))
             print "Test with Pass %d, Cost %f, %s\n" % (
                 event.pass_id, result.cost, result.metrics)
@@ -110,17 +119,16 @@ def main():
     print 'Best pass is %s, testing Avgcost is %s' % (best[0], best[1])
     print 'The classification accuracy is %.2f%%' % (100 - float(best[2]) * 100)
 
+    test_creator = paddle.dataset.mnist.test()
+    test_data = []
+    for item in test_creator():
+        test_data.append(item[0])
+        if len(test_data) == 100:
+            break
+
     # output is a softmax layer. It returns probabilities.
     # Shape should be (100, 10)
-    probs = paddle.infer(
-        output=predict,
-        parameters=parameters,
-        reader=paddle.batch(
-            paddle.reader.firstn(
-                paddle.reader.map_readers(lambda item: (item[0], ),
-                                          paddle.dataset.mnist.test()),
-                n=100),
-            batch_size=32))
+    probs = paddle.infer(output=predict, parameters=parameters, input=test_data)
     print probs.shape
 
 

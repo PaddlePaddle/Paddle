@@ -9,6 +9,10 @@ from . import optimizer as v2_optimizer
 from . import parameters as v2_parameters
 
 __all__ = ['SGD']
+"""
+Trainer package
+TODO(yuyang18): Complete comments.
+"""
 
 
 def default_event_handler(event):
@@ -22,14 +26,20 @@ def default_event_handler(event):
     pass
 
 
-class SGD():
-    def __init__(self, cost, parameters, update_equation):
-        """
-        Simple SGD Trainer.
+class SGD(object):
+    """
+    Simple SGD Trainer.
+    TODO(yuyang18): Complete comments
 
-        :param update_equation: The optimizer object.
-        :type update_equation: v2_optimizer.Optimizer
-        """
+    :param update_equation: The optimizer object.
+    :type update_equation: paddle.v2.optimizer.Optimizer
+    :param cost: Target cost that neural network should be optimized.
+    :type cost: paddle.v2.config_base.Layer
+    :param parameters: The parameters dictionary.
+    :type parameters: paddle.v2.parameters.Parameters
+    """
+
+    def __init__(self, cost, parameters, update_equation):
 
         if not isinstance(parameters, v2_parameters.Parameters):
             raise TypeError('parameters should be parameters')
@@ -47,29 +57,26 @@ class SGD():
             self.__topology_in_proto__, api.CREATE_MODE_NORMAL,
             self.__optimizer__.enable_types())
         assert isinstance(gm, api.GradientMachine)
-        parameters.append_gradient_machine(gm)
         self.__gradient_machine__ = gm
         self.__gradient_machine__.randParameters()
+        parameters.append_gradient_machine(gm)
 
-    def train(self, reader, num_passes=1, event_handler=None, reader_dict=None):
+    def train(self, reader, num_passes=1, event_handler=None, feeding=None):
         """
         Training method. Will train num_passes of input data.
 
         :param reader:
-        :param topology: Network Topology, use one or more Layers to represent it.
-        :param parameters: The parameter pools.
         :param num_passes: The total train passes.
         :param event_handler: Event handler. A method will be invoked when event
                               occurred.
         :type event_handler: (BaseEvent) => None
+        :param feeding: Feeding is a map of neural network input name and array
+                        index that reader returns.
+        :type feeding: dict
         :return:
         """
         if event_handler is None:
             event_handler = default_event_handler
-
-        if reader_dict is None:
-            reader_dict = self.default_reader_dict()
-
         __check_train_args__(**locals())
 
         updater = self.__optimizer__.create_local_updater()
@@ -81,9 +88,7 @@ class SGD():
         pass_evaluator = self.__gradient_machine__.makeEvaluator()
         assert isinstance(pass_evaluator, api.Evaluator)
         out_args = api.Arguments.createArguments(0)
-
-        feeder = DataFeeder(self.__data_types__, reader_dict)
-
+        feeder = DataFeeder(self.__data_types__, feeding)
         for pass_id in xrange(num_passes):
             event_handler(v2_event.BeginPass(pass_id))
             pass_evaluator.start()
@@ -101,7 +106,7 @@ class SGD():
                 for each_param in self.__gradient_machine__.getNonStaticParameters(
                 ):
                     updater.update(each_param)
-                cost_sum = out_args.sumCosts()
+                cost_sum = out_args.sum()
                 cost = cost_sum / len(data_batch)
                 updater.finishBatch(cost)
                 batch_evaluator.finish()
@@ -117,17 +122,8 @@ class SGD():
             event_handler(v2_event.EndPass(pass_id, evaluator=pass_evaluator))
         self.__gradient_machine__.finish()
 
-    def default_reader_dict(self):
-        reader_dict = dict()
-        for i, tp in enumerate(self.__data_types__):
-            reader_dict[tp[0]] = i
-        return reader_dict
-
-    def test(self, reader, reader_dict=None):
-        if reader_dict is None:
-            reader_dict = self.default_reader_dict()
-
-        feeder = DataFeeder(self.__data_types__, reader_dict)
+    def test(self, reader, feeding=None):
+        feeder = DataFeeder(self.__data_types__, feeding)
         evaluator = self.__gradient_machine__.makeEvaluator()
         out_args = api.Arguments.createArguments(0)
         evaluator.start()
@@ -137,7 +133,7 @@ class SGD():
             num_samples += len(data_batch)
             self.__gradient_machine__.forward(
                 feeder(data_batch), out_args, api.PASS_TEST)
-            total_cost += out_args.sumCosts()
+            total_cost += out_args.sum()
             self.__gradient_machine__.eval(evaluator)
 
         evaluator.finish()

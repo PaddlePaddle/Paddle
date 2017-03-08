@@ -12,24 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+__all__ = ['batch']
+
 
 def batch(reader, batch_size):
     """
-    Create a batch reader.
+    Create a batched reader.
+
     :param reader: the data reader to read from.
-    :param batch_size: batch_size
-    :return: the batch reader.
+    :type reader: callable
+    :param batch_size: size of each mini-batch
+    :type batch_size: int
+    :return: the batched reader.
+    :rtype: callable
     """
 
     def batch_reader():
         r = reader()
-        batch = []
+        b = []
         for instance in r:
-            batch.append(instance)
-            if len(batch) == batch_size:
-                yield batch
-                batch = []
-        if batch:
-            yield batch
+            b.append(instance)
+            if len(b) == batch_size:
+                yield b
+                b = []
+        if b:
+            yield b
 
     return batch_reader

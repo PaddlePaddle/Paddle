@@ -163,11 +163,11 @@ def main():
                                  update_equation=optimizer)
     parameters.set('emb', load_parameter(conll05.get_embedding(), 44068, 32))
 
-    trn_reader = paddle.reader.batched(
+    trn_reader = paddle.batch(
         paddle.reader.shuffle(
             conll05.test(), buf_size=8192), batch_size=10)
 
-    reader_dict = {
+    feeding = {
         'word_data': 0,
         'ctx_n2_data': 1,
         'ctx_n1_data': 2,
@@ -183,7 +183,7 @@ def main():
         reader=trn_reader,
         event_handler=event_handler,
         num_passes=10000,
-        reader_dict=reader_dict)
+        feeding=feeding)
 
 
 if __name__ == '__main__':

@@ -14,129 +14,92 @@
 """
 wmt14 dataset
 """
-import paddle.v2.dataset.common
 import tarfile
-import os.path
-import itertools
+
+import paddle.v2.dataset.common
 
 __all__ = ['train', 'test', 'build_dict']
 
 URL_DEV_TEST = 'http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/dev+test.tgz'
 MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
-URL_TRAIN = 'http://localhost:8000/train.tgz'
-MD5_TRAIN = '72de99da2830ea5a3a2c4eb36092bbc7'
+# this is a small set of data for test. The original data is too large and will be add later.
+URL_TRAIN = 'http://paddlepaddle.bj.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz'
+MD5_TRAIN = 'a755315dd01c2c35bde29a744ede23a6'
+
+START = "<s>"
+END = "<e>"
+UNK = "<unk>"
+UNK_IDX = 2
 
 
-def word_count(f, word_freq=None):
-    add = paddle.v2.dataset.common.dict_add
-    if word_freq == None:
-        word_freq = {}
+def __read_to_dict__(tar_file, dict_size):
+    def __to_dict__(fd, size):
+        out_dict = dict()
+        for line_count, line in enumerate(fd):
+            if line_count < size:
+                out_dict[line.strip()] = line_count
+            else:
+                break
+        return out_dict
 
-    for l in f:
-        for w in l.strip().split():
-            add(word_freq, w)
-        add(word_freq, '<s>')
-        add(word_freq, '<e>')
-
-    return word_freq
-
-
-def get_word_dix(word_freq):
-    TYPO_FREQ = 50
-    word_freq = filter(lambda x: x[1] > TYPO_FREQ, word_freq.items())
-    word_freq_sorted = sorted(word_freq, key=lambda x: (-x[1], x[0]))
-    words, _ = list(zip(*word_freq_sorted))
-    word_idx = dict(zip(words, xrange(len(words))))
-    word_idx['<unk>'] = len(words)
-    return word_idx
-
-
-def get_word_freq(train, dev):
-    word_freq = word_count(train, word_count(dev))
-    if '<unk>' in word_freq:
-        # remove <unk> for now, since we will set it as last index
-        del word_freq['<unk>']
-    return word_freq
+    with tarfile.open(tar_file, mode='r') as f:
+        names = [
+            each_item.name for each_item in f
+            if each_item.name.endswith("src.dict")
+        ]
+        assert len(names) == 1
+        src_dict = __to_dict__(f.extractfile(names[0]), dict_size)
+        names = [
+            each_item.name for each_item in f
+            if each_item.name.endswith("trg.dict")
+        ]
+        assert len(names) == 1
+        trg_dict = __to_dict__(f.extractfile(names[0]), dict_size)
+        return src_dict, trg_dict
 
 
-def build_dict():
-    base_dir = './wmt14-data'
-    train_en_filename = base_dir + '/train/train.en'
-    train_fr_filename = base_dir + '/train/train.fr'
-    dev_en_filename = base_dir + '/dev/ntst1213.en'
-    dev_fr_filename = base_dir + '/dev/ntst1213.fr'
-
-    if not os.path.exists(train_en_filename) or not os.path.exists(
-            train_fr_filename):
-        with tarfile.open(
-                paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14',
-                                                  MD5_TRAIN)) as tf:
-            tf.extractall(base_dir)
-
-    if not os.path.exists(dev_en_filename) or not os.path.exists(
-            dev_fr_filename):
-        with tarfile.open(
-                paddle.v2.dataset.common.download(URL_DEV_TEST, 'wmt14',
-                                                  MD5_DEV_TEST)) as tf:
-            tf.extractall(base_dir)
-
-    f_en = open(train_en_filename)
-    f_fr = open(train_fr_filename)
-    f_en_dev = open(dev_en_filename)
-    f_fr_dev = open(dev_fr_filename)
-
-    word_freq_en = get_word_freq(f_en, f_en_dev)
-    word_freq_fr = get_word_freq(f_fr, f_fr_dev)
-
-    f_en.close()
-    f_fr.close()
-    f_en_dev.close()
-    f_fr_dev.close()
-
-    return get_word_dix(word_freq_en), get_word_dix(word_freq_fr)
-
-
-def reader_creator(directory, path_en, path_fr, URL, MD5, dict_en, dict_fr):
+def reader_creator(tar_file, file_name, dict_size):
     def reader():
-        if not os.path.exists(path_en) or not os.path.exists(path_fr):
-            with tarfile.open(
-                    paddle.v2.dataset.common.download(URL, 'wmt14', MD5)) as tf:
-                tf.extractall(directory)
-
-        f_en = open(path_en)
-        f_fr = open(path_fr)
-        UNK_en = dict_en['<unk>']
-        UNK_fr = dict_fr['<unk>']
-
-        for en, fr in itertools.izip(f_en, f_fr):
-            src_ids = [dict_en.get(w, UNK_en) for w in en.strip().split()]
-            tar_ids = [
-                dict_fr.get(w, UNK_fr)
-                for w in ['<s>'] + fr.strip().split() + ['<e>']
+        src_dict, trg_dict = __read_to_dict__(tar_file, dict_size)
+        with tarfile.open(tar_file, mode='r') as f:
+            names = [
+                each_item.name for each_item in f
+                if each_item.name.endswith(file_name)
             ]
+            for name in names:
+                for line in f.extractfile(name):
+                    line_split = line.strip().split('\t')
+                    if len(line_split) != 2:
+                        continue
+                    src_seq = line_split[0]  # one source sequence
+                    src_words = src_seq.split()
+                    src_ids = [
+                        src_dict.get(w, UNK_IDX)
+                        for w in [START] + src_words + [END]
+                    ]
 
-            # remove sequence whose length > 80 in training mode
-            if len(src_ids) == 0 or len(tar_ids) <= 1 or len(
-                    src_ids) > 80 or len(tar_ids) > 80:
-                continue
+                    trg_seq = line_split[1]  # one target sequence
+                    trg_words = trg_seq.split()
+                    trg_ids = [trg_dict.get(w, UNK_IDX) for w in trg_words]
 
-            yield src_ids, tar_ids[:-1], tar_ids[1:]
+                    # remove sequence whose length > 80 in training mode
+                    if len(src_ids) > 80 or len(trg_ids) > 80:
+                        continue
+                    trg_ids_next = trg_ids + [trg_dict[END]]
+                    trg_ids = [trg_dict[START]] + trg_ids
 
-        f_en.close()
-        f_fr.close()
+                    yield src_ids, trg_ids, trg_ids_next
 
     return reader
 
 
-def train(dict_en, dict_fr):
-    directory = './wmt14-data'
-    return reader_creator(directory, directory + '/train/train.en',
-                          directory + '/train/train.fr', URL_TRAIN, MD5_TRAIN,
-                          dict_en, dict_fr)
+def train(dict_size):
+    return reader_creator(
+        paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN),
+        'train/train', dict_size)
 
 
-def test(dict_en, dict_fr):
-    directory = './wmt14-data'
-    return reader_creator(directory, directory + '/dev/ntst1213.en',
-                          directory + '/dev/ntst1213.fr', URL_DEV_TEST,
-                          MD5_DEV_TEST, dict_en, dict_fr)
+def test(dict_size):
+    return reader_creator(
+        paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN),
+        'test/test', dict_size)

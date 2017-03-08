@@ -13,6 +13,8 @@
 # limitations under the License.
 """
 IMDB dataset: http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz
+
+TODO(yuyang18): Complete comments.
 """
 
 import paddle.v2.dataset.common
