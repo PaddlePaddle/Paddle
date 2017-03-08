@@ -25,7 +25,6 @@ find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
 
 include(system)
-include(simd)
 
 ################################ Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
@@ -65,6 +64,7 @@ include(external/openblas)  # download, build, install openblas
 include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
 
+include(simd)               # set simd flag
 include(package)            # set paddle packages
 include(cpplint)            # set paddle c++ style
 include(ccache)             # set ccache for compilation
@@ -74,7 +74,6 @@ include(flags)              # set paddle compile flags
 include(cudnn)              # set cudnn libraries
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
-
 include(configure)          # add paddle env configuration
 
 include_directories("${PROJ_ROOT}")

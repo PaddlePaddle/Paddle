@@ -1,3 +1,7 @@
+if(NOT WITH_GPU)
+    return()
+endif()
+
 set(CUDNN_ROOT "" CACHE PATH "CUDNN ROOT")
 find_path(CUDNN_INCLUDE_DIR cudnn.h
     PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include
