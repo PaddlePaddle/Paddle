@@ -2,12 +2,12 @@
     sha: c25201a00e6b0514370501050cf2a8538ac12270
     hooks:
     -   id: remove-crlf
-        files: (?!.*third_party)^.*$
+        files: (?!.*third_party)^.*$ | (?!.*book)^.*$
 -   repo: https://github.com/reyoung/mirrors-yapf.git
     sha: v0.13.2
     hooks:
     - id: yapf
-      files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$  # Bazel BUILD files follow Python syntax.
+      files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     sha: 7539d8bd1a00a3c1bfd34cdb606d3a6372e83469
     hooks:
@@ -15,7 +15,7 @@
     -   id: check-merge-conflict
     -   id: check-symlinks
     -   id: detect-private-key
-        files: (?!.*third_party)^.*$
+        files: (?!.*third_party)^.*$ | (?!.*book)^.*$
     -   id: end-of-file-fixer
 -   repo: https://github.com/PaddlePaddle/clang-format-pre-commit-hook.git
     sha: 28c0ea8a67a3e2dbbf4822ef44e85b63a0080a29
