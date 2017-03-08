@@ -387,6 +387,9 @@ public:
   /// copy the output gradient from the main GradientMachine.
   void copyOutputGrad();
 
+  /// Whether the thread has input data.
+  bool hasInputData() { return batchSize_ != 0; }
+
 protected:
   void mergeCpuGradients();
 
@@ -407,7 +410,7 @@ protected:
   void copyGradToBufferThread();
   void gradCollectThread();
 
-  void copyInArgs();
+  int copyInArgs();
   void forward();
   void backward();
   void backwardCallback(Parameter* para);
@@ -467,6 +470,7 @@ protected:
 
   /// indicate whether inArgs is copied before forward()
   bool inArgsCopied_;
+  int batchSize_;
 };
 
 }  // namespace paddle
