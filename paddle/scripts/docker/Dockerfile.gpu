@@ -34,6 +34,8 @@ RUN apt-get update && \
 
 # git credential to skip password typing
 RUN git config --global credential.helper store
+# fetch PaddlePaddle book
+RUN git submodule update --init --recursive
 
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
@@ -60,9 +62,7 @@ RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
 EXPOSE 22
 
-# Jupyter Notebook directory.
-RUN mkdir /notes/
-WORKDIR "/notes"
+# Jupyter Notebook: Paddle book
 EXPOSE 8888
 
 COPY ./paddle/scripts/docker/entrypoint /opt/bin/
