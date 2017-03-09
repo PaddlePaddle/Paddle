@@ -1058,9 +1058,7 @@ def detection_output_layer(input_loc,
     inputs = [priorbox.name]
     inputs.extend([l.name for l in input_loc])
     inputs.extend([l.name for l in input_conf])
-    parents = [priorbox]
-    parents.extend(input_loc)
-    parents.extend(input_conf)
+    parents = [priorbox, input_loc, input_conf]
 
     size = keep_top_k * 7
 
