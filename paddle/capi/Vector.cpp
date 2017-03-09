@@ -27,7 +27,6 @@ int PDIVecCreateNone(PD_IVector* ivec) {
 }
 
 int PDIVectorCreate(PD_IVector* ivec, int* array, uint64_t size, bool copy) {
-  //! TODO(lizhao): Complete this method.
   if (ivec == nullptr) return kPD_NULLPTR;
   auto ptr = new paddle::capi::CIVector();
   if (copy) {
@@ -55,7 +54,6 @@ int PDIVectorGet(PD_IVector ivec, int** buffer) {
 }
 
 int PDIVectorResize(PD_IVector ivec, uint64_t size) {
-  //! TODO(lizhao): Complete this method.
   if (ivec == nullptr) return kPD_NULLPTR;
   auto v = cast<paddle::capi::CIVector>(ivec);
   if (v->vec == nullptr) return kPD_NULLPTR;
@@ -64,7 +62,6 @@ int PDIVectorResize(PD_IVector ivec, uint64_t size) {
 }
 
 int PDIVectorGetSize(PD_IVector ivec, uint64_t* size) {
-  //! TODO(lizhao): Complete this method.
   if (ivec == nullptr) return kPD_NULLPTR;
   auto v = cast<paddle::capi::CIVector>(ivec);
   if (v->vec == nullptr) return kPD_NULLPTR;

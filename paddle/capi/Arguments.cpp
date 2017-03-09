@@ -87,7 +87,6 @@ int PDArgsSetIds(PD_Arguments args, uint64_t ID, PD_IVector ids) {
 int PDArgsSetSequenceStartPos(PD_Arguments args,
                               uint64_t ID,
                               PD_IVector seqPos) {
-  //! TODO(lizhao): Complete this method.
   if (args == nullptr || seqPos == nullptr) return kPD_NULLPTR;
   auto iv = paddle::capi::cast<paddle::capi::CIVector>(seqPos);
   if (iv->vec == nullptr) return kPD_NULLPTR;
@@ -101,13 +100,12 @@ int PDArgsSetSequenceStartPos(PD_Arguments args,
 int PDArgsSetSubSequenceStartPos(PD_Arguments args,
                                  uint64_t ID,
                                  PD_IVector subSeqPos) {
-  //! TODO(lizhao): Complete this method.
   if (args == nullptr || subSeqPos == nullptr) return kPD_NULLPTR;
   auto iv = paddle::capi::cast<paddle::capi::CIVector>(subSeqPos);
   if (iv->vec == nullptr) return kPD_NULLPTR;
   auto a = castArg(args);
   if (ID >= a->args.size()) return kPD_OUT_OF_RANGE;
-  a->args[ID].sequenceStartPositions =
+  a->args[ID].subSequenceStartPositions =
       std::make_shared<paddle::ICpuGpuVector>(iv->vec);
   return kPD_NO_ERROR;
 }
@@ -115,26 +113,24 @@ int PDArgsSetSubSequenceStartPos(PD_Arguments args,
 int PDArgsGetSequenceStartPos(PD_Arguments args,
                               uint64_t ID,
                               PD_IVector seqPos) {
-  //! TODO(lizhao): Complete this method.
   if (args == nullptr || seqPos == nullptr) return kPD_NULLPTR;
   auto iv = castIVec(seqPos);
   auto a = castArg(args);
   if (ID >= a->args.size()) return kPD_OUT_OF_RANGE;
-  std::make_shared<paddle::ICpuGpuVector>(iv->vec) =
-      a->args[ID].sequenceStartPositions;
+  paddle::Argument& arg = a->args[ID];
+  iv->vec = arg.sequenceStartPositions->getMutableVector(false);
   return kPD_NO_ERROR;
 }
 
 int PDArgsGetSubSequenceStartPos(PD_Arguments args,
                                  uint64_t ID,
                                  PD_IVector subSeqPos) {
-  //! TODO(lizhao): Complete this method.
   if (args == nullptr || subSeqPos == nullptr) return kPD_NULLPTR;
   auto iv = castIVec(subSeqPos);
   auto a = castArg(args);
   if (ID >= a->args.size()) return kPD_OUT_OF_RANGE;
-  std::make_shared<paddle::ICpuGpuVector>(iv->vec) =
-      a->args[ID].sequenceStartPositions;
+  paddle::Argument& arg = a->args[ID];
+  iv->vec = arg.subSequenceStartPositions->getMutableVector(false);
   return kPD_NO_ERROR;
 }
 }

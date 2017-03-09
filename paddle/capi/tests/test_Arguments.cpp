@@ -89,7 +89,8 @@ TEST(CAPIArguments, ids) {
   ASSERT_EQ(kPD_NO_ERROR, PDArgsDestroy(args));
 }
 
-TEST(CAPIArguments, Sequence) {
+template <typename T1, typename T2>
+void testSequenceHelper(T1 setter, T2 getter) {
   PD_Arguments args;
   ASSERT_EQ(kPD_NO_ERROR, PDArgsCreateNone(&args));
   ASSERT_EQ(kPD_NO_ERROR, PDArgsResize(args, 1));
@@ -97,12 +98,27 @@ TEST(CAPIArguments, Sequence) {
   PD_IVector ivec;
   int array[3] = {1, 2, 3};
   ASSERT_EQ(kPD_NO_ERROR, PDIVectorCreate(&ivec, array, 3, true));
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsSetSequenceStartPos(args, 0, ivec));
+  ASSERT_EQ(kPD_NO_ERROR, setter(args, 0, ivec));
 
   PD_IVector val;
   ASSERT_EQ(kPD_NO_ERROR, PDIVecCreateNone(&val));
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsGetSequenceStartPos(args, 0, val));
+  ASSERT_EQ(kPD_NO_ERROR, getter(args, 0, val));
+  uint64_t size;
+  ASSERT_EQ(kPD_NO_ERROR, PDIVectorGetSize(val, &size));
+
+  int* rawBuf;
+  ASSERT_EQ(kPD_NO_ERROR, PDIVectorGet(val, &rawBuf));
+  for (size_t i = 0; i < size; ++i) {
+    ASSERT_EQ(array[i], rawBuf[i]);
+  }
+
   ASSERT_EQ(kPD_NO_ERROR, PDIVecDestroy(ivec));
   ASSERT_EQ(kPD_NO_ERROR, PDIVecDestroy(val));
   ASSERT_EQ(kPD_NO_ERROR, PDArgsDestroy(args));
+}
+
+TEST(CAPIArguments, Sequence) {
+  testSequenceHelper(PDArgsSetSequenceStartPos, PDArgsGetSequenceStartPos);
+  testSequenceHelper(PDArgsSetSubSequenceStartPos,
+                     PDArgsGetSubSequenceStartPos);
 }
