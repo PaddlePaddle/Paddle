@@ -235,7 +235,7 @@ to set a build arg:</p>
 <p>Once we got the image <code class="code docutils literal"><span class="pre">paddle:dev</span></code>, we can use it to develop
 Paddle by mounting the local source code tree into a container that
 runs the image:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d -p <span class="m">2202</span>:22 -v <span class="nv">$PWD</span>:/paddle paddle:dev
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d -p <span class="m">2202</span>:22 -p <span class="m">8888</span>:8888 -v <span class="nv">$PWD</span>:/paddle paddle:dev
 </pre></div>
 </div>
 <p>This runs a container of the development environment Docker image
@@ -267,6 +267,25 @@ we can run unit tests there:</p>
 ctest
 </pre></div>
 </div>
+</li>
+<li><p class="first">Run PaddlePaddle Book under Docker Container</p>
+<blockquote>
+<div><p>The Jupyter Notebook is an open-source web application that allows
+you to create and share documents that contain live code, equations,
+visualizations and explanatory text in a single browser.</p>
+<p>PaddlePaddle Book is an interactive Jupyter Notebook for users and developers.
+We already exposed port 8888 for this book. If you want to
+dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.</p>
+<p>Once you are inside the container, simply issue the command:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>jupyter notebook
+</pre></div>
+</div>
+<p>Then, you would back and paste the address into the local browser:</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>http://localhost:8888/
+</pre></div>
+</div>
+<p>That&#8217;s all. Enjoy your journey!</p>
+</div></blockquote>
 </li>
 </ol>
 </div>
