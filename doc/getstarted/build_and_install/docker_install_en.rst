@@ -84,27 +84,27 @@ Windows -- in a consistent way.
 
 4. Run PaddlePaddle Book under Docker Container
 
-    The Jupyter Notebook is an open-source web application that allows
-    you to create and share documents that contain live code, equations,
-    visualizations and explanatory text in a single browser.
+   The Jupyter Notebook is an open-source web application that allows
+   you to create and share documents that contain live code, equations,
+   visualizations and explanatory text in a single browser.
 
-    PaddlePaddle Book is an interactive Jupyter Notebook for users and developers. 
-    We already exposed port 8888 for this book. If you want to
-    dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.
+   PaddlePaddle Book is an interactive Jupyter Notebook for users and developers. 
+   We already exposed port 8888 for this book. If you want to
+   dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.
 
-    Once you are inside the container, simply issue the command:
+   Once you are inside the container, simply issue the command:
 
-    .. code-block:: bash
+   .. code-block:: bash
+		   
+      jupyter notebook
 
-       jupyter notebook
+   Then, you would back and paste the address into the local browser:
+      
+   .. code-block:: text
 
-    Then, you would back and paste the address into the local browser:
+      http://localhost:8888/
 
-    .. code-block:: text
-
-       http://localhost:8888/
-
-    That's all. Enjoy your journey!
+   That's all. Enjoy your journey!
 
 CPU-only and GPU Images
 -----------------------
@@ -116,21 +116,21 @@ automatically runs the following commands:
 
 .. code-block:: bash
 
-   docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile .
-   docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu .
+   docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile --build-arg BUILD_AND_INSTALL=ON .
+   docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu --build-arg BUILD_AND_INSTALL=ON .
 
 
 To run the CPU-only image as an interactive container:
 
 .. code-block:: bash
 
-    docker run -it --rm paddledev/paddle:cpu-latest /bin/bash
+    docker run -it --rm paddledev/paddle:0.10.0rc1-cpu /bin/bash
 
 or, we can run it as a daemon container
 
 .. code-block:: bash
 
-    docker run -d -p 2202:22 paddledev/paddle:cpu-latest
+    docker run -d -p 2202:22 paddledev/paddle:0.10.0rc1-cpu
 
 and SSH to this container using password :code:`root`:
 
@@ -152,7 +152,7 @@ to install CUDA driver and let Docker knows about it:
 
     export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
     export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-    docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:gpu-latest
+    docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:0.10.0rc1-gpu
 
 
 Non-AVX Images
@@ -194,7 +194,7 @@ container:
 
 .. code-block:: bash
 
-   docker run -d --name paddle-cpu-doc paddle:cpu
+   docker run -d --name paddle-cpu-doc paddle:0.10.0rc1-cpu
    docker run -d --volumes-from paddle-cpu-doc -p 8088:80 nginx
 
 
