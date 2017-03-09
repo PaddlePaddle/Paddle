@@ -1,16 +1,16 @@
-import py_paddle.swig_paddle as api
-
-import topology
-from data_feeder import DataFeeder
-import itertools
 import numpy
+import py_paddle.swig_paddle as api
+import collections
+import topology
+import minibatch
+from data_feeder import DataFeeder
 
 __all__ = ['infer']
 
 
 class Inference(object):
-    def __init__(self, output, parameters):
-        topo = topology.Topology(output)
+    def __init__(self, output_layer, parameters):
+        topo = topology.Topology(output_layer)
         gm = api.GradientMachine.createFromConfigProto(
             topo.proto(), api.CREATE_MODE_TESTING, [api.PARAMETER_VALUE])
         for param in gm.getParameters():
@@ -21,10 +21,16 @@ class Inference(object):
         self.__gradient_machine__ = gm
         self.__data_types__ = topo.data_type()
 
-    def iter_infer(self, reader, reader_dict=None):
-        if reader_dict is None:
-            reader_dict = self.default_reader_dict()
-        feeder = DataFeeder(self.__data_types__, reader_dict)
+    def iter_infer(self, input, feeding=None):
+        feeder = DataFeeder(self.__data_types__, feeding)
+        batch_size = len(input)
+
+        def __reader_impl__():
+            for each_sample in input:
+                yield each_sample
+
+        reader = minibatch.batch(__reader_impl__, batch_size=batch_size)
+
         self.__gradient_machine__.start()
         for data_batch in reader():
             yield self.__gradient_machine__.forwardTest(feeder(data_batch))
@@ -47,13 +53,36 @@ class Inference(object):
         else:
             return retv
 
-    def default_reader_dict(self):
-        reader_dict = dict()
-        for i, tp in enumerate(self.__data_types__):
-            reader_dict[tp[0]] = i
-        return reader_dict
 
+def infer(output_layer, parameters, input, feeding=None, field='value'):
+    """
+    Infer a neural network by given neural network output and parameters.  The
+    user should pass either a batch of input data or reader method.
 
-def infer(output, parameters, reader, reader_dict=None, field='value'):
-    inferer = Inference(output=output, parameters=parameters)
-    return inferer.infer(field=field, reader=reader, reader_dict=reader_dict)
+    Example usages:
+
+    ..  code-block:: python
+
+        result = paddle.infer(prediction, parameters, input=SomeData,
+                              batch_size=32)
+        print result
+
+    :param output_layer: output of the neural network that would be inferred
+    :type output_layer: paddle.v2.config_base.Layer
+    :param parameters: parameters of the neural network.
+    :type parameters: paddle.v2.parameters.Parameters
+    :param input: input data batch. Should be a python iterable object, and each
+                  element is the data batch.
+    :type input: collections.Iterable
+    :param feeding: Reader dictionary. Default could generate from input
+                        value.
+    :param field: The prediction field. It should in [`value`, `ids`]. `value`
+                  means return the prediction probabilities, `ids` means return
+                  the prediction labels. Default is `value`
+    :type field: str
+    :return: a numpy array
+    :rtype: numpy.ndarray
+    """
+
+    inferer = Inference(output_layer=output_layer, parameters=parameters)
+    return inferer.infer(field=field, input=input, feeding=feeding)

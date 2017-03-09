@@ -2,6 +2,7 @@
 Trainer API
 ###########
 
+
 ==========
 Parameters
 ==========
@@ -24,3 +25,10 @@ Event
 
 ..	automodule:: paddle.v2.event
 	:members:
+
+
+=========
+Inference
+=========
+
+..	autofunction:: paddle.v2.infer

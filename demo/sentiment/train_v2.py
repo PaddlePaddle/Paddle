@@ -13,16 +13,10 @@
 # limitations under the License.
 
 import sys
-import paddle.trainer_config_helpers.attrs as attrs
-from paddle.trainer_config_helpers.poolings import MaxPooling
 import paddle.v2 as paddle
 
 
-def convolution_net(input_dim,
-                    class_dim=2,
-                    emb_dim=128,
-                    hid_dim=128,
-                    is_predict=False):
+def convolution_net(input_dim, class_dim=2, emb_dim=128, hid_dim=128):
     data = paddle.layer.data("word",
                              paddle.data_type.integer_value_sequence(input_dim))
     emb = paddle.layer.embedding(input=data, size=emb_dim)
@@ -42,8 +36,7 @@ def stacked_lstm_net(input_dim,
                      class_dim=2,
                      emb_dim=128,
                      hid_dim=512,
-                     stacked_num=3,
-                     is_predict=False):
+                     stacked_num=3):
     """
     A Wrapper for sentiment classification task.
     This network uses bi-directional recurrent network,
@@ -56,16 +49,14 @@ def stacked_lstm_net(input_dim,
     emb_dim: dimension of word embedding.
     hid_dim: dimension of hidden layer.
     stacked_num: number of stacked lstm-hidden layer.
-    is_predict: is predicting or not.
-                Some layers is not needed in network when predicting.
     """
     assert stacked_num % 2 == 1
 
-    layer_attr = attrs.ExtraLayerAttribute(drop_rate=0.5)
-    fc_para_attr = attrs.ParameterAttribute(learning_rate=1e-3)
-    lstm_para_attr = attrs.ParameterAttribute(initial_std=0., learning_rate=1.)
+    layer_attr = paddle.attr.Extra(drop_rate=0.5)
+    fc_para_attr = paddle.attr.Param(learning_rate=1e-3)
+    lstm_para_attr = paddle.attr.Param(initial_std=0., learning_rate=1.)
     para_attr = [fc_para_attr, lstm_para_attr]
-    bias_attr = attrs.ParameterAttribute(initial_std=0., l2_rate=0.)
+    bias_attr = paddle.attr.Param(initial_std=0., l2_rate=0.)
     relu = paddle.activation.Relu()
     linear = paddle.activation.Linear()
 
@@ -95,8 +86,10 @@ def stacked_lstm_net(input_dim,
             layer_attr=layer_attr)
         inputs = [fc, lstm]
 
-    fc_last = paddle.layer.pooling(input=inputs[0], pooling_type=MaxPooling())
-    lstm_last = paddle.layer.pooling(input=inputs[1], pooling_type=MaxPooling())
+    fc_last = paddle.layer.pooling(
+        input=inputs[0], pooling_type=paddle.pooling.Max())
+    lstm_last = paddle.layer.pooling(
+        input=inputs[1], pooling_type=paddle.pooling.Max())
     output = paddle.layer.fc(input=[fc_last, lstm_last],
                              size=class_dim,
                              act=paddle.activation.Softmax(),
@@ -110,14 +103,23 @@ def stacked_lstm_net(input_dim,
 
 if __name__ == '__main__':
     # init
-    paddle.init(use_gpu=True, trainer_count=4)
+    paddle.init(use_gpu=False)
 
-    # network config
+    #data
     print 'load dictionary...'
     word_dict = paddle.dataset.imdb.word_dict()
     dict_dim = len(word_dict)
     class_dim = 2
+    train_reader = paddle.batch(
+        paddle.reader.shuffle(
+            lambda: paddle.dataset.imdb.train(word_dict), buf_size=1000),
+        batch_size=100)
+    test_reader = paddle.batch(
+        lambda: paddle.dataset.imdb.test(word_dict), batch_size=100)
 
+    feeding = {'word': 0, 'label': 1}
+
+    # network config
     # Please choose the way to build the network
     # by uncommenting the corresponding line.
     cost = convolution_net(dict_dim, class_dim=class_dim)
@@ -142,12 +144,7 @@ if __name__ == '__main__':
                 sys.stdout.write('.')
                 sys.stdout.flush()
         if isinstance(event, paddle.event.EndPass):
-            result = trainer.test(
-                reader=paddle.reader.batched(
-                    lambda: paddle.dataset.imdb.test(word_dict),
-                    batch_size=128),
-                reader_dict={'word': 0,
-                             'label': 1})
+            result = trainer.test(reader=test_reader, feeding=feeding)
             print "\nTest with Pass %d, %s" % (event.pass_id, result.metrics)
 
     # create trainer
@@ -156,11 +153,7 @@ if __name__ == '__main__':
                                  update_equation=adam_optimizer)
 
     trainer.train(
-        reader=paddle.reader.batched(
-            paddle.reader.shuffle(
-                lambda: paddle.dataset.imdb.train(word_dict), buf_size=1000),
-            batch_size=100),
+        reader=train_reader,
         event_handler=event_handler,
-        reader_dict={'word': 0,
-                     'label': 1},
-        num_passes=10)
+        feeding=feeding,
+        num_passes=2)
