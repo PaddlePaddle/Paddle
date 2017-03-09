@@ -34,8 +34,6 @@ RUN apt-get update && \
 
 # git credential to skip password typing
 RUN git config --global credential.helper store
-# fetch PaddlePaddle book
-RUN git submodule update --init --recursive
 
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
@@ -52,7 +50,9 @@ RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd .. && rm -rf cmake-3.4.1
 
 COPY . /paddle/
+RUN cd /paddle/ && git submodule update --init --recursive
 RUN /paddle/paddle/scripts/docker/build.sh
+
 VOLUME ["/usr/share/nginx/html/data", "/usr/share/nginx/html/paddle"]
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
