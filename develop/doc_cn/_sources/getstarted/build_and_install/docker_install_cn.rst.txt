@@ -56,6 +56,26 @@ PaddlePaddle目前唯一官方支持的运行的方式是Docker容器。因为Do
       cd /paddle/build
       ctest
 
+4. 在Docker容器中运行PaddlePaddle书籍
+
+   Jupyter Notebook是一个开源的web程序，大家可以通过它制作和分享带有代码、公式、图表、文字的交互式文档。用户可以通过网页浏览文档。
+
+   PaddlePaddle书籍是为用户和开发者制作的一个交互式的Jupyter Nodebook。
+   如果您想要更深入了解deep learning，PaddlePaddle书籍一定是您最好的选择。
+   
+   当您进入容器内之后，只用运行以下命令：
+
+   .. code-block:: bash
+		   
+      jupyter notebook
+
+   然后在浏览器中输入以下网址：
+      
+   .. code-block:: text
+
+      http://localhost:8888/
+
+   就这么简单，享受您的旅程！
 
 纯CPU和GPU的docker镜像
 ----------------------
@@ -64,20 +84,20 @@ PaddlePaddle目前唯一官方支持的运行的方式是Docker容器。因为Do
 
 .. code-block:: bash
 
-   docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile .
-   docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu .
+   docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile --build-arg BUILD_AND_INSTALL=ON .
+   docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu --build-arg BUILD_AND_INSTALL=ON .
 
 以交互容器方式运行纯CPU的镜像：
 
 .. code-block:: bash
 
-    docker run -it --rm paddledev/paddle:cpu-latest /bin/bash
+    docker run -it --rm paddledev/paddle:0.10.0rc1-cpu /bin/bash
 
 或者，可以以后台进程方式运行容器：
 
 .. code-block:: bash
 
-    docker run -d -p 2202:22 paddledev/paddle:cpu-latest
+    docker run -d -p 2202:22 paddledev/paddle:0.10.0rc1-cpu
 
 然后用密码 :code:`root` SSH进入容器：
 
@@ -94,7 +114,7 @@ SSH方式的一个优点是我们可以从多个终端进入容器。比如，�
 
     export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
     export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-    docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:gpu-latest
+    docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:0.10.0rc1-gpu
 
 
 非AVX镜像
@@ -128,7 +148,7 @@ Paddle的Docker镜像带有一个通过 `woboq code browser
 
 .. code-block:: bash
 
-   docker run -d --name paddle-cpu-doc paddle:cpu
+   docker run -d --name paddle-cpu-doc paddle:0.10.0rc1-cpu
    docker run -d --volumes-from paddle-cpu-doc -p 8088:80 nginx
 
 接着我们就能够打开浏览器在 http://localhost:8088/paddle/ 浏览代码。

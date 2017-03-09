@@ -260,21 +260,35 @@ ctest
 </pre></div>
 </div>
 </li>
+<li><p class="first">在Docker容器中运行PaddlePaddle书籍</p>
+<p>Jupyter Notebook是一个开源的web程序，大家可以通过它制作和分享带有代码、公式、图表、文字的交互式文档。用户可以通过网页浏览文档。</p>
+<p>PaddlePaddle书籍是为用户和开发者制作的一个交互式的Jupyter Nodebook。
+如果您想要更深入了解deep learning，PaddlePaddle书籍一定是您最好的选择。</p>
+<p>当您进入容器内之后，只用运行以下命令：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>jupyter notebook
+</pre></div>
+</div>
+<p>然后在浏览器中输入以下网址：</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>http://localhost:8888/
+</pre></div>
+</div>
+<p>就这么简单，享受您的旅程！</p>
+</li>
 </ol>
 </div>
 <div class="section" id="cpugpudocker">
 <h2>纯CPU和GPU的docker镜像<a class="headerlink" href="#cpugpudocker" title="永久链接至标题">¶</a></h2>
 <p>对于每一个PaddlePaddle版本，我们都会发布两个Docker镜像：纯CPU的和GPU的。我们通过设置 <a class="reference external" href="https://hub.docker.com/r/paddledev/paddle/">dockerhub.com</a> 自动运行以下两个命令：</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile .
-docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu .
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile --build-arg <span class="nv">BUILD_AND_INSTALL</span><span class="o">=</span>ON .
+docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu --build-arg <span class="nv">BUILD_AND_INSTALL</span><span class="o">=</span>ON .
 </pre></div>
 </div>
 <p>以交互容器方式运行纯CPU的镜像：</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it --rm paddledev/paddle:cpu-latest /bin/bash
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it --rm paddledev/paddle:0.10.0rc1-cpu /bin/bash
 </pre></div>
 </div>
 <p>或者，可以以后台进程方式运行容器：</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d -p <span class="m">2202</span>:22 paddledev/paddle:cpu-latest
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d -p <span class="m">2202</span>:22 paddledev/paddle:0.10.0rc1-cpu
 </pre></div>
 </div>
 <p>然后用密码 <code class="code docutils literal"><span class="pre">root</span></code> SSH进入容器：</p>
@@ -285,7 +299,7 @@ docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu .
 <p>以上方法在GPU镜像里也能用－只是请不要忘记按装CUDA驱动，以及告诉Docker：</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
 <span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
-docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:gpu-latest
+docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:0.10.0rc1-gpu
 </pre></div>
 </div>
 </div>
@@ -308,7 +322,7 @@ docker build --build-arg <span class="nv">WITH_AVX</span><span class="o">=</span
 <h2>文档<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h2>
 <p>Paddle的Docker镜像带有一个通过 <a class="reference external" href="https://github.com/woboq/woboq_codebrowser">woboq code browser</a> 生成的HTML版本的C++源代码，便于用户浏览C++源码。</p>
 <p>只要在Docker里启动PaddlePaddle的时候给它一个名字，就可以再运行另一个Nginx Docker镜像来服务HTML代码：</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d --name paddle-cpu-doc paddle:cpu
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d --name paddle-cpu-doc paddle:0.10.0rc1-cpu
 docker run -d --volumes-from paddle-cpu-doc -p <span class="m">8088</span>:80 nginx
 </pre></div>
 </div>

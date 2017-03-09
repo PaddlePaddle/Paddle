@@ -277,8 +277,7 @@ ctest
 </div>
 </li>
 <li><p class="first">Run PaddlePaddle Book under Docker Container</p>
-<blockquote>
-<div><p>The Jupyter Notebook is an open-source web application that allows
+<p>The Jupyter Notebook is an open-source web application that allows
 you to create and share documents that contain live code, equations,
 visualizations and explanatory text in a single browser.</p>
 <p>PaddlePaddle Book is an interactive Jupyter Notebook for users and developers.
@@ -293,7 +292,6 @@ dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.
 </pre></div>
 </div>
 <p>That&#8217;s all. Enjoy your journey!</p>
-</div></blockquote>
 </li>
 </ol>
 </div>
@@ -303,16 +301,16 @@ dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.
 CPU-only one and a CUDA GPU one.  We do so by configuring
 <a class="reference external" href="https://hub.docker.com/r/paddledev/paddle/">dockerhub.com</a>
 automatically runs the following commands:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile .
-docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu .
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile --build-arg <span class="nv">BUILD_AND_INSTALL</span><span class="o">=</span>ON .
+docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu --build-arg <span class="nv">BUILD_AND_INSTALL</span><span class="o">=</span>ON .
 </pre></div>
 </div>
 <p>To run the CPU-only image as an interactive container:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it --rm paddledev/paddle:cpu-latest /bin/bash
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it --rm paddledev/paddle:0.10.0rc1-cpu /bin/bash
 </pre></div>
 </div>
 <p>or, we can run it as a daemon container</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d -p <span class="m">2202</span>:22 paddledev/paddle:cpu-latest
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d -p <span class="m">2202</span>:22 paddledev/paddle:0.10.0rc1-cpu
 </pre></div>
 </div>
 <p>and SSH to this container using password <code class="code docutils literal"><span class="pre">root</span></code>:</p>
@@ -328,7 +326,7 @@ from a laptop.</p>
 to install CUDA driver and let Docker knows about it:</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
 <span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
-docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:gpu-latest
+docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:0.10.0rc1-gpu
 </pre></div>
 </div>
 </div>
@@ -359,7 +357,7 @@ for users to browse and understand the C++ source code.</p>
 <p>As long as we give the Paddle Docker container a name, we can run an
 additional Nginx Docker container to serve the volume from the Paddle
 container:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d --name paddle-cpu-doc paddle:cpu
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d --name paddle-cpu-doc paddle:0.10.0rc1-cpu
 docker run -d --volumes-from paddle-cpu-doc -p <span class="m">8088</span>:80 nginx
 </pre></div>
 </div>
