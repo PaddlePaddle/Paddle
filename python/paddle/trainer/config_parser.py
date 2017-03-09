@@ -1619,6 +1619,16 @@ class PriorBoxLayer(LayerBase):
         self.config.size = size
 
 
+@config_layer('normalize')
+class NormalizeLayer(LayerBase):
+    def __init__(self, name, inputs, size, num_filters, **xargs):
+        super(NormalizeLayer, self).__init__(name, 'normalize', 0, inputs,
+                                             **xargs)
+        self.config.size = size
+        self.config.num_filters = num_filters
+        self.create_input_parameter(0, num_filters, [num_filters, 1])
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self, name, size, height=None, width=None, device=None):

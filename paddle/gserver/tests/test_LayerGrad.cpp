@@ -1623,6 +1623,20 @@ TEST(Layer, PadLayer) {
   }
 }
 
+TEST(Layer, NormalizeLayer) {
+  TestConfig config;
+  config.layerConfig.set_type("normalize");
+  config.layerConfig.set_size(100);
+  config.layerConfig.set_num_filters(10);
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 100, 10});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "normalize", 10, false, useGpu, false, 5);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);
