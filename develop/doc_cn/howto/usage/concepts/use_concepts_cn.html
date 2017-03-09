@@ -162,9 +162,17 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">Configuration Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">Data Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">Trainer API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">训练与应用</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
@@ -348,7 +356,7 @@
 <p>这个配置文件网络由 <code class="docutils literal"><span class="pre">data_layer</span></code> 、 <code class="docutils literal"><span class="pre">simple_img_conv_pool</span></code> 、 <code class="docutils literal"><span class="pre">fc_layer</span></code> 组成。</p>
 <ul class="simple">
 <li><a class="reference internal" href="../../../api/v1/trainer_config_helpers/layers.html#api-trainer-config-helpers-layers-data-layer"><span class="std std-ref">data_layer</span></a>  ： 通常每个配置文件都会包括 <code class="docutils literal"><span class="pre">data_layer</span></code> ，定义输入数据大小。</li>
-<li><a class="reference internal" href="../../../api/v1/trainer_config_helpers/networks.html#api-trainer-config-helpers-network-simple-img-conv-pool"><span class="std std-ref">simple_img_conv_pool</span></a> ：是一个组合层，包括了图像的卷积 (convolution)和池化(pooling)。</li>
+<li><a class="reference internal" href="../../../api/v2/config/networks.html#api-trainer-config-helpers-network-simple-img-conv-pool"><span class="std std-ref">simple_img_conv_pool</span></a> ：是一个组合层，包括了图像的卷积 (convolution)和池化(pooling)。</li>
 <li><a class="reference internal" href="../../../api/v1/trainer_config_helpers/layers.html#api-trainer-config-helpers-layers-fc-layer"><span class="std std-ref">fc_layer</span></a> ：全连接层，激活函数为Softmax，这里也可叫分类层。</li>
 </ul>
 </li>

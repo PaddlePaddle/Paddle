@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Data Related API &mdash; PaddlePaddle  文档</title>
+  <title>Datasets &mdash; PaddlePaddle  文档</title>
   
 
   
@@ -34,8 +34,8 @@
         <link rel="search" title="搜索" href="../../search.html"/>
     <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/>
         <link rel="up" title="API" href="../index_cn.html"/>
-        <link rel="next" title="Trainer API" href="run_logic.html"/>
-        <link rel="prev" title="Configuration Related API" href="model_configs.html"/> 
+        <link rel="next" title="Training and Inference" href="run_logic.html"/>
+        <link rel="prev" title="Parameter Attribute" href="config/attr.html"/> 
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
   <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
@@ -162,9 +162,17 @@
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="reference internal" href="../index_cn.html">API</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="model_configs.html">Configuration Related API</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Data Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="run_logic.html">Trainer API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_logic.html">训练与应用</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
@@ -174,23 +182,24 @@
     </nav>
     
     <nav class="local-toc"><ul>
-<li><a class="reference internal" href="#">Data Related API</a><ul>
-<li><a class="reference internal" href="#module-paddle.v2.data_type">DataTypes</a></li>
-<li><a class="reference internal" href="#module-paddle.v2.data_feeder">DataFeeder</a></li>
-<li><a class="reference internal" href="#module-paddle.v2.reader">Reader</a><ul>
+<li><a class="reference internal" href="#">Datasets</a><ul>
+<li><a class="reference internal" href="#datatypes">DataTypes</a></li>
+<li><a class="reference internal" href="#datafeeder">DataFeeder</a></li>
+<li><a class="reference internal" href="#reader">Reader</a><ul>
 <li><a class="reference internal" href="#data-reader-interface">Data Reader Interface</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#module-paddle.v2.minibatch">minibatch</a></li>
+<li><a class="reference internal" href="#minibatch">minibatch</a></li>
 <li><a class="reference internal" href="#dataset">Dataset</a><ul>
-<li><a class="reference internal" href="#module-paddle.v2.dataset.mnist">mnist</a></li>
-<li><a class="reference internal" href="#module-paddle.v2.dataset.cifar">cifar</a></li>
+<li><a class="reference internal" href="#mnist">mnist</a></li>
+<li><a class="reference internal" href="#cifar">cifar</a></li>
 <li><a class="reference internal" href="#conll05">conll05</a></li>
-<li><a class="reference internal" href="#module-paddle.v2.dataset.imdb">imdb</a></li>
-<li><a class="reference internal" href="#module-paddle.v2.dataset.imikolov">imikolov</a></li>
-<li><a class="reference internal" href="#module-paddle.v2.dataset.movielens">movielens</a></li>
-<li><a class="reference internal" href="#module-paddle.v2.dataset.sentiment">sentiment</a></li>
-<li><a class="reference internal" href="#module-paddle.v2.dataset.uci_housing">uci_housing</a></li>
+<li><a class="reference internal" href="#imdb">imdb</a></li>
+<li><a class="reference internal" href="#imikolov">imikolov</a></li>
+<li><a class="reference internal" href="#movielens">movielens</a></li>
+<li><a class="reference internal" href="#sentiment">sentiment</a></li>
+<li><a class="reference internal" href="#uci-housing">uci_housing</a></li>
+<li><a class="reference internal" href="#wmt14">wmt14</a></li>
 </ul>
 </li>
 </ul>
@@ -215,7 +224,7 @@
       
         <li><a href="../index_cn.html">API</a> > </li>
       
-    <li>Data Related API</li>
+    <li>Datasets</li>
   </ul>
 </div>
       
@@ -224,13 +233,13 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="data-related-api">
-<h1>Data Related API<a class="headerlink" href="#data-related-api" title="永久链接至标题">¶</a></h1>
-<div class="section" id="module-paddle.v2.data_type">
-<span id="datatypes"></span><h2>DataTypes<a class="headerlink" href="#module-paddle.v2.data_type" title="永久链接至标题">¶</a></h2>
+  <div class="section" id="datasets">
+<h1>Datasets<a class="headerlink" href="#datasets" title="永久链接至标题">¶</a></h1>
+<div class="section" id="datatypes">
+<h2>DataTypes<a class="headerlink" href="#datatypes" title="永久链接至标题">¶</a></h2>
 <dl class="function">
-<dt id="paddle.v2.data_type.dense_vector">
-<code class="descclassname">paddle.v2.data_type.</code><code class="descname">dense_vector</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_type.dense_vector" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">dense_vector</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
 <dd><p>Dense Vector. It means the input feature is dense float vector. For example,
 if the input is an image with 28*28 pixels, the input of Paddle neural
 network should be a dense vector with dimension 784.</p>
@@ -247,7 +256,7 @@ network should be a dense vector with dimension 784.</p>
 <tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">An input type object.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#paddle.v2.data_type.InputType" title="paddle.v2.data_type.InputType">InputType</a></p>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">InputType</p>
 </td>
 </tr>
 </tbody>
@@ -255,8 +264,8 @@ network should be a dense vector with dimension 784.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.data_type.dense_vector_sequence">
-<code class="descclassname">paddle.v2.data_type.</code><code class="descname">dense_vector_sequence</code><span class="sig-paren">(</span><em>dim</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_type.dense_vector_sequence" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">dense_vector_sequence</code><span class="sig-paren">(</span><em>dim</em><span class="sig-paren">)</span></dt>
 <dd><p>Data type of a sequence of dense vector.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -266,15 +275,15 @@ network should be a dense vector with dimension 784.</p>
 </tr>
 <tr class="field-even field"><th class="field-name">返回:</th><td class="field-body">An input type object</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><a class="reference internal" href="#paddle.v2.data_type.InputType" title="paddle.v2.data_type.InputType">InputType</a></td>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body">InputType</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.data_type.integer_value">
-<code class="descclassname">paddle.v2.data_type.</code><code class="descname">integer_value</code><span class="sig-paren">(</span><em>value_range</em>, <em>seq_type=0</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_type.integer_value" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">integer_value</code><span class="sig-paren">(</span><em>value_range</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
 <dd><p>Data type of integer.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -289,7 +298,7 @@ network should be a dense vector with dimension 784.</p>
 <tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">An input type object</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#paddle.v2.data_type.InputType" title="paddle.v2.data_type.InputType">InputType</a></p>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">InputType</p>
 </td>
 </tr>
 </tbody>
@@ -297,8 +306,8 @@ network should be a dense vector with dimension 784.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.data_type.integer_value_sequence">
-<code class="descclassname">paddle.v2.data_type.</code><code class="descname">integer_value_sequence</code><span class="sig-paren">(</span><em>value_range</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_type.integer_value_sequence" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">integer_value_sequence</code><span class="sig-paren">(</span><em>value_range</em><span class="sig-paren">)</span></dt>
 <dd><p>Data type of a sequence of integer.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -311,8 +320,8 @@ network should be a dense vector with dimension 784.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.data_type.sparse_binary_vector">
-<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_binary_vector</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_type.sparse_binary_vector" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_binary_vector</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
 <dd><p>Sparse binary vector. It means the input feature is a sparse vector and the
 every element in this vector is either zero or one.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -328,7 +337,7 @@ every element in this vector is either zero or one.</p>
 <tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">An input type object.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#paddle.v2.data_type.InputType" title="paddle.v2.data_type.InputType">InputType</a></p>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">InputType</p>
 </td>
 </tr>
 </tbody>
@@ -336,8 +345,8 @@ every element in this vector is either zero or one.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.data_type.sparse_binary_vector_sequence">
-<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_binary_vector_sequence</code><span class="sig-paren">(</span><em>dim</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_type.sparse_binary_vector_sequence" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_binary_vector_sequence</code><span class="sig-paren">(</span><em>dim</em><span class="sig-paren">)</span></dt>
 <dd><dl class="docutils">
 <dt>Data type of a sequence of sparse vector, which every element is either zero</dt>
 <dd>or one.</dd>
@@ -350,15 +359,15 @@ every element in this vector is either zero or one.</p>
 </tr>
 <tr class="field-even field"><th class="field-name">返回:</th><td class="field-body">An input type object</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><a class="reference internal" href="#paddle.v2.data_type.InputType" title="paddle.v2.data_type.InputType">InputType</a></td>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body">InputType</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.data_type.sparse_non_value_slot">
-<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_non_value_slot</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_type.sparse_non_value_slot" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_non_value_slot</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
 <dd><p>Sparse binary vector. It means the input feature is a sparse vector and the
 every element in this vector is either zero or one.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -374,7 +383,7 @@ every element in this vector is either zero or one.</p>
 <tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">An input type object.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#paddle.v2.data_type.InputType" title="paddle.v2.data_type.InputType">InputType</a></p>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">InputType</p>
 </td>
 </tr>
 </tbody>
@@ -382,8 +391,8 @@ every element in this vector is either zero or one.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.data_type.sparse_value_slot">
-<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_value_slot</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_type.sparse_value_slot" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_value_slot</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
 <dd><p>Sparse vector. It means the input feature is a sparse vector. Most of the
 elements in this vector are zero, others could be any float value.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -399,7 +408,7 @@ elements in this vector are zero, others could be any float value.</p>
 <tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">An input type object.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#paddle.v2.data_type.InputType" title="paddle.v2.data_type.InputType">InputType</a></p>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">InputType</p>
 </td>
 </tr>
 </tbody>
@@ -407,8 +416,8 @@ elements in this vector are zero, others could be any float value.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.data_type.sparse_vector">
-<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_vector</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_type.sparse_vector" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_vector</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
 <dd><p>Sparse vector. It means the input feature is a sparse vector. Most of the
 elements in this vector are zero, others could be any float value.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -424,7 +433,7 @@ elements in this vector are zero, others could be any float value.</p>
 <tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">An input type object.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#paddle.v2.data_type.InputType" title="paddle.v2.data_type.InputType">InputType</a></p>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">InputType</p>
 </td>
 </tr>
 </tbody>
@@ -432,8 +441,8 @@ elements in this vector are zero, others could be any float value.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.data_type.sparse_vector_sequence">
-<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_vector_sequence</code><span class="sig-paren">(</span><em>dim</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_type.sparse_vector_sequence" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_vector_sequence</code><span class="sig-paren">(</span><em>dim</em><span class="sig-paren">)</span></dt>
 <dd><p>Data type of a sequence of sparse vector, which most elements are zero,
 others could be any float value.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -444,15 +453,15 @@ others could be any float value.</p>
 </tr>
 <tr class="field-even field"><th class="field-name">返回:</th><td class="field-body">An input type object</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><a class="reference internal" href="#paddle.v2.data_type.InputType" title="paddle.v2.data_type.InputType">InputType</a></td>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body">InputType</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="class">
-<dt id="paddle.v2.data_type.InputType">
-<em class="property">class </em><code class="descclassname">paddle.v2.data_type.</code><code class="descname">InputType</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type</em>, <em>tp</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_type.InputType" title="永久链接至目标">¶</a></dt>
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.data_type.</code><code class="descname">InputType</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type</em>, <em>tp</em><span class="sig-paren">)</span></dt>
 <dd><p>InputType is the base class for paddle input types.</p>
 <div class="admonition note">
 <p class="first admonition-title">注解</p>
@@ -477,11 +486,11 @@ nested sequence.</li>
 </dd></dl>
 
 </div>
-<div class="section" id="module-paddle.v2.data_feeder">
-<span id="datafeeder"></span><h2>DataFeeder<a class="headerlink" href="#module-paddle.v2.data_feeder" title="永久链接至标题">¶</a></h2>
+<div class="section" id="datafeeder">
+<h2>DataFeeder<a class="headerlink" href="#datafeeder" title="永久链接至标题">¶</a></h2>
 <dl class="class">
-<dt id="paddle.v2.data_feeder.DataFeeder">
-<em class="property">class </em><code class="descclassname">paddle.v2.data_feeder.</code><code class="descname">DataFeeder</code><span class="sig-paren">(</span><em>data_types</em>, <em>feeding=None</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_feeder.DataFeeder" title="永久链接至目标">¶</a></dt>
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.data_feeder.</code><code class="descname">DataFeeder</code><span class="sig-paren">(</span><em>data_types</em>, <em>feeding=None</em><span class="sig-paren">)</span></dt>
 <dd><p>DataFeeder converts the data returned by paddle.reader into a data structure
 of Arguments which is defined in the API. The paddle.reader usually returns
 a list of mini-batch data entries. Each data entry in the list is one sample.
@@ -524,8 +533,8 @@ in the input data.</li>
 </tbody>
 </table>
 <dl class="method">
-<dt id="paddle.v2.data_feeder.DataFeeder.convert">
-<code class="descname">convert</code><span class="sig-paren">(</span><em>dat</em>, <em>argument=None</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_feeder.DataFeeder.convert" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descname">convert</code><span class="sig-paren">(</span><em>dat</em>, <em>argument=None</em><span class="sig-paren">)</span></dt>
 <dd><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -546,8 +555,8 @@ in the API.</li>
 </dd></dl>
 
 </div>
-<div class="section" id="module-paddle.v2.reader">
-<span id="reader"></span><h2>Reader<a class="headerlink" href="#module-paddle.v2.reader" title="永久链接至标题">¶</a></h2>
+<div class="section" id="reader">
+<h2>Reader<a class="headerlink" href="#reader" title="永久链接至标题">¶</a></h2>
 <p>At training and testing time, PaddlePaddle programs need to read data. To ease
 the users&#8217; work to write data reading code, we define that</p>
 <ul class="simple">
@@ -590,8 +599,8 @@ array of float32, int, list of int)</p>
 </div>
 <p>TODO(yuyang18): Should we add whole design doc here?</p>
 <dl class="function">
-<dt id="paddle.v2.reader.map_readers">
-<code class="descclassname">paddle.v2.reader.</code><code class="descname">map_readers</code><span class="sig-paren">(</span><em>func</em>, <em>*readers</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.reader.map_readers" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">map_readers</code><span class="sig-paren">(</span><em>func</em>, <em>*readers</em><span class="sig-paren">)</span></dt>
 <dd><p>Creates a data reader that outputs return value of function using
 output of each data readers as arguments.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -618,8 +627,8 @@ output of each data readers as arguments.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.reader.buffered">
-<code class="descclassname">paddle.v2.reader.</code><code class="descname">buffered</code><span class="sig-paren">(</span><em>reader</em>, <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.reader.buffered" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">buffered</code><span class="sig-paren">(</span><em>reader</em>, <em>size</em><span class="sig-paren">)</span></dt>
 <dd><p>Creates a buffered data reader.</p>
 <p>The buffered data reader will read and save data entries into a
 buffer. Reading from the buffered data reader will proceed as long
@@ -642,8 +651,8 @@ as the buffer is not empty.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.reader.compose">
-<code class="descclassname">paddle.v2.reader.</code><code class="descname">compose</code><span class="sig-paren">(</span><em>*readers</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.reader.compose" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">compose</code><span class="sig-paren">(</span><em>*readers</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Creates a data reader whose output is the combination of input readers.</p>
 <p>If input readers output following data entries:
 (1, 2)    3    (4, 5)
@@ -673,8 +682,8 @@ Will not raise when check_alignment is set to False.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.reader.chain">
-<code class="descclassname">paddle.v2.reader.</code><code class="descname">chain</code><span class="sig-paren">(</span><em>*readers</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.reader.chain" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">chain</code><span class="sig-paren">(</span><em>*readers</em><span class="sig-paren">)</span></dt>
 <dd><p>Creates a data reader whose output is the outputs of input data
 readers chained together.</p>
 <p>If input readers output following data entries:
@@ -698,8 +707,8 @@ The chained reader will output:
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.reader.shuffle">
-<code class="descclassname">paddle.v2.reader.</code><code class="descname">shuffle</code><span class="sig-paren">(</span><em>reader</em>, <em>buf_size</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.reader.shuffle" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">shuffle</code><span class="sig-paren">(</span><em>reader</em>, <em>buf_size</em><span class="sig-paren">)</span></dt>
 <dd><p>Creates a data reader whose data output is shuffled.</p>
 <p>Output from the iterator that created by original reader will be
 buffered into shuffle buffer, and then shuffled. The size of shuffle buffer
@@ -725,8 +734,8 @@ is determined by argument buf_size.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.reader.firstn">
-<code class="descclassname">paddle.v2.reader.</code><code class="descname">firstn</code><span class="sig-paren">(</span><em>reader</em>, <em>n</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.reader.firstn" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">firstn</code><span class="sig-paren">(</span><em>reader</em>, <em>n</em><span class="sig-paren">)</span></dt>
 <dd><p>Limit the max number of samples that reader could return.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -749,11 +758,11 @@ is determined by argument buf_size.</p>
 </dd></dl>
 
 </div>
-<span class="target" id="module-paddle.v2.reader.creator"></span><p>Creator package contains some simple reader creator, which could be used in user
+<p>Creator package contains some simple reader creator, which could be used in user
 program.</p>
 <dl class="function">
-<dt id="paddle.v2.reader.creator.np_array">
-<code class="descclassname">paddle.v2.reader.creator.</code><code class="descname">np_array</code><span class="sig-paren">(</span><em>x</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.reader.creator.np_array" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.reader.creator.</code><code class="descname">np_array</code><span class="sig-paren">(</span><em>x</em><span class="sig-paren">)</span></dt>
 <dd><p>Creates a reader that yields elements of x, if it is a
 numpy vector. Or rows of x, if it is a numpy matrix.
 Or any sub-hyperplane indexed by the highest dimension.</p>
@@ -770,8 +779,8 @@ Or any sub-hyperplane indexed by the highest dimension.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.reader.creator.text_file">
-<code class="descclassname">paddle.v2.reader.creator.</code><code class="descname">text_file</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.reader.creator.text_file" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.reader.creator.</code><code class="descname">text_file</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span></dt>
 <dd><p>Creates a data reader that outputs text line by line from given text file.
 Trailing new line (&#8216;\n&#8217;) of each line will be removed.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -787,11 +796,11 @@ Trailing new line (&#8216;\n&#8217;) of each line will be removed.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-paddle.v2.minibatch">
-<span id="minibatch"></span><h2>minibatch<a class="headerlink" href="#module-paddle.v2.minibatch" title="永久链接至标题">¶</a></h2>
+<div class="section" id="minibatch">
+<h2>minibatch<a class="headerlink" href="#minibatch" title="永久链接至标题">¶</a></h2>
 <dl class="function">
-<dt id="paddle.v2.minibatch.batch">
-<code class="descclassname">paddle.v2.minibatch.</code><code class="descname">batch</code><span class="sig-paren">(</span><em>reader</em>, <em>batch_size</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.minibatch.batch" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.minibatch.</code><code class="descname">batch</code><span class="sig-paren">(</span><em>reader</em>, <em>batch_size</em><span class="sig-paren">)</span></dt>
 <dd><p>Create a batched reader.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -816,15 +825,15 @@ Trailing new line (&#8216;\n&#8217;) of each line will be removed.</p>
 </div>
 <div class="section" id="dataset">
 <h2>Dataset<a class="headerlink" href="#dataset" title="永久链接至标题">¶</a></h2>
-<span class="target" id="module-paddle.v2.dataset"></span><p>Dataset package.</p>
-<div class="section" id="module-paddle.v2.dataset.mnist">
-<span id="mnist"></span><h3>mnist<a class="headerlink" href="#module-paddle.v2.dataset.mnist" title="永久链接至标题">¶</a></h3>
+<p>Dataset package.</p>
+<div class="section" id="mnist">
+<h3>mnist<a class="headerlink" href="#mnist" title="永久链接至标题">¶</a></h3>
 <p>MNIST dataset.</p>
 <p>This module will download dataset from <a class="reference external" href="http://yann.lecun.com/exdb/mnist/">http://yann.lecun.com/exdb/mnist/</a> and
 parse train set and test set into paddle reader creators.</p>
 <dl class="function">
-<dt id="paddle.v2.dataset.mnist.train">
-<code class="descclassname">paddle.v2.dataset.mnist.</code><code class="descname">train</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.dataset.mnist.train" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.dataset.mnist.</code><code class="descname">train</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
 <dd><p>MNIST train set creator.</p>
 <p>It returns a reader creator, each sample in the reader is image pixels in
 [0, 1] and label in [0, 9].</p>
@@ -841,8 +850,8 @@ parse train set and test set into paddle reader creators.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.dataset.mnist.test">
-<code class="descclassname">paddle.v2.dataset.mnist.</code><code class="descname">test</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.dataset.mnist.test" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.dataset.mnist.</code><code class="descname">test</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
 <dd><p>MNIST test set cretor.</p>
 <p>It returns a reader creator, each sample in the reader is image pixels in
 [0, 1] and label in [0, 9].</p>
@@ -859,36 +868,36 @@ parse train set and test set into paddle reader creators.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-paddle.v2.dataset.cifar">
-<span id="cifar"></span><h3>cifar<a class="headerlink" href="#module-paddle.v2.dataset.cifar" title="永久链接至标题">¶</a></h3>
+<div class="section" id="cifar">
+<h3>cifar<a class="headerlink" href="#cifar" title="永久链接至标题">¶</a></h3>
 <p>CIFAR dataset: <a class="reference external" href="https://www.cs.toronto.edu/~kriz/cifar.html">https://www.cs.toronto.edu/~kriz/cifar.html</a></p>
 <p>TODO(yuyang18): Complete the comments.</p>
 </div>
 <div class="section" id="conll05">
 <h3>conll05<a class="headerlink" href="#conll05" title="永久链接至标题">¶</a></h3>
-<span class="target" id="module-paddle.v2.dataset.conll05"></span></div>
-<div class="section" id="module-paddle.v2.dataset.imdb">
-<span id="imdb"></span><h3>imdb<a class="headerlink" href="#module-paddle.v2.dataset.imdb" title="永久链接至标题">¶</a></h3>
+</div>
+<div class="section" id="imdb">
+<h3>imdb<a class="headerlink" href="#imdb" title="永久链接至标题">¶</a></h3>
 <p>IMDB dataset: <a class="reference external" href="http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz">http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz</a></p>
 <p>TODO(yuyang18): Complete comments.</p>
 </div>
-<div class="section" id="module-paddle.v2.dataset.imikolov">
-<span id="imikolov"></span><h3>imikolov<a class="headerlink" href="#module-paddle.v2.dataset.imikolov" title="永久链接至标题">¶</a></h3>
+<div class="section" id="imikolov">
+<h3>imikolov<a class="headerlink" href="#imikolov" title="永久链接至标题">¶</a></h3>
 <p>imikolov&#8217;s simple dataset: <a class="reference external" href="http://www.fit.vutbr.cz/~imikolov/rnnlm/">http://www.fit.vutbr.cz/~imikolov/rnnlm/</a></p>
 <p>Complete comments.</p>
 </div>
-<div class="section" id="module-paddle.v2.dataset.movielens">
-<span id="movielens"></span><h3>movielens<a class="headerlink" href="#module-paddle.v2.dataset.movielens" title="永久链接至标题">¶</a></h3>
+<div class="section" id="movielens">
+<h3>movielens<a class="headerlink" href="#movielens" title="永久链接至标题">¶</a></h3>
 <p>Movielens 1-M dataset.</p>
 <p>TODO(yuyang18): Complete comments.</p>
 </div>
-<div class="section" id="module-paddle.v2.dataset.sentiment">
-<span id="sentiment"></span><h3>sentiment<a class="headerlink" href="#module-paddle.v2.dataset.sentiment" title="永久链接至标题">¶</a></h3>
+<div class="section" id="sentiment">
+<h3>sentiment<a class="headerlink" href="#sentiment" title="永久链接至标题">¶</a></h3>
 <p>The script fetch and preprocess movie_reviews data set that provided by NLTK</p>
 <p>TODO(yuyang18): Complete dataset.</p>
 <dl class="function">
-<dt id="paddle.v2.dataset.sentiment.get_word_dict">
-<code class="descclassname">paddle.v2.dataset.sentiment.</code><code class="descname">get_word_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.dataset.sentiment.get_word_dict" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.dataset.sentiment.</code><code class="descname">get_word_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
 <dd><p>Sorted the words by the frequency of words which occur in sample
 :return:</p>
 <blockquote>
@@ -896,20 +905,25 @@ parse train set and test set into paddle reader creators.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.dataset.sentiment.train">
-<code class="descclassname">paddle.v2.dataset.sentiment.</code><code class="descname">train</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.dataset.sentiment.train" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.dataset.sentiment.</code><code class="descname">train</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
 <dd><p>Default train set reader creator</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="paddle.v2.dataset.sentiment.test">
-<code class="descclassname">paddle.v2.dataset.sentiment.</code><code class="descname">test</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.dataset.sentiment.test" title="永久链接至目标">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.v2.dataset.sentiment.</code><code class="descname">test</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
 <dd><p>Default test set reader creator</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-paddle.v2.dataset.uci_housing">
-<span id="uci-housing"></span><h3>uci_housing<a class="headerlink" href="#module-paddle.v2.dataset.uci_housing" title="永久链接至标题">¶</a></h3>
+<div class="section" id="uci-housing">
+<h3>uci_housing<a class="headerlink" href="#uci-housing" title="永久链接至标题">¶</a></h3>
+<p>UCI Housing dataset.</p>
+<p>TODO(yuyang18): Complete comments.</p>
+</div>
+<div class="section" id="wmt14">
+<h3>wmt14<a class="headerlink" href="#wmt14" title="永久链接至标题">¶</a></h3>
 <p>UCI Housing dataset.</p>
 <p>TODO(yuyang18): Complete comments.</p>
 </div>
@@ -923,10 +937,10 @@ parse train set and test set into paddle reader creators.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="run_logic.html" class="btn btn-neutral float-right" title="Trainer API" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="run_logic.html" class="btn btn-neutral float-right" title="Training and Inference" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="model_configs.html" class="btn btn-neutral" title="Configuration Related API" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="config/attr.html" class="btn btn-neutral" title="Parameter Attribute" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
