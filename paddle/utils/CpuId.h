@@ -18,6 +18,7 @@ namespace paddle {
 // clang-format off
 enum simd_t {
   SIMD_NONE   = 0,          ///< None
+#if !defined(__ANDROID__)
   SIMD_SSE    = 1 << 0,     ///< SSE
   SIMD_SSE2   = 1 << 1,     ///< SSE 2
   SIMD_SSE3   = 1 << 2,     ///< SSE 3
@@ -29,6 +30,9 @@ enum simd_t {
   SIMD_AVX    = 1 << 8,     ///< AVX
   SIMD_AVX2   = 1 << 9,     ///< AVX 2
   SIMD_AVX512 = 1 << 10,    ///< AVX 512
+#else
+  SIMD_NEON   = 1 << 0,     ///< NEON
+#endif
 };
 // clang-format on
 

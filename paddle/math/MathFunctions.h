@@ -17,7 +17,11 @@ limitations under the License. */
 
 #ifdef PADDLE_USE_MKL
 #include <mkl.h>
+#ifdef PADDLE_USE_CLAPACK
+#include <clapack.h>
+#else
 #include <mkl_lapacke.h>
+#endif
 #else
 extern "C" {
 #include <cblas.h>
@@ -27,7 +31,11 @@ extern "C" {
 #include <clapack.h>
 }
 #else
+#ifdef PADDLE_USE_CLAPACK
+#include <clapack.h>
+#else
 #include <lapacke.h>
+#endif
 #endif
 #endif
 

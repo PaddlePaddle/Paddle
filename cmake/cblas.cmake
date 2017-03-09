@@ -14,14 +14,39 @@
 #
 
 set(CBLAS_FOUND OFF)
+set(LAPACK_FOUND OFF)
+
+macro(find_lapack)
+  ## Find clapack
+  set(CLAPACK_ROOT $ENV{CLAPACK_ROOT} CACHE PATH "Folder contain clapack")
+  find_path(CLAPACK_INC_DIR NAMES clapack.h PATHS
+    ${CLAPACK_ROOT}/include)
+  find_path(CLAPACK_F2C_INC_DIR NAMES f2c.h PATHS
+    ${CLAPACK_ROOT}/include)
+  find_library(CLAPACK_F2C_LIB NAMES f2c PATHS
+    ${CLAPACK_ROOT}/lib)
+  find_library(CLAPACK_CBLASWR_LIB NAMES cblaswr PATHS
+    ${CLAPACK_ROOT}/lib)
+  find_library(CLAPACK_CLAPACK_LIB NAMES clapack PATHS
+    ${CLAPACK_ROOT}/lib)
+  if(CLAPACK_INC_DIR AND CLAPACK_F2C_INC_DIR AND CLAPACK_F2C_LIB AND
+     CLAPACK_CBLASWR_LIB AND CLAPACK_CLAPACK_LIB AND NOT LAPACK_FOUND)
+    set(LAPACK_PROVIDER CLAPACK)
+    set(LAPACK_INC_DIR ${CLAPACK_INC_DIR})
+    set(LAPACK_LIBRARIES ${CLAPACK_F2C_LIB} ${CLAPACK_CBLASWR_LIB} ${CLAPACK_CLAPACK_LIB})
+    add_definitions(-DPADDLE_USE_CLAPACK)
+    message(STATUS "Found CLAPACK (include: ${LAPACK_INC_DIR}, library: ${LAPACK_LIBRARIES})")
+    set(LAPACK_FOUND ON)
+  endif()
+endmacro()
 
 ## Find MKL First.
 set(INTEL_ROOT "/opt/intel" CACHE PATH "Folder contains intel libs")
 set(MKL_ROOT ${INTEL_ROOT}/mkl CACHE PATH "Folder contains MKL")
 
-find_path(MKL_INCLUDE_DIR mkl.h PATHS
+find_path(MKL_INC_DIR mkl.h PATHS
   ${MKL_ROOT}/include)
-find_path(MKL_INCLUDE_DIR mkl_lapacke.h PATHS
+find_path(MKL_LAPACK_INC_DIR mkl_lapacke.h PATHS
   ${MKL_ROOT}/include)
 find_library(MKL_CORE_LIB NAMES mkl_core PATHS
   ${MKL_ROOT}/lib
@@ -34,15 +59,22 @@ find_library(MKL_INTEL_LP64 NAMES mkl_intel_lp64 PATHS
   ${MKL_ROOT}/lib/intel64)
 
 
-if(MKL_INCLUDE_DIR AND MKL_CORE_LIB AND MKL_SEQUENTIAL_LIB AND MKL_INTEL_LP64)
+if(MKL_INC_DIR AND MKL_CORE_LIB AND MKL_SEQUENTIAL_LIB AND MKL_INTEL_LP64)
   set(CBLAS_PROVIDER MKL)
-  set(CBLAS_INC_DIR ${MKL_INCLUDE_DIR})
+  set(CBLAS_INC_DIR ${MKL_INC_DIR})
   set(CBLAS_LIBRARIES ${MKL_INTEL_LP64}
           ${MKL_SEQUENTIAL_LIB}
           ${MKL_CORE_LIB})
   add_definitions(-DPADDLE_USE_MKL)
   message(STATUS "Found MKL (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
   set(CBLAS_FOUND ON)
+  if(${MKL_LAPACK_INC_DIR})
+    set(LAPACK_INC_DIR ${MKL_LAPACK_INC_DIR})
+    message(STATUS "Found lapack in MKL (include: ${MKL_LAPACK_INC_DIR})")
+    set(LAPACK_FOUND ON)
+  else()
+    find_lapack()
+  endif()
   return() # return file.
 endif()
 
@@ -68,13 +100,20 @@ find_library(ATLAS_CBLAS_LIB NAMES cblas libcblas.so.3
 find_library(ATLAS_LIB NAMES lapack_atlas liblapack_atlas.so.3
   PATHS ${ATLAS_LIB_SEARCH_PATHS})
 
-if(ATLAS_INC_DIR AND ATLAS_CBLAS_LIB AND ATLAS_LIB)
+if(ATLAS_INC_DIR AND ATLAS_CBLAS_LIB AND ATLAS_LIB AND NOT CBLAS_FOUND)
   set(CBLAS_PROVIDER ATLAS)
-  set(CBLAS_INC_DIR ${ATLAS_INC_DIR} ${ATLAS_CLAPACK_INC_DIR})
+  set(CBLAS_INC_DIR ${ATLAS_INC_DIR})
   set(CBLAS_LIBRARIES ${ATLAS_LIB} ${ATLAS_CBLAS_LIB})
   add_definitions(-DPADDLE_USE_ATLAS)  
-  message(STATUS "Found Atlas (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+  message(STATUS "Found ATLAS (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
   set(CBLAS_FOUND ON)
+  if(ATLAS_CLAPACK_INC_DIR)
+    set(LAPACK_INC_DIR ${ATLAS_CLAPACK_INC_DIR})
+    message(STATUS "Found lapack in ATLAS (include: ${ATLAS_CLAPACK_INC_DIR})")
+    set(LAPACK_FOUND ON)
+  else()
+    find_lapack()
+  endif()
   return()
 endif()
 
@@ -103,8 +142,15 @@ if(OPENBLAS_INC_DIR AND OPENBLAS_LIB)
   set(CBLAS_PROVIDER OPENBLAS)
   set(CBLAS_INC_DIR ${OPENBLAS_INC_DIR})
   set(CBLAS_LIBRARIES ${OPENBLAS_LIB})
-  message(STATUS "Found OpenBlas (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+  message(STATUS "Found OpenBLAS (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
   set(CBLAS_FOUND ON)
+  if(OPENBLAS_LAPACKE_INC_DIR)
+    set(LAPACK_INC_DIR ${OPENBLAS_LAPACKE_INC_DIR})
+    message(STATUS "Found lapack in OpenBLAS (include: ${OPENBLAS_LAPACKE_INC_DIR})")
+    set(LAPACK_FOUND ON)
+  else()
+    find_lapack()
+  endif()
   return()
 endif()
 

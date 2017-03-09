@@ -17,12 +17,19 @@ limitations under the License. */
 
 #include "hl_base.h"
 
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__)
 #include <vector_types.h>
 #ifndef PADDLE_TYPE_DOUBLE
 typedef float4 vecType;
 #else
 typedef double2 vecType;
+#endif
+#elif (defined  __ARM_NEON) || (defined __ARM_NEON__)
+#include <arm_neon.h>
+#ifndef PADDLE_TYPE_DOUBLE
+typedef float32x4_t  vecType;
+#else
+#error NEON instructions does not support double precision
 #endif
 #else
 #include <mmintrin.h>

@@ -20,6 +20,7 @@ IF(NOT ${CBLAS_FOUND})
     SET(CBLAS_SOURCES_DIR ${THIRD_PARTY_PATH}/openblas)
     SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
     SET(CBLAS_INC_DIR "${CBLAS_INSTALL_DIR}/include" CACHE PATH "openblas include directory." FORCE)
+    SET(LAPACK_INC_DIR "${CBLAS_INSTALL_DIR}/include" CACHE PATH "lapack (in openblas) include directory." FORCE)
 
     IF(WIN32)
         SET(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/openblas.lib" CACHE FILEPATH "openblas library." FORCE)
@@ -64,3 +65,4 @@ IF(NOT ${CBLAS_FOUND})
 ENDIF(NOT ${CBLAS_FOUND})
 
 INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
+INCLUDE_DIRECTORIES(${LAPACK_INC_DIR})
