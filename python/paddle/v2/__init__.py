@@ -20,18 +20,20 @@ import event
 import data_type
 import topology
 import data_feeder
+import networks
 from . import dataset
 from . import reader
 import attr
 import pooling
-import inferencer
+import inference
 import networks
 import py_paddle.swig_paddle as api
+import minibatch
 
 __all__ = [
     'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
     'event', 'data_type', 'attr', 'pooling', 'data_feeder', 'dataset', 'reader',
-    'topology', 'networks', 'inferencer', 'infer'
+    'topology', 'networks', 'infer'
 ]
 
 
@@ -43,4 +45,5 @@ def init(**kwargs):
     api.initPaddle(*args)
 
 
-infer = inferencer.infer
+infer = inference.infer
+batch = minibatch.batch

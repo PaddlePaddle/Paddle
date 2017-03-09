@@ -43,22 +43,55 @@ docker push  [YOUR_REPO]/paddle:mypaddle
 
 注意上述命令中`[YOUR_REPO]`表示读者所使用的Docker镜像仓库地址，读者需要替换成自己使用的仓库地址。下文使用`[YOUR_REPO]/paddle:mypaddle`这个地址来表示此步骤所构建出的镜像。
 
-### 上传训练文件
+### 准备训练数据
 
-本文使用PaddlePaddle官方的[recommendation demo](http://www.paddlepaddle.org/doc/demo/index.html#recommendation)作为这次训练的内容，我们将训练文件与数据放在一个job name命名的目录中，上传到volume所在的共享存储（使用不同分布式存储会有不同的挂载方式，需要要先挂载这个目录，然后拷贝数据）。完成后volume中的文件内容大致如下：
+这里我们通过在Kubernetes集群上启动一个Job来下载并切割数据，也可以通过修改[k8s_train](./src/k8s_train/README.md)的内容来定制image.
 
-```bash
-[root@paddle-kubernetes-node0 mfs]# tree -d
+在启动Job之前，需要根据不同的分布式存储来绑定一个[persistentVolumeClaim](https://kubernetes.io/docs/user-guide/persistent-volumes/),生成的数据将会存储在这个volume下.
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: paddle-data
+spec:
+  template:
+    metadata:
+      name: pi
+    spec:
+      hostNetwork: true
+      containers:
+      - name: paddle-data
+        image: paddledev/paddle-tutorial:k8s_data
+        imagePullPolicy: Always
+        volumeMounts:
+        - mountPath: "/mnt"
+          name: nfs
+        env:
+        - name: OUT_DIR
+          value: /home/work/mfs/paddle-cluster-job
+        - name: SPLIT_COUNT
+          value: "3"
+      volumes:
+        - name: nfs
+          persistentVolumeClaim:
+            claimName: mfs
+      restartPolicy: Never
+```
+
+完成后volume中的文件内容大致如下：
+```base
+[root@paddle-kubernetes-node0 nfsdir]$ tree -d
 .
-└── paddle-cluster-job
-    ├── data
-    │   ├── 0
-    │   │
-    │   ├── 1
-    │   │
-    │   └── 2
-    ├── output
-    └── recommendation
+`-- paddle-cluster-job
+    |-- 0
+    |   `-- data
+    |-- 1
+    |   `-- data
+    |-- 2
+    |   `-- data
+    |-- output
+    |-- quick_start
 ```
 
 目录中paddle-cluster-job是本次训练对应的job name，本次训练要求有3个PaddlePaddle节点，在paddle-cluster-job/data目录中存放切分好的数据，文件夹0，1，2分别代表3个节点的trainer_id。recommendation文件夹内存放训练文件，output文件夹存放训练结果与日志。
@@ -118,15 +151,16 @@ spec:
 
 `env`字段表示容器的环境变量，我们将`paddle`运行的一些参数通过这种方式传递到容器内。
 
-`JOB_PATH`表示共享存储挂载的路径，`JOB_NAME`表示job名字，`TRAIN_CONFIG_DIR`表示本次训练文件所在目录，这三个变量组合就可以找到本次训练需要的文件路径。
-
-`CONF_PADDLE_NIC`表示`paddle pserver`进程需要的`--nics`参数，即网卡名
-
-`CONF_PADDLE_PORT`表示`paddle pserver`的`--port`参数，`CONF_PADDLE_PORTS_NUM`则表示稠密更新的端口数量，也就是`--ports_num`参数。
-
-`CONF_PADDLE_PORTS_NUM_SPARSE`表示稀疏更新的端口数量，也就是`--ports_num_for_sparse`参数。
-
-`CONF_PADDLE_GRADIENT_NUM`表示训练节点数量，即`--num_gradient_servers`参数
+环境变量 | 说明
+--- | ---
+JOB_PATH | 共享存储挂在的路径
+JOB_NAME | Job的名字
+TRAIN_CONFIG_DIR | 本次训练文件所在目录，与JOB_PATH,JOB_NAME组合可以找到本次训练需要的文件路径
+CONF_PADDLE_NIC | `paddle pserver`进程需要的`--nics`参数，即网卡名
+CONF_PADDLE_PORT | `paddle paserver`的`--port`参数
+CONF_PADDLE_PORTS_NUM | 稠密更新的端口数量，即`--ports_num`参数
+CONF_PADDLE_PORTS_NUM_SPARSE | 稀疏更新的端口数量，即`--ports_num_for_sparse`参数
+CONF_PADDLE_GRADIENT_NUM | 训练节点数量，即`--num_gradient_servers参数`
 
 这些参数的具体描述，读者可以查看[这里](http://www.paddlepaddle.org/doc/ui/cmd_argument/detail_introduction.html#parameter-server-and-distributed-communication)。
 
