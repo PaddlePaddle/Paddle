@@ -50,7 +50,9 @@ RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd .. && rm -rf cmake-3.4.1
 
 COPY . /paddle/
+RUN cd /paddle/ && git submodule update --init --recursive
 RUN /paddle/paddle/scripts/docker/build.sh
+
 VOLUME ["/usr/share/nginx/html/data", "/usr/share/nginx/html/paddle"]
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
@@ -60,9 +62,7 @@ RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
 EXPOSE 22
 
-# Jupyter Notebook directory.
-RUN mkdir /notes/
-WORKDIR "/notes"
+# Jupyter Notebook: Paddle book
 EXPOSE 8888
 
 COPY ./paddle/scripts/docker/entrypoint /opt/bin/

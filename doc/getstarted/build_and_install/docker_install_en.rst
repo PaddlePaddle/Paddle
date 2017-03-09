@@ -42,7 +42,7 @@ Windows -- in a consistent way.
 
    .. code-block:: bash
 
-      docker run -d -p 2202:22 -v $PWD:/paddle paddle:dev
+      docker run -d -p 2202:22 -p 8888:8888 -v $PWD:/paddle paddle:dev
 
    This runs a container of the development environment Docker image
    with the local source tree mounted to :code:`/paddle` of the
@@ -82,6 +82,29 @@ Windows -- in a consistent way.
       cd /paddle/build
       ctest
 
+4. Run PaddlePaddle Book under Docker Container
+
+    The Jupyter Notebook is an open-source web application that allows
+    you to create and share documents that contain live code, equations,
+    visualizations and explanatory text in a single browser.
+
+    PaddlePaddle Book is an interactive Jupyter Notebook for users and developers. 
+    We already exposed port 8888 for this book. If you want to
+    dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.
+
+    Once you are inside the container, simply issue the command:
+
+    .. code-block:: bash
+
+       jupyter notebook
+
+    Then, you would back and paste the address into the local browser:
+
+    .. code-block:: text
+
+       http://localhost:8888/
+
+    That's all. Enjoy your journey!
 
 CPU-only and GPU Images
 -----------------------
