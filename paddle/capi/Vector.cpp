@@ -28,7 +28,16 @@ int PDIVecCreateNone(PD_IVector* ivec) {
 
 int PDIVectorCreate(PD_IVector* ivec, int* array, uint64_t size, bool copy) {
   //! TODO(lizhao): Complete this method.
-  return kPD_UNDEFINED_ERROR;
+  if (ivec == nullptr) return kPD_NULLPTR;
+  auto ptr = new paddle::capi::CIVector();
+  if (copy) {
+    ptr->vec = paddle::IVector::create(size, false);
+    ptr->vec->copyFrom(array, size);
+  } else {
+    ptr->vec = paddle::IVector::create(array, size, false);
+  }
+  *ivec = ptr;
+  return kPD_NO_ERROR;
 }
 
 int PDIVecDestroy(PD_IVector ivec) {
@@ -47,11 +56,19 @@ int PDIVectorGet(PD_IVector ivec, int** buffer) {
 
 int PDIVectorResize(PD_IVector ivec, uint64_t size) {
   //! TODO(lizhao): Complete this method.
-  return kPD_UNDEFINED_ERROR;
+  if (ivec == nullptr) return kPD_NULLPTR;
+  auto v = cast<paddle::capi::CIVector>(ivec);
+  if (v->vec == nullptr) return kPD_NULLPTR;
+  v->vec->resize(size);
+  return kPD_NO_ERROR;
 }
 
 int PDIVectorGetSize(PD_IVector ivec, uint64_t* size) {
   //! TODO(lizhao): Complete this method.
-  return kPD_UNDEFINED_ERROR;
+  if (ivec == nullptr) return kPD_NULLPTR;
+  auto v = cast<paddle::capi::CIVector>(ivec);
+  if (v->vec == nullptr) return kPD_NULLPTR;
+  *size = v->vec->getSize();
+  return kPD_NO_ERROR;
 }
 }

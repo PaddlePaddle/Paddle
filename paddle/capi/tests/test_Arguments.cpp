@@ -70,3 +70,39 @@ TEST(CAPIArguments, value) {
   ASSERT_EQ(kPD_NO_ERROR, PDMatDestroy(mat));
   ASSERT_EQ(kPD_NO_ERROR, PDArgsDestroy(args));
 }
+
+TEST(CAPIArguments, ids) {
+  PD_Arguments args;
+  ASSERT_EQ(kPD_NO_ERROR, PDArgsCreateNone(&args));
+  ASSERT_EQ(kPD_NO_ERROR, PDArgsResize(args, 1));
+
+  PD_IVector ivec;
+  int array[3] = {1, 2, 3};
+  ASSERT_EQ(kPD_NO_ERROR, PDIVectorCreate(&ivec, array, 3, true));
+  ASSERT_EQ(kPD_NO_ERROR, PDArgsSetIds(args, 0, ivec));
+
+  PD_IVector val;
+  ASSERT_EQ(kPD_NO_ERROR, PDIVecCreateNone(&val));
+  ASSERT_EQ(kPD_NO_ERROR, PDArgsGetIds(args, 0, val));
+  ASSERT_EQ(kPD_NO_ERROR, PDIVecDestroy(ivec));
+  ASSERT_EQ(kPD_NO_ERROR, PDIVecDestroy(val));
+  ASSERT_EQ(kPD_NO_ERROR, PDArgsDestroy(args));
+}
+
+TEST(CAPIArguments, Sequence) {
+  PD_Arguments args;
+  ASSERT_EQ(kPD_NO_ERROR, PDArgsCreateNone(&args));
+  ASSERT_EQ(kPD_NO_ERROR, PDArgsResize(args, 1));
+
+  PD_IVector ivec;
+  int array[3] = {1, 2, 3};
+  ASSERT_EQ(kPD_NO_ERROR, PDIVectorCreate(&ivec, array, 3, true));
+  ASSERT_EQ(kPD_NO_ERROR, PDArgsSetSequenceStartPos(args, 0, ivec));
+
+  PD_IVector val;
+  ASSERT_EQ(kPD_NO_ERROR, PDIVecCreateNone(&val));
+  ASSERT_EQ(kPD_NO_ERROR, PDArgsGetSequenceStartPos(args, 0, val));
+  ASSERT_EQ(kPD_NO_ERROR, PDIVecDestroy(ivec));
+  ASSERT_EQ(kPD_NO_ERROR, PDIVecDestroy(val));
+  ASSERT_EQ(kPD_NO_ERROR, PDArgsDestroy(args));
+}

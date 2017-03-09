@@ -17,10 +17,17 @@ limitations under the License. */
 
 TEST(CAPIVector, create) {
   PD_IVector vec;
-  ASSERT_EQ(kPD_NO_ERROR, PDIVecCreateNone(&vec));
+  int array[3] = {1, 2, 3};
+  ASSERT_EQ(kPD_NO_ERROR, PDIVectorCreate(&vec, array, 3, true));
+  ASSERT_EQ(kPD_NO_ERROR, PDIVectorCreate(&vec, array, 3, false));
   ASSERT_EQ(kPD_NO_ERROR, PDIVectorResize(vec, 1000));
   uint64_t size;
   ASSERT_EQ(kPD_NO_ERROR, PDIVectorGetSize(vec, &size));
-  ASSERT_EQ(1000, size);
+  ASSERT_EQ(kPD_NO_ERROR, PDIVecDestroy(vec));
+}
+
+TEST(CAPIVector, createNone) {
+  PD_IVector vec;
+  ASSERT_EQ(kPD_NO_ERROR, PDIVecCreateNone(&vec));
   ASSERT_EQ(kPD_NO_ERROR, PDIVecDestroy(vec));
 }
