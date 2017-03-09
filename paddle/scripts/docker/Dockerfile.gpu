@@ -29,7 +29,7 @@ RUN apt-get update && \
     apt-get install -y wget unzip tar xz-utils bzip2 gzip coreutils && \
     apt-get install -y curl sed grep graphviz libjpeg-dev zlib1g-dev && \
     apt-get install -y python-numpy python-matplotlib gcc g++ gfortran && \
-    apt-get install -y automake locales clang-format-3.8 && \
+    apt-get install -y automake locales clang-format-3.8 golang && \
     apt-get clean -y
 
 # git credential to skip password typing
