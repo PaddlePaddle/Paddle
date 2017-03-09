@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>安装PaddlePaddle的Docker镜像 &mdash; PaddlePaddle  文档</title>
+  <title>PaddlePaddle的Docker容器使用方式 &mdash; PaddlePaddle  文档</title>
   
 
   
@@ -115,7 +115,7 @@
           <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="../index_cn.html">新手入门</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="index_cn.html">安装与编译</a><ul class="current">
-<li class="toctree-l3 current"><a class="current reference internal" href="#">安装PaddlePaddle的Docker镜像</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">PaddlePaddle的Docker容器使用方式</a></li>
 <li class="toctree-l3"><a class="reference internal" href="ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
 <li class="toctree-l3"><a class="reference internal" href="cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
 </ul>
@@ -174,14 +174,11 @@
     </nav>
     
     <nav class="local-toc"><ul>
-<li><a class="reference internal" href="#">安装PaddlePaddle的Docker镜像</a><ul>
-<li><a class="reference internal" href="#id1">PaddlePaddle提供的Docker镜像版本</a></li>
-<li><a class="reference internal" href="#id2">下载和运行Docker镜像</a></li>
-<li><a class="reference internal" href="#id4">注意事项</a><ul>
-<li><a class="reference internal" href="#id5">性能问题</a></li>
-<li><a class="reference internal" href="#id6">远程访问问题和二次开发</a></li>
-</ul>
-</li>
+<li><a class="reference internal" href="#">PaddlePaddle的Docker容器使用方式</a><ul>
+<li><a class="reference internal" href="#dockerpaddlepaddle">通过Docker容器开发PaddlePaddle</a></li>
+<li><a class="reference internal" href="#cpugpudocker">纯CPU和GPU的docker镜像</a></li>
+<li><a class="reference internal" href="#avx">非AVX镜像</a></li>
+<li><a class="reference internal" href="#id1">文档</a></li>
 </ul>
 </li>
 </ul>
@@ -206,7 +203,7 @@
       
         <li><a href="index_cn.html">安装与编译</a> > </li>
       
-    <li>安装PaddlePaddle的Docker镜像</li>
+    <li>PaddlePaddle的Docker容器使用方式</li>
   </ul>
 </div>
       
@@ -216,163 +213,98 @@
            <div itemprop="articleBody">
             
   <div class="section" id="paddlepaddledocker">
-<h1>安装PaddlePaddle的Docker镜像<a class="headerlink" href="#paddlepaddledocker" title="永久链接至标题">¶</a></h1>
-<p>PaddlePaddle项目提供官方 <a class="reference external" href="https://www.docker.com/">Docker</a> 镜像。Docker镜像是我们目前唯一官方支持的部署和运行方式。</p>
-<p>下述内容将分为如下几个类别描述。</p>
-<ul class="simple">
-<li>PaddlePaddle提供的Docker镜像版本</li>
-<li>下载和运行Docker镜像</li>
-<li>注意事项</li>
-</ul>
+<h1>PaddlePaddle的Docker容器使用方式<a class="headerlink" href="#paddlepaddledocker" title="永久链接至标题">¶</a></h1>
+<p>PaddlePaddle目前唯一官方支持的运行的方式是Docker容器。因为Docker能在所有主要操作系统（包括Linux，Mac OS X和Windows）上运行。 请注意，您需要更改 <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/issues/627">Dockers设置</a> 才能充分利用Mac OS X和Windows上的硬件资源。</p>
+<div class="section" id="dockerpaddlepaddle">
+<h2>通过Docker容器开发PaddlePaddle<a class="headerlink" href="#dockerpaddlepaddle" title="永久链接至标题">¶</a></h2>
+<p>开发人员可以在Docker中开发PaddlePaddle。这样开发人员可以以一致的方式在不同的平台上工作 - Linux，Mac OS X和Windows。</p>
+<ol class="arabic">
+<li><p class="first">将开发环境构建为Docker镜像</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>git clone --recursive https://github.com/PaddlePaddle/Paddle
+<span class="nb">cd</span> Paddle
+docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile .
+</pre></div>
+</div>
+<p>请注意，默认情况下，<code class="code docutils literal"><span class="pre">docker</span> <span class="pre">build</span></code> 不会将源码导入到镜像中并编译它。如果我们想这样做，需要设置一个参数：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile --build-arg <span class="nv">BUILD_AND_INSTALL</span><span class="o">=</span>ON .
+</pre></div>
+</div>
+</li>
+<li><p class="first">运行开发环境</p>
+<p>当我们编译好了 <code class="code docutils literal"><span class="pre">paddle:dev</span></code>， 我们可以在docker容器里做开发，源代码可以通过挂载本地文件来被载入Docker的开发环境里面：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d -p <span class="m">2202</span>:22 -v <span class="nv">$PWD</span>:/paddle paddle:dev
+</pre></div>
+</div>
+<p>以上代码会启动一个带有PaddlePaddle开发环境的docker容器，源代码会被挂载到 <code class="code docutils literal"><span class="pre">/paddle</span></code> 。</p>
+<p>请注意， <code class="code docutils literal"><span class="pre">paddle:dev</span></code> 的默认入口是 <code class="code docutils literal"><span class="pre">sshd</span></code> 。以上的 <code class="code docutils literal"><span class="pre">docker</span> <span class="pre">run</span></code> 命令其实会启动一个在2202端口监听的SSHD服务器。这样，我们就能SSH进入我们的开发容器了：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>ssh root@localhost -p <span class="m">2202</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">在Docker开发环境中编译与安装PaddlPaddle代码</p>
+<p>当在容器里面的时候，可以用脚本 <code class="code docutils literal"><span class="pre">paddle/scripts/docker/build.sh</span></code> 来编译、安装与测试PaddlePaddle：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>/paddle/paddle/scripts/docker/build.sh
+</pre></div>
+</div>
+<p>以上指令会在 <code class="code docutils literal"><span class="pre">/paddle/build</span></code> 中编译PaddlePaddle。通过以下指令可以运行单元测试：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> /paddle/build
+ctest
+</pre></div>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="cpugpudocker">
+<h2>纯CPU和GPU的docker镜像<a class="headerlink" href="#cpugpudocker" title="永久链接至标题">¶</a></h2>
+<p>对于每一个PaddlePaddle版本，我们都会发布两个Docker镜像：纯CPU的和GPU的。我们通过设置 <a class="reference external" href="https://hub.docker.com/r/paddledev/paddle/">dockerhub.com</a> 自动运行以下两个命令：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile .
+docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu .
+</pre></div>
+</div>
+<p>以交互容器方式运行纯CPU的镜像：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it --rm paddledev/paddle:cpu-latest /bin/bash
+</pre></div>
+</div>
+<p>或者，可以以后台进程方式运行容器：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d -p <span class="m">2202</span>:22 paddledev/paddle:cpu-latest
+</pre></div>
+</div>
+<p>然后用密码 <code class="code docutils literal"><span class="pre">root</span></code> SSH进入容器：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>ssh -p <span class="m">2202</span> root@localhost
+</pre></div>
+</div>
+<p>SSH方式的一个优点是我们可以从多个终端进入容器。比如，一个终端运行vi，另一个终端运行Python。另一个好处是我们可以把PaddlePaddle容器运行在远程服务器上，并在笔记本上通过SSH与其连接。</p>
+<p>以上方法在GPU镜像里也能用－只是请不要忘记按装CUDA驱动，以及告诉Docker：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
+docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:gpu-latest
+</pre></div>
+</div>
+</div>
+<div class="section" id="avx">
+<h2>非AVX镜像<a class="headerlink" href="#avx" title="永久链接至标题">¶</a></h2>
+<p>纯CPU镜像以及GPU镜像都会用到AVX指令集，但是2008年之前生产的旧电脑不支持AVX。以下指令能检查Linux电脑是否支持AVX：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="k">if</span> cat /proc/cpuinfo <span class="p">|</span> grep -i avx<span class="p">;</span> <span class="k">then</span> <span class="nb">echo</span> Yes<span class="p">;</span> <span class="k">else</span> <span class="nb">echo</span> No<span class="p">;</span> <span class="k">fi</span>
+</pre></div>
+</div>
+<p>如果输出是No，我们就需要手动编译一个非AVX版本的镜像：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> ~
+git clone https://github.com/PaddlePaddle/Paddle.git
+<span class="nb">cd</span> Paddle
+docker build --build-arg <span class="nv">WITH_AVX</span><span class="o">=</span>OFF -t paddle:cpu-noavx -f paddle/scripts/docker/Dockerfile .
+docker build --build-arg <span class="nv">WITH_AVX</span><span class="o">=</span>OFF -t paddle:gpu-noavx -f paddle/scripts/docker/Dockerfile.gpu .
+</pre></div>
+</div>
+</div>
 <div class="section" id="id1">
-<h2>PaddlePaddle提供的Docker镜像版本<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h2>
-<p>我们提供了12个 <a class="reference external" href="https://hub.docker.com/r/paddledev/paddle/tags/">Docker image</a> ，他们的image name都是 <code class="code docutils literal"><span class="pre">paddledev/paddle</span></code> ，tag分别为</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="21%" />
-<col width="22%" />
-<col width="29%" />
-<col width="28%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">&#160;</th>
-<th class="head">normal</th>
-<th class="head">devel</th>
-<th class="head">demo</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td>CPU</td>
-<td>cpu-latest</td>
-<td>cpu-devel-latest</td>
-<td>cpu-demo-latest</td>
-</tr>
-<tr class="row-odd"><td>GPU</td>
-<td>gpu-latest</td>
-<td>gpu-devel-latest</td>
-<td>gpu-demo-latest</td>
-</tr>
-<tr class="row-even"><td>CPU WITHOUT AVX</td>
-<td>cpu-noavx-latest</td>
-<td>cpu-noavx-devel-latest</td>
-<td>cpu-noavx-demo-latest</td>
-</tr>
-<tr class="row-odd"><td>GPU WITHOUT AVX</td>
-<td>gpu-noavx-latest</td>
-<td>gpu-noavx-devel-latest</td>
-<td>gpu-noavx-demo-latest</td>
-</tr>
-</tbody>
-</table>
-<p>其中，横向包括三个版本，normal，devel和demo。</p>
-<ul class="simple">
-<li>Normal: 正常的Docker image，只包括paddle的二进制</li>
-<li>Devel: 包括Paddle的二进制、编译环境和源代码</li>
-<li>Demo: 包括Paddle运行demo所需要的依赖</li>
-</ul>
-<p>纵向包括四个版本，他们是。</p>
-<ul class="simple">
-<li>CPU: CPU版本。需要支持AVX指令集的CPU</li>
-<li>GPU: GPU版本。需要支持AVX指令集的CPU</li>
-<li>CPU WITHOUT AVX: CPU版本，不支持AVX指令集的CPU也可以运行</li>
-<li>GPU WITHOUT AVX: GPU版本，不需要AVX指令集的CPU也可以运行。</li>
-</ul>
-<p>用户可以选择对应版本的docker image。使用如下脚本可以确定本机的CPU是否支持 <code class="code docutils literal"><span class="pre">AVX</span></code> 指令集:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="k">if</span> cat /proc/cpuinfo <span class="p">|</span> grep -q avx <span class="p">;</span> <span class="k">then</span> <span class="nb">echo</span> <span class="s2">&quot;Support AVX&quot;</span><span class="p">;</span> <span class="k">else</span> <span class="nb">echo</span> <span class="s2">&quot;Not support AVX&quot;</span><span class="p">;</span> <span class="k">fi</span>
+<h2>文档<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h2>
+<p>Paddle的Docker镜像带有一个通过 <a class="reference external" href="https://github.com/woboq/woboq_codebrowser">woboq code browser</a> 生成的HTML版本的C++源代码，便于用户浏览C++源码。</p>
+<p>只要在Docker里启动PaddlePaddle的时候给它一个名字，就可以再运行另一个Nginx Docker镜像来服务HTML代码：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d --name paddle-cpu-doc paddle:cpu
+docker run -d --volumes-from paddle-cpu-doc -p <span class="m">8088</span>:80 nginx
 </pre></div>
 </div>
-<p>如果输出 <code class="code docutils literal"><span class="pre">Support</span> <span class="pre">AVX</span></code>，则可以选择上表中的AVX版本PaddlePaddle。否则需要选择非AVX的PaddlePaddle。选择普通CPU版本的devel版本的image，则可以使用 <code class="code docutils literal"><span class="pre">paddledev/paddle:cpu-devel-latest</span></code> 来引用这个image。</p>
-<p>PaddlePaddle提供的镜像并不包含任何命令运行，想要运行PaddlePaddle，您需要进入镜像运行PaddlePaddle
-程序或者自定义一个含有启动脚本的image。具体请参考注意事项中的 <code class="code docutils literal"><span class="pre">使用ssh访问PaddlePaddle镜像</span></code></p>
-</div>
-<div class="section" id="id2">
-<h2>下载和运行Docker镜像<a class="headerlink" href="#id2" title="永久链接至标题">¶</a></h2>
-<p>为了运行PaddlePaddle的docker镜像，您需要在机器中安装好Docker。安装Docker需要您的机器
-至少具有3.10以上的linux kernel。安装方法请参考
-<a class="reference external" href="https://docs.docker.com/engine/installation/">Docker的官方文档</a> 。如果您使用
-mac osx或者是windows机器，请参考
-<a class="reference external" href="https://docs.docker.com/engine/installation/mac/">mac osx的安装文档</a> 和
-<a class="reference external" href="https://docs.docker.com/engine/installation/windows/">windows 的安装文档</a> 。</p>
-<p>您可以使用 <code class="code docutils literal"><span class="pre">docker</span> <span class="pre">pull</span></code> 命令预先下载镜像，也可以直接执行
-<code class="code docutils literal"><span class="pre">docker</span> <span class="pre">run</span></code> 命令运行镜像。执行方法如下:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>$ docker run -it paddledev/paddle:cpu-latest
-</pre></div>
-</div>
-<p>即可启动和进入PaddlePaddle的container。如果运行GPU版本的PaddlePaddle，则需要先将
-cuda相关的Driver和设备映射进container中，脚本类似于</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>$ <span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
-$ <span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
-$ docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:gpu-latest
-</pre></div>
-</div>
-<p>进入Docker container后，运行 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">version</span></code> 即可打印出PaddlePaddle的版本和构建
-信息。安装完成的PaddlePaddle主体包括三个部分， <code class="code docutils literal"><span class="pre">paddle</span></code> 脚本， python的
-<code class="code docutils literal"><span class="pre">paddle</span></code> 包和 <code class="code docutils literal"><span class="pre">py_paddle</span></code> 包。其中:</p>
-<ul class="simple">
-<li><code class="code docutils literal"><span class="pre">paddle</span></code> 脚本和 <code class="code docutils literal"><span class="pre">paddle</span></code> 的python包是PaddlePaddle的训练主要程序。使用
-<code class="code docutils literal"><span class="pre">paddle</span></code> 脚本可以启动PaddlePaddle的训练进程和pserver。而 <code class="code docutils literal"><span class="pre">paddle</span></code> 脚本
-中的二进制使用了 <code class="code docutils literal"><span class="pre">paddle</span></code> 的python包来做配置文件解析等工作。</li>
-<li>python包 <code class="code docutils literal"><span class="pre">py_paddle</span></code> 是一个swig封装的PaddlePaddle包，用来做预测和简单的定制化
-训练。</li>
-</ul>
-</div>
-<div class="section" id="id4">
-<h2>注意事项<a class="headerlink" href="#id4" title="永久链接至标题">¶</a></h2>
-<div class="section" id="id5">
-<h3>性能问题<a class="headerlink" href="#id5" title="永久链接至标题">¶</a></h3>
-<p>由于Docker是基于容器的轻量化虚拟方案，所以在CPU的运算性能上并不会有严重的影响。
-而GPU的驱动和设备全部映射到了容器内，所以GPU在运算性能上也不会有严重的影响。</p>
-<p>但是如果使用了高性能的网卡，例如RDMA网卡(RoCE 40GbE 或者 IB 56GbE)，或者高性能的
-以太网卡 (10GbE)。推荐使用将本地网卡，即 &#8220;&#8211;net=host&#8221; 来进行训练。而不使用docker
-的网桥来进行网络通信。</p>
-</div>
-<div class="section" id="id6">
-<h3>远程访问问题和二次开发<a class="headerlink" href="#id6" title="永久链接至标题">¶</a></h3>
-<p>由于PaddlePaddle的Docker镜像并不包含任何预定义的运行命令。所以如果想要在后台启用ssh
-远程访问，则需要进行一定的二次开发，将ssh装入系统内并开启远程访问。二次开发可以
-使用Dockerfile构建一个全新的docker image。需要参考
-<a class="reference external" href="https://docs.docker.com/engine/reference/builder/">Dockerfile的文档</a> 和
-<a class="reference external" href="https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/">Dockerfile的最佳实践</a>
-两个文档。</p>
-<p>简单的含有ssh的Dockerfile如下：</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>FROM paddledev/paddle:cpu-latest
-
-MAINTAINER PaddlePaddle dev team &lt;paddle-dev@baidu.com&gt;
-
-RUN apt-get update
-RUN apt-get install -y openssh-server
-RUN mkdir /var/run/sshd
-RUN <span class="nb">echo</span> <span class="s1">&#39;root:root&#39;</span> <span class="p">|</span> chpasswd
-
-RUN sed -ri <span class="s1">&#39;s/^PermitRootLogin\s+.*/PermitRootLogin yes/&#39;</span> /etc/ssh/sshd_config
-RUN sed -ri <span class="s1">&#39;s/UsePAM yes/#UsePAM yes/g&#39;</span> /etc/ssh/sshd_config
-
-EXPOSE <span class="m">22</span>
-
-CMD    <span class="o">[</span><span class="s2">&quot;/usr/sbin/sshd&quot;</span>, <span class="s2">&quot;-D&quot;</span><span class="o">]</span>
-</pre></div>
-</div>
-<p>使用该Dockerfile构建出镜像，然后运行这个container即可。相关命令为:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># cd到含有Dockerfile的路径中</span>
-$ docker build . -t paddle_ssh
-<span class="c1"># 运行这个container，将宿主机的8022端口映射到container的22端口上</span>
-$ docker run -d -p <span class="m">8022</span>:22  --name paddle_ssh_machine paddle_ssh
-</pre></div>
-</div>
-<p>执行如下命令即可以关闭这个container，并且删除container中的数据:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># 关闭container</span>
-$ docker stop paddle_ssh_machine
-<span class="c1"># 删除container</span>
-$ docker rm paddle_ssh_machine
-</pre></div>
-</div>
-<p>如果想要在外部机器访问这个container，即可以使用ssh访问宿主机的8022端口。用户名为
-root，密码也是root。命令为:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>$ ssh -p <span class="m">8022</span> root@YOUR_HOST_MACHINE
-</pre></div>
-</div>
-<p>至此，您就可以远程的使用PaddlePaddle啦。</p>
-</div>
+<p>接着我们就能够打开浏览器在 <a class="reference external" href="http://localhost:8088/paddle/">http://localhost:8088/paddle/</a> 浏览代码。</p>
 </div>
 </div>
 
