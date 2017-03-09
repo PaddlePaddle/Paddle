@@ -255,6 +255,18 @@ message PriorBoxConfig {
   repeated float variance = 4;
 }
 
+message DetectionOutputConfig {
+  required uint32 num_classes = 1;
+  required float nms_threshold = 2;
+  required uint32 top_k = 3;
+  required uint32 background_id = 4;
+  required uint32 input_num = 5;
+  required uint32 keep_top_k = 6;
+  required float confidence_threshold = 7;
+  optional uint32 height = 8 [default = 1];
+  optional uint32 width = 9 [default = 1];
+}
+
 message PadConfig {
   required ImageConfig image_conf = 1;
   repeated uint32 pad_c = 2;
@@ -279,6 +291,7 @@ message LayerInputConfig {
   optional SppConfig spp_conf = 12;
   optional PriorBoxConfig priorbox_conf = 13;
   optional PadConfig pad_conf = 14;
+  optional DetectionOutputConfig detection_output_conf = 15;
 }
 
 message LayerConfig {
