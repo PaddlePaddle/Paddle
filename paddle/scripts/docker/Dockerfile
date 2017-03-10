@@ -60,7 +60,7 @@ RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
 
 RUN /paddle/paddle/scripts/docker/build.sh
 
-wget --quiet ----no-check-certificate \
+wget --quiet --no-check-certificate \
 	-O /paddle/book/tools/convert-markdown-into-ipynb-and-test.sh \
 	https://raw.githubusercontent.com/gongweibao/book/modifyconvert/tools/convert-markdown-into-ipynb-and-test.sh
 
