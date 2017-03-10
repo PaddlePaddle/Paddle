@@ -10,7 +10,7 @@ PaddlePaddle目前唯一官方支持的运行的方式是Docker容器。因为Do
 开发人员可以在Docker中开发PaddlePaddle。这样开发人员可以以一致的方式在不同的平台上工作 - Linux，Mac OS X和Windows。
 
 1. 将开发环境构建为Docker镜像
-   
+
    .. code-block:: bash
 
       git clone --recursive https://github.com/PaddlePaddle/Paddle
@@ -28,29 +28,27 @@ PaddlePaddle目前唯一官方支持的运行的方式是Docker容器。因为Do
 2. 运行开发环境
 
    当我们编译好了 :code:`paddle:dev`， 我们可以在docker容器里做开发，源代码可以通过挂载本地文件来被载入Docker的开发环境里面：
-   
-   .. code-block:: bash
 
-      docker run -d -p 2202:22 -v $PWD:/paddle paddle:dev
+   .. code-block:: bash
+      docker run -d -v $PWD:/paddle --name mypaddle-dev paddle:dev
 
    以上代码会启动一个带有PaddlePaddle开发环境的docker容器，源代码会被挂载到 :code:`/paddle` 。
 
-   请注意， :code:`paddle:dev` 的默认入口是 :code:`sshd` 。以上的 :code:`docker run` 命令其实会启动一个在2202端口监听的SSHD服务器。这样，我们就能SSH进入我们的开发容器了：
-   
-   .. code-block:: bash
+   通过 :code:`docker exec`命令，可以进入到容器内部进行开发
 
-      ssh root@localhost -p 2202
+   .. code-block:: bash
+      docker exec -it mypaddle-dev /bin/bash
 
 3. 在Docker开发环境中编译与安装PaddlPaddle代码
 
    当在容器里面的时候，可以用脚本 :code:`paddle/scripts/docker/build.sh` 来编译、安装与测试PaddlePaddle：
-   
+
    .. code-block:: bash
-		      
+
       /paddle/paddle/scripts/docker/build.sh
 
    以上指令会在 :code:`/paddle/build` 中编译PaddlePaddle。通过以下指令可以运行单元测试：
-   
+
    .. code-block:: bash
 
       cd /paddle/build
@@ -62,15 +60,15 @@ PaddlePaddle目前唯一官方支持的运行的方式是Docker容器。因为Do
 
    PaddlePaddle书籍是为用户和开发者制作的一个交互式的Jupyter Nodebook。
    如果您想要更深入了解deep learning，PaddlePaddle书籍一定是您最好的选择。
-   
+
    当您进入容器内之后，只用运行以下命令：
 
    .. code-block:: bash
-		   
+
       jupyter notebook
 
    然后在浏览器中输入以下网址：
-      
+
    .. code-block:: text
 
       http://localhost:8888/
@@ -91,22 +89,17 @@ PaddlePaddle目前唯一官方支持的运行的方式是Docker容器。因为Do
 
 .. code-block:: bash
 
-    docker run -it --rm paddledev/paddle:0.10.0rc1-cpu /bin/bash
+    docker run -it --rm --name paddle-cpu paddledev/paddle:0.10.0rc1-cpu /bin/bash
 
 或者，可以以后台进程方式运行容器：
 
 .. code-block:: bash
 
-    docker run -d -p 2202:22 paddledev/paddle:0.10.0rc1-cpu
+    docker run -d --rm --name paddle-cpu paddledev/paddle:0.10.0rc1-cpu
 
-然后用密码 :code:`root` SSH进入容器：
-
+然后通过 :code:`docker exec`进入容器:
 .. code-block:: bash
-
-    ssh -p 2202 root@localhost
-
-SSH方式的一个优点是我们可以从多个终端进入容器。比如，一个终端运行vi，另一个终端运行Python。另一个好处是我们可以把PaddlePaddle容器运行在远程服务器上，并在笔记本上通过SSH与其连接。
-
+    docker exec -it paddle-cpu /bin/bash
 
 以上方法在GPU镜像里也能用－只是请不要忘记按装CUDA驱动，以及告诉Docker：
 
