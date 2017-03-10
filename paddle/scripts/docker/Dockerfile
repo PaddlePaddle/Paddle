@@ -36,9 +36,9 @@ RUN sed 's@http:\/\/archive.ubuntu.com\/ubuntu\/@mirror:\/\/mirrors.ubuntu.com\/
 RUN git config --global credential.helper store
 
 RUN git clone --recursive https://github.com/PaddlePaddle/Paddle.git /paddle && \
-	cp -r /paddle/paddle/scripts/docker/root/. /root/
+	cp -r /paddle/paddle/scripts/docker/root/. /root/ 
 
-ENV PATH=$PATH:/usr/local/go/bin
+ENV PATH "$PATH:/usr/local/go/bin"
 
 # add convert scripts
 RUN curl -sSL https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz | tar -C /usr/local -xz && \
@@ -60,7 +60,8 @@ RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
 
 RUN /paddle/paddle/scripts/docker/build.sh
 
-wget --quiet --no-check-certificate \
+
+RUN wget --quiet --no-check-certificate   \
 	-O /paddle/book/tools/convert-markdown-into-ipynb-and-test.sh \
 	https://raw.githubusercontent.com/gongweibao/book/modifyconvert/tools/convert-markdown-into-ipynb-and-test.sh
 
@@ -78,7 +79,7 @@ EXPOSE 22
 # Jupyter Notebook: Paddle book
 EXPOSE 8888
 
-RUN cp /paddle/paddle/scripts/docker/entrypoint /opt/bin/
+RUN mkdir -p /opt/bin && \
+	cp /paddle/paddle/scripts/docker/entrypoint /opt/bin/
 
 CMD ["/opt/bin/entrypoint"]
-
