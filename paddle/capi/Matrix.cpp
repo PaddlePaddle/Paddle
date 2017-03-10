@@ -18,27 +18,22 @@ limitations under the License. */
 
 #define cast(v) paddle::capi::cast<paddle::capi::CMatrix>(v)
 extern "C" {
-int PDMatCreate(PD_Matrix* mat, uint64_t height, uint64_t width, bool useGpu) {
+PD_Matrix PDMatCreate(uint64_t height, uint64_t width, bool useGpu) {
   auto ptr = new paddle::capi::CMatrix();
   ptr->mat = paddle::Matrix::create(height, width, false, useGpu);
-  *mat = ptr;
-  return kPD_NO_ERROR;
+  return ptr;
 }
 
-int PDMatCreateNone(PD_Matrix* mat) {
-  auto ptr = new paddle::capi::CMatrix();
-  *mat = ptr;
-  return kPD_NO_ERROR;
-}
+PD_Matrix PDMatCreateNone() { return new paddle::capi::CMatrix(); }
 
-int PDMatDestroy(PD_Matrix mat) {
+PD_Error PDMatDestroy(PD_Matrix mat) {
   if (mat == nullptr) return kPD_NULLPTR;
   auto ptr = cast(mat);
   delete ptr;
   return kPD_NO_ERROR;
 }
 
-int PDMatCopyToRow(PD_Matrix mat, uint64_t rowID, pd_real* rowArray) {
+PD_Error PDMatCopyToRow(PD_Matrix mat, uint64_t rowID, pd_real* rowArray) {
   if (mat == nullptr) return kPD_NULLPTR;
   auto ptr = cast(mat);
   if (ptr->mat == nullptr) return kPD_NULLPTR;
@@ -53,7 +48,7 @@ int PDMatCopyToRow(PD_Matrix mat, uint64_t rowID, pd_real* rowArray) {
   return kPD_NO_ERROR;
 }
 
-int PDMatGetRow(PD_Matrix mat, uint64_t rowID, pd_real** rawRowBuffer) {
+PD_Error PDMatGetRow(PD_Matrix mat, uint64_t rowID, pd_real** rawRowBuffer) {
   if (mat == nullptr) return kPD_NULLPTR;
   auto ptr = cast(mat);
   if (ptr->mat == nullptr) return kPD_NULLPTR;
@@ -62,7 +57,7 @@ int PDMatGetRow(PD_Matrix mat, uint64_t rowID, pd_real** rawRowBuffer) {
   return kPD_NO_ERROR;
 }
 
-int PDMatGetShape(PD_Matrix mat, uint64_t* height, uint64_t* width) {
+PD_Error PDMatGetShape(PD_Matrix mat, uint64_t* height, uint64_t* width) {
   if (mat == nullptr) return kPD_NULLPTR;
   if (height != nullptr) {
     *height = cast(mat)->mat->getHeight();

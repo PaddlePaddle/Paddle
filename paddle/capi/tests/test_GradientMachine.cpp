@@ -55,14 +55,11 @@ TEST(GradientMachine, testPredict) {
             PDGradientMachineCreateSharedParam(
                 machine, &buffer[0], (int)buffer.size(), &machineSlave));
   std::swap(machineSlave, machine);
-  PD_Arguments outArgs;
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsCreateNone(&outArgs));
+  PD_Arguments outArgs = PDArgsCreateNone();
 
-  PD_Arguments inArgs;
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsCreateNone(&inArgs));
+  PD_Arguments inArgs = PDArgsCreateNone();
   ASSERT_EQ(kPD_NO_ERROR, PDArgsResize(inArgs, 1));
-  PD_Matrix mat;
-  ASSERT_EQ(kPD_NO_ERROR, PDMatCreate(&mat, 1, 100, false));
+  PD_Matrix mat = PDMatCreate(1, 100, false);
   static_assert(std::is_same<pd_real, paddle::real>::value, "");
 
   auto data = randomBuffer(100);

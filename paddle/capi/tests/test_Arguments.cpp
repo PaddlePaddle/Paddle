@@ -28,8 +28,7 @@ static std::vector<pd_real> randomBuffer(size_t bufSize) {
 }
 
 TEST(CAPIArguments, create) {
-  PD_Arguments args;
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsCreateNone(&args));
+  PD_Arguments args = PDArgsCreateNone();
   uint64_t size;
   ASSERT_EQ(kPD_NO_ERROR, PDArgsGetSize(args, &size));
   ASSERT_EQ(0UL, size);
@@ -37,20 +36,17 @@ TEST(CAPIArguments, create) {
 }
 
 TEST(CAPIArguments, value) {
-  PD_Arguments args;
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsCreateNone(&args));
+  PD_Arguments args = PDArgsCreateNone();
   ASSERT_EQ(kPD_NO_ERROR, PDArgsResize(args, 1));
 
-  PD_Matrix mat;
-  ASSERT_EQ(kPD_NO_ERROR, PDMatCreate(&mat, 128, 64, false));
+  PD_Matrix mat = PDMatCreate(128, 64, false);
   for (size_t i = 0; i < 128; ++i) {
     std::vector<pd_real> sampleBuf = randomBuffer(64);
     PDMatCopyToRow(mat, i, sampleBuf.data());
   }
   ASSERT_EQ(kPD_NO_ERROR, PDArgsSetValue(args, 0, mat));
 
-  PD_Matrix val;
-  ASSERT_EQ(kPD_NO_ERROR, PDMatCreateNone(&val));
+  PD_Matrix val = PDMatCreateNone();
 
   ASSERT_EQ(kPD_NO_ERROR, PDArgsGetValue(args, 0, val));
 
@@ -63,8 +59,7 @@ TEST(CAPIArguments, value) {
     ASSERT_EQ(row1, row2);
   }
 
-  PD_IVector ivec;
-  ASSERT_EQ(kPD_NO_ERROR, PDIVecCreateNone(&ivec));
+  PD_IVector ivec = PDIVecCreateNone();
   ASSERT_EQ(kPD_NO_ERROR, PDIVecDestroy(ivec));
   ASSERT_EQ(kPD_NO_ERROR, PDMatDestroy(val));
   ASSERT_EQ(kPD_NO_ERROR, PDMatDestroy(mat));
@@ -72,17 +67,15 @@ TEST(CAPIArguments, value) {
 }
 
 TEST(CAPIArguments, ids) {
-  PD_Arguments args;
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsCreateNone(&args));
+  PD_Arguments args = PDArgsCreateNone();
   ASSERT_EQ(kPD_NO_ERROR, PDArgsResize(args, 1));
 
   PD_IVector ivec;
   int array[3] = {1, 2, 3};
-  ASSERT_EQ(kPD_NO_ERROR, PDIVectorCreate(&ivec, array, 3, true));
+  ivec = PDIVectorCreate(array, 3, true, false);
   ASSERT_EQ(kPD_NO_ERROR, PDArgsSetIds(args, 0, ivec));
 
-  PD_IVector val;
-  ASSERT_EQ(kPD_NO_ERROR, PDIVecCreateNone(&val));
+  PD_IVector val = PDIVecCreateNone();
   ASSERT_EQ(kPD_NO_ERROR, PDArgsGetIds(args, 0, val));
   ASSERT_EQ(kPD_NO_ERROR, PDIVecDestroy(ivec));
   ASSERT_EQ(kPD_NO_ERROR, PDIVecDestroy(val));
@@ -91,17 +84,15 @@ TEST(CAPIArguments, ids) {
 
 template <typename T1, typename T2>
 void testSequenceHelper(T1 setter, T2 getter) {
-  PD_Arguments args;
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsCreateNone(&args));
+  PD_Arguments args = PDArgsCreateNone();
   ASSERT_EQ(kPD_NO_ERROR, PDArgsResize(args, 1));
 
   PD_IVector ivec;
   int array[3] = {1, 2, 3};
-  ASSERT_EQ(kPD_NO_ERROR, PDIVectorCreate(&ivec, array, 3, true));
+  ivec = PDIVectorCreate(array, 3, true, false);
   ASSERT_EQ(kPD_NO_ERROR, setter(args, 0, ivec));
 
-  PD_IVector val;
-  ASSERT_EQ(kPD_NO_ERROR, PDIVecCreateNone(&val));
+  PD_IVector val = PDIVecCreateNone();
   ASSERT_EQ(kPD_NO_ERROR, getter(args, 0, val));
   uint64_t size;
   ASSERT_EQ(kPD_NO_ERROR, PDIVectorGetSize(val, &size));

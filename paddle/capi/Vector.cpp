@@ -19,33 +19,26 @@ using paddle::capi::cast;
 
 extern "C" {
 
-int PDIVecCreateNone(PD_IVector* ivec) {
-  if (ivec == nullptr) return kPD_NULLPTR;
-  auto ptr = new paddle::capi::CIVector();
-  *ivec = ptr;
-  return kPD_NO_ERROR;
-}
+PD_IVector PDIVecCreateNone() { return new paddle::capi::CIVector(); }
 
-int PDIVectorCreate(PD_IVector* ivec, int* array, uint64_t size, bool copy) {
-  if (ivec == nullptr) return kPD_NULLPTR;
+PD_IVector PDIVectorCreate(int* array, uint64_t size, bool copy, bool useGPU) {
   auto ptr = new paddle::capi::CIVector();
   if (copy) {
-    ptr->vec = paddle::IVector::create(size, false);
+    ptr->vec = paddle::IVector::create(size, useGPU);
     ptr->vec->copyFrom(array, size);
   } else {
-    ptr->vec = paddle::IVector::create(array, size, false);
+    ptr->vec = paddle::IVector::create(array, size, useGPU);
   }
-  *ivec = ptr;
-  return kPD_NO_ERROR;
+  return ptr;
 }
 
-int PDIVecDestroy(PD_IVector ivec) {
+PD_Error PDIVecDestroy(PD_IVector ivec) {
   if (ivec == nullptr) return kPD_NULLPTR;
   delete cast<paddle::capi::CIVector>(ivec);
   return kPD_NO_ERROR;
 }
 
-int PDIVectorGet(PD_IVector ivec, int** buffer) {
+PD_Error PDIVectorGet(PD_IVector ivec, int** buffer) {
   if (ivec == nullptr || buffer == nullptr) return kPD_NULLPTR;
   auto v = cast<paddle::capi::CIVector>(ivec);
   if (v->vec == nullptr) return kPD_NULLPTR;
@@ -53,7 +46,7 @@ int PDIVectorGet(PD_IVector ivec, int** buffer) {
   return kPD_NO_ERROR;
 }
 
-int PDIVectorResize(PD_IVector ivec, uint64_t size) {
+PD_Error PDIVectorResize(PD_IVector ivec, uint64_t size) {
   if (ivec == nullptr) return kPD_NULLPTR;
   auto v = cast<paddle::capi::CIVector>(ivec);
   if (v->vec == nullptr) return kPD_NULLPTR;
@@ -61,7 +54,7 @@ int PDIVectorResize(PD_IVector ivec, uint64_t size) {
   return kPD_NO_ERROR;
 }
 
-int PDIVectorGetSize(PD_IVector ivec, uint64_t* size) {
+PD_Error PDIVectorGetSize(PD_IVector ivec, uint64_t* size) {
   if (ivec == nullptr) return kPD_NULLPTR;
   auto v = cast<paddle::capi::CIVector>(ivec);
   if (v->vec == nullptr) return kPD_NULLPTR;

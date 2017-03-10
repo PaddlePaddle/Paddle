@@ -16,8 +16,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 TEST(CAPIMatrix, create) {
-  PD_Matrix mat;
-  ASSERT_EQ(kPD_NO_ERROR, PDMatCreate(&mat, 128, 32, false));
+  PD_Matrix mat = PDMatCreate(128, 32, false);
   std::vector<pd_real> sampleRow;
   sampleRow.resize(32);
   for (size_t i = 0; i < sampleRow.size(); ++i) {
@@ -41,7 +40,6 @@ TEST(CAPIMatrix, create) {
 }
 
 TEST(CAPIMatrix, createNone) {
-  PD_Matrix mat;
-  ASSERT_EQ(kPD_NO_ERROR, PDMatCreateNone(&mat));
+  PD_Matrix mat = PDMatCreateNone();
   ASSERT_EQ(kPD_NO_ERROR, PDMatDestroy(mat));
 }

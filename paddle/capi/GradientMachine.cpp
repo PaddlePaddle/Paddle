@@ -38,9 +38,9 @@ NeuralNetwork* newCustomNerualNetwork(const std::string& name,
 }  // namespace paddle
 
 extern "C" {
-int PDGradientMachineCreateForPredict(PD_GradientMachine* machine,
-                                      void* modelConfigProtobuf,
-                                      int size) {
+PD_Error PDGradientMachineCreateForPredict(PD_GradientMachine* machine,
+                                           void* modelConfigProtobuf,
+                                           int size) {
   if (modelConfigProtobuf == nullptr) return kPD_NULLPTR;
   paddle::ModelConfig config;
   if (!config.ParseFromArray(modelConfigProtobuf, size) ||
@@ -55,13 +55,13 @@ int PDGradientMachineCreateForPredict(PD_GradientMachine* machine,
   return kPD_NO_ERROR;
 }
 
-int PDGradientMachineDestroy(PD_GradientMachine machine) {
+PD_Error PDGradientMachineDestroy(PD_GradientMachine machine) {
   delete cast(machine);
   return kPD_NO_ERROR;
 }
 
-int PDGradientMachineLoadParameterFromDisk(PD_GradientMachine machine,
-                                           const char* path) {
+PD_Error PDGradientMachineLoadParameterFromDisk(PD_GradientMachine machine,
+                                                const char* path) {
   auto m = cast(machine);
   if (m == nullptr || path == nullptr || m->machine == nullptr)
     return kPD_NULLPTR;
@@ -69,10 +69,10 @@ int PDGradientMachineLoadParameterFromDisk(PD_GradientMachine machine,
   return kPD_NO_ERROR;
 }
 
-int PDGradientMachineForward(PD_GradientMachine machine,
-                             PD_Arguments inArgs,
-                             PD_Arguments outArgs,
-                             bool isTrain) {
+PD_Error PDGradientMachineForward(PD_GradientMachine machine,
+                                  PD_Arguments inArgs,
+                                  PD_Arguments outArgs,
+                                  bool isTrain) {
   auto m = cast(machine);
   auto in = paddle::capi::cast<paddle::capi::CArguments>(inArgs);
   auto out = paddle::capi::cast<paddle::capi::CArguments>(outArgs);
@@ -83,10 +83,10 @@ int PDGradientMachineForward(PD_GradientMachine machine,
   return kPD_NO_ERROR;
 }
 
-int PDGradientMachineCreateSharedParam(PD_GradientMachine origin,
-                                       void* modelConfigProtobuf,
-                                       int size,
-                                       PD_GradientMachine* slave) {
+PD_Error PDGradientMachineCreateSharedParam(PD_GradientMachine origin,
+                                            void* modelConfigProtobuf,
+                                            int size,
+                                            PD_GradientMachine* slave) {
   auto o = cast(origin);
   if (origin == nullptr || slave == nullptr || o->machine == nullptr) {
     return kPD_NULLPTR;
