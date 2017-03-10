@@ -61,7 +61,7 @@ link_paddle_exe(paddle_capi_shared)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${capi_whole_library} DESTINATION lib)
 install(FILES ${CAPI_HEADER} DESTINATION include/paddle)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h DESTINATION include/paddle)
-
+install(TARGETS paddle_capi_shared DESTINATION lib)
 
 # this variable used for unittest
 set(PADDLE_CAPI_INC_PATH
