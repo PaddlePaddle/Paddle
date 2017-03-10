@@ -1001,9 +1001,9 @@ def priorbox_layer(input,
 
 
 @wrap_name_default("detection_output")
-def detection_output_layer(input_loc,
-                           input_conf,
-                           priorbox,
+def detection_output_layer(input1,
+                           input2,
+                           input3,
                            num_classes=21,
                            nms_threshold=0.45,
                            top_k=400,
@@ -1039,21 +1039,23 @@ def detection_output_layer(input_loc,
     input_loc_num = 0
     input_conf_num = 0
 
-    if isinstance(input_loc, LayerOutput):
-        input_loc = [input_loc]
+    if isinstance(input1, LayerOutput):
+        input_loc = [input1]
     assert isinstance(input_loc, collections.Sequence)  # list or tuple
     for each in input_loc:
         assert isinstance(each, LayerOutput)
         input_loc_num += 1
 
-    if isinstance(input_conf, LayerOutput):
-        input_conf = [input_conf]
+    if isinstance(input2, LayerOutput):
+        input_conf = [input2]
     assert isinstance(input_conf, collections.Sequence)  # list or tuple
     for each in input_conf:
         assert isinstance(each, LayerOutput)
         input_conf_num += 1
     # Check the input layer number.
     assert input_loc_num == input_conf_num
+
+    priorbox = input3
 
     inputs = [priorbox.name]
     inputs.extend([l.name for l in input_loc])
