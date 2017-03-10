@@ -22,10 +22,9 @@ ENV DOCKER_BUILD=TRUE
 
 ENV HOME /root
 
-# Add bash enhancements
-COPY ./paddle/scripts/docker/root/ /root/
-
-RUN apt-get update && \
+# in china network is unstable, so add more mirrors
+RUN sed 's@http:\/\/archive.ubuntu.com\/ubuntu\/@mirror:\/\/mirrors.ubuntu.com\/mirrors.txt@' -i /etc/apt/sources.list && \
+    apt-get update && \
     apt-get install -y git python-pip python-dev openssh-server bison && \
     apt-get install -y wget unzip tar xz-utils bzip2 gzip coreutils && \
     apt-get install -y curl sed grep graphviz libjpeg-dev zlib1g-dev && \
@@ -35,6 +34,15 @@ RUN apt-get update && \
 
 # git credential to skip password typing
 RUN git config --global credential.helper store
+
+RUN git clone --recursive https://github.com/PaddlePaddle/Paddle.git /paddle && \
+	cp -r /paddle/paddle/scripts/docker/root/. /root/
+
+ENV PATH=$PATH:/usr/local/go/bin
+
+# add convert scripts
+RUN curl -sSL https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz | tar -C /usr/local -xz && \
+    GOPATH=/tmp/go go get -u github.com/wangkuiyi/ipynb/markdown-to-ipynb
 
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
@@ -50,9 +58,8 @@ RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd cmake-3.4.1 && ./bootstrap && make -j `nproc` && make install && \
     cd .. && rm -rf cmake-3.4.1
 
-COPY . /paddle/
-RUN cd /paddle/ && git submodule update --init --recursive
 RUN /paddle/paddle/scripts/docker/build.sh
+RUN /paddle/book/tools/convert-markdown-into-ipynb-and-test.sh
 
 VOLUME ["/usr/share/nginx/html/data", "/usr/share/nginx/html/paddle"]
 
@@ -66,6 +73,6 @@ EXPOSE 22
 # Jupyter Notebook: Paddle book
 EXPOSE 8888
 
-COPY ./paddle/scripts/docker/entrypoint /opt/bin/
+RUN cp /paddle/paddle/scripts/docker/entrypoint /opt/bin/
 
 CMD ["/opt/bin/entrypoint"]
