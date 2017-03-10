@@ -59,11 +59,6 @@ RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd .. && rm -rf cmake-3.4.1
 
 RUN /paddle/paddle/scripts/docker/build.sh
-
-RUN wget --quiet --no-check-certificate   \
-	-O /paddle/book/tools/convert-markdown-into-ipynb-and-test.sh \
-	https://raw.githubusercontent.com/gongweibao/book/modifyconvert/tools/convert-markdown-into-ipynb-and-test.sh
-
 RUN /paddle/book/tools/convert-markdown-into-ipynb-and-test.sh
 
 VOLUME ["/usr/share/nginx/html/data", "/usr/share/nginx/html/paddle"]
