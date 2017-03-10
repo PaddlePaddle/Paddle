@@ -122,13 +122,14 @@ def main():
     test_creator = paddle.dataset.mnist.test()
     test_data = []
     for item in test_creator():
-        test_data.append(item[0])
+        test_data.append((item[0], ))
         if len(test_data) == 100:
             break
 
     # output is a softmax layer. It returns probabilities.
     # Shape should be (100, 10)
-    probs = paddle.infer(output=predict, parameters=parameters, input=test_data)
+    probs = paddle.infer(
+        output_layer=predict, parameters=parameters, input=test_data)
     print probs.shape
 
 

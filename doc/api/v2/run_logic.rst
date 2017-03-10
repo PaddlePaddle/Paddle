@@ -1,34 +1,27 @@
-###########
-Trainer API
-###########
+======================
+Training and Inference
+======================
 
-
-==========
 Parameters
 ==========
 
 ..  automodule:: paddle.v2.parameters
-    :members:
+    :noindex:
 
-
-=======
 Trainer
 =======
 
-..	automodule:: paddle.v2.trainer
-	:members:
+..  automodule:: paddle.v2.trainer
+    :noindex:
 
-
-=====
 Event
 =====
 
-..	automodule:: paddle.v2.event
-	:members:
+..  automodule:: paddle.v2.event
+    :noindex:
 
-
-=========
 Inference
 =========
 
-..	autofunction:: paddle.v2.infer
+..  autofunction:: paddle.v2.infer
+    :noindex:
