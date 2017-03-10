@@ -81,3 +81,4 @@ EXPOSE 8888
 RUN cp /paddle/paddle/scripts/docker/entrypoint /opt/bin/
 
 CMD ["/opt/bin/entrypoint"]
+
