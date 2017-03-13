@@ -42,27 +42,21 @@ Windows -- in a consistent way.
 
    .. code-block:: bash
 
-      docker run -d -p 2202:22 -p 8888:8888 -v $PWD:/paddle paddle:dev
+      docker run -d -p 8888:8888 -v $PWD:/paddle --rm --name mypaddle-dev paddle:dev
 
    This runs a container of the development environment Docker image
    with the local source tree mounted to :code:`/paddle` of the
    container.
 
-   Note that the default entry-point of :code:`paddle:dev` is
-   :code:`sshd`, and above :code:`docker run` commands actually starts
-   an SSHD server listening on port 2202.  This allows us to log into
-   this container with:
-
+   We can get into this container with:
    .. code-block:: bash
-
-      ssh root@localhost -p 2202
+      docker exec -it mypaddle-dev /bin/bash
 
    Usually, I run above commands on my Mac.  I can also run them on a
-   GPU server :code:`xxx.yyy.zzz.www` and ssh from my Mac to it:
+   GPU server :code:`xxx.yyy.zzz.www` and run `docker exec` to get into the container.
 
    .. code-block:: bash
-
-      my-mac$ ssh root@xxx.yyy.zzz.www -p 2202
+      my-mac$ docker exec -it mypaddle-dev /bin/bash
 
 3. Build and Install Using the Development Environment
 
@@ -88,18 +82,18 @@ Windows -- in a consistent way.
    you to create and share documents that contain live code, equations,
    visualizations and explanatory text in a single browser.
 
-   PaddlePaddle Book is an interactive Jupyter Notebook for users and developers. 
+   PaddlePaddle Book is an interactive Jupyter Notebook for users and developers.
    We already exposed port 8888 for this book. If you want to
    dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.
 
    Once you are inside the container, simply issue the command:
 
    .. code-block:: bash
-		   
+
       jupyter notebook
 
    Then, you would back and paste the address into the local browser:
-      
+
    .. code-block:: text
 
       http://localhost:8888/
@@ -130,19 +124,12 @@ or, we can run it as a daemon container
 
 .. code-block:: bash
 
-    docker run -d -p 2202:22 paddledev/paddle:0.10.0rc1-cpu
+    docker run -d --rm --name paddl-cpu paddledev/paddle:0.10.0rc1-cpu
 
-and SSH to this container using password :code:`root`:
+and get into this container using :code:`docker exec`:
 
 .. code-block:: bash
-
-    ssh -p 2202 root@localhost
-
-An advantage of using SSH is that we can connect to PaddlePaddle from
-more than one terminals.  For example, one terminal running vi and
-another one running Python interpreter.  Another advantage is that we
-can run the PaddlePaddle container on a remote server and SSH to it
-from a laptop.
+    docker exec -it paddle-cpu /bin/bash
 
 
 Above methods work with the GPU image too -- just please don't forget

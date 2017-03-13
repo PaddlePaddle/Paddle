@@ -56,13 +56,6 @@ RUN /paddle/paddle/scripts/docker/build.sh
 
 VOLUME ["/usr/share/nginx/html/data", "/usr/share/nginx/html/paddle"]
 
-# Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
-RUN mkdir /var/run/sshd
-RUN echo 'root:root' | chpasswd
-RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
-EXPOSE 22
-
 # Jupyter Notebook: Paddle book
 EXPOSE 8888
 
