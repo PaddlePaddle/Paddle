@@ -2,7 +2,7 @@
 
 ### Background
 
-Currently, PaddlePaddle supports AVX and SSE3 intrinsics (extensions to the x86 instruction set architecture). When using CMake to compile PaddlePaddle source code, it will check and detect the host which SIMD instruction is supported, then automatically set the legal one.  Developer or user also could manually set CMake option `WITH_AVX=ON/OFF` before PaddlePaddle compilation. That's a good for local usage.
+Currently, PaddlePaddle supports AVX and SSE3 intrinsics (extensions to the x86 instruction set architecture). When using CMake to compile PaddlePaddle source code, it will check and detect the host which SIMD instruction is supported, then automatically set the legal one.  Developer or user also could manually set CMake option `WITH_AVX=ON/OFF` before PaddlePaddle compilation. That's good for local usage.
 
 
 ### Problem Involved
