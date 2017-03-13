@@ -46,7 +46,7 @@ You can use `HAS_SIMD(__flags)` to runtime check SIMD. For instance,
 ```
 
 Here, each directory uses the different compile options (`-mavx` or `-msse`) to generate the corresponding binaries. Then, at
-runtime, it could be `if(HAS_SIMD(__flags)` can select the supported branch (intrinsics) to execute.
+runtime, `if(HAS_SIMD(__flags)` can select the supported branch (intrinsics) to execute.
 
 The method could fix the releases and deployment problems.
 
