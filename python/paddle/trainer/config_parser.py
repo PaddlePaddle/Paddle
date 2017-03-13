@@ -2412,12 +2412,7 @@ class SequenceFirstInstanceLayer(SequenceLastInstanceLayer):
                  bias=False,
                  **xargs):
         super(SequenceFirstInstanceLayer, self).__init__(
-            name,
-            inputs=inputs,
-            active_type=active_type,
-            device=device,
-            bias=bias,
-            **xargs)
+            name, inputs=inputs, active_type=active_type, bias=bias, **xargs)
         self.config.trans_type = trans_type
         self.config.select_first = True
 
