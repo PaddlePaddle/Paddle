@@ -40,54 +40,8 @@ protected:
   void reshapeTensorDesc(int batchSize);
   void reshape(int batchSize);
 
-  size_t calOutputSize() {
-    if (isDeconv_) {
-      outputH_ = in_->getFrameHeight();
-      outputW_ = in_->getFrameWidth();
-      if (outputH_ == 0) outputH_ = configOutH_;
-      if (outputW_ == 0) outputW_ = configOutW_;
-      imageH_ = imageSize(outputH_,
-                          filterH_,
-                          paddingH_,
-                          strideH_,
-                          /* caffeMode */ true);
-
-      imageW_ = imageSize(outputW_,
-                          filterW_,
-                          paddingW_,
-                          strideW_,
-                          /* caffeMode */ true);
-
-      const_cast<Argument*>(out_)->setFrameHeight(imageH_);
-      const_cast<Argument*>(out_)->setFrameWidth(imageW_);
-
-      inputOffset_ = (configChannels_ / groups_) * outputH_ * outputW_;
-      outputOffset_ = (configNumFilters_ / groups_) * imageH_ * imageW_;
-      return imageH_ * imageW_ * configNumFilters_;
-    } else {
-      imageH_ = in_->getFrameHeight();
-      imageW_ = in_->getFrameWidth();
-      if (imageH_ == 0) imageH_ = configImgH_;
-      if (imageW_ == 0) imageW_ = configImgW_;
-      outputH_ = outputSize(imageH_,
-                            filterH_,
-                            paddingH_,
-                            strideH_,
-                            /* caffeMode */ true);
-      outputW_ = outputSize(imageW_,
-                            filterW_,
-                            paddingW_,
-                            strideW_,
-                            /* caffeMode */ true);
-
-      const_cast<Argument*>(out_)->setFrameHeight(outputH_);
-      const_cast<Argument*>(out_)->setFrameWidth(outputW_);
-
-      inputOffset_ = (configChannels_ / groups_) * imageH_ * imageW_;
-      outputOffset_ = (configNumFilters_ / groups_) * outputH_ * outputW_;
-      return outputH_ * outputW_ * configNumFilters_;
-    }
-  }
+  virtual size_t calOutputSize() = 0;
+  virtual size_t calInputSize() = 0;
 
   static void* getSpaceBytes(size_t size);
 

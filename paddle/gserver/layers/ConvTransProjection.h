@@ -36,6 +36,8 @@ public:
 
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
+  virtual size_t calOutputSize();
+  virtual size_t calInputSize();
 };
 
 }  // namespace paddle

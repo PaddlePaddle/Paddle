@@ -19,6 +19,34 @@ namespace paddle {
 
 REGISTER_PROJECTION(conv, ConvProjection);
 
+size_t ConvProjection::calOutputSize() {
+  imageH_ = in_->getFrameHeight();
+  imageW_ = in_->getFrameWidth();
+  if (imageH_ == 0) imageH_ = configImgH_;
+  if (imageW_ == 0) imageW_ = configImgW_;
+  outputH_ = outputSize(imageH_,
+                        filterH_,
+                        paddingH_,
+                        strideH_,
+                        /* caffeMode */ true);
+  outputW_ = outputSize(imageW_,
+                        filterW_,
+                        paddingW_,
+                        strideW_,
+                        /* caffeMode */ true);
+
+  const_cast<Argument *>(out_)->setFrameHeight(outputH_);
+  const_cast<Argument *>(out_)->setFrameWidth(outputW_);
+
+  inputOffset_ = (configChannels_ / groups_) * imageH_ * imageW_;
+  outputOffset_ = (configNumFilters_ / groups_) * outputH_ * outputW_;
+  return outputH_ * outputW_ * configNumFilters_;
+}
+
+size_t ConvProjection::calInputSize() {
+  return static_cast<size_t>(configChannels_ * imageH_ * imageW_);
+}
+
 void ConvProjection::forward() {
   int batchSize = in_->value->getHeight();
   reshape(batchSize);

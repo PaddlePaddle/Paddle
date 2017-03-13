@@ -38,6 +38,7 @@ public:
   virtual ~ConvTransOperator() {}
   void forward() override;
   void backward() override;
+  void reshape(int batchSize) override;
 };
 
 }  // namespace paddle

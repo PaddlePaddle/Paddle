@@ -29,6 +29,32 @@ namespace paddle {
 
 REGISTER_OPERATOR(convt, ConvTransOperator);
 
+void ConvTransOperator::reshape(int batchSize) {
+  outputH_ = ins_[0]->getFrameHeight();
+  outputW_ = ins_[0]->getFrameWidth();
+  if (outputH_ == 0) outputH_ = outputY_;
+  if (outputW_ == 0) outputW_ = outputX_;
+  imageH_ = imageSize(outputH_, filterSizeY_, paddingY_, strideY_, caffeMode_);
+  imageW_ = imageSize(outputW_, filterSize_, padding_, stride_, caffeMode_);
+  /// Check that the imageSizes are consistent with config
+  CHECK_EQ(imageH_, imgSizeY_);
+  CHECK_EQ(imageW_, imgSize_);
+  out_->setFrameHeight(imageH_);
+  out_->setFrameWidth(imageW_);
+
+  reshapeImageDescriptors();
+
+  inputOffset_ = numFilters_ * outputH_ * outputW_;
+  outputOffset_ = channels_ * imageH_ * imageW_;
+  weightOffset_ = numFilters_ * channels_ * filterSize_ * filterSizeY_;
+
+  if (!isSelectAlgo_) {
+    allocConvWorkSpace();
+  }
+
+  isSelectAlgo_ = true;
+}
+
 void ConvTransOperator::forward() {
   size_t batchSize = ins_[0]->value->getHeight();
   reshape(batchSize);

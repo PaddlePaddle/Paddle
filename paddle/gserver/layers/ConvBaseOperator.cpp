@@ -49,7 +49,22 @@ ConvBaseOperator::ConvBaseOperator(const OperatorConfig &config, bool useGpu)
   isSelectAlgo_ = false;
 }
 
-void ConvBaseOperator::allocConvWorkSpace(size_t maxWorkSpace) {
+void ConvBaseOperator::allocConvWorkSpace() {
+  hl_conv_workspace(imageDesc_,
+                    outputDesc_,
+                    filterDesc_,
+                    convDesc_,
+                    &fwdAlgo_,
+                    &fwdLimitBytes_,
+                    &bwdDataAlgo_,
+                    &bwdDataLimitBytes_,
+                    &bwdFilterAlgo_,
+                    &bwdFilterLimitBytes_);
+
+  size_t maxWorkSpace = 0;
+  maxWorkSpace = std::max(fwdLimitBytes_, bwdDataLimitBytes_);
+  maxWorkSpace = std::max(maxWorkSpace, bwdFilterLimitBytes_);
+
   if (maxWorkSpace > workSpaceInBytes_) {
     if (workSpaceInBytes_ != 0) {
       hl_free_mem_device(workSpace_);
@@ -58,59 +73,6 @@ void ConvBaseOperator::allocConvWorkSpace(size_t maxWorkSpace) {
     workSpace_ = hl_malloc_device(maxWorkSpace);
     workSpaceInBytes_ = maxWorkSpace;
   }
-}
-
-void ConvBaseOperator::reshape(int batchSize) {
-  if (isDeconv_) {
-    outputH_ = ins_[0]->getFrameHeight();
-    outputW_ = ins_[0]->getFrameWidth();
-    if (outputH_ == 0) outputH_ = outputY_;
-    if (outputW_ == 0) outputW_ = outputX_;
-    imageH_ =
-        imageSize(outputH_, filterSizeY_, paddingY_, strideY_, caffeMode_);
-    imageW_ = imageSize(outputW_, filterSize_, padding_, stride_, caffeMode_);
-    /// Check that the imageSizes are consistent with config
-    CHECK_EQ(imageH_, imgSizeY_);
-    CHECK_EQ(imageW_, imgSize_);
-    out_->setFrameHeight(imageH_);
-    out_->setFrameWidth(imageW_);
-  } else {
-    imageH_ = ins_[0]->getFrameHeight();
-    imageW_ = ins_[0]->getFrameWidth();
-    if (imageH_ == 0) imageH_ = imgSizeY_;
-    if (imageW_ == 0) imageW_ = imgSize_;
-    outputH_ =
-        outputSize(imageH_, filterSizeY_, paddingY_, strideY_, caffeMode_);
-    outputW_ = outputSize(imageW_, filterSize_, padding_, stride_, caffeMode_);
-    /// Check that the outputSizes are consistent with config
-    CHECK_EQ(outputH_, outputY_);
-    CHECK_EQ(outputW_, outputX_);
-    out_->setFrameHeight(outputH_);
-    out_->setFrameWidth(outputW_);
-  }
-
-  reshapeImageDescriptors();
-
-  if (!isSelectAlgo_) {
-    hl_conv_workspace(imageDesc_,
-                      outputDesc_,
-                      filterDesc_,
-                      convDesc_,
-                      &fwdAlgo_,
-                      &fwdLimitBytes_,
-                      &bwdDataAlgo_,
-                      &bwdDataLimitBytes_,
-                      &bwdFilterAlgo_,
-                      &bwdFilterLimitBytes_);
-
-    size_t maxWorkSpace = 0;
-    maxWorkSpace = std::max(fwdLimitBytes_, bwdDataLimitBytes_);
-    maxWorkSpace = std::max(maxWorkSpace, bwdFilterLimitBytes_);
-
-    allocConvWorkSpace(maxWorkSpace);
-  }
-
-  isSelectAlgo_ = true;
 }
 
 void ConvBaseOperator::computeConvSizes() {
@@ -153,15 +115,6 @@ void ConvBaseOperator::reshapeImageDescriptors() {
                                   padding_,
                                   strideY_,
                                   stride_);
-
-  if (isDeconv_) {
-    inputOffset_ = numFilters_ * outputH_ * outputW_;
-    outputOffset_ = channels_ * imageH_ * imageW_;
-  } else {
-    inputOffset_ = channels_ * imageH_ * imageW_;
-    outputOffset_ = numFilters_ * outputH_ * outputW_;
-  }
-  weightOffset_ = numFilters_ * channels_ * filterSize_ * filterSizeY_;
 }
 
 void ConvBaseOperator::getConvParams() {

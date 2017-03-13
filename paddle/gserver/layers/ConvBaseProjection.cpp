@@ -140,19 +140,7 @@ void ConvBaseProjection::reshapeTensorDesc(int batchSize) {
 void ConvBaseProjection::reshape(int batchSize) {
   size_t width = calOutputSize();
   CHECK_EQ(width, out_->value->getWidth());
-  if (isDeconv_) {
-    CHECK_EQ(static_cast<size_t>(configChannels_ * outputH_ * outputW_),
-             in_->value->getWidth())
-        << "Wrong input size for convolution transpose"
-        << " channels=" << configChannels_ << " outputH=" << outputH_
-        << " outputW=" << outputW_ << " inputSize=" << in_->value->getWidth();
-  } else {
-    CHECK_EQ(static_cast<size_t>(configChannels_ * imageH_ * imageW_),
-             in_->value->getWidth())
-        << "Wrong input size for convolution"
-        << " channels=" << configChannels_ << " imageH=" << imageH_
-        << " imageW=" << imageW_ << " inputSize=" << in_->value->getWidth();
-  }
+  CHECK_EQ(calInputSize(), in_->value->getWidth());
 
   isSelectAlgo_ = (batchSize == batchNum_);
   batchNum_ = batchSize;

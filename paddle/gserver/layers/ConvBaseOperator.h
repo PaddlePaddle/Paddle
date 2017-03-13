@@ -56,7 +56,7 @@ protected:
   /**
    * Allocate Gpu Memory for cudnn convolution algorithms.
    */
-  void allocConvWorkSpace(size_t maxWorkSpace);
+  void allocConvWorkSpace();
 
   /**
    * Create cudnn tensor descriptor for convolution operation.
@@ -71,7 +71,7 @@ protected:
   /**
    * Reshape cudnn tensor descriptor.
    */
-  void reshape(int batchSize);
+  virtual void reshape(int batchSize) = 0;
 
   /**
    * Check filter size is equal to the size calculated by parameters from

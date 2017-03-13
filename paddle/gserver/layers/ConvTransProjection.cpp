@@ -18,6 +18,34 @@ limitations under the License. */
 namespace paddle {
 
 REGISTER_PROJECTION(convt, ConvTransProjection);
+size_t ConvTransProjection::calOutputSize() {
+  outputH_ = in_->getFrameHeight();
+  outputW_ = in_->getFrameWidth();
+  if (outputH_ == 0) outputH_ = configOutH_;
+  if (outputW_ == 0) outputW_ = configOutW_;
+  imageH_ = imageSize(outputH_,
+                      filterH_,
+                      paddingH_,
+                      strideH_,
+                      /* caffeMode */ true);
+
+  imageW_ = imageSize(outputW_,
+                      filterW_,
+                      paddingW_,
+                      strideW_,
+                      /* caffeMode */ true);
+
+  const_cast<Argument *>(out_)->setFrameHeight(imageH_);
+  const_cast<Argument *>(out_)->setFrameWidth(imageW_);
+
+  inputOffset_ = (configChannels_ / groups_) * outputH_ * outputW_;
+  outputOffset_ = (configNumFilters_ / groups_) * imageH_ * imageW_;
+  return imageH_ * imageW_ * configNumFilters_;
+}
+
+size_t ConvTransProjection::calInputSize() {
+  return static_cast<size_t>(configChannels_ * outputH_ * outputW_);
+}
 
 void ConvTransProjection::forward() {
   int batchSize = in_->value->getHeight();
