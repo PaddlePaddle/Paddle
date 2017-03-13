@@ -36,5 +36,3 @@
 曾经的讨论背景：   
 ["PR 1599"](https://github.com/PaddlePaddle/Paddle/pull/1599)  
 ["PR 1598"](https://github.com/PaddlePaddle/Paddle/pull/1598)
-	
-
