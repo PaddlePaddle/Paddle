@@ -1,5 +1,7 @@
 *.DS_Store
-build/
+build/paddle/math
+build/paddle/utils
+build/paddle/gserver
 *.user
 
 .vscode

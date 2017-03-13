@@ -48,12 +48,5 @@ RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd cmake-3.4.1 && ./bootstrap && make -j `nproc` && make install && \
     cd .. && rm -rf cmake-3.4.1
 
-COPY . /paddle/
-RUN cd /paddle/ && git submodule update --init --recursive
-RUN /paddle/paddle/scripts/docker/build.sh
-
-VOLUME ["/usr/share/nginx/html/data", "/usr/share/nginx/html/paddle"]
-
-
 # FIXME: wait a long time is OK
 CMD ["sleep", "3600"]

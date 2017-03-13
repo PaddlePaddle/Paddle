@@ -24,10 +24,14 @@ RUN sed 's@http:\/\/archive.ubuntu.com\/ubuntu\/@mirror:\/\/mirrors.ubuntu.com\/
     pip install -U 'protobuf==3.1.0'
 RUN pip install numpy
 
-ADD paddle/scripts/docker/buildimage/binaries/paddle paddle/scripts/docker/buildimage/binaries/paddle_trainer \
-paddle/scripts/docker/buildimage/binaries/paddle_pserver_main paddle/scripts/docker/buildimage/binaries/paddle_merge_model \
-paddle/scripts/docker/buildimage/binaries/paddle_usage  /usr/local/opt/paddle/bin/
-ADD paddle/scripts/docker/buildimage/binaries/wheels/py_paddle*linux*.whl paddle/scripts/docker/buildimage/binaries/wheels/paddle*.whl \
+ADD build/paddle/trainer/paddle_trainer \
+    build/paddle/pserver/paddle_pserver_main \
+    build/paddle/trainer/paddle_merge_model \
+    /usr/local/opt/paddle/bin/
+ADD build/paddle/scripts/usage.sh /usr/local/opt/paddle/bin/paddle_usage
+ADD paddle/scripts/submit_local.sh.in /usr/bin/paddle
+
+ADD paddle/dist/py_paddle*linux*.whl build/python/dist/paddle*.whl \
  /usr/local/opt/paddle/share/wheels/
 RUN pip install /usr/local/opt/paddle/share/wheels/py_paddle*linux*.whl && \
     pip install /usr/local/opt/paddle/share/wheels/paddle*.whl && \
