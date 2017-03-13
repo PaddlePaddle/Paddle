@@ -21,8 +21,7 @@ add_test(NAME test_LayerGrad
 ################ test_CRFLayerGrad ####################
 add_unittest_without_exec(test_CRFLayerGrad
     test_CRFLayerGrad.cpp
-    LayerGradUtil.cpp
-    TestUtil.cpp)
+    LayerGradUtil.cpp)
 add_test(NAME test_CRFLayerGrad
     COMMAND test_CRFLayerGrad)
 
