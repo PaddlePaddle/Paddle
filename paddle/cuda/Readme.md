@@ -9,11 +9,11 @@ Currently, PaddlePaddle supports AVX and SSE3 intrinsics (extensions to the x86 
 
 Nonetheless, from the perspective of the deployment, there are some drawbacks:
 
-    1. Online runtime environment is very complex, if an older node does not support AVX or others,
-    PaddlePaddle will crash and throw out `illegal instruction is used`. This problem will appear
-    frequently on cluster environment, like Kubernetes. **It must be addressed before PaddlePaddle on Cloud**
+1. Online runtime environment is very complex, if an older node does not support AVX or others,
+PaddlePaddle will crash and throw out `illegal instruction is used`. This problem will appear
+frequently on cluster environment, like Kubernetes. **It must be addressed before PaddlePaddle on Cloud**
 
-    2. Once new version is ready to deliver, we have to release more products to users, for example, `no-avx-cpu`, `avx-cpu`, `no-avx-gpu`, `avx=gpu`. Users do not need to care about details. It sucks!
+2. Once new version is ready to deliver, we have to release more products to users, for example, `no-avx-cpu`, `avx-cpu`, `no-avx-gpu`, `avx=gpu`. Users do not need to care about details. It sucks!
 
 
 ### How to Address it?
