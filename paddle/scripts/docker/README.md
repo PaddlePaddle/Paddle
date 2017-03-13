@@ -33,7 +33,6 @@
    其中 paddlectl 应该是我们自己写的一个脚本，调用kubectl来在Kubernetes机群上启动一个job的。
 
 
-
 曾经的讨论背景：   
 ["PR 1599"](https://github.com/PaddlePaddle/Paddle/pull/1599)  
 ["PR 1598"](https://github.com/PaddlePaddle/Paddle/pull/1598)
