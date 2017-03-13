@@ -155,7 +155,8 @@ protected:
 public:
   explicit BootBiasLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
     if (!Layer::init(layerMap, parameterMap)) return false;
 
     if (biasParameter_) {
@@ -174,7 +175,7 @@ public:
     }
   }
 
-  virtual void forward(PassType passType) {
+  void forward(PassType passType) override {
     if (biases_) {
       MatrixPtr outV = getOutputValue();
       outV->addBias(*(biases_->getW()), 1);
@@ -182,7 +183,7 @@ public:
     }
   }
 
-  virtual void backward(const UpdateCallback& callback) {
+  void backward(const UpdateCallback& callback) override {
     if (biases_) {
       backwardActivation();
       biases_->getWGrad()->collectBias(*getOutputGrad(), 1);
@@ -593,7 +594,7 @@ void RecurrentGradientMachine::forwardBackward(
   LOG(FATAL) << "should not use this function";
 }
 
-void RecurrentGradientMachine::eval(Evaluator* evaluator) {
+void RecurrentGradientMachine::eval(Evaluator* evaluator) const {
   // call printers frame by frame
   for (int i = 0; i < maxSequenceLength_; ++i) {
     LOG(INFO) << "Recurrent Layer Group eval frame " << i << " begin";

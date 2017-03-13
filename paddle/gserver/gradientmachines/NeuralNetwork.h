@@ -87,7 +87,8 @@ public:
 
   virtual void backward(const UpdateCallback& callback = nullptr);
 
-  MatrixPtr getLayerOutput(const std::string& layerName);
+  virtual Argument getLayerOutput(const std::string& layerName);
+
   const LayerPtr& getLayer(const std::string& layerName) const {
     auto it = layerMap_.find(layerName);
     CHECK(it != layerMap_.end()) << "Unknown layer " << layerName;
@@ -96,9 +97,9 @@ public:
 
   virtual void onPassEnd();
 
-  virtual Evaluator* makeEvaluator();
+  virtual Evaluator* makeEvaluator() const;
 
-  virtual void eval(Evaluator* evaluator);
+  virtual void eval(Evaluator* evaluator) const;
   virtual void resetState();
   virtual void setOutputGrad(const std::vector<Argument>& args);
 

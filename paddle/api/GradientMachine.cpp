@@ -64,6 +64,18 @@ GradientMachine* GradientMachine::createByModelConfig(
   return GradientMachine::createFromPaddleModelPtr(confPtr, mode, types);
 }
 
+void GradientMachine::start() { m->machine->start(); }
+
+void GradientMachine::finish() { m->machine->finish(); }
+
+void GradientMachine::onPassEnd() { m->machine->onPassEnd(); }
+
+void GradientMachine::prefetch(const Arguments& inArgs) {
+  auto& in =
+      m->cast<std::vector<paddle::Argument>>(inArgs.getInternalArgumentsPtr());
+  m->machine->prefetch(in);
+}
+
 void GradientMachine::forward(const Arguments& inArgs,
                               Arguments* outArgs,
                               PassType passType) {
@@ -130,14 +142,28 @@ Parameter* GradientMachine::getParameter(size_t i) throw(RangeError) {
   }
 }
 
+size_t GradientMachine::getNonStaticParameterSize() const {
+  return m->machine->getNonStaticParameters().size();
+}
+
+Parameter* GradientMachine::getNonStaticParameter(size_t i) throw(RangeError) {
+  auto params = m->machine->getNonStaticParameters();
+  if (i < params.size()) {
+    return Parameter::createFromSharedPtr(
+        &m->machine->getNonStaticParameters()[i]);
+  } else {
+    throw RangeError();
+  }
+}
+
 void GradientMachine::randParameters() { m->machine->randParameters(); }
 
-Matrix* GradientMachine::getLayerOutput(const std::string& layerName) const
+Arguments* GradientMachine::getLayerOutput(const std::string& layerName) const
     throw(UnsupportError) {
-  auto nn = std::dynamic_pointer_cast<paddle::NeuralNetwork>(m->machine);
+  auto nn = m->machine;
   if (nn) {
-    auto mat = nn->getLayerOutput(layerName);
-    return Matrix::createByPaddleMatrixPtr(&mat);
+    auto arg = nn->getLayerOutput(layerName);
+    return Arguments::createByPaddleArgument(&arg);
   } else {
     throw UnsupportError();
   }
@@ -157,4 +183,14 @@ SequenceGenerator* GradientMachine::asSequenceGenerator(
   r->setMaxLength(max_length);
   r->setBeamSize(beam_size);
   return r;
+}
+
+Evaluator* GradientMachine::makeEvaluator() {
+  auto ev = new Evaluator();
+  ev->m->rawPtr = m->machine->makeEvaluator();
+  return ev;
+}
+
+void GradientMachine::eval(Evaluator* evaluator) {
+  m->machine->eval(evaluator->m->rawPtr);
 }

@@ -25,3 +25,4 @@ paddle train \
 --log_period=10 \
 --dot_period=5 \
 2>&1 | tee 'translation/train.log'
+paddle usage -l 'translation/train.log' -e $? -n "seqToseq_translation_train" >/dev/null 2>&1

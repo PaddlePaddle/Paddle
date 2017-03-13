@@ -24,10 +24,10 @@ limitations under the License. */
 #include <fstream>
 #include <mutex>
 
-#include "paddle/utils/Logging.h"
+#include <gflags/gflags.h>
 
-#include "CommandLineParser.h"
 #include "CustomStackTrace.h"
+#include "Logging.h"
 #include "StringUtil.h"
 #include "Thread.h"
 #include "ThreadLocal.h"
@@ -125,7 +125,7 @@ void registerInitFunction(std::function<void()> func, int priority) {
 
 void runInitFunctions() {
   std::call_once(g_onceFlag, []() {
-    LOG(INFO) << "Calling runInitFunctions";
+    VLOG(3) << "Calling runInitFunctions";
     if (g_initFuncs) {
       std::sort(g_initFuncs->begin(),
                 g_initFuncs->end(),
@@ -139,20 +139,25 @@ void runInitFunctions() {
       g_initFuncs = nullptr;
     }
     g_initialized = true;
-    LOG(INFO) << "Call runInitFunctions done.";
+    VLOG(3) << "Call runInitFunctions done.";
   });
 }
 
 void initMain(int argc, char** argv) {
-  initializeLogging(argc, argv);
   installLayerStackTracer();
   std::string line;
   for (int i = 0; i < argc; ++i) {
     line += argv[i];
     line += ' ';
   }
+
+#ifndef GFLAGS_GFLAGS_H_
+  namespace gflags = google;
+#endif
+
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  initializeLogging(argc, argv);
   LOG(INFO) << "commandline: " << line;
-  ParseCommandLineFlags(&argc, argv, true);
   CHECK_EQ(argc, 1) << "Unknown commandline argument: " << argv[1];
 
   installProfilerSwitch();
@@ -226,7 +231,7 @@ std::string join(const std::string& part1, const std::string& part2) {
 }  // namespace path
 
 void copyFileToPath(const std::string& file, const std::string& dir) {
-  LOG(INFO) << "copy " << file << " to " << dir;
+  VLOG(3) << "copy " << file << " to " << dir;
   std::string fileName = path::basename(file);
   std::string dst = path::join(dir, fileName);
   std::ifstream source(file, std::ios_base::binary);
@@ -284,6 +289,7 @@ void mkDir(const char* filename) {
 void mkDirRecursively(const char* dir) {
   struct stat sb;
 
+  if (*dir == 0) return;  // empty string
   if (!stat(dir, &sb)) return;
 
   mkDirRecursively(path::dirname(dir).c_str());

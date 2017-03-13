@@ -18,9 +18,9 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include "TensorCheck.h"
-#include "paddle/gserver/tests/TestUtil.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
+#include "paddle/testing/TestUtil.h"
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
 
@@ -28,148 +28,6 @@ using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 using autotest::TensorCheckEqual;
 using autotest::TensorCheckErr;
-
-void testMatrixProjectionForward(int contextStart,
-                                 int contextLength,
-                                 bool padding,
-                                 int batchSize,
-                                 int inputDim) {
-  MatrixPtr cpuInput = std::make_shared<CpuMatrix>(batchSize, inputDim);
-  MatrixPtr gpuInput = std::make_shared<GpuMatrix>(batchSize, inputDim);
-  cpuInput->randomizeUniform();
-  gpuInput->copyFrom(*cpuInput);
-
-  int pad = std::max(0, -contextStart) +
-            std::max(0, contextStart + contextLength - 1);
-  if (pad == 0) padding = false;
-  MatrixPtr cpuWeight = nullptr;
-  MatrixPtr gpuWeight = nullptr;
-  if (padding) {
-    cpuWeight = std::make_shared<CpuMatrix>(pad, inputDim);
-    gpuWeight = std::make_shared<GpuMatrix>(pad, inputDim);
-    cpuWeight->randomizeUniform();
-    gpuWeight->copyFrom(*cpuWeight);
-  }
-
-  IVectorPtr cpuSequence;
-  generateSequenceStartPositions(batchSize, cpuSequence);
-  IVectorPtr gpuSequence = IVector::create(cpuSequence->getSize(), true);
-  gpuSequence->copyFrom(*cpuSequence);
-
-  MatrixPtr cpuOutput =
-      std::make_shared<CpuMatrix>(batchSize, inputDim * contextLength);
-  MatrixPtr gpuOutput =
-      std::make_shared<GpuMatrix>(batchSize, inputDim * contextLength);
-  cpuOutput->randomizeUniform();
-  gpuOutput->copyFrom(*cpuOutput);
-
-  // calculate
-  int beginPad = std::max(0, -contextStart);
-  cpuOutput->contextProjectionForward(*cpuInput,
-                                      cpuWeight.get(),
-                                      *cpuSequence,
-                                      contextLength,
-                                      contextStart,
-                                      beginPad,
-                                      padding);
-
-  gpuOutput->contextProjectionForward(*gpuInput,
-                                      gpuWeight.get(),
-                                      *gpuSequence,
-                                      contextLength,
-                                      contextStart,
-                                      beginPad,
-                                      padding);
-
-  TensorCheckEqual(*cpuOutput, *gpuOutput);
-}
-
-void testMatrixProjectionBackward(int contextStart,
-                                  int contextLength,
-                                  bool padding,
-                                  int batchSize,
-                                  int inputDim) {
-  MatrixPtr cpuOutputGrad =
-      std::make_shared<CpuMatrix>(batchSize, inputDim * contextLength);
-  MatrixPtr gpuOutputGrad =
-      std::make_shared<GpuMatrix>(batchSize, inputDim * contextLength);
-  cpuOutputGrad->randomizeUniform();
-  gpuOutputGrad->copyFrom(*cpuOutputGrad);
-
-  IVectorPtr cpuSequence;
-  generateSequenceStartPositions(batchSize, cpuSequence);
-  IVectorPtr gpuSequence = IVector::create(cpuSequence->getSize(), true);
-  gpuSequence->copyFrom(*cpuSequence);
-
-  MatrixPtr cpuInputGrad = std::make_shared<CpuMatrix>(batchSize, inputDim);
-  MatrixPtr gpuInputGrad = std::make_shared<GpuMatrix>(batchSize, inputDim);
-  cpuInputGrad->randomizeUniform();
-  gpuInputGrad->copyFrom(*cpuInputGrad);
-
-  int pad = std::max(0, -contextStart) +
-            std::max(0, contextStart + contextLength - 1);
-  if (pad == 0) padding = false;
-  MatrixPtr cpuWeightGrad = nullptr;
-  MatrixPtr gpuWeightGrad = nullptr;
-  if (padding) {
-    cpuWeightGrad = std::make_shared<CpuMatrix>(pad, inputDim);
-    gpuWeightGrad = std::make_shared<GpuMatrix>(pad, inputDim);
-    cpuWeightGrad->randomizeUniform();
-    gpuWeightGrad->copyFrom(*cpuWeightGrad);
-  }
-
-  // calculate
-  int beginPad = std::max(0, -contextStart);
-  cpuOutputGrad->contextProjectionBackward(cpuInputGrad.get(),
-                                           cpuWeightGrad.get(),
-                                           *cpuSequence,
-                                           contextLength,
-                                           contextStart,
-                                           beginPad,
-                                           padding);
-  gpuOutputGrad->contextProjectionBackwardData(
-      *gpuInputGrad, *gpuSequence, contextLength, contextStart);
-  if (padding) {
-    gpuOutputGrad->contextProjectionBackwardWeight(*gpuWeightGrad,
-                                                   *gpuSequence,
-                                                   contextLength,
-                                                   contextStart,
-                                                   pad,
-                                                   beginPad);
-  }
-
-  TensorCheckErr(*cpuInputGrad, *gpuInputGrad);
-  if (padding) {
-    TensorCheckErr(*cpuWeightGrad, *gpuWeightGrad);
-  }
-}
-
-TEST(Matrix, projection) {
-  for (auto contextStart : {-5, -3, -1, 0, 3}) {
-    for (auto contextLength : {1, 2, 5, 7}) {
-      for (auto trainablePadding : {false, true}) {
-        for (auto batchSize : {1, 2, 5, 20, 100}) {
-          for (auto inputDim : {15, 32, 63, 128, 200}) {
-            VLOG(3) << " contextStart=" << contextStart
-                    << " contextLength=" << contextLength
-                    << " trainablePadding=" << trainablePadding
-                    << " batchSize=" << batchSize << " inputDim=" << inputDim;
-            testMatrixProjectionForward(contextStart,
-                                        contextLength,
-                                        trainablePadding,
-                                        batchSize,
-                                        inputDim);
-            testMatrixProjectionBackward(contextStart,
-                                         contextLength,
-                                         trainablePadding,
-                                         batchSize,
-                                         inputDim);
-          }
-        }
-      }
-    }
-  }
-}
 
 void testMatrixMaxSequence(int batchSize, int inputDim) {
   // forward
@@ -247,6 +105,21 @@ void testMatrixGetSum(int height, int width) {
   EXPECT_LE(fabs(cpuSum - gpuSum), err);
 }
 
+void testMatrixGetMinMax(int height, int width) {
+  MatrixPtr cpuInput = std::make_shared<CpuMatrix>(height, width);
+  MatrixPtr gpuInput = std::make_shared<GpuMatrix>(height, width);
+  cpuInput->randomizeUniform();
+  gpuInput->copyFrom(*cpuInput);
+
+  real cpuMin = cpuInput->getMin();
+  real gpuMin = gpuInput->getMin();
+  real cpuMax = cpuInput->getMax();
+  real gpuMax = gpuInput->getMax();
+
+  EXPECT_EQ(cpuMin, gpuMin);
+  EXPECT_EQ(cpuMax, gpuMax);
+}
+
 void testMatrixZeroAtOffset(int height, int width) {
   MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
   MatrixPtr gpuA = std::make_shared<GpuMatrix>(height, width);
@@ -303,9 +176,27 @@ void testMatrixTranspose(int height, int width) {
   cpu->randomizeUniform();
   gpu->copyFrom(*cpu);
   cpu->transpose(cpuT, false);
-  gpu->transpose(gpuT, false);
+  gpu->transpose(gpuT, true);
 
   TensorCheckEqual(*cpuT, *gpuT);
+}
+
+void testMatrixRotate(int height, int width) {
+  MatrixPtr cpu = std::make_shared<CpuMatrix>(height, width);
+  MatrixPtr gpu = std::make_shared<GpuMatrix>(height, width);
+  MatrixPtr cpuR = std::make_shared<CpuMatrix>(width, height);
+  MatrixPtr gpuR = std::make_shared<GpuMatrix>(width, height);
+
+  cpu->randomizeUniform();
+  gpu->copyFrom(*cpu);
+
+  cpu->rotate(cpuR, false, true);
+  gpu->rotate(gpuR, true, true);
+  TensorCheckEqual(*cpuR, *gpuR);
+
+  cpu->rotate(cpuR, true, false);
+  gpu->rotate(gpuR, false, false);
+  TensorCheckEqual(*cpuR, *gpuR);
 }
 
 void testMatrixInverse(int height) {
@@ -323,7 +214,7 @@ void testMatrixInverse(int height) {
   cpu->add(*outputCheck);
 
   gpu->copyFrom(*cpu);
-  cpu->inverse(cpuI, false);
+  cpu->inverse(cpuI, true);
   gpu->inverse(gpuI, false);
 
   TensorCheckErr(*cpuI, *gpuI);
@@ -342,6 +233,7 @@ TEST(Matrix, unary) {
       testMatrixZeroAtOffset(height, width);
       testMatrixGetSum(height, width);
       testMatrixTranspose(height, width);
+      testMatrixRotate(height, width);
     }
     // inverse
     testMatrixInverse(height);
@@ -828,61 +720,6 @@ TEST(Matrix, sequenceAvgForward) {
   }
 }
 
-void testCosSimDerivate(int heightX, int heightY, int width, real scale) {
-  MatrixPtr prevOutX = CpuMatrix::create(heightX, width, false, false);
-  MatrixPtr prevOutY = CpuMatrix::create(heightY, width, false, false);
-  MatrixPtr grad = CpuMatrix::create(heightX, 1, false, false);
-  MatrixPtr output = CpuMatrix::create(heightX, 1, false, false);
-  MatrixPtr prevGradX = CpuMatrix::create(heightX, width, false, false);
-  MatrixPtr prevGradY = CpuMatrix::create(heightY, width, false, false);
-
-  prevOutX->randomizeUniform();
-  prevOutY->randomizeUniform();
-  grad->randomizeUniform();
-  output->randomizeUniform();
-  prevGradX->randomizeUniform();
-  prevGradY->randomizeUniform();
-
-  MatrixPtr prevOutXGpu = GpuMatrix::create(heightX, width, false, true);
-  MatrixPtr prevOutYGpu = GpuMatrix::create(heightY, width, false, true);
-  MatrixPtr gradGpu = GpuMatrix::create(heightX, 1, false, true);
-  MatrixPtr outputGpu = GpuMatrix::create(heightX, 1, false, true);
-  MatrixPtr prevGradXGpu = GpuMatrix::create(heightX, width, false, true);
-  MatrixPtr prevGradYGpu = GpuMatrix::create(heightY, width, false, true);
-
-  prevOutXGpu->copyFrom(*prevOutX);
-  prevOutYGpu->copyFrom(*prevOutY);
-  gradGpu->copyFrom(*grad);
-  outputGpu->copyFrom(*output);
-  prevGradXGpu->copyFrom(*prevGradX);
-  prevGradYGpu->copyFrom(*prevGradY);
-
-  grad->cosSimDerivative(
-      *output, *prevOutX, *prevOutY, *prevGradX, *prevGradY, scale);
-
-  gradGpu->cosSimDerivative(*outputGpu,
-                            *prevOutXGpu,
-                            *prevOutYGpu,
-                            *prevGradXGpu,
-                            *prevGradYGpu,
-                            scale);
-
-  TensorCheckErr(*prevGradX, *prevGradXGpu);
-  TensorCheckErr(*prevGradY, *prevGradYGpu);
-}
-
-TEST(Matrix, cosSimDerivate) {
-  for (auto heightX : {1, 10, 100}) {
-    for (auto heightY : {1, heightX}) {
-      for (auto width : {1, 10, 100}) {
-        for (auto scale : {1.0, 2.0}) {
-          testCosSimDerivate(heightX, heightY, width, scale);
-        }
-      }
-    }
-  }
-}
-
 void testParamReluBackwardDiff(int height,
                                int width,
                                int w_height,
@@ -915,10 +752,11 @@ void testParamReluBackwardDiff(int height,
 }
 
 TEST(Matrix, paramReluBackwardDiff) {
-  for (auto height : {10, 100}) {
-    for (auto width : {10, 100}) {
+  for (auto height : {10, 40, 100}) {
+    for (auto width : {10, 40, 100}) {
       for (auto w_height : {1, 2}) {
         for (auto w_width : {1, 2}) {
+          if (width % (w_height * w_width)) continue;
           testParamReluBackwardDiff(height, width, w_height, w_width);
         }
       }
@@ -926,7 +764,7 @@ TEST(Matrix, paramReluBackwardDiff) {
   }
 }
 
-void testClassificationError(int numSamples, int dim) {
+void testClassificationError(int numSamples, int dim, int topkSize) {
   MatrixPtr cpuError = std::make_shared<CpuMatrix>(numSamples, 1);
   MatrixPtr gpuError = std::make_shared<GpuMatrix>(numSamples, 1);
   MatrixPtr cpuOutput = std::make_shared<CpuMatrix>(numSamples, dim);
@@ -939,17 +777,22 @@ void testClassificationError(int numSamples, int dim) {
   gpuOutput->copyFrom(*cpuOutput);
   gpuLabel->copyFrom(*cpuLabel);
 
-  cpuError->classificationError(*cpuOutput, *cpuLabel);
-  gpuError->classificationError(*gpuOutput, *gpuLabel);
+  cpuError->classificationError(*cpuOutput, *cpuLabel, topkSize);
+  gpuError->classificationError(*gpuOutput, *gpuLabel, topkSize);
 
   TensorCheckEqual(*cpuError, *gpuError);
 }
 
 TEST(Matrix, classificationError) {
-  for (auto numSamples : {1, 10, 100, 1000, 70000}) {
-    for (auto dim : {1, 10, 100, 1000}) {
-      VLOG(3) << " numSamples=" << numSamples << " dim=" << dim;
-      testClassificationError(numSamples, dim);
+  for (auto numSamples : {1, 5, 31, 90, 150, 300}) {
+    for (auto dim :
+         {1, 5, 8, 10, 15, 64, 80, 120, 256, 300, 1280, 5120, 50000}) {
+      for (auto topkSize : {1, 5, 10, 20, 40, (int)rand() % dim + 1}) {
+        if (topkSize > dim) continue;
+        VLOG(3) << " sample= " << numSamples << " topkSize= " << topkSize
+                << " dim= " << dim;
+        testClassificationError(numSamples, dim, topkSize);
+      }
     }
   }
 }
@@ -1260,12 +1103,6 @@ TEST(Matrix, MaxOutFwdBwd) {
       }
     }
   }
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  initMain(argc, argv);
-  return RUN_ALL_TESTS();
 }
 
 #endif

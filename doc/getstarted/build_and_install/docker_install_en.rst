@@ -16,91 +16,95 @@ Developers can work on PaddlePaddle using Docker.  This allows
 developers to work on different platforms -- Linux, Mac OS X, and
 Windows -- in a consistent way.
 
-The general development workflow with Docker and Bazel is as follows:
-
-1. Get the source code of Paddle:
+1. Build the Development Environment as a Docker Image
 
    .. code-block:: bash
 
-      git clone --recursive https://github.com/PaddlePaddle/Paddle.git
-
-   
-   Here **git clone --recursive is required** as we have a submodule `warp-ctc <https://github.com/baidu-research/warp-ctc>`_.
-
-   If you have used :code:`git clone https://github.com/PaddlePaddle/Paddle` and find that the directory :code:`warp-ctc` is
-   empty, please use the following command to get the submodule.
-
-   .. code-block:: bash
-
-      git submodule update --init --recursive
-
-
-2. Build a development Docker image :code:`paddle:dev` from the source
-   code.  This image contains all the development tools and
-   dependencies of PaddlePaddle.
-
-   .. code-block:: bash
-
-      cd paddle
+      git clone --recursive https://github.com/PaddlePaddle/Paddle
+      cd Paddle
       docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile .
 
-   Sometimes docker build might suffer from a slow network connection to the official Ubuntu apt-source servers. In such case, we can specify an apt-source mirror server that is geologically nearer to us. In the following example, we specified an apt-source server that responds fast in China.You can specify the UBUNTU MIRROR with :code:`--build-arg UBUNTU_MIRROR` like the example below.
+
+   Note that by default :code:`docker build` wouldn't import source
+   tree into the image and build it.  If we want to do that, we need
+   to set a build arg:
 
    .. code-block:: bash
 
-      docker build \
-       --build-arg UBUNTU_MIRROR="http://mirrors.163.com" \
-       -t paddle:dev \
-       -f paddle/scripts/docker/Dockerfile .
+      docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile --build-arg BUILD_AND_INSTALL=ON .
 
 
-3. Run the image as a container and mounting local source code
-   directory into the container.  This allows us to change the code on
-   the host and build it within the container.
+2. Run the Development Environment
 
-   .. code-block:: bash
-
-      docker run       \
-       -d              \
-       --name paddle   \
-       -p 2022:22      \
-       -v $PWD:/paddle \
-       -v $HOME/.cache/bazel:/root/.cache/bazel \
-       paddle:dev
-
-   where :code:`-d` makes the container running in background,
-   :code:`--name paddle` allows us to run a nginx container to serve
-   documents in this container, :code:`-p 2022:22` allows us to SSH
-   into this container, :code:`-v $PWD:/paddle` shares the source code
-   on the host with the container, :code:`-v
-   $HOME/.cache/bazel:/root/.cache/bazel` shares Bazel cache on the
-   host with the container.
-
-4. SSH into the container:
+   Once we got the image :code:`paddle:dev`, we can use it to develop
+   Paddle by mounting the local source code tree into a container that
+   runs the image:
 
    .. code-block:: bash
 
-      ssh root@localhost -p 2022
+      docker run -d -p 2202:22 -p 8888:8888 -v $PWD:/paddle paddle:dev
 
-5. We can edit the source code in the container or on this host.  Then
-   we can build using cmake
+   This runs a container of the development environment Docker image
+   with the local source tree mounted to :code:`/paddle` of the
+   container.
 
-   .. code-block:: bash
-
-      cd /paddle # where paddle source code has been mounted into the container
-      mkdir -p build
-      cd build
-      cmake -DWITH_TESTING=ON ..
-      make -j `nproc`
-      CTEST_OUTPUT_ON_FAILURE=1 ctest
-
-   or Bazel in the container:
+   Note that the default entry-point of :code:`paddle:dev` is
+   :code:`sshd`, and above :code:`docker run` commands actually starts
+   an SSHD server listening on port 2202.  This allows us to log into
+   this container with:
 
    .. code-block:: bash
 
-      cd /paddle
-      bazel test ...
+      ssh root@localhost -p 2202
 
+   Usually, I run above commands on my Mac.  I can also run them on a
+   GPU server :code:`xxx.yyy.zzz.www` and ssh from my Mac to it:
+
+   .. code-block:: bash
+
+      my-mac$ ssh root@xxx.yyy.zzz.www -p 2202
+
+3. Build and Install Using the Development Environment
+
+   Once I am in the container, I can use
+   :code:`paddle/scripts/docker/build.sh` to build, install, and test
+   Paddle:
+
+   .. code-block:: bash
+
+      /paddle/paddle/scripts/docker/build.sh
+
+   This builds everything about Paddle in :code:`/paddle/build`.  And
+   we can run unit tests there:
+
+   .. code-block:: bash
+
+      cd /paddle/build
+      ctest
+
+4. Run PaddlePaddle Book under Docker Container
+
+   The Jupyter Notebook is an open-source web application that allows
+   you to create and share documents that contain live code, equations,
+   visualizations and explanatory text in a single browser.
+
+   PaddlePaddle Book is an interactive Jupyter Notebook for users and developers. 
+   We already exposed port 8888 for this book. If you want to
+   dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.
+
+   Once you are inside the container, simply issue the command:
+
+   .. code-block:: bash
+		   
+      jupyter notebook
+
+   Then, you would back and paste the address into the local browser:
+      
+   .. code-block:: text
+
+      http://localhost:8888/
+
+   That's all. Enjoy your journey!
 
 CPU-only and GPU Images
 -----------------------
@@ -112,21 +116,21 @@ automatically runs the following commands:
 
 .. code-block:: bash
 
-   docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile .
-   docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu .
+   docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile --build-arg BUILD_AND_INSTALL=ON .
+   docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu --build-arg BUILD_AND_INSTALL=ON .
 
 
 To run the CPU-only image as an interactive container:
 
 .. code-block:: bash
 
-    docker run -it --rm paddledev/paddle:cpu-latest /bin/bash
+    docker run -it --rm paddledev/paddle:0.10.0rc1-cpu /bin/bash
 
 or, we can run it as a daemon container
 
 .. code-block:: bash
 
-    docker run -d -p 2202:22 paddledev/paddle:cpu-latest
+    docker run -d -p 2202:22 paddledev/paddle:0.10.0rc1-cpu
 
 and SSH to this container using password :code:`root`:
 
@@ -148,7 +152,7 @@ to install CUDA driver and let Docker knows about it:
 
     export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
     export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-    docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:gpu-latest
+    docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:0.10.0rc1-gpu
 
 
 Non-AVX Images
@@ -172,7 +176,6 @@ source code:
    cd ~
    git clone https://github.com/PaddlePaddle/Paddle.git
    cd Paddle
-   git submodule update --init --recursive
    docker build --build-arg WITH_AVX=OFF -t paddle:cpu-noavx -f paddle/scripts/docker/Dockerfile .
    docker build --build-arg WITH_AVX=OFF -t paddle:gpu-noavx -f paddle/scripts/docker/Dockerfile.gpu .
 
@@ -191,7 +194,7 @@ container:
 
 .. code-block:: bash
 
-   docker run -d --name paddle-cpu-doc paddle:cpu
+   docker run -d --name paddle-cpu-doc paddle:0.10.0rc1-cpu
    docker run -d --volumes-from paddle-cpu-doc -p 8088:80 nginx
 
 

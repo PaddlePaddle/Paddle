@@ -169,9 +169,3 @@ TEST(SIMDFunction, decayL1_WithoutLR) {
     ASSERT_NEAR(dest[i], simd_dest[i], EPSILON);
   }
 }
-
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

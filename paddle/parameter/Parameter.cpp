@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Parameter.h"
+#include <gflags/gflags.h>
 #include <fstream>
 #include "AverageOptimizer.h"
 #include "FirstOrderOptimizer.h"
@@ -23,7 +24,6 @@ limitations under the License. */
 #include "paddle/math/CpuSparseMatrix.h"
 #include "paddle/math/MathUtils.h"
 #include "paddle/math/SparseRowMatrix.h"
-#include "paddle/utils/CommandLineParser.h"
 #include "paddle/utils/Logging.h"
 
 DEFINE_int32(enable_grad_share,
@@ -375,10 +375,6 @@ bool Parameter::load(const std::string& filename) {
   std::ifstream fs(filename, std::ios_base::binary);
   if (!fs) {
     LOG(INFO) << "missing parameters [" << filename << "] while loading model.";
-    if (isStatic()) {
-      LOG(FATAL) << getName() << " is static but missing, not allowed.";
-      return false;
-    }
     if (kMissParameterFail == FLAGS_load_missing_parameter_strategy) {
       LOG(FATAL) << getName() << " missing, not allowed.";
       return false;

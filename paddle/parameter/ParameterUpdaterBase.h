@@ -55,7 +55,7 @@ public:
   // between startBatch() and finishBatch(), update() will be called
   // by the trainer multiple times, each time for updating one Parameter
   // with its gradient in PARAMETER_GRADIENT
-  virtual void update(Parameter* para) {
+  void update(Parameter* para) {
     SetDevice setDevice(para->getDeviceId());
     para->updateHook();
     this->updateImpl(para);

@@ -20,6 +20,6 @@ from layers import *
 from networks import *
 from optimizers import *
 from attrs import *
-
+from config_parser_utils import *
 # This will enable operator overload for LayerOutput
-import math as layer_math
+import layer_math

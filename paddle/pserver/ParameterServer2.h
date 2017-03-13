@@ -29,10 +29,10 @@ limitations under the License. */
 #include "paddle/math/Vector.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/parameter/ParameterOptimizer.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/TypeDefs.h"
 
 #include "ParameterService.pb.h"
 

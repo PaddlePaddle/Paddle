@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "ThreadLocal.h"
-#include "CommandLineParser.h"
+
+#include <gflags/gflags.h>
+
 #include "Util.h"
 
 DEFINE_bool(thread_local_rand_use_global_seed,
@@ -35,7 +37,7 @@ unsigned int* ThreadLocalRand::getSeed() {
       p = new unsigned int(defaultSeed_ - 1);
     } else {
       p = new unsigned int(defaultSeed_ + getTID());
-      LOG(INFO) << "thread use undeterministic rand seed:" << *p;
+      VLOG(3) << "thread use undeterministic rand seed:" << *p;
     }
     seed_.set(p);
   }

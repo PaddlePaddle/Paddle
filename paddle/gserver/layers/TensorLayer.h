@@ -44,13 +44,12 @@ protected:
 public:
   explicit TensorLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~TensorLayer() {}
-
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
   Weight& getWeight(int idx) { return *weights_[idx]; }
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 }  // namespace paddle

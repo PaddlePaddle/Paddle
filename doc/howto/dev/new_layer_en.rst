@@ -209,7 +209,6 @@ The implementation of the backward part has the following steps.
       if (biases_ && biases_->getWGrad()) {
         biases_->getWGrad()->collectBias(*getOutputGrad(), 1);
 
-        /* Increasing the number of gradient */
         biases_->getParameterPtr()->incUpdate(callback);
       }
 
@@ -297,7 +296,7 @@ All the gradient check unit tests are located in :code:`paddle/gserver/tests/tes
 + each inputs needs to call :code:`config.layerConfig.add_inputs();` once.
 + call :code:`testLayerGrad` to perform gradient checks. It has the following arguments.
    - layer and input configurations. (:code:`config` in our example)
-   - type of the input. (:code:`fc` in our example)
+   - type of the layer. (:code:`fc` in our example)
    - batch size of the gradient check. (100 in our example)
    - whether the input is transpose. Most layers need to set it to :code:`false`. (:code:`false` in our example)
    - whether to use weights. Some layers or activations perform normalization so that the sum of their output is a constant. For example, the sum of output of a softmax activation is one. In this case, we cannot correctly compute the gradients using regular gradient check techniques. A weighted sum of the output, which is not a constant, is utilized to compute the gradients. (:code:`true` in our example, because the activation of a fully connected layer can be softmax)
@@ -310,7 +309,7 @@ All the gradient check unit tests are located in :code:`paddle/gserver/tests/tes
       config.biasSize = 4096;
       config.layerConfig.set_type("fc");
       config.layerConfig.set_size(4096);
-      config.layerConfig.set_active_type("sigmoid");
+      config.layerConfig.set_active_type("softmax");
       config.layerConfig.set_drop_rate(0.1);
       // Setup inputs.
       config.inputDefs.push_back(

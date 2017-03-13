@@ -77,11 +77,4 @@ TEST(CpuGpuVector, subCreate) {
   checkDataEqual(v1Check->getData() + offset, v2Check->getData(), size2);
 }
 
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  initMain(argc, argv);
-  int ret = RUN_ALL_TESTS();
-  return ret;
-}
-
 #endif

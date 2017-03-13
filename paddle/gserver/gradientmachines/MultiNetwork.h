@@ -46,9 +46,9 @@ public:
 
   virtual void onPassEnd();
 
-  virtual Evaluator* makeEvaluator();
+  virtual Evaluator* makeEvaluator() const;
 
-  virtual void eval(Evaluator* evaluator);
+  virtual void eval(Evaluator* evaluator) const;
 
   const std::vector<std::unique_ptr<NeuralNetwork>>& getSubNetworks() const {
     return subNetworks_;

@@ -1,0 +1,53 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+syntax = "proto2";
+
+package paddle;
+
+
+/**
+ * Configuration structure for ParameterClient2.
+ */
+message ParameterClientConfig {
+  required int32 trainer_id = 1;
+}
+
+/**
+ * Configuration structure for ParameterServer2.
+ */
+message ParameterServerConfig {
+  // Number of ports for sending dense parameter,
+  // following ports on parameter server will be visited
+  // for sending dense parameter: [port, port+ports_num-1]
+  required int32 ports_num = 1 [default = 1];
+  // Number of ports for sending sparse parameter,
+  // following ports on parameter server will be visited
+  // for sending sparse parameter:
+  // [port+ports_num, port+ports_num+ports_num_for_sparse-1]
+  required int32 ports_num_for_sparse = 2 [default = 0];
+  // network device name for pservers
+  required string nics = 3 [default = "xgbe0,xgbe1"];
+  required string rdma_tcp = 4 [default = "tcp"];
+  // Listening port for pserver
+  required int32 port = 5 [default = 20134];
+  // number of gradient servers
+  required int32 num_gradient_servers = 6 [default = 1];
+  // number of threads for sync op exec
+  required int32 pserver_num_threads = 7 [default = 1];
+  // control config_.async_lagged_grad_discard_ratio() min value
+  required double async_lagged_ratio_min = 8 [default = 1.0];
+  // if async_lagged_grad_discard_ratio is not set in trainer_config.conf
+  // use it as defalut value
+  required double async_lagged_ratio_default = 9 [default = 1.5];
+}

@@ -45,7 +45,8 @@ public:
                         hl_pooling_mode_t* mode = nullptr);
   explicit CudnnPoolLayer(const LayerConfig& config);
   ~CudnnPoolLayer();
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
   /**
    * Reshape input and output tensor descriptor.
@@ -53,8 +54,8 @@ public:
    * So reshaping is needed.
    */
   void reshape(int batchSize);
-  virtual void forward(PassType passType);
-  virtual void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 }  // namespace paddle

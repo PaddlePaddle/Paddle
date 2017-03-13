@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/math/Vector.h"
-#include "paddle/utils/TypeDefs.h"
+#include "paddle/utils/Common.h"
 
 namespace paddle {
 

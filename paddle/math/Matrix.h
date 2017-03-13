@@ -26,11 +26,12 @@ limitations under the License. */
 #include "BaseMatrix.h"
 #include "MemoryHandle.h"
 #include "Vector.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/TypeDefs.h"
 
 namespace paddle {
 
+/// TODO(tianbing), move to paddle/function/TensorType.h
 enum SparseValueType { NO_VALUE = 0, FLOAT_VALUE = 1 };
 
 /**
@@ -56,6 +57,7 @@ enum SparseValueType { NO_VALUE = 0, FLOAT_VALUE = 1 };
  *            value [1, 1, 2, 2, 5]
  * @endcode
  */
+/// TODO(tianbing), move to paddle/function/TensorType.h
 enum SparseFormat { SPARSE_CSR = 0, SPARSE_CSC = 1 };
 
 class Matrix;
@@ -370,7 +372,27 @@ public:
    * allocate matTrans' memory outside, then set memAlloc as false;
    * else set as true.
    */
-  virtual void transpose(MatrixPtr matTrans, bool memAlloc) {
+  virtual void transpose(MatrixPtr& matTrans, bool memAlloc) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  /**
+   * @brief  rotate 90 degrees in clock-wise if clockWise=true;
+   *         otherwise rotate in anti clock-wise
+   * clock-wise:
+   * \f[
+   *   y(j,i) = x(M-i-1,j)
+   * \f]
+   * anti clock-wise:
+   * \f[
+   *   y(j,i) = x(i, N-1-j)
+   * \f]
+   * where \f$x\f$ is (M x N) input, and \f$y\f$ is (N x M) output.
+   *
+   * allocate matRot' memory outside, then set memAlloc as false;
+   * else set as true.
+   */
+  virtual void rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -385,7 +407,7 @@ public:
    * if allocate matInv's memory outside, then set memAlloc as false;
    * else set as true.
    */
-  virtual void inverse(MatrixPtr matInv, bool memAlloc) {
+  virtual void inverse(MatrixPtr& matInv, bool memAlloc) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -777,26 +799,6 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  /**
-   * cosine similarity, for each row i,
-   *   this[i] = cos(output1[i], output2[i])
-   *
-   * output2 can only have one row, then for each row i,
-   *   this[i] = cos(output1[i], output2[0])
-   */
-  virtual void cosSim(Matrix& output1, Matrix& output2, real scale = 1.0f) {
-    LOG(FATAL) << "Not implemented";
-  }
-
-  virtual void cosSimDerivative(Matrix& output,
-                                Matrix& prevOut1,
-                                Matrix& prevOut2,
-                                Matrix& prevGrad1,
-                                Matrix& prevGrad2,
-                                real scale = 1.0f) {
-    LOG(FATAL) << "Not implemented";
-  }
-
   /// print out the values of elements to os
   virtual void print(std::ostream& os) const {
     LOG(FATAL) << "Not implemented";
@@ -834,8 +836,11 @@ public:
    * output[i] = 1 if row i is an error.
    *
    * output[i] = 0 if row i is correct.
+   *
    */
-  virtual void classificationError(Matrix& output, IVector& label) {
+  virtual void classificationError(Matrix& output,
+                                   IVector& label,
+                                   size_t topkSize = 1) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -972,42 +977,6 @@ public:
     LOG(FATAL) << "Not implemeted";
   }
 
-  virtual void contextProjectionForward(Matrix& input,
-                                        Matrix* weight,
-                                        const IVector& sequence,
-                                        int contextLength,
-                                        int contextStart,
-                                        size_t beginPad,
-                                        bool isPadding) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionBackward(Matrix* inputGrad,
-                                         Matrix* weightGrad,
-                                         const IVector& sequence,
-                                         int contextLength,
-                                         int contextStart,
-                                         size_t beginPad,
-                                         bool isPadding) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionBackwardData(Matrix& inputGrad,
-                                             const IVector& sequence,
-                                             int contextLength,
-                                             int contextStart) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionBackwardWeight(Matrix& weightGrad,
-                                               const IVector& sequence,
-                                               int contextLength,
-                                               int contextStart,
-                                               int totalPad,
-                                               size_t beginPad) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
   /**
    * @code
    * this.row[i] += table.row[ids[i]]
@@ -1127,6 +1096,10 @@ public:
       TensorCpuApply<real>(*this, expr);
     }
   }
+
+  bool isEmpty() const { return data_ == nullptr; }
+
+  explicit operator bool() const { return !isEmpty(); }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Matrix& mat) {
@@ -1199,11 +1172,15 @@ public:
   void accumulateColSum(Matrix& src);
   real getAbsSum();
 
+  real getMin();
+  real getMax();
+
   MatrixPtr getTranspose();
-  void transpose(MatrixPtr matTrans, bool memAlloc);
+  void transpose(MatrixPtr& matTrans, bool memAlloc);
+  void rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise);
 
   MatrixPtr getInverse();
-  void inverse(MatrixPtr matInv, bool memAlloc);
+  void inverse(MatrixPtr& matInv, bool memAlloc);
 
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
@@ -1330,14 +1307,6 @@ public:
   void softreluDerivative(Matrix& output);
   void scaledTanh(Matrix& output, real p1, real p2);
 
-  void cosSim(Matrix& output1, Matrix& output2, real scale);
-  void cosSimDerivative(Matrix& output,
-                        Matrix& prevOut1,
-                        Matrix& prevOut2,
-                        Matrix& prevGrad1,
-                        Matrix& prevGrad2,
-                        real scale);
-
   virtual void print(std::ostream& os) const;
   virtual void print(std::ostream& os, size_t height, size_t width) const;
 
@@ -1348,7 +1317,7 @@ public:
   void check(std::ostream& os, Matrix& refMat, bool printDiff = true);
   void randomizeUniform();
 
-  void classificationError(Matrix& output, IVector& label);
+  void classificationError(Matrix& output, IVector& label, size_t topkSize = 1);
 
   void convExpand(Matrix& feature,
                   int feaImgHeight,
@@ -1442,26 +1411,6 @@ public:
                            const IVector& sequence,
                            IVector& index);
 
-  void contextProjectionForward(Matrix& input,
-                                Matrix* weight,
-                                const IVector& sequence,
-                                int contextLength,
-                                int contextStart,
-                                size_t beginPad,
-                                bool isPadding);
-
-  void contextProjectionBackwardData(Matrix& inputGrad,
-                                     const IVector& sequence,
-                                     int contextLength,
-                                     int contextStart);
-
-  void contextProjectionBackwardWeight(Matrix& weightGrad,
-                                       const IVector& sequence,
-                                       int contextLength,
-                                       int contextStart,
-                                       int totalPad,
-                                       size_t beginPad);
-
   void bilinearForward(const Matrix& in,
                        const size_t inImgH,
                        const size_t inImgW,
@@ -1535,10 +1484,11 @@ public:
   real getAbsSum();
 
   MatrixPtr getTranspose();
-  void transpose(MatrixPtr matTrans, bool memAlloc);
+  void transpose(MatrixPtr& matTrans, bool memAlloc);
+  void rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise);
 
   MatrixPtr getInverse();
-  void inverse(MatrixPtr matInv, bool memAlloc);
+  void inverse(MatrixPtr& matInv, bool memAlloc);
 
   void copyFrom(const Matrix& src);
 
@@ -1647,22 +1597,6 @@ public:
   void maxSequenceBackward(Matrix& outputGrad,
                            const IVector& sequence,
                            IVector& index);
-
-  void contextProjectionForward(Matrix& input,
-                                Matrix* weight,
-                                const IVector& sequence,
-                                int contextLength,
-                                int contextStart,
-                                size_t beginPad,
-                                bool isPadding);
-
-  void contextProjectionBackward(Matrix* inputGrad,
-                                 Matrix* weightGrad,
-                                 const IVector& sequence,
-                                 int contextLength,
-                                 int contextStart,
-                                 size_t beginPad,
-                                 bool isPadding);
 
   real* getRow(size_t row) { return BaseMatrix::rowBuf(row); }
   virtual real* getRowBuf(size_t row) { return getRow(row); }
@@ -1793,14 +1727,6 @@ public:
   void softreluDerivative(Matrix& output);
   void scaledTanh(Matrix& output, real p1, real p2);
 
-  void cosSim(Matrix& output1, Matrix& output2, real scale);
-  void cosSimDerivative(Matrix& output,
-                        Matrix& prevOut1,
-                        Matrix& prevOut2,
-                        Matrix& prevGrad1,
-                        Matrix& prevGrad2,
-                        real scale);
-
   void print(std::ostream& os) const;
   void print(std::ostream& os, size_t height, size_t width) const;
   void printOneRow(std::ostream& os, size_t idx) const;
@@ -1816,7 +1742,7 @@ public:
 
   void randomizeUniform();
 
-  void classificationError(Matrix& output, IVector& label);
+  void classificationError(Matrix& output, IVector& label, size_t topkSize = 1);
 
   void addByBitCode(size_t numClasses, const IVector& codes, const Matrix& vec);
 
