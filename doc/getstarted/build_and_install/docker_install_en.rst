@@ -9,8 +9,8 @@ Please be aware that you will need to change `Dockers settings
 of your hardware resource on Mac OS X and Windows.
 
 
-CPU-only and GPU Images
-------------------------
+Usage of CPU-only and GPU Images
+----------------------------------
 
 For each version of PaddlePaddle, we release 2 Docker images, a
 CPU-only one and a CUDA GPU one.  We do so by configuring

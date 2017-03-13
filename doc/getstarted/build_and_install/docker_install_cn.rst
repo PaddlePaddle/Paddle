@@ -4,8 +4,8 @@ PaddlePaddle的Docker容器使用方式
 PaddlePaddle目前唯一官方支持的运行的方式是Docker容器。因为Docker能在所有主要操作系统（包括Linux，Mac OS X和Windows）上运行。 请注意，您需要更改 `Dockers设置 <https://github.com/PaddlePaddle/Paddle/issues/627>`_ 才能充分利用Mac OS X和Windows上的硬件资源。
 
 
-纯CPU和GPU的docker镜像
-----------------------
+纯CPU和GPU的docker镜像使用说明
+------------------------------
 
 对于每一个PaddlePaddle版本，我们都会发布两个Docker镜像：纯CPU的和GPU的。
 我们通过设置 `dockerhub.com <https://hub.docker.com/r/paddledev/paddle/>`_ 自动生成最新的docker镜像：
