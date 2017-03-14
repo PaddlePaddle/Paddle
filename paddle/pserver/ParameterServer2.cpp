@@ -367,11 +367,8 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
                                    std::vector<Buffer>* outputBuffers) {
   VLOG(1) << "pserver: addGradient";
 
-/// forwardbackward delta from all trainers
-/// indicate the fluctuation caused by forwardbackward.
-#ifndef PADDLE_METRIC_LEARNING
-  // @TODO(yanfei):
-  // add support tuning forwardbackward balance for metric learning
+  // forwardbackward delta from all trainers
+  // indicate the fluctuation caused by forwardbackward.
   if (!numPassFinishClients_) {
     REGISTER_BARRIER_DELTA_SERVER_SET(
         *statSet_,
@@ -381,7 +378,6 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
         request.forwardbackward_time(),
         isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
   }
-#endif
 
   {
     /// approximately pure network overhead
