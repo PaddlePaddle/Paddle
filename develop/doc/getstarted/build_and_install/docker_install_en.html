@@ -176,9 +176,10 @@
     
     <nav class="local-toc"><ul>
 <li><a class="reference internal" href="#">PaddlePaddle in Docker Containers</a><ul>
-<li><a class="reference internal" href="#development-using-docker">Development Using Docker</a></li>
-<li><a class="reference internal" href="#cpu-only-and-gpu-images">CPU-only and GPU Images</a></li>
+<li><a class="reference internal" href="#usage-of-cpu-only-and-gpu-images">Usage of CPU-only and GPU Images</a></li>
+<li><a class="reference internal" href="#paddlepaddle-book">PaddlePaddle Book</a></li>
 <li><a class="reference internal" href="#non-avx-images">Non-AVX Images</a></li>
+<li><a class="reference internal" href="#development-using-docker">Development Using Docker</a></li>
 <li><a class="reference internal" href="#documentation">Documentation</a></li>
 </ul>
 </li>
@@ -220,6 +221,75 @@ running PaddlePaddle.  This is reasonable as Docker now runs on all
 major operating systems including Linux, Mac OS X, and Windows.
 Please be aware that you will need to change <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/issues/627">Dockers settings</a> to make full use
 of your hardware resource on Mac OS X and Windows.</p>
+<div class="section" id="usage-of-cpu-only-and-gpu-images">
+<h2>Usage of CPU-only and GPU Images<a class="headerlink" href="#usage-of-cpu-only-and-gpu-images" title="Permalink to this headline">¶</a></h2>
+<p>For each version of PaddlePaddle, we release 2 Docker images, a
+CPU-only one and a CUDA GPU one.  We do so by configuring
+<a class="reference external" href="https://hub.docker.com/r/paddledev/paddle/">dockerhub.com</a>
+automatically generate the latest docker images <cite>paddledev/paddle:0.10.0rc1-cpu</cite>
+and <cite>paddledev/paddle:0.10.0rc1-gpu</cite>.</p>
+<p>To run the CPU-only image as an interactive container:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it --rm paddledev/paddle:0.10.0rc1-cpu /bin/bash
+</pre></div>
+</div>
+<p>or, we can run it as a daemon container</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d -p <span class="m">2202</span>:22 -p <span class="m">8888</span>:8888 paddledev/paddle:0.10.0rc1-cpu
+</pre></div>
+</div>
+<p>and SSH to this container using password <code class="code docutils literal"><span class="pre">root</span></code>:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>ssh -p <span class="m">2202</span> root@localhost
+</pre></div>
+</div>
+<p>An advantage of using SSH is that we can connect to PaddlePaddle from
+more than one terminals.  For example, one terminal running vi and
+another one running Python interpreter.  Another advantage is that we
+can run the PaddlePaddle container on a remote server and SSH to it
+from a laptop.</p>
+<p>Above methods work with the GPU image too &#8211; just please don&#8217;t forget
+to install CUDA driver and let Docker knows about it:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
+docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:0.10.0rc1-gpu
+</pre></div>
+</div>
+</div>
+<div class="section" id="paddlepaddle-book">
+<h2>PaddlePaddle Book<a class="headerlink" href="#paddlepaddle-book" title="Permalink to this headline">¶</a></h2>
+<p>The Jupyter Notebook is an open-source web application that allows
+you to create and share documents that contain live code, equations,
+visualizations and explanatory text in a single browser.</p>
+<p>PaddlePaddle Book is an interactive Jupyter Notebook for users and developers.
+We already exposed port 8888 for this book. If you want to
+dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.</p>
+<p>Once you are inside the container, simply issue the command:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>jupyter notebook
+</pre></div>
+</div>
+<p>Then, you would back and paste the address into the local browser:</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>http://localhost:8888/
+</pre></div>
+</div>
+<p>That&#8217;s all. Enjoy your journey!</p>
+</div>
+<div class="section" id="non-avx-images">
+<h2>Non-AVX Images<a class="headerlink" href="#non-avx-images" title="Permalink to this headline">¶</a></h2>
+<p>Please be aware that the CPU-only and the GPU images both use the AVX
+instruction set, but old computers produced before 2008 do not support
+AVX.  The following command checks if your Linux computer supports
+AVX:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="k">if</span> cat /proc/cpuinfo <span class="p">|</span> grep -i avx<span class="p">;</span> <span class="k">then</span> <span class="nb">echo</span> Yes<span class="p">;</span> <span class="k">else</span> <span class="nb">echo</span> No<span class="p">;</span> <span class="k">fi</span>
+</pre></div>
+</div>
+<p>If it doesn&#8217;t, we will need to build non-AVX images manually from
+source code:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> ~
+git clone https://github.com/PaddlePaddle/Paddle.git
+<span class="nb">cd</span> Paddle
+docker build --build-arg <span class="nv">WITH_AVX</span><span class="o">=</span>OFF -t paddle:cpu-noavx -f paddle/scripts/docker/Dockerfile .
+docker build --build-arg <span class="nv">WITH_AVX</span><span class="o">=</span>OFF -t paddle:gpu-noavx -f paddle/scripts/docker/Dockerfile.gpu .
+</pre></div>
+</div>
+</div>
 <div class="section" id="development-using-docker">
 <h2>Development Using Docker<a class="headerlink" href="#development-using-docker" title="Permalink to this headline">¶</a></h2>
 <p>Developers can work on PaddlePaddle using Docker.  This allows
@@ -276,78 +346,7 @@ ctest
 </pre></div>
 </div>
 </li>
-<li><p class="first">Run PaddlePaddle Book under Docker Container</p>
-<p>The Jupyter Notebook is an open-source web application that allows
-you to create and share documents that contain live code, equations,
-visualizations and explanatory text in a single browser.</p>
-<p>PaddlePaddle Book is an interactive Jupyter Notebook for users and developers.
-We already exposed port 8888 for this book. If you want to
-dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.</p>
-<p>Once you are inside the container, simply issue the command:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>jupyter notebook
-</pre></div>
-</div>
-<p>Then, you would back and paste the address into the local browser:</p>
-<div class="highlight-text"><div class="highlight"><pre><span></span>http://localhost:8888/
-</pre></div>
-</div>
-<p>That&#8217;s all. Enjoy your journey!</p>
-</li>
 </ol>
-</div>
-<div class="section" id="cpu-only-and-gpu-images">
-<h2>CPU-only and GPU Images<a class="headerlink" href="#cpu-only-and-gpu-images" title="Permalink to this headline">¶</a></h2>
-<p>For each version of PaddlePaddle, we release 2 Docker images, a
-CPU-only one and a CUDA GPU one.  We do so by configuring
-<a class="reference external" href="https://hub.docker.com/r/paddledev/paddle/">dockerhub.com</a>
-automatically runs the following commands:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile --build-arg <span class="nv">BUILD_AND_INSTALL</span><span class="o">=</span>ON .
-docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu --build-arg <span class="nv">BUILD_AND_INSTALL</span><span class="o">=</span>ON .
-</pre></div>
-</div>
-<p>To run the CPU-only image as an interactive container:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it --rm paddledev/paddle:0.10.0rc1-cpu /bin/bash
-</pre></div>
-</div>
-<p>or, we can run it as a daemon container</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d -p <span class="m">2202</span>:22 paddledev/paddle:0.10.0rc1-cpu
-</pre></div>
-</div>
-<p>and SSH to this container using password <code class="code docutils literal"><span class="pre">root</span></code>:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>ssh -p <span class="m">2202</span> root@localhost
-</pre></div>
-</div>
-<p>An advantage of using SSH is that we can connect to PaddlePaddle from
-more than one terminals.  For example, one terminal running vi and
-another one running Python interpreter.  Another advantage is that we
-can run the PaddlePaddle container on a remote server and SSH to it
-from a laptop.</p>
-<p>Above methods work with the GPU image too &#8211; just please don&#8217;t forget
-to install CUDA driver and let Docker knows about it:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
-docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:0.10.0rc1-gpu
-</pre></div>
-</div>
-</div>
-<div class="section" id="non-avx-images">
-<h2>Non-AVX Images<a class="headerlink" href="#non-avx-images" title="Permalink to this headline">¶</a></h2>
-<p>Please be aware that the CPU-only and the GPU images both use the AVX
-instruction set, but old computers produced before 2008 do not support
-AVX.  The following command checks if your Linux computer supports
-AVX:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="k">if</span> cat /proc/cpuinfo <span class="p">|</span> grep -i avx<span class="p">;</span> <span class="k">then</span> <span class="nb">echo</span> Yes<span class="p">;</span> <span class="k">else</span> <span class="nb">echo</span> No<span class="p">;</span> <span class="k">fi</span>
-</pre></div>
-</div>
-<p>If it doesn&#8217;t, we will need to build non-AVX images manually from
-source code:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> ~
-git clone https://github.com/PaddlePaddle/Paddle.git
-<span class="nb">cd</span> Paddle
-docker build --build-arg <span class="nv">WITH_AVX</span><span class="o">=</span>OFF -t paddle:cpu-noavx -f paddle/scripts/docker/Dockerfile .
-docker build --build-arg <span class="nv">WITH_AVX</span><span class="o">=</span>OFF -t paddle:gpu-noavx -f paddle/scripts/docker/Dockerfile.gpu .
-</pre></div>
-</div>
 </div>
 <div class="section" id="documentation">
 <h2>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h2>
