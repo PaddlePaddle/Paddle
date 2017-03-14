@@ -71,21 +71,10 @@ function(link_paddle_exe TARGET_NAME)
         generate_rdma_links()
     endif()
 
-    if(WITH_METRIC)
-        if(WITH_GPU)
-            set(METRIC_LIBS paddle_metric_learning paddle_dserver_lib metric metric_cpu)
-        else()
-            set(METRIC_LIBS paddle_metric_learning paddle_dserver_lib metric_cpu)
-        endif()
-    else()
-        set(METRIC_LIBS "")
-    endif()
-
     target_circle_link_libraries(${TARGET_NAME}
         ARCHIVE_START
         paddle_gserver
         paddle_function
-        ${METRIC_LIBS}
         ARCHIVE_END
         paddle_pserver
         paddle_trainer_lib
@@ -95,7 +84,6 @@ function(link_paddle_exe TARGET_NAME)
         paddle_parameter
         paddle_proto
         paddle_cuda
-        ${METRIC_LIBS}
         ${EXTERNAL_LIBS}
         ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_DL_LIBS}
