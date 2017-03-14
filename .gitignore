@@ -2,6 +2,7 @@
 build/
 *.user
 
+*.pyc
 .vscode
 .idea
 .project
