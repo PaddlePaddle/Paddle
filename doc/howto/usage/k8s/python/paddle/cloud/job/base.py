@@ -4,11 +4,12 @@ from kubernetes import client
 from ..configuration import Configuration
 
 # If any onf the pod is runing, the status is JOB_STATUS_ACTIVE
-JOB_STATUS_ACTIVE   =0
+JOB_STATUS_ACTIVE = 0
 # If a specified number of successful completions is reached, the status is JOB_STATUS_COMPLETE
-JOB_STATUS_COMPLETE =1
+JOB_STATUS_COMPLETE = 1
 
 DEFAULT_CHECK_JOB_INTERVAL = 10
+
 
 class KubeJob(object):
     """
@@ -29,7 +30,8 @@ class KubeJob(object):
                     `-env
 
     """
-    def __init__(self,namespace, name):
+
+    def __init__(self, namespace, name):
         self.conf = Configuration()
         self._namespace = self.conf.namespace
         self._name = name
@@ -52,6 +54,7 @@ class KubeJob(object):
     @property
     def completions(self):
         return self._completions
+
     @completions.setter
     def completions(self, completions):
         self.completions = completions
@@ -84,6 +87,7 @@ class KubeJob(object):
     @property
     def docker_image(self):
         return self._docker_image
+
     @docker_image.setter
     def docker_image(self, docker_image):
         self._job.spec.template.spec.containers[0].image = docker_image
@@ -98,11 +102,13 @@ class KubeJob(object):
 
     def get_job_status(self):
         api_instance = client.BatchV1Api()
-        api_response = api_instance.read_namespaced_job_status(self._name, self._namespace)
+        api_response = api_instance.read_namespaced_job_status(self._name,
+                                                               self._namespace)
         if api_response.status.succeeded == self.completions:
             return JOB_STATUS_COMPLETE
         else:
             return JOB_STATUS_ACTIVE
+
     def sync_wait(self, timeout=None):
         remaind = timeout
         while True:
@@ -138,10 +144,11 @@ class KubeJob(object):
         container.name = self._name
         pod_spec.containers = [container]
         pod_template_spec.spec = pod_spec
-        job_spec.template=pod_template_spec
+        job_spec.template = pod_template_spec
 
         self._job.spec = job_spec
         self._job.metadata = job_metadata
+
 
 if __name__ == "__main__":
     job = KubeJob(namespace="yancey", name="paddle-cluster-job")

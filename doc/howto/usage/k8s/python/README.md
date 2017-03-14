@@ -17,7 +17,7 @@ paddle.cloud.init(server=<your k8s server>,namespace=<your namespace>)
 ```python
 job = paddle.cloud.BashJob(name=<job name>, \
   persistent_volume_claim_name=<persistent volume claim>)
-job.run()
+job.run(filename=<local script>, trainner_count=<trainner process number>)
 ```
 
 - 同步的等待这个Job执行完成

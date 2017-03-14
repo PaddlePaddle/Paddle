@@ -5,6 +5,7 @@ from configuration import Configuration
 
 import job
 
+
 def init(server, namespace):
     #Configuration().namespace(namespace)
     Configuration().namespace = namespace
