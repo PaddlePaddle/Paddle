@@ -195,6 +195,12 @@ def __monkeypatch_gradient_machine__():
 
     swig_paddle.GradientMachine.getParameters = getParameters
 
+    def getNonStaticParameters(self):
+        return (self.getNonStaticParameter(i)
+                for i in xrange(self.getNonStaticParameterSize()))
+
+    swig_paddle.GradientMachine.getNonStaticParameters = getNonStaticParameters
+
     def getLayerOutputs(self, layerNames):
         """
         getLayerOutputs. get outputs of layers and return a numpy matrix dict.

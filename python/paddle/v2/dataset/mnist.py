@@ -1,5 +1,21 @@
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 MNIST dataset.
+
+This module will download dataset from http://yann.lecun.com/exdb/mnist/ and
+parse train set and test set into paddle reader creators.
 """
 import paddle.v2.dataset.common
 import subprocess
@@ -35,29 +51,39 @@ def reader_creator(image_filename, label_filename, buffer_size):
         l = subprocess.Popen([zcat_cmd, label_filename], stdout=subprocess.PIPE)
         l.stdout.read(8)  # skip some magic bytes
 
-        while True:
-            labels = numpy.fromfile(
-                l.stdout, 'ubyte', count=buffer_size).astype("int")
+        try:  # reader could be break.
+            while True:
+                labels = numpy.fromfile(
+                    l.stdout, 'ubyte', count=buffer_size).astype("int")
 
-            if labels.size != buffer_size:
-                break  # numpy.fromfile returns empty slice after EOF.
+                if labels.size != buffer_size:
+                    break  # numpy.fromfile returns empty slice after EOF.
 
-            images = numpy.fromfile(
-                m.stdout, 'ubyte', count=buffer_size * 28 * 28).reshape(
-                    (buffer_size, 28 * 28)).astype('float32')
+                images = numpy.fromfile(
+                    m.stdout, 'ubyte', count=buffer_size * 28 * 28).reshape(
+                        (buffer_size, 28 * 28)).astype('float32')
 
-            images = images / 255.0 * 2.0 - 1.0
+                images = images / 255.0 * 2.0 - 1.0
 
-            for i in xrange(buffer_size):
-                yield images[i, :], int(labels[i])
-
-        m.terminate()
-        l.terminate()
+                for i in xrange(buffer_size):
+                    yield images[i, :], int(labels[i])
+        finally:
+            m.terminate()
+            l.terminate()
 
     return reader
 
 
 def train():
+    """
+    MNIST train set creator.
+
+    It returns a reader creator, each sample in the reader is image pixels in
+    [0, 1] and label in [0, 9].
+
+    :return: Train reader creator
+    :rtype: callable
+    """
     return reader_creator(
         paddle.v2.dataset.common.download(TRAIN_IMAGE_URL, 'mnist',
                                           TRAIN_IMAGE_MD5),
@@ -66,6 +92,15 @@ def train():
 
 
 def test():
+    """
+    MNIST test set cretor.
+
+    It returns a reader creator, each sample in the reader is image pixels in
+    [0, 1] and label in [0, 9].
+
+    :return: Test reader creator.
+    :rtype: callable
+    """
     return reader_creator(
         paddle.v2.dataset.common.download(TEST_IMAGE_URL, 'mnist',
                                           TEST_IMAGE_MD5),

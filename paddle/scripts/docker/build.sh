@@ -17,7 +17,8 @@ if [[ ${BUILD_AND_INSTALL:-OFF} == 'ON' ]]; then
     fi
 
     mkdir -p /paddle/build # -p means no error if exists
-    cd /paddle/build
+    # clean local cmake and third_party cache
+    cd /paddle/build && rm -rf * && rm -rf ../third_party
     cmake .. \
 	  -DWITH_DOC=${WITH_DOC:-OFF} \
 	  -DWITH_GPU=${WITH_GPU:-OFF} \
@@ -56,6 +57,12 @@ if [[ ${BUILD_AND_INSTALL:-OFF} == 'ON' ]]; then
     pip install /usr/local/opt/paddle/share/wheels/py_paddle*linux*.whl
     pip install /usr/local/opt/paddle/share/wheels/paddle*.whl
     paddle version
+
+    if [[ ${DOCKER_BUILD:-FALSE} == 'TRUE' ]]; then
+	# reduce docker image size
+	rm -rf /paddle/build
+	rm -rf /usr/local/opt/paddle/share/wheels/
+    fi
 fi
 
 trap : 0

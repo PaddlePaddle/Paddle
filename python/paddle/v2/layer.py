@@ -12,167 +12,72 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Before this new package paddle.v2.layer, users would need to use functions
-in paddle.trainer_config_helpers.layers to configure networks.
+`paddle.v2.layer` is a part of model config packages in paddle.v2. In API v2,
+we want to make Paddle a plain Python package. The model config package defined
+the way how to configure a neural network topology in Paddle Python code.
 
-The Old Way:
-=========
-This old way requires that the creation of a network be defined in a Python
-function, say network_config, and that this Python function being passed to
-paddle.trainer_config_helpers.parse_network_config for the creation of
-protobuf message description of this network.
+The primary usage shows below.
 
-```python
-def network_config():
-  img = paddle.trainer_config_helpers.data_layer(name="pixel", size=784)
-  inference = paddle.trainer_config_helpers.fc_layer(
-    input=img,
-    size=10,
-    act=paddle.trainer_config_helpers.SoftmaxActivation())
-  cost = paddle.trainer_config_helpers.classification_cost(
-    input=inference,
-    label=paddle.trainer_config_helpers.data_layer(name="label", size=10))
+..  code-block:: python
 
-proto_desc = parse_network_config(network_config)
-```
+    import paddle.v2 as paddle
 
-When parse_network_config executes network_config, those layer definition
-functions like data_layer and fc_layer would change some Python global variables,
-so that after the execution, parse_network_config could collect information from
-these global variables and generates the protobuf message.
+    img = paddle.layer.data(name='img', type=paddle.data_type.dense_vector(784))
+    hidden = paddle.layer.fc(input=img, size=200)
+    prediction = paddle.layer.fc(input=hidden, size=10,
+                                 act=paddle.activation.Softmax())
 
-
-
-The New Way:
-=========
-In this PR, we define a function in paddle.v2.layer which creates a Python
-class for each layer creation function in paddle.trainer_config_helpers.layers.
-Users can use create a network as follows:
-
-```python
-img = paddle.v2.layer.data(name="pixel", size=784)
-inference = paddle.v2.layer.fc(input=img, size=10, act=paddle.v2.layer.Softmax())
-cost = paddle.v2.layer.classification(
-  input=inference,
-  label=paddle.v2.layer.data(name="label", size=10))
-
-parameters = paddle.v2.parameters.create(cost)
-```
-
-This new way doesn't require those invocations to layer definition functions
-to be in a Python function but could be anywhere.
-
-Also, the creation of a protobuf message is hidden in the invocation of
-paddle.v2.parameters.create, no longer exposed to users.
+    # use prediction instance where needed.
+    parameters = paddle.parameters.create(cost)
 """
 
 import collections
 import inspect
-
+from config_base import Layer, __convert_to_v2__
 import paddle.trainer_config_helpers as conf_helps
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
-
-from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 from paddle.trainer_config_helpers.default_decorators import wrap_act_default
 from paddle.trainer_config_helpers.default_decorators import \
     wrap_bias_attr_default
+from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 from paddle.trainer_config_helpers.layers import layer_support
+from paddle.trainer.config_parser import \
+    RecurrentLayerGroupWithoutOutLinksBegin, RecurrentLayerGroupSetOutLink, \
+    RecurrentLayerGroupEnd, model_type
 
-import data_type
 import activation
+import re
+import data_type
 
 __all__ = ['parse_network', 'data']
-
-__projection_names__ = filter(lambda x: x.endswith('_projection'),
-                              dir(conf_helps))
-__all__ += __projection_names__
-
-__operator_names__ = filter(lambda x: x.endswith('_operator'), dir(conf_helps))
-__all__ += __operator_names__
 
 
 def parse_network(*outputs):
     """
-    parse all output layers and then generate a model config proto.
-    :param outputs:
-    :return:
+    Parse all output layers and then generate a ModelConfig object.
+
+    ..  note::
+
+        This function is used internally in paddle.v2 module. User should never
+        invoke this method.
+
+    :param outputs: Output layers.
+    :type outputs: Layer
+    :return: A ModelConfig object instance.
+    :rtype: ModelConfig
     """
 
     def __real_func__():
+        """
+        __real_func__ is the function that config_parser.parse invoked. It is
+        the plain old paddle configuration function.
+        """
         context = dict()
         real_output = [each.to_proto(context=context) for each in outputs]
         conf_helps.outputs(real_output)
 
     return __parse__(__real_func__)
-
-
-class Layer(object):
-    def __init__(self, name=None, parent_layers=None):
-        assert isinstance(parent_layers, dict)
-        self.name = name
-        self.__parent_layers__ = parent_layers
-
-    def to_proto(self, context):
-        """
-        function to set proto attribute
-        """
-        kwargs = dict()
-        for layer_name in self.__parent_layers__:
-            if not isinstance(self.__parent_layers__[layer_name],
-                              collections.Sequence):
-                v1_layer = self.__parent_layers__[layer_name].to_proto(
-                    context=context)
-            else:
-                v1_layer = map(lambda x: x.to_proto(context=context),
-                               self.__parent_layers__[layer_name])
-            kwargs[layer_name] = v1_layer
-
-        if self.name is None:
-            return self.to_proto_impl(**kwargs)
-        elif self.name not in context:
-            context[self.name] = self.to_proto_impl(**kwargs)
-
-        return context[self.name]
-
-    def to_proto_impl(self, **kwargs):
-        raise NotImplementedError()
-
-
-def __convert_to_v2__(method_name, parent_names, is_default_name=True):
-    if is_default_name:
-        wrapper = wrap_name_default(name_prefix=method_name)
-    else:
-        wrapper = None
-
-    class V2LayerImpl(Layer):
-        def __init__(self, **kwargs):
-            parent_layers = dict()
-            other_kwargs = dict()
-            for pname in parent_names:
-                if kwargs.has_key(pname):
-                    parent_layers[pname] = kwargs[pname]
-
-            for key in kwargs.keys():
-                if key not in parent_names:
-                    other_kwargs[key] = kwargs[key]
-
-            name = kwargs.get('name', None)
-            super(V2LayerImpl, self).__init__(name, parent_layers)
-            self.__other_kwargs__ = other_kwargs
-
-        if wrapper is not None:
-            __init__ = wrapper(__init__)
-
-        def to_proto_impl(self, **kwargs):
-            args = dict()
-            for each in kwargs:
-                args[each] = kwargs[each]
-            for each in self.__other_kwargs__:
-                args[each] = self.__other_kwargs__[each]
-            return getattr(conf_helps, method_name)(**args)
-
-    return V2LayerImpl
 
 
 """
@@ -182,6 +87,8 @@ So we also need to implement some special LayerV2.
 
 
 class DataLayerV2(Layer):
+    METHOD_NAME = 'data_layer'
+
     def __init__(self, name, type, **kwargs):
         assert isinstance(type, data_type.InputType)
 
@@ -199,6 +106,148 @@ class DataLayerV2(Layer):
         for each in self.__kwargs__:
             args[each] = self.__kwargs__[each]
         return getattr(conf_helps, self.__method_name__)(name=self.name, **args)
+
+    def __map_docstr__(doc):
+        doc = re.sub(r'(data = [^\)]+)\).*',
+                     "data = paddle.layer.data(name=\"input\", "
+                     "type=paddle.data_type.dense_vector(1000))", doc)
+
+        doc = re.sub(r':param size:.*',
+                     ':param type: Data type of this data layer', doc)
+        doc = re.sub(r':type size:.*',
+                     ":type size: paddle.v2.data_type.InputType", doc)
+        return doc
+
+
+class WithExtraParent(Layer):
+    def extra_parent(self):
+        return self.__extra_parent__
+
+    def __init__(self, name=None, parent_layers=None):
+        self.__extra_parent__ = []
+        super(WithExtraParent, self).__init__(
+            name=name, parent_layers=parent_layers)
+
+    def append_extra_parent(self, parent):
+        self.__extra_parent__.append(parent)
+
+    def to_proto(self, context):
+        """
+        function to set proto attribute
+        """
+        kwargs = dict()
+        for p in self.__extra_parent__:
+            p.to_proto(context=context)
+
+        for layer_name in self.__parent_layers__:
+            if not isinstance(self.__parent_layers__[layer_name],
+                              collections.Sequence):
+                v1_layer = self.__parent_layers__[layer_name].to_proto(
+                    context=context)
+            else:
+                v1_layer = map(lambda x: x.to_proto(context=context),
+                               self.__parent_layers__[layer_name])
+            kwargs[layer_name] = v1_layer
+
+        if self.context_name() is None:
+            return self.to_proto_impl(context=context, **kwargs)
+        elif self.context_name() not in context:
+            context[self.context_name()] = self.to_proto_impl(
+                context=context, **kwargs)
+
+        if self.use_context_name():
+            return context[self.context_name()]
+        else:
+            return context[self.name]
+
+
+class MemoryV2(WithExtraParent):
+    def __init__(self, name, **kwargs):
+        self.name = name
+        super(MemoryV2, self).__init__(name=name, parent_layers=dict())
+        self.__kwargs__ = kwargs
+        self.__boot_layer_name__ = None
+        if 'boot_layer' in kwargs:
+            begin_of_current_rnn = []
+            # TODO(yuyang18): Fix inspect, it could be wrong when user invoke a
+            # function inside step.
+            st = inspect.stack()
+            for i in xrange(len(st)):
+                locs = inspect.stack()[i][0].f_locals
+                keys = locs.keys()
+                for key in keys:
+                    val = locs[key]
+                    if isinstance(val, RecurrentLayerInput):
+                        begin_of_current_rnn.append(val)
+                    elif isinstance(val, collections.Sequence):
+                        for v in val:
+                            if isinstance(v, RecurrentLayerInput):
+                                begin_of_current_rnn.append(v)
+
+                if begin_of_current_rnn:
+                    break
+            assert begin_of_current_rnn is not None
+            for extra in begin_of_current_rnn:
+                self.append_extra_parent(extra)
+                assert isinstance(extra, WithExtraParent)
+                extra.append_extra_parent(kwargs['boot_layer'])
+                self.__boot_layer_name__ = kwargs['boot_layer'].name
+
+    def to_proto_impl(self, context, **kwargs):
+        args = dict()
+        for each in kwargs:
+            args[each] = kwargs[each]
+        for each in self.__kwargs__:
+            args[each] = self.__kwargs__[each]
+
+        if self.__boot_layer_name__ is not None:
+            args['boot_layer'] = context[self.__boot_layer_name__]
+
+        size = args.get('size', None)
+        if size is not None:
+            if callable(size):
+                real_size = size()
+            else:
+                real_size = size
+            args['size'] = real_size
+        return conf_helps.memory(name=self.name, **args)
+
+    def context_name(self):
+        return self.name + "#memory"
+
+    def use_context_name(self):
+        """
+        memory layer will have the same name with some layer
+        :return:
+        """
+        return True
+
+
+class LayerOutputV2(Layer):
+    """
+    LayerOutputV2 is used to store the result of LayerOutput in v1 api.
+    It will not store it's parents because layer_output has been parsed already.
+    """
+
+    def __init__(self, layer_output):
+        assert isinstance(layer_output, conf_helps.LayerOutput)
+        self.layer_output = layer_output
+        super(LayerOutputV2, self).__init__(
+            name=layer_output.name, parent_layers=dict())
+
+    def to_proto_impl(self):
+        return self.layer_output
+
+
+class StaticInputV2(object):
+    def __init__(self, input, is_seq=False, size=None):
+        assert isinstance(input, LayerV2)
+        self.name = input.name
+        self.input = input
+        self.is_seq = is_seq
+        self.size = size
+        # TODO(add size check)
+        # assert input.size is not None or size is not None
 
 
 class MixedLayerV2(Layer):
@@ -232,7 +281,6 @@ class MixedLayerV2(Layer):
         other_kwargs['act'] = act
         other_kwargs['bias_attr'] = bias_attr
         other_kwargs['layer_attr'] = layer_attr
-
         parent_layers = {"input": self.__inputs__}
         super(MixedLayerV2, self).__init__(name, parent_layers)
         self.__other_kwargs__ = other_kwargs
@@ -242,7 +290,7 @@ class MixedLayerV2(Layer):
             self.__inputs__.append(other)
             return self
         else:
-            raise MixedLayerTypeV2.AddToSealedMixedLayerExceptionV2()
+            raise MixedLayerV2.AddToSealedMixedLayerExceptionV2()
 
     def __enter__(self):
         assert len(self.__inputs__) == 0
@@ -257,6 +305,13 @@ class MixedLayerV2(Layer):
             args[each] = kwargs[each]
         for each in self.__other_kwargs__:
             args[each] = self.__other_kwargs__[each]
+        size = args.get('size', None)
+        if size is not None:
+            if callable(size):
+                real_size = size()
+            else:
+                real_size = size
+            args['size'] = real_size
         return getattr(conf_helps, self.__method_name__)(**args)
 
 
@@ -273,14 +328,52 @@ def mixed(size=0,
     return MixedLayerV2(size, input, name, act, bias_attr, layer_attr)
 
 
+class RecurrentLayerInput(WithExtraParent):
+    def __init__(self, recurrent_name, index, parent_layers):
+        assert len(parent_layers) == 1
+        self.__parents__ = parent_layers.values()[0]
+        super(RecurrentLayerInput, self).__init__(
+            name=self.__parents__[index].name, parent_layers=parent_layers)
+        self.__recurrent_name__ = recurrent_name
+
+    def context_name(self):
+        return self.__recurrent_name__ + ".begin"
+
+    def to_proto_impl(self, context, **kwargs):
+        model_type('recurrent_nn')
+        RecurrentLayerGroupWithoutOutLinksBegin(
+            name=self.__recurrent_name__,
+            in_links=map(lambda x: x.name, self.__parents__))
+        return self
+
+
+class RecurrentLayerOutput(Layer):
+    def __init__(self, recurrent_name, index, parent_layers):
+        assert len(parent_layers) == 1
+        self.__parents__ = parent_layers.values()[0]
+        super(RecurrentLayerOutput, self).__init__(
+            name=self.__parents__[index].name, parent_layers=parent_layers)
+        self.__recurrent_name__ = recurrent_name
+
+    def context_name(self):
+        return self.__recurrent_name__ + ".end"
+
+    def to_proto_impl(self, **kwargs):
+        for l in self.__parents__:
+            RecurrentLayerGroupSetOutLink(l.name)
+        RecurrentLayerGroupEnd(name=self.__recurrent_name__)
+
+
 LayerV2 = Layer
 data = DataLayerV2
+data.__name__ = 'data'
 AggregateLevel = conf_helps.layers.AggregateLevel
 ExpandLevel = conf_helps.layers.ExpandLevel
+memory = MemoryV2
 
 
 def __layer_name_mapping__(inname):
-    if inname in ['data_layer', 'memory', 'mixed_layer']:
+    if inname in ['data_layer', 'memory', 'mixed_layer', 'recurrent_group']:
         # Do Not handle these layers
         return
     elif inname == 'maxid_layer':
@@ -302,8 +395,10 @@ def __layer_name_mapping__(inname):
 def __layer_name_mapping_parent_names__(inname):
     all_args = getattr(conf_helps, inname).argspec.args
     return filter(
-        lambda x: x in ['input1', 'input2','label', 'input', 'a', 'b', 'expand_as',
-                        'weights', 'vectors', 'weight', 'score', 'left', 'right'],
+        lambda x: x in ['input1', 'input2', 'label', 'input', 'a', 'b',
+                        'expand_as',
+                        'weights', 'vectors', 'weight', 'score', 'left',
+                        'right', 'output_mem'],
         all_args)
 
 
@@ -311,6 +406,7 @@ def __convert_layer__(_new_name_, _old_name_, _parent_names_):
     global __all__
     __all__.append(_new_name_)
     globals()[new_name] = __convert_to_v2__(_old_name_, _parent_names_)
+    globals()[new_name].__name__ = new_name
 
 
 for each_layer_name in dir(conf_helps):
@@ -324,10 +420,71 @@ del parent_names
 del new_name
 del each_layer_name
 
+
+@wrap_name_default()
+def recurrent_group(step, input, name=None):
+    if not isinstance(input, collections.Sequence):
+        input = [input]
+
+    non_static_inputs = filter(lambda x: not isinstance(x, StaticInputV2),
+                               input)
+    actual_input = [
+        RecurrentLayerInput(
+            recurrent_name=name,
+            index=i,
+            parent_layers={'recurrent_inputs': non_static_inputs})
+        for i in xrange(len(non_static_inputs))
+    ]
+
+    def __real_step__(*args):
+        rnn_input = list(args)
+        static_inputs = filter(lambda x: isinstance(x, StaticInputV2), input)
+        for static_input in static_inputs:
+            mem_name = "__%s_memory__" % static_input.input.name
+            mem = memory(
+                name=mem_name,
+                is_seq=static_input.is_seq,
+                size=static_input.input.calculate_size,
+                boot_layer=static_input.input)
+            with mixed(
+                    name=mem_name,
+                    size=static_input.input.calculate_size,
+                    act=activation.Identity()) as mix:
+                mix += identity_projection(input=mem)
+            rnn_input.insert(input.index(static_input), mix)
+        return step(*rnn_input)
+
+    actual_output = __real_step__(*actual_input)
+
+    if not isinstance(actual_output, collections.Sequence):
+        actual_output = [actual_output]
+
+    retv = [
+        RecurrentLayerOutput(
+            recurrent_name=name,
+            index=i,
+            parent_layers={'recurrent_outputs': actual_output})
+        for i in xrange(len(actual_output))
+    ]
+    if len(retv) == 1:
+        return retv[0]
+    else:
+        return retv
+
+
+__projection_names__ = filter(lambda x: x.endswith('_projection'),
+                              dir(conf_helps))
+
+__all__ += __projection_names__
+
+__operator_names__ = filter(lambda x: x.endswith('_operator'), dir(conf_helps))
+__all__ += __operator_names__
+
 # convert projection
 for prj in __projection_names__:
     globals()[prj] = __convert_to_v2__(
         prj, parent_names=['input'], is_default_name=False)
+    globals()[prj].__name__ = prj
 
 # convert operator
 operator_list = [
@@ -338,3 +495,4 @@ operator_list = [
 for op in operator_list:
     globals()[op[0]] = __convert_to_v2__(
         op[0], parent_names=op[1], is_default_name=False)
+    globals()[op[0]].__name__ = op[0]

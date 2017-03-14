@@ -17,16 +17,34 @@ import collections
 from paddle.proto.ModelConfig_pb2 import ModelConfig
 
 import layer as v2_layer
+from layer import WithExtraParent
 
 __all__ = ['Topology']
 
 
+def __flatten__(lis):
+    """
+    Given a list, possibly nested to any level, return it flattened.
+    """
+    new_lis = []
+    for item in lis:
+        if isinstance(item, collections.Sequence):
+            new_lis.extend(__flatten__(item))
+        else:
+            new_lis.append(item)
+    return new_lis
+
+
 def __bfs_travel__(callback, *layers):
+    layers = __flatten__(layers)
     for each_layer in layers:
         __break__ = callback(each_layer)
         if __break__:
             return
-        __bfs_travel__(callback, *each_layer.__parent_layers__.values())
+        __layers__ = each_layer.__parent_layers__.values()
+        if isinstance(each_layer, WithExtraParent):
+            __layers__ = __layers__ + each_layer.extra_parent()
+        __bfs_travel__(callback, *__layers__)
 
 
 class Topology(object):

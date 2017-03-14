@@ -22,7 +22,7 @@ cd $SCRIPTPATH
 
 $1 -m pip install ../../../../paddle/dist/*.whl
 
-test_list="test_data_feeder.py"
+test_list="test_data_feeder.py test_parameters.py"
 
 export PYTHONPATH=$PWD/../../../../python/
 
