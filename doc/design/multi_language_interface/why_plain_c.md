@@ -75,7 +75,7 @@ extern "C" PD_Error getShape(PD_Matrix, uint64_t* height, uint64_t* width);
 
 | 结论 | 对比 | 原因 |
 |---| --- | --- |
-| 使用动态库 | 不实用静态库 | 解释型语言只能调用动态库，Paddle静态库链接复杂 |
+| 使用动态库 | 不使用静态库 | 解释型语言只能调用动态库，Paddle静态库链接复杂 |
 | 不嵌入其他语言解释器 | 不嵌入Python解释器 | Paddle C++目前嵌入Python解释器，会导致不同版本Python在一个进程里的bug |
 | 不引用其他动态库 | | Paddle一个动态库可以在任何Linux系统上运行 |
 | 使用C99做接口 | 不使用C++做接口 | C有标准的ABI，C99是目前C最广泛的使用标准(而不是C11，和C89) |
