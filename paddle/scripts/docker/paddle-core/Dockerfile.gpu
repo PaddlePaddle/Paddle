@@ -1,4 +1,4 @@
-FROM python:2.7.13-slim
+FROM nvidia/cuda:7.5-cudnn5-runtime-ubuntu14.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 # ENV variables
@@ -18,14 +18,14 @@ ENV LANG en_US.UTF-8
 
 RUN sed 's@http:\/\/archive.ubuntu.com\/ubuntu\/@mirror:\/\/mirrors.ubuntu.com\/mirrors.txt@' -i /etc/apt/sources.list && \
     apt-get update && \
-    apt-get install -y libgfortran3 && \
+    apt-get install -y python python-pip libgfortran3 && \
     apt-get clean -y && \
     pip install --upgrade pip && \
     pip install -U 'protobuf==3.1.0'
 RUN pip install numpy
 # Use different deb file when building different type of images
-ADD dist/cpu/*.deb /usr/local/opt/paddle/deb/cpu/
-RUN dpkg --force-all -i /usr/local/opt/paddle/deb/cpu/*.deb && rm -f /usr/local/opt/paddle/deb/cpu/*.deb
+ADD dist/gpu/*.deb /usr/local/opt/paddle/deb/gpu/
+RUN dpkg --force-all -i /usr/local/opt/paddle/deb/gpu/*.deb && rm -f /usr/local/opt/paddle/deb/gpu/*.deb
 
 ENV PATH="/usr/local/opt/paddle/bin/:${PATH}"
 # default command shows the paddle version and exit

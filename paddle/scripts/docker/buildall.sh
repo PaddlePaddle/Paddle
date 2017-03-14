@@ -1,32 +1,31 @@
 #!/bin/bash
 
-BINARIES_DIR=paddle/scripts/docker/buildimage/binaries
 BUILD_DIR=$PWD/build
+DEB_DIST_DIR=$PWD/dist
+VERSION=latest
 
 function build_in_docker() {
   if [ ! -d $BUILD_DIR ]; then
     mkdir -p $BUILD_DIR
   fi
+  if [ ! -d $DEB_DIST_DIR ]; then
+    mkdir -p $DEB_DIST_DIR
+  fi
   docker build . -t paddle-build-env -f paddle/scripts/docker/paddle-dev/Dockerfile
   # FIXME: need to wait a signal not sleeping
-  BUILDER=$(docker run -d -v ${PWD}:/paddle  paddle-build-env sleep 3600)
-  # TODO(typhoonzero):
-  docker exec $BUILDER /bin/bash -c "export BUILD_AND_INSTALL=ON && /paddle/paddle/scripts/docker/build.sh"
-  mkdir -p $BINARIES_DIR
-  # docker cp $BUILDER:/usr/local/opt/paddle/bin/paddle_pserver_main $BINARIES_DIR
-  # docker cp $BUILDER:/usr/local/opt/paddle/bin/paddle_trainer $BINARIES_DIR
-  # docker cp $BUILDER:/usr/local/opt/paddle/bin/paddle_merge_model $BINARIES_DIR
-  # docker cp $BUILDER:/usr/local/bin/paddle $BINARIES_DIR
-  # docker cp $BUILDER:/usr/local/opt/paddle/bin/paddle_usage $BINARIES_DIR
-  #
-  # docker cp $BUILDER:/usr/local/opt/paddle/share/wheels $BINARIES_DIR
+  BUILDER=$(docker run -d -v ${PWD}:/root/paddle -v ${DEB_DIST_DIR}:/root/dist paddle-build-env sleep 3600)
+  # NOTICE: build deb files for real paddle image
+  docker exec $BUILDER /bin/bash -c "/root/paddle/paddle/scripts/deb/build_scripts/build.sh"
 
   docker stop $BUILDER && docker rm $BUILDER
 }
 
 function build_paddle_core() {
-  docker build . -t paddle-core -f paddle/scripts/docker/paddle-core/Dockerfile
+  docker build . -t paddle-core:$VERSION -f paddle/scripts/docker/paddle-core/Dockerfile
+  docker build . -t paddle-core:gpu-$VERSION -f paddle/scripts/docker/paddle-core/Dockerfile.gpu
+  docker build . -t paddle-core:cpu-noavx-$VERSION -f paddle/scripts/docker/paddle-core/Dockerfile.noavx
+  docker build . -t paddle-core:gpu-noavx-$VERSION -f paddle/scripts/docker/paddle-core/Dockerfile.gpunoavx
 }
 
 build_in_docker
-#build_paddle_core
+build_paddle_core

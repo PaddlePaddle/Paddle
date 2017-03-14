@@ -24,8 +24,9 @@ RUN sed 's@http:\/\/archive.ubuntu.com\/ubuntu\/@mirror:\/\/mirrors.ubuntu.com\/
     pip install -U 'protobuf==3.1.0'
 RUN pip install numpy
 # Use different deb file when building different type of images
-ADD dist/cpu/*.deb /usr/local/opt/paddle/deb/cpu/
-RUN dpkg --force-all -i /usr/local/opt/paddle/deb/cpu/*.deb && rm -f /usr/local/opt/paddle/deb/cpu/*.deb
+ADD dist/gpu-noavx/*.deb /usr/local/opt/paddle/deb/gpu-noavx/
+RUN dpkg --force-all -i /usr/local/opt/paddle/deb/gpu-noavx/*.deb && rm -f /usr/local/opt/paddle/deb/gpu-noavx/*.deb
+
 
 ENV PATH="/usr/local/opt/paddle/bin/:${PATH}"
 # default command shows the paddle version and exit
