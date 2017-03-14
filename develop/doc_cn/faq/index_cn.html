@@ -203,6 +203,7 @@
 <li><a class="reference internal" href="#cmake-pythonlibspythoninterp">10. CMake源码编译, 找到的PythonLibs和PythonInterp版本不一致</a></li>
 <li><a class="reference internal" href="#a-protocol-message-was-rejected-because-it-was-too-big">10. A protocol message was rejected because it was too big</a></li>
 <li><a class="reference internal" href="#gpu">11. 如何指定GPU设备</a></li>
+<li><a class="reference internal" href="#floating-point-exception">12. 训练过程中出现 <code class="code docutils literal"><span class="pre">Floating</span> <span class="pre">point</span> <span class="pre">exception</span></code>, 训练因此退出怎么办?</a></li>
 </ul>
 </li>
 </ul>
@@ -260,6 +261,7 @@
 <li><a class="reference internal" href="#cmake-pythonlibspythoninterp" id="id25">10. CMake源码编译, 找到的PythonLibs和PythonInterp版本不一致</a></li>
 <li><a class="reference internal" href="#a-protocol-message-was-rejected-because-it-was-too-big" id="id26">10. A protocol message was rejected because it was too big</a></li>
 <li><a class="reference internal" href="#gpu" id="id27">11. 如何指定GPU设备</a></li>
+<li><a class="reference internal" href="#floating-point-exception" id="id28">12. 训练过程中出现 <code class="code docutils literal"><span class="pre">Floating</span> <span class="pre">point</span> <span class="pre">exception</span></code>, 训练因此退出怎么办?</a></li>
 </ul>
 </li>
 </ul>
@@ -560,6 +562,17 @@ F1205 <span class="m">14</span>:59:50.295174 <span class="m">14703</span> Traine
 <div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train --use_gpu<span class="o">=</span><span class="nb">true</span> --trainer_count<span class="o">=</span><span class="m">2</span> --gpu_id<span class="o">=</span><span class="m">2</span>
 </pre></div>
 </div>
+</div>
+<div class="section" id="floating-point-exception">
+<h2><a class="toc-backref" href="#id28">12. 训练过程中出现 <code class="code docutils literal"><span class="pre">Floating</span> <span class="pre">point</span> <span class="pre">exception</span></code>, 训练因此退出怎么办?</a><a class="headerlink" href="#floating-point-exception" title="永久链接至标题">¶</a></h2>
+<p>Paddle二进制在运行时捕获了浮点数异常，只要出现浮点数异常(即训练过程中出现NaN或者Inf)，立刻退出。浮点异常通常的原因是浮点数溢出、除零等问题。
+主要原因包括两个方面:</p>
+<ul class="simple">
+<li>训练过程中参数或者训练过程中的梯度尺度过大，导致参数累加，乘除等时候，导致了浮点数溢出。</li>
+<li>模型一直不收敛，发散到了一个数值特别大的地方。</li>
+<li>训练数据有问题，导致参数收敛到了一些奇异的情况。或者输入数据尺度过大，有些特征的取值达到数百万，这时进行矩阵乘法运算就可能导致浮点数溢出。</li>
+</ul>
+<p>主要的解决办法是减小学习律或者对数据进行归一化处理。</p>
 </div>
 </div>
 
