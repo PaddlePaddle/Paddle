@@ -5169,7 +5169,7 @@ def minus(layer1, layer2, name=None, layer_attr=None):
 
 @wrap_name_default()
 @layer_support()
-def mse_cost(input, target, size, name=None, layer_attr=None):
+def mse_cost(input, target, name=None, layer_attr=None):
     """
     A wrapper which implements mean squared error cost:
         1/N sum_i(||x_i - y_i||^2).
@@ -5183,8 +5183,6 @@ def mse_cost(input, target, size, name=None, layer_attr=None):
     :type input: LayerOutput
     :param target: The target value layer.
     :type target: LayerOutput
-    :param size: The size of the vector.
-    :type size: int
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
     :param layer_attr: Extra Layer Attribute.
@@ -5196,7 +5194,7 @@ def mse_cost(input, target, size, name=None, layer_attr=None):
 
     diff = minus(input, target)
     dotmul = mixed_layer(
-        size=size, input=[dotmul_operator(
+        size=input.size, input=[dotmul_operator(
             a=diff, b=diff, scale=1)])
     cost = sum_cost(dotmul)
     return cost
