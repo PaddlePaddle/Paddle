@@ -106,6 +106,8 @@ __all__ = [
     'rank_cost',
     'lambda_cost',
     'huber_cost',
+    'mse_cost',
+    'minus',
     'block_expand_layer',
     'maxout_layer',
     'out_prod_layer',
@@ -5133,3 +5135,68 @@ def multi_binary_label_cross_entropy(input,
         LayerType.MULTI_BIN_LABEL_CROSS_ENTROPY,
         parents=[input, label],
         size=1)
+
+
+@wrap_name_default()
+@layer_support()
+def minus(layer1, layer2, name=None, layer_attr=None):
+    """
+    A wrapper which performs the operation x - y.
+
+    .. code-block:: python
+
+       cost = minum(layer1=x_layer, layer2=y_layer)
+
+
+    :param layer1: The first layer
+    :type layer1: LayerOutput
+    :param layer2: The second layer
+    :type layer2: LayerOutput
+    :param name: The name of this layers. It is not necessary.
+    :type name: None|basestring
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert layer1.size == layer2.size
+
+    tmp = slope_intercept_layer(input=layer2, slope=-1, intercept=0.)
+    out = addto_layer(
+        name=name, input=[layer1, tmp], act=LinearActivation(), bias_attr=False)
+    return out
+
+
+@wrap_name_default()
+@layer_support()
+def mse_cost(input, target, size, name=None, layer_attr=None):
+    """
+    A wrapper which implements mean squared error cost:
+        1/N sum_i(||x_i - y_i||^2).
+
+    .. code-block:: python
+
+       cost = mse_cost(input=input_layer, target=target_value_layer, size=size)
+
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param target: The target value layer.
+    :type target: LayerOutput
+    :param size: The size of the vector.
+    :type size: int
+    :param name: The name of this layers. It is not necessary.
+    :type name: None|basestring
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert input.size == target.size
+
+    diff = minus(input, target)
+    dotmul = mixed_layer(
+        size=size, input=[dotmul_operator(
+            a=diff, b=diff, scale=1)])
+    cost = sum_cost(dotmul)
+    return cost
