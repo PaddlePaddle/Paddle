@@ -4,12 +4,12 @@
 
 We want Paddle to support training on the general-purpose cluster. The cluster runs Paddle, the Web server (e.g., Nginx), the log collector (e.g., fluentd), the distributed queue service (e.g., Kafka), the log joiner and other data processors written using Storm, Spark, and Hadoop MapReduce on the same cluster. As illustrated in the following graph:
 
-![general purpose cluster](src/arch.png)
+<img src="src/arch.png"/>
 
 This poses new challenges for Paddle,
 
 - Paddle need to be fault tolerant.
-- Input training data can be online data from real time logs or batched data from distributed file system.
+- Input training data can be online data from real time logs or batch data from distributed file system.
 - User needs a simple way to train model on Paddle cloud. Complexities such as job scheduling should be hidden from user.
 
 ## Training Job
@@ -22,7 +22,7 @@ A training job will be created once user asks Paddle cloud to train a model. The
 
 One training job will only have one master process, typically multiple trainer processes and parameter server processes. Their relation is illustrated in the following graph:
 
-![process collabration](src/paddle-on-kubernetes-invited-blog-model-sharding.png)
+<img src="src/paddle-on-kubernetes-invited-blog-model-sharding.png"/>
 
 ### Master Process
 
@@ -38,15 +38,15 @@ Master process will:
 
 Master process has three task queues to track training progress as shown in the graph below:
 
-![task queues](src/paddle-task-queues.png)
+<img src="src/paddle-task-queues.png"/>
 
-- The todo queue holds tasks to be dispatched.
+- The todo queue holds tasks to be dispatched. When a job starts, the master process fills in the todo queue with all tasks.
 - The pending queue holds tasks that are currently training by trainers, and a mapping from trainers to their training tasks.
 - the done queue holds tasks that are already trained.
 
 A dataset will be sharded into tasks and dispatched by the master process. The life cycle of a single task is illustrated below:
 
-![task states](src/paddle-task-states.png)
+<img src="src/paddle-task-states.png"/>
 
 1. When a new pass of training starts, all tasks will be placed in the todo queue.
 1. The master process will dispatch few tasks to each trainer at a time, puts them in the pending queue and waits for completion.
