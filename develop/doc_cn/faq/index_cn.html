@@ -33,7 +33,7 @@
               href="../genindex.html"/>
         <link rel="search" title="搜索" href="../search.html"/>
     <link rel="top" title="PaddlePaddle  文档" href="../index.html"/>
-        <link rel="prev" title="Trainer API" href="../api/v2/run_logic.html"/> 
+        <link rel="prev" title="Training and Inference" href="../api/v2/run_logic.html"/> 
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
   <link rel="stylesheet" href="../_static/css/override.css" type="text/css" />
@@ -160,9 +160,17 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../api/index_cn.html">API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../api/v2/model_configs.html">Configuration Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/v2/data.html">Data Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/v2/run_logic.html">Trainer API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/run_logic.html">训练与应用</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">FAQ</a></li>
@@ -195,6 +203,7 @@
 <li><a class="reference internal" href="#cmake-pythonlibspythoninterp">10. CMake源码编译, 找到的PythonLibs和PythonInterp版本不一致</a></li>
 <li><a class="reference internal" href="#a-protocol-message-was-rejected-because-it-was-too-big">10. A protocol message was rejected because it was too big</a></li>
 <li><a class="reference internal" href="#gpu">11. 如何指定GPU设备</a></li>
+<li><a class="reference internal" href="#floating-point-exception">12. 训练过程中出现 <code class="code docutils literal"><span class="pre">Floating</span> <span class="pre">point</span> <span class="pre">exception</span></code>, 训练因此退出怎么办?</a></li>
 </ul>
 </li>
 </ul>
@@ -252,6 +261,7 @@
 <li><a class="reference internal" href="#cmake-pythonlibspythoninterp" id="id25">10. CMake源码编译, 找到的PythonLibs和PythonInterp版本不一致</a></li>
 <li><a class="reference internal" href="#a-protocol-message-was-rejected-because-it-was-too-big" id="id26">10. A protocol message was rejected because it was too big</a></li>
 <li><a class="reference internal" href="#gpu" id="id27">11. 如何指定GPU设备</a></li>
+<li><a class="reference internal" href="#floating-point-exception" id="id28">12. 训练过程中出现 <code class="code docutils literal"><span class="pre">Floating</span> <span class="pre">point</span> <span class="pre">exception</span></code>, 训练因此退出怎么办?</a></li>
 </ul>
 </li>
 </ul>
@@ -553,6 +563,17 @@ F1205 <span class="m">14</span>:59:50.295174 <span class="m">14703</span> Traine
 </pre></div>
 </div>
 </div>
+<div class="section" id="floating-point-exception">
+<h2><a class="toc-backref" href="#id28">12. 训练过程中出现 <code class="code docutils literal"><span class="pre">Floating</span> <span class="pre">point</span> <span class="pre">exception</span></code>, 训练因此退出怎么办?</a><a class="headerlink" href="#floating-point-exception" title="永久链接至标题">¶</a></h2>
+<p>Paddle二进制在运行时捕获了浮点数异常，只要出现浮点数异常(即训练过程中出现NaN或者Inf)，立刻退出。浮点异常通常的原因是浮点数溢出、除零等问题。
+主要原因包括两个方面:</p>
+<ul class="simple">
+<li>训练过程中参数或者训练过程中的梯度尺度过大，导致参数累加，乘除等时候，导致了浮点数溢出。</li>
+<li>模型一直不收敛，发散到了一个数值特别大的地方。</li>
+<li>训练数据有问题，导致参数收敛到了一些奇异的情况。或者输入数据尺度过大，有些特征的取值达到数百万，这时进行矩阵乘法运算就可能导致浮点数溢出。</li>
+</ul>
+<p>主要的解决办法是减小学习律或者对数据进行归一化处理。</p>
+</div>
 </div>
 
 
@@ -563,7 +584,7 @@ F1205 <span class="m">14</span>:59:50.295174 <span class="m">14703</span> Traine
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="../api/v2/run_logic.html" class="btn btn-neutral" title="Trainer API" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="../api/v2/run_logic.html" class="btn btn-neutral" title="Training and Inference" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

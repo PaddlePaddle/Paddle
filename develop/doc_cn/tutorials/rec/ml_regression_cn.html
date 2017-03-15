@@ -162,9 +162,17 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">Configuration Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">Data Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">Trainer API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
@@ -672,7 +680,7 @@ cp ml-1m/ratings.dat.test .
 <li>文本投影层， <a class="reference internal" href="../../api/v1/trainer_config_helpers/layers.html#api-trainer-config-helpers-layers-context-projection"><span class="std std-ref">context_projection</span></a></li>
 <li>采样层， <a class="reference internal" href="../../api/v1/trainer_config_helpers/layers.html#api-trainer-config-helpers-layers-pooling-layer"><span class="std std-ref">pooling_layer</span></a></li>
 <li>余弦相似度层， <a class="reference internal" href="../../api/v1/trainer_config_helpers/layers.html#api-trainer-config-helpers-layers-cos-sim"><span class="std std-ref">cos_sim</span></a></li>
-<li>文本卷积采样层， <a class="reference internal" href="../../api/v1/trainer_config_helpers/networks.html#api-trainer-config-helpers-network-text-conv-pool"><span class="std std-ref">text_conv_pool</span></a></li>
+<li>文本卷积采样层， <a class="reference internal" href="../../api/v2/config/networks.html#api-trainer-config-helpers-network-text-conv-pool"><span class="std std-ref">text_conv_pool</span></a></li>
 <li>声明Python数据源， <a class="reference internal" href="../../api/v1/trainer_config_helpers/data_sources.html#api-trainer-config-helpers-data-sources"><span class="std std-ref">DataSources</span></a></li>
 </ul>
 </div>

@@ -162,9 +162,17 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api/index_cn.html">API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="api/v2/model_configs.html">Configuration Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/v2/data.html">Data Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/v2/run_logic.html">Trainer API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/v2/run_logic.html">训练与应用</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="faq/index_cn.html">FAQ</a></li>
@@ -223,121 +231,6 @@
        <td></td>
        <td>&#160;&#160;&#160;
        <a href="api/v1/trainer_config_helpers/data_sources.html#module-paddle.trainer_config_helpers.data_sources"><code class="xref">paddle.trainer_config_helpers.data_sources</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/model_configs.html#module-paddle.v2.activation"><code class="xref">paddle.v2.activation</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/model_configs.html#module-paddle.v2.attr"><code class="xref">paddle.v2.attr</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.data_feeder"><code class="xref">paddle.v2.data_feeder</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.data_type"><code class="xref">paddle.v2.data_type</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.dataset"><code class="xref">paddle.v2.dataset</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.dataset.cifar"><code class="xref">paddle.v2.dataset.cifar</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.dataset.conll05"><code class="xref">paddle.v2.dataset.conll05</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.dataset.imdb"><code class="xref">paddle.v2.dataset.imdb</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.dataset.imikolov"><code class="xref">paddle.v2.dataset.imikolov</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.dataset.mnist"><code class="xref">paddle.v2.dataset.mnist</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.dataset.movielens"><code class="xref">paddle.v2.dataset.movielens</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.dataset.sentiment"><code class="xref">paddle.v2.dataset.sentiment</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.dataset.uci_housing"><code class="xref">paddle.v2.dataset.uci_housing</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/run_logic.html#module-paddle.v2.event"><code class="xref">paddle.v2.event</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/model_configs.html#module-paddle.v2.layer"><code class="xref">paddle.v2.layer</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.minibatch"><code class="xref">paddle.v2.minibatch</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/model_configs.html#module-paddle.v2.networks"><code class="xref">paddle.v2.networks</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/model_configs.html#module-paddle.v2.optimizer"><code class="xref">paddle.v2.optimizer</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/run_logic.html#module-paddle.v2.parameters"><code class="xref">paddle.v2.parameters</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/model_configs.html#module-paddle.v2.pooling"><code class="xref">paddle.v2.pooling</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.reader"><code class="xref">paddle.v2.reader</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/data.html#module-paddle.v2.reader.creator"><code class="xref">paddle.v2.reader.creator</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="api/v2/run_logic.html#module-paddle.v2.trainer"><code class="xref">paddle.v2.trainer</code></a></td><td>
        <em></em></td></tr>
    </table>
 

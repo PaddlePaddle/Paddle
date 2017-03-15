@@ -155,9 +155,17 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../api/index_en.html">API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">Configuration Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">Data Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">Trainer API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">Training and Inference</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
@@ -173,7 +181,6 @@
 <li><a class="reference internal" href="#test">Test</a></li>
 <li><a class="reference internal" href="#gpu">GPU</a></li>
 <li><a class="reference internal" href="#nlp-rnn-lstm-gru">NLP: RNN/LSTM/GRU</a></li>
-<li><a class="reference internal" href="#metric-learning">Metric Learning</a></li>
 <li><a class="reference internal" href="#dataprovider">DataProvider</a></li>
 <li><a class="reference internal" href="#unit-test">Unit Test</a></li>
 <li><a class="reference internal" href="#parameter-server-and-distributed-communication">Parameter Server and Distributed Communication</a></li>
@@ -451,21 +458,6 @@
 <li><code class="docutils literal"><span class="pre">--diy_beam_search_prob_so</span></code><ul>
 <li>Specify shared dynamic library. It can be defined out of paddle by user.</li>
 <li>type: string (default: &#8220;&#8221;, null).</li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="section" id="metric-learning">
-<span id="metric-learning"></span><h2>Metric Learning<a class="headerlink" href="#metric-learning" title="Permalink to this headline">¶</a></h2>
-<ul class="simple">
-<li><code class="docutils literal"><span class="pre">--external</span></code><ul>
-<li>Whether to use external machine for metric learning.</li>
-<li>type: bool (default: 0).</li>
-</ul>
-</li>
-<li><code class="docutils literal"><span class="pre">--data_server_port</span></code><ul>
-<li>Listening port for dserver (data server), dserver is mainly used in metric learning.</li>
-<li>type: int32 (default: 21134).</li>
 </ul>
 </li>
 </ul>

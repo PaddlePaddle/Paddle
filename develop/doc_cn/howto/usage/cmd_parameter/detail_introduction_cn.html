@@ -162,9 +162,17 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">Configuration Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">Data Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">Trainer API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">训练与应用</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
@@ -180,7 +188,6 @@
 <li><a class="reference internal" href="#">测试</a></li>
 <li><a class="reference internal" href="#gpu">GPU</a></li>
 <li><a class="reference internal" href="#nlp-rnn-lstm-gru">自然语言处理(NLP): RNN/LSTM/GRU</a></li>
-<li><a class="reference internal" href="#metric-learning">度量学习(Metric Learning)</a></li>
 <li><a class="reference internal" href="#dataprovider">数据支持(DataProvider)</a></li>
 <li><a class="reference internal" href="#">单元测试</a></li>
 <li><a class="reference internal" href="#">参数服务器和分布式通信</a></li>
@@ -458,21 +465,6 @@
 <li><code class="docutils literal"><span class="pre">--diy_beam_search_prob_so</span></code>
 &nbsp;- 用户可以自定义beam search的方法，编译成动态库，供PaddlePaddle加载。 该参数用于指定动态库路径.<ul>
 <li>类型: string (默认: &#8220;&#8221;, null).</li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="section" id="metric-learning">
-<span id="metric-learning"></span><h2>度量学习(Metric Learning)<a class="headerlink" href="#metric-learning" title="永久链接至标题">¶</a></h2>
-<ul class="simple">
-<li><code class="docutils literal"><span class="pre">--external</span></code><ul>
-<li>指示是否使用外部机器进行度量学习.</li>
-<li>类型: bool (默认: 0).</li>
-</ul>
-</li>
-<li><code class="docutils literal"><span class="pre">--data_server_port</span></code><ul>
-<li>数据服务器(data server)的监听端口，主要用在度量学习中.</li>
-<li>类型: int32 (默认: 21134).</li>
 </ul>
 </li>
 </ul>

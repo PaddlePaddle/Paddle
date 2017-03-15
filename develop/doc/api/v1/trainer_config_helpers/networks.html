@@ -152,9 +152,17 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../index_en.html">API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../v2/model_configs.html">Configuration Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../v2/data.html">Data Related API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../v2/run_logic.html">Trainer API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../v2/data.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../v2/run_logic.html">Training and Inference</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
@@ -264,9 +272,9 @@ None if user don&#8217;t care.</li>
 <li><strong>fc_act</strong> (<em>BaseActivation</em>) &#8211; fc layer activation type. None means tanh</li>
 <li><strong>pool_bias_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a><em> or </em><em>None.</em>) &#8211; pooling layer bias attr. None if don&#8217;t care.
 False if no bias.</li>
-<li><strong>fc_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; fc layer extra attribute.</li>
-<li><strong>context_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; context projection layer extra attribute.</li>
-<li><strong>pool_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; pooling layer extra attribute.</li>
+<li><strong>fc_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; fc layer extra attribute.</li>
+<li><strong>context_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; context projection layer extra attribute.</li>
+<li><strong>pool_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; pooling layer extra attribute.</li>
 </ul>
 </td>
 </tr>
@@ -312,9 +320,9 @@ None if user don&#8217;t care.</li>
 <li><strong>fc_act</strong> (<em>BaseActivation</em>) &#8211; fc layer activation type. None means tanh</li>
 <li><strong>pool_bias_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a><em> or </em><em>None.</em>) &#8211; pooling layer bias attr. None if don&#8217;t care.
 False if no bias.</li>
-<li><strong>fc_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; fc layer extra attribute.</li>
-<li><strong>context_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; context projection layer extra attribute.</li>
-<li><strong>pool_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; pooling layer extra attribute.</li>
+<li><strong>fc_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; fc layer extra attribute.</li>
+<li><strong>context_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; context projection layer extra attribute.</li>
+<li><strong>pool_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; pooling layer extra attribute.</li>
 </ul>
 </td>
 </tr>
@@ -363,7 +371,7 @@ False if no bias.</li>
 <li><strong>bn_layer_attr</strong> &#8211; ParameterAttribute.</li>
 <li><strong>pool_stride</strong> (<em>int</em>) &#8211; see img_pool_layer&#8217;s document.</li>
 <li><strong>pool_padding</strong> (<em>int</em>) &#8211; see img_pool_layer&#8217;s document.</li>
-<li><strong>pool_layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_pool_layer&#8217;s document.</li>
+<li><strong>pool_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_pool_layer&#8217;s document.</li>
 </ul>
 </td>
 </tr>
@@ -438,10 +446,10 @@ False if no bias.</li>
 <li><strong>num_channel</strong> (<em>int</em>) &#8211; see img_conv_layer for details</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; see img_conv_layer for details</li>
 <li><strong>shared_bias</strong> (<em>bool</em>) &#8211; see img_conv_layer for details</li>
-<li><strong>conv_layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_conv_layer for details</li>
+<li><strong>conv_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_conv_layer for details</li>
 <li><strong>pool_stride</strong> (<em>int</em>) &#8211; see img_pool_layer for details</li>
 <li><strong>pool_padding</strong> (<em>int</em>) &#8211; see img_pool_layer for details</li>
-<li><strong>pool_layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_pool_layer for details</li>
+<li><strong>pool_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_pool_layer for details</li>
 </ul>
 </td>
 </tr>
@@ -525,9 +533,9 @@ for more details about LSTM. The link goes as follows:
 False means no bias, None means default bias.</li>
 <li><strong>lstm_bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; bias parameter attribute of lstm layer.
 False means no bias, None means default bias.</li>
-<li><strong>mixed_layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; mixed layer&#8217;s extra attribute.</li>
-<li><strong>lstm_layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; lstm layer&#8217;s extra attribute.</li>
-<li><strong>get_output_layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; get output layer&#8217;s extra attribute.</li>
+<li><strong>mixed_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; mixed layer&#8217;s extra attribute.</li>
+<li><strong>lstm_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; lstm layer&#8217;s extra attribute.</li>
+<li><strong>get_output_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; get output layer&#8217;s extra attribute.</li>
 </ul>
 </td>
 </tr>
@@ -586,9 +594,9 @@ full_matrix_projection must be included before lstmemory_unit is called.</p>
 False means no bias, None means default bias.</li>
 <li><strong>lstm_bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; bias parameter attribute of lstm layer.
 False means no bias, None means default bias.</li>
-<li><strong>mixed_layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; mixed layer&#8217;s extra attribute.</li>
-<li><strong>lstm_layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; lstm layer&#8217;s extra attribute.</li>
-<li><strong>get_output_layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; get output layer&#8217;s extra attribute.</li>
+<li><strong>mixed_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; mixed layer&#8217;s extra attribute.</li>
+<li><strong>lstm_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; lstm layer&#8217;s extra attribute.</li>
+<li><strong>get_output_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; get output layer&#8217;s extra attribute.</li>
 </ul>
 </td>
 </tr>
@@ -631,8 +639,8 @@ means default bias.</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; lstm final activiation type</li>
 <li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; lstm gate activiation type</li>
 <li><strong>state_act</strong> (<em>BaseActivation</em>) &#8211; lstm state activiation type.</li>
-<li><strong>mixed_layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; mixed layer&#8217;s extra attribute.</li>
-<li><strong>lstm_cell_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; lstm layer&#8217;s extra attribute.</li>
+<li><strong>mixed_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; mixed layer&#8217;s extra attribute.</li>
+<li><strong>lstm_cell_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; lstm layer&#8217;s extra attribute.</li>
 </ul>
 </td>
 </tr>
