@@ -21,10 +21,10 @@ function build_in_docker() {
 }
 
 function build_paddle_core() {
-  docker build . -t paddle-core:$VERSION -f paddle/scripts/docker/paddle-core/Dockerfile
-  docker build . -t paddle-core:gpu-$VERSION -f paddle/scripts/docker/paddle-core/Dockerfile.gpu
-  docker build . -t paddle-core:cpu-noavx-$VERSION -f paddle/scripts/docker/paddle-core/Dockerfile.noavx
-  docker build . -t paddle-core:gpu-noavx-$VERSION -f paddle/scripts/docker/paddle-core/Dockerfile.gpunoavx
+  docker build . -t paddle:$VERSION -f paddle/scripts/docker/paddle-core/Dockerfile
+  docker build . -t paddle:gpu-$VERSION -f paddle/scripts/docker/paddle-core/Dockerfile.gpu
+  docker build . -t paddle:cpu-noavx-$VERSION -f paddle/scripts/docker/paddle-core/Dockerfile.noavx
+  docker build . -t paddle:gpu-noavx-$VERSION -f paddle/scripts/docker/paddle-core/Dockerfile.gpunoavx
 }
 
 build_in_docker
