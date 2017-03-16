@@ -381,8 +381,7 @@ void Layer::backwardActivation() {
 void Layer::forwardDropOut() {
   auto& outV = getOutputValue();
 
-  if (passType_ == PASS_TRAIN || passType_ == PASS_METRIC_TRAIN ||
-      passType_ == PASS_METRIC_TRAIN_WITH_NOERROR) {
+  if (passType_ == PASS_TRAIN) {
     // new dropOutMask_ if dropOutMask_ is null ptr
     Matrix::resizeOrCreate(dropOutMask_,
                            outV->getHeight(),

@@ -57,6 +57,12 @@ if [[ ${BUILD_AND_INSTALL:-OFF} == 'ON' ]]; then
     pip install /usr/local/opt/paddle/share/wheels/py_paddle*linux*.whl
     pip install /usr/local/opt/paddle/share/wheels/paddle*.whl
     paddle version
+
+    if [[ ${DOCKER_BUILD:-FALSE} == 'TRUE' ]]; then
+	# reduce docker image size
+	rm -rf /paddle/build
+	rm -rf /usr/local/opt/paddle/share/wheels/
+    fi
 fi
 
 trap : 0
