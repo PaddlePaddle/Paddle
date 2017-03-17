@@ -329,6 +329,12 @@ addto_layer
     :members: addto_layer
     :noindex:
 
+minus
+-----------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: minus
+    :noindex:
+
 linear_comb_layer
 -----------------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -484,6 +490,12 @@ hsigmoid
 ---------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: hsigmoid
+    :noindex:
+
+mse_cost
+---------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: mse_cost
     :noindex:
 
 sum_cost
