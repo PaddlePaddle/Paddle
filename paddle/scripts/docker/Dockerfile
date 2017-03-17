@@ -23,7 +23,7 @@ ENV DOCKER_BUILD=TRUE
 ENV HOME /root
 
 # Add bash enhancements
-COPY ./paddle/scripts/docker/root/ /root/
+COPY paddle/paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
     apt-get install -y git python-pip python-dev openssh-server bison && \
