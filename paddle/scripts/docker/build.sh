@@ -25,7 +25,7 @@ else
   BASE_IMAGE="python:2.7.13-slim"
   if [ ${WITH_AVX} == "ON" ]; then
     DEB_PATH="dist/cpu/"
-    DOCKER_SUFFIX=""
+    DOCKER_SUFFIX="cpu"
   else
     DEB_PATH="dist/cpu-noavx/"
     DOCKER_SUFFIX="noavx"
@@ -40,8 +40,11 @@ if [[ ${BUILD_AND_INSTALL:-OFF} == 'ON' ]]; then
     fi
 
     mkdir -p /paddle/build # -p means no error if exists
+    cd /paddle/build
     # clean local cmake and third_party cache
-    cd /paddle/build && rm -rf * && rm -rf ../third_party
+    if [ ${DELETE_BUILD_CACHE} == 'ON' ]; then
+      rm -rf * && rm -rf ../third_party
+    fi
     cmake .. \
 	  -DWITH_DOC=${WITH_DOC:-OFF} \
 	  -DWITH_GPU=${WITH_GPU:-OFF} \
@@ -54,7 +57,9 @@ if [[ ${BUILD_AND_INSTALL:-OFF} == 'ON' ]]; then
     make install
     # generate deb package for current build
     # FIXME(typhoonzero): should we remove paddle/scripts/deb ?
-    cpack -D CPACK_GENERATOR='DEB' ..
+    # FIXME: CPACK_DEBIAN_PACKAGE_DEPENDS removes all dev dependencies, must
+    # install them in docker
+    cpack -D CPACK_GENERATOR='DEB' -D CPACK_DEBIAN_PACKAGE_DEPENDS="" ..
     mv /paddle/build/*.deb /paddle/${DEB_PATH}
 
     if [[ ${BUILD_WOBOQ:-OFF} == 'ON' ]]; then
@@ -123,7 +128,7 @@ RUN ${MIRROR_UPDATE}
     apt-get install -y libgfortran3 && \
     apt-get clean -y && \
     pip install --upgrade pip && \
-    pip install -U 'protobuf==3.1.0'
+    pip install -U 'protobuf==3.1.0' requests
 RUN pip install numpy
 # Use different deb file when building different type of images
 ADD \$PWD/${DEB_PATH}*.deb /usr/local/opt/paddle/deb/
