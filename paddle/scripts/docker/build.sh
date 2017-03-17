@@ -14,6 +14,8 @@ mkdir -p /paddle/dist/gpu-noavx
 # Set BASE_IMAGE and DEB_PATH according to env variables
 if [ ${WITH_GPU} == "ON" ]; then
   BASE_IMAGE="nvidia/cuda:7.5-cudnn5-runtime-ubuntu14.04"
+  # additional packages to install when building gpu images
+  GPU_DOCKER_PKG="python-pip"
   if [ ${WITH_AVX} == "ON" ]; then
     DEB_PATH="dist/gpu/"
     DOCKER_SUFFIX="gpu"
@@ -125,7 +127,7 @@ ENV LANG en_US.UTF-8
 
 RUN ${MIRROR_UPDATE}
     apt-get update && \
-    apt-get install -y libgfortran3 && \
+    apt-get install -y libgfortran3 ${GPU_DOCKER_PKG} && \
     apt-get clean -y && \
     pip install --upgrade pip && \
     pip install -U 'protobuf==3.1.0' requests
