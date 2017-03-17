@@ -283,16 +283,17 @@
 <li><a class="reference internal" href="#cross-entropy">cross_entropy</a></li>
 <li><a class="reference internal" href="#cross-entropy-with-selfnorm">cross_entropy_with_selfnorm</a></li>
 <li><a class="reference internal" href="#multi-binary-label-cross-entropy">multi_binary_label_cross_entropy</a></li>
+<li><a class="reference internal" href="#mse-cost">mse_cost</a></li>
 <li><a class="reference internal" href="#huber-cost">huber_cost</a></li>
 <li><a class="reference internal" href="#lambda-cost">lambda_cost</a></li>
 <li><a class="reference internal" href="#rank-cost">rank_cost</a></li>
+<li><a class="reference internal" href="#sum-cost">sum_cost</a></li>
 <li><a class="reference internal" href="#crf-layer">crf_layer</a></li>
 <li><a class="reference internal" href="#crf-decoding-layer">crf_decoding_layer</a></li>
 <li><a class="reference internal" href="#ctc-layer">ctc_layer</a></li>
 <li><a class="reference internal" href="#warp-ctc-layer">warp_ctc_layer</a></li>
 <li><a class="reference internal" href="#nce-layer">nce_layer</a></li>
 <li><a class="reference internal" href="#hsigmoid">hsigmoid</a></li>
-<li><a class="reference internal" href="#sum-cost">sum_cost</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#check-layer">Check Layer</a><ul>
@@ -3043,6 +3044,55 @@ Input should be a vector of positive numbers, without normalization.</p>
 </dd></dl>
 
 </div>
+<div class="section" id="mse-cost">
+<h3>mse_cost<a class="headerlink" href="#mse-cost" title="永久链接至标题">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">mse_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><blockquote>
+<div><p>mean squared error cost:</p>
+<div class="math">
+\[$\]</div>
+</div></blockquote>
+<p>rac{1}{N}sum_{i=1}^N(t _i- y_i)^2$</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">param name:</th><td class="field-body">layer name.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">type name:</th><td class="field-body">basestring</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">param input:</th><td class="field-body">Network prediction.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">type input:</th><td class="field-body">LayerOutput</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">param label:</th><td class="field-body">Data label.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">type label:</th><td class="field-body">LayerOutput</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">param weight:</th><td class="field-body">The weight affects the cost, namely the scale of cost.
+It is an optional argument.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">type weight:</th><td class="field-body">LayerOutput</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">param layer_attr:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body">layer&#8217;s extra attribute.</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">type layer_attr:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body">ExtraLayerAttribute</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">return:</th><td class="field-body">LayerOutput object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">rtype:</th><td class="field-body">LayerOutput</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</dd></dl>
+
+</div>
 <div class="section" id="huber-cost">
 <h3>huber_cost<a class="headerlink" href="#huber-cost" title="永久链接至标题">¶</a></h3>
 <dl class="function">
@@ -3171,6 +3221,37 @@ It is an optional argument.</li>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="sum-cost">
+<h3>sum_cost<a class="headerlink" href="#sum-cost" title="永久链接至标题">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">sum_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A loss layer which calculate the sum of the input as loss</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">sum_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">input_layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; The first input layer.</li>
+<li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">LayerOutput.</p>
 </td>
 </tr>
 </tbody>
@@ -3447,37 +3528,6 @@ False means no bias.</li>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">LayerOutput</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</div>
-<div class="section" id="sum-cost">
-<h3>sum_cost<a class="headerlink" href="#sum-cost" title="永久链接至标题">¶</a></h3>
-<dl class="function">
-<dt>
-<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">sum_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>A loss layer which calculate the sum of the input as loss</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">sum_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">input_layer</span><span class="p">)</span>
-</pre></div>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
-<li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; The first input layer.</li>
-<li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">LayerOutput object.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">LayerOutput.</p>
 </td>
 </tr>
 </tbody>

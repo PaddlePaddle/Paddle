@@ -632,10 +632,7 @@ cp ml-1m/ratings.dat.test .
 <span class="n">user_feature</span> <span class="o">=</span> <span class="n">construct_feature</span><span class="p">(</span><span class="s2">&quot;user&quot;</span><span class="p">)</span>
 <span class="n">similarity</span> <span class="o">=</span> <span class="n">cos_sim</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">movie_feature</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">user_feature</span><span class="p">)</span>
 <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span><span class="p">:</span>
-    <span class="n">outputs</span><span class="p">(</span>
-        <span class="n">regression_cost</span><span class="p">(</span>
-            <span class="nb">input</span><span class="o">=</span><span class="n">similarity</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span>
-                <span class="s1">&#39;rating&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">)))</span>
+    <span class="n">outputs</span><span class="p">(</span><span class="n">mse_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">similarity</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="s1">&#39;rating&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">)))</span>
 
     <span class="n">define_py_data_sources2</span><span class="p">(</span>
         <span class="s1">&#39;data/train.list&#39;</span><span class="p">,</span>
