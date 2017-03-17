@@ -1,39 +1,21 @@
-We need to complete the initial draft https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/README.md.
+# Building PaddlePaddle
 
-I am recording some ideas here, and we should file a PR later.
+## Goals
 
-## Current Status
+We want the building procedure generates Docker images, so we can run PaddlePaddle applications on Kubernetes clusters.
 
-Currently, we have four sets of Dockefiles:
+We want it generates .deb packages, so that enterprises without Docker support can run PaddlePaddle applications as well.
 
-1. Kubernetes examples:
+We want to minimize the size of  generated Docker images and .deb packages so to ease the deployment cost.
 
-   ```
-   doc/howto/usage/k8s/src/Dockerfile -- based on released image but add start.sh
-   doc/howto/usage/k8s/src/k8s_data/Dockerfile -- contains only get_data.sh
-   doc/howto/usage/k8s/src/k8s_train/Dockerfile -- this duplicates with the first one.
-   ```
+We want to encapsulate building tools and dependencies in a *development* Docker image so to ease the tools installation for developers.
 
-1. Generate .deb packages:
+We want developers can use whatever editing tools (emacs, vim, Eclipse, Jupyter Notebook), so the development Docker image contains only building tools, not editing tools, and developers are supposed to git clone source code into their development computers, instead of the container running the development Docker image.
 
-   ```
-   paddle/scripts/deb/build_scripts/Dockerfile -- significantly overlaps with the `docker` directory
-   ```
+We want the procedure and tools work also with testing, continuous integration, and releasing.
 
-1. In the `docker` directory:
 
-   ```
-   paddle/scripts/docker/Dockerfile
-   paddle/scripts/docker/Dockerfile.gpu
-   ```
-
-1. Document building
-
-   ```
-   paddle/scripts/tools/build_docs/Dockerfile -- a subset of above two sets.
-   ```
-
-## Goal
+## Docker Images
 
 We want two Docker images for each version of PaddlePaddle:
 
@@ -45,7 +27,9 @@ We want two Docker images for each version of PaddlePaddle:
    - release engineers -- use this to build the official release from certain branch/tag on Github.com.
    - document writers / Website developers -- Our documents are in the source repo in the form of .md/.rst files and comments in source code.  We need tools to extract the information, typeset, and generate Web pages.
 
-   So the development image must contain not only source code building tools, but also documentation tools:
+   Of course developers can install building tools on their development computers.  But different version of PaddlePaddle might require different set/version of building tools.  Also, it makes collaborative debugging eaiser if all developers use a unified development environment.
+
+  The development image should include the following tools:
 
    - gcc/clang
    - nvcc
@@ -54,7 +38,7 @@ We want two Docker images for each version of PaddlePaddle:
    - woboq
    - sshd
 
-   where `sshd` makes it easy for developers to have multiple terminals connecting into the container.
+   where `sshd` makes it easy for developers to have multiple terminals connecting into the container.  `docker exec` works too, but if the container is running on a remote machine, it would be easier to ssh directly into the container than ssh to the box and run `docker exec`.
 
 1. `paddle:<version>`
 
@@ -65,82 +49,107 @@ We want two Docker images for each version of PaddlePaddle:
    - no-GPU/AVX  `paddle:<version>`
    - no-GPU/no-AVX  `paddle:<version>-noavx`
 
-   We'd like to give users choices of GPU and no-GPU, because the GPU version image is much larger than then the no-GPU version.
+   We'd like to give users the choice between GPU and no-GPU, because the GPU version image is much larger than then the no-GPU version.
 
-   We'd like to give users choices of AVX and no-AVX, because some cloud providers don't provide AVX-enabled VMs.
+   We'd like to give users the choice between AVX and no-AVX, because some cloud providers don't provide AVX-enabled VMs.
 
-## Dockerfile
 
-To realize above goals, we need only one Dockerfile for the development image.  We can put it in the root source directory.
+## Development Environment
 
-Let us go over our daily development procedure to show how developers can use this file.
+Here we describe how to use above two images.  We start from considering our daily development environment.
 
-1. Check out the source code
+Developers work on a computer, which is usually a laptop or desktop:
 
-   ```bash
-   git clone https://github.com/PaddlePaddle/Paddle paddle
-   ```
+![](doc/paddle-development-environment.png)
 
-1. Do something
+or, they might rely on a more sophisticated box (like with GPUs):
 
-   ```bash
-   cd paddle
-   git checkout -b my_work
-   Edit some files
-   ```
+![](doc/paddle-development-environment-gpu.png)
 
-1. Build/update the development image (if not yet)
+A basic principle is that source code lies on the development computer (host), so that editing tools like Eclipse can parse the source code and support auto-completion.
 
-   ```bash
-   docker build -t paddle:dev . # Suppose that the Dockerfile is in the root source directory.
-   ```
 
-1. Build the source code
+## Usages
 
-   ```bash
-   docker run -v $PWD:/paddle -e "GPU=OFF" -e "AVX=ON" -e "TEST=ON" paddle:dev
-   ```
+### Build the Development Docker Image
 
-   This command maps the source directory on the host into `/paddle` in the container.
+The following commands check out the source code on the development computer (host) and build the development image `paddle:dev`:
 
-   Please be aware that the default entrypoint of `paddle:dev` is a shell script file `build.sh`, which builds the source code, and outputs to `/paddle/build` in the container, which is actually `$PWD/build` on the host.
+```bash
+git clone https://github.com/PaddlePaddle/Paddle paddle
+cd paddle
+docker build -t paddle:dev .
+```
 
-   `build.sh` doesn't only build binaries, but also generates a `$PWD/build/Dockerfile` file, which can be used to build the production image.  We will talk about it later.
+The `docker build` command assumes that `Dockerfile` is in the root source tree.  This is reasonable because this Dockerfile is this only on in our repo in this design.
 
-1. Run on the host (Not recommended)
 
-   If the host computer happens to have all dependent libraries and Python runtimes installed, we can now run/test the built program.  But the recommended way is to running in a production image.
+### Build PaddlePaddle from Source Code
 
-1. Run in the development container
+Given the development image `paddle:dev`, the following command builds PaddlePaddle from the source tree on the development computer (host):
 
-   `build.sh` generates binary files and invokes `make install`.  So we can run the built program within the development container.  This is convenient for developers.
+```bash
+docker run -v $PWD:/paddle -e "GPU=OFF" -e "AVX=ON" -e "TEST=ON" paddle:dev
+```
 
-1. Build a production image
+This command mounts the source directory on the host into `/paddle` in the container, so  the default entrypoint of `paddle:dev`, `build.sh`, would build the source code with possible local changes.  When it writes to `/paddle/build` in the container, it actually writes to `$PWD/build` on the host.
 
-    On the host, we can use the `$PWD/build/Dockerfile` to generate a production image.
+`build.sh` builds the following:
 
-   ```bash
-   docker build -t paddle --build-arg "BOOK=ON" -f build/Dockerfile .
-   ```
+- PaddlePaddle binaries,
+- `$PWD/build/paddle-<version>.deb` for production installation, and
+- `$PWD/build/Dockerfile`, which builds the production Docker image.
 
-1. Run the Paddle Book
 
-   Once we have the production image, we can run [Paddle Book](http://book.paddlepaddle.org/) chapters in Jupyter Notebooks (if we chose to build them)
+### Build the Production Docker Image
 
-   ```bash
-   docker run -it paddle
-   ```
+The following command builds the production image:
 
-   Note that the default entrypoint of the production image starts Jupyter server, if we chose to build Paddle Book.
+```bash
+docker build -t paddle -f build/Dockerfile .
+```
 
-1. Run on Kubernetes
+This production image is minimal -- it includes binary `paddle`, the share library `libpaddle.so`, and Python runtime.
 
-   We can push the production image to a DockerHub server, so developers can run distributed training jobs on the Kuberentes cluster:
+### Run PaddlePaddle Applications
 
-   ```bash
-   docker tag paddle me/paddle
-   docker push
-   kubectl ...
-   ```
+Again the development happens on the host.  Suppoose that we have a simple application program in `a.py`, we can test and run it using the production image:
 
-   For end users, we will provide more convinient tools to run distributed jobs.
+```bash
+docker run -it -v $PWD:/work paddle /work/a.py
+```
+
+But this works only if all dependencies of `a.py` are in the production image. If this is not the case, we need to build a new Docker image from the production image and with more dependencies installs.
+
+### Build and Run PaddlePaddle Appications
+
+We need a Dockerfile in https://github.com/paddlepaddle/book that builds Docker image `paddlepaddle/book:<version>`, basing on the PaddlePaddle production image:
+
+```
+FROM paddlepaddle/paddle:<version>
+RUN pip install -U matplotlib jupyter ...
+COPY . /book
+EXPOSE 8080
+CMD ["jupyter"]
+```
+
+The book image is an example of PaddlePaddle application image.  We can build it
+
+```bash
+git clone https://github.com/paddlepaddle/book
+cd book
+docker build -t book .
+```
+
+### Build and Run Distributed Applications
+
+In our [API design doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/api.md#distributed-training), we proposed an API that starts a distributed training job on a cluster.  This API need to build a PaddlePaddle application into a Docekr image as above, and calls kubectl to run it on the cluster.  This API might need to generate a Dockerfile look like above and call `docker build`.
+
+Of course, we can manually build an application image and launch the job using the kubectl tool:
+
+```bash
+docker build -f some/Dockerfile -t myapp .
+docker tag myapp me/myapp
+docker push
+kubectl ...
+```
