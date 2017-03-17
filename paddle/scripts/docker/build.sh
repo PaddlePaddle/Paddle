@@ -7,7 +7,26 @@ function abort(){
 
 trap 'abort' 0
 set -e
-
+mkdir -p /paddle/dist/cpu
+mkdir -p /paddle/dist/gpu
+mkdir -p /paddle/dist/cpu-noavx
+mkdir -p /paddle/dist/gpu-noavx
+# Set BASE_IMAGE and DEB_PATH according to env variables
+if [ ${WITH_GPU} == "ON" ]; then
+  BASE_IMAGE="nvidia/cuda:7.5-cudnn5-runtime-ubuntu14.04"
+  if [ ${WITH_AVX} == "ON" ]; then
+    DEB_PATH="dist/gpu/"
+  else
+    DEB_PATH="dist/gpu-noavx/"
+  fi
+else
+  BASE_IMAGE="python:2.7.13-slim"
+  if [ ${WITH_AVX} == "ON" ]; then
+    DEB_PATH="dist/cpu/"
+  else
+    DEB_PATH="dist/cpu-noavx/"
+  fi
+fi
 # If Dockerfile.* sets BUILD_AND_INSTALL to 'ON', it would have copied
 # source tree to /paddle, and this scripts should build it into
 # /paddle/build.
@@ -29,9 +48,13 @@ if [[ ${BUILD_AND_INSTALL:-OFF} == 'ON' ]]; then
 	  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     make -j `nproc`
     make install
+    # generate deb package for current build
+    # FIXME(typhoonzero): should we remove paddle/scripts/deb ?
+    cpack -D CPACK_GENERATOR='DEB' ..
+    mv /paddle/build/*.deb /paddle/${DEB_PATH}
 
     if [[ ${BUILD_WOBOQ:-OFF} == 'ON' ]]; then
-        apt-get install -y clang-3.8 llvm-3.8 libclang-3.8-dev 
+        apt-get install -y clang-3.8 llvm-3.8 libclang-3.8-dev
         # Install woboq_codebrowser.
         git clone https://github.com/woboq/woboq_codebrowser /woboq
         cd /woboq
@@ -64,5 +87,47 @@ if [[ ${BUILD_AND_INSTALL:-OFF} == 'ON' ]]; then
 	rm -rf /usr/local/opt/paddle/share/wheels/
     fi
 fi
+
+# generate production docker image Dockerfile
+if [ ${USE_MIRROR} ]; then
+  MIRROR_UPDATE="sed 's@http:\/\/archive.ubuntu.com\/ubuntu\/@mirror:\/\/mirrors.ubuntu.com\/mirrors.txt@' -i /etc/apt/sources.list && \\"
+else
+  MIRROR_UPDATE="\\"
+fi
+
+cat > /paddle/build/Dockerfile <<EOF
+FROM ${BASE_IMAGE}
+MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
+
+# ENV variables
+ARG WITH_AVX
+ARG WITH_DOC
+ARG WITH_STYLE_CHECK
+
+ENV WITH_GPU=${WITH_GPU}
+ENV WITH_AVX=\${WITH_AVX:-ON}
+ENV WITH_DOC=\${WITH_DOC:-OFF}
+ENV WITH_STYLE_CHECK=\${WITH_STYLE_CHECK:-OFF}
+
+ENV HOME /root
+ENV LANG en_US.UTF-8
+
+# Use Fix locales to en_US.UTF-8
+
+RUN ${MIRROR_UPDATE}
+    apt-get update && \
+    apt-get install -y libgfortran3 && \
+    apt-get clean -y && \
+    pip install --upgrade pip && \
+    pip install -U 'protobuf==3.1.0'
+RUN pip install numpy
+# Use different deb file when building different type of images
+ADD \$PWD/${DEB_PATH}*.deb /usr/local/opt/paddle/deb/
+RUN dpkg --force-all -i /usr/local/opt/paddle/deb/*.deb && rm -f /usr/local/opt/paddle/deb/*.deb
+
+ENV PATH="/usr/local/opt/paddle/bin/:${PATH}"
+# default command shows the paddle version and exit
+CMD ["paddle", "version"]
+EOF
 
 trap : 0

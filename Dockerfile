@@ -22,6 +22,8 @@ ENV WITH_DOC=${WITH_DOC:-OFF}
 ENV WITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
 
 ENV HOME /root
+# Add bash enhancements
+COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
     apt-get install -y git python-pip python-dev openssh-server bison && \
@@ -49,5 +51,15 @@ RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd .. && rm -rf cmake-3.4.1
 
 RUN apt-get install -y swig
-# FIXME: wait a long time is OK
-CMD ["sleep", "3600"]
+
+VOLUME ["/usr/share/nginx/html/data", "/usr/share/nginx/html/paddle"]
+
+# Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
+RUN mkdir /var/run/sshd
+RUN echo 'root:root' | chpasswd
+RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+EXPOSE 22
+
+# development image default do build work
+CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]
