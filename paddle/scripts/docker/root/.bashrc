@@ -44,3 +44,5 @@ export PS1="\[\033[1;33m\]λ $WHITE\h $GREEN\w$YELLOW\$(__git_ps1 \" \[\033[35m\
 # Git
 
 source ~/.scripts/git-completion.sh
+
+export PATH=$PATH:/usr/local/go/bin
