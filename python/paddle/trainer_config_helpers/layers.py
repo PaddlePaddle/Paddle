@@ -53,6 +53,7 @@ __all__ = [
     "hsigmoid",
     "conv_projection",
     "mse_cost",
+    "regression_cost",
     'classification_cost',
     "LayerOutput",
     'img_conv_layer',
@@ -3603,6 +3604,9 @@ def mse_cost(input, label, weight=None, name=None, layer_attr=None):
         name=name,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(name, LayerType.COST, parents=parents, size=1)
+
+
+regression_cost = mse_cost
 
 
 @wrap_name_default("cost")
