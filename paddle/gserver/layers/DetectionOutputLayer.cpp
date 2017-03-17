@@ -26,11 +26,11 @@ namespace paddle {
  * The detection output layer for a SSD detection task. This layer apply the
  * Non-maximum suppression to the all predicted bounding box and keep the
  * Top-K bounding boxes.
- * - Input: This layer need three input layers: This first input layer
+ * - Input: This layer needs three input layers: This first input layer
  *          is the priorbox layer. The rest two input layers are convolution
  *          layers for generating bbox location offset and the classification
  *          confidence.
- * - Output: The predict bounding box location.
+ * - Output: The predicted bounding box location and confidence.
  */
 
 class DetectionOutputLayer : public Layer {
@@ -80,8 +80,8 @@ protected:
   size_t inputNum_;
   real nmsThreshold_;
   real confidenceThreshold_;
-  size_t topK_;
-  size_t keepTopK_;
+  size_t topK_;      // The number of selected bounding boxes before NMS
+  size_t keepTopK_;  // The number of kept bounding boxes after NMS
   size_t backgroundId_;
 
   size_t locSizeSum_;
@@ -183,7 +183,8 @@ void DetectionOutputLayer::forward(PassType passType) {
   vector<map<size_t, vector<size_t>>> allIndices;
   generateIndices(numPriors, batchSize, allDecodeBBoxes, numKept, &allIndices);
 
-  resetOutput(numKept, 7);
+  resetOutput(numKept,
+              7);  // ImageId, label, confidence, xmin, ymin, xmax, ymax
   generateOutput(numKept, numPriors, batchSize, allIndices, allDecodeBBoxes);
 }
 
@@ -370,7 +371,7 @@ void DetectionOutputLayer::forwardDataProcess(size_t batchSize) {
   size_t confOffset = 0;
   // For unit test
   auto& detOutConf = config_.inputs(0).detection_output_conf();
-  // Each layer input has different size
+  // Each input layer has different size
   for (size_t n = 0; n < inputNum_; n++) {
     const MatrixPtr inLoc = getInputValue(*getLocInputLayer(n));
     const MatrixPtr inConf = getInputValue(*getConfInputLayer(n));
