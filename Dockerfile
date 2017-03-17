@@ -5,7 +5,7 @@ MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG UBUNTU_MIRROR
-RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
+RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com/ubuntu#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
 
 # ENV variables
 ARG BUILD_WOBOQ

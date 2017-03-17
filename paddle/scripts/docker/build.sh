@@ -16,15 +16,19 @@ if [ ${WITH_GPU} == "ON" ]; then
   BASE_IMAGE="nvidia/cuda:7.5-cudnn5-runtime-ubuntu14.04"
   if [ ${WITH_AVX} == "ON" ]; then
     DEB_PATH="dist/gpu/"
+    DOCKER_SUFFIX="gpu"
   else
     DEB_PATH="dist/gpu-noavx/"
+    DOCKER_SUFFIX="gpu-noavx"
   fi
 else
   BASE_IMAGE="python:2.7.13-slim"
   if [ ${WITH_AVX} == "ON" ]; then
     DEB_PATH="dist/cpu/"
+    DOCKER_SUFFIX=""
   else
     DEB_PATH="dist/cpu-noavx/"
+    DOCKER_SUFFIX="noavx"
   fi
 fi
 # If Dockerfile.* sets BUILD_AND_INSTALL to 'ON', it would have copied
@@ -95,7 +99,7 @@ else
   MIRROR_UPDATE="\\"
 fi
 
-cat > /paddle/build/Dockerfile <<EOF
+cat > /paddle/build/Dockerfile.${DOCKER_SUFFIX} <<EOF
 FROM ${BASE_IMAGE}
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
