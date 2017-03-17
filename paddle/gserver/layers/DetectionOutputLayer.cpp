@@ -77,7 +77,7 @@ public:
 
 protected:
   size_t numClasses_;
-  size_t inputNum_;
+  size_t inputNum_;  // The number of input location/confidence layers
   real nmsThreshold_;
   real confidenceThreshold_;
   size_t topK_;      // The number of selected bounding boxes before NMS
