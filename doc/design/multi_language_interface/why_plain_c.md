@@ -4,9 +4,9 @@
 Paddle需要一个多语言接口，这个接口需要做到:
 
 * 有标准的，良好的文档
-	* 例如Python可以使用[Sphinx](http://www.sphinx-doc.org/en/stable/)生成API文档，golang可以使用[GoDoc](https://godoc.org/golang.org/x/tools/cmd/godoc)生成文档。这都需要这个接口按照约定俗成的规则来注释完备。
+    * 例如Python可以使用[Sphinx](http://www.sphinx-doc.org/en/stable/)生成API文档，golang可以使用[GoDoc](https://godoc.org/golang.org/x/tools/cmd/godoc)生成文档。这都需要这个接口按照约定俗成的规则来注释完备。
 * 不同语言的接口适应不同语言的特性
-	* 例如Java与Python的错误处理是直接扔出来Exception，而对于golang错误处理应该使用返回值。
+    * 例如Java与Python的错误处理是直接扔出来Exception，而对于golang错误处理应该使用返回值。
 
 ## 基本要求
 
@@ -23,9 +23,9 @@ Paddle的多语言接口实现包括一下几个方面:
 ### 使用动态库来分发Paddle
 
 * Paddle的链接方式比较复杂
-	* Paddle链接静态库使用了GCC的--whole-archieve参数，它要求使用Paddle静态库的二进制，在链接参数中指定`--whole-archieve paddle_xxx_lib --no-whole-archive`。且这个链接参数是GCC独有的。对于clang或者msvc，参数会不同。这增加了用户使用Paddle静态库的难度。
-* 编译型语言，例如C/C++使用静态库和动态库难度差不多。但是含有解释器的语言，例如[Python](http://stackoverflow.com/questions/19560594/how-to-import-static-library-in-python)或者[Java](http://stackoverflow.com/questions/24493337/linking-static-library-with-jni)，调用动态库远比调用静态库方便。
-	* 解释性语言实际运行的二进制是解释器本身，如果调用静态库只能将静态库与解释器链接。例如对于Java来说，便是将静态库加入JVM中。这对于通常的Java的开发者来说，是不常见的做法。
+    * 如果用户要把Paddle的静态库（libpaddle.a）链接到自己的程序里，得使用 `--whole-archive` (for GCC) 或者 `--force_load` (for Clang) 参数，来确保把 libpaddle.a 里所有的符号都写入自己的程序的二进制文件里。这是因为 Paddle 的源码里使用了[object factory design pattern](http://stackoverflow.com/a/1310326/724872)。
+* 编译型语言，例如C/C++使用静态库和动态库难度差不多。但是解释性语言，例如[Python](http://stackoverflow.com/questions/19560594/how-to-import-static-library-in-python)或者[Java](http://stackoverflow.com/questions/24493337/linking-static-library-with-jni)，只能调用Paddle的动态库，否则得把Paddle静态库链接到解释器里。
+    * 解释性语言实际运行的二进制是解释器本身，如果调用静态库只能将静态库与解释器链接。例如对于Java来说，便是将静态库加入JVM中。这对于通常的Java的开发者来说，是不常见的做法。
 
 ### 动态库中不嵌入任何其他语言的解释器
 
@@ -51,36 +51,54 @@ Paddle的多语言接口实现包括一下几个方面:
 * Paddle内部的类为C++书写，直接导出到C的接口比较困难。
 * 在C-API中使用`void*`来表示Paddle内部类。再在每一个API中自己检查类型。
 
+在C的头文件 `paddle_matrix.h` 中:
+
 ```C
-
-// in Paddle.h
 typedef void* paddle_matrix;
+typedef int paddle_error;
 
-extern "C" paddle_error getShape(paddle_matrix mat, uint64_t* height, uint64_t* width);
+extern "C"
+paddle_error paddle_matrix_shape(paddle_matrix matrix,
+                                 uint64_t* width,
+                                 uint64_t* height);
+```
+而在CPP里面实现这个C的接口，文件 `paddle_matrix.cpp`
 
+```cpp
+#include "paddle/math/matrix.hpp"
+extern "C"
+paddle_error paddle_matrix_shape(paddle_matrix matrix,
+                                 uint64_t *width,
+                                 uint64_t *height) {
+  auto m = (paddle::math::matrix*)(matrix);
+  *width = m->width();
+  *height = m->height();
+}
+```
 
-// in matrix.cpp
-struct PaddleMatrix {
-   int type;
-   paddle::MatrixPtr mat;
+其中`paddle/math/matrix.hpp`文件内容为:
+
+```cpp
+namespace paddle {
+namespace math {  
+
+class Matrix {
+  //...
 };
 
-paddle_error get_shape(paddle_matrix m, uint64_t* height, uint64_t* width) {
-	PaddleMatrix* realMat = (PaddleMatrix*)(m);
-	...
-}
-
+}  // namespace math
+}  // namespace paddle
 ```
 
 ### 不使用SWIG这种代码生成器，而是手写多语言绑定
 
 * [SWIG](http://www.swig.org/)是一个多语言接口的代码生成器。他的目标是使用C/C++写代码，SWIG直接读取C/C++的头文件，生成各种语言的绑定代码。
-	* 对于多语言接口，SWIG需要写一个interface文件。这个文件具有独特的语法，学习成本高。且增加一个第三方语言，就需要对这个第三方语言增加一些定义。有的时候，interface文件的写法非常[tricky](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/api/Paddle.swig#L36)。社区贡献代码学习成本高。
-	* SWIG暴露的接口保留了C++的接口样式，很难保证多语言代码风格的一致性。(函数命名，错误处理)
-		* 因为SWIG在第三方语言中暴露的函数名，类名和C++中完全一致。C++的命名风格并不能适应其他第三方语言。如果使用SWIG我们需要将在interface文件里，将大量的`SomeCppClass`重命名成`some_python_class`，或者`SomeGoTypes`。
-		* 对于不同语言，错误处理的方式也不尽相同。例如对于Java或者Python，最常见的错误处理方式是Exception，而对于Golang，错误处理方式是返回值。而SWIG只能简单的暴露C++接口，无法做到对于各种语言错误处理方式的适配。
-	* 对于大多数语言，直接使用C语言的.h并不困难。例如Python的[cffi](https://cffi.readthedocs.io/en/latest/overview.html#simple-example-abi-level-in-line)或者[Cython](http://cython.org/), golang的[cgo](https://golang.org/cmd/cgo/)。
-	* SWIG支持的语言或者解释器有局限。例如对于Python，使用SWIG只支持CPython解释器，而不支持PyPy解释器。
+    * 对于多语言接口，SWIG需要写一个interface文件。这个文件具有独特的语法，学习成本高。且增加一个第三方语言，就需要对这个第三方语言增加一些定义。有的时候，interface文件的写法非常[tricky](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/api/Paddle.swig#L36)。社区贡献代码学习成本高。
+    * SWIG暴露的接口保留了C++的接口样式，很难保证多语言代码风格的一致性。(函数命名，错误处理)
+        * 因为SWIG在第三方语言中暴露的函数名，类名和C++中完全一致。C++的命名风格并不能适应其他第三方语言。如果使用SWIG我们需要将在interface文件里，将大量的`SomeCppClass`重命名成`some_python_class`，或者`SomeGoTypes`。
+        * 对于不同语言，错误处理的方式也不尽相同。例如对于Java或者Python，最常见的错误处理方式是Exception，而对于Golang，错误处理方式是返回值。而SWIG只能简单的暴露C++接口，无法做到对于各种语言错误处理方式的适配。
+    * 对于大多数语言，直接使用C语言的.h并不困难。例如Python的[cffi](https://cffi.readthedocs.io/en/latest/overview.html#simple-example-abi-level-in-line)或者[Cython](http://cython.org/), golang的[cgo](https://golang.org/cmd/cgo/)。
+    * SWIG支持的语言或者解释器有局限。例如对于Python，使用SWIG只支持CPython解释器，而不支持PyPy解释器。
 
 
 ## 原因列表
