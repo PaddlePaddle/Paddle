@@ -432,6 +432,12 @@ multi_binary_label_cross_entropy
     :members: multi_binary_label_cross_entropy
     :noindex:
 
+mse_cost
+---------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: mse_cost
+    :noindex:
+
 huber_cost
 ----------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -448,6 +454,12 @@ rank_cost
 ---------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: rank_cost
+    :noindex:
+
+sum_cost
+---------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: sum_cost
     :noindex:
 
 crf_layer
@@ -484,12 +496,6 @@ hsigmoid
 ---------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: hsigmoid
-    :noindex:
-
-sum_cost
----------
-..  automodule:: paddle.trainer_config_helpers.layers
-    :members: sum_cost
     :noindex:
 
 Check Layer 
