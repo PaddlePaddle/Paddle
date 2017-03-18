@@ -206,17 +206,14 @@ bool SmoothL1CostLayer::init(const LayerMap& layerMap,
 void SmoothL1CostLayer::forwardImp(Matrix& output,
                                    Argument& label,
                                    Matrix& target) {
-  MatrixPtr targetCpu, labelCpu, outputCpu;
+  MatrixPtr targetCpu, outputCpu, labelCpu;
   if (useGpu_) {
-    Matrix::resizeOrCreate(
-        targetCpu, target.getHeight(), target.getWidth(), false, false);
-    Matrix::resizeOrCreate(
-        outputCpu, output.getHeight(), output.getWidth(), false, false);
-    Matrix::resizeOrCreate(labelCpu,
-                           label.value->getHeight(),
-                           label.value->getWidth(),
-                           false,
-                           false);
+    targetCpu =
+        Matrix::create(target.getHeight(), target.getWidth(), false, false);
+    outputCpu =
+        Matrix::create(output.getHeight(), output.getWidth(), false, false);
+    labelCpu = Matrix::create(
+        label.value->getHeight(), label.value->getWidth(), false, false);
     targetCpu->copyFrom(target);
     outputCpu->copyFrom(output);
     labelCpu->copyFrom(*label.value);
@@ -230,17 +227,14 @@ void SmoothL1CostLayer::forwardImp(Matrix& output,
 void SmoothL1CostLayer::backwardImp(Matrix& output,
                                     Argument& label,
                                     Matrix& outputG) {
-  MatrixPtr outputGCpu, labelCpu, outputCpu;
+  MatrixPtr outputGCpu, outputCpu, labelCpu;
   if (useGpu_) {
-    Matrix::resizeOrCreate(
-        outputGCpu, outputG.getHeight(), outputG.getWidth(), false, false);
-    Matrix::resizeOrCreate(
-        outputCpu, output.getHeight(), output.getWidth(), false, false);
-    Matrix::resizeOrCreate(labelCpu,
-                           label.value->getHeight(),
-                           label.value->getWidth(),
-                           false,
-                           false);
+    outputGCpu =
+        Matrix::create(outputG.getHeight(), outputG.getWidth(), false, false);
+    outputCpu =
+        Matrix::create(output.getHeight(), output.getWidth(), false, false);
+    labelCpu = Matrix::create(
+        label.value->getHeight(), label.value->getWidth(), false, false);
     outputGCpu->copyFrom(outputG);
     outputCpu->copyFrom(output);
     labelCpu->copyFrom(*label.value);
