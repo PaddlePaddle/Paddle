@@ -1,9 +1,11 @@
-FROM ubuntu:14.04
+# A image for building paddle binaries
+# Use cuda devel base image for both cpu and gpu environment
+FROM nvidia/cuda:7.5-cudnn5-devel-ubuntu14.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG UBUNTU_MIRROR
-RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
+RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com/ubuntu#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
 
 # ENV variables
 ARG BUILD_WOBOQ
@@ -18,10 +20,8 @@ ENV WITH_GPU=OFF
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV WITH_DOC=${WITH_DOC:-OFF}
 ENV WITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
-ENV DOCKER_BUILD=TRUE
 
 ENV HOME /root
-
 # Add bash enhancements
 COPY ./paddle/scripts/docker/root/ /root/
 
@@ -50,9 +50,7 @@ RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd cmake-3.4.1 && ./bootstrap && make -j `nproc` && make install && \
     cd .. && rm -rf cmake-3.4.1
 
-COPY . /paddle/
-RUN cd /paddle/ && git submodule update --init --recursive
-RUN /paddle/paddle/scripts/docker/build.sh
+RUN apt-get install -y swig
 
 VOLUME ["/usr/share/nginx/html/data", "/usr/share/nginx/html/paddle"]
 
@@ -63,9 +61,5 @@ RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
 EXPOSE 22
 
-# Jupyter Notebook: Paddle book
-EXPOSE 8888
-
-COPY ./paddle/scripts/docker/entrypoint /opt/bin/
-
-CMD ["/opt/bin/entrypoint"]
+# development image default do build work
+CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]
