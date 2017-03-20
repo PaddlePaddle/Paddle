@@ -1602,7 +1602,6 @@ TEST(Layer, PadLayer) {
   }
 }
 
-
 TEST(Layer, CrossChannelNormLayer) {
   TestConfig config;
   config.layerConfig.set_type("norm");
