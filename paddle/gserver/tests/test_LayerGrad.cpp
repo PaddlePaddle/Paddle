@@ -276,27 +276,6 @@ TEST(Layer, AddtoLayer) {
   }
 }
 
-TEST(Layer, CRFLayer) {
-  TestConfig config;
-  config.layerConfig.set_type("crf");
-  config.layerConfig.set_size(10);
-  config.biasSize = 0;
-
-  config.inputDefs.push_back({INPUT_SEQUENCE_DATA, "layer_0", 10, 120});
-  config.inputDefs.push_back({INPUT_SEQUENCE_LABEL, "layer_1", 10, 0});
-  config.layerConfig.add_inputs();
-  config.layerConfig.add_inputs();
-
-  // Not support GPU now
-  testLayerGrad(config,
-                "crf",
-                100,
-                /* trans */ false,
-                /* useGpu */ false,
-                false /*useWeight*/,
-                0.03 /*epsilon*/);
-}
-
 TEST(Layer, CTCLayer) {
   TestConfig config;
   config.layerConfig.set_type("ctc");
@@ -1623,6 +1602,7 @@ TEST(Layer, PadLayer) {
   }
 }
 
+
 TEST(Layer, NormalizeLayer) {
   TestConfig config;
   config.layerConfig.set_type("normalize");
@@ -1634,6 +1614,20 @@ TEST(Layer, NormalizeLayer) {
 
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "normalize", 10, false, useGpu, false, 5);
+  }
+}
+
+TEST(Layer, smooth_l1) {
+  TestConfig config;
+  config.layerConfig.set_type("smooth_l1");
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1, 0});
+  config.inputDefs.push_back({INPUT_DATA_TARGET, "layer_1", 1, 0});
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "smooth_l1", 100, false, useGpu, false, 2.0);
   }
 }
 
