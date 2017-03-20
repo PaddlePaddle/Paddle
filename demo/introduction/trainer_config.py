@@ -34,5 +34,5 @@ y_predict = fc_layer(
     size=1,
     act=LinearActivation(),
     bias_attr=ParamAttr(name='b'))
-cost = regression_cost(input=y_predict, label=y)
+cost = mse_cost(input=y_predict, label=y)
 outputs(cost)

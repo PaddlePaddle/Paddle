@@ -1,46 +1,12 @@
-#########################
-Configuration Related API
-#########################
+Model Configuration
+===================
 
-======
-Layers
-======
+..  toctree::
+    :maxdepth: 1
 
-..  automodule:: paddle.v2.layer
-    :members:
-
-
-==========
-Attributes
-==========
-
-..	automodule:: paddle.v2.attr
-	:members:
-
-===========
-Activations
-===========
-
-..	automodule:: paddle.v2.activation
-	:members:
-
-========
-Poolings
-========
-
-..	automodule:: paddle.v2.pooling
-	:members:
-
-========
-Networks
-========
-
-..	automodule:: paddle.v2.networks
-	:members:
-
-==========
-Optimizers
-==========
-
-..	automodule:: paddle.v2.optimizer
-	:members:
+    config/activation.rst
+    config/layer.rst
+    config/optimizer.rst
+    config/pooling.rst
+    config/networks.rst
+    config/attr.rst

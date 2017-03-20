@@ -193,6 +193,59 @@ void SumOfSquaresCostLayer::backwardImp(Matrix& output,
 }
 
 //
+// class SmoothL1CostLayer
+//
+
+REGISTER_LAYER(smooth_l1, SmoothL1CostLayer);
+
+bool SmoothL1CostLayer::init(const LayerMap& layerMap,
+                             const ParameterMap& parameterMap) {
+  return CostLayer::init(layerMap, parameterMap);
+}
+
+void SmoothL1CostLayer::forwardImp(Matrix& output,
+                                   Argument& label,
+                                   Matrix& target) {
+  MatrixPtr targetCpu, outputCpu, labelCpu;
+  if (useGpu_) {
+    targetCpu =
+        Matrix::create(target.getHeight(), target.getWidth(), false, false);
+    outputCpu =
+        Matrix::create(output.getHeight(), output.getWidth(), false, false);
+    labelCpu = Matrix::create(
+        label.value->getHeight(), label.value->getWidth(), false, false);
+    targetCpu->copyFrom(target);
+    outputCpu->copyFrom(output);
+    labelCpu->copyFrom(*label.value);
+    targetCpu->smoothL1(*outputCpu, *(labelCpu));
+    target.copyFrom(*targetCpu);
+  } else {
+    target.smoothL1(output, *label.value);
+  }
+}
+
+void SmoothL1CostLayer::backwardImp(Matrix& output,
+                                    Argument& label,
+                                    Matrix& outputG) {
+  MatrixPtr outputGCpu, outputCpu, labelCpu;
+  if (useGpu_) {
+    outputGCpu =
+        Matrix::create(outputG.getHeight(), outputG.getWidth(), false, false);
+    outputCpu =
+        Matrix::create(output.getHeight(), output.getWidth(), false, false);
+    labelCpu = Matrix::create(
+        label.value->getHeight(), label.value->getWidth(), false, false);
+    outputGCpu->copyFrom(outputG);
+    outputCpu->copyFrom(output);
+    labelCpu->copyFrom(*label.value);
+    outputGCpu->smoothL1Bp(*outputCpu, *labelCpu);
+    outputG.copyFrom(*outputGCpu);
+  } else {
+    outputG.smoothL1Bp(output, *label.value);
+  }
+}
+
+//
 // class RankingCost
 //
 bool RankingCost::init(const LayerMap& layerMap,

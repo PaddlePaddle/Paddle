@@ -14,7 +14,7 @@ def main():
                                 act=paddle.activation.Linear(),
                                 bias_attr=paddle.attr.Param(name='b'))
     y = paddle.layer.data(name='y', type=paddle.data_type.dense_vector(1))
-    cost = paddle.layer.regression_cost(input=y_predict, label=y)
+    cost = paddle.layer.mse_cost(input=y_predict, label=y)
 
     # create parameters
     parameters = paddle.parameters.create(cost)

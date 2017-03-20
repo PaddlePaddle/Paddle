@@ -45,7 +45,7 @@ layers {
   coeff: 1.0
 }
 layers {
-  name: "__regression_cost_0__"
+  name: "__mse_cost_0__"
   type: "square_error"
   size: 1
   active_type: ""
@@ -84,7 +84,7 @@ input_layer_names: "input"
 input_layer_names: "label"
 input_layer_names: "weight"
 output_layer_names: "__cost_0__"
-output_layer_names: "__regression_cost_0__"
+output_layer_names: "__mse_cost_0__"
 evaluators {
   name: "classification_error_evaluator"
   type: "classification_error"
@@ -99,12 +99,12 @@ sub_models {
   layer_names: "weight"
   layer_names: "__fc_layer_0__"
   layer_names: "__cost_0__"
-  layer_names: "__regression_cost_0__"
+  layer_names: "__mse_cost_0__"
   input_layer_names: "input"
   input_layer_names: "label"
   input_layer_names: "weight"
   output_layer_names: "__cost_0__"
-  output_layer_names: "__regression_cost_0__"
+  output_layer_names: "__mse_cost_0__"
   evaluator_names: "classification_error_evaluator"
   is_recurrent_layer_group: false
 }

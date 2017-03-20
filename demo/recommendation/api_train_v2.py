@@ -61,7 +61,7 @@ def main():
 
     inference = paddle.layer.cos_sim(
         a=usr_combined_features, b=mov_combined_features, size=1, scale=5)
-    cost = paddle.layer.regression_cost(
+    cost = paddle.layer.mse_cost(
         input=inference,
         label=paddle.layer.data(
             name='score', type=paddle.data_type.dense_vector(1)))

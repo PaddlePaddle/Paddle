@@ -16,11 +16,25 @@ import paddle.trainer.PyDataProvider2 as dp2
 import collections
 import swig_paddle
 import numpy
+import itertools
 
 __all__ = ['DataProviderConverter']
 
 
 class IScanner(object):
+    """
+    The scanner will scan Python object two passes, then convert it to Paddle's
+    argument.
+
+    In the first pass, `pre_scan` will be invoked by every data instance, and
+    then invoke `finish_pre_scan` to arguments. And the second pass do the same
+    thing except the functions changed to `scan`, `finish_scan`.
+
+    During the first pass, a scanner may count the shape of input matrix and
+    allocate memory for this argument. Then fill the data into this  argument
+    in second pass.
+    """
+
     def __init__(self, input_type, pos):
         self.input_type = input_type
         if not isinstance(self.input_type, dp2.InputType):
@@ -36,10 +50,40 @@ class IScanner(object):
         self.data_in_gpu = swig_paddle.isUsingGpu(
         ) and swig_paddle.getTrainerCount() == 1
 
+    def pre_scan(self, dat):
+        """
+        First pass scan method. During this method, the scanner could count the
+        data number, and get the total memory size this batch would use.
+
+        :param dat: The python object.
+        """
+        pass
+
+    def finish_pre_scan(self, argument):
+        """
+        Finish first scan pass. Allocate the memory.
+
+        :param argument: Output arguments object.
+        :type argument: swig_paddle.Arguments
+        :return:
+        """
+        pass
+
     def scan(self, dat):
+        """
+        Second pass scan method. Copy the data to arguments.
+
+        :param dat: The python object.
+        """
         pass
 
     def finish_scan(self, argument):
+        """
+        Finish second pass. Finalize the resources, etc.
+
+        :param argument: Output arguments object.
+        :type argument: swig_paddle.Arguments
+        """
         pass
 
 
@@ -51,12 +95,19 @@ class DenseScanner(IScanner):
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
         self.__mat__ = None
+        self.__height__ = 0
+
+    def pre_scan(self, dat):
+        self.__height__ += 1
+
+    def finish_pre_scan(self, argument):
+        self.__mat__ = numpy.ndarray(
+            shape=(self.__height__, self.input_type.dim), dtype=numpy.float32)
+        self.__height__ = 0
 
     def scan(self, dat):
-        if self.__mat__ is None:
-            self.__mat__ = numpy.array([dat], dtype='float32')
-        else:
-            self.__mat__ = numpy.append(self.__mat__, [dat], axis=0)
+        self.__mat__[self.__height__] = dat
+        self.__height__ += 1
 
     def finish_scan(self, argument):
         assert isinstance(argument, swig_paddle.Arguments)
@@ -163,7 +214,14 @@ class DataProviderConverter(object):
         ]
 
         for each_sample in dat:
-            for each_step, scanner in zip(each_sample, scanners):
+            for each_step, scanner in itertools.izip(each_sample, scanners):
+                scanner.pre_scan(each_step)
+
+        for scanner in scanners:
+            scanner.finish_pre_scan(argument)
+
+        for each_sample in dat:
+            for each_step, scanner in itertools.izip(each_sample, scanners):
                 scanner.scan(each_step)
 
         for scanner in scanners:
