@@ -47,6 +47,17 @@ void generateSequenceStartPositions(size_t batchSize,
                                     ICpuGpuVectorPtr& sequenceStartPositions);
 
 /**
+ * @brief generate sequenceStartPositions for INPUT_SEQUENCE_BATCH_DATA,
+ *
+ * @param batchSize                      batchSize
+ *        sequenceStartPositions[out] generation output
+ */
+void generateBatchSequenceStartPositions(size_t batchSize,
+                                         IVectorPtr& sequenceStartPositions);
+
+void generateBatchSequenceStartPositions(
+    size_t batchSize, ICpuGpuVectorPtr& sequenceStartPositions);
+/**
  * @brief generate subSequenceStartPositions for INPUT_HASSUB_SEQUENCE_DATA
  *        according to sequenceStartPositions
  *

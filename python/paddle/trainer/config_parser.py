@@ -1619,6 +1619,79 @@ class PriorBoxLayer(LayerBase):
         self.config.size = size
 
 
+@config_layer('multibox_loss')
+class MultiBoxLossLayer(LayerBase):
+    def __init__(self, name, inputs, input_num, num_classes, overlap_threshold,
+                 neg_pos_ratio, neg_overlap, background_id):
+        super(MultiBoxLossLayer, self).__init__(name, 'multibox_loss', 0,
+                                                inputs)
+        config_assert(
+            len(inputs) == (input_num * 2 + 2),
+            'MultiBoxLossLayer does not have enough inputs')
+        config_assert(num_classes > background_id,
+                      'Classes number must greater than background ID')
+        self.config.inputs[0].multibox_loss_conf.num_classes = num_classes
+        self.config.inputs[
+            0].multibox_loss_conf.overlap_threshold = overlap_threshold
+        self.config.inputs[0].multibox_loss_conf.neg_pos_ratio = neg_pos_ratio
+        self.config.inputs[0].multibox_loss_conf.neg_overlap = neg_overlap
+        self.config.inputs[0].multibox_loss_conf.background_id = background_id
+        self.config.inputs[0].multibox_loss_conf.input_num = input_num
+        self.config.size = 1
+
+
+@config_layer('detection_output')
+class DetectionOutputLayer(LayerBase):
+    def __init__(self, name, inputs, size, input_num, num_classes,
+                 nms_threshold, top_k, keep_top_k, confidence_threshold,
+                 background_id):
+        super(DetectionOutputLayer, self).__init__(name, 'detection_output', 0,
+                                                   inputs)
+        config_assert(
+            len(inputs) == (input_num * 2 + 1),
+            'DetectionOutputLayer does not have enough inputs')
+        config_assert(num_classes > background_id,
+                      'Classes number must greater than background ID')
+        self.config.inputs[0].detection_output_conf.num_classes = num_classes
+        self.config.inputs[
+            0].detection_output_conf.nms_threshold = nms_threshold
+        self.config.inputs[0].detection_output_conf.top_k = top_k
+        self.config.inputs[0].detection_output_conf.keep_top_k = keep_top_k
+        self.config.inputs[
+            0].detection_output_conf.confidence_threshold = confidence_threshold
+        self.config.inputs[
+            0].detection_output_conf.background_id = background_id
+        self.config.inputs[0].detection_output_conf.input_num = input_num
+        self.config.size = size
+
+
+@config_layer('detection_eval')
+class DetectionEvalLayer(LayerBase):
+    def __init__(self, name, inputs, size, num_classes, overlap_threshold,
+                 background_id, evaluate_difficult):
+        super(DetectionEvalLayer, self).__init__(name, 'detection_eval', 0,
+                                                 inputs)
+        config_assert(num_classes > background_id,
+                      'Classes number must greater than background ID')
+        self.config.inputs[0].detection_eval_conf.num_classes = num_classes
+        self.config.inputs[
+            0].detection_eval_conf.overlap_threshold = overlap_threshold
+        self.config.inputs[0].detection_eval_conf.background_id = background_id
+        self.config.inputs[
+            0].detection_eval_conf.evaluate_difficult = evaluate_difficult
+        self.config.size = size
+
+
+@config_layer('normalize')
+class NormalizeLayer(LayerBase):
+    def __init__(self, name, inputs, size, num_filters, **xargs):
+        super(NormalizeLayer, self).__init__(name, 'normalize', 0, inputs,
+                                             **xargs)
+        self.config.size = size
+        self.config.num_filters = num_filters
+        self.create_input_parameter(0, num_filters, [num_filters, 1])
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self, name, size, height=None, width=None, device=None):
@@ -2033,6 +2106,7 @@ define_cost('RankingCost', 'rank-cost')
 define_cost('AucValidation', 'auc-validation')
 define_cost('PnpairValidation', 'pnpair-validation')
 define_cost('SumOfSquaresCostLayer', 'square_error')
+define_cost('SmoothL1CostLayer', 'smooth_l1')
 define_cost('MultiBinaryLabelCrossEntropy', 'multi_binary_label_cross_entropy')
 define_cost('SoftBinaryClassCrossEntropy', 'soft_binary_class_cross_entropy')
 define_cost('HuberTwoClass', 'huber')

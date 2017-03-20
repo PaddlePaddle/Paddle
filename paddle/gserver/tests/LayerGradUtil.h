@@ -26,6 +26,7 @@ enum InputType {
   INPUT_LABEL,        // id
   INPUT_DATA_TARGET,  // dense vector, but no gradient
   INPUT_SEQUENCE_DATA,
+  INPUT_SEQUENCE_BATCH_DATA,   // sequence number equal to the batchsize
   INPUT_HASSUB_SEQUENCE_DATA,  // sequence has sub-sequence
   INPUT_SEQUENCE_MDIM_DATA,
   INPUT_SEQUENCE_LABEL,

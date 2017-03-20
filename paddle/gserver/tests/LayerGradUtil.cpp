@@ -339,6 +339,7 @@ void initDataLayer(TestConfig testConf,
     switch (testConf.inputDefs[i].inputType) {
       case INPUT_DATA:
       case INPUT_SEQUENCE_DATA:
+      case INPUT_SEQUENCE_BATCH_DATA:
       case INPUT_HASSUB_SEQUENCE_DATA:
       case INPUT_DATA_TARGET:
       case INPUT_SEQUENCE_MDIM_DATA:
@@ -397,6 +398,12 @@ void initDataLayer(TestConfig testConf,
         testConf.inputDefs[i].inputType == INPUT_SEQUENCE_MDIM_DATA) {
       if (!sequenceStartPositions) {
         generateSequenceStartPositions(batchSize, sequenceStartPositions);
+      }
+      data.sequenceStartPositions = sequenceStartPositions;
+    }
+    if (testConf.inputDefs[i].inputType == INPUT_SEQUENCE_BATCH_DATA) {
+      if (!sequenceStartPositions) {
+        generateBatchSequenceStartPositions(batchSize, sequenceStartPositions);
       }
       data.sequenceStartPositions = sequenceStartPositions;
     }

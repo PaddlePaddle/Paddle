@@ -262,6 +262,29 @@ message PadConfig {
   repeated uint32 pad_w = 4;
 }
 
+message MultiBoxLossConfig {
+  required uint32 num_classes = 1;
+  required float overlap_threshold = 2;
+  required float neg_pos_ratio = 3;
+  required float neg_overlap = 4;
+  required uint32 background_id = 5;
+  required uint32 input_num = 6;
+  optional uint32 height = 7 [default = 1];
+  optional uint32 width = 8 [default = 1];
+}
+
+message DetectionOutputConfig {
+  required uint32 num_classes = 1;
+  required float nms_threshold = 2;
+  required uint32 top_k = 3;
+  required uint32 background_id = 4;
+  required uint32 input_num = 5;
+  required uint32 keep_top_k = 6;
+  required float confidence_threshold = 7;
+  optional uint32 height = 8 [default = 1];
+  optional uint32 width = 9 [default = 1];
+}
+
 message LayerInputConfig {
   required string input_layer_name = 1;
   optional string input_parameter_name = 2;
@@ -279,6 +302,8 @@ message LayerInputConfig {
   optional SppConfig spp_conf = 12;
   optional PriorBoxConfig priorbox_conf = 13;
   optional PadConfig pad_conf = 14;
+  optional MultiBoxLossConfig multibox_loss_conf = 15;
+  optional DetectionOutputConfig detection_output_conf = 16;
 }
 
 message LayerConfig {

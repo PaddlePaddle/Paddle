@@ -37,11 +37,11 @@ void doOnePriorBoxTest(size_t feature_map_width,
   // Setting up the priorbox layer
   TestConfig configt;
   configt.layerConfig.set_type("priorbox");
+  LayerInputConfig* input = configt.layerConfig.add_inputs();
+  configt.layerConfig.add_inputs();
 
   configt.inputDefs.push_back({INPUT_DATA, "featureMap", 1, 0});
-  LayerInputConfig* input = configt.layerConfig.add_inputs();
   configt.inputDefs.push_back({INPUT_DATA, "image", 1, 0});
-  configt.layerConfig.add_inputs();
   PriorBoxConfig* pb = input->mutable_priorbox_conf();
   for (size_t i = 0; i < min_size.size(); i++) pb->add_min_size(min_size[i]);
   for (size_t i = 0; i < max_size.size(); i++) pb->add_max_size(max_size[i]);

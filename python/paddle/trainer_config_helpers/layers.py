@@ -112,6 +112,9 @@ __all__ = [
     'out_prod_layer',
     'print_layer',
     'priorbox_layer',
+    'multibox_loss_layer',
+    'normalize_layer',
+    'detection_output_layer',
     'spp_layer',
     'pad_layer',
     'eos_layer',
@@ -185,6 +188,10 @@ class LayerType(object):
 
     PRINT_LAYER = "print"
     PRIORBOX_LAYER = "priorbox"
+    MULTIBOX_LOSS_LAYER = "multibox_loss"
+    NORMALIZE_LAYER = "normalize"
+    DETECTION_OUTPUT_LAYER = "detection_output"
+    DETECTION_EVAL_LAYER = "detection_eval"
 
     CTC_LAYER = "ctc"
     WARP_CTC_LAYER = "warp_ctc"
@@ -1005,6 +1012,192 @@ def priorbox_layer(input,
         parents=[input, image],
         num_filters=num_filters,
         size=size)
+
+
+@wrap_name_default("multibox_loss")
+def multibox_loss_layer(input_loc,
+                        input_conf,
+                        priorbox,
+                        label,
+                        num_classes=21,
+                        overlap_threshold=0.5,
+                        neg_pos_ratio=3.0,
+                        neg_overlap=0.5,
+                        background_id=0,
+                        name=None):
+    """
+    Compute the location loss and the confidence loss for ssd.
+    
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input_loc: The input predict location.
+    :type input_loc: LayerOutput 
+    :param input_conf: The input priorbox confidence.
+    :type input_conf: LayerOutput 
+    :param priorbox: The input priorbox location and the variance.
+    :type priorbox: LayerOutput 
+    :param label: The input label.
+    :type label: LayerOutput 
+    :param num_classes: The number of the classification.
+    :type num_classes: int
+    :param overlap_threshold: The threshold of the overlap.
+    :type overlap_threshold: float
+    :param neg_pos_ratio: The ratio of the negative bbox to the positive bbox.
+    :type neg_pos_ratio: float
+    :param neg_overlap: The negative bbox overlap threshold.
+    :type neg_overlap: float
+    :param background_id: The background class index.
+    :type background_id: int
+    :return: LayerOutput
+    """
+    input_loc_num = 0
+    input_conf_num = 0
+
+    if isinstance(input_loc, LayerOutput):
+        input_loc = [input_loc]
+    assert isinstance(input_loc, collections.Sequence)  # list or tuple
+    for each in input_loc:
+        assert isinstance(each, LayerOutput)
+        input_loc_num += 1
+
+    if isinstance(input_conf, LayerOutput):
+        input_conf = [input_conf]
+    assert isinstance(input_conf, collections.Sequence)  # list or tuple
+    for each in input_conf:
+        assert isinstance(each, LayerOutput)
+        input_conf_num += 1
+    # Check the input layer number.
+    assert input_loc_num == input_conf_num
+
+    inputs = [priorbox.name, label.name]
+    inputs.extend([l.name for l in input_loc])
+    inputs.extend([l.name for l in input_conf])
+    parents = [priorbox, label]
+    parents.extend(input_loc)
+    parents.extend(input_conf)
+
+    Layer(
+        name=name,
+        type=LayerType.MULTIBOX_LOSS_LAYER,
+        inputs=inputs,
+        input_num=input_loc_num,
+        num_classes=num_classes,
+        overlap_threshold=overlap_threshold,
+        neg_pos_ratio=neg_pos_ratio,
+        neg_overlap=neg_overlap,
+        background_id=background_id)
+    return LayerOutput(
+        name, LayerType.MULTIBOX_LOSS_LAYER, parents=parents, size=1)
+
+
+@wrap_name_default("detection_output")
+def detection_output_layer(input_loc,
+                           input_conf,
+                           priorbox,
+                           num_classes=21,
+                           nms_threshold=0.45,
+                           top_k=400,
+                           keep_top_k=200,
+                           confidence_threshold=0.01,
+                           background_id=0,
+                           name=None):
+    """
+    Apply the NMS to the output of network and compute the predict bounding
+    box location. 
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input_loc: The input predict location.
+    :type input_loc: LayerOutput 
+    :param input_conf: The input priorbox confidence.
+    :type input_conf: LayerOutput 
+    :param priorbox: The input priorbox location and the variance.
+    :type priorbox: LayerOutput 
+    :param num_classes: The number of the classification.
+    :type num_classes: int
+    :param nms_threshold: The Non-maximum suppression threshold.
+    :type nms_threshold: float
+    :param top_k: The bbox number kept of the NMS's output
+    :type top_k: int
+    :param keep_top_k: The bbox number kept of the layer's output
+    :type keep_top_k: int
+    :param confidence_threshold: The classification confidence threshold
+    :type confidence_threshold: float
+    :param background_id: The background class index.
+    :type background_id: int
+    :return: LayerOutput
+    """
+    input_loc_num = 0
+    input_conf_num = 0
+
+    if isinstance(input_loc, LayerOutput):
+        input_loc = [input_loc]
+    assert isinstance(input_loc, collections.Sequence)  # list or tuple
+    for each in input_loc:
+        assert isinstance(each, LayerOutput)
+        input_loc_num += 1
+
+    if isinstance(input_conf, LayerOutput):
+        input_conf = [input_conf]
+    assert isinstance(input_conf, collections.Sequence)  # list or tuple
+    for each in input_conf:
+        assert isinstance(each, LayerOutput)
+        input_conf_num += 1
+    # Check the input layer number.
+    assert input_loc_num == input_conf_num
+
+    inputs = [priorbox.name]
+    inputs.extend([l.name for l in input_loc])
+    inputs.extend([l.name for l in input_conf])
+    parents = [priorbox]
+    parents.extend(input_loc)
+    parents.extend(input_conf)
+
+    size = keep_top_k * 7
+
+    Layer(
+        name=name,
+        type=LayerType.DETECTION_OUTPUT_LAYER,
+        inputs=inputs,
+        size=size,
+        input_num=input_loc_num,
+        num_classes=num_classes,
+        nms_threshold=nms_threshold,
+        top_k=top_k,
+        keep_top_k=keep_top_k,
+        confidence_threshold=confidence_threshold,
+        background_id=background_id)
+    return LayerOutput(
+        name, LayerType.DETECTION_OUTPUT_LAYER, parents=parents, size=size)
+
+
+@wrap_name_default("normalize")
+def normalize_layer(input, name=None, param_attr=None):
+    """
+    Normalize a layer's output. This layer is necessary for ssd.
+    This layer applys normalize across the channels of each sample to
+    a conv layer's output and scale the output by a group of trainable
+    factors which dimensions equal to the channel's number.
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param param_attr: The Parameter Attribute|list.
+    :type param_attr: ParameterAttribute
+    :return: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.NORMALIZE_LAYER,
+        inputs=[Input(input.name, **param_attr.attr)],
+        size=input.size,
+        num_filters=input.num_filters)
+    return LayerOutput(
+        name,
+        LayerType.NORMALIZE_LAYER,
+        parents=input,
+        num_filters=input.num_filters,
+        size=input.size)
 
 
 @wrap_name_default("seq_pooling")

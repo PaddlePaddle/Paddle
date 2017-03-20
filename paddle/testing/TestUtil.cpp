@@ -120,6 +120,27 @@ void generateSequenceStartPositions(size_t batchSize,
   buf[numSeqs] = batchSize;
 }
 
+void generateBatchSequenceStartPositions(size_t batchSize,
+                                         IVectorPtr& sequenceStartPositions) {
+  ICpuGpuVectorPtr gpuCpuVec;
+  generateSequenceStartPositions(batchSize, gpuCpuVec);
+  sequenceStartPositions = gpuCpuVec->getMutableVector(false);
+}
+
+void generateBatchSequenceStartPositions(
+    size_t batchSize, ICpuGpuVectorPtr& sequenceStartPositions) {
+  int numSeqs;
+  numSeqs = std::ceil((float)batchSize);
+  sequenceStartPositions = ICpuGpuVector::create(numSeqs + 1, false);
+  int* buf = sequenceStartPositions->getMutableData(false);
+  int64_t pos = 0;
+  for (int i = 0; i < numSeqs; ++i) {
+    buf[i] = pos;
+    pos++;
+  }
+  buf[numSeqs] = batchSize;
+}
+
 void generateSubSequenceStartPositions(
     const ICpuGpuVectorPtr& sequenceStartPositions,
     ICpuGpuVectorPtr& subSequenceStartPositions) {
