@@ -3465,7 +3465,11 @@ the way how to configure a neural network topology in Paddle Python code.</p>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer.</em>) &#8211; The first input layer.</li>
 <li><strong>label</strong> &#8211; The input label.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
-<li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>coeff</strong> (<em>float.</em>) &#8211; The cost is multiplied with coeff.
+The coefficient affects the gradient in the backward.</li>
+<li><strong>weight</strong> (<em>LayerOutout</em>) &#8211; The cost of each sample is multiplied with each weight.
+The weight should be a layer with size=1. Note that gradient
+will not be calculated for weight.</li>
 <li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>

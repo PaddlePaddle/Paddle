@@ -395,6 +395,12 @@ reasons.</p>
 </tr>
 </tbody>
 </table>
+<dl class="method">
+<dt>
+<code class="descname">set_input</code><span class="sig-paren">(</span><em>input</em><span class="sig-paren">)</span></dt>
+<dd><p>Set the input for a memory layer. Can only be used for memory layer</p>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -1276,7 +1282,7 @@ will get a warning.</li>
 <h3>memory<a class="headerlink" href="#memory" title="永久链接至标题">¶</a></h3>
 <dl class="function">
 <dt>
-<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">memory</code><span class="sig-paren">(</span><em>name</em>, <em>size</em>, <em>is_seq=False</em>, <em>boot_layer=None</em>, <em>boot_bias=None</em>, <em>boot_bias_active_type=None</em>, <em>boot_with_const_id=None</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">memory</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>The memory layers is a layer cross each time step. Reference this output
 as previous time step layer <code class="code docutils literal"><span class="pre">name</span></code> &#8216;s output.</p>
 <p>The default memory is zero in first time step, previous time step&#8217;s
@@ -1289,13 +1295,23 @@ Arguments.ids()[0] is this <code class="code docutils literal"><span class="pre"
 Set <code class="code docutils literal"><span class="pre">is_seq</span></code> is true boot layer is sequence.</p>
 <p>The same name layer in recurrent group will set memory on each time
 step.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;state&#39;</span><span class="p">)</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">mem</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;state&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you do not want to specify the name, you can equivalently use set_input()
+to specify the layer needs to be remembered as the following:</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
-<li><strong>name</strong> (<em>basestring</em>) &#8211; memory&#8217;s name.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; the name of the layer which this memory remembers.
+If name is None, user should call set_input() to specify the
+name of the layer which this memory remembers.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; size of memory.</li>
+<li><strong>memory_name</strong> (<em>basestring</em>) &#8211; the name of the memory.
+It is ignored when name is provided.</li>
 <li><strong>is_seq</strong> (<em>bool</em>) &#8211; is sequence for boot_layer</li>
 <li><strong>boot_layer</strong> (<em>LayerOutput|None</em>) &#8211; boot layer of memory.</li>
 <li><strong>boot_bias</strong> (<em>ParameterAttribute|None</em>) &#8211; boot layer&#8217;s bias</li>
@@ -2957,7 +2973,11 @@ in width dimension.</p>
 <li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; The first input layer.</li>
 <li><strong>label</strong> &#8211; The input label.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
-<li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>coeff</strong> (<em>float.</em>) &#8211; The cost is multiplied with coeff.
+The coefficient affects the gradient in the backward.</li>
+<li><strong>weight</strong> (<em>LayerOutout</em>) &#8211; The cost of each sample is multiplied with each weight.
+The weight should be a layer with size=1. Note that gradient
+will not be calculated for weight.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
