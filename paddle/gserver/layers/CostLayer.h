@@ -164,8 +164,8 @@ public:
  * tasks.
  * \f[
  * L =
- *   output - label         / -1 < (output - label) < 1 /
- *   sign(output - label)   / otherwise  /
+ *   (output - label)^2 * 0.5  / -1 < (output - label) < 1 /
+ *   (output - label) - 0.5    / otherwise  /
  * \f]
  */
 class SmoothL1CostLayer : public CostLayer {
