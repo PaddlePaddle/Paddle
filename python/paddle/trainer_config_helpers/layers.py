@@ -713,9 +713,8 @@ class MixedLayerType(LayerOutput):
         return self
 
     def __exit__(self, exc_type, exc_value, tb):
-        if exc_type != None:
-            traceback.print_exception(exc_type, exc_value, tb)
-            sys.exit(1)
+        if exc_value is not None:
+            raise exc_value
         assert len(self.inputs) != 0
         ml = MixedLayer(
             name=self.name,
