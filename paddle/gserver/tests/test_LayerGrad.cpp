@@ -1623,17 +1623,22 @@ TEST(Layer, PadLayer) {
   }
 }
 
-TEST(Layer, NormalizeLayer) {
+TEST(Layer, CrossChannelNormLayer) {
   TestConfig config;
-  config.layerConfig.set_type("normalize");
+  config.layerConfig.set_type("norm");
   config.layerConfig.set_size(100);
-  config.layerConfig.set_num_filters(10);
-
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  NormConfig* norm = input->mutable_norm_conf();
+  norm->set_norm_type("cross-channel-norm");
+  norm->set_channels(10);
+  norm->set_size(100);
+  norm->set_scale(0);
+  norm->set_pow(0);
+  norm->set_blocked(0);
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 100, 10});
-  config.layerConfig.add_inputs();
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "normalize", 10, false, useGpu, false, 5);
+    testLayerGrad(config, "cross-channel-norm", 10, false, useGpu, false, 5);
   }
 }
 

@@ -111,7 +111,7 @@ __all__ = [
     'out_prod_layer',
     'print_layer',
     'priorbox_layer',
-    'normalize_layer',
+    'cross_channel_norm_layer',
     'spp_layer',
     'pad_layer',
     'eos_layer',
@@ -185,7 +185,6 @@ class LayerType(object):
 
     PRINT_LAYER = "print"
     PRIORBOX_LAYER = "priorbox"
-    NORMALIZE_LAYER = "normalize"
 
     CTC_LAYER = "ctc"
     WARP_CTC_LAYER = "warp_ctc"
@@ -1000,8 +999,8 @@ def priorbox_layer(input,
         size=size)
 
 
-@wrap_name_default("normalize")
-def normalize_layer(input, name=None, param_attr=None):
+@wrap_name_default("cross_channel_norm")
+def cross_channel_norm_layer(input, name=None, param_attr=None):
     """
     Normalize a layer's output. This layer is necessary for ssd.
     This layer applys normalize across the channels of each sample to
@@ -1017,13 +1016,22 @@ def normalize_layer(input, name=None, param_attr=None):
     """
     Layer(
         name=name,
-        type=LayerType.NORMALIZE_LAYER,
-        inputs=[Input(input.name, **param_attr.attr)],
-        size=input.size,
-        num_filters=input.num_filters)
+        type=LayerType.NORM_LAYER,
+        inputs=[
+            Input(
+                input.name,
+                norm=Norm(
+                    norm_type="cross-channel-norm",
+                    channels=input.num_filters,
+                    size=input.size,
+                    scale=0,
+                    pow=0,
+                    blocked=0),
+                **param_attr.attr)
+        ])
     return LayerOutput(
         name,
-        LayerType.NORMALIZE_LAYER,
+        LayerType.NORM_LAYER,
         parents=input,
         num_filters=input.num_filters,
         size=input.size)
