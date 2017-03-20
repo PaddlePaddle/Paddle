@@ -22,7 +22,7 @@ import paddle.v2.networks as networks
 
 pixel = layer.data(name='pixel', type=data_type.dense_vector(128))
 label = layer.data(name='label', type=data_type.integer_value(10))
-weight = layer.data(name='weight', type=data_type.dense_vector(10))
+weight = layer.data(name='weight', type=data_type.dense_vector(1))
 score = layer.data(name='score', type=data_type.dense_vector(1))
 
 hidden = layer.fc(input=pixel,
