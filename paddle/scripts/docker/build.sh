@@ -15,28 +15,24 @@ mkdir -p /paddle/dist/gpu-noavx
 if [ ${WITH_GPU} == "ON" ]; then
   BASE_IMAGE="nvidia/cuda:7.5-cudnn5-runtime-ubuntu14.04"
   # additional packages to install when building gpu images
-  GPU_DOCKER_PKG="python-pip"
+  GPU_DOCKER_PKG="python-pip python-dev"
   if [ ${WITH_AVX} == "ON" ]; then
     DEB_PATH="dist/gpu/"
-    DOCKER_SUFFIX="gpu"
   else
     DEB_PATH="dist/gpu-noavx/"
-    DOCKER_SUFFIX="gpu-noavx"
   fi
 else
   BASE_IMAGE="python:2.7.13-slim"
   if [ ${WITH_AVX} == "ON" ]; then
     DEB_PATH="dist/cpu/"
-    DOCKER_SUFFIX="cpu"
   else
     DEB_PATH="dist/cpu-noavx/"
-    DOCKER_SUFFIX="noavx"
   fi
 fi
 # If Dockerfile.* sets BUILD_AND_INSTALL to 'ON', it would have copied
 # source tree to /paddle, and this scripts should build it into
 # /paddle/build.
-if [[ ${BUILD_AND_INSTALL:-OFF} == 'ON' ]]; then
+if [[ ${BUILD_AND_INSTALL:-ON} == 'ON' ]]; then
     if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
 	ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so /usr/lib/libcudnn.so
     fi
@@ -44,7 +40,7 @@ if [[ ${BUILD_AND_INSTALL:-OFF} == 'ON' ]]; then
     mkdir -p /paddle/build # -p means no error if exists
     cd /paddle/build
     # clean local cmake and third_party cache
-    if [ ${DELETE_BUILD_CACHE} == 'ON' ]; then
+    if [ ${DELETE_BUILD_CACHE:-ON} == 'ON' ]; then
       rm -rf * && rm -rf ../third_party
     fi
     cmake .. \
@@ -54,8 +50,12 @@ if [[ ${BUILD_AND_INSTALL:-OFF} == 'ON' ]]; then
 	  -DWITH_SWIG_PY=ON \
 	  -DCUDNN_ROOT=/usr/ \
 	  -DWITH_STYLE_CHECK=OFF \
+    -DON_COVERALLS=${TEST:-ON} \
 	  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     make -j `nproc`
+    if [ ${TEST:-ON} == "ON" ]; then
+      make coveralls
+    fi
     make install
     # generate deb package for current build
     # FIXME(typhoonzero): should we remove paddle/scripts/deb ?
@@ -106,7 +106,7 @@ else
   MIRROR_UPDATE="\\"
 fi
 
-cat > /paddle/build/Dockerfile.${DOCKER_SUFFIX} <<EOF
+cat > /paddle/build/Dockerfile <<EOF
 FROM ${BASE_IMAGE}
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
@@ -116,7 +116,7 @@ ARG WITH_DOC
 ARG WITH_STYLE_CHECK
 
 ENV WITH_GPU=${WITH_GPU}
-ENV WITH_AVX=\${WITH_AVX:-ON}
+ENV WITH_AVX=${WITH_AVX}
 ENV WITH_DOC=\${WITH_DOC:-OFF}
 ENV WITH_STYLE_CHECK=\${WITH_STYLE_CHECK:-OFF}
 
@@ -127,14 +127,14 @@ ENV LANG en_US.UTF-8
 
 RUN ${MIRROR_UPDATE}
     apt-get update && \
-    apt-get install -y libgfortran3 ${GPU_DOCKER_PKG} && \
+    apt-get install -y libgfortran3 libpython2.7 ${GPU_DOCKER_PKG} && \
     apt-get clean -y && \
     pip install --upgrade pip && \
-    pip install -U 'protobuf==3.1.0' requests
-RUN pip install numpy
+    pip install -U 'protobuf==3.1.0' requests numpy
 # Use different deb file when building different type of images
 ADD \$PWD/${DEB_PATH}*.deb /usr/local/opt/paddle/deb/
-RUN dpkg --force-all -i /usr/local/opt/paddle/deb/*.deb && rm -f /usr/local/opt/paddle/deb/*.deb
+# run paddle version to install python packages first
+RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && rm -f /usr/local/opt/paddle/deb/*.deb && paddle version
 
 ENV PATH="/usr/local/opt/paddle/bin/:${PATH}"
 # default command shows the paddle version and exit
