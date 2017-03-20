@@ -20,9 +20,12 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * A layer for reshaping the sequence
- * Input: a sequence
- * Output: a sequence
+ *  A layer for reshaping the sequence. Assume the input sequence has
+ *  T instances, the dimension of each instance is M, and the input
+ *  reshape_dim is N, then the output sequence has T*M/N instances,
+ *  the dimension of each instance is N.
+ *
+ *  Note that T*M/N must be an integer.
  */
 
 class SequenceReshapeLayer : public Layer {

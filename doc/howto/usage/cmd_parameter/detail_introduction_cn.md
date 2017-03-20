@@ -180,15 +180,6 @@
   - 用户可以自定义beam search的方法，编译成动态库，供PaddlePaddle加载。 该参数用于指定动态库路径.
   - 类型: string (默认: "", null).
 
-## 度量学习(Metric Learning)
-* `--external`
-   - 指示是否使用外部机器进行度量学习.
-   - 类型: bool (默认: 0).
-
-* `--data_server_port`
-  - 数据服务器(data server)的监听端口，主要用在度量学习中.
-  - 类型: int32 (默认: 21134).
-
 ## 数据支持(DataProvider)
 
 * `--memory_threshold_on_load_data`

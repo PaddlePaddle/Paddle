@@ -276,27 +276,6 @@ TEST(Layer, AddtoLayer) {
   }
 }
 
-TEST(Layer, CRFLayer) {
-  TestConfig config;
-  config.layerConfig.set_type("crf");
-  config.layerConfig.set_size(10);
-  config.biasSize = 0;
-
-  config.inputDefs.push_back({INPUT_SEQUENCE_DATA, "layer_0", 10, 120});
-  config.inputDefs.push_back({INPUT_SEQUENCE_LABEL, "layer_1", 10, 0});
-  config.layerConfig.add_inputs();
-  config.layerConfig.add_inputs();
-
-  // Not support GPU now
-  testLayerGrad(config,
-                "crf",
-                100,
-                /* trans */ false,
-                /* useGpu */ false,
-                false /*useWeight*/,
-                0.03 /*epsilon*/);
-}
-
 TEST(Layer, CTCLayer) {
   TestConfig config;
   config.layerConfig.set_type("ctc");

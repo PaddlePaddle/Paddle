@@ -11,7 +11,39 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import optimizer
+import layer
+import activation
+import parameters
+import trainer
+import event
+import data_type
+import topology
+import data_feeder
+import networks
+from . import dataset
+from . import reader
+import attr
+import pooling
+import inference
+import networks
+import py_paddle.swig_paddle as api
+import minibatch
 
-__all__ = ['optimizer']
+__all__ = [
+    'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
+    'event', 'data_type', 'attr', 'pooling', 'data_feeder', 'dataset', 'reader',
+    'topology', 'networks', 'infer'
+]
+
+
+def init(**kwargs):
+    args = []
+    for key in kwargs.keys():
+        args.append('--%s=%s' % (key, str(kwargs[key])))
+
+    api.initPaddle(*args)
+
+
+infer = inference.infer
+batch = minibatch.batch

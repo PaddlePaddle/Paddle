@@ -189,6 +189,8 @@ public:
                        PassType passType,
                        const UpdateCallback& callback);
 
+  virtual Argument getLayerOutput(const std::string& layerName);
+
   virtual void onPassEnd();
 
   virtual void finish();
@@ -314,6 +316,8 @@ protected:
   std::vector<Argument> outArgs_;
   hl_stream_t outArgStream_;
 
+  Argument outLayerArgs_;
+
   /// ParameterType which needs to be merged from each GPU
   std::vector<ParameterType> mergeTypes_;
   int numDevices_;         /* number of gpu devices */
@@ -383,6 +387,9 @@ public:
   /// copy the output gradient from the main GradientMachine.
   void copyOutputGrad();
 
+  /// Whether the thread has input data.
+  bool hasInputData() { return batchSize_ != 0; }
+
 protected:
   void mergeCpuGradients();
 
@@ -403,7 +410,7 @@ protected:
   void copyGradToBufferThread();
   void gradCollectThread();
 
-  void copyInArgs();
+  int copyInArgs();
   void forward();
   void backward();
   void backwardCallback(Parameter* para);
@@ -463,6 +470,7 @@ protected:
 
   /// indicate whether inArgs is copied before forward()
   bool inArgsCopied_;
+  int batchSize_;
 };
 
 }  // namespace paddle

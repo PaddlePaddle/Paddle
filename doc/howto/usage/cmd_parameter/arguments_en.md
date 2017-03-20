@@ -229,16 +229,6 @@ It looks like there are a lot of arguments. However, most of them are for develo
 </tr>
 
 <tr>
-<td class="left" rowspan = "2">metric learning</td><td class="left">external</td>
-<td class="left">√</td><td class="left">√</td><td class="left">√</td><td class="left">√</td>
-</tr>
-
-<tr>
-<td class="left">data_server_port</td>
-<td class="left"></td><td class="left">√</td><td class="left"></td><td class="left">√</td>
-</tr>
-
-<tr>
 <td class="left" rowspan = "16">PServer</td><td class="left">start_pserver</td>
 <td class="left"></td><td class="left">√</td><td class="left"></td><td class="left">√</td>
 </tr>

@@ -9,6 +9,100 @@ Please be aware that you will need to change `Dockers settings
 of your hardware resource on Mac OS X and Windows.
 
 
+Usage of CPU-only and GPU Images
+----------------------------------
+
+For each version of PaddlePaddle, we release 2 Docker images, a
+CPU-only one and a CUDA GPU one.  We do so by configuring
+`dockerhub.com <https://hub.docker.com/r/paddledev/paddle/>`_
+automatically generate the latest docker images `paddledev/paddle:0.10.0rc1-cpu`
+and `paddledev/paddle:0.10.0rc1-gpu`.
+
+To run the CPU-only image as an interactive container:
+
+.. code-block:: bash
+
+    docker run -it --rm paddledev/paddle:0.10.0rc1-cpu /bin/bash
+
+or, we can run it as a daemon container
+
+.. code-block:: bash
+
+    docker run -d -p 2202:22 -p 8888:8888 paddledev/paddle:0.10.0rc1-cpu
+
+and SSH to this container using password :code:`root`:
+
+.. code-block:: bash
+
+    ssh -p 2202 root@localhost
+
+An advantage of using SSH is that we can connect to PaddlePaddle from
+more than one terminals.  For example, one terminal running vi and
+another one running Python interpreter.  Another advantage is that we
+can run the PaddlePaddle container on a remote server and SSH to it
+from a laptop.
+
+Above methods work with the GPU image too -- just please don't forget
+to install CUDA driver and let Docker knows about it:
+
+.. code-block:: bash
+
+    export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
+    export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
+    docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:0.10.0rc1-gpu
+
+
+PaddlePaddle Book
+------------------
+
+The Jupyter Notebook is an open-source web application that allows
+you to create and share documents that contain live code, equations,
+visualizations and explanatory text in a single browser.
+
+PaddlePaddle Book is an interactive Jupyter Notebook for users and developers. 
+We already exposed port 8888 for this book. If you want to
+dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.
+
+Once you are inside the container, simply issue the command:
+
+.. code-block:: bash
+        
+    jupyter notebook
+
+Then, you would back and paste the address into the local browser:
+    
+.. code-block:: text
+
+    http://localhost:8888/
+
+That's all. Enjoy your journey!
+
+
+Non-AVX Images
+--------------
+
+Please be aware that the CPU-only and the GPU images both use the AVX
+instruction set, but old computers produced before 2008 do not support
+AVX.  The following command checks if your Linux computer supports
+AVX:
+
+.. code-block:: bash
+
+   if cat /proc/cpuinfo | grep -i avx; then echo Yes; else echo No; fi
+
+
+If it doesn't, we will need to build non-AVX images manually from
+source code:
+
+.. code-block:: bash
+
+   cd ~
+   git clone https://github.com/PaddlePaddle/Paddle.git
+   cd Paddle
+   docker build --build-arg WITH_AVX=OFF -t paddle:cpu-noavx -f paddle/scripts/docker/Dockerfile .
+   docker build --build-arg WITH_AVX=OFF -t paddle:gpu-noavx -f paddle/scripts/docker/Dockerfile.gpu .
+
+
 Development Using Docker
 ------------------------
 
@@ -42,7 +136,7 @@ Windows -- in a consistent way.
 
    .. code-block:: bash
 
-      docker run -d -p 2202:22 -v $PWD:/paddle paddle:dev
+      docker run -d -p 2202:22 -p 8888:8888 -v $PWD:/paddle paddle:dev
 
    This runs a container of the development environment Docker image
    with the local source tree mounted to :code:`/paddle` of the
@@ -83,80 +177,6 @@ Windows -- in a consistent way.
       ctest
 
 
-CPU-only and GPU Images
------------------------
-
-For each version of PaddlePaddle, we release 2 Docker images, a
-CPU-only one and a CUDA GPU one.  We do so by configuring
-`dockerhub.com <https://hub.docker.com/r/paddledev/paddle/>`_
-automatically runs the following commands:
-
-.. code-block:: bash
-
-   docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile .
-   docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu .
-
-
-To run the CPU-only image as an interactive container:
-
-.. code-block:: bash
-
-    docker run -it --rm paddledev/paddle:cpu-latest /bin/bash
-
-or, we can run it as a daemon container
-
-.. code-block:: bash
-
-    docker run -d -p 2202:22 paddledev/paddle:cpu-latest
-
-and SSH to this container using password :code:`root`:
-
-.. code-block:: bash
-
-    ssh -p 2202 root@localhost
-
-An advantage of using SSH is that we can connect to PaddlePaddle from
-more than one terminals.  For example, one terminal running vi and
-another one running Python interpreter.  Another advantage is that we
-can run the PaddlePaddle container on a remote server and SSH to it
-from a laptop.
-
-
-Above methods work with the GPU image too -- just please don't forget
-to install CUDA driver and let Docker knows about it:
-
-.. code-block:: bash
-
-    export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
-    export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-    docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:gpu-latest
-
-
-Non-AVX Images
---------------
-
-Please be aware that the CPU-only and the GPU images both use the AVX
-instruction set, but old computers produced before 2008 do not support
-AVX.  The following command checks if your Linux computer supports
-AVX:
-
-.. code-block:: bash
-
-   if cat /proc/cpuinfo | grep -i avx; then echo Yes; else echo No; fi
-
-
-If it doesn't, we will need to build non-AVX images manually from
-source code:
-
-.. code-block:: bash
-
-   cd ~
-   git clone https://github.com/PaddlePaddle/Paddle.git
-   cd Paddle
-   docker build --build-arg WITH_AVX=OFF -t paddle:cpu-noavx -f paddle/scripts/docker/Dockerfile .
-   docker build --build-arg WITH_AVX=OFF -t paddle:gpu-noavx -f paddle/scripts/docker/Dockerfile.gpu .
-
-
 Documentation
 -------------
 
@@ -171,7 +191,7 @@ container:
 
 .. code-block:: bash
 
-   docker run -d --name paddle-cpu-doc paddle:cpu
+   docker run -d --name paddle-cpu-doc paddle:0.10.0rc1-cpu
    docker run -d --volumes-from paddle-cpu-doc -p 8088:80 nginx
 
 

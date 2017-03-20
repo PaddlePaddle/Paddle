@@ -52,6 +52,10 @@ def wrap_param_default(param_names=None,
                     kwargs[name] = default_factory(func)
             return func(*args, **kwargs)
 
+        if hasattr(func, 'argspec'):
+            __wrapper__.argspec = func.argspec
+        else:
+            __wrapper__.argspec = inspect.getargspec(func)
         return __wrapper__
 
     return __impl__

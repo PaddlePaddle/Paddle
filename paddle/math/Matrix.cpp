@@ -732,6 +732,7 @@ void GpuMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
   size_t beam = maxVal.getWidth();
   CHECK_EQ(maxIds.getSize(), numSamples * beam);
   CHECK_EQ(maxVal.getHeight(), numSamples);
+  CHECK_EQ(maxVal.getWidth(), beam);
 
   hl_matrix_top_k(maxVal.getData(),
                   maxVal.getStride(),
@@ -792,19 +793,32 @@ void GpuMatrix::maxoutBackward(Matrix& a,
 }
 
 /*calulate the error of classification */
-void GpuMatrix::classificationError(Matrix& output, IVector& label) {
-  auto output_ptr = dynamic_cast<const GpuMatrix*>(&output);
-  auto label_ptr = dynamic_cast<const GpuIVector*>(&label);
-  CHECK(output_ptr && label_ptr) << "Invalid argument pointer";
+void GpuMatrix::classificationError(Matrix& output,
+                                    IVector& label,
+                                    size_t topkSize) {
+  auto gpuOutput = dynamic_cast<GpuMatrix*>(&output);
+  auto gpuLabel = dynamic_cast<GpuIVector*>(&label);
+  size_t numSamples = this->getHeight();
+  GpuMatrixPtr gpuTopVal = std::make_shared<GpuMatrix>(numSamples, topkSize);
+  GpuIVectorPtr gpuTopIds = std::make_shared<GpuIVector>(numSamples * topkSize);
 
-  CHECK(height_ == output_ptr->height_ && width_ == 1)
+  CHECK(gpuOutput && gpuLabel) << "Invalid argument pointer";
+  CHECK(gpuTopVal && gpuTopIds) << "Allocate GPU memory failed";
+  CHECK(gpuLabel->getSize() == numSamples) << "Vector size is not equal";
+  CHECK(numSamples == gpuOutput->getHeight() && this->getWidth() == 1)
       << "Matrix dimensions are not equal";
 
-  hl_matrix_classification_error((real*)output_ptr->data_,
-                                 (int*)label_ptr->getData(),
-                                 data_,
-                                 height_,
-                                 output_ptr->width_);
+  size_t dim = gpuOutput->getWidth();
+  hl_matrix_classification_error(gpuTopVal->getData(),
+                                 gpuTopVal->getStride(),
+                                 gpuTopIds->getData(),
+                                 gpuOutput->getData(),
+                                 gpuOutput->getStride(),
+                                 dim,
+                                 topkSize,
+                                 numSamples,
+                                 gpuLabel->getData(),
+                                 this->getData());
 }
 
 /* copy -log(output[i * width + label]) to this->data[i] */
@@ -3039,7 +3053,7 @@ void CpuMatrix::rowMax(Matrix& max) {
   max.maxRows(*this);
 }
 
-/* get beam size of max ids and values */
+/* Get the top k elements of each row of this matrix */
 void CpuMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
   CHECK(isContiguous());
   CHECK(!maxIds.useGpu() && !maxVal.useGpu()) << "Matrix type are not equal";
@@ -3047,6 +3061,7 @@ void CpuMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
   size_t beam = maxVal.getWidth();
   CHECK_EQ(maxIds.getSize(), numSamples * beam);
   CHECK_EQ(maxVal.getHeight(), numSamples);
+  CHECK_EQ(maxVal.getWidth(), beam);
 
   real* a = getData();
   int* s = maxIds.getData();
@@ -3198,32 +3213,39 @@ void CpuMatrix::rowNormalizeL1(Matrix& out) {
 }
 
 /* calulate classification error */
-void CpuMatrix::classificationError(Matrix& output, IVector& label) {
-  CHECK(dynamic_cast<const CpuMatrix*>(&output));
-  CHECK(dynamic_cast<const CpuIVector*>(&label));
+void CpuMatrix::classificationError(Matrix& output,
+                                    IVector& label,
+                                    size_t topkSize) {
+  size_t numSamples = this->getHeight();
+  auto cpuOutput = dynamic_cast<CpuMatrix*>(&output);
+  auto cpuLabel = dynamic_cast<CpuIVector*>(&label);
+  IVectorPtr cpuTopIds = std::make_shared<CpuIVector>(numSamples * topkSize);
+  MatrixPtr cpuTopVal = std::make_shared<CpuMatrix>(numSamples, topkSize);
 
-  CHECK_EQ(getWidth(), (size_t)1);
-  size_t numSamples = getHeight();
-  CHECK_EQ(label.getSize(), numSamples);
-  CHECK_EQ(output.getHeight(), numSamples);
+  CHECK(cpuOutput && cpuLabel) << "Invalid argument pointer";
+  CHECK(cpuTopIds && cpuTopVal) << "Allocate cpu memory failed";
+  CHECK(cpuLabel->getSize() == numSamples) << "Vector size is not equal";
+  CHECK(cpuOutput->getHeight() == numSamples && this->getWidth() == 1)
+      << "Matrix dimensions are not equal";
 
-  size_t dim = output.getWidth();
-  real* out = output.getData();
-  int* lbl = label.getData();
-  real maxData = 0.0;
-  int maxIndex = -1;
+  // top k matrix classification
+  cpuOutput->rowMax(*cpuTopIds, *cpuTopVal);
+
+  size_t dim = cpuOutput->getWidth();
+  real* result = this->getData();
+  int* ids = cpuTopIds->getData();
+  int* lbl = cpuLabel->getData();
   for (size_t i = 0; i < numSamples; ++i) {
     CHECK_GE(lbl[i], 0);
     CHECK_LT((size_t)lbl[i], dim);
-    maxData = out[i * dim];
-    maxIndex = 0;
-    for (size_t j = 0; j < dim; ++j) {
-      if (maxData < out[i * dim + j]) {
-        maxIndex = j;
-        maxData = out[i * dim + j];
+
+    for (size_t j = 0; j < topkSize; ++j) {
+      if (ids[j + i * topkSize] == lbl[i]) {
+        result[i] = 0;
+        break;
       }
+      result[i] = 1.0f;
     }
-    getData()[i] = (maxIndex != lbl[i]);
   }
 }
 

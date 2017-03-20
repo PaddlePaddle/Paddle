@@ -18,6 +18,14 @@ add_unittest_without_exec(test_LayerGrad
 add_test(NAME test_LayerGrad
     COMMAND test_LayerGrad)
 
+################ test_CRFLayerGrad ####################
+add_unittest_without_exec(test_CRFLayerGrad
+    test_CRFLayerGrad.cpp
+    LayerGradUtil.cpp)
+add_test(NAME test_CRFLayerGrad
+    COMMAND test_CRFLayerGrad)
+
+
 add_unittest_without_exec(test_ActivationGrad
     test_ActivationGrad.cpp
     LayerGradUtil.cpp)

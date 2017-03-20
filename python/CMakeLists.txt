@@ -4,7 +4,7 @@ set(OUTPUT_DIR
 file(GLOB TRAINER_PY_FILES . ./paddle/trainer/*.py)
 file(GLOB HELPERS_PY_FILES . ./paddle/trainer_config_helpers/*.py)
 file(GLOB UTILS_PY_FILES . ./paddle/utils/*.py)
-file(GLOB V2_PY_FILES . ./paddle/v2/*.py)
+file(GLOB_RECURSE V2_PY_FILES ./paddle/v2/ *.py)
 
 set(PY_FILES paddle/__init__.py
              ${TRAINER_PY_FILES}
@@ -24,6 +24,8 @@ add_custom_target(paddle_python ALL DEPENDS
     ${OUTPUT_DIR}/.timestamp)
 
 add_subdirectory(paddle/trainer_config_helpers/tests)
+add_subdirectory(paddle/v2/reader/tests)
+add_subdirectory(paddle/v2/tests)
 
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/dist/
     DESTINATION opt/paddle/share/wheels

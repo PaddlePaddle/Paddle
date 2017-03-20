@@ -1,9 +1,17 @@
 import py_paddle.swig_paddle as swig_api
-import paddle.trainer_config_helpers.optimizers as v1_optimizers
-import paddle.trainer_config_helpers.config_parser_utils as config_parser_utils
-import paddle.v2
 
-__all__ = ['Adam', 'Adamax']
+import paddle.trainer_config_helpers.config_parser_utils as config_parser_utils
+import paddle.trainer_config_helpers.optimizers as v1_optimizers
+"""
+Optimizers(update equation) for SGD method.
+
+TODO(yuyang18): Complete comments.
+"""
+
+__all__ = [
+    'Momentum', 'Adam', 'Adamax', 'AdaGrad', 'DecayedAdaGrad', 'AdaDelta',
+    'RMSProp', 'ModelAverage', 'L2Regularization'
+]
 
 
 class Optimizer(object):
@@ -38,6 +46,14 @@ class Optimizer(object):
                                                              pass_num)
 
 
+class Momentum(Optimizer):
+    def __init__(self, momentum=None, sparse=False, **kwargs):
+        learning_method = v1_optimizers.MomentumOptimizer(
+            momentum=momentum, sparse=sparse)
+        super(Momentum, self).__init__(
+            learning_method=learning_method, **kwargs)
+
+
 class Adam(Optimizer):
     def __init__(self, beta1=0.9, beta2=0.999, epsilon=1e-8, **kwargs):
         learning_method = v1_optimizers.AdamOptimizer(
@@ -52,7 +68,45 @@ class Adamax(Optimizer):
         super(Adamax, self).__init__(learning_method=learning_method, **kwargs)
 
 
+class AdaGrad(Optimizer):
+    def __init__(self, **kwargs):
+        learning_method = v1_optimizers.AdaGradOptimizer()
+        super(AdaGrad, self).__init__(learning_method=learning_method, **kwargs)
+
+
+class DecayedAdaGrad(Optimizer):
+    def __init__(self, rho=0.95, epsilon=1e-06, **kwargs):
+        learning_method = v1_optimizers.DecayedAdaGradOptimizer(
+            rho=rho, epsilon=epsilon)
+        super(DecayedAdaGrad, self).__init__(
+            learning_method=learning_method, **kwargs)
+
+
+class AdaDelta(Optimizer):
+    def __init__(self, rho=0.95, epsilon=1e-06, **kwargs):
+        learning_method = v1_optimizers.AdaDeltaOptimizer(
+            rho=rho, epsilon=epsilon)
+        super(AdaDelta, self).__init__(
+            learning_method=learning_method, **kwargs)
+
+
+class RMSProp(Optimizer):
+    def __init__(self, rho=0.95, epsilon=1e-6, **kwargs):
+        learning_method = v1_optimizers.RMSPropOptimizer(
+            rho=rho, epsilon=epsilon)
+        super(RMSProp, self).__init__(learning_method=learning_method, **kwargs)
+
+
+ModelAverage = v1_optimizers.ModelAverage
+L2Regularization = v1_optimizers.L2Regularization
+
 if __name__ == '__main__':
     swig_api.initPaddle('--use_gpu=false')
-    opt = paddle.v2.optimizer.Adam()
-    print opt.enable_types()
+    for opt in [
+            Momentum(), Adam(), Adamax(), AdaGrad(), DecayedAdaGrad(),
+            AdaDelta(), RMSProp(), Adam(
+                model_average=ModelAverage(average_window=0.5),
+                regularization=L2Regularization(rate=0.5),
+                gradient_clipping_threshold=25)
+    ]:
+        print opt, opt.enable_types()

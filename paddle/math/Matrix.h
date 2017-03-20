@@ -836,8 +836,11 @@ public:
    * output[i] = 1 if row i is an error.
    *
    * output[i] = 0 if row i is correct.
+   *
    */
-  virtual void classificationError(Matrix& output, IVector& label) {
+  virtual void classificationError(Matrix& output,
+                                   IVector& label,
+                                   size_t topkSize = 1) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -1314,7 +1317,7 @@ public:
   void check(std::ostream& os, Matrix& refMat, bool printDiff = true);
   void randomizeUniform();
 
-  void classificationError(Matrix& output, IVector& label);
+  void classificationError(Matrix& output, IVector& label, size_t topkSize = 1);
 
   void convExpand(Matrix& feature,
                   int feaImgHeight,
@@ -1739,7 +1742,7 @@ public:
 
   void randomizeUniform();
 
-  void classificationError(Matrix& output, IVector& label);
+  void classificationError(Matrix& output, IVector& label, size_t topkSize = 1);
 
   void addByBitCode(size_t numClasses, const IVector& codes, const Matrix& vec);
 

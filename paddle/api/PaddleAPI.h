@@ -47,6 +47,9 @@ void setUseGpu(bool useGpu);
 /// Return true if this py_paddle is compiled in GPU Version
 bool isGpuVersion();
 
+/// Return FLAGS_trainer_count
+int getTrainerCount();
+
 /// The Error of IO Operation. Such as file not found, etc.
 class IOError {};
 
@@ -450,10 +453,11 @@ public:
                                         IVector* vec) throw(RangeError);
   void setSlotSequenceDim(size_t idx, IVector* vec) throw(RangeError);
 
-  float sumCosts() const;
+  float sum() const;
 
 private:
   static Arguments* createByPaddleArgumentVector(void* ptr);
+  static Arguments* createByPaddleArgument(const void* ptr);
   void* getInternalArgumentsPtr() const;
 
 private:
@@ -767,9 +771,12 @@ public:
   size_t getParameterSize() const;
   Parameter* getParameter(size_t i) throw(RangeError);
 
+  size_t getNonStaticParameterSize() const;
+  Parameter* getNonStaticParameter(size_t i) throw(RangeError);
+
   void randParameters();
 
-  Matrix* getLayerOutput(const std::string& layerName) const
+  Arguments* getLayerOutput(const std::string& layerName) const
       throw(UnsupportError);
 
   /**
@@ -900,6 +907,10 @@ public:
    */
   std::string toString();
 
+  std::vector<std::string> getNames() const;
+
+  double getValue(const std::string name) const;
+
 private:
   EvaluatorPrivate* m;
 
@@ -952,7 +963,7 @@ public:
 
   Arguments* getForwardOutput();
 
-  Matrix* getLayerOutput(const std::string& layerName);
+  Arguments* getLayerOutput(const std::string& layerName) const;
 };
 
 /// the N-Best results generated from one input sequence.

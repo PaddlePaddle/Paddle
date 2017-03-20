@@ -39,6 +39,7 @@ register_unary_math_op('abs', act.AbsActivation())
 register_unary_math_op('sigmoid', act.SigmoidActivation())
 register_unary_math_op('tanh', act.TanhActivation())
 register_unary_math_op('square', act.SquareActivation())
+register_unary_math_op('relu', act.ReluActivation())
 
 
 def add(layeroutput, other):

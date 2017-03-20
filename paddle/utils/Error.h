@@ -37,10 +37,10 @@ namespace paddle {
  *
  * Error __must_check bar() {
  *   // do something.
- *   Status s = foo();  // invoke other method return status.
- *   if (!s) return s;
+ *   Error err = foo();  // invoke other method return status.
+ *   if (err) return err;
  *   // do something else.
- *   return Status();
+ *   return Error();
  * }
  * @endcode{cpp}
  *
@@ -53,8 +53,8 @@ namespace paddle {
  *
  * int foo(Error* error) {
  *   // Do something.
- *   Error s = bar();
- *   if (!s) {
+ *   Error err = bar();
+ *   if (err) {
  *     *error = s;
  *     return 0;
  *   }
@@ -68,10 +68,10 @@ namespace paddle {
  * }
  *
  * Error foobar() {
- *   Error s;
+ *   Error err;
  *   // do something.
- *   foo(&s);
- *   if (!s) return s;
+ *   foo(&err);
+ *   if (err) return err;
  * }
  * @endcode{cpp}
  *
@@ -112,16 +112,22 @@ public:
   }
 
   /**
-   * @brief operator bool, return True if there is no error.
+   * @brief operator bool, return True if there is something error.
    */
-  operator bool() const { return msg_ == nullptr; }
+  operator bool() const { return !this->isOK(); }
+
+  /**
+   * @brief isOK return True if there is no error.
+   * @return True if no error.
+   */
+  bool isOK() const { return msg_ == nullptr; }
 
   /**
    * @brief check this status by glog.
    * @note It is a temp method used during cleaning Paddle code. It will be
    *       removed later.
    */
-  void check() const { CHECK(*this) << msg(); }
+  void check() const { CHECK(this->isOK()) << msg(); }
 
 private:
   std::shared_ptr<std::string> msg_;

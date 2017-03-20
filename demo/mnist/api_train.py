@@ -6,25 +6,15 @@ passed to C++ side of Paddle.
 
 The user api could be simpler and carefully designed.
 """
-import py_paddle.swig_paddle as api
-from py_paddle import DataProviderConverter
-import paddle.trainer.PyDataProvider2 as dp
-import numpy as np
 import random
-from mnist_util import read_from_mnist
+
+import numpy as np
+import paddle.v2 as paddle_v2
+import py_paddle.swig_paddle as api
 from paddle.trainer_config_helpers import *
-import paddle.v2
+from py_paddle import DataProviderConverter
 
-
-def network_config():
-    imgs = data_layer(name='pixel', size=784)
-    hidden1 = fc_layer(input=imgs, size=200)
-    hidden2 = fc_layer(input=hidden1, size=200)
-    inference = fc_layer(input=hidden2, size=10, act=SoftmaxActivation())
-    cost = classification_cost(
-        input=inference, label=data_layer(
-            name='label', size=10))
-    outputs(cost)
+from mnist_util import read_from_mnist
 
 
 def init_parameter(network):
@@ -67,7 +57,7 @@ def input_order_converter(generator):
 def main():
     api.initPaddle("-use_gpu=false", "-trainer_count=4")  # use 4 cpu cores
 
-    optimizer = paddle.v2.optimizer.Adam(
+    optimizer = paddle_v2.optimizer.Adam(
         learning_rate=1e-4,
         batch_size=1000,
         model_average=ModelAverage(average_window=0.5),
@@ -79,8 +69,20 @@ def main():
     updater = optimizer.create_local_updater()
     assert isinstance(updater, api.ParameterUpdater)
 
+    # define network
+    images = paddle_v2.layer.data(
+        name='pixel', type=paddle_v2.data_type.dense_vector(784))
+    label = paddle_v2.layer.data(
+        name='label', type=paddle_v2.data_type.integer_value(10))
+    hidden1 = paddle_v2.layer.fc(input=images, size=200)
+    hidden2 = paddle_v2.layer.fc(input=hidden1, size=200)
+    inference = paddle_v2.layer.fc(input=hidden2,
+                                   size=10,
+                                   act=paddle_v2.activation.Softmax())
+    cost = paddle_v2.layer.classification_cost(input=inference, label=label)
+
     # Create Simple Gradient Machine.
-    model_config = parse_network_config(network_config)
+    model_config = paddle_v2.layer.parse_network(cost)
     m = api.GradientMachine.createFromConfigProto(model_config,
                                                   api.CREATE_MODE_NORMAL,
                                                   optimizer.enable_types())
@@ -97,8 +99,7 @@ def main():
 
     # DataProvider Converter is a utility convert Python Object to Paddle C++
     # Input. The input format is as same as Paddle's DataProvider.
-    converter = DataProviderConverter(
-        input_types=[dp.dense_vector(784), dp.integer_value(10)])
+    converter = DataProviderConverter(input_types=[images.type, label.type])
 
     train_file = './data/raw_data/train'
     test_file = './data/raw_data/t10k'
