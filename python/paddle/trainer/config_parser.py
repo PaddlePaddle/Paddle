@@ -2301,14 +2301,9 @@ def Generator(
 
 @config_layer('expand')
 class ExpandLayer(LayerBase):
-    def __init__(self,
-                 name,
-                 inputs,
-                 trans_type='non-seq',
-                 device=None,
-                 bias=False):
+    def __init__(self, name, inputs, trans_type='non-seq', bias=False, **xargs):
         super(ExpandLayer, self).__init__(
-            name, 'expand', 0, inputs=inputs, device=device)
+            name, 'expand', 0, inputs=inputs, **xargs)
         config_assert(
             len(self.inputs) == 2, 'ExpandLayer takes 2 and only 2 inputs')
         self.config.trans_type = trans_type
@@ -2339,11 +2334,10 @@ class MaxLayer(LayerBase):
                  inputs,
                  trans_type='non-seq',
                  active_type='linear',
-                 device=None,
                  bias=False,
-                 output_max_index=None):
-        super(MaxLayer, self).__init__(
-            name, 'max', 0, inputs=inputs, device=device)
+                 output_max_index=None,
+                 **xargs):
+        super(MaxLayer, self).__init__(name, 'max', 0, inputs=inputs, **xargs)
         config_assert(len(self.inputs) == 1, 'MaxLayer must have 1 input')
         self.config.trans_type = trans_type
         self.config.active_type = active_type
@@ -2390,15 +2384,15 @@ class SequenceLastInstanceLayer(LayerBase):
                  inputs,
                  active_type='linear',
                  trans_type='non-seq',
-                 device=None,
-                 bias=False):
+                 bias=False,
+                 **xargs):
         super(SequenceLastInstanceLayer, self).__init__(
             name,
             'seqlastins',
             0,
             inputs=inputs,
-            device=device,
-            active_type=active_type)
+            active_type=active_type,
+            **xargs)
         config_assert(
             len(inputs) == 1, 'SequenceLastInstanceLayer must have 1 input')
         self.config.trans_type = trans_type
@@ -2410,39 +2404,29 @@ class SequenceLastInstanceLayer(LayerBase):
 
 @config_layer('seqfirstins')
 class SequenceFirstInstanceLayer(SequenceLastInstanceLayer):
-    def __init__(
-            self,
-            name,
-            inputs,
-            active_type='linear',
-            trans_type='non-seq',
-            device=None,
-            bias=False, ):
+    def __init__(self,
+                 name,
+                 inputs,
+                 active_type='linear',
+                 trans_type='non-seq',
+                 bias=False,
+                 **xargs):
         super(SequenceFirstInstanceLayer, self).__init__(
-            name,
-            inputs=inputs,
-            active_type=active_type,
-            device=device,
-            bias=bias)
+            name, inputs=inputs, active_type=active_type, bias=bias, **xargs)
         self.config.trans_type = trans_type
         self.config.select_first = True
 
 
 @config_layer('seqconcat')
 class SequenceConcatLayer(LayerBase):
-    def __init__(self,
-                 name,
-                 inputs,
-                 active_type='linear',
-                 device=None,
-                 bias=False):
+    def __init__(self, name, inputs, active_type='linear', bias=False, **xargs):
         super(SequenceConcatLayer, self).__init__(
             name,
             'seqconcat',
             0,
             inputs=inputs,
-            device=device,
-            active_type=active_type)
+            active_type=active_type,
+            **xargs)
         config_assert(
             len(inputs) == 2, 'SequenceConcatLayer must have 2 inputs')
         for input_index in xrange(len(self.inputs)):
@@ -2458,15 +2442,15 @@ class SequenceReshapeLayer(LayerBase):
                  size,
                  inputs,
                  active_type='linear',
-                 device=None,
-                 bias=False):
+                 bias=False,
+                 **xargs):
         super(SequenceReshapeLayer, self).__init__(
             name,
             'seqreshape',
             size,
             inputs=inputs,
-            device=device,
-            active_type=active_type)
+            active_type=active_type,
+            **xargs)
         config_assert(
             len(inputs) == 1, 'SequenceReshapeLayer must have 1 inputs')
         self.set_layer_size(size)
@@ -2475,19 +2459,9 @@ class SequenceReshapeLayer(LayerBase):
 
 @config_layer('subseq')
 class SubSequenceLayer(LayerBase):
-    def __init__(self,
-                 name,
-                 inputs,
-                 active_type='linear',
-                 device=None,
-                 bias=False):
+    def __init__(self, name, inputs, active_type='linear', bias=False, **xargs):
         super(SubSequenceLayer, self).__init__(
-            name,
-            'subseq',
-            0,
-            inputs=inputs,
-            device=device,
-            active_type=active_type)
+            name, 'subseq', 0, inputs=inputs, active_type=active_type, **xargs)
         config_assert(len(inputs) == 3, 'SubSequenceLayer must have 3 inputs')
         input_layer0 = self.get_input_layer(0)
         size = input_layer0.size
@@ -2644,15 +2618,10 @@ class AverageLayer(LayerBase):
                  average_strategy='average',
                  trans_type='non-seq',
                  active_type='linear',
-                 device=None,
-                 bias=False):
+                 bias=False,
+                 **xargs):
         super(AverageLayer, self).__init__(
-            name,
-            'average',
-            0,
-            inputs=inputs,
-            device=device,
-            active_type=active_type)
+            name, 'average', 0, inputs=inputs, active_type=active_type, **xargs)
         self.config.average_strategy = average_strategy
         self.config.trans_type = trans_type
         config_assert(len(inputs) == 1, 'AverageLayer must have 1 input')
@@ -2676,9 +2645,9 @@ class CosSimLayer(LayerBase):
 
 @config_layer('tensor')
 class TensorLayer(LayerBase):
-    def __init__(self, name, size, inputs, device=None, bias=True, **xargs):
+    def __init__(self, name, size, inputs, bias=True, **xargs):
         super(TensorLayer, self).__init__(
-            name, 'tensor', size, inputs=inputs, device=device, **xargs)
+            name, 'tensor', size, inputs=inputs, **xargs)
         config_assert(len(self.inputs) == 2, 'TensorLayer must have 2 inputs')
         config_assert(size > 0, 'size must be positive')
         config_assert(inputs[1].parameter_name == None,
@@ -3029,7 +2998,7 @@ class CRFLayer(LayerBase):
         super(CRFLayer, self).__init__(name, 'crf', size, inputs, device=device)
         config_assert(2 <= len(self.inputs) <= 3,
                       'CRFLayer must have 2 or 3 inputs')
-        self.create_input_parameter(0, size * (size + 2), [size, size + 2])
+        self.create_input_parameter(0, size * (size + 2), [size + 2, size])
         self.config.coeff = coeff
 
 
@@ -3051,7 +3020,7 @@ class CRFDecodingLayer(LayerBase):
         config_assert(
             len(self.inputs) <= 2,
             'CRFDecodingLayer cannot have more than 2 inputs')
-        self.create_input_parameter(0, size * (size + 2), [size, size + 2])
+        self.create_input_parameter(0, size * (size + 2), [size + 2, size])
 
 
 @config_layer('ctc')

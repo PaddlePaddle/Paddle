@@ -24,9 +24,6 @@ limitations under the License. */
 DEFINE_bool(allow_only_one_model_on_one_gpu,
             true,
             "If true, do not allow multiple models on one GPU device");
-#ifdef PADDLE_METRIC_LEARNING
-DECLARE_bool(external);
-#endif
 
 namespace paddle {
 
@@ -45,11 +42,7 @@ MultiGradientMachine::MultiGradientMachine(const ModelConfig& config,
       trainerBarrier_(FLAGS_trainer_count),
       allBarrier_(FLAGS_trainer_count + 1),
       inArgsCopied_(false) {
-#ifdef PADDLE_METRIC_LEARNING
-  isPassGrad_ = FLAGS_external;
-#else
   isPassGrad_ = false;
-#endif
   numThreads_ = FLAGS_trainer_count;
   if (useGpu) {
     //! TODO(yuyang18): When useGpu=false && paddle is not compiled with gpu,

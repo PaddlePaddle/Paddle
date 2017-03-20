@@ -52,6 +52,7 @@ __all__ = [
     "cos_sim",
     "hsigmoid",
     "conv_projection",
+    "mse_cost",
     "regression_cost",
     'classification_cost',
     "LayerOutput",
@@ -3572,11 +3573,14 @@ def __cost_input__(input, label, weight=None):
 
 @wrap_name_default()
 @layer_support()
-def regression_cost(input, label, weight=None, name=None, layer_attr=None):
+def mse_cost(input, label, weight=None, name=None, layer_attr=None):
     """
-    Regression Layer.
+    mean squared error cost:
 
-    TODO(yuyang18): Complete this method.
+    ..  math::
+
+       $\frac{1}{N}\sum_{i=1}^N(t _i- y_i)^2$
+
 
     :param name: layer name.
     :type name: basestring
@@ -3600,6 +3604,9 @@ def regression_cost(input, label, weight=None, name=None, layer_attr=None):
         name=name,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(name, LayerType.COST, parents=parents, size=1)
+
+
+regression_cost = mse_cost
 
 
 @wrap_name_default("cost")
