@@ -583,7 +583,7 @@ void Argument::checkSubset() const {
   }
 }
 
-void Argument::degradeSequence(const Argument& input, bool useGpu) {
+void Argument::degradeSequence(const Argument& input) {
   CHECK_EQ(input.hasSubseq(), 1UL);
   size_t numSequences = input.getNumSequences();
   size_t numSubSequences = input.getNumSubSequences();

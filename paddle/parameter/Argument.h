@@ -296,7 +296,7 @@ struct Argument {
   /*
    sequence has sub-sequence degrades to a sequence.
    */
-  void degradeSequence(const Argument& input, bool useGpu);
+  void degradeSequence(const Argument& input);
 
   /**
    * @brief getValueString will return the argument's output in string. There
