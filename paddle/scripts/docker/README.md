@@ -78,10 +78,11 @@ The following commands check out the source code to the host and build the devel
 ```bash
 git clone https://github.com/PaddlePaddle/Paddle paddle
 cd paddle
-docker build -t paddle:dev .
+docker build -t paddle:dev [--build-arg UBUNTU_MIRROR=mirror://mirrors.ubuntu.com/mirrors.txt] .
 ```
 
-The `docker build` command assumes that `Dockerfile` is in the root source tree.  Note that in this design, this `Dockerfile` is this only one in our repo.
+The `docker build` command assumes that `Dockerfile` is in the root source tree.  Note that in this design, this `Dockerfile` is this only one in our repo. Add `--build-arg UBUNTU_MIRROR=mirror://mirrors.ubuntu.com/mirrors.txt`
+if you want to use ubuntu mirrors to speed up the build.
 
 
 ### Build PaddlePaddle from Source Code
@@ -89,7 +90,8 @@ The `docker build` command assumes that `Dockerfile` is in the root source tree.
 Given the development image `paddle:dev`, the following command builds PaddlePaddle from the source tree on the development computer (host):
 
 ```bash
-docker run -v $PWD:/paddle -e "GPU=OFF" -e "AVX=ON" -e "TEST=ON" paddle:dev
+docker run -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" \
+    -e "TEST=ON" -e "BUILD_AND_INSTALL=ON" [-e "DELETE_BUILD_CACHE=ON"] paddle:dev
 ```
 
 This command mounts the source directory on the host into `/paddle` in the container, so the default entry point of `paddle:dev`, `build.sh`, could build the source code with possible local changes.  When it writes to `/paddle/build` in the container, it writes to `$PWD/build` on the host indeed.
@@ -100,16 +102,23 @@ This command mounts the source directory on the host into `/paddle` in the conta
 - `$PWD/build/paddle-<version>.deb` for production installation, and
 - `$PWD/build/Dockerfile`, which builds the production Docker image.
 
+Environment varibles(use `ON` and `OFF` to put the switch on and off):
+- `WITH_GPU`: build paddle with gpu driver and libraries.
+- `WITH_AVX`: only lagacy hardwares without avx or sse or other [SIMD](https://en.wikipedia.org/wiki/SIMD) need to put it to "OFF"
+- `TEST`: test after build
+- `BUILD_AND_INSTALL`: put this to "OFF" if you don't really want to build, used to generate production Dockerfiles.
+- `DELETE_BUILD_CACHE`: put this to "ON" when build paddle for multiple times, third_party will not download and build again.
 
 ### Build the Production Docker Image
 
 The following command builds the production image:
 
 ```bash
-docker build -t paddle -f build/Dockerfile .
+docker build -t paddle -f build/Dockerfile[.cpu|.gpu|.noavx|.gpu-noavx] .
 ```
 
-This production image is minimal -- it includes binary `paddle`, the shared library `libpaddle.so`, and Python runtime.
+There are 4 different branch of the production image: cpu, gpu, noavx and gpu-noavx.
+These images are made to minimal size -- they includes binary `paddle`, the shared library `libpaddle.so`, and Python runtime.
 
 ### Run PaddlePaddle Applications
 
