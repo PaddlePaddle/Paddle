@@ -1023,6 +1023,7 @@ def cross_channel_norm_layer(input, name=None, param_attr=None):
     :type param_attr: ParameterAttribute
     :return: LayerOutput
     """
+    assert input.num_filters is not None
     Layer(
         name=name,
         type=LayerType.NORM_LAYER,
