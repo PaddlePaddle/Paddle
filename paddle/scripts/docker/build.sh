@@ -48,6 +48,7 @@ if [[ ${BUILD_AND_INSTALL:-OFF} == 'ON' ]]; then
       rm -rf * && rm -rf ../third_party
     fi
     cmake .. \
+	  -DCMAKE_BUILD_TYPE=Release \
 	  -DWITH_DOC=${WITH_DOC:-OFF} \
 	  -DWITH_GPU=${WITH_GPU:-OFF} \
 	  -DWITH_AVX=${WITH_AVX:-OFF} \
