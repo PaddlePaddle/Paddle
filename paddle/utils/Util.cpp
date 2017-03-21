@@ -26,6 +26,7 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 
+#include "CpuId.h"
 #include "CustomStackTrace.h"
 #include "Logging.h"
 #include "StringUtil.h"
@@ -185,6 +186,7 @@ void initMain(int argc, char** argv) {
   }
 
   version::printVersion();
+  checkCPUFeature().check();
   runInitFunctions();
 }
 
