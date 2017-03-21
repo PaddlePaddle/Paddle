@@ -12,6 +12,7 @@ limitations under the License. */
 #pragma once
 
 #include "Common.h"
+#include "Error.h"
 
 namespace paddle {
 
