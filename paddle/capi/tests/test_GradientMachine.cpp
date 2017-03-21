@@ -59,12 +59,12 @@ TEST(GradientMachine, testPredict) {
 
   PD_Arguments inArgs = PDArgsCreateNone();
   ASSERT_EQ(kPD_NO_ERROR, PDArgsResize(inArgs, 1));
-  PD_Matrix mat = PDMatCreate(1, 100, false);
+  paddle_matrix mat = paddle_matrix_create(1, 100, false);
   static_assert(std::is_same<pd_real, paddle::real>::value, "");
 
   auto data = randomBuffer(100);
   pd_real* rowPtr;
-  ASSERT_EQ(kPD_NO_ERROR, PDMatGetRow(mat, 0, &rowPtr));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_row(mat, 0, &rowPtr));
   memcpy(rowPtr, data.data(), data.size() * sizeof(pd_real));
 
   ASSERT_EQ(kPD_NO_ERROR, PDArgsSetValue(inArgs, 0, mat));
@@ -87,16 +87,16 @@ TEST(GradientMachine, testPredict) {
   auto matPaddle = paddleOutArgs[0].value;
 
   uint64_t height, width;
-  ASSERT_EQ(kPD_NO_ERROR, PDMatGetShape(mat, &height, &width));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_shape(mat, &height, &width));
   ASSERT_EQ(matPaddle->getHeight(), height);
   ASSERT_EQ(matPaddle->getWidth(), width);
 
-  ASSERT_EQ(kPD_NO_ERROR, PDMatGetRow(mat, 0, &rowPtr));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_row(mat, 0, &rowPtr));
   for (size_t i = 0; i < width; ++i) {
     ASSERT_NEAR(matPaddle->getData()[i], rowPtr[i], 1e-5);
   }
 
-  ASSERT_EQ(kPD_NO_ERROR, PDMatDestroy(mat));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_destroy(mat));
   ASSERT_EQ(kPD_NO_ERROR, PDArgsDestroy(inArgs));
   ASSERT_EQ(kPD_NO_ERROR, PDArgsDestroy(outArgs));
   std::swap(machineSlave, machine);

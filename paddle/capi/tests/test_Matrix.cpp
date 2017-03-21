@@ -16,30 +16,31 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 TEST(CAPIMatrix, create) {
-  PD_Matrix mat = PDMatCreate(128, 32, false);
+  paddle_matrix mat = paddle_matrix_create(128, 32, false);
   std::vector<pd_real> sampleRow;
   sampleRow.resize(32);
   for (size_t i = 0; i < sampleRow.size(); ++i) {
     sampleRow[i] = 1.0 / (i + 1.0);
   }
-  ASSERT_EQ(kPD_NO_ERROR, PDMatCopyToRow(mat, 0, sampleRow.data()));
-  ASSERT_EQ(kPD_OUT_OF_RANGE, PDMatCopyToRow(mat, 128, sampleRow.data()));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_set_row(mat, 0, sampleRow.data()));
+  ASSERT_EQ(kPD_OUT_OF_RANGE,
+            paddle_matrix_set_row(mat, 128, sampleRow.data()));
 
   pd_real* arrayPtr;
 
-  ASSERT_EQ(kPD_NO_ERROR, PDMatGetRow(mat, 0, &arrayPtr));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_row(mat, 0, &arrayPtr));
   for (size_t i = 0; i < sampleRow.size(); ++i) {
     ASSERT_NEAR(sampleRow[i], arrayPtr[i], 1e-5);
   }
 
   uint64_t height, width;
-  ASSERT_EQ(kPD_NO_ERROR, PDMatGetShape(mat, &height, &width));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_shape(mat, &height, &width));
   ASSERT_EQ(128UL, height);
   ASSERT_EQ(32UL, width);
-  ASSERT_EQ(kPD_NO_ERROR, PDMatDestroy(mat));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_destroy(mat));
 }
 
 TEST(CAPIMatrix, createNone) {
-  PD_Matrix mat = PDMatCreateNone();
-  ASSERT_EQ(kPD_NO_ERROR, PDMatDestroy(mat));
+  paddle_matrix mat = paddle_matrix_create_none();
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_destroy(mat));
 }

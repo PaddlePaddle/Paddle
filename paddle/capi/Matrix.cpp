@@ -18,22 +18,28 @@ limitations under the License. */
 
 #define cast(v) paddle::capi::cast<paddle::capi::CMatrix>(v)
 extern "C" {
-PD_Matrix PDMatCreate(uint64_t height, uint64_t width, bool useGpu) {
+paddle_matrix paddle_matrix_create(uint64_t height,
+                                   uint64_t width,
+                                   bool useGpu) {
   auto ptr = new paddle::capi::CMatrix();
   ptr->mat = paddle::Matrix::create(height, width, false, useGpu);
   return ptr;
 }
 
-PD_Matrix PDMatCreateNone() { return new paddle::capi::CMatrix(); }
+paddle_matrix paddle_matrix_create_none() {
+  return new paddle::capi::CMatrix();
+}
 
-PD_Error PDMatDestroy(PD_Matrix mat) {
+paddle_error paddle_matrix_destroy(paddle_matrix mat) {
   if (mat == nullptr) return kPD_NULLPTR;
   auto ptr = cast(mat);
   delete ptr;
   return kPD_NO_ERROR;
 }
 
-PD_Error PDMatCopyToRow(PD_Matrix mat, uint64_t rowID, pd_real* rowArray) {
+paddle_error paddle_matrix_set_row(paddle_matrix mat,
+                                   uint64_t rowID,
+                                   pd_real* rowArray) {
   if (mat == nullptr) return kPD_NULLPTR;
   auto ptr = cast(mat);
   if (ptr->mat == nullptr) return kPD_NULLPTR;
@@ -48,7 +54,9 @@ PD_Error PDMatCopyToRow(PD_Matrix mat, uint64_t rowID, pd_real* rowArray) {
   return kPD_NO_ERROR;
 }
 
-PD_Error PDMatGetRow(PD_Matrix mat, uint64_t rowID, pd_real** rawRowBuffer) {
+paddle_error paddle_matrix_get_row(paddle_matrix mat,
+                                   uint64_t rowID,
+                                   pd_real** rawRowBuffer) {
   if (mat == nullptr) return kPD_NULLPTR;
   auto ptr = cast(mat);
   if (ptr->mat == nullptr) return kPD_NULLPTR;
@@ -57,7 +65,9 @@ PD_Error PDMatGetRow(PD_Matrix mat, uint64_t rowID, pd_real** rawRowBuffer) {
   return kPD_NO_ERROR;
 }
 
-PD_Error PDMatGetShape(PD_Matrix mat, uint64_t* height, uint64_t* width) {
+paddle_error paddle_matrix_get_shape(paddle_matrix mat,
+                                     uint64_t* height,
+                                     uint64_t* width) {
   if (mat == nullptr) return kPD_NULLPTR;
   if (height != nullptr) {
     *height = cast(mat)->mat->getHeight();

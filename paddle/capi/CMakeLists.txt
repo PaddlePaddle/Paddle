@@ -12,14 +12,14 @@ configure_file(config.h.in config.h @ONLY)
 
 # PaddleCAPI.h is the only header we exposed. It currently only used for model
 # inference.
-set(CAPI_HEADER PaddleCAPI.h)
-
-
+file(GLOB CAPI_HEADERS *.h)
 set(CAPI_PRIVATE_HEADER PaddleCAPIPrivate.h)
+list(REMOVE_ITEM CAPI_HEADERS ${CAPI_PRIVATE_HEADER})
 file(GLOB CAPI_SOURCES *.cpp)
 
 # building paddle_capi
-add_library(paddle_capi STATIC ${CAPI_SOURCES})
+add_library(paddle_capi STATIC ${CAPI_HEADERS} ${CAPI_PRIVATE_HEADER}
+  ${CAPI_SOURCES})
 
 target_include_directories(paddle_capi PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 

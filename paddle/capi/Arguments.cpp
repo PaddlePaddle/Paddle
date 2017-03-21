@@ -23,25 +23,25 @@ using paddle::capi::cast;
 extern "C" {
 PD_Arguments PDArgsCreateNone() { return new paddle::capi::CArguments(); }
 
-PD_Error PDArgsDestroy(PD_Arguments args) {
+paddle_error PDArgsDestroy(PD_Arguments args) {
   if (args == nullptr) return kPD_NULLPTR;
   delete castArg(args);
   return kPD_NO_ERROR;
 }
 
-PD_Error PDArgsGetSize(PD_Arguments args, uint64_t* size) {
+paddle_error PDArgsGetSize(PD_Arguments args, uint64_t* size) {
   if (args == nullptr || size == nullptr) return kPD_NULLPTR;
   *size = castArg(args)->args.size();
   return kPD_NO_ERROR;
 }
 
-PD_Error PDArgsResize(PD_Arguments args, uint64_t size) {
+paddle_error PDArgsResize(PD_Arguments args, uint64_t size) {
   if (args == nullptr) return kPD_NULLPTR;
   castArg(args)->args.resize(size);
   return kPD_NO_ERROR;
 }
 
-PD_Error PDArgsSetValue(PD_Arguments args, uint64_t ID, PD_Matrix mat) {
+paddle_error PDArgsSetValue(PD_Arguments args, uint64_t ID, paddle_matrix mat) {
   if (args == nullptr || mat == nullptr) return kPD_NULLPTR;
   auto m = paddle::capi::cast<paddle::capi::CMatrix>(mat);
   if (m->mat == nullptr) return kPD_NULLPTR;
@@ -51,7 +51,7 @@ PD_Error PDArgsSetValue(PD_Arguments args, uint64_t ID, PD_Matrix mat) {
   return kPD_NO_ERROR;
 }
 
-PD_Error PDArgsGetValue(PD_Arguments args, uint64_t ID, PD_Matrix mat) {
+paddle_error PDArgsGetValue(PD_Arguments args, uint64_t ID, paddle_matrix mat) {
   if (args == nullptr || mat == nullptr) return kPD_NULLPTR;
   auto m = paddle::capi::cast<paddle::capi::CMatrix>(mat);
   auto a = castArg(args);
@@ -60,7 +60,7 @@ PD_Error PDArgsGetValue(PD_Arguments args, uint64_t ID, PD_Matrix mat) {
   return kPD_NO_ERROR;
 }
 
-PD_Error PDArgsGetIds(PD_Arguments args, uint64_t ID, PD_IVector ids) {
+paddle_error PDArgsGetIds(PD_Arguments args, uint64_t ID, paddle_ivector ids) {
   if (args == nullptr || ids == nullptr) return kPD_NULLPTR;
   auto iv = castIVec(ids);
   auto a = castArg(args);
@@ -69,7 +69,7 @@ PD_Error PDArgsGetIds(PD_Arguments args, uint64_t ID, PD_IVector ids) {
   return kPD_NO_ERROR;
 }
 
-PD_Error PDArgsSetIds(PD_Arguments args, uint64_t ID, PD_IVector ids) {
+paddle_error PDArgsSetIds(PD_Arguments args, uint64_t ID, paddle_ivector ids) {
   //! TODO(lizhao): Complete this method.
   if (args == nullptr || ids == nullptr) return kPD_NULLPTR;
   auto iv = paddle::capi::cast<paddle::capi::CIVector>(ids);
@@ -80,9 +80,9 @@ PD_Error PDArgsSetIds(PD_Arguments args, uint64_t ID, PD_IVector ids) {
   return kPD_NO_ERROR;
 }
 
-PD_Error PDArgsSetSequenceStartPos(PD_Arguments args,
-                                   uint64_t ID,
-                                   PD_IVector seqPos) {
+paddle_error PDArgsSetSequenceStartPos(PD_Arguments args,
+                                       uint64_t ID,
+                                       paddle_ivector seqPos) {
   if (args == nullptr || seqPos == nullptr) return kPD_NULLPTR;
   auto iv = paddle::capi::cast<paddle::capi::CIVector>(seqPos);
   if (iv->vec == nullptr) return kPD_NULLPTR;
@@ -93,9 +93,9 @@ PD_Error PDArgsSetSequenceStartPos(PD_Arguments args,
   return kPD_NO_ERROR;
 }
 
-PD_Error PDArgsSetSubSequenceStartPos(PD_Arguments args,
-                                      uint64_t ID,
-                                      PD_IVector subSeqPos) {
+paddle_error PDArgsSetSubSequenceStartPos(PD_Arguments args,
+                                          uint64_t ID,
+                                          paddle_ivector subSeqPos) {
   if (args == nullptr || subSeqPos == nullptr) return kPD_NULLPTR;
   auto iv = paddle::capi::cast<paddle::capi::CIVector>(subSeqPos);
   if (iv->vec == nullptr) return kPD_NULLPTR;
@@ -106,9 +106,9 @@ PD_Error PDArgsSetSubSequenceStartPos(PD_Arguments args,
   return kPD_NO_ERROR;
 }
 
-PD_Error PDArgsGetSequenceStartPos(PD_Arguments args,
-                                   uint64_t ID,
-                                   PD_IVector seqPos) {
+paddle_error PDArgsGetSequenceStartPos(PD_Arguments args,
+                                       uint64_t ID,
+                                       paddle_ivector seqPos) {
   if (args == nullptr || seqPos == nullptr) return kPD_NULLPTR;
   auto iv = castIVec(seqPos);
   auto a = castArg(args);
@@ -118,9 +118,9 @@ PD_Error PDArgsGetSequenceStartPos(PD_Arguments args,
   return kPD_NO_ERROR;
 }
 
-PD_Error PDArgsGetSubSequenceStartPos(PD_Arguments args,
-                                      uint64_t ID,
-                                      PD_IVector subSeqPos) {
+paddle_error PDArgsGetSubSequenceStartPos(PD_Arguments args,
+                                          uint64_t ID,
+                                          paddle_ivector subSeqPos) {
   if (args == nullptr || subSeqPos == nullptr) return kPD_NULLPTR;
   auto iv = castIVec(subSeqPos);
   auto a = castArg(args);

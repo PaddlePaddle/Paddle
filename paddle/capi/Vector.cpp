@@ -19,9 +19,14 @@ using paddle::capi::cast;
 
 extern "C" {
 
-PD_IVector PDIVecCreateNone() { return new paddle::capi::CIVector(); }
+paddle_ivector paddle_ivector_create_none() {
+  return new paddle::capi::CIVector();
+}
 
-PD_IVector PDIVectorCreate(int* array, uint64_t size, bool copy, bool useGPU) {
+paddle_ivector paddle_ivector_create(int* array,
+                                     uint64_t size,
+                                     bool copy,
+                                     bool useGPU) {
   auto ptr = new paddle::capi::CIVector();
   if (copy) {
     ptr->vec = paddle::IVector::create(size, useGPU);
@@ -32,13 +37,13 @@ PD_IVector PDIVectorCreate(int* array, uint64_t size, bool copy, bool useGPU) {
   return ptr;
 }
 
-PD_Error PDIVecDestroy(PD_IVector ivec) {
+paddle_error paddle_ivector_destroy(paddle_ivector ivec) {
   if (ivec == nullptr) return kPD_NULLPTR;
   delete cast<paddle::capi::CIVector>(ivec);
   return kPD_NO_ERROR;
 }
 
-PD_Error PDIVectorGet(PD_IVector ivec, int** buffer) {
+paddle_error paddle_ivector_get(paddle_ivector ivec, int** buffer) {
   if (ivec == nullptr || buffer == nullptr) return kPD_NULLPTR;
   auto v = cast<paddle::capi::CIVector>(ivec);
   if (v->vec == nullptr) return kPD_NULLPTR;
@@ -46,7 +51,7 @@ PD_Error PDIVectorGet(PD_IVector ivec, int** buffer) {
   return kPD_NO_ERROR;
 }
 
-PD_Error PDIVectorResize(PD_IVector ivec, uint64_t size) {
+paddle_error paddle_ivector_resize(paddle_ivector ivec, uint64_t size) {
   if (ivec == nullptr) return kPD_NULLPTR;
   auto v = cast<paddle::capi::CIVector>(ivec);
   if (v->vec == nullptr) return kPD_NULLPTR;
@@ -54,7 +59,7 @@ PD_Error PDIVectorResize(PD_IVector ivec, uint64_t size) {
   return kPD_NO_ERROR;
 }
 
-PD_Error PDIVectorGetSize(PD_IVector ivec, uint64_t* size) {
+paddle_error paddle_ivector_get_size(paddle_ivector ivec, uint64_t* size) {
   if (ivec == nullptr) return kPD_NULLPTR;
   auto v = cast<paddle::capi::CIVector>(ivec);
   if (v->vec == nullptr) return kPD_NULLPTR;
