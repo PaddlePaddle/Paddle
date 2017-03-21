@@ -2,8 +2,8 @@
 
 
 [![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org/)
-[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org/cn/index.html)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org/develop/doc/)
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org/doc_cn/)
 [![Coverage Status](https://coveralls.io/repos/github/PaddlePaddle/Paddle/badge.svg?branch=develop)](https://coveralls.io/github/PaddlePaddle/Paddle?branch=develop)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
@@ -59,36 +59,36 @@ Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddl
     the capability of PaddlePaddle to make a huge impact for your product.
 
 ## Installation
-Check out the [Install Guide](http://paddlepaddle.org/doc/build/) to install from
-pre-built packages (**docker image**, **deb package**) or
-directly build on **Linux** and **Mac OS X** from the source code.
+
+It is recommended to check out the
+[Docker installation guide](http://www.paddlepaddle.org/develop/doc/getstarted/build_and_install/docker_install_en.html)
+before looking into the
+[build from source guide](http://www.paddlepaddle.org/develop/doc/getstarted/build_and_install/build_from_source_en.html)
 
 ## Documentation
-Both [English Docs](http://paddlepaddle.org/doc/) and [Chinese Docs](http://paddlepaddle.org/doc_cn/) are provided for our users and developers.
 
-- [Quick Start](http://paddlepaddle.org/doc/demo/quick_start/index_en) <br>
-   You can follow the quick start tutorial to learn how use PaddlePaddle
-   step-by-step.
+We provide [English](http://www.paddlepaddle.org/develop/doc/) and
+[Chinese](http://www.paddlepaddle.org/doc_cn/) documentation.
 
-- [Example and Demo](http://paddlepaddle.org/doc/demo/) <br>
-   We provide five demos, including: image classification, sentiment analysis,
-   sequence to sequence model, recommendation, semantic role labeling.
+- [Deep Learning 101](http://book.paddlepaddle.org/index.en.html)
 
-- [Distributed Training](http://paddlepaddle.org/doc/cluster) <br>
-  This system supports training deep learning models on multiple machines
-  with data parallelism.
+  You might want to start from the this online interactive book that can run in Jupyter Notebook.
 
-- [Python API](http://paddlepaddle.org/doc/ui/) <br>
-   PaddlePaddle supports using either Python interface or C++ to build your
-   system. We also use SWIG to wrap C++ source code to create a user friendly
-   interface for Python. You can also use SWIG to create interface for your
-   favorite programming language.
+- [Distributed Training](http://www.paddlepaddle.org/develop/doc/howto/usage/cluster/cluster_train_en.html)
 
-- [How to Contribute](http://paddlepaddle.org/doc/build/contribute_to_paddle.html) <br>
-   We sincerely appreciate your interest and contributions. If you would like to
-   contribute, please read the contribution guide.
+  You can run distributed training jobs on MPI clusters.
 
-- [Source Code Documents](http://paddlepaddle.org/doc/source/) <br>
+- [Distributed Training on Kubernetes](http://www.paddlepaddle.org/develop/doc/howto/usage/k8s/k8s_en.html)
+
+   You can also run distributed training jobs on Kubernetes clusters.
+
+- [Python API](http://www.paddlepaddle.org/develop/doc/api/index_en.html)
+
+   Our new API enables much shorter programs.
+
+- [How to Contribute](http://www.paddlepaddle.org/develop/doc/howto/dev/contribute_to_paddle_en.html)
+
+   We appreciate your contributions!
 
 ## Ask Questions
 
