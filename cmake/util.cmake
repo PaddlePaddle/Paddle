@@ -90,26 +90,6 @@ function(link_paddle_exe TARGET_NAME)
         ${RDMA_LD_FLAGS}
         ${RDMA_LIBS})
 
-    if(WITH_PYTHON)
-        target_link_libraries(${TARGET_NAME}
-            ${PYTHON_LIBRARIES} util)
-    endif()
-
-    if(WITH_GPU)
-        target_link_libraries(${TARGET_NAME} ${CUDA_CUDART_LIBRARY})
-        if(NOT WITH_DSO OR WITH_METRIC)
-            target_link_libraries(${TARGET_NAME}
-                ${CUDNN_LIBRARY}
-                ${CUDA_curand_LIBRARY})
-            CUDA_ADD_CUBLAS_TO_TARGET(${TARGET_NAME})
-        endif()
-
-        check_library_exists(rt clock_gettime "time.h" HAVE_CLOCK_GETTIME )
-        if(HAVE_CLOCK_GETTIME)
-            target_link_libraries(${TARGET_NAME} rt)
-        endif()
-    endif()
-
     add_dependencies(${TARGET_NAME} ${external_project_dependencies})
 endfunction()
 
