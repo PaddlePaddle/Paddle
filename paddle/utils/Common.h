@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "Error.h"
 #include "Excepts.h"
 
 /**
