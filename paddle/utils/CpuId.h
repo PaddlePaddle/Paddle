@@ -113,7 +113,7 @@ inline Error __must_check checkCPUFeature() {
   }
 #else
   if (!HAS_AVX) {
-    err = Errors(
+    err = Error(
         "PaddlePaddle was compiled to use avx instructions, "
         "but these aren't available on your machine, please "
         "disable it via CMAKE .. -DWITH_AVX=OFF");
