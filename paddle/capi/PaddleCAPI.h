@@ -36,20 +36,21 @@ extern "C" {
  * Arguments functions. Each argument means layer output. Arguments means a
  * array of arguemnt.
  */
-typedef void* PD_Arguments;
+typedef void* paddle_arguments;
 
 /**
- * @brief PDArgsCreateNone Create a array of arguments, which size is zero.
+ * @brief paddle_arguments_create_none Create a array of arguments, which size
+ * is zero.
  * @return Arguemnts
  */
-PD_API PD_Arguments PDArgsCreateNone();
+PD_API paddle_arguments paddle_arguments_create_none();
 
 /**
- * @brief PDArgsDestroy Destroy the arguments
+ * @brief paddle_arguments_destroy Destroy the arguments
  * @param args arguments to destroy
  * @return paddle_error
  */
-PD_API paddle_error PDArgsDestroy(PD_Arguments args);
+PD_API paddle_error paddle_arguments_destroy(paddle_arguments args);
 
 /**
  * @brief PDArgsGetSize Get size of arguments array
@@ -57,7 +58,8 @@ PD_API paddle_error PDArgsDestroy(PD_Arguments args);
  * @param [out] size array size
  * @return paddle_error
  */
-PD_API paddle_error PDArgsGetSize(PD_Arguments args, uint64_t* size);
+PD_API paddle_error paddle_arguments_size(paddle_arguments args,
+                                          uint64_t* size);
 
 /**
  * @brief PDArgsResize Resize a arguments array.
@@ -65,7 +67,8 @@ PD_API paddle_error PDArgsGetSize(PD_Arguments args, uint64_t* size);
  * @param size target size of array
  * @return paddle_error
  */
-PD_API paddle_error PDArgsResize(PD_Arguments args, uint64_t size);
+PD_API paddle_error paddle_arguments_resize(paddle_arguments args,
+                                            uint64_t size);
 
 /**
  * @brief PDArgsSetValue Set value matrix of one argument in array, which index
@@ -75,9 +78,9 @@ PD_API paddle_error PDArgsResize(PD_Arguments args, uint64_t size);
  * @param mat matrix pointer
  * @return paddle_error
  */
-PD_API paddle_error PDArgsSetValue(PD_Arguments args,
-                                   uint64_t ID,
-                                   paddle_matrix mat);
+PD_API paddle_error paddle_arguments_set_value(paddle_arguments args,
+                                               uint64_t ID,
+                                               paddle_matrix mat);
 
 /**
  * @brief PDArgsGetValue Get value matrix of one argument in array, which index
@@ -87,9 +90,9 @@ PD_API paddle_error PDArgsSetValue(PD_Arguments args,
  * @param [out] mat matrix pointer
  * @return paddle_error
  */
-PD_API paddle_error PDArgsGetValue(PD_Arguments args,
-                                   uint64_t ID,
-                                   paddle_matrix mat);
+PD_API paddle_error paddle_arguments_value(paddle_arguments args,
+                                           uint64_t ID,
+                                           paddle_matrix mat);
 
 /**
  * @brief PDArgsGetIds Get the integer vector of one argument in array, which
@@ -99,9 +102,9 @@ PD_API paddle_error PDArgsGetValue(PD_Arguments args,
  * @param ids integer vector pointer
  * @return paddle_error
  */
-PD_API paddle_error PDArgsGetIds(PD_Arguments args,
-                                 uint64_t ID,
-                                 paddle_ivector ids);
+PD_API paddle_error paddle_arguments_ids(paddle_arguments args,
+                                         uint64_t ID,
+                                         paddle_ivector ids);
 
 /**
  * @brief PDArgsSetIds Set the integer vector of one argument in array, which
@@ -111,9 +114,9 @@ PD_API paddle_error PDArgsGetIds(PD_Arguments args,
  * @param [out] ids integer vector pointer
  * @return paddle_error
  */
-PD_API paddle_error PDArgsSetIds(PD_Arguments args,
-                                 uint64_t ID,
-                                 paddle_ivector ids);
+PD_API paddle_error paddle_arguments_set_ids(paddle_arguments args,
+                                             uint64_t ID,
+                                             paddle_ivector ids);
 
 /**
  * @brief PDArgsSetSequenceStartPos Set sequence start position vector of one
@@ -123,9 +126,8 @@ PD_API paddle_error PDArgsSetIds(PD_Arguments args,
  * @param seqPos sequence position array.
  * @return paddle_error
  */
-PD_API paddle_error PDArgsSetSequenceStartPos(PD_Arguments args,
-                                              uint64_t ID,
-                                              paddle_ivector seqPos);
+PD_API paddle_error paddle_arguments_set_sequence_start_pos(
+    paddle_arguments args, uint64_t ID, paddle_ivector seqPos);
 /**
  * @brief PDArgsGetSequenceStartPos Get sequence start position vector of one
  *        argument in array, which index is `ID`.
@@ -134,9 +136,9 @@ PD_API paddle_error PDArgsSetSequenceStartPos(PD_Arguments args,
  * @param [out] seqPos sequence position array
  * @return paddle_error
  */
-PD_API paddle_error PDArgsGetSequenceStartPos(PD_Arguments args,
-                                              uint64_t ID,
-                                              paddle_ivector seqPos);
+PD_API paddle_error paddle_arguments_sequence_start_pos(paddle_arguments args,
+                                                        uint64_t ID,
+                                                        paddle_ivector seqPos);
 
 /**
  * @brief PDArgsSetSubSequenceStartPos Set sub-sequence start position vector of
@@ -146,9 +148,8 @@ PD_API paddle_error PDArgsGetSequenceStartPos(PD_Arguments args,
  * @param subSeqPos sub-sequence start position array.
  * @return paddle_error
  */
-PD_API paddle_error PDArgsSetSubSequenceStartPos(PD_Arguments args,
-                                                 uint64_t ID,
-                                                 paddle_ivector subSeqPos);
+PD_API paddle_error paddle_arguments_set_sub_sequence_start_pos(
+    paddle_arguments args, uint64_t ID, paddle_ivector subSeqPos);
 
 /**
  * @brief PDArgsGetSubSequenceStartPos Get sub-sequence start position vector of
@@ -158,9 +159,8 @@ PD_API paddle_error PDArgsSetSubSequenceStartPos(PD_Arguments args,
  * @param subSeqPos sub-sequence start position array
  * @return paddle_error
  */
-PD_API paddle_error PDArgsGetSubSequenceStartPos(PD_Arguments args,
-                                                 uint64_t ID,
-                                                 paddle_ivector subSeqPos);
+PD_API paddle_error paddle_arguments_sub_sequence_start_pos(
+    paddle_arguments args, uint64_t ID, paddle_ivector subSeqPos);
 /**
  * @brief GradientMachine means a neural network.
  */
@@ -195,8 +195,8 @@ PD_API paddle_error PDGradientMachineLoadParameterFromDisk(
  * @return paddle_error
  */
 PD_API paddle_error PDGradientMachineForward(PD_GradientMachine machine,
-                                             PD_Arguments inArgs,
-                                             PD_Arguments outArgs,
+                                             paddle_arguments inArgs,
+                                             paddle_arguments outArgs,
                                              bool isTrain);
 
 /**

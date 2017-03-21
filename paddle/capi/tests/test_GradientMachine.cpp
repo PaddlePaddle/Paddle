@@ -55,10 +55,10 @@ TEST(GradientMachine, testPredict) {
             PDGradientMachineCreateSharedParam(
                 machine, &buffer[0], (int)buffer.size(), &machineSlave));
   std::swap(machineSlave, machine);
-  PD_Arguments outArgs = PDArgsCreateNone();
+  paddle_arguments outArgs = paddle_arguments_create_none();
 
-  PD_Arguments inArgs = PDArgsCreateNone();
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsResize(inArgs, 1));
+  paddle_arguments inArgs = paddle_arguments_create_none();
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_resize(inArgs, 1));
   paddle_matrix mat = paddle_matrix_create(1, 100, false);
   static_assert(std::is_same<pd_real, paddle::real>::value, "");
 
@@ -67,15 +67,15 @@ TEST(GradientMachine, testPredict) {
   ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_row(mat, 0, &rowPtr));
   memcpy(rowPtr, data.data(), data.size() * sizeof(pd_real));
 
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsSetValue(inArgs, 0, mat));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_set_value(inArgs, 0, mat));
   ASSERT_EQ(kPD_NO_ERROR,
             PDGradientMachineForward(machine, inArgs, outArgs, false));
 
   uint64_t sz;
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsGetSize(outArgs, &sz));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_size(outArgs, &sz));
   ASSERT_EQ(1UL, sz);
 
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsGetValue(outArgs, 0, mat));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_value(outArgs, 0, mat));
   std::vector<paddle::Argument> paddleInArgs;
   std::vector<paddle::Argument> paddleOutArgs;
   paddleInArgs.resize(1);
@@ -97,8 +97,8 @@ TEST(GradientMachine, testPredict) {
   }
 
   ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_destroy(mat));
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsDestroy(inArgs));
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsDestroy(outArgs));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_destroy(inArgs));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_destroy(outArgs));
   std::swap(machineSlave, machine);
   ASSERT_EQ(kPD_NO_ERROR, PDGradientMachineDestroy(machineSlave));
   ASSERT_EQ(kPD_NO_ERROR, PDGradientMachineDestroy(machine));

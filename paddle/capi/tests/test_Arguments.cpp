@@ -28,27 +28,27 @@ static std::vector<pd_real> randomBuffer(size_t bufSize) {
 }
 
 TEST(CAPIArguments, create) {
-  PD_Arguments args = PDArgsCreateNone();
+  paddle_arguments args = paddle_arguments_create_none();
   uint64_t size;
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsGetSize(args, &size));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_size(args, &size));
   ASSERT_EQ(0UL, size);
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsDestroy(args));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_destroy(args));
 }
 
 TEST(CAPIArguments, value) {
-  PD_Arguments args = PDArgsCreateNone();
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsResize(args, 1));
+  paddle_arguments args = paddle_arguments_create_none();
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_resize(args, 1));
 
   paddle_matrix mat = paddle_matrix_create(128, 64, false);
   for (size_t i = 0; i < 128; ++i) {
     std::vector<pd_real> sampleBuf = randomBuffer(64);
     paddle_matrix_set_row(mat, i, sampleBuf.data());
   }
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsSetValue(args, 0, mat));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_set_value(args, 0, mat));
 
   paddle_matrix val = paddle_matrix_create_none();
 
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsGetValue(args, 0, val));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_value(args, 0, val));
 
   for (size_t i = 0; i < 128; ++i) {
     pd_real* row1;
@@ -63,29 +63,29 @@ TEST(CAPIArguments, value) {
   ASSERT_EQ(kPD_NO_ERROR, paddle_ivector_destroy(ivec));
   ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_destroy(val));
   ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_destroy(mat));
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsDestroy(args));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_destroy(args));
 }
 
 TEST(CAPIArguments, ids) {
-  PD_Arguments args = PDArgsCreateNone();
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsResize(args, 1));
+  paddle_arguments args = paddle_arguments_create_none();
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_resize(args, 1));
 
   paddle_ivector ivec;
   int array[3] = {1, 2, 3};
   ivec = paddle_ivector_create(array, 3, true, false);
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsSetIds(args, 0, ivec));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_set_ids(args, 0, ivec));
 
   paddle_ivector val = paddle_ivector_create_none();
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsGetIds(args, 0, val));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_ids(args, 0, val));
   ASSERT_EQ(kPD_NO_ERROR, paddle_ivector_destroy(ivec));
   ASSERT_EQ(kPD_NO_ERROR, paddle_ivector_destroy(val));
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsDestroy(args));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_destroy(args));
 }
 
 template <typename T1, typename T2>
 void testSequenceHelper(T1 setter, T2 getter) {
-  PD_Arguments args = PDArgsCreateNone();
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsResize(args, 1));
+  paddle_arguments args = paddle_arguments_create_none();
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_resize(args, 1));
 
   paddle_ivector ivec;
   int array[3] = {1, 2, 3};
@@ -105,11 +105,12 @@ void testSequenceHelper(T1 setter, T2 getter) {
 
   ASSERT_EQ(kPD_NO_ERROR, paddle_ivector_destroy(ivec));
   ASSERT_EQ(kPD_NO_ERROR, paddle_ivector_destroy(val));
-  ASSERT_EQ(kPD_NO_ERROR, PDArgsDestroy(args));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_destroy(args));
 }
 
 TEST(CAPIArguments, Sequence) {
-  testSequenceHelper(PDArgsSetSequenceStartPos, PDArgsGetSequenceStartPos);
-  testSequenceHelper(PDArgsSetSubSequenceStartPos,
-                     PDArgsGetSubSequenceStartPos);
+  testSequenceHelper(paddle_arguments_set_sequence_start_pos,
+                     paddle_arguments_sequence_start_pos);
+  testSequenceHelper(paddle_arguments_set_sub_sequence_start_pos,
+                     paddle_arguments_sub_sequence_start_pos);
 }

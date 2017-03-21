@@ -70,8 +70,8 @@ paddle_error PDGradientMachineLoadParameterFromDisk(PD_GradientMachine machine,
 }
 
 paddle_error PDGradientMachineForward(PD_GradientMachine machine,
-                                      PD_Arguments inArgs,
-                                      PD_Arguments outArgs,
+                                      paddle_arguments inArgs,
+                                      paddle_arguments outArgs,
                                       bool isTrain) {
   auto m = cast(machine);
   auto in = paddle::capi::cast<paddle::capi::CArguments>(inArgs);
