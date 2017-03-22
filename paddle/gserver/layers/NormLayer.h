@@ -68,7 +68,7 @@ public:
 /**
  * This layer applys normalization across the channels of each sample to a
  * conv layer's output, and scales the output by a group of trainable factors
- * whose equal to the number of channels.
+ * whose dimensions equal to the number of channels.
  * - Input: One and only one input layer are accepted.
  * - Output: The normalized data of the input data.
  * Reference:

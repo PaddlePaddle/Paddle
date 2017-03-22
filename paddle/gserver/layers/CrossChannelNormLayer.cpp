@@ -78,7 +78,6 @@ void CrossChannelNormLayer::backward(const UpdateCallback& callback) {
   Matrix::resizeOrCreate(sampleBuffer_, channels_, spatialDim, false, useGpu_);
   scaleDiff_->zeroMem();
   for (size_t i = 0; i < batchSize; i++) {
-    spatialBuffer_->zeroMem();
     // propagate to param.
     MatrixPtr dataBufferTmp =
         Matrix::create(dataBuffer_->getData() + i * dataDim,
