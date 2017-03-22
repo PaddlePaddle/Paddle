@@ -3590,6 +3590,55 @@ void CpuMatrix::sumOfSquaresBp(Matrix& output, Matrix& label) {
   }
 }
 
+void CpuMatrix::smoothL1(Matrix& output, Matrix& label) {
+  CHECK(output.useGpu_ == false && label.useGpu_ == false)
+      << "Matrix type are not equal";
+
+  size_t numSamples = getHeight();
+  size_t dim = output.getWidth();
+  CHECK_EQ(label.getHeight(), numSamples);
+  CHECK_EQ(output.getHeight(), numSamples);
+  CHECK_EQ(label.getWidth(), dim);
+  CHECK_EQ(getWidth(), (size_t)1);
+  real* out = output.getData();
+  real* cost = getData();
+  real* lbl = label.getData();
+
+  for (size_t i = 0; i < numSamples; ++i, out += dim, cost += dim, lbl += dim) {
+    for (size_t j = 0; j < dim; ++j) {
+      cost[j] = std::fabs(out[j] - lbl[j]);
+      if (cost[j] < 1.0)
+        cost[j] = 0.5 * cost[j] * cost[j];
+      else
+        cost[j] = cost[j] - 0.5;
+    }
+  }
+}
+
+void CpuMatrix::smoothL1Bp(Matrix& output, Matrix& label) {
+  CHECK(output.useGpu_ == false && label.useGpu_ == false)
+      << "Matrix type are not equal";
+
+  size_t numSamples = getHeight();
+  size_t dim = output.getWidth();
+  CHECK_EQ(label.getHeight(), numSamples);
+  CHECK_EQ(output.getHeight(), numSamples);
+  CHECK_EQ(label.getWidth(), dim);
+  CHECK_EQ(getWidth(), (size_t)1);
+  real* out = output.getData();
+  real* cost = getData();
+  real* lbl = label.getData();
+
+  // f'(x) = x         if |x| < 1
+  //       = sign(x)   otherwise
+  for (size_t i = 0; i < numSamples; ++i, out += dim, cost += dim, lbl += dim) {
+    for (size_t j = 0; j < dim; ++j) {
+      cost[j] = out[j] - lbl[j];
+      if (std::fabs(cost[j]) >= 1) cost[j] = (0 < cost[j]) - (cost[j] < 0);
+    }
+  }
+}
+
 void CpuMatrix::tanh(Matrix& output) {
   CHECK(isContiguous());
   CHECK(output.isContiguous());

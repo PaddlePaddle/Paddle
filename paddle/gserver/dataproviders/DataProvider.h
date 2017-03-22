@@ -164,15 +164,6 @@ public:
     argu.value = value;
     data_.push_back(argu);
   }
-  /**
-   * @brief Append user defined data
-   * @param[in]  ptr     user defined data
-   */
-  void appendUserDefinedPtr(UserDefinedVectorPtr ptr) {
-    Argument argu;
-    argu.udp = ptr;
-    data_.push_back(argu);
-  }
 
   /*
    * @brief Append argument
