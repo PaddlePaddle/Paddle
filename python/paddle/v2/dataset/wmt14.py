@@ -103,3 +103,7 @@ def test(dict_size):
     return reader_creator(
         paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN),
         'test/test', dict_size)
+
+
+def download():
+    paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN)

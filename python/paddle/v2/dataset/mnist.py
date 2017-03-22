@@ -106,3 +106,8 @@ def test():
                                           TEST_IMAGE_MD5),
         paddle.v2.dataset.common.download(TEST_LABEL_URL, 'mnist',
                                           TEST_LABEL_MD5), 100)
+
+
+def download():
+    paddle.v2.dataset.common.download(TRAIN_IMAGE_URL, 'mnist', TRAIN_IMAGE_MD5)
+    paddle.v2.dataset.common.download(TRAIN_LABEL_URL, 'mnist', TRAIN_LABEL_MD5)

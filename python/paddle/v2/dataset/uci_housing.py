@@ -89,3 +89,7 @@ def test():
             yield d[:-1], d[-1:]
 
     return reader
+
+
+def download():
+    paddle.v2.dataset.common.download(URL, 'uci_housing', MD5)
