@@ -1015,6 +1015,7 @@ def cross_channel_norm_layer(input, name=None, param_attr=None):
     This layer applys normalize across the channels of each sample to
     a conv layer's output and scale the output by a group of trainable
     factors which dimensions equal to the channel's number.
+
     :param name: The Layer Name.
     :type name: basestring
     :param input: The input layer.

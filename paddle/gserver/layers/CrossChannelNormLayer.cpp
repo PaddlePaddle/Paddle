@@ -40,7 +40,6 @@ void CrossChannelNormLayer::forward(PassType passType) {
   normBuffer_->addScalar(*normBuffer_, 1e-6);
   inV->square2(*dataBuffer_);
   for (size_t i = 0; i < batchSize; i++) {
-    spatialBuffer_->zeroMem();
     MatrixPtr inTmp = Matrix::create(
         inV->getData() + i * dataDim, channels_, spatialDim, false, useGpu_);
     MatrixPtr dataTmp = Matrix::create(dataBuffer_->getData() + i * dataDim,
@@ -80,7 +79,6 @@ void CrossChannelNormLayer::backward(const UpdateCallback& callback) {
   scaleDiff_->zeroMem();
   for (size_t i = 0; i < batchSize; i++) {
     spatialBuffer_->zeroMem();
-    channelBuffer_->zeroMem();
     // propagate to param.
     MatrixPtr dataBufferTmp =
         Matrix::create(dataBuffer_->getData() + i * dataDim,
