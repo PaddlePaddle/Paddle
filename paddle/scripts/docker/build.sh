@@ -80,12 +80,9 @@ fi
 cat > /paddle/build/Dockerfile <<EOF
 FROM ${BASE_IMAGE}
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
-
 ENV HOME /root
 ENV LANG en_US.UTF-8
-
 # Use Fix locales to en_US.UTF-8
-
 RUN ${MIRROR_UPDATE}
     apt-get update && \
     apt-get install -y libgfortran3 libpython2.7 ${GPU_DOCKER_PKG} && \
@@ -94,10 +91,8 @@ RUN ${MIRROR_UPDATE}
     pip install -U 'protobuf==3.1.0' requests numpy
 # Use different deb file when building different type of images
 ADD build/*.deb /usr/local/opt/paddle/deb/
-
 # run paddle version to install python packages first
 RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && rm -f /usr/local/opt/paddle/deb/*.deb && paddle version
-
 ${DOCKERFILE_GPU_ENV}
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]
