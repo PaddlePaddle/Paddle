@@ -21,8 +21,6 @@ add_dependencies(paddle_api gen_proto_cpp)
 INCLUDE(${SWIG_USE_FILE})
 INCLUDE_DIRECTORIES(${PROJ_ROOT}/paddle)
 
-FILE(GLOB PY_PADDLE_PYTHON_FILES ${PROJ_ROOT}/paddle/py_paddle/*.py)
-
 SET_SOURCE_FILES_PROPERTIES(Paddle.i PROPERTIES CPLUSPLUS ON)
 
 SET(CMAKE_SWIG_OUTDIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -81,35 +79,9 @@ SWIG_LINK_LIBRARIES(swig_paddle
     ${START_END}
 )
 
-add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so
-    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/swig_paddle.py ${PROJ_ROOT}/paddle/py_paddle
-    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/_swig_paddle.so ${PROJ_ROOT}/paddle/py_paddle
-    COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-    COMMAND ${CMAKE_COMMAND} -E touch dist/.timestamp
-    COMMAND rm -rf py_paddle.egg-info build
+add_custom_command(OUTPUT ${PROJ_ROOT}/python/paddle/_swig_paddle.so
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/swig_paddle.py ${PROJ_ROOT}/python/paddle
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/_swig_paddle.so ${PROJ_ROOT}/python/paddle
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle
     DEPENDS _swig_paddle
 )
-
-# TODO(yuyang18) : make wheel name calculated by cmake
-add_custom_target(python_api_wheel ALL DEPENDS ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so)
-
-install(DIRECTORY ${PROJ_ROOT}/paddle/dist/ DESTINATION opt/paddle/share/wheels)
-
-if(WITH_TESTING)
-    IF(NOT PY_PIP_FOUND)
-        SET(PIP_SOURCES_DIR ${PYTHON_SOURCES_DIR}/pip)
-        ExternalProject_Add(pip
-            ${EXTERNAL_PROJECT_LOG_ARGS}
-            GIT_REPOSITORY      https://github.com/pypa/pip.git
-            GIT_TAG             9.0.1
-            PREFIX              ${PIP_SOURCES_DIR}
-            CONFIGURE_COMMAND   ""
-            BUILD_COMMAND       ""
-            INSTALL_COMMAND     env ${py_env} ${PYTHON_EXECUTABLE} setup.py install
-            BUILD_IN_SOURCE     1
-            DEPENDS python setuptools python_api_wheel
-        )
-    ENDIF()
-    add_subdirectory(test)
-endif()

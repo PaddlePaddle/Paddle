@@ -28,7 +28,7 @@ namespace paddle {
  *
  * - Input1: A vector (batchSize * dataDim) *
  * - Input2: A vector (batchSize * dataDim) or (1 * dataDim) *
- * - Output: A vector (dataDim * 1)
+ * - Output: A vector (batchSize * 1)
  *
  * The config file api is cos_sim.
  */
@@ -38,10 +38,11 @@ public:
 
   ~CosSimLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 }  // namespace paddle

@@ -27,11 +27,14 @@ message ParameterClientConfig {
  * Configuration structure for ParameterServer2.
  */
 message ParameterServerConfig {
-  // The ports number for parameter send,
-  // increment based on default port number
+  // Number of ports for sending dense parameter,
+  // following ports on parameter server will be visited
+  // for sending dense parameter: [port, port+ports_num-1]
   required int32 ports_num = 1 [default = 1];
-  // The ports number for parameter send,
-  // increment based on default (port + ports_num
+  // Number of ports for sending sparse parameter,
+  // following ports on parameter server will be visited
+  // for sending sparse parameter:
+  // [port+ports_num, port+ports_num+ports_num_for_sparse-1]
   required int32 ports_num_for_sparse = 2 [default = 0];
   // network device name for pservers
   required string nics = 3 [default = "xgbe0,xgbe1"];

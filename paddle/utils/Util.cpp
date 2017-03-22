@@ -26,6 +26,7 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 
+#include "CpuId.h"
 #include "CustomStackTrace.h"
 #include "Logging.h"
 #include "StringUtil.h"
@@ -144,20 +145,20 @@ void runInitFunctions() {
 }
 
 void initMain(int argc, char** argv) {
-  initializeLogging(argc, argv);
   installLayerStackTracer();
   std::string line;
   for (int i = 0; i < argc; ++i) {
     line += argv[i];
     line += ' ';
   }
-  LOG(INFO) << "commandline: " << line;
 
 #ifndef GFLAGS_GFLAGS_H_
   namespace gflags = google;
 #endif
 
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  initializeLogging(argc, argv);
+  LOG(INFO) << "commandline: " << line;
   CHECK_EQ(argc, 1) << "Unknown commandline argument: " << argv[1];
 
   installProfilerSwitch();
@@ -185,6 +186,7 @@ void initMain(int argc, char** argv) {
   }
 
   version::printVersion();
+  checkCPUFeature().check();
   runInitFunctions();
 }
 
@@ -289,6 +291,7 @@ void mkDir(const char* filename) {
 void mkDirRecursively(const char* dir) {
   struct stat sb;
 
+  if (*dir == 0) return;  // empty string
   if (!stat(dir, &sb)) return;
 
   mkDirRecursively(path::dirname(dir).c_str());

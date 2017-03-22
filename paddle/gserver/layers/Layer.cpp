@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/utils/Util.h"
 
 #include "paddle/math/SparseMatrix.h"
+#include "paddle/utils/Error.h"
 #include "paddle/utils/Logging.h"
 
 #include "AddtoLayer.h"
@@ -334,7 +335,8 @@ void Layer::showOutputStats() {
 
 void Layer::forwardActivation() {
   /* activation */
-  activation_->forward(output_);
+  auto status = activation_->forward(output_);
+  status.check();
 
   /* dropout */
   if (config_.drop_rate() > 0) {
@@ -372,14 +374,14 @@ void Layer::backwardActivation() {
     oGrad->dotMul(*oGrad, *dropOutMask_);
   }
 
-  activation_->backward(output_);
+  auto status = activation_->backward(output_);
+  status.check();
 }
 
 void Layer::forwardDropOut() {
   auto& outV = getOutputValue();
 
-  if (passType_ == PASS_TRAIN || passType_ == PASS_METRIC_TRAIN ||
-      passType_ == PASS_METRIC_TRAIN_WITH_NOERROR) {
+  if (passType_ == PASS_TRAIN) {
     // new dropOutMask_ if dropOutMask_ is null ptr
     Matrix::resizeOrCreate(dropOutMask_,
                            outV->getHeight(),

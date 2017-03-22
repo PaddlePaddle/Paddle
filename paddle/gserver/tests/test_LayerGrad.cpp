@@ -276,27 +276,6 @@ TEST(Layer, AddtoLayer) {
   }
 }
 
-TEST(Layer, CRFLayer) {
-  TestConfig config;
-  config.layerConfig.set_type("crf");
-  config.layerConfig.set_size(10);
-  config.biasSize = 0;
-
-  config.inputDefs.push_back({INPUT_SEQUENCE_DATA, "layer_0", 10, 120});
-  config.inputDefs.push_back({INPUT_SEQUENCE_LABEL, "layer_1", 10, 0});
-  config.layerConfig.add_inputs();
-  config.layerConfig.add_inputs();
-
-  // Not support GPU now
-  testLayerGrad(config,
-                "crf",
-                100,
-                /* trans */ false,
-                /* useGpu */ false,
-                false /*useWeight*/,
-                0.03 /*epsilon*/);
-}
-
 TEST(Layer, CTCLayer) {
   TestConfig config;
   config.layerConfig.set_type("ctc");
@@ -310,7 +289,11 @@ TEST(Layer, CTCLayer) {
   config.layerConfig.add_inputs();
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "ctc", 100, /* trans */ false, /* useGpu */ useGpu);
+    testLayerGrad(config,
+                  "ctc",
+                  100,
+                  /* trans */ false, /* useGpu */
+                  useGpu);
   }
 }
 
@@ -587,7 +570,11 @@ TEST(Layer, hsigmoidLayer) {
   config.layerConfig.add_inputs();
 
   // Not support GPU now
-  testLayerGrad(config, "hsigmoid", 100, /* trans */ false, /* useGpu */ false);
+  testLayerGrad(config,
+                "hsigmoid",
+                100,
+                /* trans */ false, /* useGpu */
+                false);
 }
 
 TEST(Layer, multi_cross) {
@@ -1022,8 +1009,12 @@ void testNormLayer(const string& normType, bool trans, bool useGpu) {
 }
 
 TEST(Layer, NormLayer) {
-  testNormLayer("cmrnorm-projection", /* trans= */ false, /* useGpu= */ true);
-  testNormLayer("cmrnorm-projection", /* trans= */ false, /* useGpu= */ false);
+  testNormLayer("cmrnorm-projection",
+                /* trans= */ false, /* useGpu= */
+                true);
+  testNormLayer("cmrnorm-projection",
+                /* trans= */ false, /* useGpu= */
+                false);
 }
 
 void setPoolConfig(TestConfig* config,
@@ -1304,6 +1295,25 @@ TEST(Layer, ResizeLayer) {
   }
 }
 
+TEST(Layer, RotateLayer) {
+  TestConfig config;
+  config.biasSize = 0;
+  config.layerConfig.set_type("rotate");
+  const int CHANNEL = 2;
+  const int HEIGHT = 8;
+  const int WIDTH = 4;
+  const int INPUT_SIZE = HEIGHT * WIDTH * CHANNEL;
+  config.layerConfig.set_size(INPUT_SIZE);
+  config.layerConfig.set_height(HEIGHT);
+  config.layerConfig.set_width(WIDTH);
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", INPUT_SIZE, 0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "rotate", 100, false, useGpu);
+  }
+}
+
 TEST(Layer, NCELayer) {
   TestConfig config;
   size_t numClasses = 4;
@@ -1560,6 +1570,49 @@ TEST(Layer, MultiplexLayer) {
 
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "multiplex", 512, /* trans= */ false, useGpu);
+  }
+}
+
+TEST(Layer, PadLayer) {
+  TestConfig config;
+  config.biasSize = 0;
+  config.layerConfig.set_type("pad");
+
+  int c = 4;
+  int h = 31;
+  int w = 36;
+  size_t size = c * h * w;
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", size, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  PadConfig* pad = input->mutable_pad_conf();
+  ImageConfig* image = pad->mutable_image_conf();
+
+  image->set_channels(c);
+  image->set_img_size(h);
+  image->set_img_size_y(w);
+  pad->add_pad_c(1);
+  pad->add_pad_c(2);
+  pad->add_pad_h(2);
+  pad->add_pad_h(3);
+  pad->add_pad_w(3);
+  pad->add_pad_w(5);
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "pad", 10, false, useGpu);
+  }
+}
+
+TEST(Layer, smooth_l1) {
+  TestConfig config;
+  config.layerConfig.set_type("smooth_l1");
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1, 0});
+  config.inputDefs.push_back({INPUT_DATA_TARGET, "layer_1", 1, 0});
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "smooth_l1", 100, false, useGpu, false, 2.0);
   }
 }
 

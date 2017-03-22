@@ -118,16 +118,15 @@ void ContextProjection::forward() {
   /// first use state_, otherwise use weight_(padding false === w nullptr)
   auto w_ptr =
       state_ ? state_.get() : is_padding ? weight_->getW().get() : nullptr;
-  auto start_pos = in_->sequenceStartPositions;
-
+  const auto start_pos = in_->sequenceStartPositions->getVector(useGpu_);
   BufferArgs inputs;
   BufferArgs outputs;
-  inputs.addArg(*in_->value);
-  inputs.addArg(CpuMatrix(w_ptr ? w_ptr->getData() : nullptr,
-                          w_ptr ? w_ptr->getHeight() : 0,
-                          input_dim));
-  inputs.addArg(*in_->sequenceStartPositions->getVector(useGpu_));
-  outputs.addArg(*out_->value, ADD_TO);
+  inputs.addArg(*in_->value, *start_pos);
+  if (w_ptr) {
+    inputs.addArg(CpuMatrix(w_ptr->getData(), w_ptr->getHeight(), input_dim),
+                  *start_pos);
+  }
+  outputs.addArg(*out_->value, *start_pos, ADD_TO);
   forward_[0]->calc(inputs, outputs);
 
   if (state_ && config_.context_start() < 0) {
@@ -166,13 +165,16 @@ void ContextProjection::backward(const UpdateCallback& callback) {
 
   BufferArgs inputs;
   BufferArgs outputs;
-  inputs.addArg(CpuMatrix(
-      in_->grad ? in_->grad->getData() : nullptr, batch_size, input_dim));
-  inputs.addArg(CpuMatrix(w_ptr ? w_ptr->getData() : nullptr,
-                          w_ptr ? w_ptr->getHeight() : 0,
-                          input_dim));
-  inputs.addArg(*in_->sequenceStartPositions->getVector(useGpu_));
-  outputs.addArg(*out_->grad, ADD_TO);
+  inputs.addArg(*out_->grad, *in_->sequenceStartPositions->getVector(useGpu_));
+  outputs.addArg(
+      CpuMatrix(
+          in_->grad ? in_->grad->getData() : nullptr, batch_size, input_dim),
+      *in_->sequenceStartPositions->getVector(useGpu_),
+      ADD_TO);
+  outputs.addArg(CpuMatrix(w_ptr ? w_ptr->getData() : nullptr,
+                           w_ptr ? w_ptr->getHeight() : 0,
+                           input_dim),
+                 ADD_TO);
   backward_[0]->calc(inputs, outputs);
 
   if (config_.trainable_padding()) {

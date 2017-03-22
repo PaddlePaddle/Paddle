@@ -29,16 +29,18 @@ namespace paddle {
 class CRFLayer : public Layer {
 public:
   explicit CRFLayer(const LayerConfig& config) : Layer(config) {}
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-  virtual void forward(PassType passType);
-  virtual void backward(const UpdateCallback& callback);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback) override;
 
 protected:
   size_t numClasses_;
   ParameterPtr parameter_;
   std::vector<LinearChainCRF> crfs_;
-  LayerPtr weightLayer_;  // weight for each sequence
-  real coeff_;            // weight for the layer
+  LayerPtr weightLayer_;            // weight for each sequence
+  std::unique_ptr<Weight> weight_;  // parameters
+  real coeff_;                      // weight for the layer
 };
 
 }  // namespace paddle

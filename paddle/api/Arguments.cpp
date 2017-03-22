@@ -38,6 +38,13 @@ Arguments* Arguments::createByPaddleArgumentVector(void* ptr) {
   return args;
 }
 
+Arguments* Arguments::createByPaddleArgument(const void* ptr) {
+  auto p = (paddle::Argument*)(ptr);
+  auto args = new Arguments();
+  args->m->outputs.push_back(*p);
+  return args;
+}
+
 Matrix* Arguments::getSlotValue(size_t idx) const throw(RangeError) {
   auto& a = m->getArg(idx);
   return Matrix::createByPaddleMatrixPtr(&a.value);
@@ -137,9 +144,7 @@ void Arguments::setSlotSequenceDim(size_t idx, IVector* vec) throw(RangeError) {
   a.cpuSequenceDims = m->cast<paddle::IVector>(vec->getSharedPtr());
 }
 
-float Arguments::sumCosts() const {
-  return paddle::Argument::sumCosts(m->outputs);
-}
+float Arguments::sum() const { return paddle::Argument::sum(m->outputs); }
 
 int64_t Arguments::getBatchSize(size_t idx) const throw(RangeError) {
   auto& a = m->getArg(idx);

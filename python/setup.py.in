@@ -4,7 +4,10 @@ packages=['paddle',
           'paddle.proto',
           'paddle.trainer',
           'paddle.trainer_config_helpers',
-          'paddle.utils']
+          'paddle.utils',
+          'paddle.v2',
+          'paddle.v2.dataset',
+          'paddle.v2.reader']
 
 setup(name='paddle',
       version='${PADDLE_VERSION}',
@@ -12,5 +15,12 @@ setup(name='paddle',
       packages=packages,
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}'
-      }
+      },
+      package_data={'paddle':['*.py','_swig_paddle.so']},
+      install_requires = [
+        'numpy>=1.8.0',      # The numpy is required.
+        'protobuf>=3.0.0'    # The paddle protobuf version
+      ],
+      url='http://www.paddlepaddle.org/',
+      license='Apache 2.0',
 )
