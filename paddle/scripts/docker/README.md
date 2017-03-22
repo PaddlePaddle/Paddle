@@ -94,8 +94,7 @@ docker build -t paddle:dev --build-arg UBUNTU_MIRROR=mirror://mirrors.ubuntu.com
 Given the development image `paddle:dev`, the following command builds PaddlePaddle from the source tree on the development computer (host):
 
 ```bash
-docker run -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "TEST=OFF" \
-    -e "BUILD_AND_INSTALL=ON" -e "DELETE_BUILD_CACHE=ON" paddle:dev
+docker run -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "TEST=OFF" paddle:dev
 ```
 
 This command mounts the source directory on the host into `/paddle` in the container, so the default entry point of `paddle:dev`, `build.sh`, could build the source code with possible local changes.  When it writes to `/paddle/build` in the container, it writes to `$PWD/build` on the host indeed.
@@ -103,15 +102,13 @@ This command mounts the source directory on the host into `/paddle` in the conta
 `build.sh` builds the following:
 
 - PaddlePaddle binaries,
-- `$PWD/dist/<cpu|gpu|cpu-noavx|gpu-noavx>/paddle-<version>.deb` for production installation, and
+- `$PWD/build/paddle-<version>.deb` for production installation, and
 - `$PWD/build/Dockerfile`, which builds the production Docker image.
 
 Users can specify the following Docker build arguments with either "ON" or "OFF" value:
 - `WITH_GPU`: ***Required***. Generates NVIDIA CUDA GPU code and relies on CUDA libraries.
 - `WITH_AVX`: ***Required***. Set to "OFF" prevents from generating AVX instructions. If you don't know what is AVX, you might want to set "ON".
 - `TEST`: ***Optional, default OFF***. Build unit tests and run them after building.
-- `BUILD_AND_INSTALL`: ***Optional, default ON***. Run `make` and `make install`.
-- `DELETE_BUILD_CACHE`: ***Optional, default ON***. If set to "ON", the building script will delete, download, and re-build third party libraries.
 
 ### Build the Production Docker Image
 
