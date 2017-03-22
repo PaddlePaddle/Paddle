@@ -195,9 +195,14 @@ extern const char enable_virtualenv_py[];
 }
 void initPython(int argc, char** argv) {
 #ifndef PADDLE_NO_PYTHON
-  char pyHome[] = "@PYTHON_INSTALL_DIR@"; // NOLINT
-  if (strlen(pyHome)) {
-    Py_SetPythonHome(pyHome);
+  std::string pyHome;
+#if defined(__APPLE__) || defined(__OSX__)
+  pyHome = "/usr/local/Frameworks/Python.framework/Versions/2.7";
+  Py_SetPythonHome(const_cast<char*>(pyHome.c_str()));
+#endif
+  pyHome = "@PYTHON_INSTALL_DIR@"; // NOLINT
+  if (!pyHome.empty()) {
+    Py_SetPythonHome(const_cast<char*>(pyHome.c_str()));
   }
   Py_SetProgramName(argv[0]);
   Py_Initialize();
