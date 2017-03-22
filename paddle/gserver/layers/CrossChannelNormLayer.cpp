@@ -21,7 +21,6 @@ namespace paddle {
 
 void CrossChannelNormLayer::forward(PassType passType) {
   Layer::forward(passType);
-  auto in = getInput(0);
   MatrixPtr inV = getInputValue(0);
 
   size_t batchSize = inV->getHeight();
@@ -36,7 +35,6 @@ void CrossChannelNormLayer::forward(PassType passType) {
   Matrix::resizeOrCreate(spatialBuffer_, 1, spatialDim, false, useGpu_);
   Matrix::resizeOrCreate(normBuffer_, batchSize, spatialDim, false, useGpu_);
   normBuffer_->zeroMem();
-  spatialBuffer_->zeroMem();
   dataBuffer_->zeroMem();
   // add eps to avoid overflow
   normBuffer_->addScalar(*normBuffer_, 1e-6);
@@ -71,7 +69,6 @@ void CrossChannelNormLayer::backward(const UpdateCallback& callback) {
   MatrixPtr outG = getOutputGrad();
   MatrixPtr outV = getOutputValue();
 
-  auto in = getInput(0);
   size_t batchSize = inG->getHeight();
   size_t dataDim = inG->getWidth();
   size_t spatialDim = dataDim / channels_;
