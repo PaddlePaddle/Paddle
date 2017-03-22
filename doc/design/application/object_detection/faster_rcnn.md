@@ -1,12 +1,21 @@
 # Faster-RCNN
 
-本篇文章主要讲了目标检测的一些背景，并对[Faster-RCNN](https://arxiv.org/abs/1506.01497)做了介绍。提出PaddlePaddle中支持该算法需要实现的操作,并对这些操作做了介绍。在PaddlePaddle中对这些操作的细节实现不在本篇文档的范畴。
+本篇文章主要讲了目标检测的一些背景，并对[Faster-RCNN](https://arxiv.org/abs/1506.01497)做了介绍。提出PaddlePaddle中支持该算法需要实现的操作,并对这些操作做了简单介绍，设计如何在PaddlePaddle中实现Faster-RCNN框架。在PaddlePaddle中对这些操作的细节实现不在本篇文档的范畴，每个操作实现，如果后续需要文档可以再补充。
+
 
 ### 背景
 
 目前主流的目标检测有两种方式：一种是以R-CNN, Fast-RCNN, Faster-RCNN等为代表的提取Region Proposal的方法，另一种是以YoLo, SSD等为代表的采用回归的思想，不使用Region Proposal, 给定输入图像，直接在图像的多个位置上回归出bounding box，并得到分类结果的检测框架。由于具体应用对精度、速度的要求不同，这两套框架都是比较流行的框架。
 
-目前检测应用的目标是能够支持这两套主流的框架，如果在此基础上能够做出创新自然更好。本文主要是设计如何在PaddlePaddle中实现Faster-RCNN框架。
+
+### 短期目标
+
+目前检测应用的目标是能够支持这两套主流的框架，如果在此基础上能够做出创新自然更好。
+
+1. 发布Faster-RCNN, SSD两个检测框架，SSD的code正在review.
+2. 提供Book篇章。
+
+
 
 
 ### 原理
