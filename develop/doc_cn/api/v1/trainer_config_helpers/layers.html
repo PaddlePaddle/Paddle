@@ -541,7 +541,7 @@ default Bias.</li>
 <h3>conv_operator<a class="headerlink" href="#conv-operator" title="永久链接至标题">¶</a></h3>
 <dl class="function">
 <dt>
-<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">conv_operator</code><span class="sig-paren">(</span><em>img</em>, <em>filter</em>, <em>filter_size</em>, <em>num_filters</em>, <em>num_channels=None</em>, <em>stride=1</em>, <em>padding=0</em>, <em>filter_size_y=None</em>, <em>stride_y=None</em>, <em>padding_y=None</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">conv_operator</code><span class="sig-paren">(</span><em>img</em>, <em>filter</em>, <em>filter_size</em>, <em>num_filters</em>, <em>num_channels=None</em>, <em>stride=1</em>, <em>padding=0</em>, <em>filter_size_y=None</em>, <em>stride_y=None</em>, <em>padding_y=None</em>, <em>trans=False</em><span class="sig-paren">)</span></dt>
 <dd><p>Different from img_conv_layer, conv_op is an Operator, which can be used
 in mixed_layer. And conv_op takes two inputs to perform convolution.
 The first input is the image and the second is filter kernel. It only
@@ -618,6 +618,7 @@ the filter&#8217;s shape can be (filter_size, filter_size_y).</li>
 <li><strong>padding_y</strong> (<em>int</em>) &#8211; The y dimension of padding.</li>
 <li><strong>groups</strong> (<em>int</em>) &#8211; The group number.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Convolution param attribute. None means default attribute</li>
+<li><strong>trans</strong> (<em>boolean</em>) &#8211; whether it is convTrans or conv</li>
 </ul>
 </td>
 </tr>
@@ -746,8 +747,9 @@ automatically from previous output.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Layer Extra Attribute.</li>
 <li><strong>trans</strong> (<em>bool</em>) &#8211; true if it is a convTransLayer, false if it is a convLayer</li>
 <li><strong>layer_type</strong> (<em>String</em>) &#8211; specify the layer_type, default is None. If trans=True,
-layer_type has to be &#8220;exconvt&#8221;, otherwise layer_type
-has to be either &#8220;exconv&#8221; or &#8220;cudnn_conv&#8221;</li>
+layer_type has to be &#8220;exconvt&#8221; or &#8220;cudnn_convt&#8221;,
+otherwise layer_type has to be either &#8220;exconv&#8221; or
+&#8220;cudnn_conv&#8221;</li>
 </ul>
 </td>
 </tr>
