@@ -22,17 +22,17 @@ namespace paddle {
 /**
  * @brief Convolution projection do the same calculation with CudnnConvLayer.
  */
-class ConvProjection : public ConvBaseProjection {
+class ConvTransProjection : public ConvBaseProjection {
 public:
   /**
    * Constructor.
    */
-  ConvProjection(const ProjectionConfig& config,
-                 ParameterPtr parameter,
-                 bool useGpu)
+  ConvTransProjection(const ProjectionConfig& config,
+                      ParameterPtr parameter,
+                      bool useGpu)
       : ConvBaseProjection(config, parameter, useGpu) {}
 
-  ~ConvProjection() {}
+  ~ConvTransProjection() {}
 
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);

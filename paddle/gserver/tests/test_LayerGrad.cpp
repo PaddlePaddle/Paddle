@@ -166,15 +166,19 @@ TEST(Projection, scaling) {
   }
 }
 
-void testProjectionConv(size_t groups) {
+void testProjectionConv(size_t groups, bool isDeconv) {
   const int NUM_FILTERS = 18;
   const int FILTER_SIZE = 2;
-  const int FILTER_SIZE_Y = 3;
+  const int FILTER_SIZE_Y = 4;
   const int CHANNELS = 3;
   const int IMAGE_SIZE = 16;
 
   ProjectionConfig conf;
-  conf.set_type("conv");
+  if (isDeconv) {
+    conf.set_type("convt");
+  } else {
+    conf.set_type("conv");
+  }
   conf.set_num_filters(NUM_FILTERS);
 
   ConvConfig* conv = conf.mutable_conv_conf();
@@ -186,7 +190,11 @@ void testProjectionConv(size_t groups) {
   conv->set_stride(2);
   conv->set_stride_y(2);
   conv->set_groups(groups);
-  conv->set_filter_channels(conv->channels() / conv->groups());
+  if (isDeconv) {
+    conv->set_filter_channels(NUM_FILTERS / conv->groups());
+  } else {
+    conv->set_filter_channels(conv->channels() / conv->groups());
+  }
   conv->set_img_size(IMAGE_SIZE);
   int output_x = outputSize(conv->img_size(),
                             conv->filter_size(),
@@ -199,8 +207,14 @@ void testProjectionConv(size_t groups) {
                             conv->stride_y(),
                             /* caffeMode */ true);
   conv->set_output_x(output_x);
-  conf.set_input_size(IMAGE_SIZE * IMAGE_SIZE * CHANNELS);
-  conf.set_output_size(output_x * output_y * NUM_FILTERS);
+  conv->set_output_y(output_y);
+  if (isDeconv) {
+    conf.set_input_size(output_x * output_y * CHANNELS);
+    conf.set_output_size(IMAGE_SIZE * IMAGE_SIZE * NUM_FILTERS);
+  } else {
+    conf.set_input_size(IMAGE_SIZE * IMAGE_SIZE * CHANNELS);
+    conf.set_output_size(output_x * output_y * NUM_FILTERS);
+  }
 
   testProjectionGrad(conf,
                      INPUT_DATA,
@@ -215,8 +229,12 @@ void testProjectionConv(size_t groups) {
 
 #ifndef PADDLE_ONLY_CPU
 TEST(Projection, conv) {
-  testProjectionConv(1);
-  testProjectionConv(3);
+  /// test ConvProjection
+  testProjectionConv(1, false);
+  testProjectionConv(3, false);
+  /// test ConvTransProjection
+  testProjectionConv(1, true);
+  testProjectionConv(3, true);
 }
 #endif
 
@@ -385,11 +403,11 @@ void testConvTransLayer(const string& type, bool trans, bool useGpu) {
   config.layerConfig.set_partial_sum(1);
   config.layerConfig.set_shared_biases(true);
 
-  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1024, 288});
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1024, 384});
   LayerInputConfig* input = config.layerConfig.add_inputs();
   ConvConfig* conv = input->mutable_conv_conf();
   conv->set_filter_size(2);
-  conv->set_filter_size_y(3);
+  conv->set_filter_size_y(4);
   conv->set_channels(16);
   conv->set_padding(0);
   conv->set_padding_y(1);
@@ -416,6 +434,9 @@ TEST(Layer, convTransLayer) {
   for (auto useGpu : {false, true}) {
     testConvTransLayer("exconvt", /* trans= */ false, /* useGpu= */ useGpu);
   }
+#ifndef PADDLE_ONLY_CPU
+  testConvTransLayer("cudnn_convt", /* trans= */ false, /* useGpu= */ true);
+#endif
 }
 
 TEST(Layer, blockExpandLayer) {
@@ -1482,16 +1503,20 @@ TEST(Layer, BatchNormalizationLayer) {
 #endif
 }
 
-TEST(Operator, conv) {
+void testConvOperator(bool isDeconv) {
   TestConfig config;
   const int NUM_FILTERS = 16;
   const int FILTER_SIZE = 2;
   const int FILTER_SIZE_Y = 3;
   const int CHANNELS = 3;
   const int IMAGE_SIZE = 16;
-  const int IMAGE_SIZE_Y = 8;
+  const int IMAGE_SIZE_Y = 9;
   OperatorConfig& operatorConf = *config.layerConfig.add_operator_confs();
-  operatorConf.set_type("conv");
+  if (isDeconv) {
+    operatorConf.set_type("convt");
+  } else {
+    operatorConf.set_type("conv");
+  }
   ConvConfig* conv = operatorConf.mutable_conv_conf();
   operatorConf.set_num_filters(NUM_FILTERS);
   conv->set_filter_size(FILTER_SIZE);
@@ -1502,7 +1527,6 @@ TEST(Operator, conv) {
   conv->set_stride(2);
   conv->set_stride_y(2);
   conv->set_groups(1);
-  conv->set_filter_channels(conv->channels() / conv->groups());
   conv->set_img_size(IMAGE_SIZE);
   conv->set_img_size_y(IMAGE_SIZE_Y);
   conv->set_output_x(outputSize(conv->img_size(),
@@ -1515,11 +1539,22 @@ TEST(Operator, conv) {
                                 conv->padding_y(),
                                 conv->stride_y(),
                                 /*  caffeMode */ true));
-  config.layerConfig.set_size(conv->output_x() * conv->output_y() *
-                              NUM_FILTERS);
 
-  config.inputDefs.push_back(
-      {INPUT_DATA, "layer_0", IMAGE_SIZE * IMAGE_SIZE_Y * CHANNELS, 0});
+  if (isDeconv) {
+    conv->set_filter_channels(NUM_FILTERS / conv->groups());
+    config.inputDefs.push_back({INPUT_DATA,
+                                "layer_0",
+                                conv->output_x() * conv->output_y() * CHANNELS,
+                                0});
+    config.layerConfig.set_size(IMAGE_SIZE * IMAGE_SIZE_Y * NUM_FILTERS);
+  } else {
+    conv->set_filter_channels(conv->channels() / conv->groups());
+    config.inputDefs.push_back(
+        {INPUT_DATA, "layer_0", IMAGE_SIZE * IMAGE_SIZE_Y * CHANNELS, 0});
+    config.layerConfig.set_size(conv->output_x() * conv->output_y() *
+                                NUM_FILTERS);
+  }
+
   config.inputDefs.push_back(
       {INPUT_DATA,
        "layer_1",
@@ -1529,6 +1564,11 @@ TEST(Operator, conv) {
   config.layerConfig.add_inputs();
 
   testOperatorGrad(config, operatorConf, 100, /*useGpu*/ true, false);
+}
+
+TEST(Operator, conv) {
+  testConvOperator(/*isDeconv*/ true);
+  testConvOperator(/*isDeconv*/ false);
 }
 
 TEST(Layer, FeatureMapExpandLayer) {

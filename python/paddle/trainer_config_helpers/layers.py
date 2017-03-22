@@ -712,8 +712,9 @@ class MixedLayerType(LayerOutput):
         assert len(self.inputs) == 0
         return self
 
-    def __exit__(self, *args, **kwargs):
-        del args, kwargs  # unused parameter to suppress warning
+    def __exit__(self, exc_type, exc_value, tb):
+        if exc_value is not None:
+            raise exc_value
         assert len(self.inputs) != 0
         ml = MixedLayer(
             name=self.name,
@@ -2044,8 +2045,9 @@ def img_conv_layer(input,
     :param trans: true if it is a convTransLayer, false if it is a convLayer
     :type trans: bool
     :param layer_type: specify the layer_type, default is None. If trans=True,
-                       layer_type has to be "exconvt", otherwise layer_type
-                       has to be either "exconv" or "cudnn_conv"
+                       layer_type has to be "exconvt" or "cudnn_convt", 
+                       otherwise layer_type has to be either "exconv" or 
+                       "cudnn_conv"
     :type layer_type: String
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2085,7 +2087,7 @@ def img_conv_layer(input,
 
     if layer_type:
         if trans:
-            assert layer_type in ["exconvt"]
+            assert layer_type in ["exconvt", "cudnn_convt"]
         else:
             assert layer_type in ["exconv", "cudnn_conv"]
         lt = layer_type
@@ -3715,7 +3717,8 @@ def conv_operator(img,
                   padding=0,
                   filter_size_y=None,
                   stride_y=None,
-                  padding_y=None):
+                  padding_y=None,
+                  trans=False):
     """
     Different from img_conv_layer, conv_op is an Operator, which can be used
     in mixed_layer. And conv_op takes two inputs to perform convolution.
@@ -3771,7 +3774,9 @@ def conv_operator(img,
     if filter.size is not None:
         filter.size = filter_size * filter_size_y * num_filters * num_channels
 
-    op = ConvOperator(
+    opCls = ConvTransOperator if trans else ConvOperator
+
+    op = opCls(
         input_layer_names=[img.name, filter.name],
         num_filters=num_filters,
         conv_conf=Conv(
@@ -3783,6 +3788,7 @@ def conv_operator(img,
             padding_y=padding_y,
             stride_y=stride_y,
             groups=1))
+
     op.origin = [img, filter]
     return op
 
@@ -3798,7 +3804,8 @@ def conv_projection(input,
                     stride_y=None,
                     padding_y=None,
                     groups=1,
-                    param_attr=None):
+                    param_attr=None,
+                    trans=False):
     """
     Different from img_conv_layer and conv_op, conv_projection is an Projection,
     which can be used in mixed_layer and conat_layer. It use cudnn to implement
@@ -3837,6 +3844,8 @@ def conv_projection(input,
     :type groups: int
     :param param_attr: Convolution param attribute. None means default attribute
     :type param_attr: ParameterAttribute
+    :param trans: whether it is convTrans or conv
+    :type trans: boolean
     :return: A DotMulProjection Object.
     :rtype: DotMulProjection
     """
@@ -3873,7 +3882,9 @@ def conv_projection(input,
         param_attr.attr["initial_strategy"] = 0
         param_attr.attr["initial_smart"] = False
 
-    proj = ConvProjection(
+    projCls = ConvTransProjection if trans else ConvProjection
+
+    proj = projCls(
         input_layer_name=input.name,
         num_filters=num_filters,
         conv_conf=Conv(
