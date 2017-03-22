@@ -33,7 +33,7 @@ cmake .. \
       -DWITH_SWIG_PY=ON \
       -DCUDNN_ROOT=/usr/ \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
-      -DON_COVERALLS=${TEST:-OFF} \
+      -DWITH_COVERAGE=${TEST:-OFF} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 make -j `nproc`
 if [[ ${TEST:-OFF} == "ON" ]]; then
