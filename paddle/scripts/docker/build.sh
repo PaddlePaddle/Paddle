@@ -14,13 +14,16 @@ fi
 DOCKERFILE_GPU_ENV=""
 if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
     DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
+
+    # for cmake to find cudnn
+    ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so /usr/lib/libcudnn.so
 fi
 
 mkdir -p /paddle/build
 cd /paddle/build
 
 # build script will not fail if *.deb does not exist
-rm *.deb || true
+rm *.deb 2>/dev/null || true
 
 cmake .. \
       -DCMAKE_BUILD_TYPE=Release \
