@@ -14,11 +14,11 @@ Usage of CPU-only and GPU Images
 
 For each version of PaddlePaddle, we release 2 types of Docker images: development
 image and production image. Production image includes CPU-only version and a CUDA
-GPU version and their no-AVX versions. We do so by configuring
-`dockerhub.com <https://hub.docker.com/r/paddledev/paddle/>`_
-automatically generate the latest docker images. You can find the latest versions
-under "tags" tab at dockerhub.com.
-1. development image(support pure cpu) :code:`paddlepaddle/paddle:<version>-dev`
+GPU version and their no-AVX versions. We put the docker images on
+`dockerhub.com <https://hub.docker.com/r/paddledev/paddle/>`_. You can find the
+latest versions under "tags" tab at dockerhub.com.
+1. development image :code:`paddlepaddle/paddle:<version>-dev`
+
     This image has packed related develop tools and runtime environment. Users and
     developers can use this image instead of their own local computer to accomplish
     development, build, releasing, document writing etc. While different version of
@@ -114,7 +114,7 @@ We provide a packaged book image, simply issue the command:
 
 .. code-block:: bash
 
-    docker run -p 8888:8888 paddlepaddle/book:<version>
+    docker run -p 8888:8888 paddlepaddle/book
 
 Then, you would back and paste the address into the local browser:
 
@@ -140,8 +140,8 @@ Windows -- in a consistent way.
       docker build -t paddle:dev .
 
    Note that by default :code:`docker build` wouldn't import source
-   tree into the image and build it.  If we want to do that, we need
-   to set a build arg:
+   tree into the image and build it.  If we want to do that, we need docker the
+   development docker image and then run the following command:
 
    .. code-block:: bash
 

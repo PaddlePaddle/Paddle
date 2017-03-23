@@ -8,8 +8,9 @@ PaddlePaddle发布的docker镜像使用说明
 ------------------------------
 
 对于每一个PaddlePaddle版本，我们都会发布两种Docker镜像：开发镜像、运行镜像。运行镜像包括纯CPU版本和GPU版本以及其对应的非AVX版本。
-我们通过设置 `dockerhub.com <https://hub.docker.com/r/paddledev/paddle/>`_ 自动生成最新的docker镜像，可以在"tags"标签下找到最新的Paddle镜像版本。
-1. 开发镜像(纯CPU版本)：:code:`paddlepaddle/paddle:<version>-dev`
+我们会在 `dockerhub.com <https://hub.docker.com/r/paddledev/paddle/>`_ 提供最新的docker镜像，可以在"tags"标签下找到最新的Paddle镜像版本。
+1. 开发镜像：:code:`paddlepaddle/paddle:<version>-dev`
+
     这个镜像包含了Paddle相关的开发工具以及编译和运行环境。用户可以使用开发镜像代替配置本地环境，完成开发，编译，发布，
     文档编写等工作。由于不同的Paddle的版本可能需要不同的依赖和工具，所以如果需要自行配置开发环境需要考虑版本的因素。
     开发镜像包含了以下工具：
@@ -62,7 +63,7 @@ PaddlePaddle发布的docker镜像使用说明
 
         export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
         export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-        docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:0.10.0rc1-gpu
+        docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:<version>-gpu
 
 3. 使用运行镜像发布你的AI程序
     假设您已经完成了一个AI训练的python程序 :code:`a.py`，这个程序是您在开发机上使用开发镜像完成开发。此时您可以运行这个命令在开发机上进行测试运行：
@@ -86,7 +87,7 @@ PaddlePaddle书籍是为用户和开发者制作的一个交互式的Jupyter Nod
 
 .. code-block:: bash
 
-    docker run -p 8888:8888 paddlepaddle/book:<version>
+    docker run -p 8888:8888 paddlepaddle/book
 
 然后在浏览器中输入以下网址：
 
@@ -110,7 +111,7 @@ PaddlePaddle书籍是为用户和开发者制作的一个交互式的Jupyter Nod
       docker build -t paddle:dev .
 
 
-   请注意，默认情况下，:code:`docker build` 不会将源码导入到镜像中并编译它。如果我们想这样做，需要执行：
+   请注意，默认情况下，:code:`docker build` 不会将源码导入到镜像中并编译它。如果我们想这样做，需要构建完开发镜像，然后执行：
 
    .. code-block:: bash
 
