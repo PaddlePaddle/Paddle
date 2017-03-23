@@ -80,9 +80,10 @@ public:
   explicit CrossChannelNormLayer(const LayerConfig& config)
       : NormLayer(config) {}
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
   void forward(PassType passType);
   void backward(const UpdateCallback& callback);
+  MatrixPtr createSampleMatrix(MatrixPtr data, size_t iter, size_t spatialDim);
+  MatrixPtr createSpatialMatrix(MatrixPtr data, size_t iter, size_t spatialDim);
 
 protected:
   size_t channels_;
