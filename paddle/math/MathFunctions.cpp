@@ -111,7 +111,7 @@ int getrf<double>(const CBLAS_ORDER order,
   return LAPACKE_dgetrf(order, M, N, A, lda, ipiv);
 #endif
 #else
-  LOG(FATAL) << "Not implemented".
+  LOG(FATAL) << "Not implemented";
 #endif
   return 0;
 }
@@ -129,7 +129,7 @@ int getri<float>(const CBLAS_ORDER order,
   return LAPACKE_sgetri(order, N, A, lda, ipiv);
 #endif
 #else
-  LOG(FATAL) << "Not implemented".
+  LOG(FATAL) << "Not implemented";
 #endif
   return 0;
 }
@@ -147,7 +147,7 @@ int getri<double>(const CBLAS_ORDER order,
   return LAPACKE_dgetri(order, N, A, lda, ipiv);
 #endif
 #else
-  LOG(FATAL) << "Not implemented".
+  LOG(FATAL) << "Not implemented";
 #endif
   return 0;
 }

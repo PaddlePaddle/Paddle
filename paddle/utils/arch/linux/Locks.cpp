@@ -38,34 +38,68 @@ void Semaphore::post() { sem_post(&m->sem); }
 
 class SpinLockPrivate {
 public:
-  inline SpinLockPrivate() { pthread_spin_init(&lock_, 0); }
-  inline ~SpinLockPrivate() { pthread_spin_destroy(&lock_); }
+  inline SpinLockPrivate() {
+#ifndef __ANDROID__
+    pthread_spin_init(&lock_, 0);
+#else
+    lock_ = 0;
+#endif
+  }
+  inline ~SpinLockPrivate() {
+#ifndef __ANDROID__
+    pthread_spin_destroy(&lock_);
+#endif
+  }
+#ifndef __ANDROID__
   pthread_spinlock_t lock_;
-  char padding_[64 - sizeof(pthread_spinlock_t)];
+#else
+  unsigned long lock_;
+#endif
+  char padding_[64 - sizeof(lock_)];
 };
 
 SpinLock::SpinLock() : m(new SpinLockPrivate()) {}
 
 SpinLock::~SpinLock() { delete m; }
 
-void SpinLock::lock() { pthread_spin_lock(&m->lock_); }
+void SpinLock::lock() {
+#ifndef __ANDROID__
+  pthread_spin_lock(&m->lock_);
+#endif
+}
 
-void SpinLock::unlock() { pthread_spin_unlock(&m->lock_); }
+void SpinLock::unlock() {
+#ifndef __ANDROID__
+  pthread_spin_unlock(&m->lock_);
+#endif
+}
 
 class ThreadBarrierPrivate {
 public:
+#ifndef __ANDROID__
   pthread_barrier_t barrier_;
+#else
+  unsigned long barrier_;
+#endif
 };
 
 ThreadBarrier::ThreadBarrier(int count) : m(new ThreadBarrierPrivate()) {
+#ifndef __ANDROID__
   pthread_barrier_init(&m->barrier_, nullptr, count);
+#endif
 }
 
 ThreadBarrier::~ThreadBarrier() {
+#ifndef __ANDROID__
   pthread_barrier_destroy(&m->barrier_);
+#endif
   delete m;
 }
 
-void ThreadBarrier::wait() { pthread_barrier_wait(&m->barrier_); }
+void ThreadBarrier::wait() {
+#ifndef __ANDROID__
+  pthread_barrier_wait(&m->barrier_);
+#endif
+}
 
 }  // namespace paddle
