@@ -2377,41 +2377,8 @@ void CpuMatrix::mul(CpuMatrix* a, CpuMatrix* b, real scaleAB, real scaleT) {
   int lda = a->getStride();
   int ldb = b->getStride();
   int ldc = getStride();
-#ifndef PADDLE_TYPE_DOUBLE
-  cblas_sgemm(CblasRowMajor,
-              a_trans,
-              b_trans,
-              M,
-              N,
-              K,
-              scaleAB,
-              A,
-              lda,
-              B,
-              ldb,
-              scaleT,
-              C,
-              ldc);
-#else
-  cblas_dgemm(CblasRowMajor,
-              a_trans,
-              b_trans,
-              M,
-              N,
-              K,
-              scaleAB,
-              A,
-              lda,
-              B,
-              ldb,
-              scaleT,
-              C,
-              ldc);
-// TODO(yuyang18): Is gemm defined other place?
-#endif
-
-  VLOG(2) << " A[0]=" << A[0] << " A[1]=" << A[1] << " B[0]=" << B[0]
-          << " B[1]=" << B[1] << " C[0]=" << C[0] << " C[1]=" << C[1];
+  gemm<real>(
+      a_trans, b_trans, M, N, K, scaleAB, A, lda, B, ldb, scaleT, C, ldc);
 }
 
 void CpuMatrix::mul(
