@@ -156,6 +156,7 @@ layers {
   }
   inputs {
     input_layer_name: "img"
+    input_parameter_name: "___mixed_6__.w1"
     proj_conf {
       type: "conv"
       name: "___mixed_6__.w1"
@@ -177,6 +178,7 @@ layers {
         output_y: 30
         img_size_y: 32
       }
+      num_filters: 64
     }
   }
   inputs {
@@ -218,6 +220,7 @@ layers {
   }
   inputs {
     input_layer_name: "img"
+    input_parameter_name: "___mixed_7__.w1"
     proj_conf {
       type: "convt"
       name: "___mixed_7__.w1"
@@ -239,6 +242,7 @@ layers {
         output_y: 32
         img_size_y: 63
       }
+      num_filters: 64
     }
   }
   inputs {
@@ -376,6 +380,22 @@ parameters {
   dims: 1
   initial_strategy: 0
   initial_smart: true
+}
+parameters {
+  name: "___mixed_6__.w1"
+  size: 576
+  initial_mean: 0.0
+  initial_std: 0.471404520791
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "___mixed_7__.w1"
+  size: 576
+  initial_mean: 0.0
+  initial_std: 0.471404520791
+  initial_strategy: 0
+  initial_smart: false
 }
 parameters {
   name: "___mixed_8__.w0"

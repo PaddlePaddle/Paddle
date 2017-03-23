@@ -724,7 +724,8 @@ class ConvProjection(ConvBaseProjection):
                  num_filters=None,
                  conv_conf=None,
                  **xargs):
-        super(ConvProjection, self).__init__(input_layer_name, **xargs)
+        super(ConvProjection, self).__init__(input_layer_name, num_filters,
+                                             conv_conf, **xargs)
 
         parse_conv(conv_conf, self.input_layer_name, self.proj_conf.conv_conf,
                    num_filters)
@@ -742,7 +743,8 @@ class ConvTransProjection(ConvBaseProjection):
                  num_filters=None,
                  conv_conf=None,
                  **xargs):
-        super(ConvTransProjection, self).__init__(input_layer_name, **xargs)
+        super(ConvTransProjection, self).__init__(input_layer_name, num_filters,
+                                                  conv_conf, **xargs)
 
         parse_conv(
             conv_conf,
