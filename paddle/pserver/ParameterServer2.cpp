@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/Stat.h"
+#include "paddle/utils/StringUtil.h"
 
 DEFINE_int32(pserver_num_threads, 1, "number of threads for sync op exec");
 DEFINE_double(async_lagged_ratio_min,
@@ -218,7 +219,8 @@ void ParameterServer2::setConfig(const SetConfigRequest& request,
   callback(response);
 
   /// always defined, barrier slowest node function need it.
-  statSet_.reset(new StatSet("ParameterServer" + std::to_string(serverId_)));
+  statSet_.reset(new StatSet("ParameterServer" +
+                             str::to_string(static_cast<int>(serverId_))));
 }
 
 real bufferSum(const std::vector<ParameterServer2::Buffer>& buffers) {
