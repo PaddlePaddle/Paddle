@@ -1,4 +1,0 @@
-[submodule "book"]
-	path = book
-	url = https://github.com/PaddlePaddle/book.git
-	branch = develop

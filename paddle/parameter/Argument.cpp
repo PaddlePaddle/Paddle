@@ -123,46 +123,6 @@ static void resizeAndCopy(ICpuGpuVectorPtr& dest,
   }
 }
 
-static void resizeAndCopy(UserDefinedVectorPtr& dest,
-                          const UserDefinedVectorPtr& src,
-                          bool useGpu,
-                          hl_stream_t stream) {
-  if (src) {
-    CHECK(!useGpu) << "not implemented";
-    size_t height = src->size();
-    if (!dest) {
-      dest = std::make_shared<std::vector<void*>>(height);
-    } else {
-      dest->resize(height);
-    }
-    std::copy_n(src->begin(), height, dest->begin());
-  } else {
-    dest.reset();
-  }
-}
-
-static void resizeAndCopy(UserDefinedVectorPtr& dest,
-                          const UserDefinedVectorPtr& src,
-                          int32_t startPos,
-                          int32_t copySize,
-                          bool useGpu,
-                          hl_stream_t stream = HPPL_STREAM_DEFAULT) {
-  if (src) {
-    CHECK(!useGpu) << "not implemented";
-    CHECK_LE((size_t)startPos + copySize, src->size());
-
-    size_t height = copySize;
-    if (!dest) {
-      dest = std::make_shared<std::vector<void*>>(height);
-    } else {
-      dest->resize(height);
-    }
-    std::copy_n(src->begin() + startPos, height, dest->begin());
-  } else {
-    dest.reset();
-  }
-}
-
 static void resizeAndCopy(SVectorPtr& dest,
                           const SVectorPtr& src,
                           bool useGpu,
@@ -223,7 +183,6 @@ void Argument::resizeAndCopyFrom(const Argument& src,
                   false /* useGpu */,
                   stream);
   }
-  resizeAndCopy(udp, src.udp, useGpu, stream);
   resizeAndCopy(strs, src.strs, useGpu, stream);
   frameWidth = src.frameWidth;
   frameHeight = src.frameHeight;
@@ -255,7 +214,6 @@ int32_t Argument::resizeAndCopyFrom(const Argument& src,
     resizeAndCopy(value, src.value, startRow, copySize, useGpu, stream);
     resizeAndCopy(grad, src.grad, startRow, copySize, useGpu, stream);
     resizeAndCopy(ids, src.ids, startRow, copySize, useGpu, stream);
-    resizeAndCopy(udp, src.udp, startRow, copySize, useGpu, stream);
     resizeAndCopy(strs, src.strs, startRow, copySize, useGpu, stream);
     return copySize;
   } else {
@@ -268,7 +226,6 @@ int32_t Argument::resizeAndCopyFrom(const Argument& src,
     resizeAndCopy(value, src.value, startRow, copyFeatureSize, useGpu, stream);
     resizeAndCopy(grad, src.grad, startRow, copyFeatureSize, useGpu, stream);
     resizeAndCopy(ids, src.ids, startRow, copyFeatureSize, useGpu, stream);
-    resizeAndCopy(udp, src.udp, startRow, copySize, useGpu, stream);
     resizeAndCopy(sequenceStartPositions,
                   src.sequenceStartPositions,
                   startSeq,
@@ -583,7 +540,7 @@ void Argument::checkSubset() const {
   }
 }
 
-void Argument::degradeSequence(const Argument& input, bool useGpu) {
+void Argument::degradeSequence(const Argument& input) {
   CHECK_EQ(input.hasSubseq(), 1UL);
   size_t numSequences = input.getNumSequences();
   size_t numSubSequences = input.getNumSubSequences();

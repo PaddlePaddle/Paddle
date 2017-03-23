@@ -22,7 +22,9 @@ import paddle.v2.networks as networks
 
 pixel = layer.data(name='pixel', type=data_type.dense_vector(128))
 label = layer.data(name='label', type=data_type.integer_value(10))
-weight = layer.data(name='weight', type=data_type.dense_vector(10))
+weight = layer.data(name='weight', type=data_type.dense_vector(1))
+combine_weight = layer.data(
+    name='weight_combine', type=data_type.dense_vector(10))
 score = layer.data(name='score', type=data_type.dense_vector(1))
 
 hidden = layer.fc(input=pixel,
@@ -81,7 +83,8 @@ class AggregateLayerTest(unittest.TestCase):
 class MathLayerTest(unittest.TestCase):
     def test_math_layer(self):
         addto = layer.addto(input=[pixel, pixel])
-        linear_comb = layer.linear_comb(weights=weight, vectors=hidden, size=10)
+        linear_comb = layer.linear_comb(
+            weights=combine_weight, vectors=hidden, size=10)
         interpolation = layer.interpolation(
             input=[hidden, hidden], weight=score)
         bilinear = layer.bilinear_interp(input=conv, out_size_x=4, out_size_y=4)
@@ -126,9 +129,8 @@ class CostLayerTest(unittest.TestCase):
         cost3 = layer.cross_entropy_cost(input=inference, label=label)
         cost4 = layer.cross_entropy_with_selfnorm_cost(
             input=inference, label=label)
-        cost5 = layer.regression_cost(input=inference, label=label)
-        cost6 = layer.regression_cost(
-            input=inference, label=label, weight=weight)
+        cost5 = layer.mse_cost(input=inference, label=label)
+        cost6 = layer.mse_cost(input=inference, label=label, weight=weight)
         cost7 = layer.multi_binary_label_cross_entropy_cost(
             input=inference, label=label)
         cost8 = layer.rank_cost(left=score, right=score, label=score)

@@ -34,11 +34,31 @@ flt = data_layer(name='filter', size=3 * 3 * 1 * 64)
 with mixed_layer() as m7:
     m7 += conv_operator(
         img=img, filter=flt, num_filters=64, num_channels=1, filter_size=3)
+    m7 += conv_projection(img, filter_size=3, num_filters=64, num_channels=1)
 
+with mixed_layer() as m8:
+    m8 += conv_operator(
+        img=img,
+        filter=flt,
+        num_filters=64,
+        num_channels=1,
+        filter_size=3,
+        stride=2,
+        padding=1,
+        trans=True)
+    m8 += conv_projection(
+        img,
+        filter_size=3,
+        num_filters=64,
+        num_channels=1,
+        stride=2,
+        padding=1,
+        trans=True)
 end = mixed_layer(
     input=[
         full_matrix_projection(input=m5),
-        trans_full_matrix_projection(input=m6), full_matrix_projection(input=m7)
+        trans_full_matrix_projection(input=m6),
+        full_matrix_projection(input=m7), full_matrix_projection(input=m8)
     ],
     size=100,
     layer_attr=ExtraAttr(

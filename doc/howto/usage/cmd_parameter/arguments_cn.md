@@ -229,16 +229,6 @@
 </tr>
 
 <tr>
-<td class="left" rowspan = "2">度量学习(metric learning)</td><td class="left">external</td>
-<td class="left">√</td><td class="left">√</td><td class="left">√</td><td class="left">√</td>
-</tr>
-
-<tr>
-<td class="left">data_server_port</td>
-<td class="left"></td><td class="left">√</td><td class="left"></td><td class="left">√</td>
-</tr>
-
-<tr>
 <td class="left" rowspan = "16">参数服务器(PServer)</td><td class="left">start_pserver</td>
 <td class="left"></td><td class="left">√</td><td class="left"></td><td class="left">√</td>
 </tr>

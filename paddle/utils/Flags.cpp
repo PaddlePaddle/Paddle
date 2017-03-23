@@ -30,7 +30,6 @@ DEFINE_bool(parallel_nn,
 DEFINE_int32(trainer_count, 1, "Defined how many trainers to train");
 DEFINE_int32(gpu_id, 0, "Which gpu core to use");
 DEFINE_int32(port, 20134, "Listening port for pserver");
-DEFINE_int32(data_server_port, 21134, "Listening port for dserver");
 DEFINE_int32(ports_num,
              1,
              "Number of ports for sending dense parameter,"

@@ -49,7 +49,7 @@ To recover this relationship between ``X`` and ``Y``, we use a neural network wi
         x = data_layer(name='x', size=1)
         y = data_layer(name='y', size=1)
         y_predict = fc_layer(input=x, param_attr=ParamAttr(name='w'), size=1, act=LinearActivation(), bias_attr=ParamAttr(name='b'))
-        cost = regression_cost(input=y_predict, label=y)
+        cost = mse_cost(input=y_predict, label=y)
         outputs(cost)
 
 Some of the most fundamental usages of PaddlePaddle are demonstrated:

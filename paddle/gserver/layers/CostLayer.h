@@ -160,6 +160,29 @@ public:
 };
 
 /**
+ * This cost layer compute smooth L1 loss for real-valued regression
+ * tasks.
+ * \f[
+ * L =
+ *   (output - label)^2 * 0.5  / -1 < (output - label) < 1 /
+ *   (output - label) - 0.5    / otherwise  /
+ * \f]
+ */
+class SmoothL1CostLayer : public CostLayer {
+public:
+  explicit SmoothL1CostLayer(const LayerConfig& config) : CostLayer(config) {}
+
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
+  void forwardImp(Matrix& output, Argument& label, Matrix& cost) override;
+
+  void backwardImp(Matrix& outputValue,
+                   Argument& label,
+                   Matrix& outputGrad) override;
+};
+
+/**
  * A cost layer for learning to rank (LTR) task. This layer contains at leat
  * three inputs.
  * \f[

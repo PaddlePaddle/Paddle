@@ -52,6 +52,7 @@ __all__ = [
     "cos_sim",
     "hsigmoid",
     "conv_projection",
+    "mse_cost",
     "regression_cost",
     'classification_cost',
     "LayerOutput",
@@ -286,6 +287,14 @@ class LayerOutput(object):
         Disable __str__ for debug reason. Will be implemented when release
         """
         assert False, "this method should not be invoked"
+
+    def set_input(self, input):
+        """
+        Set the input for a memory layer. Can only be used for memory layer
+        """
+        assert isinstance(input, LayerOutput)
+        assert self.layer_type == LayerType.MEMORY
+        SetMemoryInput(self.name, input.name)
 
 
 ERROR_CLIPPING = 'error_clipping_threshold'
@@ -703,8 +712,9 @@ class MixedLayerType(LayerOutput):
         assert len(self.inputs) == 0
         return self
 
-    def __exit__(self, *args, **kwargs):
-        del args, kwargs  # unused parameter to suppress warning
+    def __exit__(self, exc_type, exc_value, tb):
+        if exc_value is not None:
+            raise exc_value
         assert len(self.inputs) != 0
         ml = MixedLayer(
             name=self.name,
@@ -2035,8 +2045,9 @@ def img_conv_layer(input,
     :param trans: true if it is a convTransLayer, false if it is a convLayer
     :type trans: bool
     :param layer_type: specify the layer_type, default is None. If trans=True,
-                       layer_type has to be "exconvt", otherwise layer_type
-                       has to be either "exconv" or "cudnn_conv"
+                       layer_type has to be "exconvt" or "cudnn_convt", 
+                       otherwise layer_type has to be either "exconv" or 
+                       "cudnn_conv"
     :type layer_type: String
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2076,7 +2087,7 @@ def img_conv_layer(input,
 
     if layer_type:
         if trans:
-            assert layer_type in ["exconvt"]
+            assert layer_type in ["exconvt", "cudnn_convt"]
         else:
             assert layer_type in ["exconv", "cudnn_conv"]
         lt = layer_type
@@ -2758,8 +2769,10 @@ def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
         size=a.size)
 
 
+@wrap_name_default("memory", "memory_name")
 def memory(name,
            size,
+           memory_name=None,
            is_seq=False,
            boot_layer=None,
            boot_bias=None,
@@ -2781,14 +2794,32 @@ def memory(name,
     If boot_layer is not null, the memory is just the boot_layer's output.
     Set :code:`is_seq` is true boot layer is sequence.
 
-
     The same name layer in recurrent group will set memory on each time
     step.
 
-    :param name: memory's name.
+    .. code-block:: python
+
+       mem = memory(size=256, name='state')
+       state = fc_layer(input=mem, size=256, name='state')
+
+    If you do not want to specify the name, you can equivalently use set_input()
+    to specify the layer needs to be remembered as the following:
+
+    .. code-block:: python
+       mem = memory(size=256)
+       state = fc_layer(input=mem, size=256)
+       mem.set_input(mem)
+
+
+    :param name: the name of the layer which this memory remembers.
+                 If name is None, user should call set_input() to specify the
+                 name of the layer which this memory remembers.
     :type name: basestring
     :param size: size of memory.
     :type size: int
+    :param memory_name: the name of the memory.
+                        It is ignored when name is provided.
+    :type memory_name: basestring
     :param is_seq: is sequence for boot_layer
     :type is_seq: bool
     :param boot_layer: boot layer of memory.
@@ -2810,13 +2841,21 @@ def memory(name,
         boot_bias = ParamAttr.to_bias(boot_bias)
 
     assert boot_layer is None or isinstance(boot_layer, LayerOutput)
+    if name is not None:
+        memory_name = None
 
-    agent_name = Memory(name, size, is_seq, boot_layer.name
-                        if boot_layer is not None else None, boot_bias,
-                        boot_bias_active_type.name, boot_with_const_id)
+    memory_name = Memory(
+        name,
+        size,
+        is_sequence=is_seq,
+        boot_layer=boot_layer.name if boot_layer is not None else None,
+        boot_bias=boot_bias,
+        boot_bias_active_type=boot_bias_active_type.name,
+        boot_with_const_id=boot_with_const_id,
+        memory_name=memory_name)
 
     lout = LayerOutput(
-        name=agent_name,
+        name=memory_name,
         size=size,
         layer_type=LayerType.MEMORY,
         parents=[boot_layer] if boot_layer is not None else None)
@@ -3564,7 +3603,7 @@ def __cost_input__(input, label, weight=None):
     ipts = [Input(input.name), Input(label.name)]
     parents = [input, label]
     if weight is not None:
-        assert weight.layer_type == LayerType.DATA
+        assert weight.size == 1
         ipts.append(Input(weight.name))
         parents.append(weight)
     return ipts, parents
@@ -3572,11 +3611,14 @@ def __cost_input__(input, label, weight=None):
 
 @wrap_name_default()
 @layer_support()
-def regression_cost(input, label, weight=None, name=None, layer_attr=None):
+def mse_cost(input, label, weight=None, name=None, layer_attr=None):
     """
-    Regression Layer.
+    mean squared error cost:
 
-    TODO(yuyang18): Complete this method.
+    ..  math::
+
+       $\frac{1}{N}\sum_{i=1}^N(t _i- y_i)^2$
+
 
     :param name: layer name.
     :type name: basestring
@@ -3600,6 +3642,9 @@ def regression_cost(input, label, weight=None, name=None, layer_attr=None):
         name=name,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(name, LayerType.COST, parents=parents, size=1)
+
+
+regression_cost = mse_cost
 
 
 @wrap_name_default("cost")
@@ -3672,7 +3717,8 @@ def conv_operator(img,
                   padding=0,
                   filter_size_y=None,
                   stride_y=None,
-                  padding_y=None):
+                  padding_y=None,
+                  trans=False):
     """
     Different from img_conv_layer, conv_op is an Operator, which can be used
     in mixed_layer. And conv_op takes two inputs to perform convolution.
@@ -3728,7 +3774,9 @@ def conv_operator(img,
     if filter.size is not None:
         filter.size = filter_size * filter_size_y * num_filters * num_channels
 
-    op = ConvOperator(
+    opCls = ConvTransOperator if trans else ConvOperator
+
+    op = opCls(
         input_layer_names=[img.name, filter.name],
         num_filters=num_filters,
         conv_conf=Conv(
@@ -3740,6 +3788,7 @@ def conv_operator(img,
             padding_y=padding_y,
             stride_y=stride_y,
             groups=1))
+
     op.origin = [img, filter]
     return op
 
@@ -3755,7 +3804,8 @@ def conv_projection(input,
                     stride_y=None,
                     padding_y=None,
                     groups=1,
-                    param_attr=None):
+                    param_attr=None,
+                    trans=False):
     """
     Different from img_conv_layer and conv_op, conv_projection is an Projection,
     which can be used in mixed_layer and conat_layer. It use cudnn to implement
@@ -3794,6 +3844,8 @@ def conv_projection(input,
     :type groups: int
     :param param_attr: Convolution param attribute. None means default attribute
     :type param_attr: ParameterAttribute
+    :param trans: whether it is convTrans or conv
+    :type trans: boolean
     :return: A DotMulProjection Object.
     :rtype: DotMulProjection
     """
@@ -3830,7 +3882,9 @@ def conv_projection(input,
         param_attr.attr["initial_strategy"] = 0
         param_attr.attr["initial_smart"] = False
 
-    proj = ConvProjection(
+    projCls = ConvTransProjection if trans else ConvProjection
+
+    proj = projCls(
         input_layer_name=input.name,
         num_filters=num_filters,
         conv_conf=Conv(
@@ -4939,7 +4993,12 @@ def lambda_cost(input,
 
 @wrap_name_default()
 @layer_support()
-def cross_entropy(input, label, name=None, coeff=1.0, layer_attr=None):
+def cross_entropy(input,
+                  label,
+                  name=None,
+                  coeff=1.0,
+                  weight=None,
+                  layer_attr=None):
     """
     A loss layer for multi class entropy.
 
@@ -4954,22 +5013,27 @@ def cross_entropy(input, label, name=None, coeff=1.0, layer_attr=None):
     :type input: LayerOutput.
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring.
-    :param coeff: The coefficient affects the gradient in the backward.
+    :param coeff: The cost is multiplied with coeff.
+                  The coefficient affects the gradient in the backward.
     :type coeff: float.
+    :param weight: The cost of each sample is multiplied with each weight.
+                   The weight should be a layer with size=1. Note that gradient
+                   will not be calculated for weight.
+    :type weight: LayerOutout
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput.
     """
 
+    ipts, parents = __cost_input__(input, label, weight)
     Layer(
         name=name,
         type=LayerType.CROSS_ENTROPY,
-        inputs=[input.name, label.name],
+        inputs=ipts,
         coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
-    return LayerOutput(
-        name, LayerType.CROSS_ENTROPY, parents=[input, label], size=1)
+    return LayerOutput(name, LayerType.CROSS_ENTROPY, parents=parents, size=1)
 
 
 @wrap_name_default()
