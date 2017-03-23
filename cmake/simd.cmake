@@ -10,7 +10,7 @@ IF(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID 
     set(SSE3_FLAG "-msse3")
     SET(AVX_FLAG "-mavx")
     SET(AVX2_FLAG "-mavx2")
-    SET(NEON_FLAG "-mfloat-abi=softfp -mfpu=neon")
+    SET(NEON_FLAG "-pie -fPIE -mfloat-abi=softfp -mfpu=neon")
 ELSEIF(MSVC)
     set(MMX_FLAG "/arch:MMX")
     set(SSE2_FLAG "/arch:SSE2")
