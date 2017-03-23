@@ -52,7 +52,6 @@ void CrossChannelNormLayer::forward(PassType passType) {
   Matrix::resizeOrCreate(spatialBuffer_, 1, spatialDim, false, useGpu_);
   Matrix::resizeOrCreate(normBuffer_, batchSize, spatialDim, false, useGpu_);
   normBuffer_->zeroMem();
-  dataBuffer_->zeroMem();
   // add eps to avoid overflow
   normBuffer_->addScalar(*normBuffer_, 1e-6);
   inV->square2(*dataBuffer_);
