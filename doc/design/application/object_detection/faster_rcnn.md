@@ -24,7 +24,7 @@
 
 - RPN
 
-    采用卷积神经网络提取proposals。首先这篇文章中作者提出anchor这个概念，也被称作priors 或者 default boxes，anchor是在以这个点为中心的周围，选取特征的区域，比如选取3x3，1x3，3x1等区域，论文默认是9中区域。理解了anchor之后，我们来看RPN是如何提取proposals的。RPN是一个卷积神经网络，理论来说可以是任意结构的卷积神经网络，作者文章中采用的是一种全卷积神经网络，经过神经网络就可以提取feature map，然后在feature map的每个点选取多个anchor作为proposals，同时卷积神经网络也可以得到每个proposals的分类概率。
+    采用卷积神经网络提取proposals。首先这篇文章中作者提出anchor这个概念，也被称作priors 或者 default boxes，anchor是在以一个点为中心的周围，选取特征的区域，比如选取3x3，1x3，3x1等区域，论文默认是9种区域。理解了anchor之后，我们来看RPN是如何提取proposals的。RPN是一个卷积神经网络，理论来说可以是任意结构的卷积神经网络，作者文章中采用的是一种全卷积神经网络，经过神经网络就可以提取feature map，然后在feature map的每个点选取多个anchor作为proposals，同时卷积神经网络也可以得到每个proposals的分类概率。
     
     那么如何训练RPN呢？训练就需要cost，RPN网络cost包含两个，proposal分类的cost和坐标回归的cost。目前的训练都是有监督的训练，但是我们实际对每张图片标注的box相比生成的proposals要少非常多。那如何得到每个proposal的"真实"label？对于每个anchor，计算和标注的boxes的IoU(面积的交/面积的并)，并给定阈值，如果大于该阈值就认为它属于这一类，标记为1，否则标记为0。
     
@@ -52,7 +52,7 @@ Faster-RCNN部分对RPN提取的大量proposals的位置进行修正，以及分
       - shape: T x 5, T表示该图片标注的box(object)个数
       - 每一维度：(x1, y1, x2, y2, cls), cls是object的label
     - im_info:
-      - 输入图片height, width, resize的比例信息
+      - 输入图片height, width, scale比例信息, scale即固定一边长度，另一边的resize比例。(如果后续改进原图输入，scale可以默认为1)。
       - shape: (1, 3), （H, W, scale)
  
     实际在Paddle里对应3个input,每个input描述不同的信息。在reader里数据构造好即可，不需要实现。
@@ -107,7 +107,7 @@ Faster-RCNN部分对RPN提取的大量proposals的位置进行修正，以及分
 
 1. [py-faster-rcnn](https://github.com/rbgirshick/py-faster-rcnn) 上面列举的除过ROIPoolingLayer之外的操作都是python实现，检测的操作相对复杂，numpy矩阵操作还是相对简单，如果换成C++实现，工作量会较大。让PaddlePaddle可以支持Python的层，可以作为后续支持的功能，但不在这次faster_rcnn的支持范畴内，这次还会是主要实现C++的OP。
 
-3. 上面对Op的整理，一个层可能有多个输出，这几个输出有分别连向不同的层，PaddlePaddle目前一个层只有一个输出，在具体实现过程需要思考：方案1：让PaddlePaddle支持多个输出，多个输出可自由连接入其他的层。 方案2：继续按照一个层一个输出实现，将上面Op再拆分或整合。
+2. 上面对Op的整理，一个层可能有多个输出，这几个输出有分别连向不同的层，PaddlePaddle目前一个层只有一个输出，在具体实现过程需要思考：方案1：让PaddlePaddle支持多个输出，多个输出可自由连接入其他的层。 方案2：继续按照一个层一个输出实现，将上面Op再拆分或整合。
 
 
 ### 资料
