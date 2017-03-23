@@ -13,10 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "SIMDFunctions.h"
+#ifdef __SSE__
 #include <immintrin.h>
+#endif
 #include <algorithm>
 
-#ifndef __AVX__
+#ifdef __SSE__
 static void addto_sse(float* a, const float* b, size_t len) {
   int offset = len % 16;
   __m128 ma0, ma1, ma2, ma3;
@@ -125,7 +127,8 @@ static void col_max_sse(float* result,
   }
 }
 
-#else
+#elif defined(__AVX__)
+
 static void addto_avx(float* a, const float* b, size_t len) {
   int offset = len % 32;
 
@@ -357,15 +360,16 @@ static void decayL1_avx(
 
 #endif
 
-#ifndef __AVX__
+#ifdef __SSE__
 #define SIMD_INVOKE(func, ...) func##_sse(__VA_ARGS__)
-#else
+#elif __AVX__
 #define SIMD_INVOKE(func, ...) func##_avx(__VA_ARGS__)
 #endif
 
 namespace paddle {
 namespace simd {
 namespace internal {
+#ifdef __SSE__
 void addToImpl(float* a, const float* b, size_t len) {
   SIMD_INVOKE(addto, a, b, len);
 }
@@ -376,6 +380,7 @@ void batchAddToImpl(float* a, const float* b[], int batch, size_t len) {
 void colMaxImpl(float* result, const float* data, int dim, int numSamples) {
   SIMD_INVOKE(col_max, result, data, dim, numSamples);
 }
+#endif
 
 #ifdef __AVX__
 void decayL1AvxImpl(float* dst, float* src, float lambda, size_t len) {
