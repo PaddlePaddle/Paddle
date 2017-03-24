@@ -559,6 +559,46 @@ void Argument::degradeSequence(const Argument& input) {
   tgtBuf[numSequences] = numSubSequences;
 }
 
+void Argument::poolSequenceWithStride(const Argument& input,
+                                      size_t stride,
+                                      std::vector<int>* stridePostions) {
+  /*
+   * If input.sequenceStartPositions = [0, 9, 14, 17, 30] and stride = 5,
+   * then sequenceStartPositions = [0, 2, 3, 4, 7],
+   * and stridePostions = [0, 5, 9, 14, 17, 22, 27, 30]
+   */
+  CHECK(input.sequenceStartPositions);
+  CHECK_EQ(input.hasSubseq(), 0UL);
+  CHECK_GT(stride, 0) << "stride must larger than 0";
+  size_t numSequences = input.getNumSequences();
+  ICpuGpuVector::resizeOrCreate(
+      sequenceStartPositions, numSequences + 1, false);
+  const int* starts = input.sequenceStartPositions->getData(false);
+  int* tgtBuf = sequenceStartPositions->getMutableData(false);
+  // first index of target sequence and stride positions are both 0
+  tgtBuf[0] = 0;
+  (*stridePostions).clear();
+  for (size_t seqId = 0; seqId < numSequences; ++seqId) {
+    size_t seqLength = starts[seqId + 1] - starts[seqId];
+    (*stridePostions).emplace_back(starts[seqId]);
+    if (seqLength == 0) {
+      // empty sequence
+      tgtBuf[seqId + 1] = tgtBuf[seqId];
+    } else if (seqLength < stride) {
+      tgtBuf[seqId + 1] = tgtBuf[seqId] + 1;
+    } else {
+      tgtBuf[seqId + 1] = tgtBuf[seqId] + ceil((float)seqLength / stride);
+      int size =
+          (seqLength % stride) ? seqLength / stride : seqLength / stride - 1;
+      for (int i = 0; i < size; i++) {
+        (*stridePostions).emplace_back((*stridePostions).back() + stride);
+      }
+    }
+  }
+  (*stridePostions).emplace_back(starts[numSequences]);
+  CHECK_EQ((*stridePostions).size() - 1, tgtBuf[numSequences]);
+}
+
 void Argument::getValueString(
     std::unordered_map<std::string, std::string>* out) const {
   if (value) {

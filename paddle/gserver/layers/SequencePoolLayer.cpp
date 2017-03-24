@@ -37,6 +37,7 @@ bool SequencePoolLayer::init(const LayerMap& layerMap,
   } else {
     LOG(FATAL) << "Unknown trans_type: " << config_.trans_type();
   }
+  stride_ = config_.seq_pool_stride();
   setNeedSequenceInfo(false);
   return true;
 }
@@ -55,8 +56,6 @@ void SequencePoolLayer::forward(PassType passType) {
   CHECK_EQ(starts->getData()[newBatchSize_], input.getBatchSize());
   CHECK_EQ(newBatchSize_, starts->getSize() - 1);
 
-  resetOutput(newBatchSize_, dim);
-
   /* If type_ = kNonSeq, both seq has or not has sub-seq degrade to a non-seq,
    * thus, in this case, output_ has no sequenceStartPositions.
    * If type_ = kSeq, seq has sub-seq degrades to a seq, thus, only in this
@@ -67,6 +66,14 @@ void SequencePoolLayer::forward(PassType passType) {
         << "when trans_type = seq, input must hasSubseq";
     output_.degradeSequence(input);
   }
+  if (stride_ > 0) {
+    CHECK_EQ(input.hasSubseq(), 0UL)
+        << "sequence stride pooling is not suitable for hasSubseq now";
+    output_.poolSequenceWithStride(input, stride_, &stridePositions_);
+    newBatchSize_ = stridePositions_.size() - 1;
+  }
+
+  resetOutput(newBatchSize_, dim);
 }
 
 void SequencePoolLayer::backward(const UpdateCallback& callback) {

@@ -804,10 +804,14 @@ TEST(Layer, ExpandLayer) {
   testExpandLayer("seq", true);       // seq expand to hasSubseq
 }
 
-void testDegradeLayer(bool hasSubseq, string layer_type, string trans_type) {
+void testDegradeLayer(bool hasSubseq,
+                      string layer_type,
+                      string trans_type,
+                      int stride = -1) {
   TestConfig config;
   config.layerConfig.set_type(layer_type);
   config.layerConfig.set_size(10);
+  config.layerConfig.set_seq_pool_stride(stride);
   config.biasSize = 0;
 
   config.inputDefs.push_back(
@@ -827,12 +831,14 @@ void testDegradeLayer(bool hasSubseq, string layer_type, string trans_type) {
   if (layer_type == "average") {
     for (auto strategy : {"average", "sum", "squarerootn"}) {
       LOG(INFO) << " hasSubseq=" << hasSubseq << " trans_type=" << trans_type
-                << " average_strategy=" << strategy;
+                << " average_strategy=" << strategy
+                << " seq_pool_stride=" << stride;
       config.layerConfig.set_average_strategy(strategy);
       testDegradeLayerGrad(config, layer_type);
     }
   } else {
-    LOG(INFO) << " hasSubseq=" << hasSubseq << " trans_type=" << trans_type;
+    LOG(INFO) << " hasSubseq=" << hasSubseq << " trans_type=" << trans_type
+              << " seq_pool_stride=" << stride;
     testDegradeLayerGrad(config, layer_type);
   }
 }
@@ -847,6 +853,10 @@ TEST(Layer, SequenceLastInstanceLayer) {
   testDegradeLayer(false,
                    "seqlastins",
                    "non-seq");  // seq seqlastins to non-seq
+  testDegradeLayer(false,
+                   "seqlastins",
+                   "non-seq",
+                   5);  // seq seqlastins to a shorten seq, stride window = 5
   testDegradeLayer(true,
                    "seqlastins",
                    "non-seq");  // hasSubseq seqlastins to non-seq

@@ -96,6 +96,7 @@ layers {
     input_layer_name: "rnn_forward"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__recurrent_group_1__"
@@ -145,6 +146,7 @@ layers {
   }
   select_first: true
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__recurrent_group_2__"
@@ -193,6 +195,7 @@ layers {
     input_layer_name: "rnn_subseq_forward"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__lstm_group_0___recurrent_group"
@@ -282,6 +285,7 @@ layers {
     input_layer_name: "__lstm_group_0__"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__gru_group_0___recurrent_group"
@@ -330,6 +334,7 @@ layers {
     input_layer_name: "__gru_group_0__"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__recurrent_group_3__"
@@ -378,6 +383,7 @@ layers {
     input_layer_name: "__fc_layer_0__"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 parameters {
   name: "___mixed_0__.w0"

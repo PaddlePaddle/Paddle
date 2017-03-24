@@ -26,6 +26,10 @@ namespace paddle {
  *    Output: output size is the number of input sequences (NOT input instances)
  *    output[i] = seqlastin/average/max_{for each instance in this
  * sequence}{input[i]}
+ *    If stride_ > 0:
+ *        Check input sequence must don't have sub-sequence
+ *        Output: a shorten sequence, pooling is performed upon a small local
+ * area
  * If SequenceLevel = kSeq:
  *    Check input sequence must has sub-sequence
  *    Output: output size is the number of input sub-sequences
@@ -42,6 +46,9 @@ protected:
   enum SequenceLevel { kNonSeq = 0, kSeq = 1 };
   size_t newBatchSize_;
   ICpuGpuVectorPtr startPositions_;
+  int stride_;
+  // store the start position of each stride window
+  std::vector<int> stridePositions_;
 
 public:
   explicit SequencePoolLayer(const LayerConfig& config) : Layer(config) {}
