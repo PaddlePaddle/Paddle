@@ -17,10 +17,10 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/utils/ThreadLocal.h"
 
-static std::vector<pd_real> randomBuffer(size_t bufSize) {
+static std::vector<paddle_real> randomBuffer(size_t bufSize) {
   auto& eng = paddle::ThreadLocalRandomEngine::get();
-  std::uniform_real_distribution<pd_real> dist(-1.0, 1.0);
-  std::vector<pd_real> retv;
+  std::uniform_real_distribution<paddle_real> dist(-1.0, 1.0);
+  std::vector<paddle_real> retv;
   retv.reserve(bufSize);
   for (size_t i = 0; i < bufSize; ++i) {
     retv.push_back(dist(eng));
@@ -42,7 +42,7 @@ TEST(CAPIArguments, value) {
 
   paddle_matrix mat = paddle_matrix_create(128, 64, false);
   for (size_t i = 0; i < 128; ++i) {
-    std::vector<pd_real> sampleBuf = randomBuffer(64);
+    std::vector<paddle_real> sampleBuf = randomBuffer(64);
     paddle_matrix_set_row(mat, i, sampleBuf.data());
   }
   ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_set_value(args, 0, mat));
@@ -52,8 +52,8 @@ TEST(CAPIArguments, value) {
   ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_value(args, 0, val));
 
   for (size_t i = 0; i < 128; ++i) {
-    pd_real* row1;
-    pd_real* row2;
+    paddle_real* row1;
+    paddle_real* row2;
 
     ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_row(mat, i, &row1));
     ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_row(val, i, &row2));

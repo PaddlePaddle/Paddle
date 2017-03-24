@@ -15,6 +15,7 @@ limitations under the License. */
 #ifndef __PADDLE_CAPI_MATRIX_H__
 #define __PADDLE_CAPI_MATRIX_H__
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "config.h"
 #include "error.h"
@@ -40,6 +41,18 @@ PD_API paddle_matrix paddle_matrix_create(uint64_t height,
                                           bool useGpu);
 
 /**
+ * @brief paddle_matrix_create_sparse Create a sparse matrix.
+ * @param height the matrix height.
+ * @param width the matrix width.
+ * @param nnz the number of non-zero elements.
+ * @param isBinary is binary (either 1 or 0 in matrix) or not.
+ * @param useGpu is using GPU or not.
+ * @return paddle_matrix.
+ */
+PD_API paddle_matrix paddle_matrix_create_sparse(
+    uint64_t height, uint64_t width, uint64_t nnz, bool isBinary, bool useGpu);
+
+/**
  * @brief paddle_matrix_destroy Destroy a matrix.
  * @param mat
  * @return paddle_error
@@ -55,7 +68,7 @@ PD_API paddle_error paddle_matrix_destroy(paddle_matrix mat);
  */
 PD_API paddle_error paddle_matrix_set_row(paddle_matrix mat,
                                           uint64_t rowID,
-                                          pd_real* rowArray);
+                                          paddle_real* rowArray);
 
 /**
  * @brief PDMatGetRow Get raw row buffer from matrix
@@ -66,7 +79,7 @@ PD_API paddle_error paddle_matrix_set_row(paddle_matrix mat,
  */
 PD_API paddle_error paddle_matrix_get_row(paddle_matrix mat,
                                           uint64_t rowID,
-                                          pd_real** rawRowBuffer);
+                                          paddle_real** rawRowBuffer);
 
 /**
  * @brief PDMatCreateNone Create None Matrix
@@ -84,6 +97,27 @@ PD_API paddle_matrix paddle_matrix_create_none();
 PD_API paddle_error paddle_matrix_get_shape(paddle_matrix mat,
                                             uint64_t* height,
                                             uint64_t* width);
+
+/**
+ * @brief paddle_matrix_sparse_copy_from Copy from a CSR format matrix
+ * @param [out] mat output matrix
+ * @param [in] rowArray row array. The array slices in column array.
+ * @param [in] rowSize length of row array.
+ * @param [in] colArray the column array. It means the non-zero element indices
+ * in each row.
+ * @param [in] colSize length of column array.
+ * @param [in] valueArray the value array. It means the non-zero elemnt values.
+ * NULL if the matrix is binary.
+ * @param [in] valueSize length of value array. Zero if the matrix is binary.
+ * @return paddle_error
+ */
+PD_API paddle_error paddle_matrix_sparse_copy_from(paddle_matrix mat,
+                                                   int* rowArray,
+                                                   uint64_t rowSize,
+                                                   int* colArray,
+                                                   uint64_t colSize,
+                                                   float* valueArray,
+                                                   uint64_t valueSize);
 
 #ifdef __cplusplus
 }

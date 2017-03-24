@@ -113,3 +113,11 @@ paddle_error paddle_gradient_machine_create_shared_param(
   return kPD_NO_ERROR;
 }
 }
+
+paddle_error paddle_gradient_machine_randomize_param(
+    paddle_gradient_machine machine) {
+  auto m = cast(machine);
+  if (m == nullptr || m->machine == nullptr) return kPD_NULLPTR;
+  m->machine->randParameters();
+  return kPD_NO_ERROR;
+}

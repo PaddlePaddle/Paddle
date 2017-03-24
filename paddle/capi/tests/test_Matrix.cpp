@@ -17,7 +17,7 @@ limitations under the License. */
 
 TEST(CAPIMatrix, create) {
   paddle_matrix mat = paddle_matrix_create(128, 32, false);
-  std::vector<pd_real> sampleRow;
+  std::vector<paddle_real> sampleRow;
   sampleRow.resize(32);
   for (size_t i = 0; i < sampleRow.size(); ++i) {
     sampleRow[i] = 1.0 / (i + 1.0);
@@ -26,7 +26,7 @@ TEST(CAPIMatrix, create) {
   ASSERT_EQ(kPD_OUT_OF_RANGE,
             paddle_matrix_set_row(mat, 128, sampleRow.data()));
 
-  pd_real* arrayPtr;
+  paddle_real* arrayPtr;
 
   ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_row(mat, 0, &arrayPtr));
   for (size_t i = 0; i < sampleRow.size(); ++i) {

@@ -39,7 +39,7 @@ paddle_error paddle_matrix_destroy(paddle_matrix mat) {
 
 paddle_error paddle_matrix_set_row(paddle_matrix mat,
                                    uint64_t rowID,
-                                   pd_real* rowArray) {
+                                   paddle_real* rowArray) {
   if (mat == nullptr) return kPD_NULLPTR;
   auto ptr = cast(mat);
   if (ptr->mat == nullptr) return kPD_NULLPTR;
@@ -56,7 +56,7 @@ paddle_error paddle_matrix_set_row(paddle_matrix mat,
 
 paddle_error paddle_matrix_get_row(paddle_matrix mat,
                                    uint64_t rowID,
-                                   pd_real** rawRowBuffer) {
+                                   paddle_real** rawRowBuffer) {
   if (mat == nullptr) return kPD_NULLPTR;
   auto ptr = cast(mat);
   if (ptr->mat == nullptr) return kPD_NULLPTR;
@@ -77,4 +77,47 @@ paddle_error paddle_matrix_get_shape(paddle_matrix mat,
   }
   return kPD_NO_ERROR;
 }
+}
+
+paddle_matrix paddle_matrix_create_sparse(
+    uint64_t height, uint64_t width, uint64_t nnz, bool isBinary, bool useGpu) {
+  auto ptr = new paddle::capi::CMatrix();
+  ptr->mat = paddle::Matrix::createSparseMatrix(
+      height,
+      width,
+      nnz,
+      isBinary ? paddle::NO_VALUE : paddle::FLOAT_VALUE,
+      paddle::SPARSE_CSR,
+      false,
+      useGpu);
+  return ptr;
+}
+
+paddle_error paddle_matrix_sparse_copy_from(paddle_matrix mat,
+                                            int* rowArray,
+                                            uint64_t rowSize,
+                                            int* colArray,
+                                            uint64_t colSize,
+                                            float* valueArray,
+                                            uint64_t valueSize) {
+  if (mat == nullptr) return kPD_NULLPTR;
+  auto ptr = cast(mat);
+  if (rowArray == nullptr || colArray == nullptr ||
+      (valueSize != 0 && valueArray == nullptr) || ptr->mat == nullptr) {
+    return kPD_NULLPTR;
+  }
+  if (auto sparseMat = dynamic_cast<paddle::CpuSparseMatrix*>(ptr->mat.get())) {
+    std::vector<int> row(rowSize);
+    row.assign(rowArray, rowArray + rowSize);
+    std::vector<int> col(colSize);
+    col.assign(colArray, colArray + colSize);
+    std::vector<paddle_real> val(valueSize);
+    if (valueSize) {
+      val.assign(valueArray, valueArray + valueSize);
+    }
+    sparseMat->copyFrom(row, col, val);
+    return kPD_NO_ERROR;
+  } else {
+    return kPD_NOT_SUPPORTED;
+  }
 }

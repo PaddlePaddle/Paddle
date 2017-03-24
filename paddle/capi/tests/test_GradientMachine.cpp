@@ -21,10 +21,10 @@ limitations under the License. */
 #include "capi.h"
 #include "paddle/utils/ThreadLocal.h"
 
-static std::vector<pd_real> randomBuffer(size_t bufSize) {
+static std::vector<paddle_real> randomBuffer(size_t bufSize) {
   auto& eng = paddle::ThreadLocalRandomEngine::get();
-  std::uniform_real_distribution<pd_real> dist(-1.0, 1.0);
-  std::vector<pd_real> retv;
+  std::uniform_real_distribution<paddle_real> dist(-1.0, 1.0);
+  std::vector<paddle_real> retv;
   retv.reserve(bufSize);
   for (size_t i = 0; i < bufSize; ++i) {
     retv.push_back(dist(eng));
@@ -60,12 +60,12 @@ TEST(GradientMachine, testPredict) {
   paddle_arguments inArgs = paddle_arguments_create_none();
   ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_resize(inArgs, 1));
   paddle_matrix mat = paddle_matrix_create(1, 100, false);
-  static_assert(std::is_same<pd_real, paddle::real>::value, "");
+  static_assert(std::is_same<paddle_real, paddle::real>::value, "");
 
   auto data = randomBuffer(100);
-  pd_real* rowPtr;
+  paddle_real* rowPtr;
   ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_row(mat, 0, &rowPtr));
-  memcpy(rowPtr, data.data(), data.size() * sizeof(pd_real));
+  memcpy(rowPtr, data.data(), data.size() * sizeof(paddle_real));
 
   ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_set_value(inArgs, 0, mat));
   ASSERT_EQ(kPD_NO_ERROR,

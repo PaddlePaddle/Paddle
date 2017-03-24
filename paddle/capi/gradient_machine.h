@@ -74,6 +74,9 @@ paddle_gradient_machine_create_shared_param(paddle_gradient_machine origin,
                                             int size,
                                             paddle_gradient_machine* slave);
 
+PD_API paddle_error
+paddle_gradient_machine_randomize_param(paddle_gradient_machine machine);
+
 /**
  * @brief Destroy a gradient machine
  * @param machine that need to destroy

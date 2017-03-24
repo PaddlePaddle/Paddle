@@ -23,6 +23,7 @@ typedef enum {
   kPD_NULLPTR = 1,
   kPD_OUT_OF_RANGE = 2,
   kPD_PROTOBUF_ERROR = 3,
+  kPD_NOT_SUPPORTED = 4,
   kPD_UNDEFINED_ERROR = -1,
 } paddle_error;
 
