@@ -205,7 +205,7 @@ def unittest():
     print train_count, test_count
 
 
-def download():
+def fetch_data():
     paddle.v2.dataset.common.download(URL, "movielens", MD5)
 
 

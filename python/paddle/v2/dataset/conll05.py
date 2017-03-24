@@ -198,7 +198,7 @@ def test():
     return reader_creator(reader, word_dict, verb_dict, label_dict)
 
 
-def download():
+def fetch_data():
     paddle.v2.dataset.common.download(WORDDICT_URL, 'conll05st', WORDDICT_MD5)
     paddle.v2.dataset.common.download(VERBDICT_URL, 'conll05st', VERBDICT_MD5)
     paddle.v2.dataset.common.download(TRGDICT_URL, 'conll05st', TRGDICT_MD5)

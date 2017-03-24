@@ -125,5 +125,5 @@ def word_dict():
         re.compile("aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$"), 150)
 
 
-def download():
+def fetch_data():
     paddle.v2.dataset.common.download(URL, 'imdb', MD5)

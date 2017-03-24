@@ -77,6 +77,6 @@ def test10():
         'test_batch')
 
 
-def download():
+def fetch_data():
     paddle.v2.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5)
     paddle.v2.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5)

@@ -105,5 +105,5 @@ def test(dict_size):
         'test/test', dict_size)
 
 
-def download():
+def fetch_data():
     paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN)
