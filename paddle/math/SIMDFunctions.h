@@ -128,7 +128,7 @@ void decayL1AvxImpl(
 
 template <>
 inline void addTo(float* a, const float* b, size_t len) {
-#ifdef __SSE__
+#ifdef __SSE3__
   internal::addToImpl(a, b, len);
 #else
   naive::addTo(a, b, len);
@@ -137,7 +137,7 @@ inline void addTo(float* a, const float* b, size_t len) {
 
 template <>
 inline void batchAddTo(float* a, const float* b[], int batch, size_t len) {
-#ifdef __SSE__
+#ifdef __SSE3__
   internal::batchAddToImpl(a, b, batch, len);
 #else
   naive::batchAddTo(a, b, batch, len);
@@ -146,7 +146,7 @@ inline void batchAddTo(float* a, const float* b[], int batch, size_t len) {
 
 template <>
 inline void colMax(float* result, const float* data, int dim, int numSamples) {
-#ifdef __SSE__
+#ifdef __SSE3__
   internal::colMaxImpl(result, data, dim, numSamples);
 #else
   naive::colMax(result, data, dim, numSamples);

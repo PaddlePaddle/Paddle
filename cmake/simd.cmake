@@ -88,14 +88,5 @@ int main()
     return 0;
 }" NEON_FOUND)
 
-if(NEON_FOUND)
-    set(SIMD_FLAG ${NEON_FLAG})
-else(NEON_FOUND)
-    if(WITH_AVX)
-        set(SIMD_FLAG ${AVX_FLAG})
-    else(WITH_AVX)
-        set(SIMD_FLAG ${SSE3_FLAG})
-    endif(WITH_AVX)
-endif(NEON_FOUND)
-
+set(CMAKE_REQUIRED_FLAGS "")
 mark_as_advanced(MMX_FOUND SSE2_FOUND SSE3_FOUND AVX_FOUND AVX2_FOUND NEON_FOUND)
