@@ -13,7 +13,7 @@ configure_file(config.h.in config.h @ONLY)
 # PaddleCAPI.h is the only header we exposed. It currently only used for model
 # inference.
 file(GLOB CAPI_HEADERS *.h)
-set(CAPI_PRIVATE_HEADER PaddleCAPIPrivate.h)
+set(CAPI_PRIVATE_HEADER capi_private.h)
 list(REMOVE_ITEM CAPI_HEADERS ${CAPI_PRIVATE_HEADER})
 file(GLOB CAPI_SOURCES *.cpp)
 
@@ -59,7 +59,7 @@ link_paddle_exe(paddle_capi_shared)
 
 # install library & headers.
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${capi_whole_library} DESTINATION lib)
-install(FILES ${CAPI_HEADER} DESTINATION include/paddle)
+install(FILES ${CAPI_HEADERS} DESTINATION include/paddle)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h DESTINATION include/paddle)
 install(TARGETS paddle_capi_shared DESTINATION lib)
 

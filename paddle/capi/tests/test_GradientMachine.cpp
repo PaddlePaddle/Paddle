@@ -18,7 +18,7 @@ limitations under the License. */
 #include <stdlib.h>
 #include <string.h>
 #include <type_traits>
-#include "PaddleCAPI.h"
+#include "capi.h"
 #include "paddle/utils/ThreadLocal.h"
 
 static std::vector<pd_real> randomBuffer(size_t bufSize) {

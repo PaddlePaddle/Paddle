@@ -16,8 +16,8 @@ limitations under the License. */
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
-#include "PaddleCAPI.h"
-#include "PaddleCAPIPrivate.h"
+#include "capi_private.h"
+#include "main.h"
 #include "paddle/trainer/TrainerConfigHelper.h"
 #include "paddle/utils/Excepts.h"
 #include "paddle/utils/PythonUtil.h"

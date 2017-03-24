@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLECAPI_H_
-#define PADDLECAPI_H_
+#ifndef __PADDLE_CAPI_H__
+#define __PADDLE_CAPI_H__
 
 /**
  * Paddle C API. It will replace SWIG as Multiple Language API for model

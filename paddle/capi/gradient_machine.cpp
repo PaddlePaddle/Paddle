@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "PaddleCAPI.h"
-#include "PaddleCAPIPrivate.h"
+#include "gradient_machine.h"
+#include "capi_private.h"
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 
 #define cast(v) paddle::capi::cast<paddle::capi::CGradientMachine>(v)

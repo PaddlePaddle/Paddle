@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "PaddleCAPI.h"
-#include "PaddleCAPIPrivate.h"
+#include "capi_private.h"
 #include "hl_cuda.h"
+#include "matrix.h"
 
 #define cast(v) paddle::capi::cast<paddle::capi::CMatrix>(v)
 extern "C" {
