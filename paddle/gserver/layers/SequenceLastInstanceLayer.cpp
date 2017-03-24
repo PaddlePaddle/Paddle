@@ -72,7 +72,8 @@ bool SequenceLastInstanceLayer::init(const LayerMap& layerMap,
 void SequenceLastInstanceLayer::forward(PassType passType) {
   SequencePoolLayer::forward(passType);
 
-  const int* starts = startPositions_->getData(false);
+  auto starts = (stride_ > 0) ? stridePositions_->getData()
+                              : startPositions_->getData(false);
   MatrixPtr inputValue = getInputValue(0);
   MatrixPtr outputValue = getOutputValue();
 
@@ -82,10 +83,7 @@ void SequenceLastInstanceLayer::forward(PassType passType) {
 
     insId_.clear();
     for (size_t seqId = 0; seqId < newBatchSize_; ++seqId) {
-      int insId = (stride_ > 0)
-                      ? (select_first_ ? stridePositions_[seqId]
-                                       : stridePositions_[seqId + 1] - 1)
-                      : (select_first_ ? starts[seqId] : starts[seqId + 1] - 1);
+      int insId = select_first_ ? starts[seqId] : starts[seqId + 1] - 1;
       insId_.push_back(insId);
 
       outputValue->subMatrix(seqId, 1, tmpDest_)

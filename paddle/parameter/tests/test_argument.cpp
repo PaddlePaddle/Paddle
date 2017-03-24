@@ -27,8 +27,7 @@ TEST(Argument, poolSequenceWithStride) {
   inStart[3] = 17;
   inStart[4] = 30;
 
-  std::vector<int> stridePositions;
-  stridePositions.clear();
+  IVectorPtr stridePositions;
   output.poolSequenceWithStride(input, 5 /* stride */, &stridePositions);
 
   const int* outStart = output.sequenceStartPositions->getData(false);
@@ -38,10 +37,10 @@ TEST(Argument, poolSequenceWithStride) {
   CHECK_EQ(outStart[3], 4);
   CHECK_EQ(outStart[4], 7);
 
-  CHECK_EQ(stridePositions.size(), 8);
+  CHECK_EQ(stridePositions->getSize(), 8);
   int strideResult[] = {0, 5, 9, 14, 17, 22, 27, 30};
   for (int i = 0; i < 8; i++) {
-    CHECK_EQ(stridePositions[i], strideResult[i]);
+    CHECK_EQ(stridePositions->getData()[i], strideResult[i]);
   }
 }
 

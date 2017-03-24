@@ -1406,7 +1406,6 @@ def first_seq(input,
     and a long sequence will be shorten. Note that for sequence with 
     sub-sequence, stride is default -1 now.
 
-
     The simple usage is:
 
     .. code-block:: python
@@ -1418,6 +1417,8 @@ def first_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
+    :param stride: parameter of stride window.  
+    :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.

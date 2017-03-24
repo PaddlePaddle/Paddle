@@ -561,7 +561,7 @@ void Argument::degradeSequence(const Argument& input) {
 
 void Argument::poolSequenceWithStride(const Argument& input,
                                       size_t stride,
-                                      std::vector<int>* stridePostions) {
+                                      IVectorPtr* stridePostions) {
   /*
    * If input.sequenceStartPositions = [0, 9, 14, 17, 30] and stride = 5,
    * then sequenceStartPositions = [0, 2, 3, 4, 7],
@@ -577,10 +577,10 @@ void Argument::poolSequenceWithStride(const Argument& input,
   int* tgtBuf = sequenceStartPositions->getMutableData(false);
   // first index of target sequence and stride positions are both 0
   tgtBuf[0] = 0;
-  (*stridePostions).clear();
+  std::vector<int> stridePos;
   for (size_t seqId = 0; seqId < numSequences; ++seqId) {
     size_t seqLength = starts[seqId + 1] - starts[seqId];
-    (*stridePostions).emplace_back(starts[seqId]);
+    stridePos.emplace_back(starts[seqId]);
     if (seqLength == 0) {
       // empty sequence
       tgtBuf[seqId + 1] = tgtBuf[seqId];
@@ -591,12 +591,15 @@ void Argument::poolSequenceWithStride(const Argument& input,
       int size =
           (seqLength % stride) ? seqLength / stride : seqLength / stride - 1;
       for (int i = 0; i < size; i++) {
-        (*stridePostions).emplace_back((*stridePostions).back() + stride);
+        stridePos.emplace_back(stridePos.back() + stride);
       }
     }
   }
-  (*stridePostions).emplace_back(starts[numSequences]);
-  CHECK_EQ((*stridePostions).size() - 1, tgtBuf[numSequences]);
+  stridePos.emplace_back(starts[numSequences]);
+  int size = stridePos.size();
+  CHECK_EQ(size - 1, tgtBuf[numSequences]);
+  IVector::resizeOrCreate(*stridePostions, size, false);
+  (*stridePostions)->copyFrom(stridePos.data(), size);
 }
 
 void Argument::getValueString(

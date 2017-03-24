@@ -48,7 +48,7 @@ protected:
   ICpuGpuVectorPtr startPositions_;
   int stride_;
   // store the start position of each stride window
-  std::vector<int> stridePositions_;
+  IVectorPtr stridePositions_;
 
 public:
   explicit SequencePoolLayer(const LayerConfig& config) : Layer(config) {}
