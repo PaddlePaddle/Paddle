@@ -91,5 +91,5 @@ def test():
     return reader
 
 
-def fetch_data():
-    paddle.v2.dataset.common.download(URL, 'uci_housing', MD5)
+def fetch():
+    download(URL, 'uci_housing', MD5)

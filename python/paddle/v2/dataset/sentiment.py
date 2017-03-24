@@ -26,7 +26,7 @@ from itertools import chain
 import nltk
 from nltk.corpus import movie_reviews
 
-import paddle.v2.dataset.common
+import common
 
 __all__ = ['train', 'test', 'get_word_dict']
 NUM_TRAINING_INSTANCES = 1600
@@ -127,5 +127,5 @@ def test():
     return reader_creator(data_set[NUM_TRAINING_INSTANCES:])
 
 
-def fetch_data():
+def fetch():
     nltk.download('movie_reviews', download_dir=common.DATA_HOME)

@@ -91,5 +91,5 @@ def test(word_idx, n):
     return reader_creator('./simple-examples/data/ptb.valid.txt', word_idx, n)
 
 
-def fetch_data():
+def fetch():
     paddle.v2.dataset.common.download(URL, "imikolov", MD5)
