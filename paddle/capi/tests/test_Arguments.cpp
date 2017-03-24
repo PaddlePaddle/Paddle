@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <functional>
 #include "PaddleCAPI.h"
 #include "gtest/gtest.h"
 #include "paddle/utils/ThreadLocal.h"
@@ -109,8 +110,19 @@ void testSequenceHelper(T1 setter, T2 getter) {
 }
 
 TEST(CAPIArguments, Sequence) {
-  testSequenceHelper(paddle_arguments_set_sequence_start_pos,
-                     paddle_arguments_sequence_start_pos);
-  testSequenceHelper(paddle_arguments_set_sub_sequence_start_pos,
-                     paddle_arguments_sub_sequence_start_pos);
+  auto testSequence = [](uint32_t nestedLevel) {
+    testSequenceHelper(std::bind(paddle_arguments_set_sequence_start_pos,
+                                 std::placeholders::_1,
+                                 std::placeholders::_2,
+                                 nestedLevel,
+                                 std::placeholders::_3),
+                       std::bind(paddle_arguments_sequence_start_pos,
+                                 std::placeholders::_1,
+                                 std::placeholders::_2,
+                                 nestedLevel,
+                                 std::placeholders::_3));
+  };
+  for (uint32_t i = 0; i < 2; ++i) {  // test seq and sub-seq.
+    testSequence(i);
+  }
 }

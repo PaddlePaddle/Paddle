@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "PaddleCAPI.h"
 #include "PaddleCAPIPrivate.h"
+#include "arguments.h"
 
 using paddle::capi::cast;
 
@@ -92,50 +92,26 @@ paddle_error paddle_arguments_set_ids(paddle_arguments args,
 
 paddle_error paddle_arguments_set_sequence_start_pos(paddle_arguments args,
                                                      uint64_t ID,
+                                                     uint32_t nestedLevel,
                                                      paddle_ivector seqPos) {
   if (args == nullptr || seqPos == nullptr) return kPD_NULLPTR;
   auto iv = paddle::capi::cast<paddle::capi::CIVector>(seqPos);
   if (iv->vec == nullptr) return kPD_NULLPTR;
   auto a = castArg(args);
-  if (ID >= a->args.size()) return kPD_OUT_OF_RANGE;
-  a->args[ID].sequenceStartPositions =
-      std::make_shared<paddle::ICpuGpuVector>(iv->vec);
-  return kPD_NO_ERROR;
-}
-
-paddle_error paddle_arguments_set_sub_sequence_start_pos(
-    paddle_arguments args, uint64_t ID, paddle_ivector subSeqPos) {
-  if (args == nullptr || subSeqPos == nullptr) return kPD_NULLPTR;
-  auto iv = paddle::capi::cast<paddle::capi::CIVector>(subSeqPos);
-  if (iv->vec == nullptr) return kPD_NULLPTR;
-  auto a = castArg(args);
-  if (ID >= a->args.size()) return kPD_OUT_OF_RANGE;
-  a->args[ID].subSequenceStartPositions =
-      std::make_shared<paddle::ICpuGpuVector>(iv->vec);
-  return kPD_NO_ERROR;
+  return a->accessSeqPos(ID, nestedLevel, [&iv](paddle::ICpuGpuVectorPtr& ptr) {
+    ptr = std::make_shared<paddle::ICpuGpuVector>(iv->vec);
+  });
 }
 
 paddle_error paddle_arguments_sequence_start_pos(paddle_arguments args,
                                                  uint64_t ID,
+                                                 uint32_t nestedLevel,
                                                  paddle_ivector seqPos) {
   if (args == nullptr || seqPos == nullptr) return kPD_NULLPTR;
-  auto iv = castIVec(seqPos);
+  auto iv = paddle::capi::cast<paddle::capi::CIVector>(seqPos);
   auto a = castArg(args);
-  if (ID >= a->args.size()) return kPD_OUT_OF_RANGE;
-  paddle::Argument& arg = a->args[ID];
-  iv->vec = arg.sequenceStartPositions->getMutableVector(false);
-  return kPD_NO_ERROR;
-}
-
-paddle_error paddle_arguments_sub_sequence_start_pos(paddle_arguments args,
-                                                     uint64_t ID,
-                                                     paddle_ivector subSeqPos) {
-  if (args == nullptr || subSeqPos == nullptr) return kPD_NULLPTR;
-  auto iv = castIVec(subSeqPos);
-  auto a = castArg(args);
-  if (ID >= a->args.size()) return kPD_OUT_OF_RANGE;
-  paddle::Argument& arg = a->args[ID];
-  iv->vec = arg.subSequenceStartPositions->getMutableVector(false);
-  return kPD_NO_ERROR;
+  return a->accessSeqPos(ID, nestedLevel, [&iv](paddle::ICpuGpuVectorPtr& ptr) {
+    iv->vec = ptr->getMutableVector(false);
+  });
 }
 }

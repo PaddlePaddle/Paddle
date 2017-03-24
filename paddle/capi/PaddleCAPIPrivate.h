@@ -49,6 +49,22 @@ struct CArguments {
   std::vector<paddle::Argument> args;
 
   CArguments() : type(kARGUMENTS) {}
+
+  template <typename T>
+  paddle_error accessSeqPos(uint64_t ID, uint32_t nestedLevel, T callback) {
+    if (ID >= args.size()) return kPD_OUT_OF_RANGE;
+    switch (nestedLevel) {
+      case 0:
+        callback(args[ID].sequenceStartPositions);
+        break;
+      case 1:
+        callback(args[ID].subSequenceStartPositions);
+        break;
+      default:
+        return kPD_OUT_OF_RANGE;
+    }
+    return kPD_NO_ERROR;
+  }
 };
 
 struct CGradientMachine {

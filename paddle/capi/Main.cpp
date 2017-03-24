@@ -29,7 +29,7 @@ static void initPaddle(int argc, char** argv) {
 }
 
 extern "C" {
-paddle_error PDInit(int argc, char** argv) {
+paddle_error paddle_init(int argc, char** argv) {
   std::vector<char*> realArgv;
   realArgv.reserve(argc + 1);
   realArgv.push_back(strdup(""));

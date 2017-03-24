@@ -36,10 +36,10 @@ TEST(GradientMachine, testPredict) {
   paddle::TrainerConfigHelper config("./test_predict_network.py");
   std::string buffer;
   ASSERT_TRUE(config.getModelConfig().SerializeToString(&buffer));
-  PD_GradientMachine machine;
+  paddle_gradient_machine machine;
 
   ASSERT_EQ(kPD_NO_ERROR,
-            PDGradientMachineCreateForPredict(
+            paddle_gradient_machine_create_for_inference(
                 &machine, &buffer[0], (int)buffer.size()));
   std::unique_ptr<paddle::GradientMachine> gm(
       paddle::GradientMachine::create(config.getModelConfig()));
@@ -48,11 +48,11 @@ TEST(GradientMachine, testPredict) {
   gm->saveParameters("./");
 
   ASSERT_EQ(kPD_NO_ERROR,
-            PDGradientMachineLoadParameterFromDisk(machine, "./"));
+            paddle_gradient_machine_load_parameter_from_disk(machine, "./"));
 
-  PD_GradientMachine machineSlave;
+  paddle_gradient_machine machineSlave;
   ASSERT_EQ(kPD_NO_ERROR,
-            PDGradientMachineCreateSharedParam(
+            paddle_gradient_machine_create_shared_param(
                 machine, &buffer[0], (int)buffer.size(), &machineSlave));
   std::swap(machineSlave, machine);
   paddle_arguments outArgs = paddle_arguments_create_none();
@@ -69,7 +69,7 @@ TEST(GradientMachine, testPredict) {
 
   ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_set_value(inArgs, 0, mat));
   ASSERT_EQ(kPD_NO_ERROR,
-            PDGradientMachineForward(machine, inArgs, outArgs, false));
+            paddle_gradient_machine_forward(machine, inArgs, outArgs, false));
 
   uint64_t sz;
   ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_size(outArgs, &sz));
@@ -100,15 +100,15 @@ TEST(GradientMachine, testPredict) {
   ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_destroy(inArgs));
   ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_destroy(outArgs));
   std::swap(machineSlave, machine);
-  ASSERT_EQ(kPD_NO_ERROR, PDGradientMachineDestroy(machineSlave));
-  ASSERT_EQ(kPD_NO_ERROR, PDGradientMachineDestroy(machine));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_gradient_machine_destroy(machineSlave));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_gradient_machine_destroy(machine));
 }
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   std::vector<char*> argvs;
   argvs.push_back(strdup("--use_gpu=false"));
-  PDInit((int)argvs.size(), argvs.data());
+  paddle_init((int)argvs.size(), argvs.data());
   for (auto each : argvs) {
     free(each);
   }
