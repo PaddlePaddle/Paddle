@@ -24,8 +24,6 @@ limitations under the License. */
 
 namespace paddle {
 
-// vector of user defined pointers
-typedef std::shared_ptr<std::vector<void*>> UserDefinedVectorPtr;
 typedef std::shared_ptr<std::vector<std::string>> SVectorPtr;
 
 struct Argument {
@@ -40,7 +38,6 @@ struct Argument {
         sequenceStartPositions(nullptr),
         subSequenceStartPositions(nullptr),
         cpuSequenceDims(nullptr),
-        udp(nullptr),
         deviceId(-1),
         allCount(0),
         valueCount(0),
@@ -63,7 +60,6 @@ struct Argument {
     sequenceStartPositions = argument.sequenceStartPositions;
     subSequenceStartPositions = argument.subSequenceStartPositions;
     cpuSequenceDims = argument.cpuSequenceDims;
-    udp = argument.udp;
     deviceId = argument.deviceId;
     allCount = argument.allCount;
     frameHeight = argument.frameHeight;
@@ -95,8 +91,6 @@ struct Argument {
 
   // dimension of sequence, stored only in CPU
   IVectorPtr cpuSequenceDims;
-
-  UserDefinedVectorPtr udp;  // user defined pointer
 
   int deviceId;            // the GPU device id which the argument in
   int allCount;            // the number of output layers using this argument
@@ -137,7 +131,6 @@ struct Argument {
     if (ids) return ids->getSize();
     if (grad) return grad->getHeight();
     if (in) return in->getHeight();
-    if (udp) return udp->size();
     if (strs) return strs->size();
     return 0;
   }
@@ -296,7 +289,7 @@ struct Argument {
   /*
    sequence has sub-sequence degrades to a sequence.
    */
-  void degradeSequence(const Argument& input, bool useGpu);
+  void degradeSequence(const Argument& input);
 
   /**
    * @brief getValueString will return the argument's output in string. There

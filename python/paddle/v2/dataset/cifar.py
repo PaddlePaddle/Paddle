@@ -20,7 +20,7 @@ TODO(yuyang18): Complete the comments.
 import cPickle
 import itertools
 import numpy
-import paddle.v2.dataset.common
+from common import download
 import tarfile
 
 __all__ = ['train100', 'test100', 'train10', 'test10']
@@ -55,23 +55,23 @@ def reader_creator(filename, sub_name):
 
 def train100():
     return reader_creator(
-        paddle.v2.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5),
-        'train')
+        download(CIFAR100_URL, 'cifar', CIFAR100_MD5), 'train')
 
 
 def test100():
-    return reader_creator(
-        paddle.v2.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5),
-        'test')
+    return reader_creator(download(CIFAR100_URL, 'cifar', CIFAR100_MD5), 'test')
 
 
 def train10():
     return reader_creator(
-        paddle.v2.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
-        'data_batch')
+        download(CIFAR10_URL, 'cifar', CIFAR10_MD5), 'data_batch')
 
 
 def test10():
     return reader_creator(
-        paddle.v2.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
-        'test_batch')
+        download(CIFAR10_URL, 'cifar', CIFAR10_MD5), 'test_batch')
+
+
+def fetch():
+    download(CIFAR10_URL, 'cifar', CIFAR10_MD5)
+    download(CIFAR100_URL, 'cifar', CIFAR100_MD5)

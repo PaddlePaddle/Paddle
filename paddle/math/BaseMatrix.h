@@ -545,6 +545,9 @@ public:
   void mulRowVector(BaseMatrixT& b);
   void divRowVector(BaseMatrixT& b);
 
+  void mulColVector(BaseMatrixT& b);
+  void divColVector(BaseMatrixT& b);
+
   void addP2P(BaseMatrixT& b);
 
   /**

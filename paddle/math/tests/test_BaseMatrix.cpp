@@ -110,6 +110,8 @@ TEST(BaseMatrix, BaseMatrix) {
       compare(&BaseMatrix::addRowVector);
       compare(&BaseMatrix::mulRowVector);
       compare(&BaseMatrix::divRowVector);
+      compare(&BaseMatrix::mulColVector);
+      compare(&BaseMatrix::divColVector);
       compare(&BaseMatrix::addP2P);
       compare(&BaseMatrix::invSqrt);
     }

@@ -30,27 +30,24 @@ namespace paddle {
  *
  * The config file api is img_conv_layer.
  */
-class CudnnConvLayer : public ConvBaseLayer {
+class CudnnConvBaseLayer : public ConvBaseLayer {
 protected:
   std::vector<std::unique_ptr<ProjectionConfig>> projConf_;
   std::vector<std::unique_ptr<Projection>> projections_;
 
   hl_tensor_descriptor biasDesc_;
   hl_tensor_descriptor outputDesc_;
-  int biasOffset_;
-  int outputOffset_;
 
 public:
-  explicit CudnnConvLayer(const LayerConfig& config) : ConvBaseLayer(config) {}
+  explicit CudnnConvBaseLayer(const LayerConfig& config)
+      : ConvBaseLayer(config) {}
 
-  ~CudnnConvLayer();
+  ~CudnnConvBaseLayer();
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback) override;
 
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
-  void forward(PassType passType) override;
-  void backward(const UpdateCallback& callback) override;
-  void addBiases();
-  void bpropBiases();
 };
 
 }  // namespace paddle

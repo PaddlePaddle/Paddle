@@ -40,7 +40,7 @@ option(WITH_RDMA        "Compile PaddlePaddle with RDMA support"        OFF)
 option(WITH_TIMER       "Compile PaddlePaddle with stats timer"         OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler"        OFF)
 option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
-option(ON_COVERALLS     "Compile PaddlePaddle with code coverage"       OFF)
+option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
@@ -90,13 +90,20 @@ include_directories("${PROJ_ROOT}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 
 set(EXTERNAL_LIBS
-    # have not include gtest here.
     ${GFLAGS_LIBRARIES}
     ${GLOG_LIBRARIES}
     ${CBLAS_LIBRARIES}
     ${PROTOBUF_LIBRARY}
     ${ZLIB_LIBRARIES}
+    ${PYTHON_LIBRARIES}
 )
+
+if(WITH_GPU)
+    list(APPEND EXTERNAL_LIB ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
+    if(NOT WITH_DSO)
+        list(APPEND EXTERNAL_LIB ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+    endif(NOT WITH_DSO)
+endif(WITH_GPU)
 
 add_subdirectory(proto)
 add_subdirectory(paddle)

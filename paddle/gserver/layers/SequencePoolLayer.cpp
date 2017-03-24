@@ -56,17 +56,16 @@ void SequencePoolLayer::forward(PassType passType) {
   CHECK_EQ(newBatchSize_, starts->getSize() - 1);
 
   resetOutput(newBatchSize_, dim);
-  if (type_) {
-    CHECK(input.subSequenceStartPositions)
-        << "when trans_type = seq, input must hasSubseq";
-  }
+
   /* If type_ = kNonSeq, both seq has or not has sub-seq degrade to a non-seq,
    * thus, in this case, output_ has no sequenceStartPositions.
    * If type_ = kSeq, seq has sub-seq degrades to a seq, thus, only in this
    * case, we should compute the new sequenceStartPositions.
   */
   if (type_) {
-    output_.degradeSequence(input, useGpu_);
+    CHECK(input.subSequenceStartPositions)
+        << "when trans_type = seq, input must hasSubseq";
+    output_.degradeSequence(input);
   }
 }
 
