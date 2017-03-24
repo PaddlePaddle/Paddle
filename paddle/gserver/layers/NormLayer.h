@@ -65,4 +65,35 @@ public:
   }
 };
 
+/**
+ * This layer applys normalization across the channels of each sample to a
+ * conv layer's output, and scales the output by a group of trainable factors
+ * whose dimensions equal to the number of channels.
+ * - Input: One and only one input layer are accepted.
+ * - Output: The normalized data of the input data.
+ * Reference:
+ *    Wei Liu, Dragomir Anguelov, Dumitru Erhan, Christian Szegedy, Scott Reed,
+ *    Cheng-Yang Fu, Alexander C. Berg. SSD: Single Shot MultiBox Detector
+ */
+class CrossChannelNormLayer : public NormLayer {
+public:
+  explicit CrossChannelNormLayer(const LayerConfig& config)
+      : NormLayer(config) {}
+  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  void forward(PassType passType);
+  void backward(const UpdateCallback& callback);
+  MatrixPtr createSampleMatrix(MatrixPtr data, size_t iter, size_t spatialDim);
+  MatrixPtr createSpatialMatrix(MatrixPtr data, size_t iter, size_t spatialDim);
+
+protected:
+  size_t channels_;
+  std::unique_ptr<Weight> scale_;
+  MatrixPtr scaleDiff_;
+  MatrixPtr normBuffer_;
+  MatrixPtr dataBuffer_;
+  MatrixPtr channelBuffer_;
+  MatrixPtr spatialBuffer_;
+  MatrixPtr sampleBuffer_;
+};
+
 }  // namespace paddle
