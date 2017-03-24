@@ -4,7 +4,7 @@ set -e
 
 # Set BASE_IMAGE according to env variables
 if [ ${WITH_GPU} == "ON" ]; then
-  BASE_IMAGE="nvidia/cuda:7.5-cudnn5-runtime-ubuntu14.04"
+  BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04"
   # additional packages to install when building gpu images
   GPU_DOCKER_PKG="python-pip python-dev"
 else
