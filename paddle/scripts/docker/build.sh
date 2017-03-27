@@ -16,7 +16,7 @@ if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
     DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
 
     # for cmake to find cudnn
-    ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so /usr/lib/libcudnn.so
+    ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/lib/libcudnn.so
 fi
 
 mkdir -p /paddle/build
