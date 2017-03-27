@@ -14,6 +14,10 @@
 """
 Movielens 1-M dataset.
 
+GroupLens Research collected and made available rating data sets from the 
+MovieLens web site (http://movielens.org). Movielens 1-M dataset contains 1 million 
+ratings from 6000 users on 4000 movies. 
+
 TODO(yuyang18): Complete comments.
 """
 

@@ -12,9 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-CIFAR dataset: https://www.cs.toronto.edu/~kriz/cifar.html
+CIFAR dataset.
 
-TODO(yuyang18): Complete the comments.
+This module will download dataset from https://www.cs.toronto.edu/~kriz/cifar.html and
+parse train set and test set into paddle reader creators.
+
+The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes, with 6000 
+images per class. There are 50000 training images and 10000 test images.
+
+The CIFAR-100 dataset is just like the CIFAR-10, except it has 100 classes containing 
+600 images each. There are 500 training images and 100 testing images per class. 
+
 """
 
 import cPickle
@@ -54,20 +62,56 @@ def reader_creator(filename, sub_name):
 
 
 def train100():
+    """
+    CIFAR-100 train set creator.
+
+    It returns a reader creator, each sample in the reader is image pixels in
+    [0, 1] and label in [0, 99].
+
+    :return: Train reader creator
+    :rtype: callable
+    """
     return reader_creator(
         download(CIFAR100_URL, 'cifar', CIFAR100_MD5), 'train')
 
 
 def test100():
+    """
+    CIFAR-100 test set cretor.
+
+    It returns a reader creator, each sample in the reader is image pixels in
+    [0, 1] and label in [0, 9].
+
+    :return: Test reader creator.
+    :rtype: callable
+    """
     return reader_creator(download(CIFAR100_URL, 'cifar', CIFAR100_MD5), 'test')
 
 
 def train10():
+    """
+    CIFAR-10 train set creator.
+
+    It returns a reader creator, each sample in the reader is image pixels in
+    [0, 1] and label in [0, 9].
+
+    :return: Train reader creator
+    :rtype: callable
+    """
     return reader_creator(
         download(CIFAR10_URL, 'cifar', CIFAR10_MD5), 'data_batch')
 
 
 def test10():
+    """
+    CIFAR-10 test set cretor.
+
+    It returns a reader creator, each sample in the reader is image pixels in
+    [0, 1] and label in [0, 9].
+
+    :return: Test reader creator.
+    :rtype: callable
+    """
     return reader_creator(
         download(CIFAR10_URL, 'cifar', CIFAR10_MD5), 'test_batch')
 

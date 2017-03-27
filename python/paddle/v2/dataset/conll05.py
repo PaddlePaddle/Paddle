@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import tarfile
-import gzip
-import itertools
-from common import download
 """
 Conll 2005 dataset.  Paddle semantic role labeling Book and demo use this
 dataset as an example. Because Conll 2005 is not free in public, the default
@@ -24,6 +19,12 @@ URL and MD5 to their Conll dataset.
 
 TODO(yuyang18): Complete comments.
 """
+
+import tarfile
+import gzip
+import itertools
+from common import download
+
 
 __all__ = ['test, get_dict', 'get_embedding']
 

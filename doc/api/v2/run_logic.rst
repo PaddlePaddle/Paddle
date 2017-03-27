@@ -26,6 +26,12 @@ Event
 Inference
 =========
 
-..  autofunction:: paddle.v2.infer
+..  automodule:: paddle.v2.inference
     :members: Inference
     :noindex:
+
+..  autofunction:: paddle.v2.infer
+    :members:
+    :noindex:
+
+
