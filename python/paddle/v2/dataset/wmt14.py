@@ -16,7 +16,7 @@ wmt14 dataset
 """
 import tarfile
 
-import paddle.v2.dataset.common
+from paddle.v2.dataset.common import download
 
 __all__ = ['train', 'test', 'build_dict']
 
@@ -95,11 +95,13 @@ def reader_creator(tar_file, file_name, dict_size):
 
 def train(dict_size):
     return reader_creator(
-        paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN),
-        'train/train', dict_size)
+        download(URL_TRAIN, 'wmt14', MD5_TRAIN), 'train/train', dict_size)
 
 
 def test(dict_size):
     return reader_creator(
-        paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN),
-        'test/test', dict_size)
+        download(URL_TRAIN, 'wmt14', MD5_TRAIN), 'test/test', dict_size)
+
+
+def fetch():
+    download(URL_TRAIN, 'wmt14', MD5_TRAIN)

@@ -112,6 +112,7 @@ __all__ = [
     'out_prod_layer',
     'print_layer',
     'priorbox_layer',
+    'cross_channel_norm_layer',
     'spp_layer',
     'pad_layer',
     'eos_layer',
@@ -1006,6 +1007,46 @@ def priorbox_layer(input,
         parents=[input, image],
         num_filters=num_filters,
         size=size)
+
+
+@wrap_name_default("cross_channel_norm")
+def cross_channel_norm_layer(input, name=None, param_attr=None):
+    """
+    Normalize a layer's output. This layer is necessary for ssd.
+    This layer applys normalize across the channels of each sample to
+    a conv layer's output and scale the output by a group of trainable
+    factors which dimensions equal to the channel's number.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param param_attr: The Parameter Attribute|list.
+    :type param_attr: ParameterAttribute
+    :return: LayerOutput
+    """
+    assert input.num_filters is not None
+    Layer(
+        name=name,
+        type=LayerType.NORM_LAYER,
+        inputs=[
+            Input(
+                input.name,
+                norm=Norm(
+                    norm_type="cross-channel-norm",
+                    channels=input.num_filters,
+                    size=input.size,
+                    scale=0,
+                    pow=0,
+                    blocked=0),
+                **param_attr.attr)
+        ])
+    return LayerOutput(
+        name,
+        LayerType.NORM_LAYER,
+        parents=input,
+        num_filters=input.num_filters,
+        size=input.size)
 
 
 @wrap_name_default("seq_pooling")

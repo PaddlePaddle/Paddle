@@ -33,10 +33,10 @@ cmake .. \
       -DWITH_SWIG_PY=ON \
       -DCUDNN_ROOT=/usr/ \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
-      -DWITH_COVERAGE=${TEST:-OFF} \
+      -DON_COVERALLS=${WITH_TEST:-OFF} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 make -j `nproc`
-if [[ ${TEST:-OFF} == "ON" ]]; then
+if [[ ${RUN_TEST:-OFF} == "ON" ]]; then
     make coveralls
 fi
 make install

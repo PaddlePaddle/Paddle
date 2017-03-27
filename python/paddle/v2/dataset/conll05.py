@@ -196,3 +196,11 @@ def test():
         words_name='conll05st-release/test.wsj/words/test.wsj.words.gz',
         props_name='conll05st-release/test.wsj/props/test.wsj.props.gz')
     return reader_creator(reader, word_dict, verb_dict, label_dict)
+
+
+def fetch():
+    download(WORDDICT_URL, 'conll05st', WORDDICT_MD5)
+    download(VERBDICT_URL, 'conll05st', VERBDICT_MD5)
+    download(TRGDICT_URL, 'conll05st', TRGDICT_MD5)
+    download(EMB_URL, 'conll05st', EMB_MD5)
+    download(DATA_URL, 'conll05st', DATA_MD5)

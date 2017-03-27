@@ -26,6 +26,8 @@ Layer* NormLayer::create(const LayerConfig& config) {
     return new ResponseNormLayer(config);
   } else if (norm == "cmrnorm-projection") {
     return new CMRProjectionNormLayer(config);
+  } else if (norm == "cross-channel-norm") {
+    return new CrossChannelNormLayer(config);
   } else {
     LOG(FATAL) << "Unknown norm type: " << norm;
     return nullptr;
@@ -51,6 +53,16 @@ bool ResponseNormLayer::init(const LayerMap& layerMap,
 
   outputY_ = conf.has_output_y() ? conf.output_y() : conf.output_x();
   imgSizeY_ = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
+  return true;
+}
+
+bool CrossChannelNormLayer::init(const LayerMap& layerMap,
+                                 const ParameterMap& parameterMap) {
+  Layer::init(layerMap, parameterMap);
+  CHECK(parameters_[0]);
+  const NormConfig& conf = config_.inputs(0).norm_conf();
+  channels_ = conf.channels();
+  scale_.reset(new Weight(channels_, 1, parameters_[0]));
   return true;
 }
 
