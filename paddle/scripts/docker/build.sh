@@ -12,11 +12,10 @@ else
 fi
 
 DOCKERFILE_GPU_ENV=""
+DOCKERFILE_CUDNN_DSO=""
 if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
     DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
-
-    # for cmake to find cudnn
-    ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/lib/libcudnn.so
+    DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/lib/x86_64-linux-gnu/libcudnn.so"
 fi
 
 mkdir -p /paddle/build
@@ -95,7 +94,10 @@ RUN ${MIRROR_UPDATE}
 # Use different deb file when building different type of images
 ADD build/*.deb /usr/local/opt/paddle/deb/
 # run paddle version to install python packages first
-RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && rm -f /usr/local/opt/paddle/deb/*.deb && paddle version
+RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && \
+    rm -f /usr/local/opt/paddle/deb/*.deb && \
+    paddle version
+${DOCKERFILE_CUDNN_DSO} 
 ${DOCKERFILE_GPU_ENV}
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]
