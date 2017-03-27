@@ -32,7 +32,14 @@ PaddlePaddle目前唯一官方支持的运行的方式是Docker容器。因为Do
 SSH方式的一个优点是我们可以从多个终端进入容器。比如，一个终端运行vi，另一个终端运行Python。另一个好处是我们可以把PaddlePaddle容器运行在远程服务器上，并在笔记本上通过SSH与其连接。
 
 
-以上方法在GPU镜像里也能用－只是请不要忘记按装CUDA驱动，以及告诉Docker：
+以上方法在GPU镜像里也能用，只是请不要忘记提前在物理机上安装GPU最新驱动。
+为了保证GPU驱动能够在镜像里面正常运行，我们推荐使用[nvidia-docker](https://github.com/NVIDIA/nvidia-docker)来运行镜像。
+
+.. code-block:: bash
+
+    nvidia-docker run -it --rm paddledev/paddle:0.10.0rc1-gpu /bin/bash
+
+**注意**: 如果使用nvidia-docker存在问题，你也许可以尝试更老的方法，具体如下，但是我们并不推荐这种方法。
 
 .. code-block:: bash
 
