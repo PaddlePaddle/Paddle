@@ -6,6 +6,7 @@ class PlotCost(object):
     """
     append train and test cost in event_handle and then call plot.
     """
+
     def __init__(self):
         self.train_costs = ([], [])
         self.test_costs = ([], [])
