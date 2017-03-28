@@ -76,8 +76,6 @@ SWIG_LINK_LIBRARIES(swig_paddle
     ${CMAKE_DL_LIBS}
     ${EXTERNAL_LIBS}
     ${CMAKE_THREAD_LIBS_INIT}
-    ${RDMA_LD_FLAGS}
-    ${RDMA_LIBS}
     ${START_END}
 )
 
