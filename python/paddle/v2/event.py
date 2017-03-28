@@ -1,14 +1,13 @@
 """
-All training events.
+Testing and training events.
 
 There are:
 
+* TestResult
 * BeginIteration
 * EndIteration
 * BeginPass
 * EndPass
-
-TODO(yuyang18): Complete it!
 """
 import py_paddle.swig_paddle as api
 

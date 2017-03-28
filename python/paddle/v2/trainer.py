@@ -1,3 +1,6 @@
+"""
+Trainer package
+"""
 import collections
 
 import py_paddle.swig_paddle as api
@@ -9,10 +12,7 @@ from . import optimizer as v2_optimizer
 from . import parameters as v2_parameters
 
 __all__ = ['SGD']
-"""
-Trainer package
-TODO(yuyang18): Complete comments.
-"""
+
 
 
 def default_event_handler(event):

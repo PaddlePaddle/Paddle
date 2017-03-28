@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-IMDB dataset: http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz
+IMDB dataset.
 
-TODO(yuyang18): Complete comments.
+This module download IMDB dataset from 
+http://ai.stanford.edu/%7Eamaas/data/sentiment/, which contains a set of 25,000 
+highly polar movie reviews for training, and 25,000 for testing. Besides, this 
+module also provides API for build dictionary and parse train set and test set 
+into paddle reader creators.
 """
 
 import paddle.v2.dataset.common
@@ -30,8 +34,11 @@ URL = 'http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz'
 MD5 = '7c2ac02c03563afcf9b574c7e56c153a'
 
 
-# Read files that match pattern.  Tokenize and yield each file.
 def tokenize(pattern):
+    """
+    Read files that match pattern.  Tokenize and yield each file.
+    """
+
     with tarfile.open(paddle.v2.dataset.common.download(URL, 'imdb',
                                                         MD5)) as tarf:
         # Note that we should use tarfile.next(), which does
@@ -48,6 +55,9 @@ def tokenize(pattern):
 
 
 def build_dict(pattern, cutoff):
+    """
+    Build a word dictionary, the key is word, and the value is index.
+    """
     word_freq = {}
     for doc in tokenize(pattern):
         for word in doc:
@@ -109,18 +119,46 @@ def reader_creator(pos_pattern, neg_pattern, word_idx, buffer_size):
 
 
 def train(word_idx):
+    """
+    IMDB train set creator.
+
+    It returns a reader creator, each sample in the reader is an index 
+    sequence and label in [0, 1].
+
+    :param word_idx: word dictionary
+    :type word_idx: dict
+    :return: Train reader creator
+    :rtype: callable
+    """
     return reader_creator(
         re.compile("aclImdb/train/pos/.*\.txt$"),
         re.compile("aclImdb/train/neg/.*\.txt$"), word_idx, 1000)
 
 
 def test(word_idx):
+    """
+    IMDB test set creator.
+
+    It returns a reader creator, each sample in the reader is an index 
+    sequence and label in [0, 1].
+
+    :param word_idx: word dictionary
+    :type word_idx: dict
+    :return: Test reader creator
+    :rtype: callable
+    """
     return reader_creator(
         re.compile("aclImdb/test/pos/.*\.txt$"),
         re.compile("aclImdb/test/neg/.*\.txt$"), word_idx, 1000)
 
 
 def word_dict():
+    """
+    Build word dictionary.
+
+    :return: Word dictionary
+    :rtype: dict
+    """
     return build_dict(
         re.compile("aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$"), 150)
 

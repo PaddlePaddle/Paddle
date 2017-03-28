@@ -15,7 +15,7 @@
 MNIST dataset.
 
 This module will download dataset from http://yann.lecun.com/exdb/mnist/ and
-parse train set and test set into paddle reader creators.
+parse train/test set into paddle reader creators.
 """
 import paddle.v2.dataset.common
 import subprocess

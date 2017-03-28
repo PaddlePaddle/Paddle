@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Conll 2005 dataset.  Paddle semantic role labeling Book and demo use this
-dataset as an example. Because Conll 2005 is not free in public, the default
-downloaded URL is test set of Conll 2005 (which is public). Users can change
-URL and MD5 to their Conll dataset.
-
-TODO(yuyang18): Complete comments.
+Conll05 dataset.  
+Paddle semantic role labeling Book and demo use this dataset as an example. Because 
+Conll05 is not free in public, the default downloaded URL is test set of 
+Conll05 (which is public). Users can change URL and MD5 to their Conll dataset. 
+And a pre-trained word vector model based on Wikipedia corpus is used to initialize SRL model.
 """
 
 import tarfile
@@ -180,6 +179,9 @@ def reader_creator(corpus_reader,
 
 
 def get_dict():
+    """
+    Get the word, verb and label dictionary of Wikipedia corpus.
+    """
     word_dict = load_dict(download(WORDDICT_URL, 'conll05st', WORDDICT_MD5))
     verb_dict = load_dict(download(VERBDICT_URL, 'conll05st', VERBDICT_MD5))
     label_dict = load_dict(download(TRGDICT_URL, 'conll05st', TRGDICT_MD5))
@@ -187,10 +189,23 @@ def get_dict():
 
 
 def get_embedding():
+    """
+    Get the trained word vector based on Wikipedia corpus.
+    """
     return download(EMB_URL, 'conll05st', EMB_MD5)
 
 
 def test():
+    """
+    Conll05 test set creator.
+
+    Because the train dataset is not free, the test dataset is used for training.
+    It returns a reader creator, each sample in the reader is nine features, including sentence 
+    sequence, predicate, predicate context, predicate context flag and tagged sequence.
+
+    :return: Train reader creator
+    :rtype: callable
+    """
     word_dict, verb_dict, label_dict = get_dict()
     reader = corpus_reader(
         download(DATA_URL, 'conll05st', DATA_MD5),

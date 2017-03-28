@@ -13,25 +13,18 @@ Trainer
 =======
 
 ..  automodule:: paddle.v2.trainer
-    :members: Trainer
+    :members: SGD
     :noindex:
 
 Event
 =====
 
 ..  automodule:: paddle.v2.event
-    :members: Event
+    :members: 
     :noindex:
 
 Inference
 =========
 
-..  automodule:: paddle.v2.inference
-    :members: Inference
-    :noindex:
-
 ..  autofunction:: paddle.v2.infer
-    :members:
     :noindex:
-
-
