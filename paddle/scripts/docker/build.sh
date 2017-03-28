@@ -57,7 +57,6 @@ if [[ ${WOBOQ:-OFF} == 'ON' ]]; then
           .
     make
 
-    export WOBOQ_OUT=/usr/share/nginx/html/paddle
     export WOBOQ_OUT=/woboq_out/paddle
     export BUILD_DIR=/paddle/build
     mkdir -p $WOBOQ_OUT
