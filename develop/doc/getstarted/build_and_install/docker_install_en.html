@@ -282,8 +282,13 @@ AVX:</p>
 If it doesn&#39;t, we will use the non-AVX images.
 </pre></div>
 </div>
-<p>Notice please don&#8217;t forget
-to install CUDA driver and let Docker knows about it:</p>
+<p>Above methods work with the GPU image too &#8211; just please don&#8217;t forget
+to install GPU driver. To support GPU driver, we recommend to use
+[nvidia-docker](<a class="reference external" href="https://github.com/NVIDIA/nvidia-docker">https://github.com/NVIDIA/nvidia-docker</a>). Run using</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run -it --rm paddledev/paddle:0.10.0rc1-gpu /bin/bash
+</pre></div>
+</div>
+<p>Note: If you would have a problem running nvidia-docker, you may try the old method we have used (not recommended).</p>
 <div class="last highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
 <span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
 docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:&lt;version&gt;-gpu

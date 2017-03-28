@@ -268,7 +268,12 @@
 </pre></div>
 </div>
 <p>如果输出是No，就需要选择使用no-AVX的镜像</p>
-<p>注意：在运行GPU版本的镜像时 安装CUDA驱动，以及告诉Docker：</p>
+<p>以上方法在GPU镜像里也能用，只是请不要忘记提前在物理机上安装GPU最新驱动。
+为了保证GPU驱动能够在镜像里面正常运行，我们推荐使用[nvidia-docker](<a class="reference external" href="https://github.com/NVIDIA/nvidia-docker">https://github.com/NVIDIA/nvidia-docker</a>)来运行镜像。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run -it --rm paddledev/paddle:0.10.0rc1-gpu /bin/bash
+</pre></div>
+</div>
+<p>注意: 如果使用nvidia-docker存在问题，你也许可以尝试更老的方法，具体如下，但是我们并不推荐这种方法。：</p>
 <div class="last highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
 <span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
 docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:&lt;version&gt;-gpu

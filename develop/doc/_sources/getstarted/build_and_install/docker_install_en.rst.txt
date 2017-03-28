@@ -79,8 +79,15 @@ latest versions under "tags" tab at dockerhub.com.
 
        If it doesn't, we will use the non-AVX images.
 
-    Notice please don't forget
-    to install CUDA driver and let Docker knows about it:
+    Above methods work with the GPU image too -- just please don't forget
+    to install GPU driver. To support GPU driver, we recommend to use 
+    [nvidia-docker](https://github.com/NVIDIA/nvidia-docker). Run using
+
+    .. code-block:: bash
+
+        nvidia-docker run -it --rm paddledev/paddle:0.10.0rc1-gpu /bin/bash
+
+    Note: If you would have a problem running nvidia-docker, you may try the old method we have used (not recommended).
 
     .. code-block:: bash
 
