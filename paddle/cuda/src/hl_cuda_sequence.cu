@@ -325,12 +325,12 @@ __global__ void KeSequenceAvgForward(real* dst,
     int seqLength = end - start;
     if (seqLength == 0) return;
     real sum = 0.0;
-    for (int i = 0; i < seqLength; i++) {
-      sum += src[(start + i) * width + col];
+    for (int i = start; i < end; i++) {
+      sum += src[i * width + col];
     }
     sum = mode == 1 ? sum :
         (mode == 0 ? sum / seqLength : sum * my_rsqrt((real)seqLength));
-    dst[row * width + col] = sum;
+    dst[gid] = sum;
   }
 }
 
@@ -353,4 +353,49 @@ void hl_sequence_avg_forward(real* dst,
   KeSequenceAvgForward<<< grid, block, 0, STREAM_DEFAULT >>>
            (dst, src, starts, height, width, mode);
   CHECK_SYNC("hl_sequence_avg_forward failed");
+}
+
+__global__ void KeSequenceAvgBackward(real* dst,
+                                      real* src,
+                                      const int* starts,
+                                      int height,
+                                      int width,
+                                      const int mode) {
+  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int row = gid / width;
+  int col = gid % width;
+
+  if (gid < height * width) {
+    int start = starts[row];
+    int end = starts[row + 1];
+    int seqLength = end - start;
+    if (seqLength == 0) return;
+    real grad = src[gid];
+    grad = mode == 1 ? grad :
+        (mode == 0 ? grad / seqLength : grad * my_rsqrt((real)seqLength));
+    for (int i = start; i < end; i++) {
+      dst[i * width + col] += grad;
+    }
+  }
+}
+
+void hl_sequence_avg_backward(real* dst,
+                              real* src,
+                              const int* starts,
+                              int height,
+                              int width,
+                              const int mode) {
+  CHECK_NOTNULL(dst);
+  CHECK_NOTNULL(src);
+  CHECK_NOTNULL(starts);
+
+  int block = 512;
+  int grid = DIVUP(width * height, 512);
+
+  CHECK(mode == 0 || mode == 1 || mode == 2)
+    << "mode error in hl_sequence_avg_backward!";
+
+  KeSequenceAvgBackward<<< grid, block, 0, STREAM_DEFAULT >>>
+           (dst, src, starts, height, width, mode);
+  CHECK_SYNC("hl_sequence_avg_backward failed");
 }
