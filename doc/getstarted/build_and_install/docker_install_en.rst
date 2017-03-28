@@ -13,17 +13,6 @@ Working With Docker
 
 Docker is simple as long as we understand a few basic concepts:
 
-- *container*: considering a Docker image a program, a container is a
-  "process" that runs the image. Indeed, a container is exactly an
-  operating system process, but with a virtualized filesystem, network
-  port space, and other virtualized environment. We can type
-
-  .. code-block:: bash
-
-     docker run paddlepaddle/paddle:0.10.0rc2
-
-  to start a container to run a Docker image, paddlepaddle/paddle in this example.
-
 - *image*: A Docker image is a pack of software. It could contain one or more programs and all their dependencies. For example, the PaddlePaddle's Docker image includes pre-built PaddlePaddle and Python and many Python packages. We can run a Docker image directly, other than installing all these software. We can type
 
   .. code-block:: bash
@@ -38,6 +27,17 @@ Docker is simple as long as we understand a few basic concepts:
 
   to download a Docker image, paddlepaddle/paddle in this example,
   from Dockerhub.com.
+
+- *container*: considering a Docker image a program, a container is a
+  "process" that runs the image. Indeed, a container is exactly an
+  operating system process, but with a virtualized filesystem, network
+  port space, and other virtualized environment. We can type
+
+  .. code-block:: bash
+
+     docker run paddlepaddle/paddle:0.10.0rc2
+
+  to start a container to run a Docker image, paddlepaddle/paddle in this example.
 
 - By default docker container have an isolated file system namespace,
   we can not see the files in the host file system. By using *volume*,
