@@ -11,14 +11,33 @@ of your hardware resource on Mac OS X and Windows.
 Working With Docker
 -------------------
 
-Here we will describe the basic docker concepts that we will be using
-in this tutorial.
+Docker is simple as long as we understand a few basic concepts:
 
-- *container* is an environment for running applications
+- *container*: considering a Docker image a program, a container is a
+  "process" that runs the image. Indeed, a container is exactly an
+  operating system process, but with a virtualized filesystem, network
+  port space, and other virtualized environment. We can type
 
-- *image* is an immutable snapshot of a docker container. One can run
-  a container based on a docker image by using command :code:`docker
-  run docker_image_name`.
+  .. code-block:: bash
+
+     docker run paddlepaddle/paddle:0.10.0rc2
+
+  to start a container to run a Docker image, paddlepaddle/paddle in this example.
+
+- *image*: A Docker image is a pack of software. It could contain one or more programs and all their dependencies. For example, the PaddlePaddle's Docker image includes pre-built PaddlePaddle and Python and many Python packages. We can run a Docker image directly, other than installing all these software. We can type
+
+  .. code-block:: bash
+
+     docker images
+
+  to list all images in the system. We can also run
+
+  .. code-block:: bash
+		  
+     docker pull paddlepaddle/paddle:0.10.0rc2
+
+  to download a Docker image, paddlepaddle/paddle in this example,
+  from Dockerhub.com.
 
 - By default docker container have an isolated file system namespace,
   we can not see the files in the host file system. By using *volume*,
@@ -34,7 +53,7 @@ in this tutorial.
 Usage of CPU-only and GPU Images
 ----------------------------------
 
-For each version of PaddlePaddle, we release 2 types of Docker images:
+For each version of PaddlePaddle, we release two types of Docker images:
 development image and production image. Production image includes
 CPU-only version and a CUDA GPU version and their no-AVX versions. We
 put the docker images on `dockerhub.com
