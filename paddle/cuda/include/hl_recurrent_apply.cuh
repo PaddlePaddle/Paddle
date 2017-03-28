@@ -19,6 +19,7 @@ limitations under the License. */
 #include "hl_base.h"
 #include "hl_gpu_gru.cuh"
 #include "hl_gpu_lstm.cuh"
+#include "simd_recurrent.cuh"
 
 /**
  * @brief   Cpu lstm forward one sequence.

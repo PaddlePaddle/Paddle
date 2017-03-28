@@ -29,16 +29,12 @@
   (this is the zlib license)
 */
 
+#include "simd_math.h"
 #include <immintrin.h>
 
 /* yes I know, the top of this file is quite ugly */
 #define ALIGN32_BEG
 #define ALIGN32_END __attribute__((aligned(32)))
-
-/* __m128 is ugly to write */
-typedef __m256 v8sf;   // vector of 8 float (avx)
-typedef __m256i v8si;  // vector of 8 int   (avx)
-typedef __m128i v4si;  // vector of 8 int   (avx)
 
 #define _PI32AVX_CONST(Name, Val)                                 \
   static const ALIGN32_BEG int _pi32avx_##Name[4] ALIGN32_END = { \
@@ -125,7 +121,7 @@ typedef union imm_xmm_union {
     return (ret);                                        \
   }
 
-//#warning "Using SSE2 to perform AVX2 bitshift ops"
+// #warning "Using SSE2 to perform AVX2 bitshift ops"
 AVX2_BITOP_USING_SSE2(slli_epi32)
 AVX2_BITOP_USING_SSE2(srli_epi32)
 
@@ -143,7 +139,7 @@ AVX2_BITOP_USING_SSE2(srli_epi32)
     return (ret);                                                     \
   }
 
-//#warning "Using SSE2 to perform AVX2 integer ops"
+// #warning "Using SSE2 to perform AVX2 integer ops"
 AVX2_INTOP_USING_SSE2(and_si128)
 AVX2_INTOP_USING_SSE2(andnot_si128)
 AVX2_INTOP_USING_SSE2(cmpeq_epi32)

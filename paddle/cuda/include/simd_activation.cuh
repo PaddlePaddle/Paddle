@@ -13,10 +13,10 @@ limitations under the License. */
 
 #include "hl_base.h"
 #include <math.h>
+#include <immintrin.h>
 
 #ifdef __AVX__
-#include "avx_mathfun.h"
-#include <immintrin.h>
+#include "simd_math.cuh"
 #endif
 
 namespace hppl {
