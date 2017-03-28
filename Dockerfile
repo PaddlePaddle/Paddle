@@ -1,6 +1,6 @@
 # A image for building paddle binaries
 # Use cuda devel base image for both cpu and gpu environment
-FROM nvidia/cuda:7.5-cudnn5-devel-ubuntu14.04
+FROM nvidia/cuda:8.0-cudnn5-devel-ubuntu14.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 ARG UBUNTU_MIRROR
