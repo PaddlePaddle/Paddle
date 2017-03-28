@@ -63,7 +63,7 @@ private:
  *
  * @endcode
  */
-#define HAS_SIMD(__flags) SIMDFlags::instance()->check(__flags)
+#define HAS_SIMD(__flags) SIMDFlags::instance()->check(paddle::__flags)
 
 /**
  * @brief   Check SIMD flags at runtime.

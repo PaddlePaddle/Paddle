@@ -1,10 +1,16 @@
-file(GLOB_RECURSE HEAD_SOURCES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/include" "*.h")
+file(GLOB_RECURSE HEAD_SOURCES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.h")
 
 set(SIMD_SOURCES
     src/simd_gru_op.cc
     src/simd_gru.cc
     src/simd_lstm_op.cc
     src/simd_lstm.cc)
+
+add_library(avx_rnn ${SIMD_SOURCES})
+set_target_properties(avx_rnn PROPERTIES COMPILE_FLAGS ${AVX_FLAG})
+
+add_library(naive_rnn ${SIMD_SOURCES})
+set_target_properties(naive_rnn PROPERTIES COMPILE_FLAGS ${SSE3_FLAG})
 
 set(CPU_SOURCES
     src/hl_cpu_recurrent.cc
@@ -33,14 +39,13 @@ set(CUDA_SOURCES
 if(WITH_GPU)
     cuda_add_library(paddle_cuda
                      ${CUDA_SOURCES}
-                     ${SIMD_SOURCES}
                      ${CPU_SOURCES}
                      ${CUDA_WRAP_SOURCES})
 else()
-    add_library(paddle_cuda
-                ${SIMD_SOURCES}
-                ${CPU_SOURCES})
+    add_library(paddle_cuda ${CPU_SOURCES})
 endif()
+
+target_link_libraries(paddle_cuda naive_rnn avx_rnn)
 
 add_dependencies(paddle_cuda ${external_project_dependencies})
 
