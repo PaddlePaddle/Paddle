@@ -89,3 +89,7 @@ def test():
             yield d[:-1], d[-1:]
 
     return reader
+
+
+def fetch():
+    download(URL, 'uci_housing', MD5)
