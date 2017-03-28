@@ -168,15 +168,17 @@ kubectl ...
 ```
 
 ### Reading source code with woboq codebrowser
-If you are interesting of PaddlePaddle source code, [Woboq codebrowser](https://github.com/woboq/woboq_codebrowser) is a suitable tool.
-- Build PaddlePaddle source code to be static files
+For developers who are interested in the C++ source code, please use -e "WOBOQ=ON" to enable building C++ source code into HTML pages using [Woboq codebrowser](https://github.com/woboq/woboq_codebrowser).
+
+- The following command will generate woboq HTML pages in a docker volume directory, `$HOME/nginx` directory will be created on your local disk when the build finishes.
 
 ```bash
-docker run -v $PWD:/paddle -v $HOME/nginx_data:/usr/share/nginx/html/data -v $HOME/nginx_data/paddle:/usr/share/nginx/html/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TEST=OFF" -e "RUN_TEST=OFF" -e "BUILD_WOBOQ=ON" paddle:dev
+docker run -v $PWD:/paddle -v $HOME/nginx:/woboq_out -e "WITH_GPU=OFF" -e "WITH_AVX=ON"
+-e "WITH_TEST=ON" -e "WOBOQ=ON" paddle:dev
 ```
 
 - Open the generated static files in a browser, or upload these files to your web server. You can run nginx server as the following command, and then hit "http://<hostip>:8080/paddle" in browser.
 
 ```
-docker run -v $HOME/nginx_data:/usr/share/nginx/html -d -p 8080:80 nginx
+docker run -v $HOME/nginx:/usr/share/nginx/html -d -p 8080:80 nginx
 ```
