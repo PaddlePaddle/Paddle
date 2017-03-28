@@ -110,4 +110,54 @@ static Active<__m256>::forward  forward [] = { sigmoid, relu, tanh, linear };
 static Active<__m256>::backward backward[] = { sigmoid, relu, tanh, linear };
 }
 #endif  // __AVX__
+
+#ifdef __NVCC__
+__device__ static real relu(const real a) {
+  return a > 0.0f ? a : 0.0f;
+}
+
+__device__ static real sigmoid(const real a) {
+  const real min = SIGMOID_THRESHOLD_MIN;
+  const real max = SIGMOID_THRESHOLD_MAX;
+  real tmp = (a < min) ? min : ((a > max) ? max : a);
+#ifndef PADDLE_TYPE_DOUBLE
+  return __fdividef(1.0f, 1.0f + __expf(-tmp));
+#else
+  return 1.0 / (1.0 + exp(-tmp));
+#endif
+}
+
+__device__ static real tanh(const real a) {
+#ifndef PADDLE_TYPE_DOUBLE
+  return __fdividef(2.0f, (1.0f + __expf(-2.0f*a))) - 1.0f;
+#else
+  return (2.0 / (1.0 + exp(-2.0*a))) - 1.0;
+#endif
+}
+
+__device__ static real linear(const real a) {
+  return a;
+}
+
+__device__ static real relu(const real a, const real b) {
+  return a * (b > 0.0f ? 1.0f : 0.0f);
+}
+
+__device__ static real sigmoid(const real a, const real b) {
+  return a * b * (1 - b);
+}
+
+__device__ static real tanh(const real a, const real b) {
+  return a * (1.0f - b * b);
+}
+
+__device__ static real linear(const real a, const real b) {
+  return a;
+}
+
+namespace gpu {		
+  static __device__ Active<real>::forward forward[] = { sigmoid, relu, tanh, linear };	
+  static __device__ Active<real>::backward backward[] = { sigmoid, relu, tanh, linear };
+}
+#endif  // __NVCC__
 }   // namespace hppl

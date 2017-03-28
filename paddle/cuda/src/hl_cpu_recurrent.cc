@@ -13,8 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "hl_base.h"
+#include "paddle/math/MathFunctions.h"
 #include "paddle/utils/CpuId.h"
 #include "simd_recurrent.cuh"
+
+#ifndef PADDLE_TYPE_DOUBLE
+#define CBLAS_GEMM paddle::gemm<float>
+#else
+#define CBLAS_GEMM paddle::gemm<double>
+#endif
 
 template <class Op>
 void hl_cpu_lstm_forward(Op op,
