@@ -173,8 +173,7 @@ For developers who are interested in the C++ source code, please use -e "WOBOQ=O
 - The following command will generate woboq HTML pages in a docker volume directory, `$HOME/nginx` directory will be created on your local disk when the build finishes.
 
 ```bash
-docker run -v $PWD:/paddle -v $HOME/nginx:/woboq_out -e "WITH_GPU=OFF" -e "WITH_AVX=ON"
--e "WITH_TEST=ON" -e "WOBOQ=ON" paddle:dev
+docker run -v $PWD:/paddle -v $HOME/nginx:/woboq_out -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TEST=ON" -e "WOBOQ=ON" paddle:dev
 ```
 
 - Open the generated static files in a browser, or upload these files to your web server. You can run nginx server as the following command, and then hit "http://<hostip>:8080/paddle" in browser.
