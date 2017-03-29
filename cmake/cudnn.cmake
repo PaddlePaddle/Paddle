@@ -11,6 +11,7 @@ list(APPEND CUDNN_CHECK_LIBRARY_DIRS
     ${CUDNN_ROOT}
     ${CUDNN_ROOT}/lib64
     ${CUDNN_ROOT}/lib
+    ${CUDNN_ROOT}/lib/x86_64-linux-gnu
     $ENV{CUDNN_ROOT}
     $ENV{CUDNN_ROOT}/lib64
     $ENV{CUDNN_ROOT}/lib
