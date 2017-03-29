@@ -1,5 +1,5 @@
 ==================================
-Data Reader Inferface and DataSets 
+Data Reader Inferface and DataSets
 ==================================
 
 
@@ -78,7 +78,7 @@ imikolov
     :noindex:
 
 movielens
-+++++++++    
++++++++++
 
 ..  automodule:: paddle.v2.dataset.movielens
     :members:

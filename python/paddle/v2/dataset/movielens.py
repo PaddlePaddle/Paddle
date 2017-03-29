@@ -14,9 +14,9 @@
 """
 Movielens 1-M dataset.
 
-Movielens 1-M dataset contains 1 million ratings from 6000 users on 4000 movies, which was 
-collected by GroupLens Research. This module will download Movielens 1-M dataset from 
-http://files.grouplens.org/datasets/movielens/ml-1m.zip and parse train/test set 
+Movielens 1-M dataset contains 1 million ratings from 6000 users on 4000 movies, which was
+collected by GroupLens Research. This module will download Movielens 1-M dataset from
+http://files.grouplens.org/datasets/movielens/ml-1m.zip and parse train/test set
 into paddle reader creators.
 
 """

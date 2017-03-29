@@ -91,7 +91,7 @@ def train(word_idx, n):
     """
     imikolov train set creator.
 
-    It returns a reader creator, each sample in the reader is an index 
+    It returns a reader creator, each sample in the reader is an index
     tuple.
 
     :param word_idx: word dictionary
@@ -108,7 +108,7 @@ def test(word_idx, n):
     """
     imikolov test set creator.
 
-    It returns a reader creator, each sample in the reader is an index 
+    It returns a reader creator, each sample in the reader is an index
     tuple.
 
     :param word_idx: word dictionary

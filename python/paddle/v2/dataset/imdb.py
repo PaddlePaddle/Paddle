@@ -14,10 +14,10 @@
 """
 IMDB dataset.
 
-This module download IMDB dataset from 
-http://ai.stanford.edu/%7Eamaas/data/sentiment/, which contains a set of 25,000 
-highly polar movie reviews for training, and 25,000 for testing. Besides, this 
-module also provides API for build dictionary and parse train set and test set 
+This module download IMDB dataset from
+http://ai.stanford.edu/%7Eamaas/data/sentiment/, which contains a set of 25,000
+highly polar movie reviews for training, and 25,000 for testing. Besides, this
+module also provides API for build dictionary and parse train set and test set
 into paddle reader creators.
 """
 
@@ -122,7 +122,7 @@ def train(word_idx):
     """
     IMDB train set creator.
 
-    It returns a reader creator, each sample in the reader is an index 
+    It returns a reader creator, each sample in the reader is an index
     sequence and label in [0, 1].
 
     :param word_idx: word dictionary
@@ -139,7 +139,7 @@ def test(word_idx):
     """
     IMDB test set creator.
 
-    It returns a reader creator, each sample in the reader is an index 
+    It returns a reader creator, each sample in the reader is an index
     sequence and label in [0, 1].
 
     :param word_idx: word dictionary

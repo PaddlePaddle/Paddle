@@ -195,7 +195,7 @@ class AdaDelta(Optimizer):
     :param epsilon: :math:`\\rho` in equation
     :type epsilon: float
     """
-    
+
     def __init__(self, rho=0.95, epsilon=1e-06, **kwargs):
         learning_method = v1_optimizers.AdaDeltaOptimizer(
             rho=rho, epsilon=epsilon)

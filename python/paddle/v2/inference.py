@@ -49,7 +49,7 @@ class Inference(object):
     def iter_infer_field(self, field, **kwargs):
         for result in self.iter_infer(**kwargs):
             yield [each_result[field] for each_result in result]
- 
+
     def infer(self, field='value', **kwargs):
         retv = None
         for result in self.iter_infer_field(field=field, **kwargs):

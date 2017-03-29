@@ -130,7 +130,7 @@ class SGD(object):
         Testing method. Will test input data.
 
         :param reader: A reader that reads and yeilds data items.
-        :type reader: collections.Iterable      
+        :type reader: collections.Iterable  
         :param feeding: Feeding is a map of neural network input name and array
                         index that reader returns.
         :type feeding: dict

@@ -20,7 +20,7 @@ Event
 =====
 
 ..  automodule:: paddle.v2.event
-    :members: 
+    :members:
     :noindex:
 
 Inference
@@ -28,3 +28,4 @@ Inference
 
 ..  autofunction:: paddle.v2.infer
     :noindex:
+    

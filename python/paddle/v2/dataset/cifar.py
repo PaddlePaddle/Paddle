@@ -17,11 +17,11 @@ CIFAR dataset.
 This module will download dataset from https://www.cs.toronto.edu/~kriz/cifar.html and
 parse train/test set into paddle reader creators.
 
-The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes, with 6000 
+The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes, with 6000
 images per class. There are 50000 training images and 10000 test images.
 
-The CIFAR-100 dataset is just like the CIFAR-10, except it has 100 classes containing 
-600 images each. There are 500 training images and 100 testing images per class. 
+The CIFAR-100 dataset is just like the CIFAR-10, except it has 100 classes containing
+600 images each. There are 500 training images and 100 testing images per class.
 
 """
 
