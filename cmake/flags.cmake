@@ -26,7 +26,7 @@ function(CheckCompilerCXX11Flag)
 endfunction()
 
 CheckCompilerCXX11Flag()
-LIST(APPEND CMAKE_CXX_FLAGS -std=c++11)
+string(APPEND CMAKE_CXX_FLAGS " -std=c++11")
 
 # safe_set_flag
 #

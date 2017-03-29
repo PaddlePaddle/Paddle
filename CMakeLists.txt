@@ -12,19 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-cmake_minimum_required(VERSION 3.0)
-
-project(paddle CXX C)
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 set(PROJ_ROOT ${CMAKE_SOURCE_DIR})
 
+include(system)
+
+if(ANDROID)
+    cmake_minimum_required(VERSION 3.7)
+else()
+    cmake_minimum_required(VERSION 3.0)
+endif()
+
+project(paddle CXX C)
+
 find_package(Sphinx)
-find_package(CUDA QUIET)
+if(NOT CMAKE_CROSSCOMPILING)
+    find_package(CUDA QUIET)
+endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
 
-include(system)
 include(simd)
 
 ################################ Configurations #######################################
@@ -50,6 +57,17 @@ if(NOT CMAKE_BUILD_TYPE)
       "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
       FORCE)
 endif()
+
+if(ANDROID)
+    set(WITH_GPU OFF CACHE STRING
+        "Disable GPU when cross-compiling for Android" FORCE)
+    set(WITH_AVX OFF CACHE STRING
+        "Disable AVX when cross-compiling for Android" FORCE)
+    set(WITH_PYTHON OFF CACHE STRING
+        "Disable PYTHON when cross-compiling for Android" FORCE)
+    set(WITH_RDMA OFF CACHE STRING
+        "Disable RDMA when cross-compiling for Android" FORCE)
+endif(ANDROID)
 
 set(THIRD_PARTY_PATH "${PROJ_ROOT}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")

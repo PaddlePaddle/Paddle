@@ -10,15 +10,15 @@ IF(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID 
     set(SSE3_FLAG "-msse3")
     SET(AVX_FLAG "-mavx")
     SET(AVX2_FLAG "-mavx2")
-    SET(NEON_FLAG "-pie -fPIE -mfloat-abi=softfp -mfpu=neon")
 ELSEIF(MSVC)
     set(MMX_FLAG "/arch:MMX")
     set(SSE2_FLAG "/arch:SSE2")
     set(SSE3_FLAG "/arch:SSE3")
     SET(AVX_FLAG "/arch:AVX")
     SET(AVX2_FLAG "/arch:AVX2")
-    #SET(NEON_FLAG "")
 ENDIF()
+
+set(CMAKE_REQUIRED_FLAGS_RETAINED ${CMAKE_REQUIRED_FLAGS})
 
 # Check  MMX
 set(CMAKE_REQUIRED_FLAGS ${MMX_FLAG})
@@ -76,17 +76,5 @@ int main()
     return 0;
 }" AVX2_FOUND)
 
-# Check NEON
-set(CMAKE_REQUIRED_FLAGS ${NEON_FLAG})
-CHECK_CXX_SOURCE_COMPILES("
-#include <arm_neon.h>
-int main()
-{
-    float32x4_t a = {-1.0f, 2.0f, -3.0f, 4.0f};
-    float32x4_t b = {1.0f, 2.0f, 3.0f, 4.0f};
-    float32x4_t c = vaddq_f32(a, b);
-    return 0;
-}" NEON_FOUND)
-
-set(CMAKE_REQUIRED_FLAGS "")
-mark_as_advanced(MMX_FOUND SSE2_FOUND SSE3_FOUND AVX_FOUND AVX2_FOUND NEON_FOUND)
+set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_RETAINED})
+mark_as_advanced(MMX_FOUND SSE2_FOUND SSE3_FOUND AVX_FOUND AVX2_FOUND)
