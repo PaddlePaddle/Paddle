@@ -170,14 +170,14 @@ kubectl ...
 ### Reading source code with woboq codebrowser
 For developers who are interested in the C++ source code, please use -e "WOBOQ=ON" to enable building C++ source code into HTML pages using [Woboq codebrowser](https://github.com/woboq/woboq_codebrowser).
 
-- The following command will generate woboq HTML pages in a docker volume directory, `$HOME/nginx` directory will be created on your local disk when the build finishes.
+- The following command builds PaddlePaddle, generates HTML pages from C++ source code, and writes HTML pages into `$HOME/woboq_out` on the host:
 
 ```bash
-docker run -v $PWD:/paddle -v $HOME/nginx:/woboq_out -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TEST=ON" -e "WOBOQ=ON" paddle:dev
+docker run -v $PWD:/paddle -v $HOME/woboq_out:/woboq_out -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TEST=ON" -e "WOBOQ=ON" paddle:dev
 ```
 
-- Open the generated static files in a browser, or upload these files to your web server. You can run nginx server as the following command, and then hit "http://<hostip>:8080/paddle" in browser.
+- You can open the generated HTML files in your Web browser. Or, if you want to run a Nginx container to serve them for a wider audience, you can run:
 
 ```
-docker run -v $HOME/nginx:/usr/share/nginx/html -d -p 8080:80 nginx
+docker run -v $HOME/woboq_out:/usr/share/nginx/html -d -p 8080:80 nginx
 ```
