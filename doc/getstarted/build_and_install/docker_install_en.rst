@@ -141,13 +141,13 @@ Run the program using docker:
 
 .. code-block:: bash
 
-   docker run -it --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2 python /workspace/example.py
+   docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2 python /workspace/example.py
 
 Or if you are using GPU for training:
 
 .. code-block:: bash
 
-   nvidia-docker run -it --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2-gpu python /workspace/example.py
+   nvidia-docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2-gpu python /workspace/example.py
 
 Above commands will start a docker container by running :code:`python
 /workspace/example.py`. It will stop once :code:`python
