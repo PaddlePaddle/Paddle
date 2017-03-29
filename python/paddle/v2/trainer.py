@@ -14,7 +14,6 @@ from . import parameters as v2_parameters
 __all__ = ['SGD']
 
 
-
 def default_event_handler(event):
     """
     Default event handler. It will print some log and save mode.

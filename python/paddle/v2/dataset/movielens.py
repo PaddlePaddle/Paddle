@@ -42,6 +42,7 @@ class MovieInfo(object):
     """
     Movie id, title and categories information are stored in MovieInfo.
     """
+
     def __init__(self, index, categories, title):
         self.index = int(index)
         self.categories = categories
@@ -68,6 +69,7 @@ class UserInfo(object):
     """
     User id, gender, age, and job information are stored in UserInfo.
     """
+
     def __init__(self, index, gender, age, job_id):
         self.index = int(index)
         self.is_male = gender == 'M'

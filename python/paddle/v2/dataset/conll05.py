@@ -24,7 +24,6 @@ import gzip
 import itertools
 from common import download
 
-
 __all__ = ['test, get_dict', 'get_embedding']
 
 DATA_URL = 'http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz'

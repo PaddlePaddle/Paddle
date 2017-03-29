@@ -19,6 +19,7 @@ class Inference(object):
     :param parameters: The parameters dictionary.
     :type parameters: paddle.v2.parameters.Parameters
     """
+
     def __init__(self, output_layer, parameters):
         topo = topology.Topology(output_layer)
         gm = api.GradientMachine.createFromConfigProto(
