@@ -57,7 +57,14 @@ PaddlePaddle发布的docker镜像使用说明
 
     如果输出是No，就需要选择使用no-AVX的镜像
 
-    注意：在运行GPU版本的镜像时 安装CUDA驱动，以及告诉Docker：
+    以上方法在GPU镜像里也能用，只是请不要忘记提前在物理机上安装GPU最新驱动。
+    为了保证GPU驱动能够在镜像里面正常运行，我们推荐使用[nvidia-docker](https://github.com/NVIDIA/nvidia-docker)来运行镜像。
+
+    .. code-block:: bash
+
+        nvidia-docker run -it --rm paddledev/paddle:0.10.0rc1-gpu /bin/bash
+
+    注意: 如果使用nvidia-docker存在问题，你也许可以尝试更老的方法，具体如下，但是我们并不推荐这种方法。：
 
     .. code-block:: bash
 
