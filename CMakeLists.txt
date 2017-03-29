@@ -59,6 +59,10 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(ANDROID)
+    if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
+        message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 21")
+    endif()
+
     set(WITH_GPU OFF CACHE STRING
         "Disable GPU when cross-compiling for Android" FORCE)
     set(WITH_AVX OFF CACHE STRING
