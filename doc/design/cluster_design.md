@@ -9,13 +9,13 @@
 
 <img src="images/trainer.png" width="500"/>
 
-为了完成一个深度学习的训练任务，集群中会运行多个trainer和parameter server，每个trainer启动时，会先尝试从parameter server集群下载最新的参数，然后以mini-batch为单位读取训练数据集中的一部分数据(Data shard)。在完成这个mini-batch数据的神经网络前馈和反向传播计算后，将参数梯度发送给对应的parameter server。随后trainer开始下一轮计算。
+为了完成一个深度学习的训练任务，集群中会运行多个trainer和parameter server，每个trainer启动时，会先尝试从parameter server集群下载最新的参数，然后以mini-batch为单位读取训练数据集中的一部分数据(Data shard)。trainer会在训练过程中持续与parameter server通讯，上传计算出来的梯度以及下载最新的模型。
 
 每个parameter server保存所有parameter的一个分片(Global model shard)，并负责接受所有trainer发送的梯度，完成SGD和优化算法，然后发送更新后的parameter到每个trainer。
 
-这样，通过trainer和parameter server的分布式协作，可以完成神经网络的SGD方法的训练。Paddle可以同时支持同步SGD(synchronize SGD)和异步(asynchronize SGD)。
+这样，通过trainer和parameter server的分布式协作，可以完成神经网络的SGD方法的训练。Paddle可以同时支持同步SGD(synchronize SGD)和异步SGD(asynchronize SGD)。
 
-在使用同步SGD训练神经网络时，Paddle使用同步屏障(barrier)，使梯度的提交和参数的更新按照顺序方式执行。在异步SGD中，则并不会等待所有trainer提交梯度才更新参数，这样极大的提高了计算的并行性：parameter server不之间不相互依赖并行的接收梯度和更新参数，parameter server也不会等待trainer全部都提交梯度之后才开始下一步，trainer之间也不会相互依赖，并行的执行模型的训练。可以看出，虽然异步SGD方式会使参数的更新并不能保证参数的顺序的同步的更新，在任意时间某一台parameter server上保存的参数可能比另一台要更新，这样反而会给参数优化过程带来更多的随机性。在实践中，异步SGD在带来更高效率的同时并没有特别影响算法的准确性。
+在使用同步SGD训练神经网络时，Paddle使用同步屏障(barrier)，使梯度的提交和参数的更新按照顺序方式执行。在异步SGD中，则并不会等待所有trainer提交梯度才更新参数，这样极大的提高了计算的并行性：parameter server之间不相互依赖，并行的接收梯度和更新参数，parameter server也不会等待trainer全部都提交梯度之后才开始下一步，trainer之间也不会相互依赖，并行的执行模型的训练。可以看出，虽然异步SGD方式会提高参数更新并行度, 但是并不能保证参数同步更新，在任意时间某一台parameter server上保存的参数可能比另一台要更新，与同步SGD相比，梯度会有噪声。
 
 在上面的分布式计算模型中，使用异步SGD比同步SGD可以一定程度的提供训练任务的容灾性。假设在某一时刻，一个trainer进程停止工作，其他的trainer仍然可以完成对部分数据的训练。
 
@@ -27,7 +27,7 @@
 1. 支持训练任务的前置任务和后置任务，支持训练任务的定时调度和对在线流式数据的处理
 
 ## 模型参数检查点(Checkpointing)
-模型数据检查点的实现，可以有效的避免parameter server的单点或多点同时故障。模型参数检查点通过定期向磁盘上保存一份存储在parameter server内存中的模型数据的完整镜像，来保证训练过程可以从中间状态重新启动。在一个不可中断并缺少备份的训练任务中，可以通过阶段性的在每个parameter server的 ***本地磁盘／分布式存储挂载点*** 保存检查点快照达到容灾的目的，比如每个pass或每n个mini-batch保存一次快照。在出现单点故障时，只需要恢复这台节点，或者将这台节点迁移到另一个节点并启动即可恢复训练任务。
+模型数据检查点的实现，可以有效的避免parameter server的单点或多点同时故障。模型参数检查点通过定期向磁盘上保存一份存储在parameter server内存中的模型数据的完整镜像，来保证训练过程可以从中间状态重新启动。在一个不可中断并缺少备份的训练任务中，可以通过阶段性的保存每个parameter server的数据快照(snapshot)到 ***分布式存储服务／分布式存储挂载点*** 达到容灾的目的，比如每隔10分钟或1小时保存最新的快照，并删除更早的快照。在出现单点故障时，只需要恢复这台节点，或者将这台节点迁移到另一个节点并启动即可恢复训练任务。
 
 <img src="images/checkpointing.png" width="500"/>
 
@@ -82,10 +82,11 @@
 
 <img src="images/master.png" width="500"/>
 
-如图，数据存储在分布式文件系统中，并将预处理之后的文件切割成3个block存储在不同的机器上。在训练任务开始时，master读取这个分布式文件的元数据，并将一个block分配给一个trainer，然后将分配信息写入etcd中。随后trainer从etcd中获取到数据的分配信息并开始执行训练。一个block数据训练完成后，master负责在将新的block分配给一个trainer（途中虚线所示）。
+如图，数据存储在分布式文件系统中，并将预处理之后的文件切割成3个block存储在不同的机器上。在训练任务开始时，master读取这个分布式文件的元数据，并将一个block分配给一个trainer，然后将分配信息写入etcd中。随后trainer从etcd中获取到数据的分配信息并开始执行训练。一个block数据训练完成后，master负责在将新的block分配给一个trainer（图中虚线所示）。
 
 master不会直接发送数据给Trainer而是负责协调训练数据的分配，并以ETCD为协调中心。所以master是一个无状态程序，任务运行过程中，master停止后只需要重新启动即可。
 
+## 第一版**不需要**支持的特性
 ### 推测执行/加速执行(TODO)
 在异构集群中，如果存在某些trainer执行速度过慢会影响整体集群的速度（如图中Trainer 1），此时master将负责启动一个新的Trainer(Accelerate Trainer 2)，使用同样的训练数据block。哪个trainer先完成block的训练，则把另一个慢速的kill掉。
 
@@ -94,7 +95,7 @@ master不会直接发送数据给Trainer而是负责协调训练数据的分配�
 * 支持流式数据接口和常规文件接口
 * 对不同的分布式存储，需要实现不同的reader wrapper
 
-## 动态扩容/缩容
+### 动态扩容/缩容
 虽然故障恢复可以提供任意时刻的节点新增和删除仍然可以保证任务正常运行，但通常这样是比较暴力的。为了能graceful的关闭多个节点，master需要提供对应的API接口：
 
 ```python
