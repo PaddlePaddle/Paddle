@@ -461,6 +461,12 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual void sequenceAvgBackward(Matrix& a,
+                                   const IVector& startsPos,
+                                   int mode) {
+    LOG(FATAL) << "Not implemented";
+  }
+
   /**
    * @code
    * this = scaleAB*(a*b) + scaleT*this
@@ -1203,6 +1209,7 @@ public:
   void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
+  void sequenceAvgBackward(Matrix& a, const IVector& startsPos, int mode);
 
   /**
    * @code
@@ -1619,6 +1626,7 @@ public:
   void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
+  void sequenceAvgBackward(Matrix& a, const IVector& startsPos, int mode);
 
   /**
    * @code
