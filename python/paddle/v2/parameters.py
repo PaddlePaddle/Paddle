@@ -4,7 +4,7 @@ from paddle.proto.ParameterConfig_pb2 import ParameterConfig
 import struct
 import tarfile
 import cStringIO
-from topology import Topology
+import paddle.v2.topology as topology
 
 __all__ = ['Parameters', 'create']
 
@@ -16,7 +16,7 @@ def create(layers):
     :param layers:
     :return:
     """
-    topology = Topology(layers)
+    topology = topology.Topology(layers)
     pool = Parameters()
     for param in topology.proto().parameters:
         pool.__append_config__(param)

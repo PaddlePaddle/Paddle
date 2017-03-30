@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.trainer_config_helpers.networks as conf_nw
 import inspect
-from config_base import __convert_to_v2__
+import paddle.trainer_config_helpers.networks as conf_nw
+import paddle.v2.config_base as config_base
 
 __all__ = []
 
@@ -33,7 +33,7 @@ def __initialize__():
         else:
             parents = filter(lambda x: x.startswith('input'), argspec.args)
         assert len(parents) != 0, each_subnetwork
-        v2_subnet = __convert_to_v2__(
+        v2_subnet = config_base.__convert_to_v2__(
             each_subnetwork,
             parent_names=parents,
             is_default_name='name' in argspec.args)

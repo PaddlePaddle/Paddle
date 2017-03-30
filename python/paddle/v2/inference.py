@@ -1,9 +1,9 @@
 import numpy
 import py_paddle.swig_paddle as api
 import collections
-import topology
-import minibatch
-from data_feeder import DataFeeder
+import paddle.v2.topology as topology
+import paddle.v2.minibatch as minibatch
+import paddle.v2.data_feeder as data_feeder
 
 __all__ = ['infer']
 
@@ -22,7 +22,7 @@ class Inference(object):
         self.__data_types__ = topo.data_type()
 
     def iter_infer(self, input, feeding=None):
-        feeder = DataFeeder(self.__data_types__, feeding)
+        feeder = data_feeder.DataFeeder(self.__data_types__, feeding)
         batch_size = len(input)
 
         def __reader_impl__():

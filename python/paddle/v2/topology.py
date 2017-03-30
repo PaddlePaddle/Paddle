@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
-
 from paddle.proto.ModelConfig_pb2 import ModelConfig
-
-import layer as v2_layer
-from layer import WithExtraParent
+import collections
+import paddle.v2.layer as layer
 
 __all__ = ['Topology']
 
@@ -42,7 +39,7 @@ def __bfs_travel__(callback, *layers):
         if __break__:
             return
         __layers__ = each_layer.__parent_layers__.values()
-        if isinstance(each_layer, WithExtraParent):
+        if isinstance(each_layer, layer.WithExtraParent):
             __layers__ = __layers__ + each_layer.extra_parent()
         __bfs_travel__(callback, *__layers__)
 
@@ -60,7 +57,7 @@ class Topology(object):
         for layer in layers:
             __check_layer_type__(layer)
         self.layers = layers
-        self.__model_config__ = v2_layer.parse_network(*layers)
+        self.__model_config__ = layer.parse_network(*layers)
         assert isinstance(self.__model_config__, ModelConfig)
 
     def proto(self):
@@ -93,7 +90,7 @@ class Topology(object):
         data_layers = dict()
 
         def __impl__(l):
-            if isinstance(l, v2_layer.DataLayerV2):
+            if isinstance(l, layer.DataLayerV2):
                 data_layers[l.name] = l
 
         __bfs_travel__(__impl__, *self.layers)
@@ -110,5 +107,5 @@ class Topology(object):
 
 
 def __check_layer_type__(layer):
-    if not isinstance(layer, v2_layer.LayerV2):
+    if not isinstance(layer, layer.LayerV2):
         raise ValueError('layer should have type paddle.layer.Layer')

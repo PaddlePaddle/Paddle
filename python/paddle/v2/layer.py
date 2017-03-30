@@ -33,7 +33,7 @@ The primary usage shows below.
 
 import collections
 import inspect
-from config_base import Layer, __convert_to_v2__
+from paddle.v2.config_base import Layer, __convert_to_v2__
 import paddle.trainer_config_helpers as conf_helps
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
@@ -46,9 +46,9 @@ from paddle.trainer.config_parser import \
     RecurrentLayerGroupWithoutOutLinksBegin, RecurrentLayerGroupSetOutLink, \
     RecurrentLayerGroupEnd, model_type
 
-import activation
+import paddle.v2.activation as activation
 import re
-import data_type
+import paddle.v2.data_type as data_type
 
 __all__ = ['parse_network', 'data']
 

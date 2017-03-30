@@ -2,11 +2,11 @@ import collections
 
 import py_paddle.swig_paddle as api
 
-from data_feeder import DataFeeder
-from topology import Topology
-from . import event as v2_event
-from . import optimizer as v2_optimizer
-from . import parameters as v2_parameters
+import paddle.v2.data_feeder as data_feeder
+import paddle.v2.topology as topology
+import paddle.v2.event as event
+import paddle.v2.optimizer as optimizer
+import paddle.v2.parameters as parameters
 
 __all__ = ['SGD']
 """
@@ -41,13 +41,13 @@ class SGD(object):
 
     def __init__(self, cost, parameters, update_equation):
 
-        if not isinstance(parameters, v2_parameters.Parameters):
+        if not isinstance(parameters, parameters.Parameters):
             raise TypeError('parameters should be parameters')
 
-        if not isinstance(update_equation, v2_optimizer.Optimizer):
+        if not isinstance(update_equation, optimizer.Optimizer):
             raise TypeError("update equation parameter must be "
                             "paddle.v2.optimizer.Optimizer")
-        topology = Topology(cost)
+        topology = topology.Topology(cost)
         self.__optimizer__ = update_equation
         self.__topology__ = topology
         self.__parameters__ = parameters
@@ -88,15 +88,15 @@ class SGD(object):
         pass_evaluator = self.__gradient_machine__.makeEvaluator()
         assert isinstance(pass_evaluator, api.Evaluator)
         out_args = api.Arguments.createArguments(0)
-        feeder = DataFeeder(self.__data_types__, feeding)
+        feeder = data_feeder.DataFeeder(self.__data_types__, feeding)
         for pass_id in xrange(num_passes):
-            event_handler(v2_event.BeginPass(pass_id))
+            event_handler(event.BeginPass(pass_id))
             pass_evaluator.start()
             updater.startPass()
             for batch_id, data_batch in enumerate(reader()):
                 batch_evaluator.start()
                 event_handler(
-                    v2_event.BeginIteration(
+                    event.BeginIteration(
                         pass_id=pass_id, batch_id=batch_id))
                 pass_type = updater.startBatch(len(data_batch))
                 self.__gradient_machine__.forwardBackward(
@@ -111,7 +111,7 @@ class SGD(object):
                 updater.finishBatch(cost)
                 batch_evaluator.finish()
                 event_handler(
-                    v2_event.EndIteration(
+                    event.EndIteration(
                         pass_id=pass_id,
                         batch_id=batch_id,
                         cost=cost,
@@ -119,11 +119,11 @@ class SGD(object):
 
             updater.finishPass()
             pass_evaluator.finish()
-            event_handler(v2_event.EndPass(pass_id, evaluator=pass_evaluator))
+            event_handler(event.EndPass(pass_id, evaluator=pass_evaluator))
         self.__gradient_machine__.finish()
 
     def test(self, reader, feeding=None):
-        feeder = DataFeeder(self.__data_types__, feeding)
+        feeder = data_feeder.DataFeeder(self.__data_types__, feeding)
         evaluator = self.__gradient_machine__.makeEvaluator()
         out_args = api.Arguments.createArguments(0)
         evaluator.start()
@@ -137,7 +137,7 @@ class SGD(object):
             self.__gradient_machine__.eval(evaluator)
 
         evaluator.finish()
-        return v2_event.TestResult(
+        return event.TestResult(
             evaluator=evaluator, cost=total_cost / num_samples)
 
 
