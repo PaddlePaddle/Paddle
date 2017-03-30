@@ -29,6 +29,10 @@ IF(NOT ${CBLAS_FOUND})
 
     IF(CMAKE_COMPILER_IS_GNUCC)
         ENABLE_LANGUAGE(Fortran)
+        if (NOT CMAKE_Fortran_COMPILER_VERSION)
+          # cmake version is too old, we cannot get fortran version, using CXX version instead.
+          set(CMAKE_Fortran_COMPILER_VERSION ${CMAKE_CXX_COMPILER_VERSION})
+        endif()
         string(REGEX MATCHALL "[0-9]+" Fortran_VERSION ${CMAKE_Fortran_COMPILER_VERSION})
         list(GET Fortran_VERSION 0 Fortran_MAJOR)
         list(GET Fortran_VERSION 1 Fortran_MINOR)
