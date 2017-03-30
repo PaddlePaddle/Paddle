@@ -33,7 +33,7 @@ The primary usage shows below.
 
 import collections
 import inspect
-from paddle.v2.config_base import Layer, __convert_to_v2__
+import paddle.v2.config_base as config_base
 import paddle.trainer_config_helpers as conf_helps
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
@@ -86,7 +86,7 @@ So we also need to implement some special LayerV2.
 """
 
 
-class DataLayerV2(Layer):
+class DataLayerV2(config_base.Layer):
     METHOD_NAME = 'data_layer'
 
     def __init__(self, name, type, **kwargs):
@@ -119,7 +119,7 @@ class DataLayerV2(Layer):
         return doc
 
 
-class WithExtraParent(Layer):
+class WithExtraParent(config_base.Layer):
     def extra_parent(self):
         return self.__extra_parent__
 
@@ -223,7 +223,7 @@ class MemoryV2(WithExtraParent):
         return True
 
 
-class LayerOutputV2(Layer):
+class LayerOutputV2(config_base.Layer):
     """
     LayerOutputV2 is used to store the result of LayerOutput in v1 api.
     It will not store it's parents because layer_output has been parsed already.
@@ -250,7 +250,7 @@ class StaticInputV2(object):
         # assert input.size is not None or size is not None
 
 
-class MixedLayerV2(Layer):
+class MixedLayerV2(config_base.Layer):
     """
     This class is use to support `with` grammar. If not, the following code
     could convert mixed_layer simply.
@@ -347,7 +347,7 @@ class RecurrentLayerInput(WithExtraParent):
         return self
 
 
-class RecurrentLayerOutput(Layer):
+class RecurrentLayerOutput(config_base.Layer):
     def __init__(self, recurrent_name, index, parent_layers):
         assert len(parent_layers) == 1
         self.__parents__ = parent_layers.values()[0]
@@ -364,7 +364,7 @@ class RecurrentLayerOutput(Layer):
         RecurrentLayerGroupEnd(name=self.__recurrent_name__)
 
 
-LayerV2 = Layer
+LayerV2 = config_base.Layer
 data = DataLayerV2
 data.__name__ = 'data'
 AggregateLevel = conf_helps.layers.AggregateLevel
@@ -405,7 +405,8 @@ def __layer_name_mapping_parent_names__(inname):
 def __convert_layer__(_new_name_, _old_name_, _parent_names_):
     global __all__
     __all__.append(_new_name_)
-    globals()[new_name] = __convert_to_v2__(_old_name_, _parent_names_)
+    globals()[new_name] = config_base.__convert_to_v2__(_old_name_,
+                                                        _parent_names_)
     globals()[new_name].__name__ = new_name
 
 
@@ -482,7 +483,7 @@ __all__ += __operator_names__
 
 # convert projection
 for prj in __projection_names__:
-    globals()[prj] = __convert_to_v2__(
+    globals()[prj] = config_base.__convert_to_v2__(
         prj, parent_names=['input'], is_default_name=False)
     globals()[prj].__name__ = prj
 
@@ -493,6 +494,6 @@ operator_list = [
     ['conv_operator', ['img', 'filter']]
 ]
 for op in operator_list:
-    globals()[op[0]] = __convert_to_v2__(
+    globals()[op[0]] = config_base.__convert_to_v2__(
         op[0], parent_names=op[1], is_default_name=False)
     globals()[op[0]].__name__ = op[0]
