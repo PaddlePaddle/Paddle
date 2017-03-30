@@ -29,7 +29,12 @@ IF(NOT ${CBLAS_FOUND})
 
     IF(CMAKE_COMPILER_IS_GNUCC)
         ENABLE_LANGUAGE(Fortran)
-        LIST(APPEND CBLAS_LIBRARIES gfortran pthread)
+        find_library(GFORTRAN_LIBRARY NAMES gfortran)
+        if (NOT GFORTRAN_LIBRARY)
+            message(FATAL_ERROR "Cannot found gfortran library which it is used by openblas")
+        endif()
+        find_package(Threads REQUIRED)
+        LIST(APPEND CBLAS_LIBRARIES ${GFORTRAN_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
     ENDIF(CMAKE_COMPILER_IS_GNUCC)
 
     IF(NOT CMAKE_Fortran_COMPILER)
