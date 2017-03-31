@@ -54,7 +54,10 @@ class Plot(object):
         self.plt.gcf().clear()
 
     def reset(self):
-        self.__plot_data__ = []
+        for key in self.__plot_data__:
+            data = self.__plot_data__[key]
+            assert isinstance(data, PlotData)
+            data.reset()
 
 if __name__ == '__main__':
     title = "cost"
@@ -63,3 +66,7 @@ if __name__ == '__main__':
     plot_test.append(title, 2, 2)
     for k, v in plot_test.__plot_data__.iteritems():
         print k, v.step, v.value
+    plot_test.reset()
+    for k, v in plot_test.__plot_data__.iteritems():
+        print k, v.step, v.value
+gg
