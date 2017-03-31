@@ -49,6 +49,8 @@ protected:
   int stride_;
   // store the start position of each stride window
   IVectorPtr stridePositions_;
+  // Whether it is reversed sequence
+  bool reversed_ = false;
 
 public:
   explicit SequencePoolLayer(const LayerConfig& config) : Layer(config) {}

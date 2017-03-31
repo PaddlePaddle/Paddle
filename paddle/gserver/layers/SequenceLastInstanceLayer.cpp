@@ -40,7 +40,6 @@ class SequenceLastInstanceLayer : public SequencePoolLayer {
 protected:
   MatrixPtr tmpSrc_;
   MatrixPtr tmpDest_;
-  bool select_first_;
   std::vector<int> insId_;
 
 public:
@@ -59,7 +58,7 @@ REGISTER_LAYER(seqlastins, SequenceLastInstanceLayer);
 bool SequenceLastInstanceLayer::init(const LayerMap& layerMap,
                                      const ParameterMap& parameterMap) {
   SequencePoolLayer::init(layerMap, parameterMap);
-  select_first_ = config_.select_first();
+  reversed_ = config_.select_first();
 
   tmpSrc_ =
       Matrix::create(nullptr, /* height= */ 1, 1, /* trans= */ false, useGpu_);
@@ -83,7 +82,7 @@ void SequenceLastInstanceLayer::forward(PassType passType) {
 
     insId_.clear();
     for (size_t seqId = 0; seqId < newBatchSize_; ++seqId) {
-      int insId = select_first_ ? starts[seqId] : starts[seqId + 1] - 1;
+      int insId = reversed_ ? starts[seqId] : starts[seqId + 1] - 1;
       insId_.push_back(insId);
 
       outputValue->subMatrix(seqId, 1, tmpDest_)

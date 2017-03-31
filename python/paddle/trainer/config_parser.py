@@ -2497,7 +2497,7 @@ class SequenceLastInstanceLayer(LayerBase):
         config_assert(
             len(inputs) == 1, 'SequenceLastInstanceLayer must have 1 input')
         if trans_type == 'seq':
-            config_assert(stride == -1, 'subseq do not support stride window')
+            config_assert(stride == -1, 'subseq does not support stride window')
         self.config.trans_type = trans_type
         self.config.seq_pool_stride = stride
         self.set_layer_size(self.get_input_layer(0).size)

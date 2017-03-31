@@ -298,7 +298,8 @@ struct Argument {
    */
   void poolSequenceWithStride(const Argument& input,
                               size_t stride,
-                              IVectorPtr* stridePositions);
+                              IVectorPtr* stridePositions,
+                              bool reversed = false);
   /**
    * @brief getValueString will return the argument's output in string. There
    * are several kinds of output. The keys of output dictionary are 'value',

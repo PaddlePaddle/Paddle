@@ -561,11 +561,13 @@ void Argument::degradeSequence(const Argument& input) {
 
 void Argument::poolSequenceWithStride(const Argument& input,
                                       size_t stride,
-                                      IVectorPtr* stridePostions) {
+                                      IVectorPtr* stridePostions,
+                                      bool reversed) {
   /*
    * If input.sequenceStartPositions = [0, 9, 14, 17, 30] and stride = 5,
-   * then sequenceStartPositions = [0, 2, 3, 4, 7],
-   * and stridePostions = [0, 5, 9, 14, 17, 22, 27, 30]
+   * then sequenceStartPositions = [0, 2, 3, 4, 7].
+   * If reversed = false, stridePostions = [0, 5, 9, 14, 17, 22, 27, 30];
+   * else reversed = true, stridePostions = [0, 4, 9, 14, 17, 20, 25, 30]
    */
   CHECK(input.sequenceStartPositions);
   CHECK_EQ(input.hasSubseq(), 0UL);
@@ -584,14 +586,13 @@ void Argument::poolSequenceWithStride(const Argument& input,
     if (seqLength == 0) {
       // empty sequence
       tgtBuf[seqId + 1] = tgtBuf[seqId];
-    } else if (seqLength < stride) {
-      tgtBuf[seqId + 1] = tgtBuf[seqId] + 1;
     } else {
-      tgtBuf[seqId + 1] = tgtBuf[seqId] + ceil((float)seqLength / stride);
-      int size =
-          (seqLength % stride) ? seqLength / stride : seqLength / stride - 1;
-      for (int i = 0; i < size; i++) {
-        stridePos.emplace_back(stridePos.back() + stride);
+      int size = ceil((float)seqLength / stride);
+      tgtBuf[seqId + 1] = tgtBuf[seqId] + size;
+      for (int i = 0; i < size - 1; i++) {
+        int cur = reversed ? starts[seqId + 1] - (size - 1 - i) * stride
+                           : stridePos.back() + stride;
+        stridePos.emplace_back(cur);
       }
     }
   }
