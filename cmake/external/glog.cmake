@@ -42,6 +42,10 @@ ExternalProject_Add(
     CMAKE_ARGS      -DWITH_GFLAGS=ON
     CMAKE_ARGS      -Dgflags_DIR=${GFLAGS_INSTALL_DIR}/lib/cmake/gflags
     CMAKE_ARGS      -DBUILD_TESTING=OFF
+    CMAKE_ARGS      -DCMAKE_BUILD_TYPE=Release
+    CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${GLOG_INSTALL_DIR}
+                     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                     -DCMAKE_BUILD_TYPE:STRING=Release
 )
 
 LIST(APPEND external_project_dependencies glog)

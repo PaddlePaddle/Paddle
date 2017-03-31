@@ -483,6 +483,20 @@ void GpuMatrix::sequenceAvgForward(Matrix& a,
   hl_sequence_avg_forward(dst, src, starts, height, width, mode);
 }
 
+void GpuMatrix::sequenceAvgBackward(Matrix& a,
+                                    const IVector& startsPos,
+                                    int mode) {
+  size_t height = a.getHeight();
+  size_t width = getWidth();
+  CHECK_EQ(height, startsPos.getSize() - 1);
+  CHECK_EQ(width, a.getWidth());
+  real* dst = getData();
+  real* src = a.getData();
+  const int* starts = startsPos.getData();
+
+  hl_sequence_avg_backward(dst, src, starts, height, width, mode);
+}
+
 /* this = scaleAB*(a*b) +  scaleT*this */
 void GpuMatrix::mul(const GpuMatrix& a,
                     const GpuMatrix& b,
@@ -2298,6 +2312,41 @@ void CpuMatrix::sequenceAvgForward(Matrix& a,
       outMtx->sumCols(*dataMtx,
                       (real)1 / std::sqrt(sequenceLength),
                       /* scaleDest= */ 1);
+    } else {
+      LOG(FATAL) << "should not reach here";
+    }
+  }
+}
+
+void CpuMatrix::sequenceAvgBackward(Matrix& a,
+                                    const IVector& startsPos,
+                                    int mode) {
+  size_t height = a.getHeight();
+  size_t width = getWidth();
+  CHECK_EQ(height, startsPos.getSize() - 1);
+  CHECK_EQ(width, a.getWidth());
+  real* dst = getData();
+  real* src = a.getData();
+  const int* starts = startsPos.getData();
+  MatrixPtr outMtx = Matrix::create(nullptr, 1, width, false, false);
+  MatrixPtr dataMtx = Matrix::create(nullptr, 1, width, false, false);
+  for (size_t i = 0; i < height; ++i) {
+    int sequenceLength = starts[i + 1] - starts[i];
+    if (0 == sequenceLength) {
+      // empty sequence
+      continue;
+    }
+    outMtx->setData(dst + starts[i] * width, sequenceLength, width);
+    dataMtx->setData(src + i * width);
+    if (mode == 0) {
+      // plain average
+      outMtx->addBias(*dataMtx, 1.0f / sequenceLength);
+    } else if (mode == 1) {
+      // sum instead of average
+      outMtx->addBias(*dataMtx, 1.0f);
+    } else if (mode == 2) {
+      // divide by square root of sequenceLength
+      outMtx->addBias(*dataMtx, 1.0f / std::sqrt(sequenceLength));
     } else {
       LOG(FATAL) << "should not reach here";
     }

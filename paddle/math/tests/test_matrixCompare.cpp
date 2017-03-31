@@ -685,7 +685,7 @@ TEST(SMatrix, topK) {
   }
 }
 
-void testMatrixSequenceAvgForward(int batchSize, int inputDim, int mode) {
+void testMatrixSequenceAvg(int batchSize, int inputDim, int mode) {
   MatrixPtr cpuInput = std::make_shared<CpuMatrix>(batchSize, inputDim);
   MatrixPtr gpuInput = std::make_shared<GpuMatrix>(batchSize, inputDim);
   cpuInput->randomizeUniform();
@@ -706,15 +706,25 @@ void testMatrixSequenceAvgForward(int batchSize, int inputDim, int mode) {
   gpuOutput->sequenceAvgForward(*gpuInput, *gpuSequence, mode);
 
   TensorCheckErr(*cpuOutput, *gpuOutput);
+
+  MatrixPtr cpuInGrad = std::make_shared<CpuMatrix>(batchSize, inputDim);
+  MatrixPtr gpuInGrad = std::make_shared<GpuMatrix>(batchSize, inputDim);
+  cpuInGrad->randomizeUniform();
+  gpuInGrad->copyFrom(*cpuInGrad);
+
+  cpuInGrad->sequenceAvgBackward(*cpuOutput, *cpuSequence, mode);
+  gpuInGrad->sequenceAvgBackward(*gpuOutput, *gpuSequence, mode);
+
+  TensorCheckErr(*cpuInGrad, *gpuInGrad);
 }
 
-TEST(Matrix, sequenceAvgForward) {
+TEST(Matrix, sequenceAvg) {
   for (auto batchSize : {10, 128, 6000}) {
     for (auto inputDim : {32, 100, 512}) {
       for (auto mode : {0, 1, 2}) {
         VLOG(3) << " batchSize=" << batchSize << " inputDim=" << inputDim
                 << " mode=" << mode;
-        testMatrixSequenceAvgForward(batchSize, inputDim, mode);
+        testMatrixSequenceAvg(batchSize, inputDim, mode);
       }
     }
   }
