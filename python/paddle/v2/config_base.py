@@ -14,9 +14,8 @@
 
 import collections
 import re
-
-import paddle.trainer_config_helpers as conf_helps
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
+import paddle.trainer_config_helpers as conf_helps
 
 
 class LayerType(type):
