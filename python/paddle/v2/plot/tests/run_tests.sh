@@ -21,6 +21,7 @@ popd > /dev/null
 cd $SCRIPTPATH
 $1 -m pip install ../../../../../paddle/dist/*.whl
 
+export DISABLE_PLOT="True"
 test_list="test_ploter.py"
 
 export PYTHONPATH=$PWD/../../../../../python/

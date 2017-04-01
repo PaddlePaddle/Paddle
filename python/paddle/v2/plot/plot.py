@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from IPython import display
 import os
 
 
@@ -39,7 +38,9 @@ class Ploter(object):
         self.__disable_plot__ = os.environ.get("DISABLE_PLOT")
         if not self.__plot_is_disabled__():
             import matplotlib.pyplot as plt
+            from IPython import display
             self.plt = plt
+            self.display = display
 
     def __plot_is_disabled__(self):
         return self.__disable_plot__ == "True"
@@ -63,8 +64,8 @@ class Ploter(object):
                 titles.append(title)
                 self.plt.plot(data.step, data.value)
         self.plt.legend(titles, loc='upper left')
-        display.clear_output(wait=True)
-        display.display(self.plt.gcf())
+        self.display.clear_output(wait=True)
+        self.display.display(self.plt.gcf())
         self.plt.gcf().clear()
 
     def reset(self):
