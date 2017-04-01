@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import test_ploter
 
-from plot import Ploter
-
-__all__ = ['Ploter']
+__all__ = ['test_ploter.py']

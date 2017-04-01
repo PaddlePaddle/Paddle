@@ -1,3 +1,17 @@
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from IPython import display
 import os
 
@@ -16,9 +30,9 @@ class PlotData(object):
         self.value = []
 
 
-class Plot(object):
+class Ploter(object):
     def __init__(self, *args):
-        self.args = args
+        self.__args__ = args
         self.__plot_data__ = {}
         for title in args:
             self.__plot_data__[title] = PlotData()
@@ -42,7 +56,7 @@ class Plot(object):
             return
 
         titles = []
-        for title in self.args:
+        for title in self.__args__:
             data = self.__plot_data__[title]
             assert isinstance(data, PlotData)
             if len(data.step) > 0:
@@ -58,15 +72,3 @@ class Plot(object):
             data = self.__plot_data__[key]
             assert isinstance(data, PlotData)
             data.reset()
-
-if __name__ == '__main__':
-    title = "cost"
-    plot_test = Plot(title)
-    plot_test.append(title, 1, 1)
-    plot_test.append(title, 2, 2)
-    for k, v in plot_test.__plot_data__.iteritems():
-        print k, v.step, v.value
-    plot_test.reset()
-    for k, v in plot_test.__plot_data__.iteritems():
-        print k, v.step, v.value
-gg
