@@ -35,5 +35,6 @@ class TestCommon(unittest.TestCase):
         self.assertEqual(plot_test.__plot_data__[title2].step, [])
         self.assertEqual(plot_test.__plot_data__[title2].value, [])
 
+
 if __name__ == '__main__':
     unittest.main()
