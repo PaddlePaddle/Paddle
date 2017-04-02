@@ -35,6 +35,10 @@ class Ploter(object):
         self.__plot_data__ = {}
         for title in args:
             self.__plot_data__[title] = PlotData()
+        # demo in notebooks will use Ploter to plot figure, but when we convert
+        # the ipydb to py file for testing, the import of matplotlib will make the
+        # script crash. So we can use `export DISABLE_PLOT=True` to disable import
+        # these libs
         self.__disable_plot__ = os.environ.get("DISABLE_PLOT")
         if not self.__plot_is_disabled__():
             import matplotlib.pyplot as plt
