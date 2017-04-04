@@ -7,7 +7,8 @@ packages=['paddle',
           'paddle.utils',
           'paddle.v2',
           'paddle.v2.dataset',
-          'paddle.v2.reader']
+          'paddle.v2.reader',
+          'paddle.v2.plot']
 
 setup(name='paddle',
       version='${PADDLE_VERSION}',
