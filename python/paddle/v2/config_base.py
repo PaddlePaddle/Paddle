@@ -65,7 +65,7 @@ class Layer(object):
     def __init__(self, name=None, parent_layers=None):
         assert isinstance(parent_layers, dict)
         self.name = name
-        self.__contex__ = {}
+        self.__context__ = {}
         self.__parent_layers__ = parent_layers
 
     def to_proto(self, context):
@@ -87,7 +87,7 @@ class Layer(object):
             return self.to_proto_impl(**kwargs)
         elif self.context_name() not in context:
             context[self.context_name()] = self.to_proto_impl(**kwargs)
-        self.__contex__ = context
+        self.__context__ = context
         if self.use_context_name():
             return context[self.context_name()]
         else:
@@ -113,7 +113,7 @@ class Layer(object):
         this layer is called.
         :return:
         """
-        return self.__contex__[self.context_name()].size
+        return self.__context__[self.context_name()].size
 
 
 def __convert_to_v2__(method_name, parent_names, is_default_name=True):
