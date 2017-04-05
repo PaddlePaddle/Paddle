@@ -19,7 +19,7 @@ import paddle.v2.data_type as data_type
 import paddle.v2.layer as layer
 import paddle.v2.pooling as pooling
 import paddle.v2.networks as networks
-import paddle.v2.evaluators as evaluators
+import paddle.v2.evaluator as evaluator
 
 pixel = layer.data(name='pixel', type=data_type.dense_vector(128))
 label = layer.data(name='label', type=data_type.integer_value(10))
@@ -273,7 +273,7 @@ class EvaluatorTest(unittest.TestCase):
         lbl = layer.data(name='label', type=data_type.integer_value(10))
         cost = layer.cross_entropy_cost(input=output, label=lbl)
 
-        evaluators.classification_error_evaluator(input=output, label=lbl)
+        evaluator.classification_error(input=output, label=lbl)
         print layer.parse_network(cost)
         print layer.parse_network(output)
 

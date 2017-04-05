@@ -21,7 +21,7 @@ import data_type
 import topology
 import data_feeder
 import networks
-import evaluators
+import evaluator
 from . import dataset
 from . import reader
 from . import plot
@@ -36,7 +36,7 @@ import plot
 __all__ = [
     'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
     'event', 'data_type', 'attr', 'pooling', 'data_feeder', 'dataset', 'reader',
-    'topology', 'networks', 'infer', 'plot', 'evaluators'
+    'topology', 'networks', 'infer', 'plot', 'evaluator'
 ]
 
 
