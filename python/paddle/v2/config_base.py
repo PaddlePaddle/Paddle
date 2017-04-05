@@ -117,7 +117,9 @@ class Layer(object):
                 continue
             layer.to_proto(context=context)
 
-        if self.use_context_name():
+        if self.context_name() is None:
+            return ret_val
+        elif self.use_context_name():
             return context[self.context_name()]
         else:
             return context[self.name]
