@@ -7,13 +7,12 @@ ARG UBUNTU_MIRROR
 RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com/ubuntu#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
 
 # ENV variables
-ARG WOBOQ
 ARG WITH_GPU
 ARG WITH_AVX
 ARG WITH_DOC
 ARG WITH_STYLE_CHECK
 
-ENV WOBOQ=${WOBOQ:-OFF}
+ENV WOBOQ OFF
 ENV WITH_GPU=${WITH_AVX:-OFF}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV WITH_DOC=${WITH_DOC:-OFF}
