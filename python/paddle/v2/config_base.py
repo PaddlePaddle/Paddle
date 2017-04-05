@@ -67,11 +67,25 @@ class Layer(object):
         self.name = name
         self.__context__ = {}
         self.__parent_layers__ = parent_layers
+        self.__children_layers__ = []  # used for evaluator.
+
+    def append_child(self, layer, parent_names):
+        self.__children_layers__.append((layer, parent_names))
 
     def to_proto(self, context):
         """
         function to set proto attribute
         """
+        self.__context__ = context
+
+        # short cut if myself is parsed before.
+        if self.context_name() in context:
+            if self.use_context_name():
+                return context[self.context_name()]
+            else:
+                return context[self.name]
+
+        # parse parent before myself
         kwargs = dict()
         for layer_name in self.__parent_layers__:
             if not isinstance(self.__parent_layers__[layer_name],
@@ -83,15 +97,27 @@ class Layer(object):
                                self.__parent_layers__[layer_name])
             kwargs[layer_name] = v1_layer
 
-        if self.context_name() is None:
-            return self.to_proto_impl(**kwargs)
-        elif self.context_name() not in context:
-            context[self.context_name()] = self.to_proto_impl(**kwargs)
-        self.__context__ = context
-        if self.use_context_name():
-            return context[self.context_name()]
-        else:
-            return context[self.name]
+        # parse myself.
+        ret_val = self.to_proto_impl(**kwargs)
+        if self.context_name() is not None:
+            assert self.context_name() not in context
+            # add myself to context
+            context[self.context_name()] = ret_val
+
+        # parse children.
+        for layer, pnames in self.__children_layers__:
+            drop = False
+
+            # child will only be parsed if all parents are in context.
+            for pname in pnames:
+                if pname not in context:
+                    drop = True
+                    break
+            if drop:
+                continue
+            layer.to_proto(context=context)
+
+        return ret_val
 
     def to_proto_impl(self, **kwargs):
         raise NotImplementedError()
@@ -116,7 +142,10 @@ class Layer(object):
         return self.__context__[self.context_name()].size
 
 
-def __convert_to_v2__(method_name, parent_names, is_default_name=True):
+def __convert_to_v2__(method_name,
+                      parent_names,
+                      is_default_name=True,
+                      attach_parent=False):
     if is_default_name:
         wrapper = wrap_name_default(name_prefix=method_name)
     else:
@@ -129,8 +158,19 @@ def __convert_to_v2__(method_name, parent_names, is_default_name=True):
             parent_layers = dict()
             other_kwargs = dict()
             for pname in parent_names:
-                if kwargs.has_key(pname):
+                if pname in kwargs:
                     parent_layers[pname] = kwargs[pname]
+
+            if attach_parent:
+                pnames = [x.name for x in parent_layers.values()]
+
+                for pname in parent_layers:
+                    layers = kwargs[pname]
+                    if not isinstance(layers, collections.Sequence):
+                        layers = [layers]
+
+                    for layer in layers:
+                        layer.append_child(self, pnames)
 
             for key in kwargs.keys():
                 if key not in parent_names:
