@@ -162,7 +162,7 @@ def __convert_to_v2__(method_name,
                     parent_layers[pname] = kwargs[pname]
 
             if attach_parent:
-                pnames = [x.name for x in parent_layers.values()]
+                pnames = [x.context_name() for x in parent_layers.values()]
 
                 for pname in parent_layers:
                     layers = kwargs[pname]
