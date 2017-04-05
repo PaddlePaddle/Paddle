@@ -99,9 +99,9 @@ class Layer(object):
 
         # parse myself.
         ret_val = self.to_proto_impl(**kwargs)
-        if self.context_name() is not None:
-            assert self.context_name() not in context
-            # add myself to context
+
+        if self.context_name() is not None and \
+                        self.context_name() not in context:
             context[self.context_name()] = ret_val
 
         # parse children.
@@ -117,7 +117,10 @@ class Layer(object):
                 continue
             layer.to_proto(context=context)
 
-        return ret_val
+        if self.use_context_name():
+            return context[self.context_name()]
+        else:
+            return context[self.name]
 
     def to_proto_impl(self, **kwargs):
         raise NotImplementedError()
