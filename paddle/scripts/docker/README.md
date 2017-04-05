@@ -83,13 +83,18 @@ docker build -t paddle:dev .
 
 The `docker build` command assumes that `Dockerfile` is in the root source tree.  Note that in this design, this `Dockerfile` is this only one in our repo.
 
+Users can specify a Ubuntu mirror server for faster downloading:
+
+```bash
+docker build -t paddle:dev --build-arg UBUNTU_MIRROR=mirror://mirrors.ubuntu.com/mirrors.txt .
+```
 
 ### Build PaddlePaddle from Source Code
 
 Given the development image `paddle:dev`, the following command builds PaddlePaddle from the source tree on the development computer (host):
 
 ```bash
-docker run -v $PWD:/paddle -e "GPU=OFF" -e "AVX=ON" -e "TEST=ON" paddle:dev
+docker run -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TEST=OFF" -e "RUN_TEST=OFF" paddle:dev
 ```
 
 This command mounts the source directory on the host into `/paddle` in the container, so the default entry point of `paddle:dev`, `build.sh`, could build the source code with possible local changes.  When it writes to `/paddle/build` in the container, it writes to `$PWD/build` on the host indeed.
@@ -100,6 +105,14 @@ This command mounts the source directory on the host into `/paddle` in the conta
 - `$PWD/build/paddle-<version>.deb` for production installation, and
 - `$PWD/build/Dockerfile`, which builds the production Docker image.
 
+Users can specify the following Docker build arguments with either "ON" or "OFF" value:
+- `WITH_GPU`: ***Required***. Generates NVIDIA CUDA GPU code and relies on CUDA libraries.
+- `WITH_AVX`: ***Required***. Set to "OFF" prevents from generating AVX instructions. If you don't know what is AVX, you might want to set "ON".
+- `WITH_TEST`: ***Optional, default OFF***. Build unit tests binaries. Once you've built the unit tests, you can run these test manually by the following command:
+  ```bash
+    docker run -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" paddle:dev sh -c "cd /paddle/build; make coverall"
+  ```
+- `RUN_TEST`: ***Optional, default OFF***. Run unit tests after building. You can't run unit tests without building it.
 
 ### Build the Production Docker Image
 

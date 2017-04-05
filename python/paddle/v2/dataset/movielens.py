@@ -30,6 +30,9 @@ __all__ = [
 
 age_table = [1, 18, 25, 35, 45, 50, 56]
 
+URL = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
+MD5 = 'c4d9eecfca2ab87c1945afe126590906'
+
 
 class MovieInfo(object):
     def __init__(self, index, categories, title):
@@ -77,10 +80,7 @@ USER_INFO = None
 
 
 def __initialize_meta_info__():
-    fn = download(
-        url='http://files.grouplens.org/datasets/movielens/ml-1m.zip',
-        module_name='movielens',
-        md5sum='c4d9eecfca2ab87c1945afe126590906')
+    fn = download(URL, "movielens", MD5)
     global MOVIE_INFO
     if MOVIE_INFO is None:
         pattern = re.compile(r'^(.*)\((\d+)\)$')
@@ -203,6 +203,10 @@ def unittest():
         pass
 
     print train_count, test_count
+
+
+def fetch():
+    download(URL, "movielens", MD5)
 
 
 if __name__ == '__main__':

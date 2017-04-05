@@ -109,6 +109,12 @@ sum_to_one_norm
     :members: sum_to_one_norm
     :noindex:
     
+cross_channel_norm
+------------------
+..  automodule:: paddle.v2.layer
+    :members: cross_channel_norm
+    :noindex:
+    
 Recurrent Layers
 ================
 
