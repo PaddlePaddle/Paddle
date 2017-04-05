@@ -55,6 +55,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.graphviz'
 ]
+mathjax_path="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"
 table_styling_embed_css = True
 
 autodoc_member_order = 'bysource'
