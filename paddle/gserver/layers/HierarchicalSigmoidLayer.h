@@ -36,7 +36,7 @@ namespace paddle {
  * |   |- 5
  * |
  * |-*- 0
- * |- 1
+ *   |- 1
  * @endcode
  *
  * where * indicates an internal node, and each leaf node represents a class.

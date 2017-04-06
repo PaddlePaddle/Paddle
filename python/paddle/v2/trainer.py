@@ -52,6 +52,12 @@ class SGD(object):
         self.__topology__ = topology
         self.__parameters__ = parameters
         self.__topology_in_proto__ = topology.proto()
+
+        # In local mode, disable sparse_remote_update.
+        for param in self.__topology_in_proto__.parameters:
+            if param.sparse_remote_update:
+                param.sparse_remote_update = False
+
         self.__data_types__ = topology.data_type()
         gm = api.GradientMachine.createFromConfigProto(
             self.__topology_in_proto__, api.CREATE_MODE_NORMAL,
