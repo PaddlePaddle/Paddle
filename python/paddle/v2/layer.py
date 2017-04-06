@@ -53,7 +53,7 @@ import data_type
 __all__ = ['parse_network', 'data']
 
 
-def parse_network(*outputs):
+def parse_network(*outputs, **kwargs):
     """
     Parse all output layers and then generate a ModelConfig object.
 
@@ -75,6 +75,11 @@ def parse_network(*outputs):
         """
         context = dict()
         real_output = [each.to_proto(context=context) for each in outputs]
+        extra_layers = kwargs.get('extra_layers', None)
+        if extra_layers is not None:
+            extra_output = [
+                each.to_proto(context=context) for each in extra_layers
+            ]
         conf_helps.outputs(real_output)
 
     return __parse__(__real_func__)
