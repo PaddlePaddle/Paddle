@@ -19,6 +19,7 @@ import paddle.v2.data_type as data_type
 import paddle.v2.layer as layer
 import paddle.v2.pooling as pooling
 import paddle.v2.networks as networks
+import paddle.v2.evaluator as evaluator
 
 pixel = layer.data(name='pixel', type=data_type.dense_vector(128))
 label = layer.data(name='label', type=data_type.integer_value(10))
@@ -260,6 +261,21 @@ class NetworkTests(unittest.TestCase):
         vgg_out = networks.small_vgg(
             input_image=img, num_channels=1, num_classes=2)
         print layer.parse_network(vgg_out)
+
+
+class EvaluatorTest(unittest.TestCase):
+    def test_evaluator(self):
+        img = layer.data(name='pixel', type=data_type.dense_vector(784))
+        output = layer.fc(input=img,
+                          size=10,
+                          act=activation.Softmax(),
+                          name='fc_here')
+        lbl = layer.data(name='label', type=data_type.integer_value(10))
+        cost = layer.cross_entropy_cost(input=output, label=lbl)
+
+        evaluator.classification_error(input=output, label=lbl)
+        print layer.parse_network(cost)
+        print layer.parse_network(output)
 
 
 if __name__ == '__main__':
