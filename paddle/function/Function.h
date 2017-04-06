@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "BufferArg.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/utils/Any.h"
 #include "paddle/utils/ClassRegistrar.h"
 
 namespace paddle {
@@ -25,25 +26,22 @@ namespace paddle {
 /**
  * Function Configuration.
  * The argument type of Function::init.
- * Follow-up will consider moving this data structure to Proto inside.
  */
 class FuncConfig {
 public:
-  union value {
-    size_t s;
-    real r;
-    int i;
-    bool b;
-  };
+  template <typename T>
+  T get(const std::string& key) const {
+    return any_cast<T>(valueMap_[key]);
+  }
 
   template <typename T>
-  T get(const std::string& key) const;
-
-  template <typename T>
-  FuncConfig& set(const std::string& key, T v);
+  FuncConfig& set(const std::string& key, T v) {
+    valueMap_[key] = any(v);
+    return *this;
+  }
 
 protected:
-  std::map<std::string, value> valueMap_;
+  mutable std::unordered_map<std::string, any> valueMap_;
 };
 
 /**
