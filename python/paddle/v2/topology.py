@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import copy
 
 from paddle.proto.ModelConfig_pb2 import ModelConfig
 
@@ -66,10 +67,13 @@ class Topology(object):
         self.layers = layers
         if extra_layers is not None:
             extra_layers = __check__(extra_layers)
-            self.layers.extend(extra_layers)
 
         self.__model_config__ = v2_layer.parse_network(
             *layers, extra_layers=extra_layers)
+
+        if extra_layers is not None:
+            self.layers.extend(extra_layers)
+
         assert isinstance(self.__model_config__, ModelConfig)
 
     def proto(self):
