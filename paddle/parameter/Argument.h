@@ -294,7 +294,7 @@ struct Argument {
   /*
    After pooling with stride n (n is smaller than sequence length),
    a long sequence will be shorten.
-   This function is not suitable for sequence with sub-sequence now.
+   This function is invalid for sequence having sub-sequence.
    */
   void poolSequenceWithStride(const Argument& input,
                               size_t stride,

@@ -589,7 +589,7 @@ void Argument::poolSequenceWithStride(const Argument& input,
     } else {
       int size = ceil((float)seqLength / stride);
       tgtBuf[seqId + 1] = tgtBuf[seqId] + size;
-      for (int i = 0; i < size - 1; i++) {
+      for (int i = 0; i < size - 1; ++i) {
         int cur = reversed ? starts[seqId + 1] - (size - 1 - i) * stride
                            : stridePos.back() + stride;
         stridePos.emplace_back(cur);

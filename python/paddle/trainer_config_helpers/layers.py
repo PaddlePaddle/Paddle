@@ -1347,9 +1347,10 @@ def last_seq(input,
     """
     Get Last Timestamp Activation of a sequence.
 
-    If stride > 0, get last timestamp upon a stride window of sequence. 
-    And a long sequence will be shorten. Note that for sequence with 
-    sub-sequence, stride is default -1 now.
+    If stride > 0, this layer slides a window whose size is determined by stride, 
+    and return the last value of the window as the output. Thus, a long sequence 
+    will be shorten. Note that for sequence with sub-sequence, the default value 
+    of stride is -1.
 
     The simple usage is:
 
@@ -1362,7 +1363,7 @@ def last_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
-    :param stride: parameter of stride window.  
+    :param stride: window size.  
     :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
@@ -1402,9 +1403,10 @@ def first_seq(input,
     """
     Get First Timestamp Activation of a sequence.
 
-    If stride > 0, get first timestamp upon a stride window of sequence,
-    and a long sequence will be shorten. Note that for sequence with 
-    sub-sequence, stride is default -1 now.
+    If stride > 0, this layer slides a window whose size is determined by stride, 
+    and return the first value of the window as the output. Thus, a long sequence 
+    will be shorten. Note that for sequence with sub-sequence, the default value 
+    of stride is -1.
 
     The simple usage is:
 
@@ -1417,7 +1419,7 @@ def first_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
-    :param stride: parameter of stride window.  
+    :param stride: window size.  
     :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.

@@ -26,8 +26,10 @@ namespace paddle {
  * If SequenceLevel = kNonseq:
  *   Output: a sequence containing only the last instance of the input sequence
  *   If stride_ > 0:
- *      Output: a shorten sequence containing several last instances of the
- *              input sequence with stride window.
+ *      Output: a shorten sequence. The operation of getting last instance of a
+ *              sequence is independently performed on every slice of the input
+ *              sequence, which is obtained by sliding a window with the window
+ *              size set to stride_.
  * If SequenceLevel = kSeq:
  *   Check input sequence must has sub-sequence
  *   Output: a sequence containing only the last instance of each sub-sequence
