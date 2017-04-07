@@ -37,6 +37,9 @@ class SGD(object):
     :type cost: paddle.v2.config_base.Layer
     :param parameters: The parameters dictionary.
     :type parameters: paddle.v2.parameters.Parameters
+    :param extra_layers: Some layers in the neural network graph are not
+                         in the path of cost layer.
+    :type extra_layers: paddle.v2.config_base.Layer
     """
 
     def __init__(self, cost, parameters, update_equation, extra_layers=None):

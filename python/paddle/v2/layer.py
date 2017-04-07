@@ -53,20 +53,29 @@ import data_type
 __all__ = ['parse_network', 'data']
 
 
-def parse_network(*outputs, **kwargs):
+def parse_network(output_layers, extra_layers=None):
     """
-    Parse all output layers and then generate a ModelConfig object.
+    Parse all layers in the neural network graph and
+    then generate a ModelConfig object.
 
     ..  note::
 
         This function is used internally in paddle.v2 module. User should never
         invoke this method.
 
-    :param outputs: Output layers.
-    :type outputs: Layer
+    :param output_layers: Output layers.
+    :type output_layers: Layer
+    :param extra_layers: Some layers in the neural network graph are not in the
+                         path of output_layers.
+    :type extra_layers: Layer
     :return: A ModelConfig object instance.
     :rtype: ModelConfig
     """
+    if not isinstance(output_layers, collections.Sequence):
+        output_layers = [output_layers]
+    if extra_layers is not None and not isinstance(extra_layers,
+                                                   collections.Sequence):
+        extra_layers = [extra_layers]
 
     def __real_func__():
         """
@@ -74,8 +83,7 @@ def parse_network(*outputs, **kwargs):
         the plain old paddle configuration function.
         """
         context = dict()
-        real_output = [each.to_proto(context=context) for each in outputs]
-        extra_layers = kwargs.get('extra_layers', None)
+        real_output = [each.to_proto(context=context) for each in output_layers]
         if extra_layers is not None:
             extra_output = [
                 each.to_proto(context=context) for each in extra_layers

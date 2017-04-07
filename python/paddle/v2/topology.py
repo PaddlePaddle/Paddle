@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-import copy
 
 from paddle.proto.ModelConfig_pb2 import ModelConfig
 
@@ -69,7 +68,7 @@ class Topology(object):
             extra_layers = __check__(extra_layers)
 
         self.__model_config__ = v2_layer.parse_network(
-            *layers, extra_layers=extra_layers)
+            layers, extra_layers=extra_layers)
 
         if extra_layers is not None:
             self.layers.extend(extra_layers)
