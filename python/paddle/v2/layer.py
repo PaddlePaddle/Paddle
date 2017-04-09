@@ -325,10 +325,10 @@ class RecurrentLayerInput(WithExtraParent):
             self.__parents__ = []
         else:
             self.__parents__ = parent_layers.values()[0]
-        name = self.__parents__[index].name if index >= 0 else None
+        self.__recurrent_name__ = recurrent_name
+        name = self.__parents__[index].name if index >= 0 else self.context_name()
         super(RecurrentLayerInput, self).__init__(
             name=name, parent_layers=parent_layers)
-        self.__recurrent_name__ = recurrent_name
 
     def context_name(self):
         return self.__recurrent_name__ + ".begin"
@@ -339,10 +339,6 @@ class RecurrentLayerInput(WithExtraParent):
             name=self.__recurrent_name__,
             in_links=map(lambda x: x.name, self.__parents__))
         return self
-
-    def use_context_name(self):
-        return True
-
 
 
 class RecurrentLayerOutput(Layer):
