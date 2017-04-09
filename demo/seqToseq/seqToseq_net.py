@@ -81,8 +81,10 @@ def gru_encoder_decoder(data_conf,
     """
     for k, v in data_conf.iteritems():
         globals()[k] = v
-    source_dict_dim = len(open(src_dict_path, "r").readlines())
-    target_dict_dim = len(open(trg_dict_path, "r").readlines())
+    #source_dict_dim = len(open(src_dict_path, "r").readlines())
+    #target_dict_dim = len(open(trg_dict_path, "r").readlines())
+    source_dict_dim = 1000
+    target_dict_dim = 2000
     gen_trans_file = gen_result
 
     src_word_id = data_layer(name='source_language_word', size=source_dict_dim)
@@ -131,9 +133,8 @@ def gru_encoder_decoder(data_conf,
 
     decoder_group_name = "decoder_group"
     group_inputs = [
-        StaticInput(
-            input=encoded_vector, is_seq=True), StaticInput(
-                input=encoded_proj, is_seq=True)
+        StaticInput(input=encoded_vector, is_seq=True),
+        StaticInput(input=encoded_proj, is_seq=True)
     ]
 
     if not is_generating:

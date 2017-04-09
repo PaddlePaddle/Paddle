@@ -76,6 +76,10 @@ class Layer(object):
         """
         function to set proto attribute
         """
+        print "======"
+        # print self.name
+        print self.__parent_layers__
+        # print self.__context__
         self.__context__ = context
 
         # short cut if myself is parsed before.

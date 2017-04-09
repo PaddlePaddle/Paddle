@@ -135,6 +135,10 @@ class WithExtraParent(Layer):
         """
         function to set proto attribute
         """
+        print "*************"
+        # print context
+        print self.name
+        print self.__extra_parent__
         kwargs = dict()
         for p in self.__extra_parent__:
             p.to_proto(context=context)
@@ -162,11 +166,12 @@ class WithExtraParent(Layer):
 
 
 class MemoryV2(WithExtraParent):
-    def __init__(self, name, **kwargs):
+    def __init__(self, name, extra_input=None, **kwargs):
         self.name = name
         super(MemoryV2, self).__init__(name=name, parent_layers=dict())
         self.__kwargs__ = kwargs
         self.__boot_layer_name__ = None
+
         if 'boot_layer' in kwargs:
             begin_of_current_rnn = []
             # TODO(yuyang18): Fix inspect, it could be wrong when user invoke a
@@ -221,22 +226,6 @@ class MemoryV2(WithExtraParent):
         :return:
         """
         return True
-
-
-class LayerOutputV2(Layer):
-    """
-    LayerOutputV2 is used to store the result of LayerOutput in v1 api.
-    It will not store it's parents because layer_output has been parsed already.
-    """
-
-    def __init__(self, layer_output):
-        assert isinstance(layer_output, conf_helps.LayerOutput)
-        self.layer_output = layer_output
-        super(LayerOutputV2, self).__init__(
-            name=layer_output.name, parent_layers=dict())
-
-    def to_proto_impl(self):
-        return self.layer_output
 
 
 class StaticInputV2(object):
@@ -330,10 +319,15 @@ def mixed(size=0,
 
 class RecurrentLayerInput(WithExtraParent):
     def __init__(self, recurrent_name, index, parent_layers):
-        assert len(parent_layers) == 1
-        self.__parents__ = parent_layers.values()[0]
+        parents_len = len(parent_layers)
+        assert parents_len <= 1
+        if parents_len == 0:
+            self.__parents__ = []
+        else:
+            self.__parents__ = parent_layers.values()[0]
+        name = self.__parents__[index].name if index >= 0 else None
         super(RecurrentLayerInput, self).__init__(
-            name=self.__parents__[index].name, parent_layers=parent_layers)
+            name=name, parent_layers=parent_layers)
         self.__recurrent_name__ = recurrent_name
 
     def context_name(self):
@@ -345,6 +339,10 @@ class RecurrentLayerInput(WithExtraParent):
             name=self.__recurrent_name__,
             in_links=map(lambda x: x.name, self.__parents__))
         return self
+
+    def use_context_name(self):
+        return True
+
 
 
 class RecurrentLayerOutput(Layer):
@@ -428,6 +426,9 @@ def recurrent_group(step, input, name=None):
 
     non_static_inputs = filter(lambda x: not isinstance(x, StaticInputV2),
                                input)
+    static_inputs = filter(lambda x: isinstance(x, StaticInputV2), input)
+    static_inputs = [static_input.input for static_input in static_inputs]
+
     actual_input = [
         RecurrentLayerInput(
             recurrent_name=name,
@@ -436,6 +437,13 @@ def recurrent_group(step, input, name=None):
         for i in xrange(len(non_static_inputs))
     ]
 
+    extra_input = None
+    if len(non_static_inputs) == 0:
+        extra_input = RecurrentLayerInput(
+            recurrent_name=name,
+            index=-1,
+            parent_layers={})
+
     def __real_step__(*args):
         rnn_input = list(args)
         static_inputs = filter(lambda x: isinstance(x, StaticInputV2), input)
@@ -443,6 +451,7 @@ def recurrent_group(step, input, name=None):
             mem_name = "__%s_memory__" % static_input.input.name
             mem = memory(
                 name=mem_name,
+                extra_input=extra_input,
                 is_seq=static_input.is_seq,
                 size=static_input.input.calculate_size,
                 boot_layer=static_input.input)
