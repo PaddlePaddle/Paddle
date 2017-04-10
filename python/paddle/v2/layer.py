@@ -292,7 +292,8 @@ class RecurrentLayerInput(Layer):
         else:
             self.__parents__ = parent_layers.values()[0]
         self.__recurrent_name__ = recurrent_name
-        name = self.__parents__[index].name if index >= 0 else self.context_name()
+        name = self.__parents__[
+            index].name if index >= 0 else self.context_name()
         super(RecurrentLayerInput, self).__init__(
             name=name, parent_layers=parent_layers)
 
@@ -402,9 +403,7 @@ def recurrent_group(step, input, name=None):
     extra_input = None
     if len(non_static_inputs) == 0:
         extra_input = RecurrentLayerInput(
-            recurrent_name=name,
-            index=-1,
-            parent_layers={})
+            recurrent_name=name, index=-1, parent_layers={})
 
     def __real_step__(*args):
         rnn_input = list(args)

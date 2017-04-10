@@ -114,7 +114,8 @@ class Layer(object):
 
         # 4. parse myself and add myself into context.
         ret_val = self.to_proto_impl(context=context, **kwargs)
-        if self.context_name() is not None and self.context_name() not in context:
+        if self.context_name() is not None and self.context_name(
+        ) not in context:
             context[self.context_name()] = ret_val
 
         # 5. parse children that should be pased after this layer.

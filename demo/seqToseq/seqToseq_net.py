@@ -131,8 +131,9 @@ def gru_encoder_decoder(data_conf,
 
     decoder_group_name = "decoder_group"
     group_inputs = [
-        StaticInput(input=encoded_vector, is_seq=True),
-        StaticInput(input=encoded_proj, is_seq=True)
+        StaticInput(
+            input=encoded_vector, is_seq=True), StaticInput(
+                input=encoded_proj, is_seq=True)
     ]
 
     if not is_generating:
