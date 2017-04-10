@@ -119,37 +119,7 @@ class DataLayerV2(Layer):
         return doc
 
 
-class WithExtraParent(Layer):
-    def extra_parent(self):
-        return self.__extra_parent__
-
-    def __init__(self, name=None, parent_layers=None):
-        self.__extra_parent__ = []
-        super(WithExtraParent, self).__init__(
-            name=name, parent_layers=parent_layers)
-
-    def append_extra_parent(self, parent):
-        self.__extra_parent__.append(parent)
-
-    def to_proto(self, context):
-        """
-        function to set proto attribute
-        """
-        # short cut if myself is parsed before.
-        if self.context_name() in context:
-            if self.use_context_name():
-                return context[self.context_name()]
-            else:
-                return context[self.name]
-
-        # parse extra_parent
-        for p in self.__extra_parent__:
-            p.to_proto(context=context)
-
-        return super(WithExtraParent, self).to_proto(context=context)
-
-
-class MemoryV2(WithExtraParent):
+class MemoryV2(Layer):
     def __init__(self, name, extra_input=None, **kwargs):
         self.name = name
         super(MemoryV2, self).__init__(name=name, parent_layers=dict())
@@ -178,11 +148,10 @@ class MemoryV2(WithExtraParent):
             assert begin_of_current_rnn is not None
             for extra in begin_of_current_rnn:
                 self.append_extra_parent(extra)
-                assert isinstance(extra, WithExtraParent)
                 extra.append_extra_parent(kwargs['boot_layer'])
                 self.__boot_layer_name__ = kwargs['boot_layer'].name
 
-    def to_proto_impl(self, context, **kwargs):
+    def to_proto_impl(self, context=None, **kwargs):
         args = dict()
         for each in kwargs:
             args[each] = kwargs[each]
@@ -301,7 +270,7 @@ def mixed(size=0,
     return MixedLayerV2(size, input, name, act, bias_attr, layer_attr)
 
 
-class RecurrentLayerInput(WithExtraParent):
+class RecurrentLayerInput(Layer):
     def __init__(self, recurrent_name, index, parent_layers):
         parents_len = len(parent_layers)
         assert parents_len <= 1
@@ -317,7 +286,7 @@ class RecurrentLayerInput(WithExtraParent):
     def context_name(self):
         return self.__recurrent_name__ + ".begin"
 
-    def to_proto_impl(self, context, **kwargs):
+    def to_proto_impl(self, context=None, **kwargs):
         model_type('recurrent_nn')
         RecurrentLayerGroupWithoutOutLinksBegin(
             name=self.__recurrent_name__,
