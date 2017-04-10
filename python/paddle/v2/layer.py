@@ -389,9 +389,6 @@ def recurrent_group(step, input, name=None):
 
     non_static_inputs = filter(lambda x: not isinstance(x, StaticInputV2),
                                input)
-    static_inputs = filter(lambda x: isinstance(x, StaticInputV2), input)
-    static_inputs = [static_input.input for static_input in static_inputs]
-
     actual_input = [
         RecurrentLayerInput(
             recurrent_name=name,
