@@ -159,7 +159,8 @@ class Parameters(object):
         if not self.has_key(key):
             raise ValueError("No such parameter %s" % key)
         conf = self.__param_conf__[key]
-        return tuple(map(int, conf.dims))
+        dims = conf.dims if conf.dims else (1, conf.size)
+        return tuple(map(int, dims))
 
     def __setitem__(self, key, value):
         """
