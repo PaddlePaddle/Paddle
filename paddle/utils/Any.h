@@ -20,6 +20,7 @@ namespace paddle {
 // using std::any for C++ 17
 using std::any;
 using std::any_cast;
+using std::bad_any_cast;
 }  // namespace paddle
 
 #else
@@ -29,5 +30,6 @@ namespace paddle {
 // use linb::any for C++ 11
 using linb::any;
 using linb::any_cast;
+using linb::bad_any_cast;
 }  // namespace paddle
 #endif

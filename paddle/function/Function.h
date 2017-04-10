@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/math/Matrix.h"
 #include "paddle/utils/Any.h"
 #include "paddle/utils/ClassRegistrar.h"
+#include "paddle/utils/Error.h"
 
 namespace paddle {
 
@@ -30,12 +31,30 @@ namespace paddle {
 class FuncConfig {
 public:
   template <typename T>
-  T get(const std::string& key) const {
-    return any_cast<T>(valueMap_[key]);
+  T get(const std::string& key, Error* err = nullptr) const {
+    try {
+      return any_cast<T>(valueMap_.at(key));
+    } catch (std::exception& e) {  // could be cast or out of range exception.
+      if (err) {
+        *err = Error(e.what());
+      } else {
+        LOG(FATAL) << "Cannot get key " << key << "with error " << e.what();
+      }
+      return T();
+    }
   }
 
   template <typename T>
-  FuncConfig& set(const std::string& key, T v) {
+  FuncConfig& set(const std::string& key, T v, Error* err = nullptr) {
+    auto it = valueMap_.find(key);
+    if (it != valueMap_.end()) {  // already contains key.
+      if (err) {
+        *err = Error("Key %s is already set in FuncConfig", key.c_str());
+      } else {
+        LOG(FATAL) << "Key " << key << " is already set in FuncConfig.";
+      }
+      return *this;
+    }
     valueMap_[key] = any(v);
     return *this;
   }
