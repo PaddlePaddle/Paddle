@@ -36,12 +36,9 @@ bool PadLayer::init(const LayerMap& layerMap,
   CHECK_EQ(2, pad_conf.pad_c_size());
   CHECK_EQ(2, pad_conf.pad_h_size());
   CHECK_EQ(2, pad_conf.pad_w_size());
-  padc_.push_back(pad_conf.pad_c(0));
-  padc_.push_back(pad_conf.pad_c(1));
-  padh_.push_back(pad_conf.pad_h(0));
-  padh_.push_back(pad_conf.pad_h(1));
-  padw_.push_back(pad_conf.pad_w(0));
-  padw_.push_back(pad_conf.pad_w(1));
+  padc_ = {pad_conf.pad_c(0), pad_conf.pad_c(1)};
+  padh_ = {pad_conf.pad_h(0), pad_conf.pad_h(1)};
+  padw_ = {pad_conf.pad_w(0), pad_conf.pad_w(1)};
 
   outDims_ = TensorShape(4);
   setOutDims(0);
@@ -49,21 +46,15 @@ bool PadLayer::init(const LayerMap& layerMap,
   createFunction(forward_,
                  "Pad",
                  FuncConfig()
-                     .set("cstart", padc_[0])
-                     .set("cend", padc_[1])
-                     .set("hstart", padh_[0])
-                     .set("hend", padh_[1])
-                     .set("wstart", padw_[0])
-                     .set("wend", padw_[1]));
+                     .set("channel", padc_)
+                     .set("height", padh_)
+                     .set("width", padw_));
   createFunction(backward_,
                  "PadGrad",
                  FuncConfig()
-                     .set("cstart", padc_[0])
-                     .set("cend", padc_[1])
-                     .set("hstart", padh_[0])
-                     .set("hend", padh_[1])
-                     .set("wstart", padw_[0])
-                     .set("wend", padw_[1]));
+                     .set("channel", padc_)
+                     .set("height", padh_)
+                     .set("width", padw_));
 
   return true;
 }

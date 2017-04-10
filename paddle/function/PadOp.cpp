@@ -25,9 +25,9 @@ void Pad<DEVICE_TYPE_CPU>(real* outputs,
                           const int inH,
                           const int inW,
                           const PadConf& pad) {
-  int cstart = pad.channelStart, cend = pad.channelEnd;
-  int hstart = pad.heightStart, hend = pad.heightEnd;
-  int wstart = pad.widthStart, wend = pad.widthEnd;
+  int cstart = pad.channel[0], cend = pad.channel[1];
+  int hstart = pad.height[0], hend = pad.height[1];
+  int wstart = pad.width[0], wend = pad.width[1];
   int outC = inC + cstart + cend;
   int outH = inH + hstart + hend;
   int outW = inW + wstart + wend;
@@ -51,9 +51,9 @@ void PadGrad<DEVICE_TYPE_CPU>(real* inGrad,
                               const int inH,
                               const int inW,
                               const PadConf& pad) {
-  int cstart = pad.channelStart, cend = pad.channelEnd;
-  int hstart = pad.heightStart, hend = pad.heightEnd;
-  int wstart = pad.widthStart, wend = pad.widthEnd;
+  int cstart = pad.channel[0], cend = pad.channel[1];
+  int hstart = pad.height[0], hend = pad.height[1];
+  int wstart = pad.width[0], wend = pad.width[1];
   int outC = inC + cstart + cend;
   int outH = inH + hstart + hend;
   int outW = inW + wstart + wend;
@@ -69,6 +69,12 @@ void PadGrad<DEVICE_TYPE_CPU>(real* inGrad,
       }
     }
   }
+}
+
+static inline PadConf castToPadConf(const FuncConfig& conf) {
+  return {conf.get<std::vector<uint32_t>>("channel"),
+          conf.get<std::vector<uint32_t>>("height"),
+          conf.get<std::vector<uint32_t>>("width")};
 }
 
 /**
@@ -127,14 +133,7 @@ void PadGrad<DEVICE_TYPE_CPU>(real* inGrad,
 template <DeviceType Device>
 class PadFunc : public FunctionBase {
 public:
-  void init(const FuncConfig& config) override {
-    pad_.channelStart = config.get<int>("cstart");
-    pad_.channelEnd = config.get<int>("cend");
-    pad_.heightStart = config.get<int>("hstart");
-    pad_.heightEnd = config.get<int>("hend");
-    pad_.widthStart = config.get<int>("wstart");
-    pad_.widthEnd = config.get<int>("wend");
-  }
+  void init(const FuncConfig& config) override { pad_ = castToPadConf(config); }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(1UL, inputs.size());
@@ -175,14 +174,7 @@ private:
 template <DeviceType Device>
 class PadGradFunc : public FunctionBase {
 public:
-  void init(const FuncConfig& config) override {
-    pad_.channelStart = config.get<int>("cstart");
-    pad_.channelEnd = config.get<int>("cend");
-    pad_.heightStart = config.get<int>("hstart");
-    pad_.heightEnd = config.get<int>("hend");
-    pad_.widthStart = config.get<int>("wstart");
-    pad_.widthEnd = config.get<int>("wend");
-  }
+  void init(const FuncConfig& config) override { pad_ = castToPadConf(config); }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(1UL, inputs.size());
