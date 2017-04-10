@@ -4140,6 +4140,7 @@ A fast and simple algorithm for training neural probabilistic language models.</
 <li><strong>label</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; label layer</li>
 <li><strong>weight</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; weight layer, can be None(default)</li>
 <li><strong>num_classes</strong> (<em>int</em>) &#8211; number of classes.</li>
+<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation, default is Sigmoid.</li>
 <li><strong>num_neg_samples</strong> (<em>int</em>) &#8211; number of negative samples. Default is 10.</li>
 <li><strong>neg_distribution</strong> (<em>list|tuple|collections.Sequence|None</em>) &#8211; The distribution for generating the random negative labels.
 A uniform distribution will be used if not provided.
