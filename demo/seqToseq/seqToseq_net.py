@@ -81,10 +81,8 @@ def gru_encoder_decoder(data_conf,
     """
     for k, v in data_conf.iteritems():
         globals()[k] = v
-    #source_dict_dim = len(open(src_dict_path, "r").readlines())
-    #target_dict_dim = len(open(trg_dict_path, "r").readlines())
-    source_dict_dim = 1000
-    target_dict_dim = 2000
+    source_dict_dim = len(open(src_dict_path, "r").readlines())
+    target_dict_dim = len(open(trg_dict_path, "r").readlines())
     gen_trans_file = gen_result
 
     src_word_id = data_layer(name='source_language_word', size=source_dict_dim)
