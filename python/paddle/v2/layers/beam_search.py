@@ -48,7 +48,7 @@ class RecurrentLayerGroupSetGeneratorV2(Layer):
         super(RecurrentLayerGroupSetGeneratorV2, self).__init__(
             name=eos_name, parent_layers={})
 
-    def to_proto_impl(self, **kwargs):
+    def to_proto_impl(self, context=None, **kwargs):
         RecurrentLayerGroupSetGenerator(
             Generator(
                 eos_layer_name=self.eos_name,

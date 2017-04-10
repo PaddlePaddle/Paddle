@@ -1,6 +1,6 @@
 import sys
 import paddle.v2 as paddle
-import paddle.v2.layer.beam_search as beam_search
+import paddle.v2.layers.beam_search as beam_search
 
 
 def seqToseq_net(source_dict_dim, target_dict_dim, is_generating):
@@ -138,7 +138,7 @@ def main():
     source_dict_dim = target_dict_dim = dict_size
 
     # define network topology
-    cost = seqToseq_net(source_dict_dim, target_dict_dim)
+    cost = seqToseq_net(source_dict_dim, target_dict_dim, False)
     parameters = paddle.parameters.create(cost)
 
     # define optimize method and trainer

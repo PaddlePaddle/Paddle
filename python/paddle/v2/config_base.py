@@ -98,10 +98,8 @@ class Layer(object):
             kwargs[layer_name] = v1_layer
 
         # parse myself.
-        ret_val = self.to_proto_impl(**kwargs)
-
-        if self.context_name() is not None and \
-                        self.context_name() not in context:
+        ret_val = self.to_proto_impl(context=context, **kwargs)
+        if self.context_name() is not None and self.context_name() not in context:
             context[self.context_name()] = ret_val
 
         # parse children.
@@ -124,7 +122,7 @@ class Layer(object):
         else:
             return context[self.name]
 
-    def to_proto_impl(self, **kwargs):
+    def to_proto_impl(self, context=None, **kwargs):
         raise NotImplementedError()
 
     def context_name(self):
@@ -188,7 +186,7 @@ def __convert_to_v2__(method_name,
         if wrapper is not None:
             __init__ = wrapper(__init__)
 
-        def to_proto_impl(self, **kwargs):
+        def to_proto_impl(self, context=None, **kwargs):
             args = dict()
             for each in kwargs:
                 args[each] = kwargs[each]
