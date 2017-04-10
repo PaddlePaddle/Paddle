@@ -1,6 +1,6 @@
 import sys
+
 import paddle.v2 as paddle
-import paddle.v2.layers.beam_search as beam_search
 
 
 def seqToseq_net(source_dict_dim, target_dict_dim, is_generating):
@@ -106,13 +106,13 @@ def seqToseq_net(source_dict_dim, target_dict_dim, is_generating):
         # GeneratedInputs, which is initialized by a start mark, such as <s>,
         # and must be included in generation.
 
-        trg_embedding = beam_search.GeneratedInputV2(
+        trg_embedding = paddle.layer.GeneratedInputV2(
             size=target_dict_dim,
             embedding_name='_target_language_embedding',
             embedding_size=word_vector_dim)
         group_inputs.append(trg_embedding)
 
-        beam_gen = beam_search.beam_search(
+        beam_gen = paddle.layer.beam_search(
             name=decoder_group_name,
             step=gru_decoder_with_attention,
             input=group_inputs,

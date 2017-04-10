@@ -87,19 +87,19 @@ class Layer(object):
         """
         self.__context__ = context
 
-        # 1. short cut if this layer is parsed before.
+        # STEP: short cut if this layer is parsed before.
         if self.context_name() in context:
             if self.use_context_name():
                 return context[self.context_name()]
             else:
                 return context[self.name]
 
-        # 2. parse extra_parent that is not used by this layer but must
+        # STEP: parse extra_parent that is not used by this layer but must
         # be parsed before this layer.
         for p in self.__extra_parent__:
             p.to_proto(context=context)
 
-        # 3. parse parent that is used by this layer, get the result and
+        # STEP: parse parent that is used by this layer, get the result and
         # insert into kwargs of the next layer's to_proto_impl method.
         kwargs = dict()
         for layer_name in self.__parent_layers__:
@@ -112,13 +112,13 @@ class Layer(object):
                                self.__parent_layers__[layer_name])
             kwargs[layer_name] = v1_layer
 
-        # 4. parse myself and add myself into context.
-        ret_val = self.to_proto_impl(context=context, **kwargs)
-        if self.context_name() is not None and self.context_name(
-        ) not in context:
+        # STEP: parse myself and add myself into context.
+        ret_val = self.to_proto_impl(**kwargs)
+        if self.context_name() is not None \
+                and self.context_name() not in context:
             context[self.context_name()] = ret_val
 
-        # 5. parse children that should be pased after this layer.
+        # STEP: parse children that should be pased after this layer.
         for layer, pnames in self.__children_layers__:
             drop = False
 
@@ -131,7 +131,7 @@ class Layer(object):
                 continue
             layer.to_proto(context=context)
 
-        # 6. return v1 layer result.g
+        # STEP: return v1 layer result
         if self.context_name() is None:
             return ret_val
         elif self.use_context_name():
@@ -139,7 +139,7 @@ class Layer(object):
         else:
             return context[self.name]
 
-    def to_proto_impl(self, context=None, **kwargs):
+    def to_proto_impl(self, **kwargs):
         raise NotImplementedError()
 
     def context_name(self):
@@ -203,7 +203,7 @@ def __convert_to_v2__(method_name,
         if wrapper is not None:
             __init__ = wrapper(__init__)
 
-        def to_proto_impl(self, context=None, **kwargs):
+        def to_proto_impl(self, **kwargs):
             args = dict()
             for each in kwargs:
                 args[each] = kwargs[each]
