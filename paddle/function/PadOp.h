@@ -19,18 +19,12 @@ limitations under the License. */
 namespace paddle {
 
 struct PadConf {
-  /// how many values to add before the data along channel dimension.
-  int channelStart;
-  /// how many values to add after the data along channel dimension.
-  int channelEnd;
-  /// how many values to add before the data along height dimension.
-  int heightStart;
-  /// how many values to add after the data along height dimension.
-  int heightEnd;
-  /// how many values to add before the data along width dimension.
-  int widthStart;
-  /// how many values to add after the data along width dimension.
-  int widthEnd;
+  /// how many values to add before/after the data along channel dimension.
+  std::vector<uint32_t> channel;
+  /// how many values to add before/after the data along height dimension.
+  std::vector<uint32_t> height;
+  /// how many values to add before/after the data along width dimension.
+  std::vector<uint32_t> width;
 };
 
 /**

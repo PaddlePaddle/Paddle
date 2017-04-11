@@ -18,7 +18,7 @@ import inspect
 
 from paddle.trainer.config_parser import *
 from .activations import LinearActivation, SigmoidActivation, TanhActivation, \
-    ReluActivation, IdentityActivation, SoftmaxActivation
+    ReluActivation, IdentityActivation, SoftmaxActivation, BaseActivation
 from .evaluators import *
 from .poolings import MaxPooling, AvgPooling, BasePoolingType
 from .attrs import *
@@ -2277,8 +2277,9 @@ def img_pool_layer(input,
         pool_type.name = 'avg'
 
     type_name = pool_type.name + '-projection' \
-      if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
-      else pool_type.name
+        if (
+    isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
+        else pool_type.name
 
     pool_size_y = pool_size if pool_size_y is None else pool_size_y
     stride_y = stride if stride_y is None else stride_y
@@ -3318,8 +3319,8 @@ def recurrent_group(step,
 
     assert (targetInlink == None or targetInlink_in_inlinks())
     targetInlinkName = None if targetInlink == None \
-                            else targetInlink.name if isinstance(targetInlink, LayerOutput) \
-                                                   else targetInlink.input.name
+        else targetInlink.name if isinstance(targetInlink, LayerOutput) \
+        else targetInlink.input.name
 
     contains_sub_seq = [False]
 
@@ -4831,12 +4832,14 @@ def crf_decoding_layer(input,
     return LayerOutput(name, LayerType.CRF_DECODING_LAYER, parents, size=1)
 
 
+@wrap_act_default(act=SigmoidActivation())
 @wrap_bias_attr_default(has_bias=True)
 @wrap_name_default()
 @layer_support()
 def nce_layer(input,
               label,
               num_classes,
+              act=None,
               weight=None,
               num_neg_samples=10,
               neg_distribution=None,
@@ -4865,6 +4868,8 @@ def nce_layer(input,
     :type weight: LayerOutput
     :param num_classes: number of classes.
     :type num_classes: int
+    :param act: Activation, default is Sigmoid.
+    :type act: BaseActivation
     :param num_neg_samples: number of negative samples. Default is 10.
     :type num_neg_samples: int
     :param neg_distribution: The distribution for generating the random negative labels.
@@ -4887,6 +4892,8 @@ def nce_layer(input,
         assert isinstance(neg_distribution, collections.Sequence)
         assert len(neg_distribution) == num_classes
         assert sum(neg_distribution) == 1
+    if not isinstance(act, BaseActivation):
+        raise TypeError()
 
     ipts_for_layer = []
     parents = []
@@ -4908,12 +4915,17 @@ def nce_layer(input,
         type=LayerType.NCE_LAYER,
         num_classes=num_classes,
         neg_sampling_dist=neg_distribution,
+        active_type=act.name,
         num_neg_samples=num_neg_samples,
         inputs=ipts_for_layer,
         bias=ParamAttr.to_bias(bias_attr),
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
-        name, LayerType.NCE_LAYER, parents=parents, size=l.config.size)
+        name,
+        LayerType.NCE_LAYER,
+        parents=parents,
+        size=l.config.size,
+        activation=act)
 
 
 """

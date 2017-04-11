@@ -33,40 +33,52 @@ The primary usage shows below.
 
 import collections
 import inspect
-from config_base import Layer, __convert_to_v2__
+import re
+
 import paddle.trainer_config_helpers as conf_helps
+from paddle.trainer.config_parser import \
+    RecurrentLayerGroupWithoutOutLinksBegin, RecurrentLayerGroupSetOutLink, \
+    RecurrentLayerGroupEnd, model_type
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
 from paddle.trainer_config_helpers.default_decorators import wrap_act_default
 from paddle.trainer_config_helpers.default_decorators import \
     wrap_bias_attr_default
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
+from paddle.trainer_config_helpers.layers import RecurrentLayerGroupSetGenerator, Generator
 from paddle.trainer_config_helpers.layers import layer_support
-from paddle.trainer.config_parser import \
-    RecurrentLayerGroupWithoutOutLinksBegin, RecurrentLayerGroupSetOutLink, \
-    RecurrentLayerGroupEnd, model_type
 
 import activation
-import re
+import attr
 import data_type
+from config_base import Layer, __convert_to_v2__
 
 __all__ = ['parse_network', 'data']
 
 
-def parse_network(*outputs):
+def parse_network(output_layers, extra_layers=None):
     """
-    Parse all output layers and then generate a ModelConfig object.
+    Parse all layers in the neural network graph and
+    then generate a ModelConfig object.
 
     ..  note::
 
         This function is used internally in paddle.v2 module. User should never
         invoke this method.
 
-    :param outputs: Output layers.
-    :type outputs: Layer
+    :param output_layers: Output layers.
+    :type output_layers: Layer
+    :param extra_layers: Some layers in the neural network graph are not in the
+                         path of output_layers.
+    :type extra_layers: Layer
     :return: A ModelConfig object instance.
     :rtype: ModelConfig
     """
+    if not isinstance(output_layers, collections.Sequence):
+        output_layers = [output_layers]
+    if extra_layers is not None and not isinstance(extra_layers,
+                                                   collections.Sequence):
+        extra_layers = [extra_layers]
 
     def __real_func__():
         """
@@ -74,7 +86,11 @@ def parse_network(*outputs):
         the plain old paddle configuration function.
         """
         context = dict()
-        real_output = [each.to_proto(context=context) for each in outputs]
+        real_output = [each.to_proto(context=context) for each in output_layers]
+        if extra_layers is not None:
+            extra_output = [
+                each.to_proto(context=context) for each in extra_layers
+            ]
         conf_helps.outputs(real_output)
 
     return __parse__(__real_func__)
@@ -119,54 +135,23 @@ class DataLayerV2(Layer):
         return doc
 
 
-class WithExtraParent(Layer):
-    def extra_parent(self):
-        return self.__extra_parent__
-
-    def __init__(self, name=None, parent_layers=None):
-        self.__extra_parent__ = []
-        super(WithExtraParent, self).__init__(
-            name=name, parent_layers=parent_layers)
-
-    def append_extra_parent(self, parent):
-        self.__extra_parent__.append(parent)
-
-    def to_proto(self, context):
+class MemoryV2(Layer):
+    def __init__(self, name, extra_input=None, **kwargs):
         """
-        function to set proto attribute
+        Init memory object, if memory is inited inside recurrent_group step
+        function, it may depend on a boot_layer that should be initialized
+        outside recurrent_group, so we:
+            1. add RecurrentLayerInput to extra_parent of self.
+            2. add boot_layer to the extra_parent of RecurrentLayerInput.
+
+        :param extra_input: list of RecurrentLayerInput
+        :type extra_input: [RecurrentLayerInput]
         """
-        kwargs = dict()
-        for p in self.__extra_parent__:
-            p.to_proto(context=context)
-
-        for layer_name in self.__parent_layers__:
-            if not isinstance(self.__parent_layers__[layer_name],
-                              collections.Sequence):
-                v1_layer = self.__parent_layers__[layer_name].to_proto(
-                    context=context)
-            else:
-                v1_layer = map(lambda x: x.to_proto(context=context),
-                               self.__parent_layers__[layer_name])
-            kwargs[layer_name] = v1_layer
-
-        if self.context_name() is None:
-            return self.to_proto_impl(context=context, **kwargs)
-        elif self.context_name() not in context:
-            context[self.context_name()] = self.to_proto_impl(
-                context=context, **kwargs)
-
-        if self.use_context_name():
-            return context[self.context_name()]
-        else:
-            return context[self.name]
-
-
-class MemoryV2(WithExtraParent):
-    def __init__(self, name, **kwargs):
         self.name = name
         super(MemoryV2, self).__init__(name=name, parent_layers=dict())
         self.__kwargs__ = kwargs
         self.__boot_layer_name__ = None
+
         if 'boot_layer' in kwargs:
             begin_of_current_rnn = []
             # TODO(yuyang18): Fix inspect, it could be wrong when user invoke a
@@ -189,11 +174,10 @@ class MemoryV2(WithExtraParent):
             assert begin_of_current_rnn is not None
             for extra in begin_of_current_rnn:
                 self.append_extra_parent(extra)
-                assert isinstance(extra, WithExtraParent)
                 extra.append_extra_parent(kwargs['boot_layer'])
                 self.__boot_layer_name__ = kwargs['boot_layer'].name
 
-    def to_proto_impl(self, context, **kwargs):
+    def to_proto_impl(self, **kwargs):
         args = dict()
         for each in kwargs:
             args[each] = kwargs[each]
@@ -201,7 +185,7 @@ class MemoryV2(WithExtraParent):
             args[each] = self.__kwargs__[each]
 
         if self.__boot_layer_name__ is not None:
-            args['boot_layer'] = context[self.__boot_layer_name__]
+            args['boot_layer'] = self.__context__[self.__boot_layer_name__]
 
         size = args.get('size', None)
         if size is not None:
@@ -223,22 +207,6 @@ class MemoryV2(WithExtraParent):
         return True
 
 
-class LayerOutputV2(Layer):
-    """
-    LayerOutputV2 is used to store the result of LayerOutput in v1 api.
-    It will not store it's parents because layer_output has been parsed already.
-    """
-
-    def __init__(self, layer_output):
-        assert isinstance(layer_output, conf_helps.LayerOutput)
-        self.layer_output = layer_output
-        super(LayerOutputV2, self).__init__(
-            name=layer_output.name, parent_layers=dict())
-
-    def to_proto_impl(self):
-        return self.layer_output
-
-
 class StaticInputV2(object):
     def __init__(self, input, is_seq=False, size=None):
         assert isinstance(input, LayerV2)
@@ -248,6 +216,66 @@ class StaticInputV2(object):
         self.size = size
         # TODO(add size check)
         # assert input.size is not None or size is not None
+
+
+class BaseGeneratedInputV2(object):
+    def __init__(self):
+        self.bos_id = None
+        self.eos_id = None
+
+    def before_real_step(self):
+        raise NotImplementedError()
+
+    def after_real_step(self, *args):
+        raise NotImplementedError()
+
+
+class GeneratedInputV2(BaseGeneratedInputV2):
+    def __init__(self, size, embedding_name, embedding_size):
+        super(GeneratedInputV2, self).__init__()
+        self.size = size
+        self.embedding_name = embedding_name
+        self.embedding_size = embedding_size
+
+    def after_real_step(self, input):
+        return max_id(input=input, name='__beam_search_predict__')
+
+    def before_real_step(self):
+        predict_id = memory(
+            name='__beam_search_predict__',
+            size=self.size,
+            boot_with_const_id=self.bos_id)
+
+        trg_emb = embedding(
+            input=predict_id,
+            size=self.embedding_size,
+            param_attr=attr.ParamAttr(name=self.embedding_name))
+        return trg_emb
+
+
+class RecurrentLayerGroupSetGeneratorV2(Layer):
+    def __init__(self, eos_name, max_length, beam_size, num_results_per_sample):
+        self.eos_name = eos_name
+        self.max_length = max_length
+        self.beam_size = beam_size
+        self.num_results_per_sample = num_results_per_sample
+        super(RecurrentLayerGroupSetGeneratorV2, self).__init__(
+            name=eos_name, parent_layers={})
+
+    def to_proto_impl(self, **kwargs):
+        RecurrentLayerGroupSetGenerator(
+            Generator(
+                eos_layer_name=self.eos_name,
+                max_num_frames=self.max_length,
+                beam_size=self.beam_size,
+                num_results_per_sample=self.num_results_per_sample))
+        return self
+
+    def context_name(self):
+        return self.eos_name + ".fake"
+
+    def use_context_name(self):
+        return True
 
 
 class MixedLayerV2(Layer):
@@ -328,18 +356,24 @@ def mixed(size=0,
     return MixedLayerV2(size, input, name, act, bias_attr, layer_attr)
 
 
-class RecurrentLayerInput(WithExtraParent):
+class RecurrentLayerInput(Layer):
     def __init__(self, recurrent_name, index, parent_layers):
-        assert len(parent_layers) == 1
-        self.__parents__ = parent_layers.values()[0]
-        super(RecurrentLayerInput, self).__init__(
-            name=self.__parents__[index].name, parent_layers=parent_layers)
+        parents_len = len(parent_layers)
+        assert parents_len <= 1
+        if parents_len == 0:
+            self.__parents__ = []
+        else:
+            self.__parents__ = parent_layers.values()[0]
         self.__recurrent_name__ = recurrent_name
+        name = self.__parents__[
+            index].name if index >= 0 else self.context_name()
+        super(RecurrentLayerInput, self).__init__(
+            name=name, parent_layers=parent_layers)
 
     def context_name(self):
         return self.__recurrent_name__ + ".begin"
 
-    def to_proto_impl(self, context, **kwargs):
+    def to_proto_impl(self, **kwargs):
         model_type('recurrent_nn')
         RecurrentLayerGroupWithoutOutLinksBegin(
             name=self.__recurrent_name__,
@@ -436,6 +470,11 @@ def recurrent_group(step, input, name=None):
         for i in xrange(len(non_static_inputs))
     ]
 
+    extra_input = None
+    if len(non_static_inputs) == 0:
+        extra_input = RecurrentLayerInput(
+            recurrent_name=name, index=-1, parent_layers={})
+
     def __real_step__(*args):
         rnn_input = list(args)
         static_inputs = filter(lambda x: isinstance(x, StaticInputV2), input)
@@ -443,6 +482,7 @@ def recurrent_group(step, input, name=None):
             mem_name = "__%s_memory__" % static_input.input.name
             mem = memory(
                 name=mem_name,
+                extra_input=extra_input,
                 is_seq=static_input.is_seq,
                 size=static_input.input.calculate_size,
                 boot_layer=static_input.input)
@@ -470,6 +510,73 @@ def recurrent_group(step, input, name=None):
         return retv[0]
     else:
         return retv
+
+
+@wrap_name_default()
+def beam_search(step,
+                input,
+                bos_id,
+                eos_id,
+                beam_size,
+                max_length=500,
+                name=None,
+                num_results_per_sample=None):
+    if num_results_per_sample is None:
+        num_results_per_sample = beam_size
+    assert num_results_per_sample <= beam_size
+    # logger.warning("num_results_per_sample should be less than beam_size")
+
+    if isinstance(input, StaticInputV2) or isinstance(input,
+                                                      BaseGeneratedInputV2):
+        input = [input]
+
+    generated_input_index = -1
+
+    real_input = []
+    for i, each_input in enumerate(input):
+        assert isinstance(each_input, StaticInputV2) or isinstance(
+            each_input, BaseGeneratedInputV2)
+        if isinstance(each_input, BaseGeneratedInputV2):
+            assert generated_input_index == -1
+            generated_input_index = i
+        else:
+            real_input.append(each_input)
+
+    assert generated_input_index != -1
+
+    gipt = input[generated_input_index]
+    assert isinstance(gipt, BaseGeneratedInputV2)
+
+    gipt.bos_id = bos_id
+    gipt.eos_id = eos_id
+
+    def __real_step__(*args):
+        eos_name = "__%s_eos_layer__" % name
+        generator = RecurrentLayerGroupSetGeneratorV2(
+            eos_name, max_length, beam_size, num_results_per_sample)
+
+        args = list(args)
+        before_step_layer = gipt.before_real_step()
+        before_step_layer.append_child(
+            layer=generator, parent_names=[before_step_layer.name])
+        args.insert(generated_input_index, before_step_layer)
+
+        predict = gipt.after_real_step(step(*args))
+
+        eos_layer = eos(input=predict, eos_id=eos_id, name=eos_name)
+        predict.append_child(layer=eos_layer, parent_names=[predict.name])
+
+        return predict
+
+    # tmp = paddle.layer.recurrent_group(
+    #     step=__real_step__,
+    #     input=real_input,
+    #     reverse=False,
+    #     name=name,
+    #     is_generating=True)
+    tmp = recurrent_group(step=__real_step__, input=real_input, name=name)
+
+    return tmp
 
 
 __projection_names__ = filter(lambda x: x.endswith('_projection'),
