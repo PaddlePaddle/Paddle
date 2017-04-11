@@ -526,8 +526,8 @@ def beam_search(step,
     assert num_results_per_sample <= beam_size
     # logger.warning("num_results_per_sample should be less than beam_size")
 
-    if isinstance(input, StaticInputV2) or isinstance(
-            input, BaseGeneratedInputV2):
+    if isinstance(input, StaticInputV2) or isinstance(input,
+                                                      BaseGeneratedInputV2):
         input = [input]
 
     generated_input_index = -1
@@ -574,8 +574,7 @@ def beam_search(step,
     #     reverse=False,
     #     name=name,
     #     is_generating=True)
-    tmp = recurrent_group(
-        step=__real_step__, input=real_input, name=name)
+    tmp = recurrent_group(step=__real_step__, input=real_input, name=name)
 
     return tmp
 

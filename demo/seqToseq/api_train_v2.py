@@ -3,7 +3,7 @@ import sys
 import paddle.v2 as paddle
 
 
-def seqToseq_net(source_dict_dim, target_dict_dim, is_generating):
+def seqToseq_net(source_dict_dim, target_dict_dim, is_generating=False):
     ### Network Architecture
     word_vector_dim = 512  # dimension of word vector
     decoder_size = 512  # dimension of hidden unit in GRU Decoder network
@@ -120,13 +120,7 @@ def seqToseq_net(source_dict_dim, target_dict_dim, is_generating):
             eos_id=1,
             beam_size=beam_size,
             max_length=max_length)
-        #
-        # seqtext_printer_evaluator(
-        #     input=beam_gen,
-        #     id_input=data_layer(
-        #         name="sent_id", size=1),
-        #     dict_file=trg_dict_path,
-        #     result_file=gen_trans_file)
+
         return beam_gen
 
 
@@ -138,7 +132,7 @@ def main():
     source_dict_dim = target_dict_dim = dict_size
 
     # define network topology
-    cost = seqToseq_net(source_dict_dim, target_dict_dim, False)
+    cost = seqToseq_net(source_dict_dim, target_dict_dim)
     parameters = paddle.parameters.create(cost)
 
     # define optimize method and trainer
