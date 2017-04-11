@@ -168,7 +168,7 @@ kubectl ...
 ```
 
 ### Reading source code with woboq codebrowser
-For developers who are interested in the C++ source code, please use -e "WOBOQ=ON" to enable building C++ source code into HTML pages using [Woboq codebrowser](https://github.com/woboq/woboq_codebrowser).
+For developers who are interested in the C++ source code, please use -e "WOBOQ=ON" to enable the building of C++ source code into HTML pages using [Woboq codebrowser](https://github.com/woboq/woboq_codebrowser).
 
 - The following command builds PaddlePaddle, generates HTML pages from C++ source code, and writes HTML pages into `$HOME/woboq_out` on the host:
 
