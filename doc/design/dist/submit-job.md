@@ -67,4 +67,4 @@ For this command, it will setup a master process, 2 pserver processes and 4 trin
 
 PaddlePaddle client support plugins for different cluster management client, such as kubernetes looks like `paddle k8s ...`, MPI looks like `paddl mpi...`,but runinig process are the same:
 
-![submi-job](./submit-job.png)
+<img src="./submit-job.png" width="500">
