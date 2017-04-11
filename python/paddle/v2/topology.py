@@ -17,7 +17,6 @@ import collections
 from paddle.proto.ModelConfig_pb2 import ModelConfig
 
 import layer as v2_layer
-from layer import WithExtraParent
 
 __all__ = ['Topology']
 
@@ -41,9 +40,8 @@ def __bfs_travel__(callback, *layers):
         __break__ = callback(each_layer)
         if __break__:
             return
-        __layers__ = each_layer.__parent_layers__.values()
-        if isinstance(each_layer, WithExtraParent):
-            __layers__ = __layers__ + each_layer.extra_parent()
+        __layers__ = each_layer.__parent_layers__.values() + \
+                     each_layer.extra_parent()
         __bfs_travel__(callback, *__layers__)
 
 
