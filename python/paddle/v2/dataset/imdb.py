@@ -18,6 +18,7 @@ TODO(yuyang18): Complete comments.
 """
 
 import paddle.v2.dataset.common
+import collections
 import tarfile
 import Queue
 import re
@@ -48,10 +49,10 @@ def tokenize(pattern):
 
 
 def build_dict(pattern, cutoff):
-    word_freq = {}
+    word_freq = collections.defaultdict(int)
     for doc in tokenize(pattern):
         for word in doc:
-            paddle.v2.dataset.common.dict_add(word_freq, word)
+            word_freq[word] += 1
 
     # Not sure if we should prune less-frequent words here.
     word_freq = filter(lambda x: x[1] > cutoff, word_freq.items())
