@@ -54,6 +54,8 @@ IF(NOT ${CBLAS_FOUND})
                 "you need to set gfortran compiler: cmake .. -DCMAKE_Fortran_COMPILER=...")
     ENDIF(NOT CMAKE_Fortran_COMPILER)
 
+    ADD_DEFINITIONS(-DPADDLE_USE_LAPACK)
+
     ExternalProject_Add(
         openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
