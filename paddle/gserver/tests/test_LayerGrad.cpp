@@ -807,7 +807,7 @@ TEST(Layer, ExpandLayer) {
 void testDegradeLayer(bool hasSubseq,
                       string layer_type,
                       string trans_type,
-                      int stride = -1) {
+                      int stride) {
   TestConfig config;
   config.layerConfig.set_type(layer_type);
   config.layerConfig.set_size(10);
@@ -844,29 +844,33 @@ void testDegradeLayer(bool hasSubseq,
 }
 
 TEST(Layer, MaxLayer) {
-  testDegradeLayer(false, "max", "non-seq");  // seq max to non-seq
-  testDegradeLayer(true, "max", "non-seq");   // hasSubseq max to non-seq
-  testDegradeLayer(true, "max", "seq");       // hasSubseq max to seq
+  testDegradeLayer(false, "max", "non-seq", -1);  // seq max to non-seq
+  testDegradeLayer(true, "max", "non-seq", -1);   // hasSubseq max to non-seq
+  testDegradeLayer(true, "max", "seq", -1);       // hasSubseq max to seq
 }
 
 TEST(Layer, SequenceLastInstanceLayer) {
   testDegradeLayer(false,
                    "seqlastins",
-                   "non-seq");  // seq seqlastins to non-seq
+                   "non-seq",
+                   -1);  // seq seqlastins to non-seq
   testDegradeLayer(false,
                    "seqlastins",
                    "non-seq",
                    5);  // seq seqlastins to a shorten seq, stride window = 5
   testDegradeLayer(true,
                    "seqlastins",
-                   "non-seq");  // hasSubseq seqlastins to non-seq
-  testDegradeLayer(true, "seqlastins", "seq");  // hasSubseq seqlastins to seq
+                   "non-seq",
+                   -1);  // hasSubseq seqlastins to non-seq
+  testDegradeLayer(
+      true, "seqlastins", "seq", -1);  // hasSubseq seqlastins to seq
 }
 
 TEST(Layer, AverageLayer) {
-  testDegradeLayer(false, "average", "non-seq");  // seq average to non-seq
-  testDegradeLayer(true, "average", "non-seq");  // hasSubseq average to non-seq
-  testDegradeLayer(true, "average", "seq");      // hasSubseq average to seq
+  testDegradeLayer(false, "average", "non-seq", -1);  // seq average to non-seq
+  testDegradeLayer(
+      true, "average", "non-seq", -1);           // hasSubseq average to non-seq
+  testDegradeLayer(true, "average", "seq", -1);  // hasSubseq average to seq
 }
 
 TEST(Layer, SequenceConcatLayer) {

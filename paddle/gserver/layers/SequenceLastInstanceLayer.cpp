@@ -42,7 +42,7 @@ class SequenceLastInstanceLayer : public SequencePoolLayer {
 protected:
   MatrixPtr tmpSrc_;
   MatrixPtr tmpDest_;
-  std::vector<int> insId_;
+  std::vector<int> instanceIds_;
 
 public:
   explicit SequenceLastInstanceLayer(const LayerConfig& config)
@@ -82,10 +82,10 @@ void SequenceLastInstanceLayer::forward(PassType passType) {
     AsyncGpuBlock asyncGpuBlock;
     REGISTER_TIMER_INFO("SequenceLastInstanceLayerForward", getName().c_str());
 
-    insId_.clear();
+    instanceIds_.clear();
     for (size_t seqId = 0; seqId < newBatchSize_; ++seqId) {
       int insId = reversed_ ? starts[seqId] : starts[seqId + 1] - 1;
-      insId_.push_back(insId);
+      instanceIds_.push_back(insId);
 
       outputValue->subMatrix(seqId, 1, tmpDest_)
           ->assign(*(inputValue->subMatrix(insId, 1, tmpSrc_)));
@@ -111,7 +111,7 @@ void SequenceLastInstanceLayer::backward(const UpdateCallback& callback) {
     REGISTER_TIMER_INFO("SequenceLastInstanceLayerBackward", getName().c_str());
 
     for (size_t seqId = 0; seqId < newBatchSize_; ++seqId) {
-      inputGrad->subMatrix(insId_[seqId], 1, tmpDest_)
+      inputGrad->subMatrix(instanceIds_[seqId], 1, tmpDest_)
           ->add(*(outputGrad->subMatrix(seqId, 1, tmpSrc_)));
     }
   }

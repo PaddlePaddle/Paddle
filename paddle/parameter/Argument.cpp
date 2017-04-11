@@ -563,12 +563,11 @@ void Argument::poolSequenceWithStride(const Argument& input,
                                       size_t stride,
                                       IVectorPtr* stridePostions,
                                       bool reversed) {
-  /*
-   * If input.sequenceStartPositions = [0, 9, 14, 17, 30] and stride = 5,
-   * then sequenceStartPositions = [0, 2, 3, 4, 7].
-   * If reversed = false, stridePostions = [0, 5, 9, 14, 17, 22, 27, 30];
-   * else reversed = true, stridePostions = [0, 4, 9, 14, 17, 20, 25, 30]
-   */
+  // If input.sequenceStartPositions = [0, 9, 14, 17, 30] and stride = 5,
+  // then sequenceStartPositions = [0, 2, 3, 4, 7].
+  // If reversed = false, stridePostions = [0, 5, 9, 14, 17, 22, 27, 30];
+  // else reversed = true, stridePostions = [0, 4, 9, 14, 17, 20, 25, 30]
+
   CHECK(input.sequenceStartPositions);
   CHECK_EQ(input.hasSubseq(), 0UL);
   CHECK_GT(stride, 0) << "stride must larger than 0";

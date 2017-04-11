@@ -47,9 +47,9 @@ protected:
   size_t newBatchSize_;
   ICpuGpuVectorPtr startPositions_;
   int stride_;
-  // store the start position of each window
+  // Store the start position of each window.
   IVectorPtr stridePositions_;
-  // Whether the input sequence is reversed or not
+  // Whether the input sequence is reversed or not.
   bool reversed_ = false;
 
 public:
