@@ -3527,8 +3527,7 @@ This idea is from &#8220;F. Morin, Y. Bengio (AISTATS 05):
 Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">hsigmoid</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">],</span>
-                <span class="n">label</span><span class="o">=</span><span class="n">data_layer</span><span class="p">,</span>
-                <span class="n">num_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+                <span class="n">label</span><span class="o">=</span><span class="n">data_layer</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -3539,10 +3538,11 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <li><strong>input</strong> (<em>LayerOutput|list|tuple</em>) &#8211; Input layers. It could be a LayerOutput or list/tuple of
 LayerOutput.</li>
 <li><strong>label</strong> (<em>LayerOutput</em>) &#8211; Label layer.</li>
-<li><strong>num_classes</strong> (<em>int</em>) &#8211; number of classes.</li>
+<li><strong>num_classes</strong> (<em>int|None</em>) &#8211; number of classes.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; Bias attribute. None means default bias.
 False means no bias.</li>
+<li><strong>param_attr</strong> (<em>ParameterAttribute|None</em>) &#8211; Parameter Attribute. None means default parameter.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>

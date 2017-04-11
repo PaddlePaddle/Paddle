@@ -4194,8 +4194,7 @@ This idea is from &#8220;F. Morin, Y. Bengio (AISTATS 05):
 Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">hsigmoid</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">],</span>
-                <span class="n">label</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
-                <span class="n">num_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+                <span class="n">label</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -4206,10 +4205,11 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer|list|tuple</em>) &#8211; Input layers. It could be a paddle.v2.config_base.Layer or list/tuple of
 paddle.v2.config_base.Layer.</li>
 <li><strong>label</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Label layer.</li>
-<li><strong>num_classes</strong> (<em>int</em>) &#8211; number of classes.</li>
+<li><strong>num_classes</strong> (<em>int|None</em>) &#8211; number of classes.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
 <li><strong>bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute|False</em>) &#8211; Bias attribute. None means default bias.
 False means no bias.</li>
+<li><strong>param_attr</strong> (<em>paddle.v2.attr.ParameterAttribute|None</em>) &#8211; Parameter Attribute. None means default parameter.</li>
 <li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
