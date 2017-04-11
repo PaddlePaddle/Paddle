@@ -44,9 +44,9 @@ void Pad<DEVICE_TYPE_GPU>(real* outputs,
   size_t nth = num * inC * inH * inW;
   int blockSize = 1024;
   int gridSize = (nth + 1024 - 1) / 1024;
-  int cstart = pad.channelStart, cend = pad.channelEnd;
-  int hstart = pad.heightStart, hend = pad.heightEnd;
-  int wstart = pad.widthStart, wend = pad.widthEnd;
+  int cstart = pad.channel[0], cend = pad.channel[1];
+  int hstart = pad.height[0], hend = pad.height[1];
+  int wstart = pad.width[0], wend = pad.width[1];
   int outC = inC + cstart + cend;
   int outH = inH + hstart + hend;
   int outW = inW + wstart + wend;
@@ -83,9 +83,9 @@ void PadGrad<DEVICE_TYPE_GPU>(real* inGrad,
   int nth = num * inC * inH * inW;
   int blockSize = 1024;
   int gridSize = (nth + 1024 - 1) / 1024;
-  int cstart = pad.channelStart, cend = pad.channelEnd;
-  int hstart = pad.heightStart, hend = pad.heightEnd;
-  int wstart = pad.widthStart, wend = pad.widthEnd;
+  int cstart = pad.channel[0], cend = pad.channel[1];
+  int hstart = pad.height[0], hend = pad.height[1];
+  int wstart = pad.width[0], wend = pad.width[1];
   int outC = inC + cstart + cend;
   int outH = inH + hstart + hend;
   int outW = inW + wstart + wend;
