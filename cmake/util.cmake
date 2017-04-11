@@ -90,6 +90,10 @@ function(link_paddle_exe TARGET_NAME)
         ${RDMA_LD_FLAGS}
         ${RDMA_LIBS})
 
+    if(ANDROID)
+        target_link_libraries(${TARGET_NAME} log)
+    endif(ANDROID)
+
     add_dependencies(${TARGET_NAME} ${external_project_dependencies})
 endfunction()
 

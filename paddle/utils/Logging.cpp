@@ -18,6 +18,7 @@ limitations under the License. */
  */
 
 #include "Logging.h"
+#include <cstdlib>
 
 namespace paddle {
 
