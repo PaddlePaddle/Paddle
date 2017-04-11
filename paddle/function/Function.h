@@ -38,7 +38,7 @@ public:
       if (err) {
         *err = Error(e.what());
       } else {
-        LOG(FATAL) << "Cannot get key " << key << "with error " << e.what();
+        LOG(FATAL) << "Cannot get key " << key << " with error " << e.what();
       }
       return T();
     }
