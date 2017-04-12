@@ -497,11 +497,23 @@ a list of mini-batch data entries. Each data entry in the list is one sample.
 Each sample is a list or a tuple with one feature or multiple features.
 DataFeeder converts this mini-batch data entries into Arguments in order
 to feed it to C++ interface.</p>
-<p>The example usage:</p>
+<p>The simple usage shows below</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">feeding</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="s1">&#39;label&#39;</span><span class="p">]</span>
+<span class="n">data_types</span> <span class="o">=</span> <span class="n">enumerate_data_types_of_data_layers</span><span class="p">(</span><span class="n">topology</span><span class="p">)</span>
+<span class="n">feeder</span> <span class="o">=</span> <span class="n">DataFeeder</span><span class="p">(</span><span class="n">data_types</span><span class="o">=</span><span class="n">data_types</span><span class="p">,</span> <span class="n">feeding</span><span class="o">=</span><span class="n">feeding</span><span class="p">)</span>
+
+<span class="n">minibatch_data</span> <span class="o">=</span> <span class="p">[([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="mi">5</span><span class="p">)]</span>
+
+<span class="n">arg</span> <span class="o">=</span> <span class="n">feeder</span><span class="p">(</span><span class="n">minibatch_data</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If mini-batch data and data layers are not one to one mapping, we
+could pass a dictionary to feeding parameter to represent the mapping
+relationship.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data_types</span> <span class="o">=</span> <span class="p">[(</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">paddle</span><span class="o">.</span><span class="n">data_type</span><span class="o">.</span><span class="n">dense_vector</span><span class="p">(</span><span class="mi">784</span><span class="p">)),</span>
               <span class="p">(</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="n">paddle</span><span class="o">.</span><span class="n">data_type</span><span class="o">.</span><span class="n">integer_value</span><span class="p">(</span><span class="mi">10</span><span class="p">))]</span>
-<span class="n">reader_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;image&#39;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;label&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">}</span>
-<span class="n">feeder</span> <span class="o">=</span> <span class="n">DataFeeder</span><span class="p">(</span><span class="n">data_types</span><span class="o">=</span><span class="n">data_types</span><span class="p">,</span> <span class="n">reader_dict</span><span class="o">=</span><span class="n">reader_dict</span><span class="p">)</span>
+<span class="n">feeding</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;image&#39;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;label&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">}</span>
+<span class="n">feeder</span> <span class="o">=</span> <span class="n">DataFeeder</span><span class="p">(</span><span class="n">data_types</span><span class="o">=</span><span class="n">data_types</span><span class="p">,</span> <span class="n">feeding</span><span class="o">=</span><span class="n">feeding</span><span class="p">)</span>
 <span class="n">minibatch_data</span> <span class="o">=</span> <span class="p">[</span>
                    <span class="p">(</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span><span class="mf">2.0</span><span class="p">,</span><span class="mf">3.0</span><span class="p">,</span><span class="mf">4.0</span><span class="p">],</span> <span class="mi">5</span><span class="p">,</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">]</span> <span class="p">),</span>  <span class="c1"># first sample</span>
                    <span class="p">(</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span><span class="mf">2.0</span><span class="p">,</span><span class="mf">3.0</span><span class="p">,</span><span class="mf">4.0</span><span class="p">],</span> <span class="mi">5</span><span class="p">,</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">]</span> <span class="p">)</span>   <span class="c1"># second sample</span>
@@ -525,8 +537,8 @@ interface.</p>
 <tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first last simple">
 <li><strong>data_types</strong> (<em>list</em>) &#8211; A list to specify data name and type. Each item is
 a tuple of (data_name, data_type).</li>
-<li><strong>reader_dict</strong> &#8211; A dictionary to specify the position of each data
-in the input data.</li>
+<li><strong>feeding</strong> (<em>dict|collections.Sequence|None</em>) &#8211; A dictionary or a sequence to specify the position of each
+data in the input data.</li>
 </ul>
 </td>
 </tr>
