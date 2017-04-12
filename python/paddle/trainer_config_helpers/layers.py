@@ -4873,7 +4873,7 @@ def nce_layer(input,
     if neg_distribution is not None:
         assert isinstance(neg_distribution, collections.Sequence)
         assert len(neg_distribution) == num_classes
-        assert sum(neg_distribution) == 1
+        assert abs(sum(neg_distribution) - 1.0) < 1e-5
     if not isinstance(act, BaseActivation):
         raise TypeError()
 
