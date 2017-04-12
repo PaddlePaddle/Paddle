@@ -9,6 +9,9 @@ if [ ${WITH_GPU} == "ON" ]; then
   GPU_DOCKER_PKG="python-pip python-dev"
 else
   BASE_IMAGE="python:2.7.13-slim"
+  # FIXME: python base image uses different python version than WITH_GPU
+  # need to change PYTHONHOME to /usr/local when using python base image
+  CPU_DOCKER_PYTHON_HOME_ENV="ENV PYTHONHOME /usr/local"
 fi
 
 DOCKERFILE_GPU_ENV=""
@@ -97,7 +100,8 @@ ADD build/*.deb /usr/local/opt/paddle/deb/
 RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && \
     rm -f /usr/local/opt/paddle/deb/*.deb && \
     paddle version
-${DOCKERFILE_CUDNN_DSO} 
+${CPU_DOCKER_PYTHON_HOME_ENV}
+${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]
