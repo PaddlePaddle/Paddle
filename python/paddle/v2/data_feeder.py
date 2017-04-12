@@ -39,9 +39,8 @@ class DataFeeder(DataProviderConverter):
 
     ..  code-block:: python
 
-        data_types = [('image', paddle.data_type.dense_vector(784)),
-                      ('label', paddle.data_type.integer_value(10))]
         feeding = ['image', 'label']
+        data_types = enumerate_data_types_of_data_layers(topology)
         feeder = DataFeeder(data_types=data_types, feeding=feeding)
 
         minibatch_data = [([1.0, 2.0, 3.0, ...], 5)]
