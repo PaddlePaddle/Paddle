@@ -81,7 +81,7 @@ class SGD(object):
         :type event_handler: (BaseEvent) => None
         :param feeding: Feeding is a map of neural network input name and array
                         index that reader returns.
-        :type feeding: dict
+        :type feeding: dict|list
         :return:
         """
         if event_handler is None:
