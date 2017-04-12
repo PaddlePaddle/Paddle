@@ -45,8 +45,6 @@ public:
   void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
-  MatrixPtr outMtx_;
-  MatrixPtr dataMtx_;
   int mode_;
 };
 }  // namespace paddle

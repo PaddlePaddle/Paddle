@@ -19,6 +19,7 @@ import paddle.v2.data_type as data_type
 import paddle.v2.layer as layer
 import paddle.v2.pooling as pooling
 import paddle.v2.networks as networks
+import paddle.v2.evaluator as evaluator
 
 pixel = layer.data(name='pixel', type=data_type.dense_vector(128))
 label = layer.data(name='label', type=data_type.integer_value(10))
@@ -58,13 +59,13 @@ class ImageLayerTest(unittest.TestCase):
                         num_channels=16,
                         pool_type=pooling.Max())
         maxout = layer.maxout(input=conv, num_channels=16, groups=4)
-        print layer.parse_network(maxpool, spp, maxout)
+        print layer.parse_network([maxpool, spp, maxout])
 
     def test_norm_layer(self):
         norm1 = layer.img_cmrnorm(input=conv, size=5)
         norm2 = layer.batch_norm(input=conv)
         norm3 = layer.sum_to_one_norm(input=conv)
-        print layer.parse_network(norm1, norm2, norm3)
+        print layer.parse_network([norm1, norm2, norm3])
 
 
 class AggregateLayerTest(unittest.TestCase):
@@ -77,7 +78,8 @@ class AggregateLayerTest(unittest.TestCase):
         first_seq = layer.first_seq(input=pixel)
         concat = layer.concat(input=[last_seq, first_seq])
         seq_concat = layer.seq_concat(a=last_seq, b=first_seq)
-        print layer.parse_network(pool, last_seq, first_seq, concat, seq_concat)
+        print layer.parse_network(
+            [pool, last_seq, first_seq, concat, seq_concat])
 
 
 class MathLayerTest(unittest.TestCase):
@@ -94,8 +96,10 @@ class MathLayerTest(unittest.TestCase):
         tensor = layer.tensor(a=pixel, b=pixel, size=1000)
         cos_sim = layer.cos_sim(a=pixel, b=pixel)
         trans = layer.trans(input=tensor)
-        print layer.parse_network(addto, linear_comb, interpolation, power,
-                                  scaling, slope, tensor, cos_sim, trans)
+        print layer.parse_network([
+            addto, linear_comb, interpolation, power, scaling, slope, tensor,
+            cos_sim, trans
+        ])
 
 
 class ReshapeLayerTest(unittest.TestCase):
@@ -109,7 +113,8 @@ class ReshapeLayerTest(unittest.TestCase):
         repeat = layer.repeat(input=pixel, num_repeats=4)
         reshape = layer.seq_reshape(input=pixel, reshape_size=4)
         rotate = layer.rotate(input=pixel, height=16, width=49)
-        print layer.parse_network(block_expand, expand, repeat, reshape, rotate)
+        print layer.parse_network(
+            [block_expand, expand, repeat, reshape, rotate])
 
 
 class RecurrentLayerTest(unittest.TestCase):
@@ -118,7 +123,7 @@ class RecurrentLayerTest(unittest.TestCase):
         recurrent = layer.recurrent(input=word)
         lstm = layer.lstmemory(input=word)
         gru = layer.grumemory(input=word)
-        print layer.parse_network(recurrent, lstm, gru)
+        print layer.parse_network([recurrent, lstm, gru])
 
 
 class CostLayerTest(unittest.TestCase):
@@ -138,10 +143,10 @@ class CostLayerTest(unittest.TestCase):
         cost10 = layer.sum_cost(input=inference)
         cost11 = layer.huber_cost(input=score, label=label)
 
-        print layer.parse_network(cost1, cost2)
-        print layer.parse_network(cost3, cost4)
-        print layer.parse_network(cost5, cost6)
-        print layer.parse_network(cost7, cost8, cost9, cost10, cost11)
+        print layer.parse_network([cost1, cost2])
+        print layer.parse_network([cost3, cost4])
+        print layer.parse_network([cost5, cost6])
+        print layer.parse_network([cost7, cost8, cost9, cost10, cost11])
 
         crf = layer.crf(input=inference, label=label)
         crf_decoding = layer.crf_decoding(input=inference, size=3)
@@ -150,8 +155,8 @@ class CostLayerTest(unittest.TestCase):
         nce = layer.nce(input=inference, label=label, num_classes=3)
         hsigmoid = layer.hsigmoid(input=inference, label=label, num_classes=3)
 
-        print layer.parse_network(crf, crf_decoding, ctc, warp_ctc, nce,
-                                  hsigmoid)
+        print layer.parse_network(
+            [crf, crf_decoding, ctc, warp_ctc, nce, hsigmoid])
 
 
 class OtherLayerTest(unittest.TestCase):
@@ -159,7 +164,7 @@ class OtherLayerTest(unittest.TestCase):
         maxid = layer.max_id(input=inference)
         sampling_id = layer.sampling_id(input=inference)
         eos = layer.eos(input=maxid, eos_id=5)
-        print layer.parse_network(maxid, sampling_id, eos)
+        print layer.parse_network([maxid, sampling_id, eos])
 
     def test_slicing_joining_layer(self):
         pad = layer.pad(input=conv, pad_c=[2, 3], pad_h=[1, 2], pad_w=[3, 1])
@@ -260,6 +265,21 @@ class NetworkTests(unittest.TestCase):
         vgg_out = networks.small_vgg(
             input_image=img, num_channels=1, num_classes=2)
         print layer.parse_network(vgg_out)
+
+
+class EvaluatorTest(unittest.TestCase):
+    def test_evaluator(self):
+        img = layer.data(name='pixel', type=data_type.dense_vector(784))
+        output = layer.fc(input=img,
+                          size=10,
+                          act=activation.Softmax(),
+                          name='fc_here')
+        lbl = layer.data(name='label', type=data_type.integer_value(10))
+        cost = layer.cross_entropy_cost(input=output, label=lbl)
+
+        evaluator.classification_error(input=output, label=lbl)
+        print layer.parse_network(cost)
+        print layer.parse_network(output)
 
 
 if __name__ == '__main__':

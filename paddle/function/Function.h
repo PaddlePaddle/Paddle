@@ -18,32 +18,49 @@ limitations under the License. */
 #include <vector>
 #include "BufferArg.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/utils/Any.h"
 #include "paddle/utils/ClassRegistrar.h"
+#include "paddle/utils/Error.h"
 
 namespace paddle {
 
 /**
  * Function Configuration.
  * The argument type of Function::init.
- * Follow-up will consider moving this data structure to Proto inside.
  */
 class FuncConfig {
 public:
-  union value {
-    size_t s;
-    real r;
-    int i;
-    bool b;
-  };
+  template <typename T>
+  T get(const std::string& key, Error* err = nullptr) const {
+    try {
+      return any_cast<T>(valueMap_.at(key));
+    } catch (std::exception& e) {  // could be cast or out of range exception.
+      if (err) {
+        *err = Error(e.what());
+      } else {
+        LOG(FATAL) << "Cannot get key " << key << " with error " << e.what();
+      }
+      return T();
+    }
+  }
 
   template <typename T>
-  T get(const std::string& key) const;
-
-  template <typename T>
-  FuncConfig& set(const std::string& key, T v);
+  FuncConfig& set(const std::string& key, T v, Error* err = nullptr) {
+    auto it = valueMap_.find(key);
+    if (it != valueMap_.end()) {  // already contains key.
+      if (err) {
+        *err = Error("Key %s is already set in FuncConfig", key.c_str());
+      } else {
+        LOG(FATAL) << "Key " << key << " is already set in FuncConfig.";
+      }
+      return *this;
+    }
+    valueMap_[key] = any(v);
+    return *this;
+  }
 
 protected:
-  std::map<std::string, value> valueMap_;
+  mutable std::unordered_map<std::string, any> valueMap_;
 };
 
 /**

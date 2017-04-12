@@ -7,13 +7,12 @@ ARG UBUNTU_MIRROR
 RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com/ubuntu#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
 
 # ENV variables
-ARG BUILD_WOBOQ
 ARG WITH_GPU
 ARG WITH_AVX
 ARG WITH_DOC
 ARG WITH_STYLE_CHECK
 
-ENV BUILD_WOBOQ=${BUILD_WOBOQ:-OFF}
+ENV WOBOQ OFF
 ENV WITH_GPU=${WITH_AVX:-OFF}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV WITH_DOC=${WITH_DOC:-OFF}
@@ -48,7 +47,7 @@ RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd cmake-3.4.1 && ./bootstrap && make -j `nproc` && make install && \
     cd .. && rm -rf cmake-3.4.1
 
-VOLUME ["/usr/share/nginx/html/data", "/usr/share/nginx/html/paddle"]
+VOLUME ["/woboq_out"]
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd

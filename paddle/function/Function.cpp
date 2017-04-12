@@ -16,66 +16,6 @@ limitations under the License. */
 
 namespace paddle {
 
-template <>
-size_t FuncConfig::get<size_t>(const std::string& key) const {
-  auto it = valueMap_.find(key);
-  CHECK(it != valueMap_.end()) << "Cannot find value: '" << key << "'";
-  return it->second.s;
-}
-
-template <>
-real FuncConfig::get<real>(const std::string& key) const {
-  auto it = valueMap_.find(key);
-  CHECK(it != valueMap_.end()) << "Cannot find value: '" << key << "'";
-  return it->second.r;
-}
-
-template <>
-int FuncConfig::get<int>(const std::string& key) const {
-  auto it = valueMap_.find(key);
-  CHECK(it != valueMap_.end()) << "Cannot find value: '" << key << "'";
-  return it->second.i;
-}
-
-template <>
-bool FuncConfig::get<bool>(const std::string& key) const {
-  auto it = valueMap_.find(key);
-  CHECK(it != valueMap_.end()) << "Cannot find value: '" << key << "'";
-  return it->second.b;
-}
-
-template <>
-FuncConfig& FuncConfig::set<size_t>(const std::string& key, size_t v) {
-  CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
-                                                      << key;
-  valueMap_[key].s = v;
-  return *this;
-}
-
-template <>
-FuncConfig& FuncConfig::set<real>(const std::string& key, real v) {
-  CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
-                                                      << key;
-  valueMap_[key].r = v;
-  return *this;
-}
-
-template <>
-FuncConfig& FuncConfig::set<int>(const std::string& key, int v) {
-  CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
-                                                      << key;
-  valueMap_[key].i = v;
-  return *this;
-}
-
-template <>
-FuncConfig& FuncConfig::set<bool>(const std::string& key, bool v) {
-  CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
-                                                      << key;
-  valueMap_[key].b = v;
-  return *this;
-}
-
 void BufferArgs::addArg(const Matrix& arg,
                         const TensorShape& shape,
                         ArgType argType) {

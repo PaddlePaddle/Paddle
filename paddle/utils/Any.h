@@ -12,19 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/CustomStackTrace.h"
-#include "paddle/utils/StringUtil.h"
-#include "paddle/utils/Util.h"
+#pragma once
+#if __cplusplus > 201402L
+#include <any>
 
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
+namespace paddle {
+// using std::any for C++ 17
+using std::any;
+using std::any_cast;
+using std::bad_any_cast;
+}  // namespace paddle
 
-  for (size_t i = 0; i < 1000; ++i) {
-    paddle::gLayerStackTrace.push("layer_" + paddle::str::to_string(i));
-    if (i == 998) {
-      throw "Unhandle exception";
-    }
-  }
+#else
+#include <any.hpp>
 
-  return 0;
-}
+namespace paddle {
+// use linb::any for C++ 11
+using linb::any;
+using linb::any_cast;
+using linb::bad_any_cast;
+}  // namespace paddle
+#endif

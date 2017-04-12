@@ -160,10 +160,19 @@ class SparseFloatScanner(SparseBinaryScanner):
 class IndexScanner(IScanner):
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
-        self.__ids__ = []
+        self.__ids__ = None
+        self.__idx__ = 0
+
+    def pre_scan(self, dat):
+        self.__idx__ += 1
+
+    def finish_pre_scan(self, argument):
+        self.__ids__ = [0] * self.__idx__
+        self.__idx__ = 0
 
     def scan(self, dat):
-        self.__ids__.append(dat)
+        self.__ids__[self.__idx__] = dat
+        self.__idx__ += 1
 
     def finish_scan(self, argument):
         ids = swig_paddle.IVector.create(self.__ids__, self.data_in_gpu)

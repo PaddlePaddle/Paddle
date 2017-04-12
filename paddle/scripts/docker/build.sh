@@ -46,7 +46,7 @@ make install
 # install them in docker
 cpack -D CPACK_GENERATOR='DEB' -D CPACK_DEBIAN_PACKAGE_DEPENDS="" ..
 
-if [[ ${BUILD_WOBOQ:-OFF} == 'ON' ]]; then
+if [[ ${WOBOQ:-OFF} == 'ON' ]]; then
     apt-get install -y clang-3.8 llvm-3.8 libclang-3.8-dev
     # Install woboq_codebrowser.
     git clone https://github.com/woboq/woboq_codebrowser /woboq
@@ -56,7 +56,7 @@ if [[ ${BUILD_WOBOQ:-OFF} == 'ON' ]]; then
           .
     make
 
-    export WOBOQ_OUT=/usr/share/nginx/html/paddle
+    export WOBOQ_OUT=/woboq_out/paddle
     export BUILD_DIR=/paddle/build
     mkdir -p $WOBOQ_OUT
     cp -rv /woboq/data $WOBOQ_OUT/../data
