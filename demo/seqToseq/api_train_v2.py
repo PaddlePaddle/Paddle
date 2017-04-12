@@ -126,51 +126,57 @@ def seqToseq_net(source_dict_dim, target_dict_dim, is_generating=False):
 
 def main():
     paddle.init(use_gpu=False, trainer_count=1)
+    is_generating = True
 
     # source and target dict dim.
     dict_size = 30000
     source_dict_dim = target_dict_dim = dict_size
 
-    # define network topology
-    cost = seqToseq_net(source_dict_dim, target_dict_dim)
-    parameters = paddle.parameters.create(cost)
+    # train the network
+    if not is_generating:
+        cost = seqToseq_net(source_dict_dim, target_dict_dim)
+        parameters = paddle.parameters.create(cost)
 
-    # define optimize method and trainer
-    optimizer = paddle.optimizer.Adam(
-        learning_rate=5e-5,
-        regularization=paddle.optimizer.L2Regularization(rate=1e-3))
-    trainer = paddle.trainer.SGD(cost=cost,
-                                 parameters=parameters,
-                                 update_equation=optimizer)
+        # define optimize method and trainer
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=5e-5,
+            regularization=paddle.optimizer.L2Regularization(rate=8e-4))
+        trainer = paddle.trainer.SGD(cost=cost,
+                                     parameters=parameters,
+                                     update_equation=optimizer)
+        # define data reader
+        wmt14_reader = paddle.batch(
+            paddle.reader.shuffle(
+                paddle.dataset.wmt14.train(dict_size), buf_size=8192),
+            batch_size=5)
 
-    # define data reader
-    feeding = {
-        'source_language_word': 0,
-        'target_language_word': 1,
-        'target_language_next_word': 2
-    }
+        # define event_handler callback
+        def event_handler(event):
+            if isinstance(event, paddle.event.EndIteration):
+                if event.batch_id % 10 == 0:
+                    print "\nPass %d, Batch %d, Cost %f, %s" % (
+                        event.pass_id, event.batch_id, event.cost,
+                        event.metrics)
+                else:
+                    sys.stdout.write('.')
+                    sys.stdout.flush()
 
-    wmt14_reader = paddle.batch(
-        paddle.reader.shuffle(
-            paddle.dataset.wmt14.train(dict_size=dict_size), buf_size=8192),
-        batch_size=5)
+        # start to train
+        trainer.train(
+            reader=wmt14_reader, event_handler=event_handler, num_passes=2)
 
-    # define event_handler callback
-    def event_handler(event):
-        if isinstance(event, paddle.event.EndIteration):
-            if event.batch_id % 10 == 0:
-                print "\nPass %d, Batch %d, Cost %f, %s" % (
-                    event.pass_id, event.batch_id, event.cost, event.metrics)
-            else:
-                sys.stdout.write('.')
-                sys.stdout.flush()
+    # generate a english sequence to french
+    else:
+        gen_creator = paddle.dataset.wmt14.test(dict_size)
+        gen_data = []
+        for item in gen_creator():
+            gen_data.append((item[0], ))
+            if len(gen_data) == 3:
+                break
 
-    # start to train
-    trainer.train(
-        reader=wmt14_reader,
-        event_handler=event_handler,
-        num_passes=10000,
-        feeding=feeding)
+        beam_gen = seqToseq_net(source_dict_dim, target_dict_dim, is_generating)
+        parameters = paddle.dataset.wmt14.model()
+        trg_dict = paddle.dataset.wmt14.trg_dict(dict_size)
 
 
 if __name__ == '__main__':
