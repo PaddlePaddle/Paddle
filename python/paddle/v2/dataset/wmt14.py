@@ -29,7 +29,7 @@ URL_TRAIN = 'http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz
 MD5_TRAIN = 'a755315dd01c2c35bde29a744ede23a6'
 # this is the pretrained model, whose bleu = 26.92
 URL_MODEL = 'http://paddlepaddle.bj.bcebos.com/demo/wmt_14/wmt14_model.tar.gz'
-MD5_MODEL = '6b097d23e15654608c6f74923e975535'
+MD5_MODEL = '4ce14a26607fb8a1cc23bcdedb1895e4'
 
 START = "<s>"
 END = "<e>"
@@ -113,6 +113,12 @@ def model():
     with gzip.open(tar_file, 'r') as f:
         parameters = Parameters.from_tar(f)
     return parameters
+
+
+def trg_dict(dict_size):
+    tar_file = download(URL_TRAIN, 'wmt14', MD5_TRAIN)
+    src_dict, trg_dict = __read_to_dict__(tar_file, dict_size)
+    return trg_dict
 
 
 def fetch():
