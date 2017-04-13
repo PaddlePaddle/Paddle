@@ -559,6 +559,49 @@ void Argument::degradeSequence(const Argument& input) {
   tgtBuf[numSequences] = numSubSequences;
 }
 
+void Argument::poolSequenceWithStride(const Argument& input,
+                                      size_t stride,
+                                      IVectorPtr* stridePostions,
+                                      bool reversed) {
+  // If input.sequenceStartPositions = [0, 9, 14, 17, 30] and stride = 5,
+  // then sequenceStartPositions = [0, 2, 3, 4, 7].
+  // If reversed = false, stridePostions = [0, 5, 9, 14, 17, 22, 27, 30];
+  // else reversed = true, stridePostions = [0, 4, 9, 14, 17, 20, 25, 30]
+
+  CHECK(input.sequenceStartPositions);
+  CHECK_EQ(input.hasSubseq(), 0UL);
+  CHECK_GT(stride, 0) << "stride must larger than 0";
+  size_t numSequences = input.getNumSequences();
+  ICpuGpuVector::resizeOrCreate(
+      sequenceStartPositions, numSequences + 1, false);
+  const int* starts = input.sequenceStartPositions->getData(false);
+  int* tgtBuf = sequenceStartPositions->getMutableData(false);
+  // first index of target sequence and stride positions are both 0
+  tgtBuf[0] = 0;
+  std::vector<int> stridePos;
+  for (size_t seqId = 0; seqId < numSequences; ++seqId) {
+    size_t seqLength = starts[seqId + 1] - starts[seqId];
+    stridePos.emplace_back(starts[seqId]);
+    if (seqLength == 0) {
+      // empty sequence
+      tgtBuf[seqId + 1] = tgtBuf[seqId];
+    } else {
+      int size = ceil((float)seqLength / stride);
+      tgtBuf[seqId + 1] = tgtBuf[seqId] + size;
+      for (int i = 0; i < size - 1; ++i) {
+        int cur = reversed ? starts[seqId + 1] - (size - 1 - i) * stride
+                           : stridePos.back() + stride;
+        stridePos.emplace_back(cur);
+      }
+    }
+  }
+  stridePos.emplace_back(starts[numSequences]);
+  int size = stridePos.size();
+  CHECK_EQ(size - 1, tgtBuf[numSequences]);
+  IVector::resizeOrCreate(*stridePostions, size, false);
+  (*stridePostions)->copyFrom(stridePos.data(), size);
+}
+
 void Argument::getValueString(
     std::unordered_map<std::string, std::string>* out) const {
   if (value) {

@@ -48,8 +48,13 @@ class Inference(object):
         self.__gradient_machine__.finish()
 
     def iter_infer_field(self, field, **kwargs):
+        if not isinstance(field, list) and not isinstance(field, tuple):
+            field = [field]
+
         for result in self.iter_infer(**kwargs):
-            yield [each_result[field] for each_result in result]
+            for each_result in result:
+                item = [each_result[each_field] for each_field in field]
+                yield item
 
     def infer(self, field='value', **kwargs):
         retv = None
@@ -87,9 +92,11 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
     :type input: collections.Iterable
     :param feeding: Reader dictionary. Default could generate from input
                         value.
-    :param field: The prediction field. It should in [`value`, `ids`]. `value`
-                  means return the prediction probabilities, `ids` means return
-                  the prediction labels. Default is `value`
+    :param field: The prediction field. It should in [`value`, `id`, `prob`]. 
+                  `value` and `prob` mean return the prediction probabilities, 
+                  `id` means return the prediction labels. Default is `value`.
+                  Note that `prob` only used when output_layer is beam_search 
+                  or max_id.
     :type field: str
     :return: a numpy array
     :rtype: numpy.ndarray
