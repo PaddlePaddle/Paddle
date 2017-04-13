@@ -1,4 +1,6 @@
 from setuptools import setup
+from Cython.Build import cythonize
+from distutils.extension import Extension
 
 packages=['paddle',
           'paddle.proto',
@@ -9,11 +11,14 @@ packages=['paddle',
           'paddle.v2.dataset',
           'paddle.v2.reader',
           'paddle.v2.plot']
+extensions=[Extension("*", ["${CMAKE_CURRENT_SOURCE_DIR}/paddle/v2/reader/*.pyx"]),
+            Extension("*", ["${CMAKE_CURRENT_SOURCE_DIR}/paddle/v2/*.pyx"])]
 
 setup(name='paddle',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
       packages=packages,
+      ext_modules = cythonize(extensions),
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}'
       }

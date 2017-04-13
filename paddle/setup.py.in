@@ -14,12 +14,14 @@
 
 
 from setuptools import setup, Extension
+from Cython.Build import cythonize
 
 setup(name="py_paddle",
       version="${PADDLE_VERSION}",
       packages=['py_paddle'],
       include_package_data=True,
       package_data={'py_paddle':['*.py','_swig_paddle.so']},
+      ext_modules = cythonize("py_paddle/*.pyx"),
       install_requires = [
         'nltk>=3.2.2',
         'numpy>=1.8.0',      # The numpy is required.
