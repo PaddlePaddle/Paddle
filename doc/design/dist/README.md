@@ -116,7 +116,7 @@ When the master is started by the Kubernetes, it executes the following steps at
 1. Grabs a unique *master* lock in etcd, which prevents concurrent master instantiations.
 1. Recovers the task queues from etcd if they already exist, otherwise, the master will create them.
 1. Watches the trainer prefix keys `/trainer/` on etcd to find the live trainers.
-1. Starts dispatching the tasks to the trainers.
+1. Starts dispatching the tasks to the trainers, and updates task queue using an etcd transaction to ensure lock is held during the update.
 
 The master process will kill itself if its etcd lease expires.
 
