@@ -14,8 +14,9 @@
 """
 imikolov's simple dataset.
 
-This module will download dataset from http://www.fit.vutbr.cz/~imikolov/rnnlm/ and
-parse train/test set into paddle reader creators.
+This module will download dataset from 
+http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse train/test set into paddle
+reader creators.
 """
 import paddle.v2.dataset.common
 import collections
@@ -42,7 +43,8 @@ def word_count(f, word_freq=None):
 
 def build_dict():
     """
-    Build a word dictionary, the key is word, and the value is index.
+    Build a word dictionary from the corpus,  Keys of the dictionary are words,
+    and values are zero-based IDs of these words.
     """
     train_filename = './simple-examples/data/ptb.train.txt'
     test_filename = './simple-examples/data/ptb.valid.txt'
@@ -91,7 +93,7 @@ def train(word_idx, n):
     """
     imikolov train set creator.
 
-    It returns a reader creator, each sample in the reader is an index
+    It returns a reader creator, each sample in the reader is a word ID
     tuple.
 
     :param word_idx: word dictionary
@@ -108,7 +110,7 @@ def test(word_idx, n):
     """
     imikolov test set creator.
 
-    It returns a reader creator, each sample in the reader is an index
+    It returns a reader creator, each sample in the reader is a word ID
     tuple.
 
     :param word_idx: word dictionary

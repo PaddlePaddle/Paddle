@@ -14,11 +14,10 @@
 """
 IMDB dataset.
 
-This module download IMDB dataset from
-http://ai.stanford.edu/%7Eamaas/data/sentiment/, which contains a set of 25,000
-highly polar movie reviews for training, and 25,000 for testing. Besides, this
-module also provides API for build dictionary and parse train set and test set
-into paddle reader creators.
+This module downloads IMDB dataset from
+http://ai.stanford.edu/%7Eamaas/data/sentiment/. This dataset contains a set
+of 25,000 highly polar movie reviews for training, and 25,000 for testing.
+Besides, this module also provides API for building dictionary.
 """
 
 import paddle.v2.dataset.common
@@ -37,7 +36,7 @@ MD5 = '7c2ac02c03563afcf9b574c7e56c153a'
 
 def tokenize(pattern):
     """
-    Read files that match pattern.  Tokenize and yield each file.
+    Read files that match the given pattern.  Tokenize and yield each file.
     """
 
     with tarfile.open(paddle.v2.dataset.common.download(URL, 'imdb',
@@ -57,7 +56,8 @@ def tokenize(pattern):
 
 def build_dict(pattern, cutoff):
     """
-    Build a word dictionary, the key is word, and the value is index.
+    Build a word dictionary from the corpus. Keys of the dictionary are words,
+    and values are zero-based IDs of these words.
     """
     word_freq = collections.defaultdict(int)
     for doc in tokenize(pattern):
@@ -123,7 +123,7 @@ def train(word_idx):
     """
     IMDB train set creator.
 
-    It returns a reader creator, each sample in the reader is an index
+    It returns a reader creator, each sample in the reader is an zero-based ID
     sequence and label in [0, 1].
 
     :param word_idx: word dictionary
@@ -140,7 +140,7 @@ def test(word_idx):
     """
     IMDB test set creator.
 
-    It returns a reader creator, each sample in the reader is an index
+    It returns a reader creator, each sample in the reader is an zero-based ID
     sequence and label in [0, 1].
 
     :param word_idx: word dictionary
@@ -155,7 +155,7 @@ def test(word_idx):
 
 def word_dict():
     """
-    Build word dictionary.
+    Build a word dictionary from the corpus.
 
     :return: Word dictionary
     :rtype: dict

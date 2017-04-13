@@ -1,5 +1,5 @@
 """
-Trainer package
+Module Trainer
 """
 import collections
 

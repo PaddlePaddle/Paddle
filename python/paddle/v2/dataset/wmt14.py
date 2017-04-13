@@ -13,8 +13,8 @@
 # limitations under the License.
 """
 WMT14 dataset.
-The original WMT14 dataset is too large and a small set of data for set is provided.
-This module will download dataset from
+The original WMT14 dataset is too large and a small set of data for set is
+provided. This module will download dataset from
 http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz and
 parse train/test set into paddle reader creators.
 
@@ -107,8 +107,9 @@ def train(dict_size):
     """
     WMT14 train set creator.
 
-    It returns a reader creator, each sample in the reader is source language word index
-    sequence, target language word index sequence and next word index sequence.
+    It returns a reader creator, each sample in the reader is source language
+    word ID sequence, target language word ID sequence and next word ID
+    sequence.
 
     :return: Train reader creator
     :rtype: callable
@@ -121,8 +122,9 @@ def test(dict_size):
     """
     WMT14 test set creator.
 
-    It returns a reader creator, each sample in the reader is source language word index
-    sequence, target language word index sequence and next word index sequence.
+    It returns a reader creator, each sample in the reader is source language
+    word ID sequence, target language word ID sequence and next word ID
+    sequence.
 
     :return: Train reader creator
     :rtype: callable

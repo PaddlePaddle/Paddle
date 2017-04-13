@@ -75,8 +75,8 @@ def train():
     """
     UCI_HOUSING train set creator.
 
-    It returns a reader creator, each sample in the reader is features after normalization
-    and price number.
+    It returns a reader creator, each sample in the reader is features after
+    normalization and price number.
 
     :return: Train reader creator
     :rtype: callable
@@ -95,8 +95,8 @@ def test():
     """
     UCI_HOUSING test set creator.
 
-    It returns a reader creator, each sample in the reader is features after normalization
-    and price number.
+    It returns a reader creator, each sample in the reader is features after
+    normalization and price number.
 
     :return: Test reader creator
     :rtype: callable

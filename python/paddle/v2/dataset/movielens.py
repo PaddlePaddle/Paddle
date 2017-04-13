@@ -14,10 +14,11 @@
 """
 Movielens 1-M dataset.
 
-Movielens 1-M dataset contains 1 million ratings from 6000 users on 4000 movies, which was
-collected by GroupLens Research. This module will download Movielens 1-M dataset from
-http://files.grouplens.org/datasets/movielens/ml-1m.zip and parse train/test set
-into paddle reader creators.
+Movielens 1-M dataset contains 1 million ratings from 6000 users on 4000
+movies, which was collected by GroupLens Research. This module will download
+Movielens 1-M dataset from 
+http://files.grouplens.org/datasets/movielens/ml-1m.zip and parse train/test
+set into paddle reader creators.
 
 """
 
@@ -50,7 +51,7 @@ class MovieInfo(object):
 
     def value(self):
         """
-        Get information of a movie.
+        Get information from a movie.
         """
         return [
             self.index, [CATEGORIES_DICT[c] for c in self.categories],
@@ -78,7 +79,7 @@ class UserInfo(object):
 
     def value(self):
         """
-        Get information of a user.
+        Get information from a user.
         """
         return [self.index, 0 if self.is_male else 1, self.age, self.job_id]
 

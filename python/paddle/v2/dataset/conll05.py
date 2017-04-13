@@ -13,10 +13,11 @@
 # limitations under the License.
 """
 Conll05 dataset.
-Paddle semantic role labeling Book and demo use this dataset as an example. Because
-Conll05 is not free in public, the default downloaded URL is test set of
-Conll05 (which is public). Users can change URL and MD5 to their Conll dataset.
-And a pre-trained word vector model based on Wikipedia corpus is used to initialize SRL model.
+Paddle semantic role labeling Book and demo use this dataset as an example.
+Because Conll05 is not free in public, the default downloaded URL is test set
+of Conll05 (which is public). Users can change URL and MD5 to their Conll
+dataset. And a pre-trained word vector model based on Wikipedia corpus is used
+to initialize SRL model.
 """
 
 import tarfile
@@ -198,9 +199,10 @@ def test():
     """
     Conll05 test set creator.
 
-    Because the train dataset is not free, the test dataset is used for training.
-    It returns a reader creator, each sample in the reader is nine features, including sentence
-    sequence, predicate, predicate context, predicate context flag and tagged sequence.
+    Because the train dataset is not free, the test dataset is used for
+    training. It returns a reader creator, each sample in the reader is nine
+    features, including sentence sequence, predicate, predicate context,
+    predicate context flag and tagged sequence.
 
     :return: Train reader creator
     :rtype: callable
