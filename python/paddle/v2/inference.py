@@ -37,8 +37,13 @@ class Inference(object):
         self.__gradient_machine__.finish()
 
     def iter_infer_field(self, field, **kwargs):
+        if not isinstance(field, list) and not isinstance(field, tuple):
+            field = [field]
+
         for result in self.iter_infer(**kwargs):
-            yield [each_result[field] for each_result in result]
+            for each_result in result:
+                item = [each_result[each_field] for each_field in field]
+                yield item
 
     def infer(self, field='value', **kwargs):
         retv = None
