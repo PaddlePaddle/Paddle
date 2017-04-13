@@ -1342,9 +1342,15 @@ def grumemory(input,
 def last_seq(input,
              name=None,
              agg_level=AggregateLevel.EACH_TIMESTEP,
+             stride=-1,
              layer_attr=None):
     """
     Get Last Timestamp Activation of a sequence.
+
+    If stride > 0, this layer slides a window whose size is determined by stride, 
+    and return the last value of the window as the output. Thus, a long sequence 
+    will be shorten. Note that for sequence with sub-sequence, the default value 
+    of stride is -1.
 
     The simple usage is:
 
@@ -1357,6 +1363,8 @@ def last_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
+    :param stride: window size.  
+    :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
@@ -1368,11 +1376,15 @@ def last_seq(input,
                        " series information at all. Maybe you want to use"
                        " first_seq instead.")
 
+    if agg_level == AggregateLevel.EACH_SEQUENCE:
+        assert stride == -1
+
     Layer(
         name=name,
         type=LayerType.SEQUENCE_LAST_INSTANCE,
         inputs=[input.name],
         trans_type=agg_level,
+        stride=stride,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,
@@ -1386,9 +1398,15 @@ def last_seq(input,
 def first_seq(input,
               name=None,
               agg_level=AggregateLevel.EACH_TIMESTEP,
+              stride=-1,
               layer_attr=None):
     """
     Get First Timestamp Activation of a sequence.
+
+    If stride > 0, this layer slides a window whose size is determined by stride, 
+    and return the first value of the window as the output. Thus, a long sequence 
+    will be shorten. Note that for sequence with sub-sequence, the default value 
+    of stride is -1.
 
     The simple usage is:
 
@@ -1401,6 +1419,8 @@ def first_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
+    :param stride: window size.  
+    :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
@@ -1413,11 +1433,15 @@ def first_seq(input,
                        ' time series information at all. Maybe you want to use'
                        ' last_seq instead.')
 
+    if agg_level == AggregateLevel.EACH_SEQUENCE:
+        assert stride == -1
+
     Layer(
         name=name,
         type=LayerType.SEQUENCE_FIRST_INSTANCE,
         inputs=[input.name],
         trans_type=agg_level,
+        stride=stride,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,

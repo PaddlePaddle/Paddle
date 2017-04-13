@@ -2485,6 +2485,7 @@ class SequenceLastInstanceLayer(LayerBase):
                  active_type='linear',
                  trans_type='non-seq',
                  bias=False,
+                 stride=-1,
                  **xargs):
         super(SequenceLastInstanceLayer, self).__init__(
             name,
@@ -2495,10 +2496,11 @@ class SequenceLastInstanceLayer(LayerBase):
             **xargs)
         config_assert(
             len(inputs) == 1, 'SequenceLastInstanceLayer must have 1 input')
+        if trans_type == 'seq':
+            config_assert(stride == -1, 'subseq does not support stride window')
         self.config.trans_type = trans_type
-        for input_index in xrange(len(self.inputs)):
-            input_layer = self.get_input_layer(input_index)
-            self.set_layer_size(input_layer.size)
+        self.config.seq_pool_stride = stride
+        self.set_layer_size(self.get_input_layer(0).size)
         self.create_bias_parameter(bias, self.config.size)
 
 
@@ -2510,10 +2512,16 @@ class SequenceFirstInstanceLayer(SequenceLastInstanceLayer):
                  active_type='linear',
                  trans_type='non-seq',
                  bias=False,
+                 stride=-1,
                  **xargs):
         super(SequenceFirstInstanceLayer, self).__init__(
-            name, inputs=inputs, active_type=active_type, bias=bias, **xargs)
-        self.config.trans_type = trans_type
+            name,
+            inputs=inputs,
+            active_type=active_type,
+            trans_type=trans_type,
+            bias=bias,
+            stride=stride,
+            **xargs)
         self.config.select_first = True
 
 

@@ -441,6 +441,11 @@ message LayerConfig {
 
   // blank label used in ctc loss
   optional uint32 blank = 52 [default = 0];
+
+  // stride parameter for seqlastins layer, AverageLayer, MaxLayer, which 
+  // controls the scope of pooling operation. can be set > 0.
+  // leave empty or set to -1 to disable this stride pooling.
+  optional int32 seq_pool_stride = 53 [default = -1];
 }
 
 message EvaluatorConfig {
