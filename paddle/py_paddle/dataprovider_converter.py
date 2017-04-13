@@ -187,6 +187,13 @@ class SequenceScanner(IScanner):
         self.__inner_scanner__ = inner_scanner
         self.__setter__ = setter
 
+    def pre_scan(self, dat):
+        for each in dat:
+            self.__inner_scanner__.pre_scan(each)
+
+    def finish_pre_scan(self, argument):
+        self.__inner_scanner__.finish_pre_scan(argument)
+
     def scan(self, dat):
         self.__seq__.append(self.__seq__[-1] + self.get_size(dat))
         for each in dat:
