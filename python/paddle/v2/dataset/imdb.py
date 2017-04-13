@@ -121,14 +121,14 @@ def reader_creator(pos_pattern, neg_pattern, word_idx, buffer_size):
 
 def train(word_idx):
     """
-    IMDB train set creator.
+    IMDB training set creator.
 
     It returns a reader creator, each sample in the reader is an zero-based ID
     sequence and label in [0, 1].
 
     :param word_idx: word dictionary
     :type word_idx: dict
-    :return: Train reader creator
+    :return: Training reader creator
     :rtype: callable
     """
     return reader_creator(

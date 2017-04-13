@@ -15,8 +15,8 @@
 imikolov's simple dataset.
 
 This module will download dataset from 
-http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse train/test set into paddle
-reader creators.
+http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse training set and test set
+into paddle reader creators.
 """
 import paddle.v2.dataset.common
 import collections
@@ -91,7 +91,7 @@ def reader_creator(filename, word_idx, n):
 
 def train(word_idx, n):
     """
-    imikolov train set creator.
+    imikolov training set creator.
 
     It returns a reader creator, each sample in the reader is a word ID
     tuple.
@@ -100,7 +100,7 @@ def train(word_idx, n):
     :type word_idx: dict
     :param n: sliding window size
     :type n: int
-    :return: Train reader creator
+    :return: Training reader creator
     :rtype: callable
     """
     return reader_creator('./simple-examples/data/ptb.train.txt', word_idx, n)
@@ -117,7 +117,7 @@ def test(word_idx, n):
     :type word_idx: dict
     :param n: sliding window size
     :type n: int
-    :return: Train reader creator
+    :return: Test reader creator
     :rtype: callable
     """
     return reader_creator('./simple-examples/data/ptb.valid.txt', word_idx, n)

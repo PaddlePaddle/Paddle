@@ -66,12 +66,12 @@ def reader_creator(filename, sub_name):
 
 def train100():
     """
-    CIFAR-100 train set creator.
+    CIFAR-100 training set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
     [0, 1] and label in [0, 99].
 
-    :return: Train reader creator
+    :return: Training reader creator
     :rtype: callable
     """
     return reader_creator(
@@ -93,12 +93,12 @@ def test100():
 
 def train10():
     """
-    CIFAR-10 train set creator.
+    CIFAR-10 training set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
     [0, 1] and label in [0, 9].
 
-    :return: Train reader creator
+    :return: Training reader creator
     :rtype: callable
     """
     return reader_creator(

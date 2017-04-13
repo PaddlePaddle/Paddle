@@ -199,12 +199,12 @@ def test():
     """
     Conll05 test set creator.
 
-    Because the train dataset is not free, the test dataset is used for
+    Because the training dataset is not free, the test dataset is used for
     training. It returns a reader creator, each sample in the reader is nine
     features, including sentence sequence, predicate, predicate context,
     predicate context flag and tagged sequence.
 
-    :return: Train reader creator
+    :return: Training reader creator
     :rtype: callable
     """
     word_dict, verb_dict, label_dict = get_dict()
