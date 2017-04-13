@@ -255,9 +255,11 @@ user should pass either a batch of input data or reader method.</p>
 element is the data batch.</li>
 <li><strong>feeding</strong> &#8211; Reader dictionary. Default could generate from input
 value.</li>
-<li><strong>field</strong> (<em>str</em>) &#8211; The prediction field. It should in [<cite>value</cite>, <cite>ids</cite>]. <cite>value</cite>
-means return the prediction probabilities, <cite>ids</cite> means return
-the prediction labels. Default is <cite>value</cite></li>
+<li><strong>field</strong> (<em>str</em>) &#8211; The prediction field. It should in [<cite>value</cite>, <cite>id</cite>, <cite>prob</cite>].
+<cite>value</cite> and <cite>prob</cite> mean return the prediction probabilities,
+<cite>id</cite> means return the prediction labels. Default is <cite>value</cite>.
+Note that <cite>prob</cite> only used when output_layer is beam_search
+or max_id.</li>
 </ul>
 </td>
 </tr>
