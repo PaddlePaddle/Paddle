@@ -469,6 +469,7 @@ private:
 
 enum GradientMatchineCreateMode {
   CREATE_MODE_NORMAL = 0,
+  CREATE_MODE_SGD_SPARSE_CPU_TRAINING = 3,
   CREATE_MODE_TESTING = 4
 };
 
