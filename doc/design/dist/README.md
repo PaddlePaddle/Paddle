@@ -2,25 +2,24 @@
 
 ## Objective
 
-We want Paddle to support training on the general-purpose cluster. The cluster runs Paddle, the web server (e.g., Nginx), the log collector (e.g., fluentd), the distributed queue service (e.g., Kafka), the log joiner and other data processors written using Storm, Spark, and Hadoop MapReduce on the same cluster. As illustrated in the following graph:
+In [this slides](https://www.slideshare.net/cxwangyi/paddlepaddle-a-complete-solution-for-businesses), we explained that we'd like PaddlePaddle running on general-purpose clusters like those managed by Kubernetes, so to address demands for AI from both Internet and non-Internet industries.
 
-<img src="src/arch.png"/>
+This poses technical challenges to PaddlePaddle:
 
-This poses new challenges for Paddle,
+1. Support fault-recovery.
+1. Support both offline and online training.
+1. [Serverless computing](https://en.wikipedia.org/wiki/Serverless_computing) of distributed training.
 
-- Paddle need to be fault tolerant.
-- Input training data can be online data from real time logs or batch data from distributed file system.
-- User needs a simple way to train model on Paddle cloud. Complexities such as job scheduling should be hidden from user.
 
 ## Training Job
 
 A training job will be created once user asks Paddle cloud to train a model. The training job is made up of different processes that collaboratively consume data and produce a trained model. There are three kinds of processes:
 
-- Master process
-- Trainer process
-- Parameter server process
+1. the *master process*, which dispatches tasks to
+1. one or more *trainer processes*, which run distributed training and synchronize gradients/models via
+1. one or more *parameter server processes*, where each holds a shard of the global model.
 
-One training job will only have one master process, typically multiple trainer processes and parameter server processes. Their relation is illustrated in the following graph:
+Their relation is illustrated in the following graph:
 
 <img src="src/paddle-model-sharding.png"/>
 
