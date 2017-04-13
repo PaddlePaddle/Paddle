@@ -2023,6 +2023,10 @@ SumPooling, SquareRootNPooling.</li>
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">last_seq</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Get Last Timestamp Activation of a sequence.</p>
+<p>If stride &gt; 0, this layer slides a window whose size is determined by stride,
+and return the last value of the window as the output. Thus, a long sequence
+will be shorten. Note that for sequence with sub-sequence, the default value
+of stride is -1.</p>
 <p>The simple usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">seq</span> <span class="o">=</span> <span class="n">last_seq</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
 </pre></div>
@@ -2035,6 +2039,7 @@ SumPooling, SquareRootNPooling.</li>
 <li><strong>agg_level</strong> &#8211; Aggregated level</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer name.</li>
+<li><strong>stride</strong> (<em>Int</em>) &#8211; window size.</li>
 <li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
 </ul>
 </td>
@@ -2056,6 +2061,10 @@ SumPooling, SquareRootNPooling.</li>
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">first_seq</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Get First Timestamp Activation of a sequence.</p>
+<p>If stride &gt; 0, this layer slides a window whose size is determined by stride,
+and return the first value of the window as the output. Thus, a long sequence
+will be shorten. Note that for sequence with sub-sequence, the default value
+of stride is -1.</p>
 <p>The simple usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">seq</span> <span class="o">=</span> <span class="n">first_seq</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
 </pre></div>
@@ -2068,6 +2077,7 @@ SumPooling, SquareRootNPooling.</li>
 <li><strong>agg_level</strong> &#8211; aggregation level</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer name.</li>
+<li><strong>stride</strong> (<em>Int</em>) &#8211; window size.</li>
 <li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
 </ul>
 </td>
