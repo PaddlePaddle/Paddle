@@ -81,9 +81,11 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
     :type input: collections.Iterable
     :param feeding: Reader dictionary. Default could generate from input
                         value.
-    :param field: The prediction field. It should in [`value`, `ids`]. `value`
-                  means return the prediction probabilities, `ids` means return
-                  the prediction labels. Default is `value`
+    :param field: The prediction field. It should in [`value`, `id`, `prob`]. 
+                  `value` and `prob` mean return the prediction probabilities, 
+                  `id` means return the prediction labels. Default is `value`.
+                  Note that `prob` only used when output_layer is beam_search 
+                  or max_id.
     :type field: str
     :return: a numpy array
     :rtype: numpy.ndarray
