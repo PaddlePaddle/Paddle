@@ -83,13 +83,17 @@ def __arguments_to_numpy__(i, arg):
     assert isinstance(arg, swig_paddle.Arguments)
     value = arg.getSlotValue(i)
     ids = arg.getSlotIds(i)
+    prob = arg.getSlotIn(i)
     if value is not None:
         assert isinstance(value, swig_paddle.Matrix)
         value = value.copyToNumpyMat()
     if ids is not None:
         assert isinstance(ids, swig_paddle.IVector)
         ids = ids.copyToNumpyArray()
-    return {"value": value, "id": ids}
+    if prob is not None:
+        assert isinstance(prob, swig_paddle.Matrix)
+        prob = prob.copyToNumpyMat()
+    return {"value": value, "id": ids, "prob": prob}
 
 
 def __monkeypatch_gradient_machine__():
