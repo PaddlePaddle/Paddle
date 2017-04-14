@@ -483,6 +483,20 @@ void GpuMatrix::sequenceAvgForward(Matrix& a,
   hl_sequence_avg_forward(dst, src, starts, height, width, mode);
 }
 
+void GpuMatrix::sequenceAvgBackward(Matrix& a,
+                                    const IVector& startsPos,
+                                    int mode) {
+  size_t height = a.getHeight();
+  size_t width = getWidth();
+  CHECK_EQ(height, startsPos.getSize() - 1);
+  CHECK_EQ(width, a.getWidth());
+  real* dst = getData();
+  real* src = a.getData();
+  const int* starts = startsPos.getData();
+
+  hl_sequence_avg_backward(dst, src, starts, height, width, mode);
+}
+
 /* this = scaleAB*(a*b) +  scaleT*this */
 void GpuMatrix::mul(const GpuMatrix& a,
                     const GpuMatrix& b,
@@ -2304,6 +2318,41 @@ void CpuMatrix::sequenceAvgForward(Matrix& a,
   }
 }
 
+void CpuMatrix::sequenceAvgBackward(Matrix& a,
+                                    const IVector& startsPos,
+                                    int mode) {
+  size_t height = a.getHeight();
+  size_t width = getWidth();
+  CHECK_EQ(height, startsPos.getSize() - 1);
+  CHECK_EQ(width, a.getWidth());
+  real* dst = getData();
+  real* src = a.getData();
+  const int* starts = startsPos.getData();
+  MatrixPtr outMtx = Matrix::create(nullptr, 1, width, false, false);
+  MatrixPtr dataMtx = Matrix::create(nullptr, 1, width, false, false);
+  for (size_t i = 0; i < height; ++i) {
+    int sequenceLength = starts[i + 1] - starts[i];
+    if (0 == sequenceLength) {
+      // empty sequence
+      continue;
+    }
+    outMtx->setData(dst + starts[i] * width, sequenceLength, width);
+    dataMtx->setData(src + i * width);
+    if (mode == 0) {
+      // plain average
+      outMtx->addBias(*dataMtx, 1.0f / sequenceLength);
+    } else if (mode == 1) {
+      // sum instead of average
+      outMtx->addBias(*dataMtx, 1.0f);
+    } else if (mode == 2) {
+      // divide by square root of sequenceLength
+      outMtx->addBias(*dataMtx, 1.0f / std::sqrt(sequenceLength));
+    } else {
+      LOG(FATAL) << "should not reach here";
+    }
+  }
+}
+
 /* this = scaleAB*(a*b) + scaleT*this*/
 void CpuMatrix::mul(const Matrix& a,
                     const Matrix& b,
@@ -2377,41 +2426,8 @@ void CpuMatrix::mul(CpuMatrix* a, CpuMatrix* b, real scaleAB, real scaleT) {
   int lda = a->getStride();
   int ldb = b->getStride();
   int ldc = getStride();
-#ifndef PADDLE_TYPE_DOUBLE
-  cblas_sgemm(CblasRowMajor,
-              a_trans,
-              b_trans,
-              M,
-              N,
-              K,
-              scaleAB,
-              A,
-              lda,
-              B,
-              ldb,
-              scaleT,
-              C,
-              ldc);
-#else
-  cblas_dgemm(CblasRowMajor,
-              a_trans,
-              b_trans,
-              M,
-              N,
-              K,
-              scaleAB,
-              A,
-              lda,
-              B,
-              ldb,
-              scaleT,
-              C,
-              ldc);
-// TODO(yuyang18): Is gemm defined other place?
-#endif
-
-  VLOG(2) << " A[0]=" << A[0] << " A[1]=" << A[1] << " B[0]=" << B[0]
-          << " B[1]=" << B[1] << " C[0]=" << C[0] << " C[1]=" << C[1];
+  gemm<real>(
+      a_trans, b_trans, M, N, K, scaleAB, A, lda, B, ldb, scaleT, C, ldc);
 }
 
 void CpuMatrix::mul(

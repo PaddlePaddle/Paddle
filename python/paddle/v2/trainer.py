@@ -37,9 +37,12 @@ class SGD(object):
     :type cost: paddle.v2.config_base.Layer
     :param parameters: The parameters dictionary.
     :type parameters: paddle.v2.parameters.Parameters
+    :param extra_layers: Some layers in the neural network graph are not
+                         in the path of cost layer.
+    :type extra_layers: paddle.v2.config_base.Layer
     """
 
-    def __init__(self, cost, parameters, update_equation):
+    def __init__(self, cost, parameters, update_equation, extra_layers=None):
 
         if not isinstance(parameters, v2_parameters.Parameters):
             raise TypeError('parameters should be parameters')
@@ -47,11 +50,17 @@ class SGD(object):
         if not isinstance(update_equation, v2_optimizer.Optimizer):
             raise TypeError("update equation parameter must be "
                             "paddle.v2.optimizer.Optimizer")
-        topology = Topology(cost)
+        topology = Topology(cost, extra_layers=extra_layers)
         self.__optimizer__ = update_equation
         self.__topology__ = topology
         self.__parameters__ = parameters
         self.__topology_in_proto__ = topology.proto()
+
+        # In local mode, disable sparse_remote_update.
+        for param in self.__topology_in_proto__.parameters:
+            if param.sparse_remote_update:
+                param.sparse_remote_update = False
+
         self.__data_types__ = topology.data_type()
         gm = api.GradientMachine.createFromConfigProto(
             self.__topology_in_proto__, api.CREATE_MODE_NORMAL,
@@ -72,7 +81,7 @@ class SGD(object):
         :type event_handler: (BaseEvent) => None
         :param feeding: Feeding is a map of neural network input name and array
                         index that reader returns.
-        :type feeding: dict
+        :type feeding: dict|list
         :return:
         """
         if event_handler is None:

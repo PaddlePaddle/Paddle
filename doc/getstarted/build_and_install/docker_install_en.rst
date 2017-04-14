@@ -8,49 +8,230 @@ Please be aware that you will need to change `Dockers settings
 <https://github.com/PaddlePaddle/Paddle/issues/627>`_ to make full use
 of your hardware resource on Mac OS X and Windows.
 
+Working With Docker
+-------------------
+
+Docker is simple as long as we understand a few basic concepts:
+
+- *image*: A Docker image is a pack of software. It could contain one or more programs and all their dependencies. For example, the PaddlePaddle's Docker image includes pre-built PaddlePaddle and Python and many Python packages. We can run a Docker image directly, other than installing all these software. We can type
+
+  .. code-block:: bash
+
+     docker images
+
+  to list all images in the system. We can also run
+
+  .. code-block:: bash
+		  
+     docker pull paddlepaddle/paddle:0.10.0rc2
+
+  to download a Docker image, paddlepaddle/paddle in this example,
+  from Dockerhub.com.
+
+- *container*: considering a Docker image a program, a container is a
+  "process" that runs the image. Indeed, a container is exactly an
+  operating system process, but with a virtualized filesystem, network
+  port space, and other virtualized environment. We can type
+
+  .. code-block:: bash
+
+     docker run paddlepaddle/paddle:0.10.0rc2
+
+  to start a container to run a Docker image, paddlepaddle/paddle in this example.
+
+- By default docker container have an isolated file system namespace,
+  we can not see the files in the host file system. By using *volume*,
+  mounted files in host will be visible inside docker container.
+  Following command will mount current dirctory into /data inside
+  docker container, run docker container from debian image with
+  command :code:`ls /data`.
+
+  .. code-block:: bash
+
+     docker run --rm -v $(pwd):/data debian ls /data
 
 Usage of CPU-only and GPU Images
 ----------------------------------
 
-For each version of PaddlePaddle, we release 2 Docker images, a
-CPU-only one and a CUDA GPU one.  We do so by configuring
-`dockerhub.com <https://hub.docker.com/r/paddledev/paddle/>`_
-automatically generate the latest docker images `paddledev/paddle:0.10.0rc1-cpu`
-and `paddledev/paddle:0.10.0rc1-gpu`.
+For each version of PaddlePaddle, we release two types of Docker images:
+development image and production image. Production image includes
+CPU-only version and a CUDA GPU version and their no-AVX versions. We
+put the docker images on `dockerhub.com
+<https://hub.docker.com/r/paddledev/paddle/>`_. You can find the
+latest versions under "tags" tab at dockerhub.com
 
-To run the CPU-only image as an interactive container:
+1. Production images, this image might have multiple variants:
+
+   - GPU/AVX：:code:`paddlepaddle/paddle:<version>-gpu`
+   - GPU/no-AVX：:code:`paddlepaddle/paddle:<version>-gpu-noavx`
+   - CPU/AVX：:code:`paddlepaddle/paddle:<version>`
+   - CPU/no-AVX：:code:`paddlepaddle/paddle:<version>-noavx`
+
+   Please be aware that the CPU-only and the GPU images both use the
+   AVX instruction set, but old computers produced before 2008 do not
+   support AVX.  The following command checks if your Linux computer
+   supports AVX:
+
+   .. code-block:: bash
+
+      if cat /proc/cpuinfo | grep -i avx; then echo Yes; else echo No; fi
+
+   
+   To run the CPU-only image as an interactive container:
+
+   .. code-block:: bash
+
+      docker run -it --rm paddlepaddle/paddle:0.10.0rc2 /bin/bash
+
+   Above method work with the GPU image too -- the recommended way is
+   using `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_.
+
+   Please install nvidia-docker first following this `tutorial
+   <https://github.com/NVIDIA/nvidia-docker#quick-start>`_.
+
+   Now you can run a GPU image:
+
+   .. code-block:: bash
+
+      nvidia-docker run -it --rm paddlepaddle/paddle:0.10.0rc2-gpu /bin/bash
+
+2. development image :code:`paddlepaddle/paddle:<version>-dev`
+
+   This image has packed related develop tools and runtime
+   environment. Users and developers can use this image instead of
+   their own local computer to accomplish development, build,
+   releasing, document writing etc. While different version of paddle
+   may depends on different version of libraries and tools, if you
+   want to setup a local environment, you must pay attention to the
+   versions.  The development image contains:
+   
+   - gcc/clang
+   - nvcc
+   - Python
+   - sphinx
+   - woboq
+   - sshd
+     
+   Many developers use servers with GPUs, they can use ssh to login to
+   the server and run :code:`docker exec` to enter the docker
+   container and start their work.  Also they can start a development
+   docker image with SSHD service, so they can login to the container
+   and start work.
+
+
+Train Model Using Python API
+----------------------------
+
+Our official docker image provides a runtime for PaddlePaddle
+programs. The typical workflow will be as follows:
+
+Create a directory as workspace:
 
 .. code-block:: bash
 
-    docker run -it --rm paddledev/paddle:0.10.0rc1-cpu /bin/bash
+   mkdir ~/workspace
 
-or, we can run it as a daemon container
-
-.. code-block:: bash
-
-    docker run -d -p 2202:22 -p 8888:8888 paddledev/paddle:0.10.0rc1-cpu
-
-and SSH to this container using password :code:`root`:
+Edit a PaddlePaddle python program using your favourite editor
 
 .. code-block:: bash
 
-    ssh -p 2202 root@localhost
+   emacs ~/workspace/example.py
 
-An advantage of using SSH is that we can connect to PaddlePaddle from
-more than one terminals.  For example, one terminal running vi and
-another one running Python interpreter.  Another advantage is that we
-can run the PaddlePaddle container on a remote server and SSH to it
-from a laptop.
-
-Above methods work with the GPU image too -- just please don't forget
-to install CUDA driver and let Docker knows about it:
+Run the program using docker:
 
 .. code-block:: bash
 
-    export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
-    export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-    docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:0.10.0rc1-gpu
+   docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2 python /workspace/example.py
 
+Or if you are using GPU for training:
+
+.. code-block:: bash
+
+   nvidia-docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2-gpu python /workspace/example.py
+
+Above commands will start a docker container by running :code:`python
+/workspace/example.py`. It will stop once :code:`python
+/workspace/example.py` finishes.
+
+Another way is to tell docker to start a :code:`/bin/bash` session and
+run PaddlePaddle program interactively:
+
+.. code-block:: bash
+
+   docker run -it -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2 /bin/bash
+   # now we are inside docker container
+   cd /workspace
+   python example.py
+
+Running with GPU is identical:
+
+.. code-block:: bash
+
+   nvidia-docker run -it -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2-gpu /bin/bash
+   # now we are inside docker container
+   cd /workspace
+   python example.py
+
+
+Develop PaddlePaddle or Train Model Using C++ API
+---------------------------------------------------
+
+We will be using PaddlePaddle development image since it contains all
+compiling tools and dependencies.
+
+Let's clone PaddlePaddle repo first:
+
+.. code-block:: bash
+
+   git clone https://github.com/PaddlePaddle/Paddle.git && cd Paddle
+
+Mount both workspace folder and paddle code folder into docker
+container, so we can access them inside docker container. There are
+two ways of using PaddlePaddle development docker image:
+
+- run interactive bash directly
+
+  .. code-block:: bash
+
+     # use nvidia-docker instead of docker if you need to use GPU
+     docker run -it -v ~/workspace:/workspace -v $(pwd):/paddle paddlepaddle/paddle:0.10.0rc2-dev /bin/bash
+     # now we are inside docker container
+
+- or, we can run it as a daemon container
+
+  .. code-block:: bash
+
+     # use nvidia-docker instead of docker if you need to use GPU
+     docker run -d -p 2202:22 -p 8888:8888 -v ~/workspace:/workspace -v $(pwd):/paddle paddlepaddle/paddle:0.10.0rc2-dev /usr/sbin/sshd -D
+
+  and SSH to this container using password :code:`root`:
+
+  .. code-block:: bash
+
+     ssh -p 2202 root@localhost
+
+  An advantage is that we can run the PaddlePaddle container on a
+  remote server and SSH to it from a laptop.
+
+When developing PaddlePaddle, you can edit PaddlePaddle source code
+from outside of docker container using your favoriate editor. To
+compile PaddlePaddle, run inside container:
+
+.. code-block:: bash
+
+   WITH_GPU=OFF WITH_AVX=ON WITH_TEST=ON bash /paddle/paddle/scripts/docker/build.sh
+
+This builds everything about Paddle in :code:`/paddle/build`.  And we
+can run unit tests there:
+
+.. code-block:: bash
+
+   cd /paddle/build
+   ctest
+
+When training model using C++ API, we can edit paddle program in
+~/workspace outside of docker. And build from /workspace inside of
+docker.
 
 PaddlePaddle Book
 ------------------
@@ -59,122 +240,23 @@ The Jupyter Notebook is an open-source web application that allows
 you to create and share documents that contain live code, equations,
 visualizations and explanatory text in a single browser.
 
-PaddlePaddle Book is an interactive Jupyter Notebook for users and developers. 
+PaddlePaddle Book is an interactive Jupyter Notebook for users and developers.
 We already exposed port 8888 for this book. If you want to
 dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.
 
-Once you are inside the container, simply issue the command:
+We provide a packaged book image, simply issue the command:
 
 .. code-block:: bash
-        
-    jupyter notebook
+
+    docker run -p 8888:8888 paddlepaddle/book
 
 Then, you would back and paste the address into the local browser:
-    
+
 .. code-block:: text
 
     http://localhost:8888/
 
 That's all. Enjoy your journey!
-
-
-Non-AVX Images
---------------
-
-Please be aware that the CPU-only and the GPU images both use the AVX
-instruction set, but old computers produced before 2008 do not support
-AVX.  The following command checks if your Linux computer supports
-AVX:
-
-.. code-block:: bash
-
-   if cat /proc/cpuinfo | grep -i avx; then echo Yes; else echo No; fi
-
-
-If it doesn't, we will need to build non-AVX images manually from
-source code:
-
-.. code-block:: bash
-
-   cd ~
-   git clone https://github.com/PaddlePaddle/Paddle.git
-   cd Paddle
-   docker build --build-arg WITH_AVX=OFF -t paddle:cpu-noavx -f paddle/scripts/docker/Dockerfile .
-   docker build --build-arg WITH_AVX=OFF -t paddle:gpu-noavx -f paddle/scripts/docker/Dockerfile.gpu .
-
-
-Development Using Docker
-------------------------
-
-Developers can work on PaddlePaddle using Docker.  This allows
-developers to work on different platforms -- Linux, Mac OS X, and
-Windows -- in a consistent way.
-
-1. Build the Development Environment as a Docker Image
-
-   .. code-block:: bash
-
-      git clone --recursive https://github.com/PaddlePaddle/Paddle
-      cd Paddle
-      docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile .
-
-
-   Note that by default :code:`docker build` wouldn't import source
-   tree into the image and build it.  If we want to do that, we need
-   to set a build arg:
-
-   .. code-block:: bash
-
-      docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile --build-arg BUILD_AND_INSTALL=ON .
-
-
-2. Run the Development Environment
-
-   Once we got the image :code:`paddle:dev`, we can use it to develop
-   Paddle by mounting the local source code tree into a container that
-   runs the image:
-
-   .. code-block:: bash
-
-      docker run -d -p 2202:22 -p 8888:8888 -v $PWD:/paddle paddle:dev
-
-   This runs a container of the development environment Docker image
-   with the local source tree mounted to :code:`/paddle` of the
-   container.
-
-   Note that the default entry-point of :code:`paddle:dev` is
-   :code:`sshd`, and above :code:`docker run` commands actually starts
-   an SSHD server listening on port 2202.  This allows us to log into
-   this container with:
-
-   .. code-block:: bash
-
-      ssh root@localhost -p 2202
-
-   Usually, I run above commands on my Mac.  I can also run them on a
-   GPU server :code:`xxx.yyy.zzz.www` and ssh from my Mac to it:
-
-   .. code-block:: bash
-
-      my-mac$ ssh root@xxx.yyy.zzz.www -p 2202
-
-3. Build and Install Using the Development Environment
-
-   Once I am in the container, I can use
-   :code:`paddle/scripts/docker/build.sh` to build, install, and test
-   Paddle:
-
-   .. code-block:: bash
-
-      /paddle/paddle/scripts/docker/build.sh
-
-   This builds everything about Paddle in :code:`/paddle/build`.  And
-   we can run unit tests there:
-
-   .. code-block:: bash
-
-      cd /paddle/build
-      ctest
 
 
 Documentation
@@ -191,7 +273,7 @@ container:
 
 .. code-block:: bash
 
-   docker run -d --name paddle-cpu-doc paddle:0.10.0rc1-cpu
+   docker run -d --name paddle-cpu-doc paddle:<version>
    docker run -d --volumes-from paddle-cpu-doc -p 8088:80 nginx
 
 

@@ -19,7 +19,7 @@ limitations under the License. */
 /// for MSVC
 #define CPUID(info, x) __cpuidex(info, x, 0)
 
-#else
+#elif !defined(__ANDROID__)
 
 #include <cpuid.h>
 
@@ -31,6 +31,7 @@ limitations under the License. */
 namespace paddle {
 
 SIMDFlags::SIMDFlags() {
+#if !defined(__ANDROID__)
   unsigned int cpuInfo[4];
   // CPUID: https://en.wikipedia.org/wiki/CPUID
   // clang-format off
@@ -51,6 +52,9 @@ SIMDFlags::SIMDFlags() {
   CPUID(cpuInfo, 0x80000001);
   simd_flags_ |= cpuInfo[2] & (1 << 16) ? SIMD_FMA4  : SIMD_NONE;
   // clang-fotmat on
+#else
+  simd_flags_ = SIMD_NEON;
+#endif
 }
 
 SIMDFlags const* SIMDFlags::instance() {
