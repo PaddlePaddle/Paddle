@@ -33,6 +33,7 @@ static std::vector<paddle_real> randomBuffer(size_t bufSize) {
 }
 
 TEST(GradientMachine, testPredict) {
+  //! TODO(yuyang18): Test GPU Code.
   paddle::TrainerConfigHelper config("./test_predict_network.py");
   std::string buffer;
   ASSERT_TRUE(config.getModelConfig().SerializeToString(&buffer));

@@ -29,6 +29,7 @@ static std::vector<paddle_real> randomBuffer(size_t bufSize) {
 }
 
 TEST(CAPIArguments, create) {
+  //! TODO(yuyang18): Test GPU Code.
   paddle_arguments args = paddle_arguments_create_none();
   uint64_t size;
   ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_size(args, &size));

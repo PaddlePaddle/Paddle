@@ -16,6 +16,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 TEST(CAPIVector, create) {
+  //! TODO(yuyang18): Test GPU Code.
   paddle_ivector vec;
   int array[3] = {1, 2, 3};
   vec = paddle_ivector_create(array, 3, true, false);

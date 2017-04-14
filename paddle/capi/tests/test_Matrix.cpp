@@ -16,6 +16,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 TEST(CAPIMatrix, create) {
+  //! TODO(yuyang18): Test GPU Code.
   paddle_matrix mat = paddle_matrix_create(128, 32, false);
   std::vector<paddle_real> sampleRow;
   sampleRow.resize(32);
