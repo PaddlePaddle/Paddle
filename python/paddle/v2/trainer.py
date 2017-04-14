@@ -97,7 +97,8 @@ class SGD(object):
         if self.__is_local__:
             updater = self.__optimizer__.create_local_updater()
         else:
-            updater = self.__optimizer__.create_remote_updater(num_passes)
+            updater = self.__optimizer__.create_remote_updater(num_passes,
+                                                               self.__use_sparse_updater__)
         updater.init(self.__gradient_machine__)
 
         self.__gradient_machine__.start()
