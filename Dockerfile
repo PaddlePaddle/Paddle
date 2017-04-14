@@ -36,12 +36,14 @@ RUN git config --global credential.helper store
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
+# FIXME: due to temporary ipykernel dependency issue, specify ipykernel jupyter
+# version util jupyter fixes this issue.
 RUN pip install --upgrade pip && \
     pip install -U 'protobuf==3.1.0' && \
     pip install -U wheel pillow BeautifulSoup && \
     pip install -U docopt PyYAML sphinx && \
     pip install -U sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip install -U pre-commit 'requests==2.9.2' jupyter
+    pip install pre-commit 'requests==2.9.2' 'ipykernel==4.6.0' 'jupyter==1.0.0'
 
 RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd cmake-3.4.1 && ./bootstrap && make -j `nproc` && make install && \
