@@ -126,7 +126,7 @@ def seqToseq_net(source_dict_dim, target_dict_dim, is_generating=False):
 
 def main():
     paddle.init(use_gpu=False, trainer_count=1)
-    is_generating = True
+    is_generating = False
 
     # source and target dict dim.
     dict_size = 30000
@@ -167,16 +167,47 @@ def main():
 
     # generate a english sequence to french
     else:
-        gen_creator = paddle.dataset.wmt14.test(dict_size)
+        # use the first 3 samples for generation
+        gen_creator = paddle.dataset.wmt14.gen(dict_size)
         gen_data = []
+        gen_num = 3
         for item in gen_creator():
             gen_data.append((item[0], ))
-            if len(gen_data) == 3:
+            if len(gen_data) == gen_num:
                 break
 
         beam_gen = seqToseq_net(source_dict_dim, target_dict_dim, is_generating)
+        # get the pretrained model, whose bleu = 26.92
         parameters = paddle.dataset.wmt14.model()
-        trg_dict = paddle.dataset.wmt14.trg_dict(dict_size)
+        # prob is the prediction probabilities, and id is the prediction word. 
+        beam_result = paddle.infer(
+            output_layer=beam_gen,
+            parameters=parameters,
+            input=gen_data,
+            field=['prob', 'id'])
+
+        # get the dictionary
+        src_dict, trg_dict = paddle.dataset.wmt14.get_dict(dict_size)
+
+        # the delimited element of generated sequences is -1,
+        # the first element of each generated sequence is the sequence length
+        seq_list = []
+        seq = []
+        for w in beam_result[1]:
+            if w != -1:
+                seq.append(w)
+            else:
+                seq_list.append(' '.join([trg_dict.get(w) for w in seq[1:]]))
+                seq = []
+
+        prob = beam_result[0]
+        beam_size = 3
+        for i in xrange(gen_num):
+            print "\n*******************************************************\n"
+            print "src:", ' '.join(
+                [src_dict.get(w) for w in gen_data[i][0]]), "\n"
+            for j in xrange(beam_size):
+                print "prob = %f:" % (prob[i][j]), seq_list[i * beam_size + j]
 
 
 if __name__ == '__main__':
