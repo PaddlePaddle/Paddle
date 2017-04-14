@@ -13,6 +13,9 @@ packages=['paddle',
 setup(name='paddle',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
+      install_requires=[
+          "requests",
+      ],
       packages=packages,
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}'
