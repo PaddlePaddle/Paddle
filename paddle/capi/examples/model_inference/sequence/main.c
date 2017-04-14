@@ -59,5 +59,12 @@ int main() {
   }
   printf("\n");
 
+  CHECK(paddle_matrix_destroy(prob));
+  CHECK(paddle_arguments_destroy(out_args));
+  CHECK(paddle_ivector_destroy(seq_pos));
+  CHECK(paddle_ivector_destroy(sentence));
+  CHECK(paddle_arguments_destroy(in_args));
+  CHECK(paddle_gradient_machine_destroy(machine));
+
   return 0;
 }

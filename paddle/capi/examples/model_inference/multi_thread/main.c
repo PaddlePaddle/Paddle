@@ -4,23 +4,23 @@
 #include "../common/common.h"
 
 #define CONFIG_BIN "./trainer_config.bin"
-#define NUM_THREAD 1000
+#define NUM_THREAD 4
 #define NUM_ITER 1000
 
 pthread_mutex_t mutex;
 
 void* thread_main(void* gm_ptr) {
   paddle_gradient_machine machine = (paddle_gradient_machine)(gm_ptr);
-
+  paddle_arguments in_args = paddle_arguments_create_none();
+  // Create input matrix.
+  paddle_matrix mat = paddle_matrix_create(/* sample_num */ 1,
+                                           /* size */ 784,
+                                           /* useGPU */ false);
+  paddle_arguments out_args = paddle_arguments_create_none();
+  paddle_matrix prob = paddle_matrix_create_none();
   for (int iter = 0; iter < NUM_ITER; ++iter) {
-    paddle_arguments in_args = paddle_arguments_create_none();
     // There is only one input of this network.
     CHECK(paddle_arguments_resize(in_args, 1));
-
-    // Create input matrix.
-    paddle_matrix mat = paddle_matrix_create(/* sample_num */ 1,
-                                             /* size */ 784,
-                                             /* useGPU */ false);
 
     paddle_real* array;
 
@@ -33,12 +33,10 @@ void* thread_main(void* gm_ptr) {
 
     CHECK(paddle_arguments_set_value(in_args, 0, mat));
 
-    paddle_arguments out_args = paddle_arguments_create_none();
     CHECK(paddle_gradient_machine_forward(machine,
                                           in_args,
                                           out_args,
                                           /* isTrain */ false));
-    paddle_matrix prob = paddle_matrix_create_none();
 
     CHECK(paddle_arguments_value(out_args, 0, prob));
 
@@ -53,6 +51,10 @@ void* thread_main(void* gm_ptr) {
     pthread_mutex_unlock(&mutex);
   }
 
+  CHECK(paddle_matrix_destroy(prob));
+  CHECK(paddle_arguments_destroy(out_args));
+  CHECK(paddle_matrix_destroy(mat));
+  CHECK(paddle_arguments_destroy(in_args));
   CHECK(paddle_gradient_machine_destroy(machine));
   return NULL;
 }
