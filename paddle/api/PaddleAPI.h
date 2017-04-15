@@ -860,6 +860,13 @@ public:
   void update(Parameter* param);
 
   /**
+   * @breif only get required sparse rows by default.
+   * @param fullSize: get full matrix parameter if *fullSize* set
+   * @param apply: get PARAMETER_APPLY on pserver if *apply* set
+   */
+  void getParametersRemote(bool fullSize = false, bool apply = false);
+
+  /**
    * @brief restore the average parameter.
    * @note It is only used in AverageOptimizer. Restore will get the current
    * PARAMETER_VALUE back.

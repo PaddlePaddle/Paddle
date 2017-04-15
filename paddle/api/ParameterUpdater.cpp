@@ -72,6 +72,10 @@ void ParameterUpdater::update(Parameter *param) {
   m->updater->update(paddleParam);
 }
 
+void ParameterUpdater::getParametersRemote(bool fullSize, bool apply) {
+  m->updater->getParametersRemote(fullSize, apply);
+}
+
 void ParameterUpdater::restore() { m->updater->restore(); }
 
 void ParameterUpdater::apply() { m->updater->apply(); }
