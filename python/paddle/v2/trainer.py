@@ -42,7 +42,12 @@ class SGD(object):
     :type extra_layers: paddle.v2.config_base.Layer
     """
 
-    def __init__(self, cost, parameters, update_equation, extra_layers=None, is_local=True):
+    def __init__(self,
+                 cost,
+                 parameters,
+                 update_equation,
+                 extra_layers=None,
+                 is_local=True):
 
         if not isinstance(parameters, v2_parameters.Parameters):
             raise TypeError('parameters should be parameters')
@@ -97,8 +102,8 @@ class SGD(object):
         if self.__is_local__:
             updater = self.__optimizer__.create_local_updater()
         else:
-            updater = self.__optimizer__.create_remote_updater(num_passes,
-                                                               self.__use_sparse_updater__)
+            updater = self.__optimizer__.create_remote_updater(
+                num_passes, self.__use_sparse_updater__)
         updater.init(self.__gradient_machine__)
 
         self.__gradient_machine__.start()

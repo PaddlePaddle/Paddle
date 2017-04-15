@@ -32,12 +32,16 @@ ParameterUpdater *ParameterUpdater::createRemoteUpdater(
     OptimizationConfig *config, int passCount, bool userSparseUpdater) {
   auto updater = new ParameterUpdater();
   auto remoteUpdater = new paddle::RemoteParameterUpdater(
-          config->m->getConfig(), passCount, nullptr);
+      config->m->getConfig(), passCount, nullptr);
   if (userSparseUpdater) {
     std::unique_ptr<paddle::ParameterUpdater> remoteUpdaterPtr;
     remoteUpdaterPtr.reset(remoteUpdater);
-    auto sparseRemoteUpdater = new paddle::SparseRemoteParameterUpdaterComposite(
-            config->m->getConfig(), passCount, false, std::move(remoteUpdaterPtr));
+    auto sparseRemoteUpdater =
+        new paddle::SparseRemoteParameterUpdaterComposite(
+            config->m->getConfig(),
+            passCount,
+            false,
+            std::move(remoteUpdaterPtr));
     updater->m->updater.reset(sparseRemoteUpdater);
   } else {
     updater->m->updater.reset(remoteUpdater);
