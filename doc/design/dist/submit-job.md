@@ -2,7 +2,10 @@
 # PaddlePaddle Client
 PaddlePaddle client is command line tool, you can use a PaddlePaddle client to start a local train and submit a distributed training job to kubernetes cluster.
 
+The relation of PaddlePaddle, kubernetes and docker:
+
 <img src="./submit-job.png" width="500">
+
 
 # Running your training locally
 Execute `paddle local train` to run your local train.
@@ -61,7 +64,7 @@ paddle job submit train <job-name>
 
 ## Build your docker image
 Before submitting a distributed training, you should build your docker image, here
-is a simple example for a PaddlePaddle trainer:
+is a simple example project:
 ```bash
 paddle_example
     |-Dcokerfile
@@ -71,7 +74,7 @@ paddle_example
 ```
 Execute `docker build -t <your repo>/paddle_dist_example .` on directory `paddle_example` and then
 push the image use `docker push <your repo>/paddle_dist_example`
-`Dockerfile` should include your python package, such as:
+`Dockerfile` should add your python package to the image:
 ```bash
 FROM:paddlepaddle/paddle:0.10.0rc2
 ADD ./quick_start /train/quick_start
@@ -104,3 +107,23 @@ Master process a bootstrap and manager process for a distributed job, it deploys
 1. Real-time data
 
   TODO
+
+## PaddlePaddle client commands:
+- paddle local train
+
+  Start up a local train using docker.
+- paddle job submit
+
+  Submit a PaddlePaddle distributed training using kubectl.
+- paddle job status
+
+  Check the job status
+- paddle job list:
+
+  List existing PaddlePadle distributed job on kubernetes
+- paddle job cancel:
+
+  Cancel a running PaddlePaddle distributed job.
+- paddle version:
+
+  Show PaddlePaddle client version
