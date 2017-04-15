@@ -83,47 +83,55 @@ CMD ["python", "/train/quick_stat/train.py"]
 
 ## Master process
 Master process a bootstrap and manager process for a distributed job, it deploys parameter server process, trainer process and dispatch task for the trainers, it is implemented by golang.
-1. Setup master process
+
+- Setup master process
 
   While user submits a distributed training job, PaddlePaddle client deploys a master process which is a  Job resource naming `<job-name>-master` on kubernetes.
-1. Startup pservers and trainers
+
+- Startup pservers and trainers
 
   Master process will deploy pserver and trainer on kubernetes, they are also job resource, naming `<job-name>-pserver` and `<job-name>-trainer`. Because of trainer need the IP of pserver, so there should be a dependency for the startup order.
   - Deploy pserver job, and waiting for the status becoming `RUNINIG`.
   - Fetch all pserver's IP as trainer parameters.
   - Deploy trainer job.
-1. Dispatch task to trainer
+
+- Dispatch task to trainer
 
   Detail description is [here](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/design/dist#master-process)
 
 ## Data source
-1. Distributed file system
+- Distributed file system
 
   You can upload your training data to distributed file system, such as GlustereFS,
   PaddlePaddle support a default reader for reading data from distributed file system.
-1. HTTP server
+- HTTP server
 
   TODO
-1. Real-time data
+- Real-time data
 
   TODO
 
 ## PaddlePaddle client commands:
-- paddle local train
+- `paddle local`
 
-  Start up a local train using docker.
-- paddle job submit
+    - `paddle local train`
 
-  Submit a PaddlePaddle distributed training using kubectl.
-- paddle job status
+      start up a local train.
+- `paddle job`
 
-  Check the job status
-- paddle job list:
+  Start up a distributed job
+  - `paddle job submit`
 
-  List existing PaddlePadle distributed job on kubernetes
-- paddle job cancel:
+    submit a PaddlePaddle distributed training using kubectl.
+  - `paddle job status`
 
-  Cancel a running PaddlePaddle distributed job.
-- paddle version:
+    check the job status
+  - `paddle job list`
 
-  Show PaddlePaddle client version
+    list existing PaddlePadle distributed job on kubernetes
+  - `paddle job cancel`
+
+    cancel a running PaddlePaddle distributed job.
+- `paddle version`
+
+  show PaddlePaddle client version
