@@ -821,7 +821,7 @@ public:
   static ParameterUpdater* createLocalUpdater(OptimizationConfig* config);
   static ParameterUpdater* createRemoteUpdater(OptimizationConfig* config,
                                                int passCount,
-                                               bool userSparseUpdater);
+                                               bool useSparseUpdater);
   ~ParameterUpdater();
 
   /**
