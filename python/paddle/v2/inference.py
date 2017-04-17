@@ -49,7 +49,7 @@ class Inference(object):
         retv = None
         for result in self.iter_infer_field(field=field, **kwargs):
             if retv is None:
-                retv = [[]] * len(result)
+                retv = [[] for i in xrange(len(result))]
             for i, item in enumerate(result):
                 retv[i].append(item)
         retv = [numpy.concatenate(out) for out in retv]
