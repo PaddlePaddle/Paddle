@@ -42,7 +42,12 @@ class SGD(object):
     :type extra_layers: paddle.v2.config_base.Layer
     """
 
-    def __init__(self, cost, parameters, update_equation, extra_layers=None):
+    def __init__(self,
+                 cost,
+                 parameters,
+                 update_equation,
+                 extra_layers=None,
+                 config_verbose=False):
 
         if not isinstance(parameters, v2_parameters.Parameters):
             raise TypeError('parameters should be parameters')
@@ -50,7 +55,8 @@ class SGD(object):
         if not isinstance(update_equation, v2_optimizer.Optimizer):
             raise TypeError("update equation parameter must be "
                             "paddle.v2.optimizer.Optimizer")
-        topology = Topology(cost, extra_layers=extra_layers)
+        topology = Topology(
+            cost, extra_layers=extra_layers, verbose=config_verbose)
         self.__optimizer__ = update_equation
         self.__topology__ = topology
         self.__parameters__ = parameters

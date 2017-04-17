@@ -28,11 +28,11 @@ def parse_trainer_config(trainer_conf, config_arg_str):
     return config_parser.parse_config(trainer_conf, config_arg_str)
 
 
-def parse_network_config(network_conf, config_arg_str=''):
-    config = config_parser.parse_config(network_conf, config_arg_str)
+def parse_network_config(network_conf, config_arg_str='', verbose=False):
+    config = config_parser.parse_config(network_conf, config_arg_str, verbose)
     return config.model_config
 
 
-def parse_optimizer_config(optimizer_conf, config_arg_str=''):
-    config = config_parser.parse_config(optimizer_conf, config_arg_str)
+def parse_optimizer_config(optimizer_conf, config_arg_str='', verbose=False):
+    config = config_parser.parse_config(optimizer_conf, config_arg_str, verbose)
     return config.opt_config

@@ -1394,7 +1394,7 @@ def inputs(layers, *args):
     if len(args) != 0:
         layers.extend(args)
 
-    Inputs(*[l.name for l in layers])
+    Inputs(* [l.name for l in layers])
 
 
 def outputs(layers, *args):
@@ -1437,13 +1437,13 @@ def outputs(layers, *args):
     assert len(layers) > 0
 
     if HasInputsSet():  # input already set
-        Outputs(*[l.name for l in layers])
+        Outputs(* [l.name for l in layers])
         return  # just return outputs.
 
     if len(layers) != 1:
-        logger.warning("`outputs` routine try to calculate network's"
-                       " inputs and outputs order. It might not work well."
-                       "Please see follow log carefully.")
+        logger.info("`outputs` routine try to calculate network's"
+                    " inputs and outputs order. It might not work well."
+                    "Please see follow log carefully.")
     inputs = []
     outputs_ = []
     for each_layer in layers:

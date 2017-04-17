@@ -9,14 +9,14 @@ from topology import Topology
 __all__ = ['Parameters', 'create']
 
 
-def create(layers):
+def create(layers, config_verbose=False):
     """
     Create parameter pool by topology.
 
     :param layers:
     :return:
     """
-    topology = Topology(layers)
+    topology = Topology(layers, verbose=config_verbose)
     pool = Parameters()
     for param in topology.proto().parameters:
         pool.__append_config__(param)

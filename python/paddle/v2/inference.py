@@ -9,8 +9,8 @@ __all__ = ['infer']
 
 
 class Inference(object):
-    def __init__(self, output_layer, parameters):
-        topo = topology.Topology(output_layer)
+    def __init__(self, output_layer, parameters, config_verbose=False):
+        topo = topology.Topology(output_layer, verbose=config_verbose)
         gm = api.GradientMachine.createFromConfigProto(
             topo.proto(), api.CREATE_MODE_TESTING, [api.PARAMETER_VALUE])
         for param in gm.getParameters():
@@ -59,7 +59,12 @@ class Inference(object):
             return retv
 
 
-def infer(output_layer, parameters, input, feeding=None, field='value'):
+def infer(output_layer,
+          parameters,
+          input,
+          feeding=None,
+          field='value',
+          config_verbose=False):
     """
     Infer a neural network by given neural network output and parameters.  The
     user should pass either a batch of input data or reader method.
@@ -91,5 +96,8 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
     :rtype: numpy.ndarray
     """
 
-    inferer = Inference(output_layer=output_layer, parameters=parameters)
+    inferer = Inference(
+        output_layer=output_layer,
+        parameters=parameters,
+        config_verbose=config_verbose)
     return inferer.infer(field=field, input=input, feeding=feeding)

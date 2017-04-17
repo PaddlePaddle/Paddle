@@ -15,7 +15,7 @@ __all__ = [
 
 
 class Optimizer(object):
-    def __init__(self, **kwargs):
+    def __init__(self, verbose=False, **kwargs):
         if 'batch_size' in kwargs:
             del kwargs['batch_size']  # not important for python library.
 
@@ -23,7 +23,7 @@ class Optimizer(object):
             v1_optimizers.settings(batch_size=1, **kwargs)
 
         self.__opt_conf_proto__ = config_parser_utils.parse_optimizer_config(
-            __impl__)
+            __impl__, verbose=verbose)
         self.__opt_conf__ = swig_api.OptimizationConfig.createFromProto(
             self.__opt_conf_proto__)
 

@@ -503,7 +503,7 @@ class Input(Cfg):
             make_layer_name_in_submodel=True, ):
         """
         @param make_layer_name_in_submodel True by defalut, you might need to
-        set it carefully when adding Input in config_parser.py.
+        set it carefully when adding Input in trainer_config.py
         """
         self.add_keys(locals())
         self.input_layer_name = MakeLayerNameInSubmodel(
@@ -3554,7 +3554,7 @@ def update_g_config():
     return g_config
 
 
-def parse_config(trainer_config, config_arg_str):
+def parse_config(trainer_config, config_arg_str, verbose=True):
     '''
     @param trainer_config: can be a string of config file name or a function name
     with config logic
@@ -3590,6 +3590,11 @@ def parse_config(trainer_config, config_arg_str):
     g_root_submodel.name = 'root'
     g_root_submodel.is_recurrent_layer_group = False
     g_current_submodel = g_root_submodel
+
+    if verbose:
+        logger.setLevel(logging.INFO)
+    else:
+        logger.setLevel(logging.WARNING)
 
     if hasattr(trainer_config, '__call__'):
         trainer_config.func_globals.update(

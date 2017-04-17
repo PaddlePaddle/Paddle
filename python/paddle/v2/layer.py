@@ -56,7 +56,7 @@ from config_base import Layer, __convert_to_v2__
 __all__ = ['parse_network', 'data']
 
 
-def parse_network(output_layers, extra_layers=None):
+def parse_network(output_layers, extra_layers=None, verbose=False):
     """
     Parse all layers in the neural network graph and
     then generate a ModelConfig object.
@@ -93,7 +93,7 @@ def parse_network(output_layers, extra_layers=None):
             ]
         conf_helps.outputs(real_output)
 
-    return __parse__(__real_func__)
+    return __parse__(__real_func__, verbose=False)
 
 
 """
