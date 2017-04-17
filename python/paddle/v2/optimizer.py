@@ -45,6 +45,14 @@ class Optimizer(object):
         return swig_api.ParameterUpdater.createRemoteUpdater(
             self.__opt_conf__, pass_num, use_sparse_updater)
 
+    def create_updater(self, is_local, num_passes, use_sparse_updater):
+        if is_local:
+            parameter_updater = self.create_local_updater()
+        else:
+            parameter_updater = self.create_remote_updater(num_passes,
+                                                           use_sparse_updater)
+        return parameter_updater
+
 
 class Momentum(Optimizer):
     def __init__(self, momentum=None, sparse=False, **kwargs):
