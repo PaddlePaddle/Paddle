@@ -233,10 +233,11 @@
 <span id="introduction"></span><h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="chinese-word-dictionary">
 <span id="chinese-word-dictionary"></span><h3>Chinese Word Dictionary<a class="headerlink" href="#chinese-word-dictionary" title="Permalink to this headline">¶</a></h3>
-<p>Our Chinese-word dictionary is created on Baidu ZhiDao and Baidu Baike by using in-house word segmentor. For example, the participle of &#8220;《红楼梦》&#8221; is &#8220;《&#8221;，&#8221;红楼梦&#8221;，&#8221;》&#8221;，and &#8220;《红楼梦》&#8221;. Our dictionary (using UTF-8 format) has has two columns: word and its frequency. The total word count is 3206325, including 3 special token:</p>
+<p>Our Chinese-word dictionary is created on Baidu ZhiDao and Baidu Baike by using in-house word segmentor. For example, the participle of &#8220;《红楼梦》&#8221; is &#8220;《&#8221;，&#8221;红楼梦&#8221;，&#8221;》&#8221;，and &#8220;《红楼梦》&#8221;. Our dictionary (using UTF-8 format) has has two columns: word and its frequency. The total word count is 3206326, including 4 special token:</p>
 <ul class="simple">
 <li><code class="docutils literal"><span class="pre">&lt;s&gt;</span></code>: the start of a sequence</li>
 <li><code class="docutils literal"><span class="pre">&lt;e&gt;</span></code>: the end of a sequence</li>
+<li><code class="docutils literal"><span class="pre">PALCEHOLDER_JUST_IGNORE_THE_EMBEDDING</span></code>: a placeholder, just ignore it and its embedding</li>
 <li><code class="docutils literal"><span class="pre">&lt;unk&gt;</span></code>: a word not included in dictionary</li>
 </ul>
 </div>

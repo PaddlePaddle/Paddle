@@ -240,10 +240,11 @@
 <span id="id2"></span><h2>介绍<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
 <div class="section" id="">
 <span id="id3"></span><h3>中文字典<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
-<p>我们的字典使用内部的分词工具对百度知道和百度百科的语料进行分词后产生。分词风格如下： &#8220;《红楼梦》&#8221;将被分为 &#8220;《&#8221;，&#8221;红楼梦&#8221;，&#8221;》&#8221;，和 &#8220;《红楼梦》&#8221;。字典采用UTF8编码，输出有2列：词本身和词频。字典共包含 3206325个词和3个特殊标记：</p>
+<p>我们的字典使用内部的分词工具对百度知道和百度百科的语料进行分词后产生。分词风格如下： &#8220;《红楼梦》&#8221;将被分为 &#8220;《&#8221;，&#8221;红楼梦&#8221;，&#8221;》&#8221;，和 &#8220;《红楼梦》&#8221;。字典采用UTF8编码，输出有2列：词本身和词频。字典共包含 3206326个词和4个特殊标记：</p>
 <ul class="simple">
 <li><code class="docutils literal"><span class="pre">&lt;s&gt;</span></code>: 分词序列的开始</li>
 <li><code class="docutils literal"><span class="pre">&lt;e&gt;</span></code>: 分词序列的结束</li>
+<li><code class="docutils literal"><span class="pre">PALCEHOLDER_JUST_IGNORE_THE_EMBEDDING</span></code>: 占位符，没有实际意义</li>
 <li><code class="docutils literal"><span class="pre">&lt;unk&gt;</span></code>: 未知词</li>
 </ul>
 </div>
