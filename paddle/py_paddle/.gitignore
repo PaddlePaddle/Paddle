@@ -1,2 +1,3 @@
 swig_paddle.py
 _swig_paddle.so
+*.c
