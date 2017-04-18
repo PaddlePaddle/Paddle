@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Datasets &mdash; PaddlePaddle  文档</title>
+  <title>Data Reader Interface and DataSets &mdash; PaddlePaddle  文档</title>
   
 
   
@@ -182,7 +182,7 @@
     </nav>
     
     <nav class="local-toc"><ul>
-<li><a class="reference internal" href="#">Datasets</a><ul>
+<li><a class="reference internal" href="#">Data Reader Interface and DataSets</a><ul>
 <li><a class="reference internal" href="#datatypes">DataTypes</a></li>
 <li><a class="reference internal" href="#datafeeder">DataFeeder</a></li>
 <li><a class="reference internal" href="#reader">Reader</a><ul>
@@ -224,7 +224,7 @@
       
         <li><a href="../index_cn.html">API</a> > </li>
       
-    <li>Datasets</li>
+    <li>Data Reader Interface and DataSets</li>
   </ul>
 </div>
       
@@ -233,8 +233,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="datasets">
-<h1>Datasets<a class="headerlink" href="#datasets" title="永久链接至标题">¶</a></h1>
+  <div class="section" id="data-reader-interface-and-datasets">
+<h1>Data Reader Interface and DataSets<a class="headerlink" href="#data-reader-interface-and-datasets" title="永久链接至标题">¶</a></h1>
 <div class="section" id="datatypes">
 <h2>DataTypes<a class="headerlink" href="#datatypes" title="永久链接至标题">¶</a></h2>
 <dl class="function">
@@ -522,7 +522,7 @@ relationship.</p>
 <span class="c1">#                       [ [1.0,2.0,3.0,4.0], 5, [6,7,8] ],  # first sample</span>
 <span class="c1">#                       [ [1.0,2.0,3.0,4.0], 5, [6,7,8] ]   # second sample</span>
 <span class="c1">#                     ]</span>
-<span class="n">arg</span> <span class="o">=</span> <span class="n">feeder</span><span class="p">(</span><span class="n">minibatch_data</span><span class="p">)</span>
+<span class="n">arg</span> <span class="o">=</span> <span class="n">feeder</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="n">minibatch_data</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -842,18 +842,18 @@ Trailing new line (&#8216;\n&#8217;) of each line will be removed.</p>
 <h3>mnist<a class="headerlink" href="#mnist" title="永久链接至标题">¶</a></h3>
 <p>MNIST dataset.</p>
 <p>This module will download dataset from <a class="reference external" href="http://yann.lecun.com/exdb/mnist/">http://yann.lecun.com/exdb/mnist/</a> and
-parse train set and test set into paddle reader creators.</p>
+parse training set and test set into paddle reader creators.</p>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.v2.dataset.mnist.</code><code class="descname">train</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
-<dd><p>MNIST train set creator.</p>
+<dd><p>MNIST training set creator.</p>
 <p>It returns a reader creator, each sample in the reader is image pixels in
 [0, 1] and label in [0, 9].</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Train reader creator</td>
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
 </tr>
 <tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
 </tr>
@@ -882,26 +882,313 @@ parse train set and test set into paddle reader creators.</p>
 </div>
 <div class="section" id="cifar">
 <h3>cifar<a class="headerlink" href="#cifar" title="永久链接至标题">¶</a></h3>
-<p>CIFAR dataset: <a class="reference external" href="https://www.cs.toronto.edu/~kriz/cifar.html">https://www.cs.toronto.edu/~kriz/cifar.html</a></p>
-<p>TODO(yuyang18): Complete the comments.</p>
+<p>CIFAR dataset.</p>
+<p>This module will download dataset from
+<a class="reference external" href="https://www.cs.toronto.edu/~kriz/cifar.html">https://www.cs.toronto.edu/~kriz/cifar.html</a> and parse train/test set into
+paddle reader creators.</p>
+<p>The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes,
+with 6000 images per class. There are 50000 training images and 10000 test
+images.</p>
+<p>The CIFAR-100 dataset is just like the CIFAR-10, except it has 100 classes
+containing 600 images each. There are 500 training images and 100 testing
+images per class.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.cifar.</code><code class="descname">train100</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>CIFAR-100 training set creator.</p>
+<p>It returns a reader creator, each sample in the reader is image pixels in
+[0, 1] and label in [0, 99].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.cifar.</code><code class="descname">test100</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>CIFAR-100 test set cretor.</p>
+<p>It returns a reader creator, each sample in the reader is image pixels in
+[0, 1] and label in [0, 9].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Test reader creator.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.cifar.</code><code class="descname">train10</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>CIFAR-10 training set creator.</p>
+<p>It returns a reader creator, each sample in the reader is image pixels in
+[0, 1] and label in [0, 9].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.cifar.</code><code class="descname">test10</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>CIFAR-10 test set cretor.</p>
+<p>It returns a reader creator, each sample in the reader is image pixels in
+[0, 1] and label in [0, 9].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Test reader creator.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 <div class="section" id="conll05">
 <h3>conll05<a class="headerlink" href="#conll05" title="永久链接至标题">¶</a></h3>
+<p>Conll05 dataset.
+Paddle semantic role labeling Book and demo use this dataset as an example.
+Because Conll05 is not free in public, the default downloaded URL is test set
+of Conll05 (which is public). Users can change URL and MD5 to their Conll
+dataset. And a pre-trained word vector model based on Wikipedia corpus is used
+to initialize SRL model.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.conll05.</code><code class="descname">get_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get the word, verb and label dictionary of Wikipedia corpus.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.conll05.</code><code class="descname">get_embedding</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get the trained word vector based on Wikipedia corpus.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.conll05.</code><code class="descname">test</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Conll05 test set creator.</p>
+<p>Because the training dataset is not free, the test dataset is used for
+training. It returns a reader creator, each sample in the reader is nine
+features, including sentence sequence, predicate, predicate context,
+predicate context flag and tagged sequence.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 <div class="section" id="imdb">
 <h3>imdb<a class="headerlink" href="#imdb" title="永久链接至标题">¶</a></h3>
-<p>IMDB dataset: <a class="reference external" href="http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz">http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz</a></p>
-<p>TODO(yuyang18): Complete comments.</p>
+<p>IMDB dataset.</p>
+<p>This module downloads IMDB dataset from
+<a class="reference external" href="http://ai.stanford.edu/%7Eamaas/data/sentiment/">http://ai.stanford.edu/%7Eamaas/data/sentiment/</a>. This dataset contains a set
+of 25,000 highly polar movie reviews for training, and 25,000 for testing.
+Besides, this module also provides API for building dictionary.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.imdb.</code><code class="descname">build_dict</code><span class="sig-paren">(</span><em>pattern</em>, <em>cutoff</em><span class="sig-paren">)</span></dt>
+<dd><p>Build a word dictionary from the corpus. Keys of the dictionary are words,
+and values are zero-based IDs of these words.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.imdb.</code><code class="descname">train</code><span class="sig-paren">(</span><em>word_idx</em><span class="sig-paren">)</span></dt>
+<dd><p>IMDB training set creator.</p>
+<p>It returns a reader creator, each sample in the reader is an zero-based ID
+sequence and label in [0, 1].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><strong>word_idx</strong> (<em>dict</em>) &#8211; word dictionary</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.imdb.</code><code class="descname">test</code><span class="sig-paren">(</span><em>word_idx</em><span class="sig-paren">)</span></dt>
+<dd><p>IMDB test set creator.</p>
+<p>It returns a reader creator, each sample in the reader is an zero-based ID
+sequence and label in [0, 1].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><strong>word_idx</strong> (<em>dict</em>) &#8211; word dictionary</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body">Test reader creator</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 <div class="section" id="imikolov">
 <h3>imikolov<a class="headerlink" href="#imikolov" title="永久链接至标题">¶</a></h3>
-<p>imikolov&#8217;s simple dataset: <a class="reference external" href="http://www.fit.vutbr.cz/~imikolov/rnnlm/">http://www.fit.vutbr.cz/~imikolov/rnnlm/</a></p>
-<p>Complete comments.</p>
+<p>imikolov&#8217;s simple dataset.</p>
+<p>This module will download dataset from
+<a class="reference external" href="http://www.fit.vutbr.cz/~imikolov/rnnlm/">http://www.fit.vutbr.cz/~imikolov/rnnlm/</a> and parse training set and test set
+into paddle reader creators.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.imikolov.</code><code class="descname">build_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Build a word dictionary from the corpus,  Keys of the dictionary are words,
+and values are zero-based IDs of these words.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.imikolov.</code><code class="descname">train</code><span class="sig-paren">(</span><em>word_idx</em>, <em>n</em><span class="sig-paren">)</span></dt>
+<dd><p>imikolov training set creator.</p>
+<p>It returns a reader creator, each sample in the reader is a word ID
+tuple.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>word_idx</strong> (<em>dict</em>) &#8211; word dictionary</li>
+<li><strong>n</strong> (<em>int</em>) &#8211; sliding window size</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">Training reader creator</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">callable</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.imikolov.</code><code class="descname">test</code><span class="sig-paren">(</span><em>word_idx</em>, <em>n</em><span class="sig-paren">)</span></dt>
+<dd><p>imikolov test set creator.</p>
+<p>It returns a reader creator, each sample in the reader is a word ID
+tuple.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>word_idx</strong> (<em>dict</em>) &#8211; word dictionary</li>
+<li><strong>n</strong> (<em>int</em>) &#8211; sliding window size</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">Test reader creator</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">callable</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 <div class="section" id="movielens">
 <h3>movielens<a class="headerlink" href="#movielens" title="永久链接至标题">¶</a></h3>
 <p>Movielens 1-M dataset.</p>
-<p>TODO(yuyang18): Complete comments.</p>
+<p>Movielens 1-M dataset contains 1 million ratings from 6000 users on 4000
+movies, which was collected by GroupLens Research. This module will download
+Movielens 1-M dataset from
+<a class="reference external" href="http://files.grouplens.org/datasets/movielens/ml-1m.zip">http://files.grouplens.org/datasets/movielens/ml-1m.zip</a> and parse training
+set and test set into paddle reader creators.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">get_movie_title_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get movie title dictionary.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">max_movie_id</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get the maximum value of movie id.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">max_user_id</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get the maximum value of user id.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">max_job_id</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get the maximum value of job id.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">movie_categories</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get movie categoriges dictionary.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">user_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get user info dictionary.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">movie_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get movie info dictionary.</p>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">MovieInfo</code><span class="sig-paren">(</span><em>index</em>, <em>categories</em>, <em>title</em><span class="sig-paren">)</span></dt>
+<dd><p>Movie id, title and categories information are stored in MovieInfo.</p>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">UserInfo</code><span class="sig-paren">(</span><em>index</em>, <em>gender</em>, <em>age</em>, <em>job_id</em><span class="sig-paren">)</span></dt>
+<dd><p>User id, gender, age, and job information are stored in UserInfo.</p>
+</dd></dl>
+
 </div>
 <div class="section" id="sentiment">
 <h3>sentiment<a class="headerlink" href="#sentiment" title="永久链接至标题">¶</a></h3>
@@ -919,7 +1206,7 @@ parse train set and test set into paddle reader creators.</p>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.v2.dataset.sentiment.</code><code class="descname">train</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
-<dd><p>Default train set reader creator</p>
+<dd><p>Default training set reader creator</p>
 </dd></dl>
 
 <dl class="function">
@@ -932,12 +1219,91 @@ parse train set and test set into paddle reader creators.</p>
 <div class="section" id="uci-housing">
 <h3>uci_housing<a class="headerlink" href="#uci-housing" title="永久链接至标题">¶</a></h3>
 <p>UCI Housing dataset.</p>
-<p>TODO(yuyang18): Complete comments.</p>
+<p>This module will download dataset from
+<a class="reference external" href="https://archive.ics.uci.edu/ml/machine-learning-databases/housing/">https://archive.ics.uci.edu/ml/machine-learning-databases/housing/</a> and
+parse training set and test set into paddle reader creators.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.uci_housing.</code><code class="descname">train</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>UCI_HOUSING training set creator.</p>
+<p>It returns a reader creator, each sample in the reader is features after
+normalization and price number.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.uci_housing.</code><code class="descname">test</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>UCI_HOUSING test set creator.</p>
+<p>It returns a reader creator, each sample in the reader is features after
+normalization and price number.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Test reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 <div class="section" id="wmt14">
 <h3>wmt14<a class="headerlink" href="#wmt14" title="永久链接至标题">¶</a></h3>
-<p>UCI Housing dataset.</p>
-<p>TODO(yuyang18): Complete comments.</p>
+<p>WMT14 dataset.
+The original WMT14 dataset is too large and a small set of data for set is
+provided. This module will download dataset from
+<a class="reference external" href="http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz">http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz</a> and
+parse training set and test set into paddle reader creators.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.wmt14.</code><code class="descname">train</code><span class="sig-paren">(</span><em>dict_size</em><span class="sig-paren">)</span></dt>
+<dd><p>WMT14 training set creator.</p>
+<p>It returns a reader creator, each sample in the reader is source language
+word ID sequence, target language word ID sequence and next word ID
+sequence.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.wmt14.</code><code class="descname">test</code><span class="sig-paren">(</span><em>dict_size</em><span class="sig-paren">)</span></dt>
+<dd><p>WMT14 test set creator.</p>
+<p>It returns a reader creator, each sample in the reader is source language
+word ID sequence, target language word ID sequence and next word ID
+sequence.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Test reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 </div>
 </div>

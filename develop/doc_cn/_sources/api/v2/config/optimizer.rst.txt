@@ -1,5 +1,3 @@
-..  _api_v2.optimizer:
-
 ==========
 Optimizer
 ==========

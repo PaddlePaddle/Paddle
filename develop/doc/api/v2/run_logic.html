@@ -35,7 +35,7 @@
     <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/>
         <link rel="up" title="API" href="../index_en.html"/>
         <link rel="next" title="ABOUT" href="../../about/index_en.html"/>
-        <link rel="prev" title="Datasets" href="data.html"/> 
+        <link rel="prev" title="Data Reader Interface and DataSets" href="data.html"/> 
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
   <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
@@ -164,7 +164,7 @@
 <li class="toctree-l3"><a class="reference internal" href="config/attr.html">Parameter Attribute</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="data.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data.html">Data Reader Interface and DataSets</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Training and Inference</a></li>
 </ul>
 </li>
@@ -215,21 +215,307 @@
 <h1>Training and Inference<a class="headerlink" href="#training-and-inference" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="parameters">
 <h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.parameters.</code><code class="descname">Parameters</code></dt>
+<dd><p>Parameters is a dictionary contains Paddle&#8217;s parameter. The key of
+Parameters is the name of parameter. The value of Parameters is a plain
+<code class="code docutils literal"><span class="pre">numpy.ndarry</span></code> .</p>
+<p>Basically usage is</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">data</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="o">...</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">fc</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+
+<span class="n">parameters</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+
+<span class="n">parameter_names</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">names</span><span class="p">()</span>
+<span class="n">fc_mat</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;fc&#39;</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">fc_mat</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt>
+<code class="descname">keys</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>keys are the names of each parameter.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">list of parameter name</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">names</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>names of each parameter.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">list of parameter name</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">has_key</code><span class="sig-paren">(</span><em>key</em><span class="sig-paren">)</span></dt>
+<dd><p>has_key return true if there are such parameter name == key</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>key</strong> (<em>basestring</em>) &#8211; Parameter name</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">True if contains such key</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">get_shape</code><span class="sig-paren">(</span><em>key</em><span class="sig-paren">)</span></dt>
+<dd><p>get shape of the parameter.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>key</strong> (<em>basestring</em>) &#8211; parameter name</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">parameter&#8217;s shape</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">tuple</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">get</code><span class="sig-paren">(</span><em>parameter_name</em><span class="sig-paren">)</span></dt>
+<dd><p>Get parameter by parameter name.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Note:</th><td class="field-body">It will always copy the parameter from C++ side.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><strong>parameter_name</strong> (<em>basestring</em>) &#8211; parameter name</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">The parameter matrix.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">np.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">set</code><span class="sig-paren">(</span><em>parameter_name</em>, <em>value</em><span class="sig-paren">)</span></dt>
+<dd><p>Set parameter by parameter name &amp; matrix.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>parameter_name</strong> (<em>basestring</em>) &#8211; parameter name</li>
+<li><strong>value</strong> (<em>np.ndarray</em>) &#8211; parameter matrix</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Nothing.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">append_gradient_machine</code><span class="sig-paren">(</span><em>gradient_machine</em><span class="sig-paren">)</span></dt>
+<dd><p>append gradient machine to parameters. This method is used internally in
+Trainer.train.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>gradient_machine</strong> (<em>api.GradientMachine</em>) &#8211; Paddle C++ GradientMachine object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">serialize</code><span class="sig-paren">(</span><em>name</em>, <em>f</em><span class="sig-paren">)</span></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> &#8211; </li>
+<li><strong>f</strong> (<em>file</em>) &#8211; </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">deserialize</code><span class="sig-paren">(</span><em>name</em>, <em>f</em><span class="sig-paren">)</span></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> &#8211; </li>
+<li><strong>f</strong> (<em>file</em>) &#8211; </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 <div class="section" id="trainer">
 <h2>Trainer<a class="headerlink" href="#trainer" title="Permalink to this headline">¶</a></h2>
+<p>Module Trainer</p>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.trainer.</code><code class="descname">SGD</code><span class="sig-paren">(</span><em>cost</em>, <em>parameters</em>, <em>update_equation</em>, <em>extra_layers=None</em><span class="sig-paren">)</span></dt>
+<dd><p>Simple SGD Trainer.
+SGD Trainer combines data reader, network topolopy and update_equation together
+to train/test a neural network.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>update_equation</strong> (<em>paddle.v2.optimizer.Optimizer</em>) &#8211; The optimizer object.</li>
+<li><strong>cost</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Target cost that neural network should be optimized.</li>
+<li><strong>parameters</strong> (<em>paddle.v2.parameters.Parameters</em>) &#8211; The parameters dictionary.</li>
+<li><strong>extra_layers</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Some layers in the neural network graph are not
+in the path of cost layer.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt>
+<code class="descname">train</code><span class="sig-paren">(</span><em>reader</em>, <em>num_passes=1</em>, <em>event_handler=None</em>, <em>feeding=None</em><span class="sig-paren">)</span></dt>
+<dd><p>Training method. Will train num_passes of input data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>reader</strong> (<em>collections.Iterable</em>) &#8211; A reader that reads and yeilds data items. Usually we use a
+batched reader to do mini-batch training.</li>
+<li><strong>num_passes</strong> &#8211; The total train passes.</li>
+<li><strong>event_handler</strong> (<em></em><em>(</em><em>BaseEvent</em><em>) </em><em>=&gt; None</em>) &#8211; Event handler. A method will be invoked when event
+occurred.</li>
+<li><strong>feeding</strong> (<em>dict|list</em>) &#8211; Feeding is a map of neural network input name and array
+index that reader returns.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">test</code><span class="sig-paren">(</span><em>reader</em>, <em>feeding=None</em><span class="sig-paren">)</span></dt>
+<dd><p>Testing method. Will test input data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>reader</strong> (<em>collections.Iterable</em>) &#8211; A reader that reads and yeilds data items.</li>
+<li><strong>feeding</strong> (<em>dict</em>) &#8211; Feeding is a map of neural network input name and array
+index that reader returns.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 <div class="section" id="event">
 <h2>Event<a class="headerlink" href="#event" title="Permalink to this headline">¶</a></h2>
-<p>All training events.</p>
+<p>Testing and training events.</p>
 <p>There are:</p>
 <ul class="simple">
+<li>TestResult</li>
 <li>BeginIteration</li>
 <li>EndIteration</li>
 <li>BeginPass</li>
 <li>EndPass</li>
 </ul>
-<p>TODO(yuyang18): Complete it!</p>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.event.</code><code class="descname">TestResult</code><span class="sig-paren">(</span><em>evaluator</em>, <em>cost</em><span class="sig-paren">)</span></dt>
+<dd><p>Result that trainer.test return.</p>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.event.</code><code class="descname">BeginPass</code><span class="sig-paren">(</span><em>pass_id</em><span class="sig-paren">)</span></dt>
+<dd><p>Event On One Pass Training Start.</p>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.event.</code><code class="descname">EndPass</code><span class="sig-paren">(</span><em>pass_id</em>, <em>evaluator</em><span class="sig-paren">)</span></dt>
+<dd><p>Event On One Pass Training Complete.</p>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.event.</code><code class="descname">BeginIteration</code><span class="sig-paren">(</span><em>pass_id</em>, <em>batch_id</em><span class="sig-paren">)</span></dt>
+<dd><p>Event On One Batch Training Start.</p>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.event.</code><code class="descname">EndIteration</code><span class="sig-paren">(</span><em>pass_id</em>, <em>batch_id</em>, <em>cost</em>, <em>evaluator</em><span class="sig-paren">)</span></dt>
+<dd><p>Event On One Batch Training Complete.</p>
+</dd></dl>
+
 </div>
 <div class="section" id="inference">
 <h2>Inference<a class="headerlink" href="#inference" title="Permalink to this headline">¶</a></h2>
@@ -286,7 +572,7 @@ or max_id.</li>
         <a href="../../about/index_en.html" class="btn btn-neutral float-right" title="ABOUT" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="data.html" class="btn btn-neutral" title="Datasets" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="data.html" class="btn btn-neutral" title="Data Reader Interface and DataSets" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
