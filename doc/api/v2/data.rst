@@ -1,6 +1,6 @@
-========
-Datasets
-========
+==================================
+Data Reader Interface and DataSets
+==================================
 
 
 DataTypes
@@ -49,7 +49,6 @@ mnist
     :members:
     :noindex:
 
-
 cifar
 +++++
 
@@ -61,7 +60,7 @@ conll05
 +++++++
 
 ..  automodule:: paddle.v2.dataset.conll05
-    :members:
+    :members: get_dict,get_embedding,test
     :noindex:
 
 imdb
@@ -85,6 +84,12 @@ movielens
     :members:
     :noindex:
 
+..  autoclass:: paddle.v2.dataset.movielens.MovieInfo
+    :noindex:
+    
+..  autoclass:: paddle.v2.dataset.movielens.UserInfo
+    :noindex:
+
 sentiment
 +++++++++
 
@@ -102,7 +107,7 @@ uci_housing
 wmt14
 +++++
 
-..  automodule:: paddle.v2.dataset.uci_housing
+..  automodule:: paddle.v2.dataset.wmt14
     :members:
     :noindex:
 
