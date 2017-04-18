@@ -96,7 +96,7 @@ paddle train \
   For a distributed training job, there is two docker image called `runtime docker image` and `base docker image`, the `runtime docker image` is actually running in kubernetes.
 
   - `runtime docker image` include user's package files and all dependencies.
-  - `base docker image` usually is PaddlePaddle product docker image including paddle binary files and some scripts used for starting up the trainer process and fetch some information of pod. And of course, users can also build their own paddle binary files to custom the `base docker image`.
+  - `base docker image` usually is PaddlePaddle product docker image including paddle binary files and some scripts used for starting up the trainer process and fetch some information of pod. And of course, users can also build their own paddle binary files into the custom `base docker image` with [this doc](../../../paddle/scripts/docker/README.md).
 
   `runtime docker image` will be built by PaddlePaddle client automatic, here is a simple example project:
   ```bash
@@ -118,7 +118,7 @@ paddle train \
   Execute the command: `paddle train...`, PaddlePaddle client will upload the trainer package files and setup parameters to [Paddle Server](#paddle-server).
 
 ## Paddle Server
-Paddle server is running on kubernetes, users will configure the server address in [PaddlePaddle client configuration file](##configure-paddlepaddle-client)
+Paddle server is running on kubernetes, users will configure the server address in [PaddlePaddle client configuration file](#configurate-paddlepaddle-client)
 
 - HTTP server
 
