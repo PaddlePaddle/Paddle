@@ -34,8 +34,7 @@ ParameterUpdater *ParameterUpdater::createRemoteUpdater(
   auto remoteUpdater = new paddle::RemoteParameterUpdater(
       config->m->getConfig(), passCount, nullptr);
   if (useSparseUpdater) {
-    std::unique_ptr<paddle::ParameterUpdater> remoteUpdaterPtr;
-    remoteUpdaterPtr.reset(remoteUpdater);
+    std::unique_ptr<paddle::ParameterUpdater> remoteUpdaterPtr(remoteUpdater);
     auto sparseRemoteUpdater =
         new paddle::SparseRemoteParameterUpdaterComposite(
             config->m->getConfig(),

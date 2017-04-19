@@ -38,19 +38,34 @@ class Optimizer(object):
         assert isinstance(tmp, swig_api.ParameterOptimizer)
         return tmp.getParameterTypes()
 
-    def create_local_updater(self):
+    def __create_local_updater__(self):
         return swig_api.ParameterUpdater.createLocalUpdater(self.__opt_conf__)
 
-    def create_remote_updater(self, pass_num, use_sparse_updater):
+    def __create_remote_updater__(self, pass_num, use_sparse_updater):
         return swig_api.ParameterUpdater.createRemoteUpdater(
             self.__opt_conf__, pass_num, use_sparse_updater)
 
     def create_updater(self, is_local, num_passes, use_sparse_updater):
+        """
+        create proper parameter_updater by configuration.
+        :param is_local: create local or remote parameter updater
+        :param num_passes: remote parameter updater will use this to config
+        parameter server.
+        :param use_sparse_updater: when use remote updater, if some parameter is
+        sparse, updater should do some extra thing:
+
+        ..  code-block:: python
+
+            if use_sparse_remote_updater:
+                        gradient_machine.prefetch(in_args)
+                        parameter_updater.getParametersRemote()
+        :return: parameter_updater
+        """
         if is_local:
-            parameter_updater = self.create_local_updater()
+            parameter_updater = self.__create_local_updater__()
         else:
-            parameter_updater = self.create_remote_updater(num_passes,
-                                                           use_sparse_updater)
+            parameter_updater = self.__create_remote_updater__(
+                num_passes, use_sparse_updater)
         return parameter_updater
 
 
