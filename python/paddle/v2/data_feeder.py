@@ -67,7 +67,7 @@ class DataFeeder(DataProviderConverter):
         #                       [ [1.0,2.0,3.0,4.0], 5, [6,7,8] ],  # first sample
         #                       [ [1.0,2.0,3.0,4.0], 5, [6,7,8] ]   # second sample
         #                     ]
-        arg = feeder(minibatch_data)
+        arg = feeder.convert(minibatch_data)
 
     ..  note::
 

@@ -1,7 +1,4 @@
 # The utilities for paddle
-
-configure_file(PythonUtil.cpp.in ${PROJ_ROOT}/paddle/utils/PythonUtil.cpp)
-
 file(GLOB UTIL_HEADERS . *.h)
 file(GLOB UTIL_SOURCES . *.cpp)
 create_resources(enable_virtualenv.py enable_virtualenv.c)
