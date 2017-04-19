@@ -31,7 +31,7 @@ The master process will:
 - Keep track of training progress on the dataset with [task queue](#task-queue). A training job will iterate on the dataset for a full pass until it goes into next pass.
 
 
-#### Task 
+#### Task
 
 A task is a data shard to be trained. The total number of tasks will be much bigger than the total number of trainers. The number of data instances inside a task will be much bigger than the mini-batch size.
 
@@ -78,7 +78,7 @@ The communication pattern between the trainers and the parameter servers depends
 - Synchronous Stochastic Gradient Descent (sync-SGD)
 
 	Parameter server will wait for all trainer finish n-th mini-batch calculation and send their gradients before broadcasting new parameters to every trainer. Every trainer will wait for the new parameters before starting n+1-th mini-batch.
-  
+
 - Asynchronous Stochastic Gradient Descent (async-SGD)
 
 	There will no synchronization between different trainers, and parameter server updates its parameter as soon as it receives new gradient:
@@ -118,8 +118,6 @@ When the master is started by the Kubernetes, it executes the following steps at
 1. Watches the trainer prefix keys `/trainer/` on etcd to find the live trainers.
 1. Starts dispatching the tasks to the trainers, and updates task queue using an etcd transaction to ensure lock is held during the update.
 
-The master process will kill itself if its etcd lease expires.
-
 When the master process is dead for any reason, Kubernetes will restart it. It will be online again with all states recovered from etcd in few minutes.
 
 ### Trainer Process
@@ -132,6 +130,8 @@ When the trainer is started by the Kubernetes, it executes the following steps a
 
 If trainer's etcd lease expires, it will try set key `/trainer/<unique ID>` again so that the master process can discover the trainer again.
 
+Whenever a trainer fails, the master process is responsible to schedule the failed task back to "todo queue". then kubernetes will try to start the trainer somewhere else, then the recovered trainer will try to fetch new task to continue the training.
+
 ### Parameter Server Process
 
 When the parameter server is started by Kubernetes, it executes the following steps at startup:
@@ -140,17 +140,24 @@ When the parameter server is started by Kubernetes, it executes the following st
 1. Search through etcd keys `/ps/<index>` (`/ps/0`, `/ps/1`, ...) to find the first non-existant key whose index is smaller than the total number of parameter servers. Set the key using a transaction to avoid concurrent writes. The parameter server's index is inferred from the key name.
 
 	The desired number of parameter servers is 3:
-	
+
 	<img src="src/paddle-ps-0.png"/>
-	
+
 	The third parameter server joined:
-	
+
 	<img src="src/paddle-ps-1.png"/>
 
 1. The parameter server can load parameters if there are already saved parameters in the save path (inferred from its index).
 1. Now the parameter server is ready for the trainers' requests.
 
 If the parameter server's etcd lease expires, the parameter server will kill itself.
+
+
+## Parameter Server Checkpointing
+See [here](./checkpointing.md)
+
+## Store and dispatching trainning data
+See [here](./data_dispatch.md)
 
 
 ## Dynamic Scaling
