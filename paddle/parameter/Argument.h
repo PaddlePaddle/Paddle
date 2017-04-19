@@ -291,6 +291,15 @@ struct Argument {
    */
   void degradeSequence(const Argument& input);
 
+  /*
+   After pooling with stride n (n is smaller than sequence length),
+   a long sequence will be shorten.
+   This function is invalid for sequence having sub-sequence.
+   */
+  void poolSequenceWithStride(const Argument& input,
+                              size_t stride,
+                              IVectorPtr* stridePositions,
+                              bool reversed = false);
   /**
    * @brief getValueString will return the argument's output in string. There
    * are several kinds of output. The keys of output dictionary are 'value',

@@ -14,7 +14,9 @@
 """
 UCI Housing dataset.
 
-TODO(yuyang18): Complete comments.
+This module will download dataset from
+https://archive.ics.uci.edu/ml/machine-learning-databases/housing/ and
+parse training set and test set into paddle reader creators.
 """
 
 import numpy as np
@@ -70,6 +72,15 @@ def load_data(filename, feature_num=14, ratio=0.8):
 
 
 def train():
+    """
+    UCI_HOUSING training set creator.
+
+    It returns a reader creator, each sample in the reader is features after
+    normalization and price number.
+
+    :return: Training reader creator
+    :rtype: callable
+    """
     global UCI_TRAIN_DATA
     load_data(download(URL, 'uci_housing', MD5))
 
@@ -81,6 +92,15 @@ def train():
 
 
 def test():
+    """
+    UCI_HOUSING test set creator.
+
+    It returns a reader creator, each sample in the reader is features after
+    normalization and price number.
+
+    :return: Test reader creator
+    :rtype: callable
+    """
     global UCI_TEST_DATA
     load_data(download(URL, 'uci_housing', MD5))
 
@@ -89,3 +109,7 @@ def test():
             yield d[:-1], d[-1:]
 
     return reader
+
+
+def fetch():
+    download(URL, 'uci_housing', MD5)

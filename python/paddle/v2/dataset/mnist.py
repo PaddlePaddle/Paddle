@@ -15,7 +15,7 @@
 MNIST dataset.
 
 This module will download dataset from http://yann.lecun.com/exdb/mnist/ and
-parse train set and test set into paddle reader creators.
+parse training set and test set into paddle reader creators.
 """
 import paddle.v2.dataset.common
 import subprocess
@@ -76,12 +76,12 @@ def reader_creator(image_filename, label_filename, buffer_size):
 
 def train():
     """
-    MNIST train set creator.
+    MNIST training set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
     [0, 1] and label in [0, 9].
 
-    :return: Train reader creator
+    :return: Training reader creator
     :rtype: callable
     """
     return reader_creator(
@@ -106,3 +106,10 @@ def test():
                                           TEST_IMAGE_MD5),
         paddle.v2.dataset.common.download(TEST_LABEL_URL, 'mnist',
                                           TEST_LABEL_MD5), 100)
+
+
+def fetch():
+    paddle.v2.dataset.common.download(TRAIN_IMAGE_URL, 'mnist', TRAIN_IMAGE_MD5)
+    paddle.v2.dataset.common.download(TRAIN_LABEL_URL, 'mnist', TRAIN_LABEL_MD5)
+    paddle.v2.dataset.common.download(TEST_IMAGE_URL, 'mnist', TEST_IMAGE_MD5)
+    paddle.v2.dataset.common.download(TEST_LABEL_URL, 'mnist', TRAIN_LABEL_MD5)

@@ -724,7 +724,8 @@ class ConvProjection(ConvBaseProjection):
                  num_filters=None,
                  conv_conf=None,
                  **xargs):
-        super(ConvProjection, self).__init__(input_layer_name, **xargs)
+        super(ConvProjection, self).__init__(input_layer_name, num_filters,
+                                             conv_conf, **xargs)
 
         parse_conv(conv_conf, self.input_layer_name, self.proj_conf.conv_conf,
                    num_filters)
@@ -742,7 +743,8 @@ class ConvTransProjection(ConvBaseProjection):
                  num_filters=None,
                  conv_conf=None,
                  **xargs):
-        super(ConvTransProjection, self).__init__(input_layer_name, **xargs)
+        super(ConvTransProjection, self).__init__(input_layer_name, num_filters,
+                                                  conv_conf, **xargs)
 
         parse_conv(
             conv_conf,
@@ -1218,9 +1220,11 @@ def parse_image(image, input_layer_name, image_conf):
 
 def parse_norm(norm, input_layer_name, norm_conf):
     norm_conf.norm_type = norm.norm_type
-    config_assert(norm.norm_type in ['rnorm', 'cmrnorm-projection'],
-                  "norm-type %s is not in [rnorm, 'cmrnorm-projection']" %
-                  norm.norm_type)
+    config_assert(
+        norm.norm_type in
+        ['rnorm', 'cmrnorm-projection', 'cross-channel-norm'],
+        "norm-type %s is not in [rnorm, cmrnorm-projection, cross-channel-norm]"
+        % norm.norm_type)
     norm_conf.channels = norm.channels
     norm_conf.size = norm.size
     norm_conf.scale = norm.scale
@@ -1896,6 +1900,9 @@ class NormLayer(LayerBase):
                        norm_conf)
             self.set_cnn_layer(name, norm_conf.output_y, norm_conf.output_x,
                                norm_conf.channels, False)
+            if norm_conf.norm_type == "cross-channel-norm":
+                self.create_input_parameter(0, norm_conf.channels,
+                                            [norm_conf.channels, 1])
 
 
 @config_layer('pool')
@@ -2478,6 +2485,7 @@ class SequenceLastInstanceLayer(LayerBase):
                  active_type='linear',
                  trans_type='non-seq',
                  bias=False,
+                 stride=-1,
                  **xargs):
         super(SequenceLastInstanceLayer, self).__init__(
             name,
@@ -2488,10 +2496,11 @@ class SequenceLastInstanceLayer(LayerBase):
             **xargs)
         config_assert(
             len(inputs) == 1, 'SequenceLastInstanceLayer must have 1 input')
+        if trans_type == 'seq':
+            config_assert(stride == -1, 'subseq does not support stride window')
         self.config.trans_type = trans_type
-        for input_index in xrange(len(self.inputs)):
-            input_layer = self.get_input_layer(input_index)
-            self.set_layer_size(input_layer.size)
+        self.config.seq_pool_stride = stride
+        self.set_layer_size(self.get_input_layer(0).size)
         self.create_bias_parameter(bias, self.config.size)
 
 
@@ -2503,10 +2512,16 @@ class SequenceFirstInstanceLayer(SequenceLastInstanceLayer):
                  active_type='linear',
                  trans_type='non-seq',
                  bias=False,
+                 stride=-1,
                  **xargs):
         super(SequenceFirstInstanceLayer, self).__init__(
-            name, inputs=inputs, active_type=active_type, bias=bias, **xargs)
-        self.config.trans_type = trans_type
+            name,
+            inputs=inputs,
+            active_type=active_type,
+            trans_type=trans_type,
+            bias=bias,
+            stride=stride,
+            **xargs)
         self.config.select_first = True
 
 

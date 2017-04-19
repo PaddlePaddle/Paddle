@@ -4,19 +4,21 @@ set -e
 
 # Set BASE_IMAGE according to env variables
 if [ ${WITH_GPU} == "ON" ]; then
-  BASE_IMAGE="nvidia/cuda:7.5-cudnn5-runtime-ubuntu14.04"
+  BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04"
   # additional packages to install when building gpu images
   GPU_DOCKER_PKG="python-pip python-dev"
 else
   BASE_IMAGE="python:2.7.13-slim"
+  # FIXME: python base image uses different python version than WITH_GPU
+  # need to change PYTHONHOME to /usr/local when using python base image
+  CPU_DOCKER_PYTHON_HOME_ENV="ENV PYTHONHOME /usr/local"
 fi
 
 DOCKERFILE_GPU_ENV=""
+DOCKERFILE_CUDNN_DSO=""
 if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
     DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
-
-    # for cmake to find cudnn
-    ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so /usr/lib/libcudnn.so
+    DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/lib/x86_64-linux-gnu/libcudnn.so"
 fi
 
 mkdir -p /paddle/build
@@ -33,10 +35,10 @@ cmake .. \
       -DWITH_SWIG_PY=ON \
       -DCUDNN_ROOT=/usr/ \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
-      -DON_COVERALLS=${TEST:-OFF} \
+      -DON_COVERALLS=${WITH_TEST:-OFF} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 make -j `nproc`
-if [[ ${TEST:-OFF} == "ON" ]]; then
+if [[ ${RUN_TEST:-OFF} == "ON" ]]; then
     make coveralls
 fi
 make install
@@ -47,7 +49,7 @@ make install
 # install them in docker
 cpack -D CPACK_GENERATOR='DEB' -D CPACK_DEBIAN_PACKAGE_DEPENDS="" ..
 
-if [[ ${BUILD_WOBOQ:-OFF} == 'ON' ]]; then
+if [[ ${WOBOQ:-OFF} == 'ON' ]]; then
     apt-get install -y clang-3.8 llvm-3.8 libclang-3.8-dev
     # Install woboq_codebrowser.
     git clone https://github.com/woboq/woboq_codebrowser /woboq
@@ -57,7 +59,7 @@ if [[ ${BUILD_WOBOQ:-OFF} == 'ON' ]]; then
           .
     make
 
-    export WOBOQ_OUT=/usr/share/nginx/html/paddle
+    export WOBOQ_OUT=/woboq_out/paddle
     export BUILD_DIR=/paddle/build
     mkdir -p $WOBOQ_OUT
     cp -rv /woboq/data $WOBOQ_OUT/../data
@@ -95,7 +97,11 @@ RUN ${MIRROR_UPDATE}
 # Use different deb file when building different type of images
 ADD build/*.deb /usr/local/opt/paddle/deb/
 # run paddle version to install python packages first
-RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && rm -f /usr/local/opt/paddle/deb/*.deb && paddle version
+RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && \
+    rm -f /usr/local/opt/paddle/deb/*.deb && \
+    paddle version
+${CPU_DOCKER_PYTHON_HOME_ENV}
+${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]

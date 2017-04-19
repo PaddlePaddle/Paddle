@@ -1,19 +1,18 @@
 # A image for building paddle binaries
 # Use cuda devel base image for both cpu and gpu environment
-FROM nvidia/cuda:7.5-cudnn5-devel-ubuntu14.04
+FROM nvidia/cuda:8.0-cudnn5-devel-ubuntu14.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 ARG UBUNTU_MIRROR
 RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com/ubuntu#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
 
 # ENV variables
-ARG BUILD_WOBOQ
 ARG WITH_GPU
 ARG WITH_AVX
 ARG WITH_DOC
 ARG WITH_STYLE_CHECK
 
-ENV BUILD_WOBOQ=${BUILD_WOBOQ:-OFF}
+ENV WOBOQ OFF
 ENV WITH_GPU=${WITH_AVX:-OFF}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV WITH_DOC=${WITH_DOC:-OFF}
@@ -37,18 +36,20 @@ RUN git config --global credential.helper store
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
+# FIXME: due to temporary ipykernel dependency issue, specify ipykernel jupyter
+# version util jupyter fixes this issue.
 RUN pip install --upgrade pip && \
     pip install -U 'protobuf==3.1.0' && \
     pip install -U wheel pillow BeautifulSoup && \
     pip install -U docopt PyYAML sphinx && \
     pip install -U sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip install -U pre-commit 'requests==2.9.2' jupyter
+    pip install pre-commit 'requests==2.9.2' 'ipykernel==4.6.0' 'jupyter==1.0.0'
 
 RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd cmake-3.4.1 && ./bootstrap && make -j `nproc` && make install && \
     cd .. && rm -rf cmake-3.4.1
 
-VOLUME ["/usr/share/nginx/html/data", "/usr/share/nginx/html/paddle"]
+VOLUME ["/woboq_out"]
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd

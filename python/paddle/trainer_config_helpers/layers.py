@@ -18,7 +18,7 @@ import inspect
 
 from paddle.trainer.config_parser import *
 from .activations import LinearActivation, SigmoidActivation, TanhActivation, \
-    ReluActivation, IdentityActivation, SoftmaxActivation
+    ReluActivation, IdentityActivation, SoftmaxActivation, BaseActivation
 from .evaluators import *
 from .poolings import MaxPooling, AvgPooling, BasePoolingType
 from .attrs import *
@@ -112,6 +112,7 @@ __all__ = [
     'out_prod_layer',
     'print_layer',
     'priorbox_layer',
+    'cross_channel_norm_layer',
     'spp_layer',
     'pad_layer',
     'eos_layer',
@@ -1008,6 +1009,46 @@ def priorbox_layer(input,
         size=size)
 
 
+@wrap_name_default("cross_channel_norm")
+def cross_channel_norm_layer(input, name=None, param_attr=None):
+    """
+    Normalize a layer's output. This layer is necessary for ssd.
+    This layer applys normalize across the channels of each sample to
+    a conv layer's output and scale the output by a group of trainable
+    factors which dimensions equal to the channel's number.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param param_attr: The Parameter Attribute|list.
+    :type param_attr: ParameterAttribute
+    :return: LayerOutput
+    """
+    assert input.num_filters is not None
+    Layer(
+        name=name,
+        type=LayerType.NORM_LAYER,
+        inputs=[
+            Input(
+                input.name,
+                norm=Norm(
+                    norm_type="cross-channel-norm",
+                    channels=input.num_filters,
+                    size=input.size,
+                    scale=0,
+                    pow=0,
+                    blocked=0),
+                **param_attr.attr)
+        ])
+    return LayerOutput(
+        name,
+        LayerType.NORM_LAYER,
+        parents=input,
+        num_filters=input.num_filters,
+        size=input.size)
+
+
 @wrap_name_default("seq_pooling")
 @wrap_bias_attr_default(has_bias=False)
 @wrap_param_default(['pooling_type'], default_factory=lambda _: MaxPooling())
@@ -1301,9 +1342,15 @@ def grumemory(input,
 def last_seq(input,
              name=None,
              agg_level=AggregateLevel.EACH_TIMESTEP,
+             stride=-1,
              layer_attr=None):
     """
     Get Last Timestamp Activation of a sequence.
+
+    If stride > 0, this layer slides a window whose size is determined by stride, 
+    and return the last value of the window as the output. Thus, a long sequence 
+    will be shorten. Note that for sequence with sub-sequence, the default value 
+    of stride is -1.
 
     The simple usage is:
 
@@ -1316,6 +1363,8 @@ def last_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
+    :param stride: window size.  
+    :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
@@ -1327,11 +1376,15 @@ def last_seq(input,
                        " series information at all. Maybe you want to use"
                        " first_seq instead.")
 
+    if agg_level == AggregateLevel.EACH_SEQUENCE:
+        assert stride == -1
+
     Layer(
         name=name,
         type=LayerType.SEQUENCE_LAST_INSTANCE,
         inputs=[input.name],
         trans_type=agg_level,
+        stride=stride,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,
@@ -1345,9 +1398,15 @@ def last_seq(input,
 def first_seq(input,
               name=None,
               agg_level=AggregateLevel.EACH_TIMESTEP,
+              stride=-1,
               layer_attr=None):
     """
     Get First Timestamp Activation of a sequence.
+
+    If stride > 0, this layer slides a window whose size is determined by stride, 
+    and return the first value of the window as the output. Thus, a long sequence 
+    will be shorten. Note that for sequence with sub-sequence, the default value 
+    of stride is -1.
 
     The simple usage is:
 
@@ -1360,6 +1419,8 @@ def first_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
+    :param stride: window size.  
+    :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
@@ -1372,11 +1433,15 @@ def first_seq(input,
                        ' time series information at all. Maybe you want to use'
                        ' last_seq instead.')
 
+    if agg_level == AggregateLevel.EACH_SEQUENCE:
+        assert stride == -1
+
     Layer(
         name=name,
         type=LayerType.SEQUENCE_FIRST_INSTANCE,
         inputs=[input.name],
         trans_type=agg_level,
+        stride=stride,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,
@@ -1875,7 +1940,7 @@ def cos_sim(a, b, scale=1, size=1, name=None, layer_attr=None):
 @layer_support()
 def hsigmoid(input,
              label,
-             num_classes,
+             num_classes=None,
              name=None,
              bias_attr=None,
              param_attr=None,
@@ -1891,8 +1956,7 @@ def hsigmoid(input,
     ..  code-block:: python
 
         cost = hsigmoid(input=[layer1, layer2],
-                        label=data_layer,
-                        num_classes=3)
+                        label=data_layer)
 
     :param input: Input layers. It could be a LayerOutput or list/tuple of
                  LayerOutput.
@@ -1900,12 +1964,14 @@ def hsigmoid(input,
     :param label: Label layer.
     :type label: LayerOutput
     :param num_classes: number of classes.
-    :type num_classes: int
+    :type num_classes: int|None
     :param name: layer name
     :type name: basestring
     :param bias_attr: Bias attribute. None means default bias.
                       False means no bias.
     :type bias_attr: ParameterAttribute|False
+    :param param_attr: Parameter Attribute. None means default parameter.
+    :type param_attr: ParameterAttribute|None
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
@@ -1924,6 +1990,11 @@ def hsigmoid(input,
     assert isinstance(input, collections.Sequence)
     assert isinstance(label, LayerOutput)
     assert label.layer_type == LayerType.DATA
+
+    if num_classes is None:
+        num_classes = label.size
+    if num_classes is None or num_classes <= 2:
+        raise ValueError("hsigmoid label size must larger than 2.")
 
     ipts_for_layer = []
     parents = []
@@ -2212,8 +2283,9 @@ def img_pool_layer(input,
         pool_type.name = 'avg'
 
     type_name = pool_type.name + '-projection' \
-      if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
-      else pool_type.name
+        if (
+    isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
+        else pool_type.name
 
     pool_size_y = pool_size if pool_size_y is None else pool_size_y
     stride_y = stride if stride_y is None else stride_y
@@ -3253,8 +3325,8 @@ def recurrent_group(step,
 
     assert (targetInlink == None or targetInlink_in_inlinks())
     targetInlinkName = None if targetInlink == None \
-                            else targetInlink.name if isinstance(targetInlink, LayerOutput) \
-                                                   else targetInlink.input.name
+        else targetInlink.name if isinstance(targetInlink, LayerOutput) \
+        else targetInlink.input.name
 
     contains_sub_seq = [False]
 
@@ -4766,12 +4838,14 @@ def crf_decoding_layer(input,
     return LayerOutput(name, LayerType.CRF_DECODING_LAYER, parents, size=1)
 
 
+@wrap_act_default(act=SigmoidActivation())
 @wrap_bias_attr_default(has_bias=True)
 @wrap_name_default()
 @layer_support()
 def nce_layer(input,
               label,
               num_classes,
+              act=None,
               weight=None,
               num_neg_samples=10,
               neg_distribution=None,
@@ -4800,6 +4874,8 @@ def nce_layer(input,
     :type weight: LayerOutput
     :param num_classes: number of classes.
     :type num_classes: int
+    :param act: Activation, default is Sigmoid.
+    :type act: BaseActivation
     :param num_neg_samples: number of negative samples. Default is 10.
     :type num_neg_samples: int
     :param neg_distribution: The distribution for generating the random negative labels.
@@ -4821,7 +4897,9 @@ def nce_layer(input,
     if neg_distribution is not None:
         assert isinstance(neg_distribution, collections.Sequence)
         assert len(neg_distribution) == num_classes
-        assert sum(neg_distribution) == 1
+        assert abs(sum(neg_distribution) - 1.0) < 1e-5
+    if not isinstance(act, BaseActivation):
+        raise TypeError()
 
     ipts_for_layer = []
     parents = []
@@ -4843,12 +4921,17 @@ def nce_layer(input,
         type=LayerType.NCE_LAYER,
         num_classes=num_classes,
         neg_sampling_dist=neg_distribution,
+        active_type=act.name,
         num_neg_samples=num_neg_samples,
         inputs=ipts_for_layer,
         bias=ParamAttr.to_bias(bias_attr),
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
-        name, LayerType.NCE_LAYER, parents=parents, size=l.config.size)
+        name,
+        LayerType.NCE_LAYER,
+        parents=parents,
+        size=l.config.size,
+        activation=act)
 
 
 """

@@ -17,6 +17,8 @@ import hashlib
 import os
 import shutil
 import sys
+import importlib
+import paddle.v2.dataset
 
 __all__ = ['DATA_HOME', 'download', 'md5file']
 
@@ -64,8 +66,11 @@ def download(url, module_name, md5sum):
     return filename
 
 
-def dict_add(a_dict, ele):
-    if ele in a_dict:
-        a_dict[ele] += 1
-    else:
-        a_dict[ele] = 1
+def fetch_all():
+    for module_name in filter(lambda x: not x.startswith("__"),
+                              dir(paddle.v2.dataset)):
+        if "fetch" in dir(
+                importlib.import_module("paddle.v2.dataset.%s" % module_name)):
+            getattr(
+                importlib.import_module("paddle.v2.dataset.%s" % module_name),
+                "fetch")()

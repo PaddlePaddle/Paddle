@@ -113,7 +113,7 @@ def reader_creator(data):
 
 def train():
     """
-    Default train set reader creator
+    Default training set reader creator
     """
     data_set = load_sentiment_data()
     return reader_creator(data_set[0:NUM_TRAINING_INSTANCES])
@@ -125,3 +125,7 @@ def test():
     """
     data_set = load_sentiment_data()
     return reader_creator(data_set[NUM_TRAINING_INSTANCES:])
+
+
+def fetch():
+    nltk.download('movie_reviews', download_dir=common.DATA_HOME)
