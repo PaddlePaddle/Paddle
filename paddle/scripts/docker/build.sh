@@ -75,9 +75,8 @@ fi
 
 paddle version
 
-# generate production docker image Dockerfile
-if [ ${USE_MIRROR} ]; then
-  MIRROR_UPDATE="sed 's@http:\/\/archive.ubuntu.com\/ubuntu\/@mirror:\/\/mirrors.ubuntu.com\/mirrors.txt@' -i /etc/apt/sources.list && \\"
+if [[ -n ${APT_MIRROR} ]]; then
+  MIRROR_UPDATE="sed -i '${APT_MIRROR}' /etc/apt/sources.list && \\"
 else
   MIRROR_UPDATE="\\"
 fi
