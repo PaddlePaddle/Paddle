@@ -42,7 +42,7 @@ if [[ ${RUN_TEST:-OFF} == "ON" ]]; then
     make coveralls
 fi
 make install
-pip install /usr/opt/paddle/share/wheels/*.whl
+pip install /usr/local/opt/paddle/share/wheels/*.whl
 
 if [ ${WITH_DOC} == "ON" ]; then
     mkdir -p /paddle/build_doc
@@ -111,7 +111,7 @@ ADD build/*.deb /usr/local/opt/paddle/deb/
 # run paddle version to install python packages first
 RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && \
     rm -f /usr/local/opt/paddle/deb/*.deb && \
-    pip install /usr/opt/paddle/share/wheels/*.whl && \
+    pip install /usr/local/opt/paddle/share/wheels/*.whl && \
     paddle version
 ${CPU_DOCKER_PYTHON_HOME_ENV}
 ${DOCKERFILE_CUDNN_DSO}
