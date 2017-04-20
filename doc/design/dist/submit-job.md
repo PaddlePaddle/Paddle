@@ -7,14 +7,14 @@ The relation of PaddlePaddle, kubernetes and docker:
 <img src="./submit-job.png" width="500">
 
 
-# Running local training job
+# Running Local Training Job
 You can execute the command: `paddle train` with flag `--locally` to start up a local train.
 ```bash
 paddle train \
   --locally \
   --job-name=quickstart \
   --package-path=./demo \
-  --module=demo.train \
+  --entry-point="python train.py" \
   --input=<input_dir> \
   --output=<output_dir> \
   --image=<paddle_image> \
@@ -22,7 +22,7 @@ paddle train \
 ```
 - `job-name`: your local training job name
 - `package-path`: your trainer code python package
-- `module`: include a main function, trainer entrance.
+- `entry-point`: an entry point for startup trainer process
 - `input`: input directory, for local train, it's a host path.
 - `output`: output directory, for local train, it's a host path.
 - `base-image`: paddlepaddle production image
@@ -36,13 +36,13 @@ docker run --rm \
   -v <host output dir>:/output \
   -v <package files>:/package \
   -e NUM_PASS=4 \
-  paddlepaddle/paddle:0.10.0rc3 \
   -e PYTHONPATH=/package \
-  python /package/train.py
+  paddlepaddle/paddle:0.10.0rc3 \
+  python train.py
 ```
 
 
-# Running distributed training job
+# Running Distributed Training Job
 
 ## Configurate PaddlePaddle client
 
@@ -59,103 +59,93 @@ paddleServer: http://<paddle server domain>:<paddle server port>
 ```
 
 
-## Submit a distributed training job
+## Submit a Distributed Training Job
 Users will submit a distributed training job with the command: `paddle train` without flag `--locally`.
 
 ```bash
 paddle train \
   --job-name=cluster-quickstart \
   --package-path=$PWD/quick_start \
-  --module=quick_start.train \
+  --entry-point="python train.py" \
   --input=<input-dir> \
   --output=<output-dir> \
   --trainers=4 \
   --pservers=2 \
-  --base-image:<paddle-k8s-image> \
-  --use-gpu=1 \
-  --gpu-num=1 \
+  --base-image:<paddle-image> \
+  --use-gpu=true \
+  --trainer-gpu-num=1 \
   --env="NUM_PASS=5"
 ```
 
 - `job-name`: you should specify a unique job name
 - `package-path`: python package files on your host
-- `module`: include the main function, trainer entrance
+- `entry-point`: an entry point for startup trainer process
 - `input`: input directory on distributed file system
 - `output`: output directory on distributed file system
 - `trainers`: trainer process count
 - `pserver`: parameter process count
 - `base-image`: your trainer docker image, include your trainer files and dependencies.
 - `use-gpu`: whether it is a GPU train
-- `gpu-num`: how much GPU card for one paddle trainer process, it's requirements only if `use_gpu=1`,
+- `trainer-gpu-num`: how much GPU card for one paddle trainer process, it's requirements only if `use-gpu=true`,
 - `env`: environment variable
 
-## Package into a docker image
+## Runtime Environment On kubernetes
 
-- `Runtime docker image` and `base docker image`
+For a distributed training job, there is two docker image called `runtime docker image` and `base docker image`, the `runtime docker image` is actually running in kubernetes.
 
-  For a distributed training job, there is two docker image called `runtime docker image` and `base docker image`, the `runtime docker image` is actually running in kubernetes.
+- Base Docker Image
 
-  - `runtime docker image` include user's package files and all dependencies.
-  - `base docker image` usually is PaddlePaddle product docker image including paddle binary files and some scripts used for starting up the trainer process and fetch some information of pod. And of course, users can also build their own paddle binary files into the custom `base docker image` with [this doc](../../../paddle/scripts/docker/README.md).
+  Usually, the `base docker image` is PaddlePaddle product docker image including paddle binary files and trainer startup script file. And of course, users can specify any image name hosted on any docker registry which users have the right access.
 
-  `runtime docker image` will be built by PaddlePaddle client automatic, here is a simple example project:
-  ```bash
-  paddle_example
-    |-quick_start
-      |-trainer.py
-      `-dataset.py
-    requirments.txt
+- Runtime Docker Image
+
+  package the trainer package which user upload and some python dependencies into a `runtime docker image` base on `base docker image`, this is done automatically by Paddle Server.
+
+- Python Dependencies
+
+  users will provide a `requirments.txt` file in packages path, to list python dependencies packages, such as:
+  ```txt
+  pillow
+  protobuf==3.1.0
   ```
-  - `requirements.txt` list python dependencies package, you can create is like:
+  some other details about `requirements` is [here](https://pip.readthedocs.io/en/1.1/requirements.html).
 
-    ```txt
-    pillow
-    protobuf==3.1.0
-    ```
-    some other details is [here](https://pip.readthedocs.io/en/1.1/requirements.html).
-  - `quick_start` directory include the trainer package files.
-
-  Execute the command: `paddle train...`, PaddlePaddle client will upload the trainer package files and setup parameters to [Paddle Server](#paddle-server).
+  Here is an example project:
+  ```bash
+    paddle_example
+      |-quick_start
+        |-trainer.py
+        |-dataset.py
+        |-requirments.txt
+  ```
+  Execute the command: `paddle train --package-path=./paddle_eample/quick_start ...`, PaddlePaddle client will upload the trainer package(quick_start)and setup parameters to [Paddle Server](#paddle-server)
 
 ## Paddle Server
 Paddle server is running on kubernetes, users will configure the server address in [PaddlePaddle client configuration file](#configurate-paddlepaddle-client)
 
-- HTTP server
+- Paddle Server
 
-  Paddle server is an HTTP server, Receiver the trainer files and saves them on GlustereFS.
+  Paddle server is an HTTP server which receives the trainer package and saves them on GlustereFS.
 
-- Startup pservers and trainers
+- Build Runtime Docker Image On Cloud(kubernetes)
 
-  Paddle Service will deploy pserver and trainer on kubernetes, they are also job resource, naming `<job-name>-pserver` and `<job-name>-trainer`.
-  - Setup pserver job.
-  - Setup trainer job, trainer process will be setup until the status of all pserver pod becoming `RUNNING` and fetch all pserver's IP as trainer setup parameters.
-  - Setup trainer process in trainer pod.
+  Paddle server deploys a kubernetes Job and builds runtime docker image in Pod, pserver and trainer pod will use this runtime docker image to startup pserver and trainer process.
 
-## Data source
-- Distributed file system
+  There are some benefits for building Docker image on the cloud:
+  - Users only need to upload the training package files, does not dependency docker engine, docker registry.
+  - If we want to change another image type, such as RKT, the user does not need to care about it.
 
-  You can upload your training data to distributed file system, such as GlustereFS,
-  PaddlePaddle support a default reader for reading data from distributed file system.
-- HTTP server
+- Start Up PSrvers and Trainers Job
+  - Deploy pserver job, it's a kubernetes StatefulSet.
+  - Deploy trainer job, it's a kubernetes Job.
+    - Waiting for all pserver pod is running.
+    - Fetch all pserver address using kubernetes API and put environment variable.
+    - Start up trainer process with `entry-point`.
 
-  TODO
-- Real-time data
-
-  TODO
-
-## PaddlePaddle client commands:
+## PaddlePaddle Client Commands:
 To run local training job with flag `--locally` and distributed training job without it.
 - `paddle train`: start a training job
-- `paddle prediction`: start a prediction job
 - `paddle list`: list all PaddlePaddle jobs in current namespace
 - `paddle cancel`: cancel a running job.
 - `paddle status`: status of a PaddlePaddle job
 - `paddle version`: show PaddlePaddle client and PaddlePaddle server version info.
-
-## Work feature
-- V1
-  - Paddle server is a local version, build `runtime docker image`, deploy trainer and pserver job on user's host.
-  - implement `paddle train`, `paddle list`, `paddle cancel`
-- V2
-  - Paddle server is running on kubernetes, users will only upload the package files and some setup parameters and building `runtime docker image` on kubernetes.
-  - implement `paddle prediction` and other feature.
