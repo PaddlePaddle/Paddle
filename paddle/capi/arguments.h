@@ -46,13 +46,13 @@ PD_API paddle_arguments paddle_arguments_create_none();
 PD_API paddle_error paddle_arguments_destroy(paddle_arguments args);
 
 /**
- * @brief PDArgsGetSize Get size of arguments array
+ * @brief paddle_arguments_get_size Get size of arguments array
  * @param [in] args arguments array
  * @param [out] size array size
  * @return paddle_error
  */
-PD_API paddle_error paddle_arguments_size(paddle_arguments args,
-                                          uint64_t* size);
+PD_API paddle_error paddle_arguments_get_size(paddle_arguments args,
+                                              uint64_t* size);
 
 /**
  * @brief PDArgsResize Resize a arguments array.
@@ -83,9 +83,9 @@ PD_API paddle_error paddle_arguments_set_value(paddle_arguments args,
  * @param [out] mat matrix pointer
  * @return paddle_error
  */
-PD_API paddle_error paddle_arguments_value(paddle_arguments args,
-                                           uint64_t ID,
-                                           paddle_matrix mat);
+PD_API paddle_error paddle_arguments_get_value(paddle_arguments args,
+                                               uint64_t ID,
+                                               paddle_matrix mat);
 
 /**
  * @brief PDArgsGetIds Get the integer vector of one argument in array, which
@@ -95,9 +95,9 @@ PD_API paddle_error paddle_arguments_value(paddle_arguments args,
  * @param ids integer vector pointer
  * @return paddle_error
  */
-PD_API paddle_error paddle_arguments_ids(paddle_arguments args,
-                                         uint64_t ID,
-                                         paddle_ivector ids);
+PD_API paddle_error paddle_arguments_get_ids(paddle_arguments args,
+                                             uint64_t ID,
+                                             paddle_ivector ids);
 
 /**
  * @brief PDArgsSetIds Set the integer vector of one argument in array, which
@@ -132,10 +132,11 @@ paddle_arguments_set_sequence_start_pos(paddle_arguments args,
  * @param [out] seqPos sequence position array
  * @return paddle_error
  */
-PD_API paddle_error paddle_arguments_sequence_start_pos(paddle_arguments args,
-                                                        uint64_t ID,
-                                                        uint32_t nestedLevel,
-                                                        paddle_ivector seqPos);
+PD_API paddle_error
+paddle_arguments_get_sequence_start_pos(paddle_arguments args,
+                                        uint64_t ID,
+                                        uint32_t nestedLevel,
+                                        paddle_ivector seqPos);
 
 #ifdef __cplusplus
 }

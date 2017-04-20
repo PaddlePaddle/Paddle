@@ -31,7 +31,7 @@ paddle_error paddle_arguments_destroy(paddle_arguments args) {
   return kPD_NO_ERROR;
 }
 
-paddle_error paddle_arguments_size(paddle_arguments args, uint64_t* size) {
+paddle_error paddle_arguments_get_size(paddle_arguments args, uint64_t* size) {
   if (args == nullptr || size == nullptr) return kPD_NULLPTR;
   *size = castArg(args)->args.size();
   return kPD_NO_ERROR;
@@ -55,9 +55,9 @@ paddle_error paddle_arguments_set_value(paddle_arguments args,
   return kPD_NO_ERROR;
 }
 
-paddle_error paddle_arguments_value(paddle_arguments args,
-                                    uint64_t ID,
-                                    paddle_matrix mat) {
+paddle_error paddle_arguments_get_value(paddle_arguments args,
+                                        uint64_t ID,
+                                        paddle_matrix mat) {
   if (args == nullptr || mat == nullptr) return kPD_NULLPTR;
   auto m = paddle::capi::cast<paddle::capi::CMatrix>(mat);
   auto a = castArg(args);
@@ -66,9 +66,9 @@ paddle_error paddle_arguments_value(paddle_arguments args,
   return kPD_NO_ERROR;
 }
 
-paddle_error paddle_arguments_ids(paddle_arguments args,
-                                  uint64_t ID,
-                                  paddle_ivector ids) {
+paddle_error paddle_arguments_get_ids(paddle_arguments args,
+                                      uint64_t ID,
+                                      paddle_ivector ids) {
   if (args == nullptr || ids == nullptr) return kPD_NULLPTR;
   auto iv = castIVec(ids);
   auto a = castArg(args);
@@ -103,10 +103,10 @@ paddle_error paddle_arguments_set_sequence_start_pos(paddle_arguments args,
   });
 }
 
-paddle_error paddle_arguments_sequence_start_pos(paddle_arguments args,
-                                                 uint64_t ID,
-                                                 uint32_t nestedLevel,
-                                                 paddle_ivector seqPos) {
+paddle_error paddle_arguments_get_sequence_start_pos(paddle_arguments args,
+                                                     uint64_t ID,
+                                                     uint32_t nestedLevel,
+                                                     paddle_ivector seqPos) {
   if (args == nullptr || seqPos == nullptr) return kPD_NULLPTR;
   auto iv = paddle::capi::cast<paddle::capi::CIVector>(seqPos);
   auto a = castArg(args);

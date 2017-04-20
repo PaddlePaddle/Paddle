@@ -38,7 +38,7 @@ void* thread_main(void* gm_ptr) {
                                           out_args,
                                           /* isTrain */ false));
 
-    CHECK(paddle_arguments_value(out_args, 0, prob));
+    CHECK(paddle_arguments_get_value(out_args, 0, prob));
 
     CHECK(paddle_matrix_get_row(prob, 0, &array));
 

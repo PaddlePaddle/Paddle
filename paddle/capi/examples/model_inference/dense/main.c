@@ -49,7 +49,7 @@ int main() {
                                         /* isTrain */ false));
   paddle_matrix prob = paddle_matrix_create_none();
 
-  CHECK(paddle_arguments_value(out_args, 0, prob));
+  CHECK(paddle_arguments_get_value(out_args, 0, prob));
 
   CHECK(paddle_matrix_get_row(prob, 0, &array));
 

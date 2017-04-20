@@ -73,10 +73,10 @@ TEST(GradientMachine, testPredict) {
             paddle_gradient_machine_forward(machine, inArgs, outArgs, false));
 
   uint64_t sz;
-  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_size(outArgs, &sz));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_get_size(outArgs, &sz));
   ASSERT_EQ(1UL, sz);
 
-  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_value(outArgs, 0, mat));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_get_value(outArgs, 0, mat));
   std::vector<paddle::Argument> paddleInArgs;
   std::vector<paddle::Argument> paddleOutArgs;
   paddleInArgs.resize(1);

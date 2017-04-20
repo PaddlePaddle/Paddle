@@ -32,7 +32,7 @@ TEST(CAPIArguments, create) {
   //! TODO(yuyang18): Test GPU Code.
   paddle_arguments args = paddle_arguments_create_none();
   uint64_t size;
-  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_size(args, &size));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_get_size(args, &size));
   ASSERT_EQ(0UL, size);
   ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_destroy(args));
 }
@@ -50,7 +50,7 @@ TEST(CAPIArguments, value) {
 
   paddle_matrix val = paddle_matrix_create_none();
 
-  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_value(args, 0, val));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_get_value(args, 0, val));
 
   for (size_t i = 0; i < 128; ++i) {
     paddle_real* row1;
@@ -78,7 +78,7 @@ TEST(CAPIArguments, ids) {
   ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_set_ids(args, 0, ivec));
 
   paddle_ivector val = paddle_ivector_create_none();
-  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_ids(args, 0, val));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_get_ids(args, 0, val));
   ASSERT_EQ(kPD_NO_ERROR, paddle_ivector_destroy(ivec));
   ASSERT_EQ(kPD_NO_ERROR, paddle_ivector_destroy(val));
   ASSERT_EQ(kPD_NO_ERROR, paddle_arguments_destroy(args));
@@ -117,7 +117,7 @@ TEST(CAPIArguments, Sequence) {
                                  std::placeholders::_2,
                                  nestedLevel,
                                  std::placeholders::_3),
-                       std::bind(paddle_arguments_sequence_start_pos,
+                       std::bind(paddle_arguments_get_sequence_start_pos,
                                  std::placeholders::_1,
                                  std::placeholders::_2,
                                  nestedLevel,
