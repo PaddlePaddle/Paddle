@@ -43,7 +43,8 @@ RUN pip install --upgrade pip && \
     pip install -U wheel pillow BeautifulSoup && \
     pip install -U docopt PyYAML sphinx && \
     pip install -U sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip install pre-commit 'requests==2.9.2' 'ipykernel==4.6.0' 'jupyter==1.0.0'
+    pip install pre-commit 'requests==2.9.2' 'ipython==5.3.0' && \
+    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0'
 
 RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd cmake-3.4.1 && ./bootstrap && make -j `nproc` && make install && \
