@@ -54,6 +54,7 @@ L&apos; inflation accélérée , mesurée dans la zone euro , est due principale
 
 ```python
 reader = paddle.dist.reader("dataset-name")
+trainer.train(reader, ...)
 batch_reader = paddle.batch(paddle.dataset.mnist.train(), 128)
 trainer.train(batch_reader, ...)
 ```
@@ -68,6 +69,14 @@ def paddle.train(batch_reader):
 ```
 
 这里面batch是含有128个data instance的mini-batch。每一个data instance会是一个tuple，tuple元素的顺序与`.list`文件文件中每一列的顺序是一致的。每一个data instance会是(raw_image_file_binary_data, label)。其中raw_image_file_binary_data是对应图像文件的没有解码的原始二进制数据，用户需要自己解码。label是文本类型（比如：“1“，”2“），这里用户需要的其实是整形，用户需要自己转换成整形。
+
+### 实现reader
+
+reader的实现需要考虑本地训练程序实现之后，可以不修改程序直接提交集群进行分布式训练。要达到这样的目标，需要实现下面的功能：
+
+paddle会实现内置的默认reader和对公开数据集的reader(如MNIST，BOW等)。这些内置的reader都会被一个`paddle.reader`修饰器修饰。这个修饰器会读取环境变量`PADDLE_TRAIN_LOCAL`，如果是True，则返回只有一个文件的task queue生成器，这个文件就是reader传入的文件。如果是False，则为分布式训练模式（在集群中训练的任务，都会从这个环境变量获得False值），开始读取task queue，获取分布式存储系统中的文件名数据，并返回这个task queue。不同的reader的实现，都要遵守固定的方式：从task queue生成器中逐个获取文件名，完成对不同训练数据的解析。
+
+同样用户在实现自己的reader时，也需要使用此修饰器来修饰reader函数。
 
 ## TODO
 
