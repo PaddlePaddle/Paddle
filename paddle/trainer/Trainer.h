@@ -30,10 +30,6 @@ limitations under the License. */
 #include "TrainerConfigHelper.h"
 #include "TrainerInternal.h"
 
-#ifdef PADDLE_METRIC_LEARNING
-#include "paddle/internals/metric_learning/MetricTrainer.h"
-#endif
-
 DECLARE_int32(num_passes);
 
 namespace paddle {
@@ -201,12 +197,8 @@ protected:
   // parameter util
   std::unique_ptr<ParameterUtil> paramUtil_;
 
-#ifdef PADDLE_METRIC_LEARNING
-  MetricTrainer trainerInternal_;
-#else
   // trainer Internal
   TrainerInternal trainerInternal_;
-#endif
 };
 
 }  // namespace paddle

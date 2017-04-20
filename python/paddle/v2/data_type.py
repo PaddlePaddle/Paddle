@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.trainer.PyDataProvider2 import \
-    InputType, dense_vector, sparse_binary_vector,\
-    sparse_vector, integer_value
+import paddle.trainer.PyDataProvider2 as pydp2
 
-__all__ = [
-    'InputType', 'dense_vector', 'sparse_binary_vector', 'sparse_vector',
-    'integer_value'
+import_list = [
+    nm for nm in dir(pydp2)
+    if '_' in nm and nm[0] != '_' and ('value' in nm or 'vector' in nm)
 ]
+import_list.extend(['InputType'])
+
+for nm in import_list:
+    globals()[nm] = getattr(pydp2, nm)
+
+__all__ = import_list

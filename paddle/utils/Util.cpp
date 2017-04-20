@@ -15,17 +15,23 @@ limitations under the License. */
 #include "Util.h"
 
 #include <dirent.h>
-#include <pmmintrin.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#ifdef __SSE__
 #include <xmmintrin.h>
+#endif
+#ifdef __SSE3__
+#include <pmmintrin.h>
+#endif
 
 #include <fstream>
 #include <mutex>
 
 #include <gflags/gflags.h>
 
+#include "CpuId.h"
 #include "CustomStackTrace.h"
 #include "Logging.h"
 #include "StringUtil.h"
@@ -162,8 +168,12 @@ void initMain(int argc, char** argv) {
 
   installProfilerSwitch();
 
+#ifdef __SSE__
   _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+#endif
+#ifdef __SSE3__
   _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+#endif
 
   if (FLAGS_seed == 0) {
     unsigned int t = time(NULL);
@@ -185,6 +195,7 @@ void initMain(int argc, char** argv) {
   }
 
   version::printVersion();
+  checkCPUFeature().check();
   runInitFunctions();
 }
 

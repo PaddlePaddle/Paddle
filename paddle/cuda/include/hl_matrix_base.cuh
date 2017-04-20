@@ -66,6 +66,8 @@ typedef BaseOp SSESquaredDiff;
 typedef BaseOp SSEFirst;
 typedef BaseOp SSESecond;
 typedef BaseOp SSEClassificationError;
+#elif defined(__ARM__NEON__) || defined(__ARM_NEON)
+#include "hl_matrix_base_neon.cuh"
 #else
 #include "hl_matrix_base_sse.cuh"
 #endif

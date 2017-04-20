@@ -461,6 +461,12 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual void sequenceAvgBackward(Matrix& a,
+                                   const IVector& startsPos,
+                                   int mode) {
+    LOG(FATAL) << "Not implemented";
+  }
+
   /**
    * @code
    * this = scaleAB*(a*b) + scaleT*this
@@ -780,6 +786,14 @@ public:
 
   /// gradient of sumOfSquares.
   virtual void sumOfSquaresBp(Matrix& outputV, Matrix& label) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void smoothL1(Matrix& output, Matrix& label) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void smoothL1Bp(Matrix& outputV, Matrix& label) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -1195,6 +1209,7 @@ public:
   void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
+  void sequenceAvgBackward(Matrix& a, const IVector& startsPos, int mode);
 
   /**
    * @code
@@ -1611,6 +1626,7 @@ public:
   void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
+  void sequenceAvgBackward(Matrix& a, const IVector& startsPos, int mode);
 
   /**
    * @code
@@ -1719,6 +1735,9 @@ public:
 
   /// gradient of sumOfSquares.
   void sumOfSquaresBp(Matrix& outputV, Matrix& label);
+
+  void smoothL1(Matrix& output, Matrix& label);
+  void smoothL1Bp(Matrix& output, Matrix& label);
 
   void tanh(Matrix& output);
   void tanhDerivative(Matrix& output);

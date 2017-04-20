@@ -51,7 +51,7 @@ PaddlePaddle supports some build options.
 <tr><td class="left">WITH_TIMER</td><td class="left">Compile PaddlePaddle with stats timer</td></tr>
 <tr><td class="left">WITH_PROFILER</td><td class="left">Compile PaddlePaddle with GPU profiler</td></tr>
 <tr><td class="left">WITH_DOC</td><td class="left">Compile PaddlePaddle with documentation</td></tr>
-<tr><td class="left">ON_COVERALLS</td><td class="left">Compile PaddlePaddle with code coverage</td></tr>
+<tr><td class="left">WITH_COVERAGE</td><td class="left">Compile PaddlePaddle with code coverage</td></tr>
 <tr><td class="left">COVERALLS_UPLOAD</td><td class="left">Package code coverage data to coveralls</td></tr>
 <tr><td class="left">ON_TRAVIS</td><td class="left">Exclude special unit test on Travis CI</td></tr>
 </tbody>

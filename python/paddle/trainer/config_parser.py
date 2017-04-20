@@ -686,24 +686,16 @@ class ContextProjection(Projection):
 
 
 @config_class
-class ConvProjection(Projection):
-    type = 'conv'
-
+class ConvBaseProjection(Projection):
     def __init__(self,
                  input_layer_name,
                  num_filters=None,
                  conv_conf=None,
                  **xargs):
-        super(ConvProjection, self).__init__(input_layer_name, **xargs)
+        super(ConvBaseProjection, self).__init__(input_layer_name, **xargs)
 
         if num_filters is not None:
             self.proj_conf.num_filters = num_filters
-
-        parse_conv(conv_conf, input_layer_name, self.proj_conf.conv_conf,
-                   num_filters)
-        self.proj_conf.output_size = self.proj_conf.conv_conf.output_x * \
-                                     self.proj_conf.conv_conf.output_y * \
-                                     num_filters
 
     def calc_output_size(self, input_layer_config):
         return self.proj_conf.output_size
@@ -721,6 +713,48 @@ class ConvProjection(Projection):
 
     def calc_parameter_dims(self, input_size, output_size):
         return None
+
+
+@config_class
+class ConvProjection(ConvBaseProjection):
+    type = 'conv'
+
+    def __init__(self,
+                 input_layer_name,
+                 num_filters=None,
+                 conv_conf=None,
+                 **xargs):
+        super(ConvProjection, self).__init__(input_layer_name, num_filters,
+                                             conv_conf, **xargs)
+
+        parse_conv(conv_conf, self.input_layer_name, self.proj_conf.conv_conf,
+                   num_filters)
+        self.proj_conf.output_size = self.proj_conf.conv_conf.output_x * \
+                                     self.proj_conf.conv_conf.output_y * \
+                                     num_filters
+
+
+@config_class
+class ConvTransProjection(ConvBaseProjection):
+    type = 'convt'
+
+    def __init__(self,
+                 input_layer_name,
+                 num_filters=None,
+                 conv_conf=None,
+                 **xargs):
+        super(ConvTransProjection, self).__init__(input_layer_name, num_filters,
+                                                  conv_conf, **xargs)
+
+        parse_conv(
+            conv_conf,
+            self.input_layer_name,
+            self.proj_conf.conv_conf,
+            num_filters,
+            trans=True)
+        self.proj_conf.output_size = self.proj_conf.conv_conf.img_size_y * \
+                                     self.proj_conf.conv_conf.img_size * \
+                                     num_filters
 
 
 # Define a operator for mixed layer
@@ -782,6 +816,36 @@ class ConvOperator(Operator):
         self.operator_conf.output_size = self.operator_conf.conv_conf.output_x * \
                                          self.operator_conf.conv_conf.output_y * \
                                          num_filters
+
+        config_assert(len(input_layer_names) == 2, "Conv is binary operator")
+
+    def calc_output_size(self, input_sizes):
+        return self.operator_conf.output_size
+
+
+@config_class
+class ConvTransOperator(Operator):
+    type = 'convt'
+
+    def __init__(self,
+                 input_layer_names,
+                 num_filters=None,
+                 conv_conf=None,
+                 **xargs):
+        super(ConvTransOperator, self).__init__(input_layer_names, **xargs)
+        if num_filters is not None:
+            self.operator_conf.num_filters = num_filters
+
+        parse_conv(
+            conv_conf,
+            MakeLayerNameInSubmodel(input_layer_names[0]),
+            self.operator_conf.conv_conf,
+            num_filters,
+            trans=True)
+        self.operator_conf.output_size = \
+            self.operator_conf.conv_conf.img_size * \
+            self.operator_conf.conv_conf.img_size_y * \
+            num_filters
 
         config_assert(len(input_layer_names) == 2, "Conv is binary operator")
 
@@ -1156,9 +1220,11 @@ def parse_image(image, input_layer_name, image_conf):
 
 def parse_norm(norm, input_layer_name, norm_conf):
     norm_conf.norm_type = norm.norm_type
-    config_assert(norm.norm_type in ['rnorm', 'cmrnorm-projection'],
-                  "norm-type %s is not in [rnorm, 'cmrnorm-projection']" %
-                  norm.norm_type)
+    config_assert(
+        norm.norm_type in
+        ['rnorm', 'cmrnorm-projection', 'cross-channel-norm'],
+        "norm-type %s is not in [rnorm, cmrnorm-projection, cross-channel-norm]"
+        % norm.norm_type)
     norm_conf.channels = norm.channels
     norm_conf.size = norm.size
     norm_conf.scale = norm.scale
@@ -1772,8 +1838,17 @@ class ConvTransLayerBase(LayerBase):
         use_gpu = int(g_command_config_args.get("use_gpu", 0))
         parallel_nn = int(g_command_config_args.get("parallel_nn", 0))
 
-        # cudnn_convt has not been implemented so use exconvt only
-        self.layer_type = "exconvt"
+        # Automatically select cudnn_type for GPU and exconvt for CPU
+        # if set type=exconvt, but still reserve the way user specify
+        # exconvt or cudnn_convt manually.
+        if self.layer_type == "cudnn_convt":
+            config_assert(use_gpu, "cudnn_convt only support GPU")
+
+        if (use_gpu == 1 and self.layer_type != "exconvt" and
+            (parallel_nn == 0 or self.config.device > -1)):
+            self.layer_type = "cudnn_convt"
+        else:
+            self.layer_type = "exconvt"
         # need to specify layer in config
         self.config.type = self.layer_type
 
@@ -1790,10 +1865,9 @@ class ConvTransLayerBase(LayerBase):
                 trans=True)
             conv_conf = self.config.inputs[input_index].conv_conf
             psize = self.calc_parameter_size(conv_conf)
-            print("output size for %s is %d " % (name, conv_conf.output_x))
             self.create_input_parameter(input_index, psize)
-            self.set_layer_size(
-                (conv_conf.img_size**2) * self.config.num_filters)
+            self.set_cnn_layer(name, conv_conf.img_size_y, conv_conf.img_size,
+                               self.config.num_filters)
 
         psize = self.config.size
         if shared_biases:
@@ -1810,6 +1884,11 @@ class ConvTransLayer(ConvTransLayerBase):
     layer_type = 'exconvt'
 
 
+@config_layer('cudnn_convt')
+class ConvTransLayer(ConvTransLayerBase):
+    layer_type = 'cudnn_convt'
+
+
 @config_layer('norm')
 class NormLayer(LayerBase):
     def __init__(self, name, inputs, **xargs):
@@ -1821,6 +1900,9 @@ class NormLayer(LayerBase):
                        norm_conf)
             self.set_cnn_layer(name, norm_conf.output_y, norm_conf.output_x,
                                norm_conf.channels, False)
+            if norm_conf.norm_type == "cross-channel-norm":
+                self.create_input_parameter(0, norm_conf.channels,
+                                            [norm_conf.channels, 1])
 
 
 @config_layer('pool')
@@ -2222,7 +2304,10 @@ def Link(
 
 # memory for recurrent layer group.
 # *name* and *size* are actual layer's name and size.
-# will return name of the memory,
+# If *name* is None, need to provide *memory_name* and need to use
+# SetMemoryInput() later to specify the layer which this memory remembers.
+#
+# return the name of the memory,
 # use this name if you assign the memory as other layer's input
 #
 # boot frame of memory is zeroed by default,
@@ -2234,15 +2319,18 @@ def Link(
 # can only be initailized by a *boot_layer* which is a sequence.
 #
 @config_func
-def Memory(
-        name,
-        size,
-        is_sequence=False,
-        boot_layer=None,
-        boot_bias=False,
-        boot_bias_active_type="",
-        boot_with_const_id=None, ):
-    agent_name = name + "+delay1"
+def Memory(name,
+           size,
+           is_sequence=False,
+           boot_layer=None,
+           boot_bias=False,
+           boot_bias_active_type="",
+           boot_with_const_id=None,
+           memory_name=None):
+    if not memory_name:
+        config_assert(name is not None, "name needs cannot be None")
+        memory_name = name + "+delay1"
+    agent_name = memory_name
     if is_sequence:
         agent_layer = SequenceAgentLayer(agent_name, size)
     else:
@@ -2250,7 +2338,8 @@ def Memory(
     config_assert(g_current_submodel.is_recurrent_layer_group,
                   'Memory should be used in recurrent layer group only')
     memory = g_current_submodel.memories.add()
-    memory.layer_name = MakeLayerNameInSubmodel(name)
+    if name is not None:
+        memory.layer_name = MakeLayerNameInSubmodel(name)
     memory.link_name = MakeLayerNameInSubmodel(agent_name)
     memory.is_sequence = is_sequence
     options = sum((boot_layer is not None, bool(boot_bias),
@@ -2272,6 +2361,17 @@ def Memory(
     elif boot_with_const_id is not None:
         memory.boot_with_const_id = boot_with_const_id
     return agent_name
+
+
+@config_func
+def SetMemoryInput(memory_name, layer_name):
+    memory_name = MakeLayerNameInSubmodel(memory_name)
+    layer_name = MakeLayerNameInSubmodel(layer_name)
+    for mem in g_current_submodel.memories:
+        if mem.link_name == memory_name:
+            mem.layer_name = layer_name
+            return
+    logger.fatal("Nonexistent memory name: " + memory_name)
 
 
 # Generator for recurrent layer group, to use it:
@@ -2301,14 +2401,9 @@ def Generator(
 
 @config_layer('expand')
 class ExpandLayer(LayerBase):
-    def __init__(self,
-                 name,
-                 inputs,
-                 trans_type='non-seq',
-                 device=None,
-                 bias=False):
+    def __init__(self, name, inputs, trans_type='non-seq', bias=False, **xargs):
         super(ExpandLayer, self).__init__(
-            name, 'expand', 0, inputs=inputs, device=device)
+            name, 'expand', 0, inputs=inputs, **xargs)
         config_assert(
             len(self.inputs) == 2, 'ExpandLayer takes 2 and only 2 inputs')
         self.config.trans_type = trans_type
@@ -2339,11 +2434,10 @@ class MaxLayer(LayerBase):
                  inputs,
                  trans_type='non-seq',
                  active_type='linear',
-                 device=None,
                  bias=False,
-                 output_max_index=None):
-        super(MaxLayer, self).__init__(
-            name, 'max', 0, inputs=inputs, device=device)
+                 output_max_index=None,
+                 **xargs):
+        super(MaxLayer, self).__init__(name, 'max', 0, inputs=inputs, **xargs)
         config_assert(len(self.inputs) == 1, 'MaxLayer must have 1 input')
         self.config.trans_type = trans_type
         self.config.active_type = active_type
@@ -2390,59 +2484,57 @@ class SequenceLastInstanceLayer(LayerBase):
                  inputs,
                  active_type='linear',
                  trans_type='non-seq',
-                 device=None,
-                 bias=False):
+                 bias=False,
+                 stride=-1,
+                 **xargs):
         super(SequenceLastInstanceLayer, self).__init__(
             name,
             'seqlastins',
             0,
             inputs=inputs,
-            device=device,
-            active_type=active_type)
+            active_type=active_type,
+            **xargs)
         config_assert(
             len(inputs) == 1, 'SequenceLastInstanceLayer must have 1 input')
+        if trans_type == 'seq':
+            config_assert(stride == -1, 'subseq does not support stride window')
         self.config.trans_type = trans_type
-        for input_index in xrange(len(self.inputs)):
-            input_layer = self.get_input_layer(input_index)
-            self.set_layer_size(input_layer.size)
+        self.config.seq_pool_stride = stride
+        self.set_layer_size(self.get_input_layer(0).size)
         self.create_bias_parameter(bias, self.config.size)
 
 
 @config_layer('seqfirstins')
 class SequenceFirstInstanceLayer(SequenceLastInstanceLayer):
-    def __init__(
-            self,
-            name,
-            inputs,
-            active_type='linear',
-            trans_type='non-seq',
-            device=None,
-            bias=False, ):
+    def __init__(self,
+                 name,
+                 inputs,
+                 active_type='linear',
+                 trans_type='non-seq',
+                 bias=False,
+                 stride=-1,
+                 **xargs):
         super(SequenceFirstInstanceLayer, self).__init__(
             name,
             inputs=inputs,
             active_type=active_type,
-            device=device,
-            bias=bias)
-        self.config.trans_type = trans_type
+            trans_type=trans_type,
+            bias=bias,
+            stride=stride,
+            **xargs)
         self.config.select_first = True
 
 
 @config_layer('seqconcat')
 class SequenceConcatLayer(LayerBase):
-    def __init__(self,
-                 name,
-                 inputs,
-                 active_type='linear',
-                 device=None,
-                 bias=False):
+    def __init__(self, name, inputs, active_type='linear', bias=False, **xargs):
         super(SequenceConcatLayer, self).__init__(
             name,
             'seqconcat',
             0,
             inputs=inputs,
-            device=device,
-            active_type=active_type)
+            active_type=active_type,
+            **xargs)
         config_assert(
             len(inputs) == 2, 'SequenceConcatLayer must have 2 inputs')
         for input_index in xrange(len(self.inputs)):
@@ -2458,15 +2550,15 @@ class SequenceReshapeLayer(LayerBase):
                  size,
                  inputs,
                  active_type='linear',
-                 device=None,
-                 bias=False):
+                 bias=False,
+                 **xargs):
         super(SequenceReshapeLayer, self).__init__(
             name,
             'seqreshape',
             size,
             inputs=inputs,
-            device=device,
-            active_type=active_type)
+            active_type=active_type,
+            **xargs)
         config_assert(
             len(inputs) == 1, 'SequenceReshapeLayer must have 1 inputs')
         self.set_layer_size(size)
@@ -2475,19 +2567,9 @@ class SequenceReshapeLayer(LayerBase):
 
 @config_layer('subseq')
 class SubSequenceLayer(LayerBase):
-    def __init__(self,
-                 name,
-                 inputs,
-                 active_type='linear',
-                 device=None,
-                 bias=False):
+    def __init__(self, name, inputs, active_type='linear', bias=False, **xargs):
         super(SubSequenceLayer, self).__init__(
-            name,
-            'subseq',
-            0,
-            inputs=inputs,
-            device=device,
-            active_type=active_type)
+            name, 'subseq', 0, inputs=inputs, active_type=active_type, **xargs)
         config_assert(len(inputs) == 3, 'SubSequenceLayer must have 3 inputs')
         input_layer0 = self.get_input_layer(0)
         size = input_layer0.size
@@ -2644,15 +2726,10 @@ class AverageLayer(LayerBase):
                  average_strategy='average',
                  trans_type='non-seq',
                  active_type='linear',
-                 device=None,
-                 bias=False):
+                 bias=False,
+                 **xargs):
         super(AverageLayer, self).__init__(
-            name,
-            'average',
-            0,
-            inputs=inputs,
-            device=device,
-            active_type=active_type)
+            name, 'average', 0, inputs=inputs, active_type=active_type, **xargs)
         self.config.average_strategy = average_strategy
         self.config.trans_type = trans_type
         config_assert(len(inputs) == 1, 'AverageLayer must have 1 input')
@@ -2676,9 +2753,9 @@ class CosSimLayer(LayerBase):
 
 @config_layer('tensor')
 class TensorLayer(LayerBase):
-    def __init__(self, name, size, inputs, device=None, bias=True, **xargs):
+    def __init__(self, name, size, inputs, bias=True, **xargs):
         super(TensorLayer, self).__init__(
-            name, 'tensor', size, inputs=inputs, device=device, **xargs)
+            name, 'tensor', size, inputs=inputs, **xargs)
         config_assert(len(self.inputs) == 2, 'TensorLayer must have 2 inputs')
         config_assert(size > 0, 'size must be positive')
         config_assert(inputs[1].parameter_name == None,
@@ -3029,7 +3106,7 @@ class CRFLayer(LayerBase):
         super(CRFLayer, self).__init__(name, 'crf', size, inputs, device=device)
         config_assert(2 <= len(self.inputs) <= 3,
                       'CRFLayer must have 2 or 3 inputs')
-        self.create_input_parameter(0, size * (size + 2), [size, size + 2])
+        self.create_input_parameter(0, size * (size + 2), [size + 2, size])
         self.config.coeff = coeff
 
 
@@ -3051,7 +3128,7 @@ class CRFDecodingLayer(LayerBase):
         config_assert(
             len(self.inputs) <= 2,
             'CRFDecodingLayer cannot have more than 2 inputs')
-        self.create_input_parameter(0, size * (size + 2), [size, size + 2])
+        self.create_input_parameter(0, size * (size + 2), [size + 2, size])
 
 
 @config_layer('ctc')

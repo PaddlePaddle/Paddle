@@ -52,6 +52,10 @@ def wrap_param_default(param_names=None,
                     kwargs[name] = default_factory(func)
             return func(*args, **kwargs)
 
+        if hasattr(func, 'argspec'):
+            __wrapper__.argspec = func.argspec
+        else:
+            __wrapper__.argspec = inspect.getargspec(func)
         return __wrapper__
 
     return __impl__
@@ -93,13 +97,13 @@ def reset_hook():
 register_parse_config_hook(reset_hook)
 
 
-def wrap_name_default(name_prefix=None):
+def wrap_name_default(name_prefix=None, name_param="name"):
     """
     Decorator to set "name" arguments default to "{name_prefix}_{invoke_count}".
 
     ..  code:: python
 
-        @default_name("some_name")
+        @wrap_name_default("some_name")
         def func(name=None):
             print name      # name will never be None. If name is not set,
                             # name will be "some_name_%d"
@@ -111,7 +115,7 @@ def wrap_name_default(name_prefix=None):
     """
     factory = DefaultNameFactory(name_prefix)
     _name_factories.append(factory)
-    return wrap_param_default(["name"], factory)
+    return wrap_param_default([name_param], factory)
 
 
 def wrap_param_attr_default(param_names=None, default_factory=None):

@@ -38,9 +38,9 @@ protected:
   void setOutDims(const size_t batchSize);
   void setTensorDim(const size_t batchSize);
 
-  std::vector<int> padc_;
-  std::vector<int> padh_;
-  std::vector<int> padw_;
+  std::vector<uint32_t> padc_;
+  std::vector<uint32_t> padh_;
+  std::vector<uint32_t> padw_;
   TensorShape inDims_;
   TensorShape outDims_;
 };

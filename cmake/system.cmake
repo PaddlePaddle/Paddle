@@ -72,6 +72,12 @@ MARK_AS_ADVANCED(HOST_SYSTEM CPU_CORES)
 MESSAGE(STATUS "Found Paddle host system: ${HOST_SYSTEM}")
 MESSAGE(STATUS "Found Paddle host system's CPU: ${CPU_CORES} cores")
 
+IF(DEFINED CMAKE_SYSTEM_NAME)
+    IF(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
+        SET(ANDROID TRUE)
+    ENDIF()
+ENDIF()
+
 # external dependencies log output
 SET(EXTERNAL_PROJECT_LOG_ARGS
     LOG_DOWNLOAD    0     # Wrap download in script to log output

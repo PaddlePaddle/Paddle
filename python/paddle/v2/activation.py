@@ -12,26 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.trainer_config_helpers.activations import *
+import paddle.trainer_config_helpers.activations
+import copy
 
-__all__ = [
-    "Base", "Tanh", "Sigmoid", "Softmax", "Identity", "Linear",
-    'SequenceSoftmax', "Exp", "Relu", "BRelu", "SoftRelu", "STanh", "Abs",
-    "Square", "Log"
-]
+__all__ = []
 
-Base = BaseActivation
-Tanh = TanhActivation
-Sigmoid = SigmoidActivation
-Softmax = SoftmaxActivation
-SequenceSoftmax = SequenceSoftmaxActivation
-Identity = IdentityActivation
-Linear = Identity
-Relu = ReluActivation
-BRelu = BReluActivation
-SoftRelu = SoftReluActivation
-STanh = STanhActivation
-Abs = AbsActivation
-Square = SquareActivation
-Exp = ExpActivation
-Log = LogActivation
+suffix = 'Activation'
+for act in paddle.trainer_config_helpers.activations.__all__:
+    new_name = act[:-len(suffix)]
+    globals()[new_name] = copy.copy(
+        getattr(paddle.trainer_config_helpers.activations, act))
+    globals()[new_name].__name__ = new_name
+    __all__.append(new_name)

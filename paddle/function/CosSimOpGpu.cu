@@ -92,7 +92,6 @@ void CosSimForward<DEVICE_TYPE_GPU>(GpuMatrix& out_mat,
   CHECK(in1_mat.useGpu_ == true && in2_mat.useGpu_ == true)
       << "Matrix type are not GPU";
 
-  size_t num_samples = out_mat.getHeight();
   size_t dim = in1_mat.getWidth();
   real* out = out_mat.getData();
   const real* x = in1_mat.getData();
