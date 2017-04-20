@@ -42,7 +42,20 @@ if [[ ${RUN_TEST:-OFF} == "ON" ]]; then
     make coveralls
 fi
 make install
+pip install /usr/opt/paddle/share/wheels/*.whl
 
+if [ ${WITH_DOC} == "ON" ]; then
+    mkdir -p /paddle/build_doc
+    pushd /paddle/build_doc
+    cmake .. \
+          -DWITH_DOC=ON \
+          -DWITH_GPU=OFF \
+          -DWITH_AVX=${WITH_AVX:-OFF} \
+          -DWITH_SWIG_PY=ON \
+          -DWITH_STYLE_CHECK=OFF
+    make paddle_docs paddle_docs_cn
+    popd
+fi
 # generate deb package for current build
 # FIXME(typhoonzero): should we remove paddle/scripts/deb ?
 # FIXME: CPACK_DEBIAN_PACKAGE_DEPENDS removes all dev dependencies, must
@@ -100,18 +113,6 @@ RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && \
     rm -f /usr/local/opt/paddle/deb/*.deb && \
     pip install /usr/opt/paddle/share/wheels/*.whl && \
     paddle version
-if [ ${WITH_DOC} == "ON" ]; then
-    mkdir -p /paddle/build_doc
-    pushd /paddle/build_doc
-    cmake .. \
-          -DWITH_DOC=ON \
-          -DWITH_GPU=OFF \
-          -DWITH_AVX=${WITH_AVX:-OFF} \
-          -DWITH_SWIG_PY=ON \
-          -DWITH_STYLE_CHECK=OFF
-    make paddle_docs paddle_docs_cn
-    popd
-fi
 ${CPU_DOCKER_PYTHON_HOME_ENV}
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
