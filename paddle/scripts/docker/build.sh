@@ -29,7 +29,7 @@ rm *.deb 2>/dev/null || true
 
 cmake .. \
       -DCMAKE_BUILD_TYPE=Release \
-      -DWITH_DOC=${WITH_DOC:-OFF} \
+      -DWITH_DOC=OFF \
       -DWITH_GPU=${WITH_GPU:-OFF} \
       -DWITH_AVX=${WITH_AVX:-OFF} \
       -DWITH_SWIG_PY=ON \
@@ -99,6 +99,18 @@ ADD build/*.deb /usr/local/opt/paddle/deb/
 RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && \
     rm -f /usr/local/opt/paddle/deb/*.deb && \
     paddle version
+if [ ${WITH_DOC} == "ON" ]; then
+    mkdir -p /paddle/build_doc
+    pushd /paddle/build_doc
+    cmake .. \
+          -DWITH_DOC=ON \
+          -DWITH_GPU=OFF \
+          -DWITH_AVX=${WITH_AVX:-OFF} \
+          -DWITH_SWIG_PY=ON \
+          -DWITH_STYLE_CHECK=OFF
+    make paddle_docs
+    popd
+fi
 ${CPU_DOCKER_PYTHON_HOME_ENV}
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
