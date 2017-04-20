@@ -1689,6 +1689,22 @@ TEST(Layer, smooth_l1) {
   }
 }
 
+TEST(Layer, TransLayer) {
+  TestConfig config;
+  const int height = 128;
+  const int width = 1028;
+  config.layerConfig.set_type("trans");
+  config.layerConfig.set_size(width);
+
+  config.inputDefs.push_back(
+      {INPUT_DATA, "layer_0", /* dim= */ height * width, /* paraSize= */ 0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "trans", height, /* trans= */ false, useGpu);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);

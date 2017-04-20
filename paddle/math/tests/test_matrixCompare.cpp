@@ -235,8 +235,10 @@ TEST(Matrix, unary) {
       testMatrixTranspose(height, width);
       testMatrixRotate(height, width);
     }
-    // inverse
+// inverse
+#ifdef PADDLE_USE_LAPACK
     testMatrixInverse(height);
+#endif
   }
 }
 

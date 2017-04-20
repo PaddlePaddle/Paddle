@@ -75,9 +75,8 @@ fi
 
 paddle version
 
-# generate production docker image Dockerfile
-if [ ${USE_MIRROR} ]; then
-  MIRROR_UPDATE="sed 's@http:\/\/archive.ubuntu.com\/ubuntu\/@mirror:\/\/mirrors.ubuntu.com\/mirrors.txt@' -i /etc/apt/sources.list && \\"
+if [[ -n ${APT_MIRROR} ]]; then
+  MIRROR_UPDATE="sed -i '${APT_MIRROR}' /etc/apt/sources.list && \\"
 else
   MIRROR_UPDATE="\\"
 fi
@@ -99,6 +98,7 @@ ADD build/*.deb /usr/local/opt/paddle/deb/
 # run paddle version to install python packages first
 RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && \
     rm -f /usr/local/opt/paddle/deb/*.deb && \
+    pip install /usr/opt/paddle/share/wheels/*.whl && \
     paddle version
 ${CPU_DOCKER_PYTHON_HOME_ENV}
 ${DOCKERFILE_CUDNN_DSO}
