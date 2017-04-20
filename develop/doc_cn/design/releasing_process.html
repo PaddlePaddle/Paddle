@@ -1,0 +1,338 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Paddle发行规范 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../genindex.html"/>
+        <link rel="search" title="搜索" href="../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a>Home</a></li>
+          <li><a>Get Started</a></li>
+          <li class="active"><a>Documentation</a></li>
+          <li><a>About Us</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index_cn.html">完整教程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../getstarted/basic_usage/index_cn.html">经典的线性回归任务</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index_cn.html">完整教程</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/quick_start/index_cn.html">快速入门</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/rec/ml_regression_cn.html">个性化推荐</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/image_classification/index_cn.html">图像分类</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/sentiment_analysis/index_cn.html">情感分析</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/semantic_role_labeling/index_cn.html">语义角色标注</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/text_generation/index_cn.html">机器翻译</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/imagenet_model/resnet_model_cn.html">ResNet模型</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/embedding_model/index_cn.html">词向量模型</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/concepts/use_concepts_cn.html">基本使用概念</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_basis_cn.html#kubernetes">部署Kubernetes集群</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_basis_cn.html#">选择存储方案</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_basis_cn.html#kubectl">配置kubectl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/rnn_config_cn.html">RNN配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <nav class="local-toc"><ul>
+<li><a class="reference internal" href="#">Paddle发行规范</a></li>
+<li><a class="reference internal" href="#paddle">Paddle 分支规范</a></li>
+<li><a class="reference internal" href="#paddle">Paddle回归测试列表</a><ul>
+<li><a class="reference internal" href="#paddle-book">Paddle Book中所有章节</a></li>
+</ul>
+</li>
+</ul>
+</nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Paddle发行规范</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="paddle">
+<span id="paddle"></span><h1>Paddle发行规范<a class="headerlink" href="#paddle" title="永久链接至标题">¶</a></h1>
+<p>Paddle使用git-flow branching model做分支管理，使用<a class="reference external" href="http://semver.org/">Semantic Versioning</a>标准表示Paddle版本号。</p>
+<p>Paddle每次发新的版本，遵循以下流程:</p>
+<ol class="simple">
+<li>从<code class="docutils literal"><span class="pre">develop</span></code>分支派生出新的分支，分支名为<code class="docutils literal"><span class="pre">release/版本号</span></code>。例如，<code class="docutils literal"><span class="pre">release/0.10.0</span></code></li>
+<li>将新分支的版本打上tag，tag为<code class="docutils literal"><span class="pre">版本号rc.Patch号</span></code>。第一个tag为<code class="docutils literal"><span class="pre">0.10.0rc1</span></code>，第二个为<code class="docutils literal"><span class="pre">0.10.0rc2</span></code>，依次类推。</li>
+<li>对这个版本的提交，做如下几个操作:<ul>
+<li>编译这个版本的Docker发行镜像，发布到dockerhub。如果失败，修复Docker编译镜像问题，Patch号加一，返回第二步</li>
+<li>编译这个版本的Ubuntu Deb包。如果失败，修复Ubuntu Deb包编译问题，Patch号加一，返回第二步。</li>
+<li>使用Regression Test List作为检查列表，测试Docker镜像/ubuntu安装包的功能正确性<ul>
+<li>如果失败，记录下所有失败的例子，在这个<code class="docutils literal"><span class="pre">release/版本号</span></code>分支中，修复所有bug后，Patch号加一，返回第二步</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>第三步完成后，将<code class="docutils literal"><span class="pre">release/版本号</span></code>分支合入master分支，并删除<code class="docutils literal"><span class="pre">release/版本号</span></code>分支。将master分支的合入commit打上tag，tag为<code class="docutils literal"><span class="pre">版本号</span></code>。同时再将<code class="docutils literal"><span class="pre">master</span></code>分支合入<code class="docutils literal"><span class="pre">develop</span></code>分支。最后删除<code class="docutils literal"><span class="pre">release/版本号</span></code>分支。</li>
+<li>编译master分支的Docker发行镜像，发布到dockerhub。编译ubuntu的deb包，发布到github release页面</li>
+<li>协同完成Release Note的书写</li>
+</ol>
+<p>需要注意的是:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">release/版本号</span></code>分支一旦建立，一般不允许再从<code class="docutils literal"><span class="pre">develop</span></code>分支合入<code class="docutils literal"><span class="pre">release/版本号</span></code>。这样保证<code class="docutils literal"><span class="pre">release/版本号</span></code>分支功能的封闭，方便测试人员测试Paddle的行为。</li>
+<li>在<code class="docutils literal"><span class="pre">release/版本号</span></code>分支存在的时候，如果有bugfix的行为，需要将bugfix的分支同时merge到<code class="docutils literal"><span class="pre">master</span></code>, <code class="docutils literal"><span class="pre">develop</span></code>和<code class="docutils literal"><span class="pre">release/版本号</span></code>这三个分支。</li>
+</ul>
+</div>
+<div class="section" id="paddle">
+<span id="id1"></span><h1>Paddle 分支规范<a class="headerlink" href="#paddle" title="永久链接至标题">¶</a></h1>
+<p>Paddle开发过程使用<a class="reference external" href="http://nvie.com/posts/a-successful-git-branching-model/">git-flow</a>分支规范，并适应github的特性做了一些区别。</p>
+<ul class="simple">
+<li>Paddle的主版本库遵循<a class="reference external" href="http://nvie.com/posts/a-successful-git-branching-model/">git-flow</a>分支规范。其中:<ul>
+<li><code class="docutils literal"><span class="pre">master</span></code>分支为稳定(stable branch)版本分支。每一个<code class="docutils literal"><span class="pre">master</span></code>分支的版本都是经过单元测试和回归测试的版本。</li>
+<li><code class="docutils literal"><span class="pre">develop</span></code>分支为开发(develop branch)版本分支。每一个<code class="docutils literal"><span class="pre">develop</span></code>分支的版本都经过单元测试，但并没有经过回归测试。</li>
+<li><code class="docutils literal"><span class="pre">release/版本号</span></code>分支为每一次Release时建立的临时分支。在这个阶段的代码正在经历回归测试。</li>
+</ul>
+</li>
+<li>其他用户的fork版本库并不需要严格遵守<a class="reference external" href="http://nvie.com/posts/a-successful-git-branching-model/">git-flow</a>分支规范，但所有fork的版本库的所有分支都相当于特性分支。<ul>
+<li>建议，开发者fork的版本库使用<code class="docutils literal"><span class="pre">develop</span></code>分支同步主版本库的<code class="docutils literal"><span class="pre">develop</span></code>分支</li>
+<li>建议，开发者fork的版本库中，再基于<code class="docutils literal"><span class="pre">develop</span></code>版本fork出自己的功能分支。</li>
+<li>当功能分支开发完毕后，向Paddle的主版本库提交<code class="docutils literal"><span class="pre">Pull</span> <span class="pre">Reuqest</span></code>，进而进行代码评审。<ul>
+<li>在评审过程中，开发者修改自己的代码，可以继续在自己的功能分支提交代码。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>BugFix分支也是在开发者自己的fork版本库维护，与功能分支不同的是，BugFix分支需要分别给主版本库的<code class="docutils literal"><span class="pre">master</span></code>、<code class="docutils literal"><span class="pre">develop</span></code>与可能有的<code class="docutils literal"><span class="pre">release/版本号</span></code>分支，同时提起<code class="docutils literal"><span class="pre">Pull</span> <span class="pre">Request</span></code>。</li>
+</ul>
+</div>
+<div class="section" id="paddle">
+<span id="id2"></span><h1>Paddle回归测试列表<a class="headerlink" href="#paddle" title="永久链接至标题">¶</a></h1>
+<p>本列表说明Paddle发版之前需要测试的功能点。</p>
+<div class="section" id="paddle-book">
+<span id="paddle-book"></span><h2>Paddle Book中所有章节<a class="headerlink" href="#paddle-book" title="永久链接至标题">¶</a></h2>
+<p>Paddle每次发版本首先要保证Paddle Book中所有章节功能的正确性。功能的正确性包括验证Paddle目前的<code class="docutils literal"><span class="pre">paddle_trainer</span></code>训练和纯使用<code class="docutils literal"><span class="pre">Python</span></code>训练模型正确性。</p>
+<p>| | 新手入门章节 | 识别数字 | 图像分类 | 词向量 | 情感分析 | 语意角色标注 | 机器翻译 | 个性化推荐 |
+| &#8212; | &#8212; | &#8212; | &#8212; | &#8212; | &#8212; | &#8212; | &#8212; | &#8212; |
+| API.V2 + Docker + GPU  |  |  |  |  |  |  |  |  |
+| API.V2 + Docker + CPU  |  |  |  |  |  |  |  |  |
+| <code class="docutils literal"><span class="pre">paddle_trainer</span></code> + Docker + GPU |  |  |  |  |  |  |  |  |
+| <code class="docutils literal"><span class="pre">paddle_trainer</span></code> + Docker + CPU |  |  |  |  |  |  |  |  |
+| API.V2 + Ubuntu + GPU |  |  |  |  |  |  |  |  |
+| API.V2 + Ubuntu + CPU |  |  |  |  |  |  |  |  |
+| <code class="docutils literal"><span class="pre">paddle_trainer</span></code> + Ubuntu + GPU |  |  |  |  |  |  |  |  |
+| <code class="docutils literal"><span class="pre">paddle_trainer</span></code> + Ubuntu + CPU |  |  |  |  |  |  |  |  |</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>
