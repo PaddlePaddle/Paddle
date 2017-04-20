@@ -109,7 +109,7 @@ if [ ${WITH_DOC} == "ON" ]; then
           -DWITH_AVX=${WITH_AVX:-OFF} \
           -DWITH_SWIG_PY=ON \
           -DWITH_STYLE_CHECK=OFF
-    make paddle_docs
+    make paddle_docs paddle_docs_cn
     popd
 fi
 ${CPU_DOCKER_PYTHON_HOME_ENV}
