@@ -5,6 +5,7 @@ source ./common.sh
 # Compile Documentation only.
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_Fortran_COMPILER=/usr/bin/gfortran-4.8 -DWITH_GPU=OFF -DWITH_DOC=OFF -DWITH_STYLE_CHECK=OFF ${EXTRA_CMAKE_OPTS}
 mkdir output
+make install -j `nproc`
 make DESTDIR=./output install -j `nproc`
 pip install ./output/usr/local/opt/paddle/share/wheels/*
 rm -rf *

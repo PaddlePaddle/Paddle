@@ -77,6 +77,7 @@ set(THIRD_PARTY_PATH "${PROJ_ROOT}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")
 ########################################################################################
 
+message(STATUS "Third party path are ${THIRD_PARTY_PATH}")
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
