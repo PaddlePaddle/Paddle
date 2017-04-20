@@ -7,7 +7,9 @@
 * Paddle训练任务
 * 在线模型预测服务
 
-<img src="src/data_dispatch.png" width="500"/>
+<img src="src/paddle-cloud-in-data-center.png" width="500"/>
+
+在上图中显示了在一个实际生产环境中的应用（人脸识别）的数据流图。生产环境的日志数据会通过实时流的方式（Kafka）和离线数据的方式(HDFS)存储，并在集群中运行多个分布式数据处理任务，比如流式数据处理(online data process)，离线批处理(offline data process)完成数据的预处理，提供给paddle作为训练数据。用于也可以上传labeled data到分布式存储补充训练数据。在paddle之上运行的深度学习训练输出的模型会提供给在线人脸识别的应用使用。
 
 ### 训练数据的存储
 
@@ -15,7 +17,7 @@
 
 在Kubernetes上运行的不同的计算框架，可以通过Volume或PersistentVolume挂载存储空间到每个容器中。
 
-在存储中的共享位置，需要保存PaddlePaddle book中的所有dataset数据，并且可以被提交的job直接使用。
+在GlusterFS存储系统中的公开目录，需要保存一些预置的公开数据集（比如MNIST, BOW, imagenet数据集等），并且可以被提交的job直接使用。
 
 ### 上传训练文件
 
@@ -25,15 +27,15 @@
 paddle upload train_data.list
 ```
 
-其中`.list`文件描述了训练数据的文件和对应的label，对于图像类数据，`.list文件`样例如下，每一行包含了图片文件的路径和其label：
+其中`.list`文件描述了训练数据的文件和对应的label，对于图像类数据，`.list文件`样例如下，每一行包含了图片文件的路径和其label（用tab分隔开）：
 
 ```
-/data/image1.jpg   1
-/data/image1.jpg   5
-/data/image1.jpg   2
-/data/image1.jpg   5
-/data/image1.jpg   1
-/data/image1.jpg   8
+./data/image1.jpg   1
+./data/image2.jpg   5
+./data/image3.jpg   2
+./data/image4.jpg   5
+./data/image5.jpg   1
+./data/image6.jpg   8
 ...
 ```
 
@@ -48,20 +50,26 @@ L&apos; inflation accélérée , mesurée dans la zone euro , est due principale
 
 ### 使用reader
 
-使用v2 API编写训练任务是，可以编写如下简单的reader，返回文件中的各列，然后在调用`trainer.train()`时传入，完成训练数据的读取：
+用户在使用v2 API编写训练任务时，可以使用paddle内置的reader完成对GlusterFS存储中的训练数据的读取，返回文件中的各列，然后在调用`trainer.train()`时传入，完成训练数据的读取：
 
 ```python
-def train():
-    fp = open("/glusterfs/mount/dir/yourfile_%d.list" % TRAINER_ID, "r")
-
-    def reader():
-        for l in fp:
-            yield l[:-1].split("\t")
-
-    return reader
+reader = paddle.dist.reader("dataset-name")
+batch_reader = paddle.batch(paddle.dataset.mnist.train(), 128)
+trainer.train(batch_reader, ...)
 ```
+
+trainer.train内部会获取reader的内容：
+
+```
+def paddle.train(batch_reader):
+  r = batch_reader() # create a interator for one pass of data
+  for batch in r:
+    # train
+```
+
+这里面batch是含有128个data instance的mini-batch。每一个data instance会是一个tuple，tuple元素的顺序与`.list`文件文件中每一列的顺序是一致的。每一个data instance会是(raw_image_file_binary_data, label)。其中raw_image_file_binary_data是对应图像文件的没有解码的原始二进制数据，用户需要自己解码。label是文本类型（比如：“1“，”2“），这里用户需要的其实是整形，用户需要自己转换成整形。
 
 ## TODO
 
+### 支持将数据合并成内部的文件格式(key-value)，方便sharding与顺序读取
 ### 支持用户自定义的数据预处理job
-### 支持SSTable格式的key-value数据

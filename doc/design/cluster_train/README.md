@@ -17,11 +17,15 @@ A training job will be created once user asks Paddle cloud to train a model. The
 
 1. the *master process*, which dispatches tasks to
 1. one or more *trainer processes*, which run distributed training and synchronize gradients/models via
-1. one or more *parameter server processes*, where each holds a shard of the global model.
+1. one or more *parameter server processes*, where each holds a shard of the global model, and receive the uploaded gradients from every *trainer process*, so they can run the optimize functions to update their parameters.
 
 Their relation is illustrated in the following graph:
 
 <img src="src/paddle-model-sharding.png"/>
+
+By coordinate these processes, paddle can complete the procedure of training neural networks using SGD. Paddle can support both "synchronize SGD" and "asynchronize SGD".
+
+When training with "sync SGD", paddle parameter servers use barriers to wait for all trainers to finish gradients update. When using "async SGD", parameter servers would not wait for all trainers, so training and parameter optimize will run in parallel. parameter servers will not depend on each other, they will receive the gradients update in parrallel; Also trainers will not depend on each other, run training jobs in parrallel. Using asyc SGD will be faster when training, but parameters on one of the parameter server will be newer than the other, but this will introduce more Randomness.
 
 ### Master Process
 
@@ -130,7 +134,7 @@ When the trainer is started by the Kubernetes, it executes the following steps a
 
 If trainer's etcd lease expires, it will try set key `/trainer/<unique ID>` again so that the master process can discover the trainer again.
 
-Whenever a trainer fails, the master process is responsible to schedule the failed task back to "todo queue". then kubernetes will try to start the trainer somewhere else, then the recovered trainer will try to fetch new task to continue the training.
+When a trainer fails, Kuberentes would try to restart it. The recovered trainer would fetch tasks from the TODO queue and go on training.
 
 ### Parameter Server Process
 
