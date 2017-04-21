@@ -196,7 +196,7 @@ class ExtraLayerAttribute(object):
                       <https://www.cs.toronto.edu/~hinton/absps/
                       JMLRdropout.pdf>`_.
     :type drop_rate: float
-    :param device: device ID of layer. device=-1, use CPU. device>0, use GPU.
+    :param device: device ID of layer. device=-1, use CPU. device>=0, use GPU.
                    The details allocation in parallel_nn please refer to `here
                    <http://www.paddlepaddle.org/doc/ui/cmd_argument/
                    use_case.html#case-2-specify-layers-in-different-devices>`_.
