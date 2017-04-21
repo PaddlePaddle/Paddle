@@ -24,23 +24,6 @@ function version(){
         echo "    with_timer: @WITH_TIMER@"
 }
 
-function ver2num() {
-  set -e
-  # convert version to number.
-  if [ -z "$1" ]; then # empty argument
-    printf "%03d%03d%03d%03d%03d" 0
-  else
-    local VERN=$(echo $1 | sed 's#v##g' | sed 's#\.# #g' \
-        | sed 's#a# 0 #g' | sed 's#b# 1 #g' | sed 's#rc# 2 #g')
-    if [ `echo $VERN | wc -w` -eq 3 ] ; then
-      printf "%03d%03d%03d%03d%03d" $VERN 999 999
-    else
-      printf "%03d%03d%03d%03d%03d" $VERN
-    fi
-  fi
-  set +e
-}
-
 PADDLE_CONF_HOME="$HOME/.config/paddle"
 mkdir -p ${PADDLE_CONF_HOME}
 
@@ -49,9 +32,6 @@ if [ -z "${PADDLE_NO_STAT+x}" ]; then
         -b ${PADDLE_CONF_HOME}/paddle.cookie \
         -c ${PADDLE_CONF_HOME}/paddle.cookie \
         http://api.paddlepaddle.org/version 2>/dev/null`
-    if [ $? -eq 0 ] && [ "$(ver2num @PADDLE_VERSION@)" -lt  $(ver2num $SERVER_VER) ]; then
-      echo "Paddle release a new version ${SERVER_VER}, you can get the install package in http://www.paddlepaddle.org" 
-    fi
 fi
 
 
