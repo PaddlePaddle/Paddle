@@ -567,7 +567,7 @@ def dotmul_operator(a=None, b=None, scale=1, **kwargs):
     DotMulOperator takes two inputs and performs element-wise multiplication:
 
     .. math::
-       out.row[i] += scale * (x.row[i] .* y.row[i])
+       out.row[i] += scale * (a.row[i] .* b.row[i])
 
     where :math:`.*` means element-wise multiplication, and
     scale is a config scalar, its default value is one.
@@ -576,7 +576,7 @@ def dotmul_operator(a=None, b=None, scale=1, **kwargs):
 
     .. code-block:: python
 
-       op = dotmul_operator(x=layer1, y=layer2, scale=0.5)
+       op = dotmul_operator(a=layer1, b=layer2, scale=0.5)
 
     :param a: Input layer1
     :type a: LayerOutput
@@ -3689,8 +3689,7 @@ def mse_cost(input, label, weight=None, name=None, layer_attr=None):
 
     ..  math::
 
-       $\frac{1}{N}\sum_{i=1}^N(t _i- y_i)^2$
-
+        \frac{1}{N}\sum_{i=1}^N(t_i-y_i)^2
 
     :param name: layer name.
     :type name: basestring
