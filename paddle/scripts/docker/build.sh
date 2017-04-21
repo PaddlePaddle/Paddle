@@ -44,6 +44,8 @@ fi
 make install
 pip install /usr/local/opt/paddle/share/wheels/*.whl
 
+# Since python v2 api import py_paddle module, the generation of paddle docs
+# depend on paddle's compilation and installation
 if [ ${WITH_DOC} == "ON" ]; then
     mkdir -p /paddle/build_doc
     pushd /paddle/build_doc
