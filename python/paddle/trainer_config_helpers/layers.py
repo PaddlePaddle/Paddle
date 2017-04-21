@@ -75,6 +75,7 @@ __all__ = [
     'bilinear_interp_layer',
     'trans_layer',
     'rotate_layer',
+    'resize_layer',
     'sum_to_one_norm_layer',
     'get_output_layer',
     'LayerType',
@@ -165,6 +166,7 @@ class LayerType(object):
     SCALING_LAYER = 'scaling'
     TRANS_LAYER = 'trans'
     ROTATE_LAYER = 'rotate'
+    RESIZE_LAYER = 'resize'
     OUT_PROD_LAYER = 'out_prod'
     FEATURE_MAP_EXPAND_LAYER = 'featmap_expand'
 
@@ -1873,6 +1875,39 @@ def rotate_layer(input, height, width, name=None, layer_attr=None):
         layer_type=LayerType.ROTATE_LAYER,
         parents=[input],
         size=l.config.size)
+
+
+@wrap_name_default()
+@layer_support()
+def resize_layer(input, size, name=None, layer_attr=None):
+    """
+    A layer for resize a minibatch matrix from (input_batch_num x input_size)
+    to (output_batch_num x size). The output_batch_num will be reset to
+    (( input_batch_num x input_size ) / size).
+
+    The example usage is:
+
+    .. code-block:: python
+
+       resize = resize_layer(input=layer, size=size)
+
+    :param input: Input layer.
+    :type input: LayerOutput
+    :size: The size of each output item in the minibatch.
+    :param name: Layer name.
+    :type name: basestring
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.RESIZE_LAYER,
+        size=size,
+        inputs=[input.name],
+        **ExtraAttr.to_kwargs(layer_attr))
+    return LayerOutput(name, LayerType.RESIZE_LAYER, parents=[input], size=size)
 
 
 @wrap_name_default()
