@@ -35,11 +35,11 @@ cmake .. \
       -DWITH_SWIG_PY=ON \
       -DCUDNN_ROOT=/usr/ \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
-      -DON_COVERALLS=${WITH_TEST:-OFF} \
+      -DWITH_TESTING=${WITH_TESTING:-OFF} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 make -j `nproc`
-if [[ ${RUN_TEST:-OFF} == "ON" ]]; then
-    make coveralls
+if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
+    make test
 fi
 make install
 pip install /usr/local/opt/paddle/share/wheels/*.whl
