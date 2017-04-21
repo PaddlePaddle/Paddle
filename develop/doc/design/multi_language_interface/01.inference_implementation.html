@@ -1,0 +1,413 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>C-API 模型推断实现文档 &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a>Home</a></li>
+          <li><a>Get Started</a></li>
+          <li class="active"><a>Documentation</a></li>
+          <li><a>About Us</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index_en.html">TUTORIALS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/basic_usage/index_en.html">Simple Linear Regression</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index_en.html">TUTORIALS</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/quick_start/index_en.html">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/rec/ml_regression_en.html">MovieLens Regression</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/image_classification/index_en.html">Image Classification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/sentiment_analysis/index_en.html">Sentiment Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/semantic_role_labeling/index_en.html">Semantic Role Labeling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/text_generation/index_en.html">Text Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/gan/index_en.html">Image Auto-Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/imagenet_model/resnet_model_en.html">ImageNet: ResNet</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/embedding_model/index_en.html">Embedding: Chinese Word</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/rnn_config_en.html">RNN Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <nav class="local-toc"><ul>
+<li><a class="reference internal" href="#">C-API 模型推断实现文档</a><ul>
+<li><a class="reference internal" href="#table-of-contents">Table of Contents</a></li>
+<li><a class="reference internal" href="#">暴露接口原则</a></li>
+<li><a class="reference internal" href="#">目录结构</a></li>
+<li><a class="reference internal" href="#">实现方式</a><ul>
+<li><a class="reference internal" href="#capi-h">capi.h</a></li>
+<li><a class="reference internal" href="#">具体某种类型的头文件</a></li>
+<li><a class="reference internal" href="#capi-private-h">capi_private.h</a></li>
+<li><a class="reference internal" href="#">具体某种类型的实现文件</a></li>
+<li><a class="reference internal" href="#libpaddle-capi-shared-so-dylib">libpaddle_capi_shared.{so, dylib}</a></li>
+<li><a class="reference internal" href="#libpaddle-capi-whole-a">libpaddle_capi_whole.a</a></li>
+<li><a class="reference internal" href="#examples">examples</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#">编译选项</a></li>
+</ul>
+</li>
+</ul>
+</nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>C-API 模型推断实现文档</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="c-api">
+<span id="c-api"></span><h1>C-API 模型推断实现文档<a class="headerlink" href="#c-api" title="Permalink to this headline">¶</a></h1>
+<p>本文档描述Paddle C-API的实现细节。Paddle C-API是多语言API的基础部分。Paddle需要暴露的API很多。先实现模型推断的API，通过模型推断API的实现作为一个样例，来进行讨论。至于为什么需要C-API，请参考<a class="reference internal" href="00.why_plain_c.html"><span class="doc">Why Plain C</span></a>。</p>
+<div class="section" id="table-of-contents">
+<span id="table-of-contents"></span><h2>Table of Contents<a class="headerlink" href="#table-of-contents" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="#c-api-模型推断实现文档">C-API 模型推断实现文档</a><ul>
+<li><a class="reference external" href="#暴露接口原则">暴露接口原则</a></li>
+<li><a class="reference external" href="#目录结构">目录结构</a></li>
+<li><a class="reference external" href="#实现方式">实现方式</a><ul>
+<li><a class="reference external" href="#capih">capi.h</a></li>
+<li><a class="reference external" href="#具体某种类型的头文件">具体某种类型的头文件</a></li>
+<li><a class="reference external" href="#capi_privateh">capi_private.h</a></li>
+<li><a class="reference external" href="#具体某种类型的实现文件">具体某种类型的实现文件</a></li>
+<li><a class="reference external" href="#libpaddle_capi_sharedso-dylib">libpaddle_capi_shared.{so, dylib}</a></li>
+<li><a class="reference external" href="#libpaddle_capi_wholea">libpaddle_capi_whole.a</a></li>
+<li><a class="reference external" href="#examples">examples</a></li>
+</ul>
+</li>
+<li><a class="reference external" href="#编译选项">编译选项</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id1"></span><h2>暴露接口原则<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<ol class="simple">
+<li>所有的接口均为C接口。即使用<code class="docutils literal"><span class="pre">extern</span> <span class="pre">&quot;C&quot;</span></code></li>
+<li>除构造某种类型的函数(<code class="docutils literal"><span class="pre">paddle_matrix_create</span></code>等)，其他函数均返回<code class="docutils literal"><span class="pre">paddle_error</span></code>。且调用时不能抛出异常或出现运行时错误。</li>
+<li>所有类型名为<code class="docutils literal"><span class="pre">paddle_类型名</span></code>，所有与类型相关的函数，函数名为<code class="docutils literal"><span class="pre">paddle_类型名_函数名</span></code></li>
+<li>如果某一个Paddle Core概念(GradientMachine/Matrix)需要被暴露到其他语言，那么<ul>
+<li>为了暴露的接口尽量简单。只暴露概念的接口，而不暴露概念的实现。即暴露<code class="docutils literal"><span class="pre">GradientMachine</span></code>或者<code class="docutils literal"><span class="pre">Matrix</span></code>但不暴露<code class="docutils literal"><span class="pre">RecurrentGradientMachine</span></code>和<code class="docutils literal"><span class="pre">CpuSparseMatrix</span></code>。</li>
+<li>暴露这个概念必要函数。<code class="docutils literal"><span class="pre">必要</span></code>是指，即完成某一个任务的最少函数。</li>
+</ul>
+</li>
+<li>不在<code class="docutils literal"><span class="pre">capi</span></code>接口层做过多封装。<ul>
+<li>如果某一个Paddle概念必须要暴露，但是又过于琐碎。不在<code class="docutils literal"><span class="pre">capi</span></code>这一层进行封装，而是直接修改Paddle Core。让Paddle核心中，这一概念不再琐碎。</li>
+</ul>
+</li>
+</ol>
+</div>
+<div class="section" id="">
+<span id="id2"></span><h2>目录结构<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-text"><div class="highlight"><pre><span></span>Paddle
+  `-- paddle
+        `-- capi
+              `-- examples  # The example project for C-API.
+              `-- tests  # unittests for C-API
+              `-- capi.h  # C-API header file.
+              `-- capi_private.h  # The shared header file between implementation sources.
+              `-- matrix.{h, cpp}
+              `-- gradient_machine.{h, cpp}
+              `-- ...
+</pre></div>
+</div>
+<p>Paddle的C-API目录结构如上图表所示。这个目录中除了<code class="docutils literal"><span class="pre">capi_private.h</span></code>之外的所有头文件，均会被安装到include/paddle路径下。C-API生成的二进制文件会被安装到<code class="docutils literal"><span class="pre">lib</span></code>目录下。即，安装后的目录结构为</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>`-- include
+      `-- paddle
+             `-- capi.h
+             `-- matrix.h
+             `-- gradient_machine.h
+             `-- ...
+`-- lib
+     `-- libpaddle_capi_shared.{so, dylib}  # In mac, dynamic libary&#39;s file name extention is `dylib`
+     `-- libpaddle_capi_whole.a  # static library for all symbols of Paddle.
+</pre></div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h2>实现方式<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>下面分别介绍某一类文件的实现方式。</p>
+<div class="section" id="capi-h">
+<span id="capi-h"></span><h3>capi.h<a class="headerlink" href="#capi-h" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">capi.h</span></code>是用户使用C-API时所唯一需要引入的头文件。在<code class="docutils literal"><span class="pre">capi.h</span></code>中，引入了类型的头文件，<code class="docutils literal"><span class="pre">matrix.h</span></code>, <code class="docutils literal"><span class="pre">gradient_machine.h</span></code>。在引入其他类型的头文件时，使用相对路径的引用方式。即<code class="docutils literal"><span class="pre">#include</span> <span class="pre">&quot;matrix.h&quot;</span></code></p>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h3>具体某种类型的头文件<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
+<p>具体某种类型的头文件，即例如<code class="docutils literal"><span class="pre">matrix.h</span></code>，<code class="docutils literal"><span class="pre">gradient_machine.h</span></code>等。在这些头文件中，包含了某种类型的类型定义和暴露的全部函数。</p>
+<p>这个头文件不假设其他文件的引用顺序，即使用户直接引用某种类型的头文件，也不应该报错(虽然不鼓励这样)。如果某一个类型需要引用另一个类型，例如<code class="docutils literal"><span class="pre">gradient_machine</span></code>需要引用<code class="docutils literal"><span class="pre">matrix</span></code>，则直接引入另一种类型的头文件，即<code class="docutils literal"><span class="pre">#include</span> <span class="pre">&quot;matrix.h&quot;</span></code>。</p>
+</div>
+<div class="section" id="capi-private-h">
+<span id="capi-private-h"></span><h3>capi_private.h<a class="headerlink" href="#capi-private-h" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">capi_prviate.h</span></code>是各个实现中共享的头文件，他主要包含了实际暴露的类型结构。在用户使用C-API时，Paddle的类型全部退化成<code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span></code>，即<code class="docutils literal"><span class="pre">typedef</span> <span class="pre">paddle_matrix</span> <span class="pre">void*</span></code>。但，对于每种C-API暴露的类型，均是在<code class="docutils literal"><span class="pre">capi_private.h</span></code>中实现的结构体。</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">CMatrix</span> <span class="p">{</span>
+   <span class="kt">int</span> <span class="n">type</span> <span class="o">=</span> <span class="n">MatrixType</span><span class="p">;</span>
+   <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">paddle</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&gt;</span> <span class="n">mat</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>通常，这个结构体包含两个项目。</p>
+<ul>
+<li><p class="first"><code class="docutils literal"><span class="pre">type</span></code>是一个类型的标志。对于每种类型，type字段均不尽相同。这样，即使C-API接受的类型全是<code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span></code>，我们也可以确定每一个参数的类型。</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">some_c_api_function</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">some_instance</span><span class="p">)</span> <span class="p">{</span>
+   <span class="kt">int</span><span class="o">*</span> <span class="n">type</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="p">)</span> <span class="n">some_instance</span><span class="p">;</span>
+   <span class="k">switch</span> <span class="p">(</span><span class="o">*</span><span class="n">type</span><span class="p">)</span> <span class="p">{</span>
+     <span class="k">case</span> <span class="nl">MatrixType</span><span class="p">:</span>
+       <span class="n">CMatrix</span><span class="o">*</span> <span class="n">mat</span> <span class="o">=</span> <span class="p">(</span><span class="n">CMatrix</span> <span class="o">*</span><span class="p">)</span> <span class="n">some_instance</span><span class="p">;</span>
+       <span class="p">...</span>
+     <span class="p">...</span>
+   <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">这个结构体中的另一个项目是，Paddle Core中这一类型接口的智能指针(shared_ptr)。</p>
+<ul class="simple">
+<li>使用智能指针的原因是: 用户可以安全的释放某个C-API的实例，而不必在意Paddle Core是否还在使用这个实例。</li>
+<li>例如，用户通过C-API获得了神经网络的参数实例。当用户使用完这个参数后，直接删除这个参数即可。即便Paddle Core中的模型还在使用这个参数，这个参数也不会一并删除。</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h3>具体某种类型的实现文件<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
+<p>具体某种类型的实现文件，即<code class="docutils literal"><span class="pre">matrix.cpp</span></code>, <code class="docutils literal"><span class="pre">gradient_machine.cpp</span></code>等文件。在这些文件中，使用C++ 11实现了C-API的接口，并且使用<code class="docutils literal"><span class="pre">extern</span> <span class="pre">&quot;C&quot;</span></code>导出这些接口。在实现过程中，对输入参数的安全性进行了必要的判断，并将C-API接口的参数转发给<code class="docutils literal"><span class="pre">Paddle</span> <span class="pre">Core</span></code>。</p>
+</div>
+<div class="section" id="libpaddle-capi-shared-so-dylib">
+<span id="libpaddle-capi-shared-so-dylib"></span><h3>libpaddle_capi_shared.{so, dylib}<a class="headerlink" href="#libpaddle-capi-shared-so-dylib" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">libpaddle_capi_shared</span></code>是C-API导出的动态库。这个动态库的连接参数与Paddle的其他二进制(例如<code class="docutils literal"><span class="pre">paddle_trainer</span></code>)类似。用户可以直接使用这个动态库来引入Paddle C-API。具体使用方法为<code class="docutils literal"><span class="pre">-lpaddle_capi_shared</span></code>。</p>
+</div>
+<div class="section" id="libpaddle-capi-whole-a">
+<span id="libpaddle-capi-whole-a"></span><h3>libpaddle_capi_whole.a<a class="headerlink" href="#libpaddle-capi-whole-a" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">libpaddle_capi_whole</span></code>是C-API导出的静态库。这个静态库包含了Paddle的全部符号。他是将<code class="docutils literal"><span class="pre">libpaddle_gserver.a</span></code>, <code class="docutils literal"><span class="pre">libpaddle_math.a</span></code>, <code class="docutils literal"><span class="pre">libpaddle_capi.a</span></code>等全部静态库中的目标文件全部打包后产生的文件。具体使用方法为<code class="docutils literal"><span class="pre">--whole-archive</span> <span class="pre">-lpaddle_capi_whole</span> <span class="pre">--no-whole-archive</span></code>。</p>
+</div>
+<div class="section" id="examples">
+<span id="examples"></span><h3>examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h3>
+<p>在样例中，使用<code class="docutils literal"><span class="pre">C99</span></code>开发了模型预测的样例代码。具体请参考<a class="reference external" href="../paddle/capi/examples/README.md">example/README.md</a>。</p>
+</div>
+</div>
+<div class="section" id="">
+<span id="id6"></span><h2>编译选项<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>C-API的编译选项默认关闭，打开这个编译选项，需要在cmake的时候，设置</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake <span class="si">${</span><span class="nv">YOUR_SOURCE_ROOT</span><span class="si">}</span> -DWITH_C_API<span class="o">=</span>ON -DWITH_PYTHON<span class="o">=</span>OFF -DWITH_SWIG_PY<span class="o">=</span>OFF
+</pre></div>
+</div>
+<p>编译C-API的时候推荐Paddle不嵌入Python解释器，也不生成<code class="docutils literal"><span class="pre">SWIG</span></code>接口，具体原因参考<a class="reference internal" href="00.why_plain_c.html"><span class="doc">Why Plain C</span></a>。</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

@@ -192,7 +192,7 @@
 </ul>
 </li>
 <li><a class="reference internal" href="#">原因列表</a></li>
-<li><a class="reference internal" href="#">简单实现</a></li>
+<li><a class="reference internal" href="#">实现</a></li>
 </ul>
 </li>
 </ul>
@@ -298,29 +298,29 @@
 <span class="k">typedef</span> <span class="kt">int</span> <span class="n">paddle_error</span><span class="p">;</span>
 
 <span class="k">extern</span> <span class="s">&quot;C&quot;</span>
-<span class="n">paddle_error</span> <span class="n">paddle_matrix_shape</span><span class="p">(</span><span class="n">paddle_matrix</span> <span class="n">matrix</span><span class="p">,</span>
-                                 <span class="kt">uint64_t</span><span class="o">*</span> <span class="n">width</span><span class="p">,</span>
-                                 <span class="kt">uint64_t</span><span class="o">*</span> <span class="n">height</span><span class="p">);</span>
+<span class="n">paddle_error</span> <span class="n">paddle_matrix_get_shape</span><span class="p">(</span><span class="n">paddle_matrix</span> <span class="n">matrix</span><span class="p">,</span>
+                                     <span class="kt">uint64_t</span><span class="o">*</span> <span class="n">width</span><span class="p">,</span>
+                                     <span class="kt">uint64_t</span><span class="o">*</span> <span class="n">height</span><span class="p">);</span>
 </pre></div>
 </div>
 <p>而在CPP里面实现这个C的接口，文件 <code class="docutils literal"><span class="pre">paddle_matrix.cpp</span></code></p>
-<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&quot;paddle/math/matrix.hpp&quot;</span><span class="cp"></span>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&quot;paddle/math/matrix.h&quot;</span><span class="cp"></span>
 <span class="k">extern</span> <span class="s">&quot;C&quot;</span>
 <span class="n">paddle_error</span> <span class="n">paddle_matrix_shape</span><span class="p">(</span><span class="n">paddle_matrix</span> <span class="n">matrix</span><span class="p">,</span>
                                  <span class="kt">uint64_t</span> <span class="o">*</span><span class="n">width</span><span class="p">,</span>
                                  <span class="kt">uint64_t</span> <span class="o">*</span><span class="n">height</span><span class="p">)</span> <span class="p">{</span>
-  <span class="k">auto</span> <span class="n">m</span> <span class="o">=</span> <span class="p">(</span><span class="n">paddle</span><span class="o">::</span><span class="n">math</span><span class="o">::</span><span class="n">matrix</span><span class="o">*</span><span class="p">)(</span><span class="n">matrix</span><span class="p">);</span>
+  <span class="k">auto</span> <span class="n">m</span> <span class="o">=</span> <span class="p">(</span><span class="n">paddle</span><span class="o">::</span><span class="n">capi</span><span class="o">::</span><span class="n">CMatrix</span><span class="o">*</span><span class="p">)(</span><span class="n">matrix</span><span class="p">);</span>
   <span class="o">*</span><span class="n">width</span> <span class="o">=</span> <span class="n">m</span><span class="o">-&gt;</span><span class="n">width</span><span class="p">();</span>
   <span class="o">*</span><span class="n">height</span> <span class="o">=</span> <span class="n">m</span><span class="o">-&gt;</span><span class="n">height</span><span class="p">();</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>其中<code class="docutils literal"><span class="pre">paddle/math/matrix.hpp</span></code>文件内容为:</p>
+<p>其中<code class="docutils literal"><span class="pre">paddle/capi/CMatrix.hpp</span></code>文件内容为:</p>
 <div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">namespace</span> <span class="n">paddle</span> <span class="p">{</span>
 <span class="k">namespace</span> <span class="n">math</span> <span class="p">{</span>  
 
-<span class="k">class</span> <span class="nc">Matrix</span> <span class="p">{</span>
-  <span class="c1">//...</span>
+<span class="k">class</span> <span class="nc">CMatrix</span> <span class="p">{</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">paddle</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&gt;</span> <span class="n">mat</span><span class="p">;</span>
 <span class="p">};</span>
 
 <span class="p">}</span>  <span class="c1">// namespace math</span>
@@ -357,8 +357,8 @@
 | 手写多语言绑定 | 不使用SWIG | 使用SWIG需要多语言绑定的开发人员熟练掌握SWIG配置，社区参与困难。SWIG生成的代码不能保证多语言代码风格的一致性 |</p>
 </div>
 <div class="section" id="">
-<span id="id8"></span><h2>简单实现<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
-<p>TBD</p>
+<span id="id8"></span><h2>实现<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>参考<a class="reference internal" href="01.inference_implementation.html"><span class="doc">Inference implementation</span></a></p>
 </div>
 </div>
 
