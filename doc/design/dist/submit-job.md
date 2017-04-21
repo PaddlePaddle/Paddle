@@ -123,9 +123,15 @@ For a distributed training job, there is two docker image called `runtime docker
 ## Paddle Server
 Paddle server is running on kubernetes, users will configure the server address in [PaddlePaddle client configuration file](#configurate-paddlepaddle-client)
 
-- Paddle Server
+- RESTful API
 
-  Paddle server is an HTTP server which receives the trainer package and saves them on GlustereFS.
+  Paddle server provides a RESTful HTTP server receives the trainer packages, list PaddlePaddle job etc...
+  - `POST /v1/packages` upload trainer package and save them on GlustereFS
+  - `POST /v1/trainer/job` submit a trainer job
+  - `GET /v1/jobs/` list all job
+  - `GET /v1/jobs/<job-name>` the status of a job
+  - `DELETE /v1/jobs/<job-name>` cancel a job
+  - `GET /v1/version` paddle server version
 
 - Build Runtime Docker Image On Cloud(kubernetes)
 
