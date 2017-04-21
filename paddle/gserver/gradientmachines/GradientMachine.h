@@ -134,9 +134,7 @@ public:
     backward(callback);
   }
 
-  virtual Argument getLayerOutput(const std::string& layerName) {
-    return *((Argument*)nullptr);
-  }
+  virtual Argument getLayerOutput(const std::string& layerName) = 0;
 
   // see comment in Layer.h for the function with the same name
   virtual void resetState() {}
