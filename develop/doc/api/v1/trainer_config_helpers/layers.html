@@ -1757,11 +1757,11 @@ It performs element-wise multiplication with weight.</p>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">dotmul_operator</code><span class="sig-paren">(</span><em>a=None</em>, <em>b=None</em>, <em>scale=1</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>DotMulOperator takes two inputs and performs element-wise multiplication:</p>
 <div class="math">
-\[out.row[i] += scale * (x.row[i] .* y.row[i])\]</div>
+\[out.row[i] += scale * (a.row[i] .* b.row[i])\]</div>
 <p>where <span class="math">\(.*\)</span> means element-wise multiplication, and
 scale is a config scalar, its default value is one.</p>
 <p>The example usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">op</span> <span class="o">=</span> <span class="n">dotmul_operator</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">layer2</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">op</span> <span class="o">=</span> <span class="n">dotmul_operator</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">layer2</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -3077,9 +3077,9 @@ Input should be a vector of positive numbers, without normalization.</p>
 <dd><blockquote>
 <div><p>mean squared error cost:</p>
 <div class="math">
-\[$\]</div>
+\[\]</div>
 </div></blockquote>
-<p>rac{1}{N}sum_{i=1}^N(t _i- y_i)^2$</p>
+<p>rac{1}{N}sum_{i=1}^N(t_i-y_i)^2</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
