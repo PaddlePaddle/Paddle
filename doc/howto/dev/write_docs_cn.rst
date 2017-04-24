@@ -2,7 +2,7 @@
 如何贡献/修改文档
 ##################
 
-PaddlePaddle的文档包括英文文档 ``doc`` 和中文文档 ``doc_cn`` 两个部分。文档都是通过 `cmake`_ 驱动 `sphinx`_ 编译生成，生成后的文档分别存储在编译目录的 ``doc`` 和 ``doc_cn`` 两个子目录下。
+PaddlePaddle的文档包括英文文档 ``doc`` 和中文文档 ``doc_cn`` 两个部分。文档都是通过 `cmake`_ 驱动 `sphinx`_ 编译生成，生成后的文档分别存储在编译目录的 ``en`` 和 ``cn`` 两个子目录下。
 
 
 如何构建PaddlePaddle的文档
@@ -68,8 +68,8 @@ PaddlePaddle文档使用 `sphinx`_ 自动生成，用户可以参考sphinx教程
 如何更新www.paddlepaddle.org文档
 ================================
 
-目前PaddlePaddle的develop分支的文档是自动触发更新的，用户分别查看`中文文档 <http://www.paddlepaddle.org/develop/doc_cn/>`_ 和
-`英文文档 <http://www.paddlepaddle.org/develop/doc/上>`_ 。
+目前PaddlePaddle的develop分支的文档是自动触发更新的，用户可以分别查看最新的 `中文文档 <http://www.paddlepaddle.org/develop/doc_cn/>`_ 和
+`英文文档 <http://www.paddlepaddle.org/develop/doc/>`_ 。
 
 
 
