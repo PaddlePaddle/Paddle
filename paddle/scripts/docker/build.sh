@@ -5,13 +5,8 @@ set -e
 # Set BASE_IMAGE according to env variables
 if [ ${WITH_GPU} == "ON" ]; then
   BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04"
-  # additional packages to install when building gpu images
-  GPU_DOCKER_PKG="python-pip python-dev"
 else
-  BASE_IMAGE="python:2.7.13-slim"
-  # FIXME: python base image uses different python version than WITH_GPU
-  # need to change PYTHONHOME to /usr/local when using python base image
-  CPU_DOCKER_PYTHON_HOME_ENV="ENV PYTHONHOME /usr/local"
+  BASE_IMAGE="ubuntu:14.04"
 fi
 
 DOCKERFILE_GPU_ENV=""
@@ -88,12 +83,6 @@ fi
 
 paddle version
 
-if [[ -n ${APT_MIRROR} ]]; then
-  MIRROR_UPDATE="sed -i '${APT_MIRROR}' /etc/apt/sources.list"
-else
-  MIRROR_UPDATE=""
-fi
-
 cat > /paddle/build/Dockerfile <<EOF
 FROM ${BASE_IMAGE}
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
@@ -102,23 +91,13 @@ ENV LANG en_US.UTF-8
 # Use Fix locales to en_US.UTF-8
 EOF
 
-if [[ -n ${MIRROR_UPDATE} ]]; then
+if [[ -n ${APT_MIRROR} ]]; then
 cat >> /paddle/build/Dockerfile <<EOF
-RUN ${MIRROR_UPDATE}
-EOF
-fi
-
-if [[ -n ${GPU_DOCKER_PKG} ]]; then
-cat >> /paddle/build/Dockerfile <<EOF
-RUN apt-get update && \
-    apt-get install -y ${GPU_DOCKER_PKG} && \
-    apt-get clean -y
+RUN sed -i '${APT_MIRROR}' /etc/apt/sources.list
 EOF
 fi
 
 cat >> /paddle/build/Dockerfile <<EOF
-RUN pip install --upgrade pip
-
 # Use different deb file when building different type of images
 ADD build/*.deb /
 # run paddle version to install python packages first
@@ -127,7 +106,6 @@ RUN apt-get update &&\
     apt-get clean -y && \
     rm -f /*.deb && \
     paddle version
-${CPU_DOCKER_PYTHON_HOME_ENV}
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
 # default command shows the paddle version and exit
