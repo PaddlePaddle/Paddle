@@ -113,6 +113,7 @@ RUN ${MIRROR_UPDATE}
 ADD build/*.deb /usr/local/opt/paddle/deb/
 # run paddle version to install python packages first
 RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && \
+    apt-get -f && \
     rm -f /usr/local/opt/paddle/deb/*.deb && \
     find /usr/ -name '*paddle-*.whl' | xargs pip install && \
     paddle version
