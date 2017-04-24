@@ -69,7 +69,8 @@ def main():
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
             if event.batch_id % 100 == 0:
-                trainer.save_parameter_to_tar("output", "batch-" + str(event.batch_id))
+                trainer.save_parameter_to_tar("output",
+                                              "batch-" + str(event.batch_id))
                 result = trainer.test(
                     paddle.batch(
                         paddle.dataset.imikolov.test(word_dict, N), 32))
