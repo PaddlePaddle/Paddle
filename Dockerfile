@@ -27,7 +27,7 @@ RUN apt-get update && \
     apt-get install -y wget unzip tar xz-utils bzip2 gzip coreutils && \
     apt-get install -y curl sed grep graphviz libjpeg-dev zlib1g-dev && \
     apt-get install -y python-numpy python-matplotlib gcc g++ gfortran && \
-    apt-get install -y automake locales clang-format-3.8 swig && \
+    apt-get install -y automake locales clang-format-3.8 swig doxygen && \
     apt-get clean -y
 
 # git credential to skip password typing
@@ -43,7 +43,8 @@ RUN pip install --upgrade pip && \
     pip install -U wheel pillow BeautifulSoup && \
     pip install -U docopt PyYAML sphinx && \
     pip install -U sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip install pre-commit 'requests==2.9.2' 'ipykernel==4.6.0' 'jupyter==1.0.0'
+    pip install pre-commit 'requests==2.9.2' 'ipython==5.3.0' && \
+    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0'
 
 RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd cmake-3.4.1 && ./bootstrap && make -j `nproc` && make install && \
