@@ -98,7 +98,7 @@ class SGD(object):
             self.__gradient_machine__.prefetch(in_args)
             self.__parameter_updater__.getParametersRemote()
 
-    def save_parameter(self, dir_name, file_name):
+    def save_parameter_to_tar(self, dir_name, file_name):
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
         param_file_name = dir_name + "/" + file_name + '.tar.gz'
