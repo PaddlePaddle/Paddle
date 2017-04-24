@@ -102,6 +102,7 @@ cat >> /paddle/build/Dockerfile <<EOF
 ADD build/*.deb /
 # run paddle version to install python packages first
 RUN apt-get update &&\
+    apt-get install -y python-pip && pip install -U pip && \
     dpkg -i /*.deb ; apt-get install -f -y && \
     apt-get clean -y && \
     rm -f /*.deb && \
