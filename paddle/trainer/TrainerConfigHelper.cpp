@@ -17,6 +17,8 @@ limitations under the License. */
 #include "TrainerConfig.pb.h"
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/PythonUtil.h"
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 DECLARE_string(config);
 DECLARE_string(init_model_path);
@@ -54,7 +56,13 @@ TrainerConfigHelper::TrainerConfigHelper(const std::string &configFilePath)
       callPythonFunc(kConfigParserModuleName,
                      kConfigParserFuncName,
                      {configFilePath, configArgs.str()});
-  CHECK(m->conf.ParseFromString(configProtoStr));
+
+  google::protobuf::io::ArrayInputStream input(configProtoStr.data(),
+                                               configProtoStr.size());
+  google::protobuf::io::CodedInputStream decoder(&input);
+  // total_bytes_limit is 1024MB, and warning_threshold is 64MB
+  decoder.SetTotalBytesLimit(1024 * 1024 * 1024, 64 * 1024 * 1024);
+  CHECK(m->conf.ParseFromCodedStream(&decoder));
 }
 
 TrainerConfigHelper::TrainerConfigHelper(const TrainerConfig &config)
