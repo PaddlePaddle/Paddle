@@ -19,19 +19,15 @@ PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式。�
 ..	code-block:: bash
 
 	cd TO_YOUR_PADDLE_CLONE_PATH
-	cd paddle/scripts/tools/build_docs
-	bash build_docs.sh
+	bash paddle/scripts/tools/build_docs.sh
 
-编译完成后，该目录下会生成如下两个子目录\:
+编译完成后，会在当前目录生成两个子目录，build与build_doc，其中build_doc/doc目录之下包含两个子目录\:
 
-* doc 英文文档目录
-* doc_cn 中文文档目录
+* en 英文文档目录
+* cn 中文文档目录
 
 打开浏览器访问对应目录下的index.html即可访问本地文档。
 
-..	code-block:: bash
-
-	open doc_cn/index.html
 
 
 直接构建PaddlePaddle的文档
