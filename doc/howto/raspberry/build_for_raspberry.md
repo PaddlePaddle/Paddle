@@ -2,7 +2,7 @@
 
 这里考虑的是交叉编译方式，即在Linux-X86环境下构建raspberry pi下可运行的paddle。
 
-## 下载较差编译环境
+## 下载交叉编译环境
 ```
 git clone https://github.com/raspberrypi/tools
 ```
