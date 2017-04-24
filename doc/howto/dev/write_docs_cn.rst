@@ -37,17 +37,43 @@ PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式。�
 直接构建PaddlePaddle的文档
 --------------------------
 
-TBD
+因为PaddlePaddle的v2 api文档生成过程依赖于py_paddle Python包，用户需要首先确认py_paddle包已经安装。
+
+..	code-block:: bash
+
+    python -c "import py_paddle"
+
+如果提示错误，那么用户需要在本地编译安装PaddlePaddle，请参考 `源码编译文档 <http://www.paddlepaddle.org/develop/doc/getstarted/build_and_install/build_from_source_en.html>`_ 。
+注意，用户需要安装编译在首次编译安装PaddlePaddle时，请将WITH_DOC选项关闭。在编译安装正确之后，确认py_paddle包已经安装，即可进行下一步操作。
+
+如果提示正确，可以执行以下命令编译生成文档，即
+
+..	code-block:: bash
+
+	cd TO_YOUR_PADDLE_CLONE_PATH
+    mkdir build_doc
+    cd build_doc
+  	cmake .. -DWITH_DOC=ON
+  	make paddle_docs paddle_docs_cn -j `nproc`
+
+编译完成之后，在build_doc/doc目录之下会生成如下两个子目录\:
+
+* en 英文文档目录
+* cn 中文文档目录
+
+打开浏览器访问对应目录下的index.html即可访问本地文档。
+
 
 如何书写PaddlePaddle的文档
 ==========================
 
-TBD
+PaddlePaddle文档使用sphix自动生成，用户可以参考sphinx教程进行书写。
 
 如何更新www.paddlepaddle.org文档
 ================================
 
-TBD
+目前PaddlePaddle的develop分支的文档是自动触发更新的。用户可以在http://www.paddlepaddle.org/develop/doc_cn/与http://www.paddlepaddle.org/develop/doc/上分别查看最新的中英文文档。
+
 
 
 ..	_cmake: https://cmake.org/
