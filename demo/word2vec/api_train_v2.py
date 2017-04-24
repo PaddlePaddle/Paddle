@@ -70,7 +70,8 @@ def main():
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
             if event.batch_id % 100 == 0:
-                with gzip.open("batch-" + str(event.batch_id), 'w') as f:
+                with gzip.open("batch-" + str(event.batch_id) + ".tar.gz",
+                               'w') as f:
                     trainer.save_parameter_to_tar(f)
                 result = trainer.test(
                     paddle.batch(
