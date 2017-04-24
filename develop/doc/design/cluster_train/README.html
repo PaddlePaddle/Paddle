@@ -192,6 +192,8 @@
 <li><a class="reference internal" href="#parameter-server-process">Parameter Server Process</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#parameter-server-checkpointing">Parameter Server Checkpointing</a></li>
+<li><a class="reference internal" href="#store-and-dispatching-trainning-data">Store and dispatching trainning data</a></li>
 <li><a class="reference internal" href="#dynamic-scaling">Dynamic Scaling</a><ul>
 <li><a class="reference internal" href="#trainer-scaling">Trainer Scaling</a></li>
 <li><a class="reference internal" href="#parameter-server-scaling">Parameter Server Scaling</a></li>
@@ -246,10 +248,12 @@
 <ol class="simple">
 <li>the <em>master process</em>, which dispatches tasks to</li>
 <li>one or more <em>trainer processes</em>, which run distributed training and synchronize gradients/models via</li>
-<li>one or more <em>parameter server processes</em>, where each holds a shard of the global model.</li>
+<li>one or more <em>parameter server processes</em>, where each holds a shard of the global model, and receive the uploaded gradients from every <em>trainer process</em>, so they can run the optimize functions to update their parameters.</li>
 </ol>
 <p>Their relation is illustrated in the following graph:</p>
 <p><img src="src/paddle-model-sharding.png"/></p>
+<p>By coordinating these processes, PaddlePaddle supports use both Synchronize Stochastic Gradient Descent (sync SGD) and Asynchronous Stochastic Gradient Descent (async SGD) to train user-defined neural network topologies.</p>
+<p>When training with sync SGD, parameter servers wait for all trainers to finish gradients update and then send the updated parameters to trainers, training can not proceed until the trainer received the updated parameters. This creates a synchronization point between trainers. When training with async SGD, each trainer upload gradient and download new parameters individually, without the synchronization with other trainers. Using asyc SGD will be faster in terms of time per pass, but have more noise in gradient since trainers are likely to have a stale model.</p>
 <div class="section" id="master-process">
 <span id="master-process"></span><h3>Master Process<a class="headerlink" href="#master-process" title="Permalink to this headline">¶</a></h3>
 <p>The master process will:</p>
@@ -343,7 +347,6 @@
 <li>Watches the trainer prefix keys <code class="docutils literal"><span class="pre">/trainer/</span></code> on etcd to find the live trainers.</li>
 <li>Starts dispatching the tasks to the trainers, and updates task queue using an etcd transaction to ensure lock is held during the update.</li>
 </ol>
-<p>The master process will kill itself if its etcd lease expires.</p>
 <p>When the master process is dead for any reason, Kubernetes will restart it. It will be online again with all states recovered from etcd in few minutes.</p>
 </div>
 <div class="section" id="trainer-process">
@@ -355,6 +358,7 @@
 <li>Waits for tasks from the master to start training.</li>
 </ol>
 <p>If trainer&#8217;s etcd lease expires, it will try set key <code class="docutils literal"><span class="pre">/trainer/&lt;unique</span> <span class="pre">ID&gt;</span></code> again so that the master process can discover the trainer again.</p>
+<p>When a trainer fails, Kuberentes would try to restart it. The recovered trainer would fetch tasks from the TODO queue and go on training.</p>
 </div>
 <div class="section" id="parameter-server-process">
 <span id="id3"></span><h3>Parameter Server Process<a class="headerlink" href="#parameter-server-process" title="Permalink to this headline">¶</a></h3>
@@ -375,6 +379,14 @@
 </ol>
 <p>If the parameter server&#8217;s etcd lease expires, the parameter server will kill itself.</p>
 </div>
+</div>
+<div class="section" id="parameter-server-checkpointing">
+<span id="parameter-server-checkpointing"></span><h2>Parameter Server Checkpointing<a class="headerlink" href="#parameter-server-checkpointing" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference internal" href="checkpointing.html"><span class="doc">here</span></a></p>
+</div>
+<div class="section" id="store-and-dispatching-trainning-data">
+<span id="store-and-dispatching-trainning-data"></span><h2>Store and dispatching trainning data<a class="headerlink" href="#store-and-dispatching-trainning-data" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference internal" href="data_dispatch.html"><span class="doc">here</span></a></p>
 </div>
 <div class="section" id="dynamic-scaling">
 <span id="dynamic-scaling"></span><h2>Dynamic Scaling<a class="headerlink" href="#dynamic-scaling" title="Permalink to this headline">¶</a></h2>

@@ -1,0 +1,362 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>训练数据的存储和分发 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a>Home</a></li>
+          <li><a>Get Started</a></li>
+          <li class="active"><a>Documentation</a></li>
+          <li><a>About Us</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index_cn.html">完整教程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/basic_usage/index_cn.html">经典的线性回归任务</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index_cn.html">完整教程</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/quick_start/index_cn.html">快速入门</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/rec/ml_regression_cn.html">个性化推荐</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/image_classification/index_cn.html">图像分类</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/sentiment_analysis/index_cn.html">情感分析</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/semantic_role_labeling/index_cn.html">语义角色标注</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/text_generation/index_cn.html">机器翻译</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/imagenet_model/resnet_model_cn.html">ResNet模型</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/embedding_model/index_cn.html">词向量模型</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/concepts/use_concepts_cn.html">基本使用概念</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html#kubernetes">部署Kubernetes集群</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html#">选择存储方案</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html#kubectl">配置kubectl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/rnn_config_cn.html">RNN配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <nav class="local-toc"><ul>
+<li><a class="reference internal" href="#">训练数据的存储和分发</a><ul>
+<li><a class="reference internal" href="#">流程介绍</a></li>
+<li><a class="reference internal" href="#">训练数据的存储</a></li>
+<li><a class="reference internal" href="#">上传训练文件</a></li>
+<li><a class="reference internal" href="#reader">使用reader</a></li>
+<li><a class="reference internal" href="#reader">实现reader</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#todo">TODO</a><ul>
+<li><a class="reference internal" href="#key-value-sharding">支持将数据合并成内部的文件格式（key-value），方便sharding与顺序读取</a></li>
+<li><a class="reference internal" href="#job">支持用户自定义的数据预处理job</a></li>
+</ul>
+</li>
+</ul>
+</nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>训练数据的存储和分发</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="">
+<span id="id1"></span><h1>训练数据的存储和分发<a class="headerlink" href="#" title="永久链接至标题">¶</a></h1>
+<div class="section" id="">
+<span id="id2"></span><h2>流程介绍<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>生产环境中的训练数据集通常体积很大，并被存储在诸如Hadoop HDFS，Ceph，AWS S3之类的分布式存储之上。这些分布式存储服务通常会把数据切割成多个分片分布式的存储在多个节点之上。这样就可以在云端执行多种数据类计算任务，包括：</p>
+<ul class="simple">
+<li>数据预处理任务</li>
+<li>Paddle训练任务</li>
+<li>在线模型预测服务</li>
+</ul>
+<p><img src="src/paddle-cloud-in-data-center.png" width="500"/></p>
+<p>在上图中显示了在一个实际生产环境中的应用（人脸识别）的数据流图。生产环境的日志数据会通过实时流的方式（Kafka）和离线数据的方式（HDFS）存储，并在集群中运行多个分布式数据处理任务，比如流式数据处理（online data process），离线批处理（offline data process）完成数据的预处理，提供给paddle作为训练数据。用于也可以上传labeled data到分布式存储补充训练数据。在paddle之上运行的深度学习训练输出的模型会提供给在线人脸识别的应用使用。</p>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h2>训练数据的存储<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>选择GlusterFS作为训练数据的存储服务（后续的实现考虑HDFS）。</p>
+<p>在Kubernetes上运行的不同的计算框架，可以通过Volume或PersistentVolume挂载存储空间到每个容器中。</p>
+<p>在GlusterFS存储系统中的公开目录，需要保存一些预置的公开数据集（比如MNIST, BOW, imagenet数据集等），并且可以被提交的job直接使用。</p>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h2>上传训练文件<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>使用下面命令，可以把本地的训练数据上传到存储集群中，并指定上传数据的<code class="docutils literal"><span class="pre">dataset-name</span></code>：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">upload</span> <span class="n">train_data</span><span class="o">.</span><span class="n">list</span> <span class="s2">&quot;dataset-name&quot;</span>
+</pre></div>
+</div>
+<p>其中<code class="docutils literal"><span class="pre">.list</span></code>文件描述了训练数据的文件和对应的label，对于图像类数据，<code class="docutils literal"><span class="pre">.list文件</span></code>样例如下，每一行包含了图片文件的路径和其label（用tab分隔开）：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">data</span><span class="o">/</span><span class="n">image1</span><span class="o">.</span><span class="n">jpg</span>   <span class="mi">1</span>
+<span class="o">./</span><span class="n">data</span><span class="o">/</span><span class="n">image2</span><span class="o">.</span><span class="n">jpg</span>   <span class="mi">5</span>
+<span class="o">./</span><span class="n">data</span><span class="o">/</span><span class="n">image3</span><span class="o">.</span><span class="n">jpg</span>   <span class="mi">2</span>
+<span class="o">./</span><span class="n">data</span><span class="o">/</span><span class="n">image4</span><span class="o">.</span><span class="n">jpg</span>   <span class="mi">5</span>
+<span class="o">./</span><span class="n">data</span><span class="o">/</span><span class="n">image5</span><span class="o">.</span><span class="n">jpg</span>   <span class="mi">1</span>
+<span class="o">./</span><span class="n">data</span><span class="o">/</span><span class="n">image6</span><span class="o">.</span><span class="n">jpg</span>   <span class="mi">8</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>对于文本类训练数据样例如下（机器翻译），一行中包含源语言，目标语言的文本（label）：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">L</span><span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">inflation</span> <span class="p">,</span> <span class="n">en</span> <span class="n">Europe</span> <span class="p">,</span> <span class="n">a</span> <span class="n">dérapé</span> <span class="n">sur</span> <span class="n">l</span><span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">alimentation</span>   <span class="n">Food</span> <span class="p">:</span> <span class="n">Where</span> <span class="n">European</span> <span class="n">inflation</span> <span class="n">slipped</span> <span class="n">up</span>
+
+<span class="n">L</span><span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">inflation</span> <span class="n">accélérée</span> <span class="p">,</span> <span class="n">mesurée</span> <span class="n">dans</span> <span class="n">la</span> <span class="n">zone</span> <span class="n">euro</span> <span class="p">,</span> <span class="n">est</span> <span class="n">due</span> <span class="n">principalement</span> <span class="n">à</span> <span class="n">l</span><span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">augmentation</span> <span class="n">rapide</span> <span class="n">des</span> <span class="n">prix</span> <span class="n">de</span> <span class="n">l</span><span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">alimentation</span> <span class="o">.</span>   <span class="n">The</span> <span class="n">skyward</span> <span class="n">zoom</span> <span class="ow">in</span> <span class="n">food</span> <span class="n">prices</span> <span class="ow">is</span> <span class="n">the</span> <span class="n">dominant</span> <span class="n">force</span> <span class="n">behind</span> <span class="n">the</span> <span class="n">speed</span> <span class="n">up</span> <span class="ow">in</span> <span class="n">eurozone</span> <span class="n">inflation</span> <span class="o">.</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="reader">
+<span id="reader"></span><h2>使用reader<a class="headerlink" href="#reader" title="永久链接至标题">¶</a></h2>
+<p>用户在使用v2 API编写训练任务时，可以使用paddle内置的reader完成对GlusterFS存储中的训练数据的读取，返回文件中的各列，然后在调用<code class="docutils literal"><span class="pre">trainer.train()</span></code>时传入，完成训练数据的读取：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="s2">&quot;dataset-name&quot;</span><span class="p">)</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">reader</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">batch_reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">mnist</span><span class="o">.</span><span class="n">train</span><span class="p">(),</span> <span class="mi">128</span><span class="p">)</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">batch_reader</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>trainer.train内部会获取reader的内容：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">paddle</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">batch_reader</span><span class="p">):</span>
+  <span class="n">r</span> <span class="o">=</span> <span class="n">batch_reader</span><span class="p">()</span> <span class="c1"># create a iterator for one pass of data</span>
+  <span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">r</span><span class="p">:</span>
+    <span class="c1"># train</span>
+</pre></div>
+</div>
+<p>这里面batch是含有128个data instance的mini-batch。每一个data instance会是一个tuple，tuple元素的顺序与<code class="docutils literal"><span class="pre">.list</span></code>文件文件中每一列的顺序是一致的。每一个data instance会是（raw_image_file_binary_data, label）。其中raw_image_file_binary_data是对应图像文件的没有解码的原始二进制数据，用户需要自己解码。label是文本类型（比如：“1“，”2“），这里用户需要的其实是整形，用户需要自己转换成整形。</p>
+</div>
+<div class="section" id="reader">
+<span id="id5"></span><h2>实现reader<a class="headerlink" href="#reader" title="永久链接至标题">¶</a></h2>
+<p>reader的实现需要考虑本地训练程序实现之后，可以不修改程序直接提交集群进行分布式训练。要达到这样的目标，需要实现下面的功能：</p>
+<p>paddle会封装一个在集群中使用的reader: <code class="docutils literal"><span class="pre">paddle.dist.reader()</span></code>。在集群训练时需要使用这个reader指定要使用的数据集开始训练。用户的训练程序需要按照如下方式初始化reader：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;PADDLE_TRAIN_LOCAL&quot;</span><span class="p">):</span>
+  <span class="n">reader</span> <span class="o">=</span> <span class="n">my_local_reader</span><span class="p">(</span><span class="s2">&quot;dataset-name&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+  <span class="n">reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="s2">&quot;dataset-name&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>用户训练程序提交到集群之后，集群会自动设置<code class="docutils literal"><span class="pre">PADDLE_TRAIN_LOCAL</span></code>环境变量，reader会被配置成集群训练的版本。其中<code class="docutils literal"><span class="pre">paddle.dist.reader()</span></code>需要从master的队列中获得需要开始执行的训练task，并找到对应的训练数据文件，开始训练任务。如果用户的训练数据源来自于其他服务，比如从集群中的Kafka，zeromq队列读取，也可以根据实际情况实现集群中运行的reader程序。</p>
+</div>
+</div>
+<div class="section" id="todo">
+<span id="todo"></span><h1>TODO<a class="headerlink" href="#todo" title="永久链接至标题">¶</a></h1>
+<div class="section" id="key-value-sharding">
+<span id="key-value-sharding"></span><h2>支持将数据合并成内部的文件格式（key-value），方便sharding与顺序读取<a class="headerlink" href="#key-value-sharding" title="永久链接至标题">¶</a></h2>
+</div>
+<div class="section" id="job">
+<span id="job"></span><h2>支持用户自定义的数据预处理job<a class="headerlink" href="#job" title="永久链接至标题">¶</a></h2>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>
