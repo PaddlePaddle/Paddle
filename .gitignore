@@ -1,5 +1,6 @@
 *.DS_Store
 build/
+build_doc/
 *.user
 
 .vscode

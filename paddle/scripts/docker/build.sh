@@ -29,20 +29,36 @@ rm *.deb 2>/dev/null || true
 
 cmake .. \
       -DCMAKE_BUILD_TYPE=Release \
-      -DWITH_DOC=${WITH_DOC:-OFF} \
+      -DWITH_DOC=OFF \
       -DWITH_GPU=${WITH_GPU:-OFF} \
       -DWITH_AVX=${WITH_AVX:-OFF} \
       -DWITH_SWIG_PY=ON \
       -DCUDNN_ROOT=/usr/ \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
-      -DON_COVERALLS=${WITH_TEST:-OFF} \
+      -DWITH_TESTING=${WITH_TESTING:-OFF} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 make -j `nproc`
-if [[ ${RUN_TEST:-OFF} == "ON" ]]; then
-    make coveralls
+if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
+    make test
 fi
 make install
+pip install /usr/local/opt/paddle/share/wheels/*.whl
 
+# To build documentation, we need to run cmake twice.
+# This awkwardness is due to https://github.com/PaddlePaddle/Paddle/issues/1854.
+# It also describes a solution.
+if [ ${WITH_DOC} == "ON" ]; then
+    mkdir -p /paddle/build_doc
+    pushd /paddle/build_doc
+    cmake .. \
+          -DWITH_DOC=ON \
+          -DWITH_GPU=OFF \
+          -DWITH_AVX=${WITH_AVX:-OFF} \
+          -DWITH_SWIG_PY=ON \
+          -DWITH_STYLE_CHECK=OFF
+    make paddle_docs paddle_docs_cn
+    popd
+fi
 # generate deb package for current build
 # FIXME(typhoonzero): should we remove paddle/scripts/deb ?
 # FIXME: CPACK_DEBIAN_PACKAGE_DEPENDS removes all dev dependencies, must
@@ -98,7 +114,7 @@ ADD build/*.deb /usr/local/opt/paddle/deb/
 # run paddle version to install python packages first
 RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && \
     rm -f /usr/local/opt/paddle/deb/*.deb && \
-    pip install /usr/opt/paddle/share/wheels/*.whl && \
+    find /usr/ -name '*paddle-*.whl' | xargs pip install && \
     paddle version
 ${CPU_DOCKER_PYTHON_HOME_ENV}
 ${DOCKERFILE_CUDNN_DSO}
