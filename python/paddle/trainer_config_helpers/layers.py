@@ -116,6 +116,7 @@ __all__ = [
     'spp_layer',
     'pad_layer',
     'eos_layer',
+    'smooth_l1_cost',
     'layer_support',
 ]
 
@@ -201,6 +202,7 @@ class LayerType(object):
     SOFT_BIN_CLASS_CROSS_ENTROPY = "soft_binary_class_cross_entropy"
     MULTI_BIN_LABEL_CROSS_ENTROPY = "multi_binary_label_cross_entropy"
     SUM_COST = "sum_cost"
+    SMOOTH_L1 = "smooth_l1"
 
     @staticmethod
     def is_layer_type(type_name):
@@ -5249,8 +5251,6 @@ def multi_binary_label_cross_entropy(input,
     :type input: LayerOutput
     :param label: The input label.
     :type input: LayerOutput
-    :param type: The type of cost.
-    :type type: basestring
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
@@ -5279,3 +5279,56 @@ def multi_binary_label_cross_entropy(input,
         LayerType.MULTI_BIN_LABEL_CROSS_ENTROPY,
         parents=[input, label],
         size=1)
+
+
+@wrap_name_default()
+@layer_support()
+def smooth_l1_cost(input, label, name=None, layer_attr=None):
+    """
+    This is a L1 loss but more smooth. It requires that the
+    size of input and label are equal.
+
+    More details can be found by referring to `Fast R-CNN
+    <https://arxiv.org/pdf/1504.08083v2.pdf>`_
+
+    .. math::
+
+        L = \sum_{i} smooth_{L1}(input_i - label_i)
+
+    in which
+
+    .. math::
+
+        mooth_{L1}(x) =
+        \begin{cases}
+        0.5x^2& \text{if} |x| < 1 \\
+        |x|-0.5& \text{otherwise}
+        \end{cases}
+
+    .. code-block:: python
+
+       cost = smooth_l1_cost(input=input_layer,
+                             label=label_layer)
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param label: The input label.
+    :type input: LayerOutput
+    :param name: The name of this layers. It is not necessary.
+    :type name: None|basestring
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    assert isinstance(label, LayerOutput)
+    assert input.size == label.size
+
+    Layer(
+        name=name,
+        type=LayerType.SMOOTH_L1,
+        inputs=[input.name, label.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.SMOOTH_L1, parents=[input, label], size=1)

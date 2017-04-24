@@ -1685,7 +1685,7 @@ TEST(Layer, smooth_l1) {
   config.layerConfig.add_inputs();
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "smooth_l1", 100, false, useGpu, false, 2.0);
+    testLayerGrad(config, "smooth_l1", 100, false, useGpu, false);
   }
 }
 
