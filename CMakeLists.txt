@@ -50,6 +50,7 @@ option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
+option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -75,6 +76,13 @@ endif(ANDROID)
 
 set(THIRD_PARTY_PATH "${PROJ_ROOT}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")
+
+if (WITH_C_API AND WITH_PYTHON)
+  message(WARNING "It is suggest not embedded a python interpreter in Paddle "
+    "when using C-API. It will give an unpredictable behavior when using a "
+    "different Python interpreter from compiling.")
+endif()
+
 ########################################################################################
 
 include(external/zlib)      # download, build, install zlib

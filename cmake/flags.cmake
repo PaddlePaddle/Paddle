@@ -197,3 +197,4 @@ if(CUDA_ARCH)
 endif()
 
 set(CUDA_NVCC_FLAGS ${__arch_flags} ${CUDA_NVCC_FLAGS})
+
