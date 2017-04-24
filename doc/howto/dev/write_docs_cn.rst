@@ -18,8 +18,8 @@ PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式。�
 
 ..	code-block:: bash
 
-	cd TO_YOUR_PADDLE_CLONE_PATH
-	bash paddle/scripts/tools/build_docs.sh
+    cd TO_YOUR_PADDLE_CLONE_PATH
+    bash paddle/scripts/tools/build_docs.sh
 
 编译完成后，会在当前目录生成两个子目录，build与build_doc，其中build_doc/doc目录之下包含两个子目录\:
 
@@ -46,11 +46,11 @@ PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式。�
 
 ..	code-block:: bash
 
-	cd TO_YOUR_PADDLE_CLONE_PATH
+    cd TO_YOUR_PADDLE_CLONE_PATH
     mkdir build_doc
     cd build_doc
-  	cmake .. -DWITH_DOC=ON
-  	make paddle_docs paddle_docs_cn -j `nproc`
+    cmake .. -DWITH_DOC=ON
+    make paddle_docs paddle_docs_cn -j `nproc`
 
 编译完成之后，在build_doc/doc目录之下会生成如下两个子目录\:
 
@@ -63,12 +63,13 @@ PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式。�
 如何书写PaddlePaddle的文档
 ==========================
 
-PaddlePaddle文档使用sphix自动生成，用户可以参考sphinx教程进行书写。
+PaddlePaddle文档使用 `sphinx`_ 自动生成，用户可以参考sphinx教程进行书写。
 
 如何更新www.paddlepaddle.org文档
 ================================
 
-目前PaddlePaddle的develop分支的文档是自动触发更新的。用户可以在http://www.paddlepaddle.org/develop/doc_cn/与http://www.paddlepaddle.org/develop/doc/上分别查看最新的中英文文档。
+目前PaddlePaddle的develop分支的文档是自动触发更新的，用户分别查看`中文文档 <http://www.paddlepaddle.org/develop/doc_cn/>`_ 和
+`英文文档 <http://www.paddlepaddle.org/develop/doc/上>`_ 。
 
 
 
