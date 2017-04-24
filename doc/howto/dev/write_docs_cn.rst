@@ -44,7 +44,7 @@ PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式。�
     python -c "import py_paddle"
 
 如果提示错误，那么用户需要在本地编译安装PaddlePaddle，请参考 `源码编译文档 <http://www.paddlepaddle.org/develop/doc/getstarted/build_and_install/build_from_source_en.html>`_ 。
-注意，用户需要安装编译在首次编译安装PaddlePaddle时，请将WITH_DOC选项关闭。在编译安装正确之后，确认py_paddle包已经安装，即可进行下一步操作。
+注意，用户在首次编译安装PaddlePaddle时，请将WITH_DOC选项关闭。在编译安装正确之后，请再次确认py_paddle包已经安装，即可进行下一步操作。
 
 如果提示正确，可以执行以下命令编译生成文档，即
 
