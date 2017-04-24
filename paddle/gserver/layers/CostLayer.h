@@ -91,8 +91,8 @@ public:
  *
  * [1] Jacob Devlin, Rabih Zbib, Zhongqiang Huang, Thomas Lamar,
  *     Richard Schwartz, and John Makhoul. Fast and robust neural
- *     network joint models for statistical machine translation.  *     In
- * Proceedings of the ACL 2014 Conference.
+ *     network joint models for statistical machine translation.
+ *     In Proceedings of the ACL 2014 Conference.
  */
 class MultiClassCrossEntropyWithSelfNorm : public CostLayer {
 public:
