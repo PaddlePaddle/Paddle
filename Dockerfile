@@ -13,7 +13,7 @@ ARG WITH_DOC
 ARG WITH_STYLE_CHECK
 
 ENV WOBOQ OFF
-ENV WITH_GPU=${WITH_AVX:-OFF}
+ENV WITH_GPU=${WITH_GPU:-OFF}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV WITH_DOC=${WITH_DOC:-OFF}
 ENV WITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
@@ -27,7 +27,7 @@ RUN apt-get update && \
     apt-get install -y wget unzip tar xz-utils bzip2 gzip coreutils && \
     apt-get install -y curl sed grep graphviz libjpeg-dev zlib1g-dev && \
     apt-get install -y python-numpy python-matplotlib gcc g++ gfortran && \
-    apt-get install -y automake locales clang-format-3.8 swig && \
+    apt-get install -y automake locales clang-format-3.8 swig doxygen && \
     apt-get clean -y
 
 # git credential to skip password typing
