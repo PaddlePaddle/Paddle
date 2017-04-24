@@ -14,6 +14,10 @@ setup(name='paddle',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
       packages=packages,
+      install_requires=[
+          "numpy",
+          "protobuf==3.1.0"
+      ],
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}'
       }

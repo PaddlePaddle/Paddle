@@ -44,10 +44,7 @@ fi
 make install
 
 # generate deb package for current build
-# FIXME(typhoonzero): should we remove paddle/scripts/deb ?
-# FIXME: CPACK_DEBIAN_PACKAGE_DEPENDS removes all dev dependencies, must
-# install them in docker
-cpack -D CPACK_GENERATOR='DEB' -D CPACK_DEBIAN_PACKAGE_DEPENDS="" ..
+cpack -D CPACK_GENERATOR='DEB' ..
 
 if [[ ${WOBOQ:-OFF} == 'ON' ]]; then
     apt-get install -y clang-3.8 llvm-3.8 libclang-3.8-dev
@@ -76,9 +73,9 @@ fi
 paddle version
 
 if [[ -n ${APT_MIRROR} ]]; then
-  MIRROR_UPDATE="sed -i '${APT_MIRROR}' /etc/apt/sources.list && \\"
+  MIRROR_UPDATE="sed -i '${APT_MIRROR}' /etc/apt/sources.list"
 else
-  MIRROR_UPDATE="\\"
+  MIRROR_UPDATE=""
 fi
 
 cat > /paddle/build/Dockerfile <<EOF
@@ -87,18 +84,32 @@ MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 ENV HOME /root
 ENV LANG en_US.UTF-8
 # Use Fix locales to en_US.UTF-8
+EOF
+
+if [[ -n ${MIRROR_UPDATE} ]]; then
+cat >> /paddle/build/Dockerfile <<EOF
 RUN ${MIRROR_UPDATE}
-    apt-get update && \
-    apt-get install -y libgfortran3 libpython2.7 ${GPU_DOCKER_PKG} && \
-    apt-get clean -y && \
-    pip install --upgrade pip && \
-    pip install -U 'protobuf==3.1.0' requests numpy
+EOF
+fi
+
+if [[ -n ${GPU_DOCKER_PKG} ]]; then
+cat >> /paddle/build/Dockerfile <<EOF
+RUN apt-get update && \
+    apt-get install -y ${GPU_DOCKER_PKG} && \
+    apt-get clean -y
+EOF
+fi
+
+cat >> /paddle/build/Dockerfile <<EOF
+RUN pip install --upgrade pip
+
 # Use different deb file when building different type of images
-ADD build/*.deb /usr/local/opt/paddle/deb/
+ADD build/*.deb /
 # run paddle version to install python packages first
-RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && \
-    apt-get -f && \
-    rm -f /usr/local/opt/paddle/deb/*.deb && \
+RUN apt-get update &&\
+    dpkg -i /*.deb ; apt-get install -f -y && \
+    apt-get clean -y && \
+    rm -f /*.deb && \
     pip install /usr/opt/paddle/share/wheels/*.whl && \
     paddle version
 ${CPU_DOCKER_PYTHON_HOME_ENV}
