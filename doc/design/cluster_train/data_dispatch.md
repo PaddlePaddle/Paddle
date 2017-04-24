@@ -21,10 +21,10 @@
 
 ### 上传训练文件
 
-使用下面命令，可以把本地的训练数据上传到存储集群中
+使用下面命令，可以把本地的训练数据上传到存储集群中，并指定上传数据的`dataset-name`：
 
 ```
-paddle upload train_data.list
+paddle upload train_data.list "dataset-name"
 ```
 
 其中`.list`文件描述了训练数据的文件和对应的label，对于图像类数据，`.list文件`样例如下，每一行包含了图片文件的路径和其label（用tab分隔开）：
