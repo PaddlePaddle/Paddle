@@ -73,6 +73,18 @@ class Topology(object):
 
         assert isinstance(self.__model_config__, ModelConfig)
 
+    def use_sparse_updater(self):
+        """
+        check if any parameter require to use sparse_update
+        :return:
+        """
+        use_sparse = False
+        for parameter in self.__model_config__.parameters:
+            if parameter.sparse_update or parameter.sparse_remote_update:
+                use_sparse = True
+                break
+        return use_sparse
+
     def proto(self):
         return self.__model_config__
 

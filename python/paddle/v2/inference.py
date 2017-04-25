@@ -10,6 +10,16 @@ __all__ = ['infer']
 
 class Inference(object):
     def __init__(self, output_layer, parameters, config_verbose=False):
+    """
+    Inference combines neural network output and parameters together
+    to do inference.
+
+    :param outptut_layer: The neural network that should be inferenced.
+    :type output_layer: paddle.v2.config_base.Layer or the sequence
+                        of paddle.v2.config_base.Layer
+    :param parameters: The parameters dictionary.
+    :type parameters: paddle.v2.parameters.Parameters
+    """
         topo = topology.Topology(output_layer, verbose=config_verbose)
         gm = api.GradientMachine.createFromConfigProto(
             topo.proto(), api.CREATE_MODE_TESTING, [api.PARAMETER_VALUE])
@@ -49,7 +59,7 @@ class Inference(object):
         retv = None
         for result in self.iter_infer_field(field=field, **kwargs):
             if retv is None:
-                retv = [[]] * len(result)
+                retv = [[] for i in xrange(len(result))]
             for i, item in enumerate(result):
                 retv[i].append(item)
         retv = [numpy.concatenate(out) for out in retv]

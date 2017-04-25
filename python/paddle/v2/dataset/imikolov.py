@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-imikolov's simple dataset: http://www.fit.vutbr.cz/~imikolov/rnnlm/
+imikolov's simple dataset.
 
-Complete comments.
+This module will download dataset from 
+http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse training set and test set
+into paddle reader creators.
 """
 import paddle.v2.dataset.common
 import collections
@@ -40,6 +42,10 @@ def word_count(f, word_freq=None):
 
 
 def build_dict():
+    """
+    Build a word dictionary from the corpus,  Keys of the dictionary are words,
+    and values are zero-based IDs of these words.
+    """
     train_filename = './simple-examples/data/ptb.train.txt'
     test_filename = './simple-examples/data/ptb.valid.txt'
     with tarfile.open(
@@ -84,10 +90,36 @@ def reader_creator(filename, word_idx, n):
 
 
 def train(word_idx, n):
+    """
+    imikolov training set creator.
+
+    It returns a reader creator, each sample in the reader is a word ID
+    tuple.
+
+    :param word_idx: word dictionary
+    :type word_idx: dict
+    :param n: sliding window size
+    :type n: int
+    :return: Training reader creator
+    :rtype: callable
+    """
     return reader_creator('./simple-examples/data/ptb.train.txt', word_idx, n)
 
 
 def test(word_idx, n):
+    """
+    imikolov test set creator.
+
+    It returns a reader creator, each sample in the reader is a word ID
+    tuple.
+
+    :param word_idx: word dictionary
+    :type word_idx: dict
+    :param n: sliding window size
+    :type n: int
+    :return: Test reader creator
+    :rtype: callable
+    """
     return reader_creator('./simple-examples/data/ptb.valid.txt', word_idx, n)
 
 

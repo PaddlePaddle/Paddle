@@ -19,6 +19,7 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "paddle/gserver/gradientmachines/GradientMachine.h"
 #include "paddle/utils/Common.h"
 #include "paddle/utils/GlobalConstants.h"
 
@@ -468,8 +469,10 @@ private:
 };
 
 enum GradientMatchineCreateMode {
-  CREATE_MODE_NORMAL = 0,
-  CREATE_MODE_TESTING = 4
+  CREATE_MODE_NORMAL = paddle::GradientMachine::kNormal,
+  CREATE_MODE_SGD_SPARSE_CPU_TRAINING =
+      paddle::GradientMachine::kSgdSparseCpuTraining,
+  CREATE_MODE_TESTING = paddle::GradientMachine::kTesting
 };
 
 struct ParameterConfigPrivate;
@@ -817,7 +820,8 @@ private:
 public:
   static ParameterUpdater* createLocalUpdater(OptimizationConfig* config);
   static ParameterUpdater* createRemoteUpdater(OptimizationConfig* config,
-                                               int passCount);
+                                               int passCount,
+                                               bool useSparseUpdater);
   ~ParameterUpdater();
 
   /**
@@ -854,6 +858,13 @@ public:
    * @param param
    */
   void update(Parameter* param);
+
+  /**
+   * @breif only get required sparse rows by default.
+   * @param fullSize: get full matrix parameter if *fullSize* set
+   * @param apply: get PARAMETER_APPLY on pserver if *apply* set
+   */
+  void getParametersRemote(bool fullSize = false, bool apply = false);
 
   /**
    * @brief restore the average parameter.

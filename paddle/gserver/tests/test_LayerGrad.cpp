@@ -1679,13 +1679,29 @@ TEST(Layer, smooth_l1) {
   TestConfig config;
   config.layerConfig.set_type("smooth_l1");
 
-  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1, 0});
-  config.inputDefs.push_back({INPUT_DATA_TARGET, "layer_1", 1, 0});
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 200, 0});
+  config.inputDefs.push_back({INPUT_DATA_TARGET, "layer_1", 200, 0});
   config.layerConfig.add_inputs();
   config.layerConfig.add_inputs();
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "smooth_l1", 100, false, useGpu, false, 2.0);
+    testLayerGrad(config, "smooth_l1", 100, false, useGpu, false);
+  }
+}
+
+TEST(Layer, TransLayer) {
+  TestConfig config;
+  const int height = 128;
+  const int width = 1028;
+  config.layerConfig.set_type("trans");
+  config.layerConfig.set_size(width);
+
+  config.inputDefs.push_back(
+      {INPUT_DATA, "layer_0", /* dim= */ height * width, /* paraSize= */ 0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "trans", height, /* trans= */ false, useGpu);
   }
 }
 
