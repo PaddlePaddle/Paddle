@@ -16,7 +16,7 @@ setup(name='paddle',
       packages=packages,
       install_requires=[
           "numpy",
-          "protobuf==3.1.0",
+          "protobuf==${PROTOBUF_VERSION}",
           "matplotlib",
       ],
       package_dir={
