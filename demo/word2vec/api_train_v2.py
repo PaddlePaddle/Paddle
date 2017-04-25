@@ -1,27 +1,40 @@
+import gzip
 import math
 
 import paddle.v2 as paddle
 
-dictsize = 1953
 embsize = 32
 hiddensize = 256
 N = 5
 
 
 def wordemb(inlayer):
-    wordemb = paddle.layer.table_projection(
+    wordemb = paddle.layer.embedding(
         input=inlayer,
         size=embsize,
         param_attr=paddle.attr.Param(
             name="_proj",
             initial_std=0.001,
             learning_rate=1,
-            l2_rate=0, ))
+            l2_rate=0,
+            sparse_update=True))
     return wordemb
 
 
 def main():
-    paddle.init(use_gpu=False, trainer_count=1)
+    # for local training
+    cluster_train = False
+
+    if not cluster_train:
+        paddle.init(use_gpu=False, trainer_count=1)
+    else:
+        paddle.init(
+            use_gpu=False,
+            trainer_count=2,
+            port=7164,
+            ports_num=1,
+            ports_num_for_sparse=1,
+            num_gradient_servers=1)
     word_dict = paddle.dataset.imikolov.build_dict()
     dict_size = len(word_dict)
     firstword = paddle.layer.data(
@@ -57,6 +70,9 @@ def main():
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
             if event.batch_id % 100 == 0:
+                with gzip.open("batch-" + str(event.batch_id) + ".tar.gz",
+                               'w') as f:
+                    trainer.save_parameter_to_tar(f)
                 result = trainer.test(
                     paddle.batch(
                         paddle.dataset.imikolov.test(word_dict, N), 32))
@@ -65,11 +81,15 @@ def main():
                     result.metrics)
 
     cost = paddle.layer.classification_cost(input=predictword, label=nextword)
+
     parameters = paddle.parameters.create(cost)
-    adam_optimizer = paddle.optimizer.Adam(
+    adagrad = paddle.optimizer.AdaGrad(
         learning_rate=3e-3,
         regularization=paddle.optimizer.L2Regularization(8e-4))
-    trainer = paddle.trainer.SGD(cost, parameters, adam_optimizer)
+    trainer = paddle.trainer.SGD(cost,
+                                 parameters,
+                                 adagrad,
+                                 is_local=not cluster_train)
     trainer.train(
         paddle.batch(paddle.dataset.imikolov.train(word_dict, N), 32),
         num_passes=30,

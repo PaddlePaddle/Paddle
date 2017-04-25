@@ -29,10 +29,22 @@ ParameterUpdater *ParameterUpdater::createLocalUpdater(
 }
 
 ParameterUpdater *ParameterUpdater::createRemoteUpdater(
-    OptimizationConfig *config, int passCount) {
+    OptimizationConfig *config, int passCount, bool useSparseUpdater) {
   auto updater = new ParameterUpdater();
-  updater->m->updater.reset(new paddle::RemoteParameterUpdater(
-      config->m->getConfig(), passCount, nullptr));
+  auto remoteUpdater = new paddle::RemoteParameterUpdater(
+      config->m->getConfig(), passCount, nullptr);
+  if (useSparseUpdater) {
+    std::unique_ptr<paddle::ParameterUpdater> remoteUpdaterPtr(remoteUpdater);
+    auto sparseRemoteUpdater =
+        new paddle::SparseRemoteParameterUpdaterComposite(
+            config->m->getConfig(),
+            passCount,
+            false,
+            std::move(remoteUpdaterPtr));
+    updater->m->updater.reset(sparseRemoteUpdater);
+  } else {
+    updater->m->updater.reset(remoteUpdater);
+  }
   return updater;
 }
 
@@ -57,6 +69,10 @@ void ParameterUpdater::finishBatch(float cost) {
 void ParameterUpdater::update(Parameter *param) {
   auto paddleParam = param->m->getPtr();
   m->updater->update(paddleParam);
+}
+
+void ParameterUpdater::getParametersRemote(bool fullSize, bool apply) {
+  m->updater->getParametersRemote(fullSize, apply);
 }
 
 void ParameterUpdater::restore() { m->updater->restore(); }
