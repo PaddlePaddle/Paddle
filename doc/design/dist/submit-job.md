@@ -1,52 +1,35 @@
-
 # PaddlePaddle Client
-PaddlePaddle client is command line interface for running PaddlePaddle distributed training job or start up a local training job.
+
+If a user wants to startup a local train, he will startup a PaddlePaddle product Docker image firstly, and then
+execute `python train.py` in the Docker container.The details about PaddlePaddle Docker image is [here]()
+
+If a user wants to startup a distributed training job, he will use the PaddlePaddle Client.The PaddlePaddle Client package the trainer files, upload to PaddlePaddle Server and then startup multiple parameter server and trainer processes as user's configuration for a distributed training job.The User can upload the distributed training job with python code or a command line tool.
 
 The relation of PaddlePaddle, kubernetes and docker:
-
 <img src="./submit-job.png" width="500">
 
+## Submit a Distributed Training Job With Python PaddlePaddle Client
 
-# Running Local Training Job
-You can execute the command: `paddle train` with flag `--locally` to start up a local train.
-```bash
-paddle train \
-  --locally \
-  --job-name=quickstart \
-  --package-path=./demo \
-  --entry-point="python train.py" \
-  --input=<input_dir> \
-  --output=<output_dir> \
-  --image=<paddle_image> \
-  --env=NUM_PASS=4
-```
-- `job-name`: your local training job name
-- `package-path`: your trainer code python package
-- `entry-point`: an entry point for startup trainer process
-- `input`: input directory, for local train, it's a host path.
-- `output`: output directory, for local train, it's a host path.
-- `base-image`: paddlepaddle production image
-- `env`: environment varible
+Users will Call `paddle.dist.train` and provide distributed training configuration as a parameter.
+```python
+paddle.dist.train(
 
-When users start a local training job, PaddlePaddle client starts a docker container like:
-```bash
-docker run --rm \
-  --name quickstart \
-  -v <host input dir>:/input \
-  -v <host output dir>:/output \
-  -v <package files>:/package \
-  -e NUM_PASS=4 \
-  -e PYTHONPATH=/package \
-  paddlepaddle/paddle:0.10.0rc3 \
-  python train.py
+    k8s_user="paddle",
+    k8s_pssword="paddle-dev",
+    job_name="quickstart",
+    trainers=8,
+    pservers=4,
+    input=/quickstart/input,
+    output=/quickstart/output,
+    base_image="paddlepaddle/paddle:0.10.rc2",
+    use_gpu=False)
 ```
 
+## Submit a Distributed Training Job With a Command Line Tool
 
-# Running Distributed Training Job
+### Configurate PaddlePaddle client
 
-## Configurate PaddlePaddle client
-
-You should configure PaddlePaddle client by the configuration file firstly, the default path:
+Users should configure PaddlePaddle client by the configuration file firstly, the default path:
 `$HOME/.paddle/config`.
 
 ```yaml
@@ -58,12 +41,11 @@ dockerRegistry:
 paddleServer: http://<paddle server domain>:<paddle server port>
 ```
 
+### Submit a Distributed Training Job
 
-## Submit a Distributed Training Job
-Users will submit a distributed training job with the command: `paddle train` without flag `--locally`.
-
+Users will execute the command `paddle job submit` and provides distributed training configuration as parameter.
 ```bash
-paddle train \
+paddle job submit\
   --job-name=cluster-quickstart \
   --package-path=$PWD/quick_start \
   --entry-point="python train.py" \
@@ -89,7 +71,17 @@ paddle train \
 - `trainer-gpu-num`: how much GPU card for one paddle trainer process, it's requirements only if `use-gpu=true`,
 - `env`: environment variable
 
-## Runtime Environment On kubernetes
+### PaddlePaddle Client Commands:
+The command line tool also supports these subcommand:
+- `paddle train`: start a training job
+- `paddle list`: list all PaddlePaddle jobs in current namespace
+- `paddle cancel`: cancel a running job.
+- `paddle status`: status of a PaddlePaddle job
+- `paddle version`: show PaddlePaddle client and PaddlePaddle server version info.
+- `paddle upload`: upload training data to distributed storage.
+- `paddle download`: download training data from a distributed storage.
+
+# Runtime Environment On kubernetes
 
 For a distributed training job, there is two docker image called `runtime docker image` and `base docker image`, the `runtime docker image` is actually running in kubernetes.
 
@@ -120,7 +112,7 @@ For a distributed training job, there is two docker image called `runtime docker
   ```
   Execute the command: `paddle train --package-path=./paddle_eample/quick_start ...`, PaddlePaddle client will upload the trainer package(quick_start)and setup parameters to [Paddle Server](#paddle-server)
 
-## Paddle Server
+# Paddle Server
 Paddle server is running on kubernetes, users will configure the server address in [PaddlePaddle client configuration file](#configurate-paddlepaddle-client)
 
 - RESTful API
@@ -148,10 +140,9 @@ Paddle server is running on kubernetes, users will configure the server address 
     - Fetch all pserver address using kubernetes API and put environment variable.
     - Start up trainer process with `entry-point`.
 
-## PaddlePaddle Client Commands:
-To run local training job with flag `--locally` and distributed training job without it.
-- `paddle train`: start a training job
-- `paddle list`: list all PaddlePaddle jobs in current namespace
-- `paddle cancel`: cancel a running job.
-- `paddle status`: status of a PaddlePaddle job
-- `paddle version`: show PaddlePaddle client and PaddlePaddle server version info.
+# Work Feature
+- V1
+  - Submit a distributed training job with python code.
+  - Support `paddle upload` and `paddle download`
+- V1
+  - Submit a distributed training job with python code, support `paddle train`, `paddle list` and etc...
