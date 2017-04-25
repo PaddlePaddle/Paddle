@@ -68,6 +68,7 @@ PaddlePaddle文档使用 `sphinx`_ 自动生成，用户可以参考sphinx教程
 如何更新www.paddlepaddle.org文档
 ================================
 
+开发者给PaddlePaddle代码增加的注释以PR的形式提交到github中，提交方式可参见 `贡献文档 <http://paddlepaddle.org/develop/doc_cn/howto/dev/contribute_to_paddle_cn.html>`_ 。
 目前PaddlePaddle的develop分支的文档是自动触发更新的，用户可以分别查看最新的 `中文文档 <http://www.paddlepaddle.org/develop/doc_cn/>`_ 和
 `英文文档 <http://www.paddlepaddle.org/develop/doc/>`_ 。
 
