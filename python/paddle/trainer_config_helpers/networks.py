@@ -1397,13 +1397,15 @@ def inputs(layers, *args):
     Inputs(*[l.name for l in layers])
 
 
-def outputs(layers, *args):
+def outputs(layers, debug=True, *args):
     """
     Declare the outputs of network. If user have not defined the inputs of
     network, this method will calculate the input order by dfs travel.
 
     :param layers: Output layers.
     :type layers: list|tuple|LayerOutput
+    :param debug: The debug switch for printing input/output order.
+    :type debug: bool
     :return:
     """
 
@@ -1469,13 +1471,16 @@ def outputs(layers, *args):
         if each_output.name not in final_outputs:
             final_outputs.append(each_output.name)
 
-    logger.info("".join(["The input order is [", ", ".join(final_inputs), "]"]))
+    if debug:
+        logger.info("".join(
+            ["The input order is [", ", ".join(final_inputs), "]"]))
 
     if len(final_outputs) == 0:
         final_outputs = map(lambda x: x.name, layers)
 
-    logger.info("".join(
-        ["The output order is [", ", ".join(final_outputs), "]"]))
+    if debug:
+        logger.info("".join(
+            ["The output order is [", ", ".join(final_outputs), "]"]))
 
     Inputs(*final_inputs)
     Outputs(*final_outputs)

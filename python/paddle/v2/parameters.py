@@ -16,7 +16,7 @@ def create(layers):
     :param layers:
     :return:
     """
-    topology = Topology(layers)
+    topology = Topology(layers, debug=False)  # do not print topology
     pool = Parameters()
     for param in topology.proto().parameters:
         pool.__append_config__(param)
