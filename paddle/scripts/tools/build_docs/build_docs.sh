@@ -22,9 +22,9 @@ case "$1" in
         pushd $PADDLE_SOURCE_DIR/build_doc
         cmake .. -DWITH_DOC=ON
         make paddle_docs paddle_docs_cn
+        popd
         cp -r $PADDLE_SOURCE_DIR/build_doc/doc/en/html/* doc
         cp -r $PADDLE_SOURCE_DIR/build_doc/doc/cn/html/* doc_cn
-        popd
         rm -rf $PADDLE_SOURCE_DIR/build_doc
         ;;
     "--help")
