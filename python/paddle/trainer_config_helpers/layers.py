@@ -116,7 +116,7 @@ __all__ = [
     'spp_layer',
     'pad_layer',
     'eos_layer',
-    'smooth_l1',
+    'smooth_l1_cost',
     'layer_support',
 ]
 
@@ -5283,7 +5283,7 @@ def multi_binary_label_cross_entropy(input,
 
 @wrap_name_default()
 @layer_support()
-def smooth_l1(input, label, name=None, layer_attr=None):
+def smooth_l1_cost(input, label, name=None, layer_attr=None):
     """
     This is a L1 loss but more smooth. It requires that the
     size of input and label are equal. The formula is as follows,
@@ -5296,19 +5296,15 @@ def smooth_l1(input, label, name=None, layer_attr=None):
 
     .. math::
 
-        mooth_{L1}(x) =
-        \begin{cases}
-        0.5x^2& \text{if} |x| < 1 \\
-        |x|-0.5& \text{otherwise}
-        \end{cases}
+        smooth_{L1}(x) = \\begin{cases} 0.5x^2& \\text{if}  \\ |x| < 1 \\\\ |x|-0.5& \\text{otherwise} \end{cases}
 
     More details can be found by referring to `Fast R-CNN
     <https://arxiv.org/pdf/1504.08083v2.pdf>`_
 
     .. code-block:: python
 
-       cost = smooth_l1(input=input_layer,
-                        label=label_layer)
+       cost = smooth_l1_cost(input=input_layer,
+                             label=label_layer)
 
     :param input: The input layer.
     :type input: LayerOutput

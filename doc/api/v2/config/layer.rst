@@ -421,7 +421,7 @@ hsigmoid
 
 smooth_l1
 ---------
-..  automodule:: paddle.v2.layer.smooth_l1
+..  autoclass:: paddle.v2.layer.smooth_l1_cost
     :noindex:
 
 Check Layer 
