@@ -1,18 +1,33 @@
-# Git 开发指南 
+# 如何贡献代码
 
-这个指南将完成一次完整的代码贡献流程。
+我们真诚地感谢您的贡献，欢迎通过 GitHub 的 fork 和 pull request 流程来提交代码。
 
-## Fork
+## 代码要求
+- 你的代码必须完全遵守 [doxygen](http://www.stack.nl/~dimitri/doxygen/) 的样式。
+- 确保编译器选项 WITH\_STYLE\_CHECK 已打开，并且编译能通过代码样式检查。
+- 所有代码必须具有单元测试。
+- 通过所有单元测试。
 
-首先 Fork <https://github.com/PaddlePaddle/Paddle>，生成自己目录下的仓库，比如 <https://github.com/USERNAME/Paddle>。
+以下教程将指导您提交代码。
+## [Fork](https://help.github.com/articles/fork-a-repo/)
+
+跳转到[PaddlePaddle](https://github.com/PaddlePaddle/Paddle) GitHub首页，然后单击 `Fork` 按钮，生成自己目录下的仓库，比如 <https://github.com/USERNAME/Paddle>。
 
 ## 克隆（Clone）
 
+将远程仓库 clone 到本地。
+
+```bash
+➜  git clone https://github.com/USERNAME/Paddle
+➜  cd Paddle
+```
 
 
 ## 创建本地分支
 
-所有的 feature 和 bug_fix 的开发工作都应该在一个新的分支上完成，一般从 `develop` 分支上创建新分支。
+Paddle 目前使用[Git流分支模型](http://nvie.com/posts/a-successful-git-branching-model/)进行开发，测试，发行和维护。**develop** 是主分支，其他用户分支是特征分支（feature branches）。
+
+所有的 feature 和 bug fix 的开发工作都应该在一个新的分支上完成，一般从 `develop` 分支上创建新分支。
 
 ```bash
 # （从当前分支）创建名为 MY_COOL_STUFF_BRANCH 的新分支
