@@ -114,10 +114,10 @@
           </ul>
         </div>
         <ul class="site-page-links">
-          <li><a>Home</a></li>
-          <li><a>Get Started</a></li>
+          <li><a href="/">Home</a></li>
+          <li><a href="http://book.paddlepaddle.org">Get Started</a></li>
           <li class="active"><a>Documentation</a></li>
-          <li><a>About Us</a></li>
+	  <!-- <li><a>About Us</a></li> -->
         </ul>
       </div>
       <div class="doc-module">
@@ -137,7 +137,7 @@
           {{ toctree }}
         {% endblock %}
     </nav>
-    {% if toc %}
+    {% if False %}
     <nav class="local-toc">{{ toc }}</nav>
     {% endif %}
     <section class="doc-content-wrap">
