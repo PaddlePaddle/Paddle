@@ -287,6 +287,7 @@
 <li><a class="reference internal" href="#warp-ctc-layer">warp_ctc_layer</a></li>
 <li><a class="reference internal" href="#nce-layer">nce_layer</a></li>
 <li><a class="reference internal" href="#hsigmoid">hsigmoid</a></li>
+<li><a class="reference internal" href="#smooth-l1-cost">smooth_l1_cost</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#check-layer">Check Layer</a><ul>
@@ -3051,7 +3052,6 @@ Input should be a vector of positive numbers, without normalization.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The first input layer.</li>
 <li><strong>label</strong> &#8211; The input label.</li>
-<li><strong>type</strong> (<em>basestring</em>) &#8211; The type of cost.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
@@ -3546,6 +3546,46 @@ LayerOutput.</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; Bias attribute. None means default bias.
 False means no bias.</li>
 <li><strong>param_attr</strong> (<em>ParameterAttribute|None</em>) &#8211; Parameter Attribute. None means default parameter.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="smooth-l1-cost">
+<h3>smooth_l1_cost<a class="headerlink" href="#smooth-l1-cost" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">smooth_l1_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>This is a L1 loss but more smooth. It requires that the
+size of input and label are equal. The formula is as follows,</p>
+<div class="math">
+\[L = \sum_{i} smooth_{L1}(input_i - label_i)\]</div>
+<p>in which</p>
+<div class="math">
+\[\begin{split}smooth_{L1}(x) = \begin{cases} 0.5x^2&amp; \text{if}  \ |x| &lt; 1 \\ |x|-0.5&amp; \text{otherwise} \end{cases}\end{split}\]</div>
+<p>More details can be found by referring to <a class="reference external" href="https://arxiv.org/pdf/1504.08083v2.pdf">Fast R-CNN</a></p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">smooth_l1_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">input_layer</span><span class="p">,</span>
+                      <span class="n">label</span><span class="o">=</span><span class="n">label_layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layer.</li>
+<li><strong>label</strong> &#8211; The input label.</li>
+<li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
