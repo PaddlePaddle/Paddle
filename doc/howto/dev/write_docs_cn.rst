@@ -16,7 +16,7 @@ PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式。�
 
 使用Docker构建PaddlePaddle的文档，需要在系统里先安装好Docker工具包。Docker安装请参考 `Docker的官网 <https://docs.docker.com/>`_ 。安装好Docker之后可以使用源码目录下的脚本构建文档，即
 
-..	code-block:: bash
+..  code-block:: bash
 
     cd TO_YOUR_PADDLE_CLONE_PATH
     bash paddle/scripts/tools/build_docs.sh
@@ -35,7 +35,7 @@ PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式。�
 
 因为PaddlePaddle的v2 api文档生成过程依赖于py_paddle Python包，用户需要首先确认py_paddle包已经安装。
 
-..	code-block:: bash
+..  code-block:: bash
 
     python -c "import py_paddle"
 
@@ -44,7 +44,7 @@ PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式。�
 
 如果提示正确，可以执行以下命令编译生成文档，即
 
-..	code-block:: bash
+..  code-block:: bash
 
     cd TO_YOUR_PADDLE_CLONE_PATH
     mkdir build_doc
@@ -73,5 +73,5 @@ PaddlePaddle文档使用 `sphinx`_ 自动生成，用户可以参考sphinx教程
 
 
 
-..	_cmake: https://cmake.org/
-..	_sphinx: http://www.sphinx-doc.org/en/1.4.8/
+..  _cmake: https://cmake.org/
+..  _sphinx: http://www.sphinx-doc.org/en/1.4.8/
