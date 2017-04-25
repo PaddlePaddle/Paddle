@@ -16,5 +16,8 @@ setup(name='paddle',
       packages=packages,
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}'
-      }
+      },
+      install_requires=[
+        'requests==2.13.0'
+      ],
 )
