@@ -498,6 +498,12 @@ hsigmoid
     :members: hsigmoid
     :noindex:
 
+smooth_l1_cost
+--------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: smooth_l1_cost
+    :noindex:
+
 Check Layer 
 ============
 

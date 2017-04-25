@@ -419,6 +419,11 @@ hsigmoid
 ..  autoclass:: paddle.v2.layer.hsigmoid
     :noindex:
 
+smooth_l1_cost
+--------------
+..  autoclass:: paddle.v2.layer.smooth_l1_cost
+    :noindex:
+
 Check Layer 
 ============
 
