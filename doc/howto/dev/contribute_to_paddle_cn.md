@@ -1,130 +1,170 @@
-# 如何贡献代码
+# Git 开发指南 
 
-我们真诚地感谢您的贡献，欢迎通过 GitHub 的 fork 和 pull request 流程来提交代码。
- 
-## 代码要求
-- 你的代码必须完全遵守 [doxygen](http://www.stack.nl/~dimitri/doxygen/) 的样式。
-- 确保编译器选项 WITH\_STYLE\_CHECK 已打开，并且编译能通过代码样式检查。
-- 所有代码必须具有单元测试。
-- 通过所有单元测试。
+这个指南将完成一次完整的代码贡献流程。
 
-以下教程将指导您提交代码。
- 
-## [Fork](https://help.github.com/articles/fork-a-repo/)
- 
-跳转到[PaddlePaddle](https://github.com/PaddlePaddle/Paddle) GitHub首页，然后单击 `Fork` 按钮。
+## Fork
+
+首先 Fork <https://github.com/PaddlePaddle/Paddle>，生成自己目录下的仓库，比如 <https://github.com/USERNAME/Paddle>。
 
 ## 克隆（Clone）
 
-Paddle 目前使用[git流分支模型](http://nvie.com/posts/a-successful-git-branching-model/)进行开发，测试，发行和维护。
-**develop** 是主分支，其他用户分支是特征分支（feature branches）。
 
-一旦你创建了一个fork，你可以使用你最喜欢的 git 客户端克隆你的仓库（repo）或只是直接在命令行输入：
 
-```shell
-# 克隆 fork 到本地
-git clone --branch develop https://github.com/USERNAME/Paddle.git
-```
-如果你的仓库不包含 **develop** 分支，你只需自己创建它。
+## 创建本地分支
 
-```shell
-git clone https://github.com/USERNAME/Paddle.git Paddle
-cd Paddle
-git checkout -b develop  # 创建 develop 分支
-git remote add upstream https://github.com/PaddlePaddle/Paddle.git  # 添加 upstream 到 baidu/Paddle
-git pull upstream develop  # 更新 upstream
+所有的 feature 和 bug_fix 的开发工作都应该在一个新的分支上完成，一般从 `develop` 分支上创建新分支。
+
+```bash
+# （从当前分支）创建名为 MY_COOL_STUFF_BRANCH 的新分支
+➜  git branch MY_COOL_STUFF_BRANCH
+
+# 切换到这个分支上
+➜  git checkout MY_COOL_STUFF_BRANCH 
 ```
 
-然后你可以通过做一个本地开发分支开始开发
+也可以通过 `git checkout -b` 一次性创建并切换分支。
 
-```shell
-git checkout -b MY_COOL_STUFF_BRANCH
+```bash
+➜  git checkout -b MY_COOL_STUFF_BRANCH
 ```
 
-## 使用 `pre-commit` 钩子
+值得注意的是，在 checkout 之前，需要保持当前分支目录 clean，否则会把 untracked 的文件也带到新分支上，这可以通过 `git status` 查看。
 
-Paddle 开发人员使用 [pre-commit](http://pre-commit.com/) 工具来管理git预提交钩子。 它可以帮助我们格式化源代码（cpp，python），在提交前检查一些基本事宜（每个文件只有一个 EOL 
-，git 中不要添加大文件）。 `pre-commit`测试是 Travis-CI 中单元测试的一部分，不满足钩子
-的 PR 不能提交代码到 Paddle。
+## 开始开发
 
-你可以通过 `pip install pre-commit` 安装 [pre-commit](http://pre-commit.com/)，
-目前 Paddle 使用 `clang-format` 来调整C/C++源代码格式。请确保 clang-format 版本在3.8以上。
+在本例中，我删除了 README.md 中的一行，并创建了一个新文件。
 
-然后只需在 Paddle clone 目录中运行 `pre-commit install` 。当你
-提交你的代码时，pre-commit 钩子会检查本地代码是否存在
-不适合提交的东西，等等。
+通过 `git status` 查看当前状态，这会提示当前目录的一些变化，同时也可以通过 `git diff` 查看文件具体被修改的内容。
 
-## 提交（Commit）
+```bash
+➜  git status
+On branch test
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
 
-提交你的代码：
+	modified:   README.md
 
-```shell
-# 显示工作树状态
-git status
-# 添加修改过的文件
-git add xx
-env EDITOR=vim git commit  # 你可以用 vim/nano/emacs 写下你的注释
-```
-提交信息的第一行是标题，其他行可以添加一些细节（如果有必要的话）。
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
 
-## 保持 Fork 状态最新
+	test
 
-在拉（pull）你的请求（request）之前，你应该从最新的 PaddlePaddle 同步代码。
-为此，你需要首先添加远程（remote）：
-
-```shell
-# 观察当前远程仓库配置
-git remote -v
-# 添加上游（upstream）仓库
-git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-# 验证新的 upstream
-git remote -v
+no changes added to commit (use "git add" and/or "git commit -a")
 ```
 
-用最新的 upstream 更新你的 fork：
+## 提交（commit）
 
-```shell
-git pull --rebase upstream develop
+接下来我们取消对 README.md 文件的改变，然后提交新添加的 test 文件。
+
+```bash
+➜  git checkout -- README.md
+➜  git status
+On branch test
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+
+	test
+
+nothing added to commit but untracked files present (use "git add" to track)
+➜  git add test
 ```
-如果本地没有提交，git 将简单地执行快进。但是，如果你一直在做一些改变（绝大多数情况下不应该），你可能要处理冲突。
 
-现在，你的本地主分支与上游修改的一致并是最新的。
+Paddle 使用 [pre-commit](http://pre-commit.com) 完成代码风格检查的自动化，它会在每次 commit 时自动检查代码是否符合规范，并检查一些基本事宜，因此我们首先安装并在当前目录运行它。
 
-## 推送（Push）到 GitHub
-
-```shell
-# 在 GitHub 上 push 你的仓库
-git push -u origin MY_COOL_STUFF_BRANCH  # 创建远程分支 MY_COOL_STUFF_BRANCH 到 origin.
+```bash
+➜  pip install pre-commit
+➜  pre-commit install
 ```
 
-## 拉取请求（Pull Request）
+Git 每次提交代码，都需要写提交说明，这可以让其他人知道这次提交做了哪些改变，这可以通过`git commit -m` 完成。
 
-转到 GitHub上 你 fork 的页面，选择你的开发分支并单击 **pull request 按钮**。
-
-## 使用最新版本更新你的 pull 请求
-
-在代码审查（code review）期间，由于 baidu/Paddle 中新的提交导致你的 pull 请求可能会失效。如果没有冲突，GitHub允许自动更新。 你可以点击 pull request 页面中的“更新分支（Update Branch）”按钮。 但是如果存在代码冲突，你需要手动进行更新。你需要在本地仓库执行如下命令：
-
-```shell
-git checkout MY_COOL_STUFF_BRANCH
-git pull upstream develop
-# 你可能需要根据git提示解决冲突
-# 创建并测试你的代码
-git push origin MY_COOL_STUFF_BRANCH
+```bash
+➜  git commit -m "add test file"
+CRLF end-lines remover...............................(no files to check)Skipped
+yapf.................................................(no files to check)Skipped
+Check for added large files..............................................Passed
+Check for merge conflicts................................................Passed
+Check for broken symlinks................................................Passed
+Detect Private Key...................................(no files to check)Skipped
+Fix End of Files.....................................(no files to check)Skipped
+clang-formater.......................................(no files to check)Skipped
+[MY_COOL_STUFF_BRANCH c703c041] add test file
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 233
 ```
-现在你的 Pull Request 是最新的了。
 
-## 修改你的 pull request
+## 保持本地仓库最新
 
-当根据审阅者的意见修改 pull 请求时，请使用“git commit”而不是“git commit --amend”来提交更改，以便审阅者可以看到新的请求和旧的请求之间的区别。
+在准备发起 Pull Request 之前，需要同步原仓库（<https://github.com/PaddlePaddle/Paddle>）最新的代码。
 
-可能的命令是
+首先通过 `git remote` 查看当前远程仓库的名字。
 
-```shell
-git checkout MY_COOL_STUFF_BRANCH
-git pull upstream develop   # 将本地更新到最新的代码库
-# 可能会发生一些冲突
-# 开始开发吧！
-env EDITOR=vim git commit  # 添加修改日志
-git push origin MY_COOL_STUFF_BRANCH
+```bash
+➜  git remote
+origin
+➜  git remote -v
+origin	https://github.com/USERNAME/Paddle (fetch)
+origin	https://github.com/USERNAME/Paddle (push)
 ```
+
+这里 origin 是我们 clone 的远程仓库的名字，也就是自己用户名下的 Paddle，接下来我们创建一个原始 Paddle 仓库的远程主机，命名为 upstream。
+
+```bash
+➜  git remote add upstream https://github.com/PaddlePaddle/Paddle
+➜  git remote
+origin
+upstream
+```
+
+获取 upstream 的最新代码并更新当前分支。
+
+```bash
+➜  git fetch upstream
+➜  git pull --rebase upstream develop
+```
+
+## Push 到远程仓库
+
+将本地的修改推送到 GitHub 上，也就是 https://github.com/USERNAME/Paddle。
+
+```bash
+# 推送到远程仓库 origin 的 MY_COOL_STUFF_BRANCH 分支上
+➜  git push origin MY_COOL_STUFF_BRANCH
+```
+
+## 建立 Issue 并完成 PR
+
+建立一个 Issue 描述问题，记录它的编号。
+
+在 Push 新分支后， https://github.com/USERNAME/Paddle 中会出现新分支提示，点击绿色按钮发起 PR。
+
+![](https://ws1.sinaimg.cn/large/9cd77f2egy1fez1jq9mwdj21js04yq3m.jpg)
+
+选择目标分支：
+
+![](https://ws1.sinaimg.cn/large/9cd77f2egy1fez1ku4a5vj21am04st9l.jpg)
+
+在 PR 的说明中，填写 `solve #Issue编号` 可以在这个 PR 被 merge 后，自动关闭对应的 Issue，具体请见 <https://help.github.com/articles/closing-issues-via-commit-messages/>。
+
+接下来等待 review，如果有需要修改的地方，参照上述步骤更新 origin 中的对应分支即可。
+
+## 删除远程分支
+
+在 PR 被 merge 进主仓库后，我们可以在 PR 的页面删除远程仓库的分支。
+
+![](https://ws1.sinaimg.cn/large/9cd77f2egy1fez1pkqohzj217q05c0tk.jpg)
+
+## 删除本地分支
+
+最后，删除本地分支。
+
+```bash
+# 切换到 develop 分支
+git checkout develop 
+
+# 删除 MY_COOL_STUFF_BRANCH 分支
+git branch -D MY_COOL_STUFF_BRANCH 
+```
+
+至此，我们就完成了一次代码贡献的过程。
