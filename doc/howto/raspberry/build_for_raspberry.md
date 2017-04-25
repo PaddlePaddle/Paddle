@@ -1,6 +1,6 @@
-# 如何构建raspberry pi下运行的paddle
+# 如何构建Raspberry pi下运行的PaddlePaddle
 
-这里考虑的是交叉编译方式，即在Linux-X86环境下构建raspberry pi下可运行的paddle。
+这里考虑的是交叉编译方式，即在Linux-x86环境下构建Raspberry pi下可运行的PaddlePaddle。
 
 ## 下载交叉编译环境
 ```
@@ -10,9 +10,9 @@ git clone https://github.com/raspberrypi/tools
 
 
 ## 编译第三方库
-Paddle在cmake会在编译paddle的时候自动编译依赖的第三方库，不过openblas和protobuf最好还是在编译paddle之前先编译好，这样可以保证编译paddle的时候更加顺畅。
+cmake编译PaddlePaddle时候会自动下载编译依赖的第三方库，不过openblas和protobuf最好还是在编译PaddlePaddle之前先编译好，这样可以保证编译PaddlePaddle的时候更加顺畅。
 
-### 编译openblas
+### 编译OpenBLAS
 ```
 git clone https://github.com/xianyi/OpenBLAS.git
 make TARGET=ARMV7 HOSTCC=gcc CC=arm-linux-gnueabihf-gcc NOFORTRAN=1 USE_THREAD=0
