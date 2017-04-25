@@ -2,13 +2,14 @@
 如何贡献/修改文档
 ##################
 
-PaddlePaddle的文档包括英文文档 ``doc`` 和中文文档 ``doc_cn`` 两个部分。文档都是通过 `cmake`_ 驱动 `sphinx`_ 编译生成，生成后的文档分别存储在编译目录的 ``en`` 和 ``cn`` 两个子目录下。
+PaddlePaddle的文档包括英文文档 ``doc`` 和中文文档 ``doc_cn`` 两个部分。文档都是通过 `cmake`_ 驱动 `sphinx`_ 编译生成，生成后的文档分别存储在编译目录的 ``doc`` 和 ``doc_cn`` 两个子目录下。
 
 
 如何构建PaddlePaddle的文档
 ==========================
 
-PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式。构建PaddlePaddle文档需要准备的环境相对较复杂，所以我们推荐使用基于Docker来构建PaddlePaddle的文档。
+PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式，我们提供了一个构建脚本build_docs.sh来进行构建。
+PaddlePaddle文档需要准备的环境相对较复杂，所以我们推荐使用基于Docker来构建PaddlePaddle的文档。
 
 
 使用Docker构建PaddlePaddle的文档
@@ -19,12 +20,13 @@ PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式。�
 ..  code-block:: bash
 
     cd TO_YOUR_PADDLE_CLONE_PATH
-    bash paddle/scripts/tools/build_docs.sh
+    cd paddle/scripts/tools/build_docs
+    bash build_docs.sh with_docker
 
-编译完成后，会在当前目录生成两个子目录，build与build_doc，其中build_doc/doc目录之下包含两个子目录\:
+编译完成后，会在当前目录生成两个子目录\:
 
-* en 英文文档目录
-* cn 中文文档目录
+* doc 英文文档目录
+* doc_cn 中文文档目录
 
 打开浏览器访问对应目录下的index.html即可访问本地文档。
 
@@ -47,15 +49,13 @@ PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式。�
 ..  code-block:: bash
 
     cd TO_YOUR_PADDLE_CLONE_PATH
-    mkdir build_doc
-    cd build_doc
-    cmake .. -DWITH_DOC=ON
-    make paddle_docs paddle_docs_cn -j `nproc`
+    cd paddle/scripts/tools/build_docs
+    bash build_docs.sh local
 
-编译完成之后，在build_doc/doc目录之下会生成如下两个子目录\:
+编译完成之后，会在当前目录生成两个子目录\:
 
-* en 英文文档目录
-* cn 中文文档目录
+* doc 英文文档目录
+* doc_cn 中文文档目录
 
 打开浏览器访问对应目录下的index.html即可访问本地文档。
 
