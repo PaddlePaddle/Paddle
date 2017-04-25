@@ -144,9 +144,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../concepts/use_concepts_cn.html">基本使用概念</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../cluster/cluster_train_cn.html">运行分布式训练</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Kubernetes 简介</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#kubernetes">部署Kubernetes集群</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#">选择存储方案</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#kubectl">配置kubectl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="k8s_cn.html">Kubernetes单机训练</a></li>
 <li class="toctree-l2"><a class="reference internal" href="k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../dev/write_docs_cn.html">如何贡献/修改文档</a></li>
@@ -182,12 +179,14 @@
     </nav>
     
     <nav class="local-toc"><ul>
-<li><a class="reference internal" href="#">Kubernetes 简介</a></li>
+<li><a class="reference internal" href="#">Kubernetes 简介</a><ul>
 <li><a class="reference internal" href="#kubernetes">部署Kubernetes集群</a></li>
 <li><a class="reference internal" href="#">选择存储方案</a></li>
 <li><a class="reference internal" href="#kubectl">配置kubectl</a><ul>
 <li><a class="reference internal" href="#kubectl">安装kubectl</a></li>
 <li><a class="reference internal" href="#kubectlkubernetes">配置kubectl访问你的kubernetes集群</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -230,9 +229,8 @@
 <li><a class="reference external" href="https://kubernetes.io/docs/user-guide/namespaces/"><em>Namespaces</em></a> 命名空间，在kubernetes中创建的所有资源对象(例如上文的pod，job)等都属于一个命名空间，在同一个命名空间中，资源对象的名字是唯一的，不同空间的资源名可以重复，命名空间主要为了对象进行逻辑上的分组便于管理。本文只使用了默认命名空间。</li>
 <li><a class="reference external" href="https://kubernetes.io/docs/user-guide/persistent-volumes/"><em>PersistentVolume</em></a>: 和<a class="reference external" href="https://kubernetes.io/docs/user-guide/persistent-volumes/#persistentvolumeclaims"><em>PersistentVolumeClaim</em></a>结合，将外部的存储服务在Kubernetes中描述成为统一的资源形式，便于存储资源管理和Pod引用。</li>
 </ul>
-</div>
 <div class="section" id="kubernetes">
-<span id="id1"></span><h1>部署Kubernetes集群<a class="headerlink" href="#kubernetes" title="永久链接至标题">¶</a></h1>
+<span id="id1"></span><h2>部署Kubernetes集群<a class="headerlink" href="#kubernetes" title="永久链接至标题">¶</a></h2>
 <p>Kubernetes提供了多种集群部署的方案，本文档内不重复介绍。这里给出集中常见的部署方法：</p>
 <ul class="simple">
 <li><a class="reference external" href="https://kubernetes.io/docs/getting-started-guides/minikube/"><em>minikube</em></a>: 快速在本地启动一个单机的kubernetes服务器，便于本地验证和测试。</li>
@@ -243,7 +241,7 @@
 <p>可以参考<a class="reference external" href="https://kubernetes.io/docs/getting-started-guides/#table-of-solutions">这个表格</a>选择适合您的场景的合适方案。</p>
 </div>
 <div class="section" id="">
-<span id="id2"></span><h1>选择存储方案<a class="headerlink" href="#" title="永久链接至标题">¶</a></h1>
+<span id="id2"></span><h2>选择存储方案<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
 <p>容器不会保留在运行时生成的数据，job或者应用程序在容器中运行时生成的数据会在容器销毁时消失。为了完成分布式机器学习训练任务，需要有一个外部的存储服务来保存训练所需数据和训练输出。
 常见的可选存储服务包括：</p>
 <ul class="simple">
@@ -254,9 +252,9 @@
 </ul>
 </div>
 <div class="section" id="kubectl">
-<span id="kubectl"></span><h1>配置kubectl<a class="headerlink" href="#kubectl" title="永久链接至标题">¶</a></h1>
+<span id="kubectl"></span><h2>配置kubectl<a class="headerlink" href="#kubectl" title="永久链接至标题">¶</a></h2>
 <div class="section" id="kubectl">
-<span id="id3"></span><h2>安装kubectl<a class="headerlink" href="#kubectl" title="永久链接至标题">¶</a></h2>
+<span id="id3"></span><h3>安装kubectl<a class="headerlink" href="#kubectl" title="永久链接至标题">¶</a></h3>
 <div class="highlight-default"><div class="highlight"><pre><span></span># OS X
 curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/darwin/amd64/kubectl
 
@@ -269,7 +267,7 @@ curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s htt
 </div>
 </div>
 <div class="section" id="kubectlkubernetes">
-<span id="kubectlkubernetes"></span><h2>配置kubectl访问你的kubernetes集群<a class="headerlink" href="#kubectlkubernetes" title="永久链接至标题">¶</a></h2>
+<span id="kubectlkubernetes"></span><h3>配置kubectl访问你的kubernetes集群<a class="headerlink" href="#kubectlkubernetes" title="永久链接至标题">¶</a></h3>
 <p>编辑<code class="docutils literal"><span class="pre">~/.kube/config</span></code>这个配置文件，修改<code class="docutils literal"><span class="pre">Master-IP</span></code>的地址。如果使用SSL认证，则需要配置<code class="docutils literal"><span class="pre">certificate-authority</span></code>和<code class="docutils literal"><span class="pre">users</span></code>中的用户证书。如果是使用非SSL方式访问（比如通过8080端口），也可以去掉这些证书的配置。</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">apiVersion</span><span class="p">:</span> <span class="n">v1</span>
 <span class="n">clusters</span><span class="p">:</span>
@@ -291,6 +289,7 @@ curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s htt
     <span class="n">client</span><span class="o">-</span><span class="n">certificate</span><span class="p">:</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">apiserver</span><span class="o">.</span><span class="n">crt</span>
     <span class="n">client</span><span class="o">-</span><span class="n">key</span><span class="p">:</span> <span class="o">/</span><span class="n">Users</span><span class="o">/</span><span class="n">wuyi</span><span class="o">/.</span><span class="n">minikube</span><span class="o">/</span><span class="n">apiserver</span><span class="o">.</span><span class="n">key</span>
 </pre></div>
+</div>
 </div>
 </div>
 </div>
