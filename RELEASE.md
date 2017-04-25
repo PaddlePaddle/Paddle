@@ -1,3 +1,27 @@
+# Release v0.10.0
+
+## New Features
+
+* Support rectangle input for CNN.
+* Support stride pooling for seqlastin and seqfirstin.
+* Expose seq_concat_layer/seq_reshape_layer in `trainer_config_helpers`.
+
+## Improvements
+
+* Speedup the backward of average layer on GPU.
+* Reorganize the catalog of doc/ and refine several docs.
+* Add Travis-CI for checking dead links.
+* Add a example for explaining sparse_vector.
+* Add Relu in layer_math.py
+
+## Bug Fixes
+
+* Add layer check for recurrent_group.
+* Clang-format off on some cuda .cc files.
+* Fix LogActivation which is not defined.
+* Fix bug when run test_layerHelpers multiple times.
+* Fix protobuf size limit on seq2seq demo.
+
 # Release v0.9.0
 
 ## New Features:
