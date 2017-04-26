@@ -119,7 +119,7 @@ Users can specify the following Docker build arguments with either "ON" or "OFF"
 The following command builds the production image:
 
 ```bash
-docker build -t paddle -f build/Dockerfile .
+docker build -t paddle -f build/Dockerfile ./build
 ```
 
 This production image is minimal -- it includes binary `paddle`, the shared library `libpaddle.so`, and Python runtime.
