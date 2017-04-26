@@ -5,6 +5,10 @@
 * Support rectangle input for CNN.
 * Support stride pooling for seqlastin and seqfirstin.
 * Expose seq_concat_layer/seq_reshape_layer in `trainer_config_helpers`.
+* Add dataset package
+  - CIFAR, MNIST, IMDB, WMT14, CONLL05, movielens, imikolov.
+* Add Priorbox layer for Single Shot Multibox Detection. 
+* Add smooth L1 cost.
 
 ## Improvements
 
@@ -13,6 +17,12 @@
 * Add Travis-CI for checking dead links.
 * Add a example for explaining sparse_vector.
 * Add Relu in layer_math.py
+* Simplify data processing flow for quick start.
+* Support CUDNN Deconv.
+* Add data feeder for v2 API.
+* Support predicting the samples from sys.stdin for sentiment demo.
+* Provide multi-proccess interface for image preprocessing. 
+* Add benchmark document for v1 API.
 
 ## Bug Fixes
 
@@ -21,6 +31,9 @@
 * Fix LogActivation which is not defined.
 * Fix bug when run test_layerHelpers multiple times.
 * Fix protobuf size limit on seq2seq demo.
+* Fix bug for dataprovider converter in GPU mode.
+* Fix bug in GatedRecurrentLayer which only occurs in predicting or `job=test` mode.
+* Fix bug for BatchNorm when testing more than models in test mode.
 
 # Release v0.9.0
 
