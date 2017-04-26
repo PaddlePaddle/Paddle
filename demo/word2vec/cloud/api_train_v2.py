@@ -33,7 +33,9 @@ def dist_train(trainer,
         #submit distributed training job
         job_manager = JobManager(paddle_job)
         if not job_manager.submit():
-            print "paddle job sumit failed."
+            print "submit paddle job failed."
+        else:
+            print "submit paddle job successed."
     else:
         trainer.train(
             reader=reader,

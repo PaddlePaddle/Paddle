@@ -22,7 +22,7 @@ class JobManager(object):
         try:
             ret = client.AppsV1beta1Api().create_namespaced_stateful_set(
                 namespace=NAMESPACE,
-                body=paddle_job.new_pserver_job(),
+                body=self.paddle_job.new_pserver_job(),
                 pretty=True)
         except ApiException, e:
             print "Exception when submit pserver job: %s " % e
@@ -32,7 +32,7 @@ class JobManager(object):
         try:
             ret = client.BatchV1Api().create_namespaced_job(
                 namespace=NAMESPACE,
-                body=paddle_job.new_trainer_job(),
+                body=self.paddle_job.new_trainer_job(),
                 pretty=True)
         except ApiException, e:
             print "Exception when submit trainer job: %s" % e
