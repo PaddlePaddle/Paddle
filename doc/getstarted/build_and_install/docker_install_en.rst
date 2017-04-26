@@ -210,7 +210,7 @@ compiling tools and dependencies.
 
    .. code-block:: bash
 
-      docker build -t paddle:prod -f build/Dockerfile .
+      docker build -t paddle:prod -f build/Dockerfile ./build
 
    The above command will generate the production image by copying the compiled PaddlePaddle program into the image.
 
