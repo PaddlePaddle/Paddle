@@ -6,6 +6,7 @@
 * Support stride pooling for seqlastin and seqfirstin.
 * Expose seq_concat_layer/seq_reshape_layer in `trainer_config_helpers`.
 * Add data reader creator and data reader decorator for v2 API.
+* Add the cpu implementation of cmrnorm-projection.
 
 ## Improvements
 
@@ -16,6 +17,16 @@
 * Add Relu in layer_math.py.
 * Add packages for automatically downloading public datasets.
 * Rename Argument::sumCost to Argument::sum since Argument does not have to have any relationship with cost.
+* Add a new `TensorExpression` implementation for matrix-related expression evaluations.
+* Add Lazy Assignment for optimize the calculation of multiple expressions.
+* Add `Function` to reconstruct the computation function.
+  * PadFunc and PadGradFunc.
+  * ContextProjectionForwardFunc and ContextProjectionBackwardFunc.
+  * CosSimBackward and CosSimBackwardFunc.
+  * CrossMapNormalFunc and CrossMapNormalGradFunc.
+  * MulFunc.
+* Add `AutoCompare` and `FunctionCompare`, which make it easier to write unittest for comparing gpu and cpu version of a function.
+* Add `libpaddle_test_main.a` and remove the main function inside the test file.
 
 ## Bug Fixes
 
@@ -24,6 +35,9 @@
 * Fix LogActivation which is not defined.
 * Fix bug when run test_layerHelpers multiple times.
 * Fix protobuf size limit on seq2seq demo.
+* Fix unit test of paramRelu.
+* Fix some warning about CpuSparseMatrix.
+* Fix MultiGradientMachine error if trainer_count > batch_size.
 
 # Release v0.9.0
 
