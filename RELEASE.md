@@ -2,10 +2,18 @@
 
 ## New Features
 
+* Support rectangle input for CNN.
+* Support stride pooling for seqlastin and seqfirstin.
+* Expose seq_concat_layer/seq_reshape_layer in `trainer_config_helpers`.
 * Add the cpu implementation of cmrnorm-projection.
 
 ## Improvements
 
+* Speedup the backward of average layer on GPU.
+* Reorganize the catalog of doc/ and refine several docs.
+* Add Travis-CI for checking dead links.
+* Add a example for explaining sparse_vector.
+* Add Relu in layer_math.py
 * Add a new `TensorExpression` implementation for matrix-related expression evaluations.
 * Add Lazy Assignment for optimize the calculation of multiple expressions.
 * Add `Function` to reconstruct the computation function.
@@ -19,6 +27,11 @@
 
 ## Bug Fixes
 
+* Add layer check for recurrent_group.
+* Clang-format off on some cuda .cc files.
+* Fix LogActivation which is not defined.
+* Fix bug when run test_layerHelpers multiple times.
+* Fix protobuf size limit on seq2seq demo.
 * Fix unit test of paramRelu.
 * Fix some warning about CpuSparseMatrix.
 * Fix MultiGradientMachine error if trainer_count > batch_size.
