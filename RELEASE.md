@@ -9,6 +9,8 @@
   - CIFAR, MNIST, IMDB, WMT14, CONLL05, movielens, imikolov.
 * Add Priorbox layer for Single Shot Multibox Detection. 
 * Add smooth L1 cost.
+* Add data reader creator and data reader decorator for v2 API.
+* Add the cpu implementation of cmrnorm-projection.
 
 ## Improvements
 
@@ -23,6 +25,19 @@
 * Support predicting the samples from sys.stdin for sentiment demo.
 * Provide multi-proccess interface for image preprocessing. 
 * Add benchmark document for v1 API.
+* Add Relu in layer_math.py.
+* Add packages for automatically downloading public datasets.
+* Rename Argument::sumCost to Argument::sum since Argument does not have to have any relationship with cost.
+* Add a new `TensorExpression` implementation for matrix-related expression evaluations.
+* Add Lazy Assignment for optimize the calculation of multiple expressions.
+* Add `Function` to reconstruct the computation function.
+  * PadFunc and PadGradFunc.
+  * ContextProjectionForwardFunc and ContextProjectionBackwardFunc.
+  * CosSimBackward and CosSimBackwardFunc.
+  * CrossMapNormalFunc and CrossMapNormalGradFunc.
+  * MulFunc.
+* Add `AutoCompare` and `FunctionCompare`, which make it easier to write unittest for comparing gpu and cpu version of a function.
+* Add `libpaddle_test_main.a` and remove the main function inside the test file.
 
 ## Bug Fixes
 
@@ -34,6 +49,9 @@
 * Fix bug for dataprovider converter in GPU mode.
 * Fix bug in GatedRecurrentLayer which only occurs in predicting or `job=test` mode.
 * Fix bug for BatchNorm when testing more than models in test mode.
+* Fix unit test of paramRelu.
+* Fix some warning about CpuSparseMatrix.
+* Fix MultiGradientMachine error if trainer_count > batch_size.
 
 # Release v0.9.0
 
