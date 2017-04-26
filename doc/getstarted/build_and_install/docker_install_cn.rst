@@ -4,7 +4,7 @@ PaddlePaddle的Docker容器使用方式
 PaddlePaddle目前唯一官方支持的运行的方式是Docker容器。因为Docker能在所有主要操作系统（包括Linux，Mac OS X和Windows）上运行。 请注意，您需要更改 `Dockers设置 <https://github.com/PaddlePaddle/Paddle/issues/627>`_ 才能充分利用Mac OS X和Windows上的硬件资源。
 
 
-PaddlePaddle发布的docker镜像使用说明
+PaddlePaddle发布的Docker镜像使用说明
 ------------------------------
 
 我们把PaddlePaddle的编译环境打包成一个镜像，称为开发镜像，里面涵盖了
@@ -13,7 +13,7 @@ PaddlePaddle需要的所有编译工具。把编译出来的PaddlePaddle也打�
 PaddlePaddle发布新版本的时候都会发布对应版本的生产镜像以及开发镜像。运
 行镜像包括纯CPU版本和GPU版本以及其对应的非AVX版本。我们会在
 `dockerhub.com <https://hub.docker.com/r/paddledev/paddle/>`_ 提供最新
-的docker镜像，可以在"tags"标签下找到最新的Paddle镜像版本。为了方便在国
+的Docker镜像，可以在"tags"标签下找到最新的Paddle镜像版本。为了方便在国
 内的开发者下载Docker镜像，我们提供了国内的镜像服务器供大家使用。如果您
 在国内，请把文档里命令中的paddlepaddle/paddle替换成
 docker.paddlepaddle.org/paddle。
@@ -101,15 +101,15 @@ docker.paddlepaddle.org/paddle。
    这里`a.py`包含的所有依赖假设都可以在Paddle的运行容器中。如果需要包含更多的依赖、或者需要发布您的应用的镜像，可以编写`Dockerfile`使用`FROM paddledev/paddle:<version>`
    创建和发布自己的AI程序镜像。
 
-运行PaddlePaddle书籍
+运行PaddlePaddle Book
 ---------------------
 
 Jupyter Notebook是一个开源的web程序，大家可以通过它制作和分享带有代码、公式、图表、文字的交互式文档。用户可以通过网页浏览文档。
 
-PaddlePaddle书籍是为用户和开发者制作的一个交互式的Jupyter Nodebook。
-如果您想要更深入了解deep learning，PaddlePaddle书籍一定是您最好的选择。
+PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Nodebook。
+如果您想要更深入了解deep learning，PaddlePaddle Book一定是您最好的选择。
 
-我们提供可以直接运行PaddlePaddle书籍的docker镜像，直接运行：
+我们提供可以直接运行PaddlePaddle Book的Docker镜像，直接运行：
 
 .. code-block:: bash
 
