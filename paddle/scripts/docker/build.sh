@@ -116,7 +116,7 @@ RUN ${MIRROR_UPDATE}
     pip install --upgrade pip && \
     pip install -U 'protobuf==3.1.0' requests numpy
 # Use different deb file when building different type of images
-ADD build/*.deb /usr/local/opt/paddle/deb/
+ADD *.deb /usr/local/opt/paddle/deb/
 # run paddle version to install python packages first
 RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && \
     rm -f /usr/local/opt/paddle/deb/*.deb && \
