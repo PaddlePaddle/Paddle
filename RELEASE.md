@@ -5,6 +5,7 @@
 * Support rectangle input for CNN.
 * Support stride pooling for seqlastin and seqfirstin.
 * Expose seq_concat_layer/seq_reshape_layer in `trainer_config_helpers`.
+* Add data reader creator and data reader decorator for v2 API.
 
 ## Improvements
 
@@ -12,7 +13,9 @@
 * Reorganize the catalog of doc/ and refine several docs.
 * Add Travis-CI for checking dead links.
 * Add a example for explaining sparse_vector.
-* Add Relu in layer_math.py
+* Add Relu in layer_math.py.
+* Add packages for automatically downloading public datasets.
+* Rename Argument::sumCost to Argument::sum since Argument does not have to have any relationship with cost.
 
 ## Bug Fixes
 
