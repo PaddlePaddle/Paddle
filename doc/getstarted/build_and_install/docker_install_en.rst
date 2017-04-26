@@ -53,12 +53,20 @@ Docker is simple as long as we understand a few basic concepts:
 Usage of CPU-only and GPU Images
 ----------------------------------
 
-For each version of PaddlePaddle, we release two types of Docker images:
-development image and production image. Production image includes
-CPU-only version and a CUDA GPU version and their no-AVX versions. We
-put the docker images on `dockerhub.com
+We package PaddlePaddle's compile environment into a Docker image,
+called the develop image, it contains all compiling tools that
+PaddlePaddle needs. We package compiled PaddlePaddle program into a
+Docker image as well, called the production image, it contains all
+runtime environment that running PaddlePaddle needs. For each version
+of PaddlePaddle, we release both of them. Production image includes
+CPU-only version and a CUDA GPU version and their no-AVX versions.
+
+We put the docker images on `dockerhub.com
 <https://hub.docker.com/r/paddledev/paddle/>`_. You can find the
-latest versions under "tags" tab at dockerhub.com
+latest versions under "tags" tab at dockerhub.com. If you are in
+China, you can use our Docker image registry mirror to speed up the
+download process. To use it, please replace all paddlepaddle/paddle in
+the commands to docker.paddlepaddle.org/paddle.
 
 1. Production images, this image might have multiple variants:
 
@@ -179,59 +187,40 @@ Develop PaddlePaddle or Train Model Using C++ API
 We will be using PaddlePaddle development image since it contains all
 compiling tools and dependencies.
 
-Let's clone PaddlePaddle repo first:
+1. Build PaddlePaddle develop image
 
-.. code-block:: bash
+   Use following command to build PaddlePaddle develop image:
 
-   git clone https://github.com/PaddlePaddle/Paddle.git && cd Paddle
+   .. code-block:: bash
 
-Mount both workspace folder and paddle code folder into docker
-container, so we can access them inside docker container. There are
-two ways of using PaddlePaddle development docker image:
+      git clone https://github.com/PaddlePaddle/Paddle.git && cd Paddle
+      docker build -t paddle:dev .
 
-- run interactive bash directly
+2. Build PaddlePaddle production image
 
-  .. code-block:: bash
+   There are two steps for building production image, the first step is to run:
 
-     # use nvidia-docker instead of docker if you need to use GPU
-     docker run -it -v ~/workspace:/workspace -v $(pwd):/paddle paddlepaddle/paddle:0.10.0rc2-dev /bin/bash
-     # now we are inside docker container
+   .. code-block:: bash
 
-- or, we can run it as a daemon container
+      docker run -v $(pwd):/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=OFF" -e "WITH_TEST=ON" paddle:dev
 
-  .. code-block:: bash
+   The above command will compile PaddlePaddle and create a Dockerfile for building production image. All the generated files are in the build directory. "WITH_GPU" controls if the generated production image supports GPU. "WITH_AVX" controls if the generated production image supports AVX. "WITH_TEST" controls if the unit test will be generated.
 
-     # use nvidia-docker instead of docker if you need to use GPU
-     docker run -d -p 2202:22 -p 8888:8888 -v ~/workspace:/workspace -v $(pwd):/paddle paddlepaddle/paddle:0.10.0rc2-dev /usr/sbin/sshd -D
+   The second step is to run:
 
-  and SSH to this container using password :code:`root`:
+   .. code-block:: bash
 
-  .. code-block:: bash
+      docker build -t paddle:prod -f build/Dockerfile .
 
-     ssh -p 2202 root@localhost
+   The above command will generate the production image by copying the compiled PaddlePaddle program into the image.
 
-  An advantage is that we can run the PaddlePaddle container on a
-  remote server and SSH to it from a laptop.
+3. Run unit test
 
-When developing PaddlePaddle, you can edit PaddlePaddle source code
-from outside of docker container using your favoriate editor. To
-compile PaddlePaddle, run inside container:
+   Following command will run unit test:
 
-.. code-block:: bash
-
-   WITH_GPU=OFF WITH_AVX=ON WITH_TEST=ON bash /paddle/paddle/scripts/docker/build.sh
-
-This builds everything about Paddle in :code:`/paddle/build`.  And we
-can run unit tests there:
-
-.. code-block:: bash
-
-   cd /paddle/build
-   ctest
-
-When training model using C++ API, we can edit paddle program in
-~/workspace outside of docker. And build from /workspace inside of
-docker.
+   .. code-block:: bash
+      
+      docker run -it -v $(pwd):/paddle paddle:dev bash -c "cd /paddle/build && ctest"
 
 PaddlePaddle Book
 ------------------
