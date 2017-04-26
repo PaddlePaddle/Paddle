@@ -381,7 +381,7 @@ docker build -t paddle:dev .
 </div>
 <p>The above command will compile PaddlePaddle and create a Dockerfile for building production image. All the generated files are in the build directory. &#8220;WITH_GPU&#8221; controls if the generated production image supports GPU. &#8220;WITH_AVX&#8221; controls if the generated production image supports AVX. &#8220;WITH_TEST&#8221; controls if the unit test will be generated.</p>
 <p>The second step is to run:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t paddle:prod -f build/Dockerfile .
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t paddle:prod -f build/Dockerfile ./build
 </pre></div>
 </div>
 <p>The above command will generate the production image by copying the compiled PaddlePaddle program into the image.</p>

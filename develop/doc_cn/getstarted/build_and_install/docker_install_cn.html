@@ -335,7 +335,7 @@ docker build -t paddle:dev .
 </div>
 <p>以上命令会编译PaddlePaddle，生成运行程序，以及生成创建生产镜像的Dockerfile。所有生成的的文件都在build目录下。“WITH_GPU”控制生成的生产镜像是否支持GPU，“WITH_AVX”控制生成的生产镜像是否支持AVX，”WITH_TEST“控制是否生成单元测试。</p>
 <p>第二步是运行：</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t paddle:prod -f build/Dockerfile .
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t paddle:prod -f build/Dockerfile ./build
 </pre></div>
 </div>
 <p>以上命令会按照生成的Dockerfile把生成的程序拷贝到生产镜像中并做相应的配置，最终生成名为paddle:prod的生产镜像。</p>
