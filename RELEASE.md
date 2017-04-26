@@ -1,3 +1,28 @@
+# Release v0.10.0
+
+## New Features
+
+* Add the cpu implementation of cmrnorm-projection.
+
+## Improvements
+
+* Add a new `TensorExpression` implementation for matrix-related expression evaluations.
+* Add Lazy Assignment for optimize the calculation of multiple expressions.
+* Add `Function` to reconstruct the computation function.
+  * PadFunc and PadGradFunc.
+  * ContextProjectionForwardFunc and ContextProjectionBackwardFunc.
+  * CosSimBackward and CosSimBackwardFunc.
+  * CrossMapNormalFunc and CrossMapNormalGradFunc.
+  * MulFunc.
+* Add `AutoCompare` and `FunctionCompare`, which make it easier to write unittest for comparing gpu and cpu version of a function.
+* Add `libpaddle_test_main.a` and remove the main function inside the test file.
+
+## Bug Fixes
+
+* Fix unit test of paramRelu.
+* Fix some warning about CpuSparseMatrix.
+* Fix MultiGradientMachine error if trainer_count > batch_size.
+
 # Release v0.9.0
 
 ## New Features:
