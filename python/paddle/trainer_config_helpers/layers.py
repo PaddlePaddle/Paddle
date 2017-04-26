@@ -3089,7 +3089,7 @@ def gru_step_layer(input,
 @wrap_param_attr_default()
 @wrap_act_default(param_names=['gate_act'], act=SigmoidActivation())
 @wrap_act_default(act=TanhActivation())
-@wrap_name_default('gru_step')
+@wrap_name_default('gru_step_naive')
 @layer_support(ERROR_CLIPPING, DROPOUT)
 def gru_step_naive_layer(input,
                          output_mem,
