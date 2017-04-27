@@ -1,16 +1,15 @@
 # Submit a Distributed Training Job
 
-If a user wants to start up a local train, he will start up a PaddlePaddle product Docker container firstly, and then
+If a user wants to start up a distributed training job, he will submit the distributed training job with python code.
+
+If a user wants to start up a local train, he will start up a PaddlePaddle production Docker container firstly, and then
 execute `python train.py` in the Docker container.The details about PaddlePaddle Docker image is [here](../../../paddle/scripts/docker/README.md)
 
-If a user wants to start up a distributed training job, he will submit the distributed training job in python code, or use a command line tool.
+.
 
-The relation of PaddlePaddle, kubernetes and docker:
+## Runtime Environment On kubernetes
 
-
-# Runtime Environment On kubernetes
-
-For a distributed training job, there is two docker image called `runtime docker image` and `base docker image`, the `runtime docker image` is actually running in kubernetes.
+For a distributed training job, there is two docker image called **runtime docker image** and **base docker image**. The runtime Docker image is the Docker image that gets scheduled by Kubernetes to run during training. The base image is for building the runtime image.
 
 - Base Docker Image
 
@@ -22,14 +21,14 @@ For a distributed training job, there is two docker image called `runtime docker
 
 - Python Dependencies
 
-  Users will provide a `requirments.txt` file in trainer packages, to list python dependencies packages, such as:
+  You need to provide requirments.txt file in your "trainer" package. Example:
   ```txt
   pillow
   protobuf==3.1.0
   ```
-  some other details about `requirements` is [here](https://pip.readthedocs.io/en/1.1/requirements.html).
+  More [details](https://pip.readthedocs.io/en/1.1/requirements.html) about requirements.
 
-  Here is an example project:
+  An example project looks like:
   ```bash
     paddle_example
       |-quick_start
@@ -39,24 +38,38 @@ For a distributed training job, there is two docker image called `runtime docker
   ```
   Execute the command: `paddle train --trainer-package=./paddle_eample/quick_start ...`, PaddlePaddle client will upload the trainer package(quick_start)and setup parameters to [Job Server](#job-server)
 
-## Submit a Distributed Training Job In Python Code
+## Submit Distributed Training Job With Python Code
 <img src="./submit-job-python.png" width="800">
 
-Users will call `paddle.dist_train` and provide distributed training configuration as the parameters.
+You can call `paddle.dist_train` and provide distributed training configuration as the parameters.
 ```python
 paddle.dist_train(
-    model,
     trainer=paddle.trainer.SGD(...,
                               paddle.updater.Adam(...)),
     reader=reader,
-    job_name="quickstart",
-    trainers=8,
-    pservers=4,
-    input=/quickstart/input,
-    output=/quickstart/output,
-    base_image="paddlepaddle/paddle:0.10.rc2",
-    use_gpu=False)
+    paddle_job=PaddleJob(
+      job_name="quickstart",
+      trainers=8,
+      pservers=4,
+      volume="quickstart",
+      input=/quickstart/input,
+      output=/quickstart/output,
+      base_image="paddlepaddle/paddle:0.10.rc2",
+      use_gpu=False)
+    )
 ```
+
+parameter | required | default | explain
+  --- | --- | --- | ---
+job-name|YES||you should special a uniq job name
+trainer-package|YES|| entry point for startup trainer process
+input| YES || input directory on distributed file system
+output|YES|| output directory on distributed file system
+trainers|YES|| if `use-gpu=false`, users should configurate the trainer process count
+pservers|YES|| parameter server process count
+base-image|YES|| paddle docker image, include paddlepaddle binary files and python package.
+use_gpu|NO|false| whether use GPU
+
 
 - Build Runtime Docker Image on Kubernetes
 
@@ -71,50 +84,20 @@ paddle.dist_train(
   - Deploy parameter server job, it's a kubernetes StatefulSet.
   - Deploy trainer job, it's a kubernetes Job.
 
-## Submit a Distributed Training Job With a Command Line Tool
-<img src="./submit-job-command-line.png" width="800">
 
-- Configurate PaddlePaddle Client
 
-Users should configure PaddlePaddle client by the configuration file firstly, the default path:
-`$HOME/.paddle/config`.
 
-```yaml
-apiVersion: v1
-dockerRegistry:
-  domain: domain.com //default is docker.io
-  username: <username>
-  password: <password>
-jobServer: http://<job server domain>:<job server port>
-```
-
-- Submit a Distributed Training Job
-Users will execute the command `paddle job submit` and provides distributed training configuration as the parameters.
-  ```bash
-  paddle job submit\
-    --job-name=cluster-quickstart \
-    --trainer-package=$PWD/quick_start \
-    --entry-point="python train.py" \
-    --input=<input-dir> \
-    --output=<output-dir> \
-    --trainers=4 \
-    --pservers=2 \
-    --base-image:<paddle-image> \
-    --use-gpu=true \
-    --trainer-gpu-num=1 \
-    --env="NUM_PASS=5"
-  ```
-  - `job-name`: you should specify a unique job name
-  - `trainer-package`: python package files on your host
-  - `entry-point`: an entry point for startup trainer process
-  - `input`: input directory on distributed file system
-  - `output`: output directory on distributed file system
-  - `trainers`: if `use-gpu=false`, users should configurate the trainer process count
-  - `pserver`: parameter process count
-  - `base-image`: your trainer docker image, include your trainer files and dependencies.
-  - `use-gpu`: whether it is a GPU train
-  - `trainer-gpu-num`: how much GPU card for one paddle trainer process, it's requirements only if `use-gpu=true`,
-  - `env`: environment variable
+  - `job-name`: `required`, you should specify a unique job name
+  - `trainer-package`: `required`, python package files on your host
+  - `entry-point`: `required`, an entry point for startup trainer process
+  - `input`: `required`, input directory on distributed file system
+  - `output`: `required`, output directory on distributed file system
+  - `trainers`: `required`, if `use-gpu=false`, users should configurate the trainer process count
+  - `pserver`: `required`, parameter process count
+  - `base-image`: `required`, your trainer docker image, include your trainer files and dependencies.
+  - `use-gpu`: `optional, defulat is false`,whether it is a GPU train
+  - `gpu-num`: `optional, defualt is 1`, how much GPU card for one paddle trainer process, it's requirements only if `use-gpu=true`,
+  - `env`: `optional, default is None`, environment variable
 
   The command `paddle train` will package the trainer package to a `trainer.tar.gz` file, call `POST /v1/package` to upload the trainer package file. and then call `POST /v1/trainer/job` to start up a distributed job.
 
