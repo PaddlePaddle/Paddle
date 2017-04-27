@@ -36,7 +36,7 @@ For a distributed training job, there is two Docker image called **runtime Docke
   ```
 
 ## Submit Distributed Training Job With Python Code
-<img src="./submit-job-python.png" width="800">
+<img src="./src/submit-job-python.png" width="800">
 
 You can call `paddle.dist_train` and provide distributed training configuration as the parameters.
 ```python
