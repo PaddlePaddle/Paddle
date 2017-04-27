@@ -188,7 +188,7 @@ upstream
 
 <img width="750" alt="screen shot 2017-04-26 at 9 11 52 pm" src="https://cloud.githubusercontent.com/assets/11692045/25436139/f83b1e6c-2ac4-11e7-8c0e-add499023c46.png">
 
-在 PR 的描述说明中，填写 `solve #Issue编号` 可以在这个 PR 被 merge 后，自动关闭对应的 Issue，具体请见 <https://help.github.com/articles/closing-issues-via-commit-messages/>。
+在 PR 的描述说明中，填写 `resolve #Issue编号` 可以在这个 PR 被 merge 后，自动关闭对应的 Issue，具体请见 <https://help.github.com/articles/closing-issues-via-commit-messages/>。
 
 接下来等待 review，如果有需要修改的地方，参照上述步骤更新 origin 中的对应分支即可。
 
