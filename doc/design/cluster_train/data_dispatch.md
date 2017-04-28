@@ -13,79 +13,108 @@
 
 ### 训练数据的存储
 
-选择GlusterFS作为训练数据的存储服务（后续的实现考虑HDFS）。
+选择CephFS作为训练数据的存储服务。
 
 在Kubernetes上运行的不同的计算框架，可以通过Volume或PersistentVolume挂载存储空间到每个容器中。
 
-在GlusterFS存储系统中的公开目录，需要保存一些预置的公开数据集（比如MNIST, BOW, imagenet数据集等），并且可以被提交的job直接使用。
+在CephFS存储系统中的公开目录，需要保存一些预置的公开数据集（比如MNIST, BOW, ImageNet数据集等），并且可以被提交的job直接使用。
 
-### 上传训练文件
+### 文件预处理
 
-使用下面命令，可以把本地的训练数据上传到存储集群中，并指定上传数据的`dataset-name`：
+在数据集可以被训练之前，文件需要预先被转换成PaddlePaddle集群内部的存储格式（SSTable）。我们提供两个转换方式：
 
+- 提供给用户本地转换的库，用户可以编写程序完成转换。
+- 用户可以上传自己的数据集，在集群运行MapReduce job完成转换。
+
+转换生成的文件名会是以下格式：
+
+```text
+name_prefix-aaaaa-of-bbbbb
 ```
-paddle upload train_data.list "dataset-name"
-```
 
-其中`.list`文件描述了训练数据的文件和对应的label，对于图像类数据，`.list文件`样例如下，每一行包含了图片文件的路径和其label（用tab分隔开）：
+"aaaaa"和"bbbbb"都是五位的数字，每一个文件是数据集的一个shard，"aaaaa"代表shard的index，"bbbbb"代表这个shard的最大index。
 
-```
-./data/image1.jpg   1
-./data/image2.jpg   5
-./data/image3.jpg   2
-./data/image4.jpg   5
-./data/image5.jpg   1
-./data/image6.jpg   8
+比如ImageNet这个数据集可能被分成1000个shard，它们的文件名是：
+```text
+imagenet-00000-of-00999
+imagenet-00001-of-00999
 ...
+imagenet-00999-of-00999
 ```
 
-对于文本类训练数据样例如下（机器翻译），一行中包含源语言，目标语言的文本（label）：
+#### 转换库
 
-```
-L&apos; inflation , en Europe , a dérapé sur l&apos; alimentation	Food : Where European inflation slipped up
-
-L&apos; inflation accélérée , mesurée dans la zone euro , est due principalement à l&apos; augmentation rapide des prix de l&apos; alimentation .	The skyward zoom in food prices is the dominant force behind the speed up in eurozone inflation .
-...
+无论是在本地或是云端转换，我们都提供Python的转换库，接口是：
+```python
+def convert(output_path, reader, num_shards, name_prefix)
 ```
 
-### 使用reader
+- `output_path`: directory in which output files will be saved.
+- `reader`: a [data reader](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#data-reader-interface), from which the convert program will read data instances.
+- `num_shards`: the number of shards that the dataset will be partitioned into.
+- `name_prefix`: the name prefix of generated files.
 
-用户在使用v2 API编写训练任务时，可以使用paddle内置的reader完成对GlusterFS存储中的训练数据的读取，返回文件中的各列，然后在调用`trainer.train()`时传入，完成训练数据的读取：
+`reader`每次输出一个data instance，这个instance可以是单个值，或者用tuple表示的多个值：
 
 ```python
-reader = paddle.dist.reader("dataset-name")
-trainer.train(reader, ...)
+yield 1 # 单个值
+yield numpy.random.uniform(-1, 1, size=28*28) # 单个值
+yield numpy.random.uniform(-1, 1, size=28*28), 0 # 多个值
+```
+
+每个值的类型可以是整形、浮点型数据、字符串，或者由它们组成的list，以及numpy.ndarray。如果是其它类型，会被Pickle序列化成字符串。
+
+### 示例程序
+
+#### 使用转换库
+
+以下`reader_creator`生成的`reader`每次输出一个data instance，每个data instance包涵两个值：numpy.ndarray类型的值和整型的值：
+```python
+def reader_creator():
+	def reader():
+		for i in range(1000):
+			yield numpy.random.uniform(-1, 1, size=28*28), 0 # 多个值
+	return reader
+```
+
+把`reader_creator`生成的`reader`传入`convert`函数即可完成转换：
+```python
+convert("./", reader_creator(), 100, random_images)
+```
+
+以上命令会在当前目录下生成100个文件：
+```text
+random_images-00000-of-00099
+random_images-00001-of-00099
+...
+random_images-00099-of-00099
+```
+
+#### 进行训练
+
+PaddlePaddle提供专用的[data reader creator](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#python-data-reader-design-doc)，生成给定SSTable文件对应的data reader。**无论在本地还是在云端，reader的使用方式都是一致的**：
+
+```python
+# ...
+reader = paddle.reader.creator.SSTable("/home/random_images-*-of-*")
 batch_reader = paddle.batch(paddle.dataset.mnist.train(), 128)
 trainer.train(batch_reader, ...)
 ```
 
-trainer.train内部会获取reader的内容：
+以上代码的reader输出的data instance与生成数据集时，reader输出的data instance是一模一样的。
 
-```
-def paddle.train(batch_reader):
-  r = batch_reader() # create a iterator for one pass of data
-  for batch in r:
-    # train
-```
+### 上传训练文件
 
-这里面batch是含有128个data instance的mini-batch。每一个data instance会是一个tuple，tuple元素的顺序与`.list`文件文件中每一列的顺序是一致的。每一个data instance会是（raw_image_file_binary_data, label）。其中raw_image_file_binary_data是对应图像文件的没有解码的原始二进制数据，用户需要自己解码。label是文本类型（比如：“1“，”2“），这里用户需要的其实是整形，用户需要自己转换成整形。
+使用下面命令，可以把本地的数据上传到存储集群中。
 
-### 实现reader
-
-reader的实现需要考虑本地训练程序实现之后，可以不修改程序直接提交集群进行分布式训练。要达到这样的目标，需要实现下面的功能：
-
-paddle会封装一个在集群中使用的reader: `paddle.dist.reader()`。在集群训练时需要使用这个reader指定要使用的数据集开始训练。用户的训练程序需要按照如下方式初始化reader：
-
-```python
-if os.getenv("PADDLE_TRAIN_LOCAL"):
-  reader = my_local_reader("dataset-name")
-else:
-  reader = paddle.dist.reader("dataset-name")
+```bash
+paddle cp filenames pfs://home/folder/
 ```
 
-用户训练程序提交到集群之后，集群会自动设置`PADDLE_TRAIN_LOCAL`环境变量，reader会被配置成集群训练的版本。其中`paddle.dist.reader()`需要从master的队列中获得需要开始执行的训练task，并找到对应的训练数据文件，开始训练任务。如果用户的训练数据源来自于其他服务，比如从集群中的Kafka，zeromq队列读取，也可以根据实际情况实现集群中运行的reader程序。
-
+比如，把之前示例中转换完毕的random_images数据集上传到云端的`/home/`可以用以下指令：
+```bash
+paddle cp random_images-*-of-* pfs://home/
+```
 ## TODO
 
-### 支持将数据合并成内部的文件格式（key-value），方便sharding与顺序读取
 ### 支持用户自定义的数据预处理job
