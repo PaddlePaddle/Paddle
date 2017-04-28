@@ -14,7 +14,7 @@
 
 - [*PersistentVolume*](https://kubernetes.io/docs/user-guide/persistent-volumes/): 和[*PersistentVolumeClaim*](https://kubernetes.io/docs/user-guide/persistent-volumes/#persistentvolumeclaims)结合，将外部的存储服务在Kubernetes中描述成为统一的资源形式，便于存储资源管理和Pod引用。
 
-# 部署Kubernetes集群
+## 部署Kubernetes集群
 
 Kubernetes提供了多种集群部署的方案，本文档内不重复介绍。这里给出集中常见的部署方法：
 
@@ -25,7 +25,7 @@ Kubernetes提供了多种集群部署的方案，本文档内不重复介绍。�
 
 可以参考[这个表格](https://kubernetes.io/docs/getting-started-guides/#table-of-solutions)选择适合您的场景的合适方案。
 
-# 选择存储方案
+## 选择存储方案
 
 容器不会保留在运行时生成的数据，job或者应用程序在容器中运行时生成的数据会在容器销毁时消失。为了完成分布式机器学习训练任务，需要有一个外部的存储服务来保存训练所需数据和训练输出。
 常见的可选存储服务包括：
@@ -35,9 +35,9 @@ Kubernetes提供了多种集群部署的方案，本文档内不重复介绍。�
 - [*Ceph*](http://docs.ceph.com/docs/master/): 分布式文件系统，支持rbd，POSIX API接口(ceph fs)和对象存储API，参考[这里](https://kubernetes.io/docs/user-guide/volumes/#rbd)。
 - [*MooseFS*](https://moosefs.com/documentation.html): 一个分布式的存储系统。需要先挂载到服务器Node上再通过kubernetes hostPath Volume挂载到容器中。
 
-# 配置kubectl
+## 配置kubectl
 
-## 安装kubectl
+### 安装kubectl
 ```
 # OS X
 curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/darwin/amd64/kubectl
@@ -49,7 +49,7 @@ curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s htt
 curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/windows/amd64/kubectl.exe
 ```
 
-## 配置kubectl访问你的kubernetes集群
+### 配置kubectl访问你的kubernetes集群
 
 编辑`~/.kube/config`这个配置文件，修改`Master-IP`的地址。如果使用SSL认证，则需要配置`certificate-authority`和`users`中的用户证书。如果是使用非SSL方式访问（比如通过8080端口），也可以去掉这些证书的配置。
 ```
