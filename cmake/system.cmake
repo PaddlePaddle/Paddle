@@ -80,12 +80,14 @@ IF(DEFINED CMAKE_SYSTEM_NAME)
     ENDIF()
 ENDIF()
 
-# suffix on different os
+# prefix and suffix on different os
 IF(WIN32)
+    SET(LIBRARY_PREFIX "")
     SET(SHARED_LIBRARY_SUFFIX ".dll")
     SET(STATIC_LIBRARY_SUFFIX ".lib")
     SET(EXECUTABLE_SUFFIX ".exe")
 ELSE(WIN32)
+    SET(LIBRARY_PREFIX "lib")
     IF(APPLE)
         SET(SHARED_LIBRARY_SUFFIX ".dylib")
     ELSE(APPLE)
