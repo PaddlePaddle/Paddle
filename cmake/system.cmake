@@ -74,6 +74,7 @@ MESSAGE(STATUS "Found Paddle host system's CPU: ${CPU_CORES} cores")
 
 # configuration for cross-compiling
 IF(DEFINED CMAKE_SYSTEM_NAME)
+    INCLUDE(cross_compiling/host)
     IF(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
         SET(ANDROID TRUE)
         INCLUDE(cross_compiling/android)
