@@ -13,9 +13,9 @@
 # limitations under the License.
 
 # Detects the OS and sets appropriate variables.
-# CMAKE_SYSTEM_NAME only give us a coarse-grained name,
-# but the name like centos is necessary in some scenes
-# to distinguish system for customization.
+# CMAKE_SYSTEM_NAME only give us a coarse-grained name of the OS CMake is
+# building for, but the host processor name like centos is necessary
+# in some scenes to distinguish system for customization.
 #
 # for instance, protobuf libs path is <install_dir>/lib64
 # on CentOS, but <install_dir>/lib on other systems.
@@ -72,11 +72,29 @@ MARK_AS_ADVANCED(HOST_SYSTEM CPU_CORES)
 MESSAGE(STATUS "Found Paddle host system: ${HOST_SYSTEM}")
 MESSAGE(STATUS "Found Paddle host system's CPU: ${CPU_CORES} cores")
 
+# configuration for cross-compiling
 IF(DEFINED CMAKE_SYSTEM_NAME)
     IF(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
         SET(ANDROID TRUE)
+        INCLUDE(cross_compiling/android)
     ENDIF()
 ENDIF()
+
+# suffix on different os
+IF(WIN32)
+    SET(SHARED_LIBRARY_SUFFIX ".dll")
+    SET(STATIC_LIBRARY_SUFFIX ".lib")
+    SET(EXECUTABLE_SUFFIX ".exe")
+ELSE(WIN32)
+    IF(APPLE)
+        SET(SHARED_LIBRARY_SUFFIX ".dylib")
+    ELSE(APPLE)
+        SET(SHARED_LIBRARY_SUFFIX ".so")
+    ENDIF(APPLE)
+
+    SET(STATIC_LIBRARY_SUFFIX ".a")
+    SET(EXECUTABLE_SUFFIX "")
+ENDIF(WIN32)
 
 # external dependencies log output
 SET(EXTERNAL_PROJECT_LOG_ARGS

@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+cmake_minimum_required(VERSION 3.0)
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 set(PROJ_ROOT ${CMAKE_SOURCE_DIR})
 
 include(system)
-
-if(ANDROID)
-    cmake_minimum_required(VERSION 3.7)
-else()
-    cmake_minimum_required(VERSION 3.0)
-endif()
 
 project(paddle CXX C)
 
