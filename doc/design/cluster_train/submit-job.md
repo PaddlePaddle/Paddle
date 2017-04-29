@@ -1,21 +1,21 @@
 # Submit a Distributed Training Job
 
-If a user wants to start up a distributed training job, he will submit the distributed training job with python code.
+If a user wants to start up a distributed training job, he will submit the distributed training job with Python code.
 
 If a user wants to start up a local train, he will start up a PaddlePaddle production Docker container firstly, and then
-execute `python train.py` in the Docker container.The details about PaddlePaddle Docker image is [here](../../../paddle/scripts/docker/README.md)
+execute `python train.py` in the Docker container. The details about PaddlePaddle Docker image is [here](../../../paddle/scripts/docker/README.md).
 
 ## Runtime Environment On Kubernetes
 
-For a distributed training job, there is two Docker image called **runtime Docker image** and **base Docker image**. The runtime Docker image is the Docker image that gets scheduled by Kubernetes to run during training. The base Docker image is for building the runtime Docker image.
+For a distributed training job, there is two Docker image called *runtime Docker image* and *base Docker image*. The runtime Docker image is the Docker image that gets scheduled by Kubernetes to run during training. The base Docker image is for building the runtime Docker image.
 
 - Base Docker Image
 
-  Usually, the base Docker image is PaddlePaddle product Docker image including paddle binary files and trainer startup script file. And of course, users can specify any image name hosted on any docker registry which users have the right access.
+  Usually, the base Docker image is PaddlePaddle product Docker image including paddle binary files and trainer startup script file. And of course, users can specify any image name hosted on any docker registry which users have the access right.
 
 - Runtime Docker Image
 
-  Package the trainer package which user upload and some python dependencies into a runtime Docker image base on base docker image, this is done automatically by Job Server.
+  The trainer package which user upload and some python dependencies are packaged into a runtime Docker image based on base Docker image
 
 - Python Dependencies
 
@@ -89,11 +89,11 @@ gpu_num|NO|1| if `use_gpu=true`, this parameter is required
 - RESTful API
 
   Job server provides a RESTful HTTP server receives the trainer packages, list PaddlePaddle job etc...
-  - `POST   /v1/package` receive the trainer package and save them on GlustereFS
+  - `POST   /v1/package` receive the trainer package and save them on CephFS
   - `POST   /v1/trainer/job` submit a trainer job
-  - `GET    /v1/jobs/` list all job
+  - `GET    /v1/jobs/` list all jobs
   - `GET    /v1/jobs/<job-name>` the status of a job
-  - `DELETE /v1/jobs/<job-name>` cancel a job
+  - `DELETE /v1/jobs/<job-name>` delete a job
   - `GET    /v1/version` job server version
 
 - Build Runtime Docker Image on Kubernetes
@@ -101,7 +101,7 @@ gpu_num|NO|1| if `use_gpu=true`, this parameter is required
   `paddle.dist_train` will upload the trainer package to Job Server and then save them on the distributed filesystem, and then start up a job for building the runtime Docker image, Parameter Server and Trainer will use this runtime Docker image.
 
   There are some benefits for building runtime Docker image on JobServer:
-  - **Docker in Docker** should mount `docker.sock` in the container and set `--privileged`, if the code running in a kubernetes pod, it's not safety.
+  - **Docker in Docker** should mount `docker.sock` in the container and set `--privileged`, if the code running in a kubernetes pod, it's not safe.
   - Users only need to upload the training package files, does not dependency docker engine, docker registry.
   - If we want to change another image type, such as RKT, the user does not need to care about it.
 
