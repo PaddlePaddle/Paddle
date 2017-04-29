@@ -1349,9 +1349,9 @@ def last_seq(input,
     """
     Get Last Timestamp Activation of a sequence.
 
-    If stride > 0, this layer slides a window whose size is determined by stride, 
-    and return the last value of the window as the output. Thus, a long sequence 
-    will be shorten. Note that for sequence with sub-sequence, the default value 
+    If stride > 0, this layer slides a window whose size is determined by stride,
+    and return the last value of the window as the output. Thus, a long sequence
+    will be shorten. Note that for sequence with sub-sequence, the default value
     of stride is -1.
 
     The simple usage is:
@@ -1365,7 +1365,7 @@ def last_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
-    :param stride: window size.  
+    :param stride: window size.
     :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
@@ -1405,9 +1405,9 @@ def first_seq(input,
     """
     Get First Timestamp Activation of a sequence.
 
-    If stride > 0, this layer slides a window whose size is determined by stride, 
-    and return the first value of the window as the output. Thus, a long sequence 
-    will be shorten. Note that for sequence with sub-sequence, the default value 
+    If stride > 0, this layer slides a window whose size is determined by stride,
+    and return the first value of the window as the output. Thus, a long sequence
+    will be shorten. Note that for sequence with sub-sequence, the default value
     of stride is -1.
 
     The simple usage is:
@@ -1421,7 +1421,7 @@ def first_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
-    :param stride: window size.  
+    :param stride: window size.
     :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
@@ -1561,7 +1561,7 @@ def seq_reshape_layer(input,
                       bias_attr=None):
     """
     A layer for reshaping the sequence. Assume the input sequence has T instances,
-    the dimension of each instance is M, and the input reshape_size is N, then the 
+    the dimension of each instance is M, and the input reshape_size is N, then the
     output sequence has T*M/N instances, the dimension of each instance is N.
 
     Note that T*M/N must be an integer.
@@ -2118,8 +2118,8 @@ def img_conv_layer(input,
     :param trans: true if it is a convTransLayer, false if it is a convLayer
     :type trans: bool
     :param layer_type: specify the layer_type, default is None. If trans=True,
-                       layer_type has to be "exconvt" or "cudnn_convt", 
-                       otherwise layer_type has to be either "exconv" or 
+                       layer_type has to be "exconvt" or "cudnn_convt",
+                       otherwise layer_type has to be either "exconv" or
                        "cudnn_conv"
     :type layer_type: String
     :return: LayerOutput object.
@@ -2337,9 +2337,9 @@ def spp_layer(input,
 
     ..  code-block:: python
 
-        spp = spp_layer(input=data, 
-                        pyramid_height=2, 
-                        num_channels=16, 
+        spp = spp_layer(input=data,
+                        pyramid_height=2,
+                        num_channels=16,
                         pool_type=MaxPooling())
 
     :param name: layer name.
@@ -2433,7 +2433,7 @@ def img_cmrnorm_layer(input,
     The example usage is:
 
     ..  code-block:: python
-    
+
         norm = img_cmrnorm_layer(input=net, size=5)
 
     :param name: layer name.
@@ -2494,7 +2494,7 @@ def batch_norm_layer(input,
     The example usage is:
 
     ..  code-block:: python
-    
+
         norm = batch_norm_layer(input=net, act=ReluActivation())
 
     :param name: layer name.
@@ -2795,11 +2795,11 @@ def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
     """
     Concat sequence a with sequence b.
 
-    Inputs: 
+    Inputs:
       - a = [a1, a2, ..., an]
       - b = [b1, b2, ..., bn]
       - Note that the length of a and b should be the same.
-        
+
     Output: [a1, b1, a2, b2, ..., an, bn]
 
     The example usage is:
@@ -3563,9 +3563,15 @@ def beam_search(step,
                 simple_rnn += last_time_step_output
             return simple_rnn
 
+        generated_word_embedding = GeneratedInput(
+                               size=target_dictionary_dim,
+                               embedding_name="target_language_embedding",
+                               embedding_size=word_vector_dim)
+
         beam_gen = beam_search(name="decoder",
                                step=rnn_step,
-                               input=[StaticInput(encoder_last)],
+                               input=[StaticInput(encoder_last),
+                                      generated_word_embedding],
                                bos_id=0,
                                eos_id=1,
                                beam_size=5)
@@ -3584,7 +3590,8 @@ def beam_search(step,
                  You can refer to the first parameter of recurrent_group, or
                  demo/seqToseq/seqToseq_net.py for more details.
     :type step: callable
-    :param input: Input data for the recurrent unit
+    :param input: Input data for the recurrent unit, which should include the
+                  previously generated words as a GeneratedInput object.
     :type input: list
     :param bos_id: Index of the start symbol in the dictionary. The start symbol
                    is a special token for NLP task, which indicates the
