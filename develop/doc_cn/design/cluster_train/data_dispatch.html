@@ -179,13 +179,19 @@
 <li><a class="reference internal" href="#">训练数据的存储和分发</a><ul>
 <li><a class="reference internal" href="#">流程介绍</a></li>
 <li><a class="reference internal" href="#">训练数据的存储</a></li>
+<li><a class="reference internal" href="#">文件预处理</a><ul>
+<li><a class="reference internal" href="#">转换库</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#">示例程序</a><ul>
+<li><a class="reference internal" href="#">使用转换库</a></li>
+<li><a class="reference internal" href="#">进行训练</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#">上传训练文件</a></li>
-<li><a class="reference internal" href="#reader">使用reader</a></li>
-<li><a class="reference internal" href="#reader">实现reader</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#todo">TODO</a><ul>
-<li><a class="reference internal" href="#key-value-sharding">支持将数据合并成内部的文件格式（key-value），方便sharding与顺序读取</a></li>
 <li><a class="reference internal" href="#job">支持用户自定义的数据预处理job</a></li>
 </ul>
 </li>
@@ -231,70 +237,100 @@
 </div>
 <div class="section" id="">
 <span id="id3"></span><h2>训练数据的存储<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
-<p>选择GlusterFS作为训练数据的存储服务（后续的实现考虑HDFS）。</p>
+<p>选择CephFS作为训练数据的存储服务。</p>
 <p>在Kubernetes上运行的不同的计算框架，可以通过Volume或PersistentVolume挂载存储空间到每个容器中。</p>
-<p>在GlusterFS存储系统中的公开目录，需要保存一些预置的公开数据集（比如MNIST, BOW, imagenet数据集等），并且可以被提交的job直接使用。</p>
+<p>在CephFS存储系统中的公开目录，需要保存一些预置的公开数据集（比如MNIST, BOW, ImageNet数据集等），并且可以被提交的job直接使用。</p>
 </div>
 <div class="section" id="">
-<span id="id4"></span><h2>上传训练文件<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
-<p>使用下面命令，可以把本地的训练数据上传到存储集群中，并指定上传数据的<code class="docutils literal"><span class="pre">dataset-name</span></code>：</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">upload</span> <span class="n">train_data</span><span class="o">.</span><span class="n">list</span> <span class="s2">&quot;dataset-name&quot;</span>
+<span id="id4"></span><h2>文件预处理<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>在数据集可以被训练之前，文件需要预先被转换成PaddlePaddle集群内部的存储格式（SSTable）。我们提供两个转换方式：</p>
+<ul class="simple">
+<li>提供给用户本地转换的库，用户可以编写程序完成转换。</li>
+<li>用户可以上传自己的数据集，在集群运行MapReduce job完成转换。</li>
+</ul>
+<p>转换生成的文件名会是以下格式：</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>name_prefix-aaaaa-of-bbbbb
 </pre></div>
 </div>
-<p>其中<code class="docutils literal"><span class="pre">.list</span></code>文件描述了训练数据的文件和对应的label，对于图像类数据，<code class="docutils literal"><span class="pre">.list文件</span></code>样例如下，每一行包含了图片文件的路径和其label（用tab分隔开）：</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">data</span><span class="o">/</span><span class="n">image1</span><span class="o">.</span><span class="n">jpg</span>   <span class="mi">1</span>
-<span class="o">./</span><span class="n">data</span><span class="o">/</span><span class="n">image2</span><span class="o">.</span><span class="n">jpg</span>   <span class="mi">5</span>
-<span class="o">./</span><span class="n">data</span><span class="o">/</span><span class="n">image3</span><span class="o">.</span><span class="n">jpg</span>   <span class="mi">2</span>
-<span class="o">./</span><span class="n">data</span><span class="o">/</span><span class="n">image4</span><span class="o">.</span><span class="n">jpg</span>   <span class="mi">5</span>
-<span class="o">./</span><span class="n">data</span><span class="o">/</span><span class="n">image5</span><span class="o">.</span><span class="n">jpg</span>   <span class="mi">1</span>
-<span class="o">./</span><span class="n">data</span><span class="o">/</span><span class="n">image6</span><span class="o">.</span><span class="n">jpg</span>   <span class="mi">8</span>
-<span class="o">...</span>
+<p>&#8220;aaaaa&#8221;和&#8221;bbbbb&#8221;都是五位的数字，每一个文件是数据集的一个shard，&#8221;aaaaa&#8221;代表shard的index，&#8221;bbbbb&#8221;代表这个shard的最大index。</p>
+<p>比如ImageNet这个数据集可能被分成1000个shard，它们的文件名是：</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>imagenet-00000-of-00999
+imagenet-00001-of-00999
+...
+imagenet-00999-of-00999
 </pre></div>
 </div>
-<p>对于文本类训练数据样例如下（机器翻译），一行中包含源语言，目标语言的文本（label）：</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">L</span><span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">inflation</span> <span class="p">,</span> <span class="n">en</span> <span class="n">Europe</span> <span class="p">,</span> <span class="n">a</span> <span class="n">dérapé</span> <span class="n">sur</span> <span class="n">l</span><span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">alimentation</span>   <span class="n">Food</span> <span class="p">:</span> <span class="n">Where</span> <span class="n">European</span> <span class="n">inflation</span> <span class="n">slipped</span> <span class="n">up</span>
-
-<span class="n">L</span><span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">inflation</span> <span class="n">accélérée</span> <span class="p">,</span> <span class="n">mesurée</span> <span class="n">dans</span> <span class="n">la</span> <span class="n">zone</span> <span class="n">euro</span> <span class="p">,</span> <span class="n">est</span> <span class="n">due</span> <span class="n">principalement</span> <span class="n">à</span> <span class="n">l</span><span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">augmentation</span> <span class="n">rapide</span> <span class="n">des</span> <span class="n">prix</span> <span class="n">de</span> <span class="n">l</span><span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">alimentation</span> <span class="o">.</span>   <span class="n">The</span> <span class="n">skyward</span> <span class="n">zoom</span> <span class="ow">in</span> <span class="n">food</span> <span class="n">prices</span> <span class="ow">is</span> <span class="n">the</span> <span class="n">dominant</span> <span class="n">force</span> <span class="n">behind</span> <span class="n">the</span> <span class="n">speed</span> <span class="n">up</span> <span class="ow">in</span> <span class="n">eurozone</span> <span class="n">inflation</span> <span class="o">.</span>
-<span class="o">...</span>
+<div class="section" id="">
+<span id="id5"></span><h3>转换库<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>无论是在本地或是云端转换，我们都提供Python的转换库，接口是：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">convert</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="n">num_shards</span><span class="p">,</span> <span class="n">name_prefix</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">output_path</span></code>: directory in which output files will be saved.</li>
+<li><code class="docutils literal"><span class="pre">reader</span></code>: a <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#data-reader-interface">data reader</a>, from which the convert program will read data instances.</li>
+<li><code class="docutils literal"><span class="pre">num_shards</span></code>: the number of shards that the dataset will be partitioned into.</li>
+<li><code class="docutils literal"><span class="pre">name_prefix</span></code>: the name prefix of generated files.</li>
+</ul>
+<p><code class="docutils literal"><span class="pre">reader</span></code>每次输出一个data instance，这个instance可以是单个值，或者用tuple表示的多个值：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">yield</span> <span class="mi">1</span> <span class="c1"># 单个值</span>
+<span class="k">yield</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">28</span><span class="o">*</span><span class="mi">28</span><span class="p">)</span> <span class="c1"># 单个值</span>
+<span class="k">yield</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">28</span><span class="o">*</span><span class="mi">28</span><span class="p">),</span> <span class="mi">0</span> <span class="c1"># 多个值</span>
+</pre></div>
+</div>
+<p>每个值的类型可以是整形、浮点型数据、字符串，或者由它们组成的list，以及numpy.ndarray。如果是其它类型，会被Pickle序列化成字符串。</p>
+</div>
+</div>
+<div class="section" id="">
+<span id="id6"></span><h2>示例程序<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<div class="section" id="">
+<span id="id7"></span><h3>使用转换库<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>以下<code class="docutils literal"><span class="pre">reader_creator</span></code>生成的<code class="docutils literal"><span class="pre">reader</span></code>每次输出一个data instance，每个data instance包涵两个值：numpy.ndarray类型的值和整型的值：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">reader_creator</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">reader</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1000</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">28</span><span class="o">*</span><span class="mi">28</span><span class="p">),</span> <span class="mi">0</span> <span class="c1"># 多个值</span>
+    <span class="k">return</span> <span class="n">reader</span>
+</pre></div>
+</div>
+<p>把<code class="docutils literal"><span class="pre">reader_creator</span></code>生成的<code class="docutils literal"><span class="pre">reader</span></code>传入<code class="docutils literal"><span class="pre">convert</span></code>函数即可完成转换：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">convert</span><span class="p">(</span><span class="s2">&quot;./&quot;</span><span class="p">,</span> <span class="n">reader_creator</span><span class="p">(),</span> <span class="mi">100</span><span class="p">,</span> <span class="n">random_images</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>以上命令会在当前目录下生成100个文件：</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>random_images-00000-of-00099
+random_images-00001-of-00099
+...
+random_images-00099-of-00099
 </pre></div>
 </div>
 </div>
-<div class="section" id="reader">
-<span id="reader"></span><h2>使用reader<a class="headerlink" href="#reader" title="永久链接至标题">¶</a></h2>
-<p>用户在使用v2 API编写训练任务时，可以使用paddle内置的reader完成对GlusterFS存储中的训练数据的读取，返回文件中的各列，然后在调用<code class="docutils literal"><span class="pre">trainer.train()</span></code>时传入，完成训练数据的读取：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="s2">&quot;dataset-name&quot;</span><span class="p">)</span>
-<span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">reader</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+<div class="section" id="">
+<span id="id8"></span><h3>进行训练<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>PaddlePaddle提供专用的<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#python-data-reader-design-doc">data reader creator</a>，生成给定SSTable文件对应的data reader。<strong>无论在本地还是在云端，reader的使用方式都是一致的</strong>：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># ...</span>
+<span class="n">reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">creator</span><span class="o">.</span><span class="n">SSTable</span><span class="p">(</span><span class="s2">&quot;/home/random_images-*-of-*&quot;</span><span class="p">)</span>
 <span class="n">batch_reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">mnist</span><span class="o">.</span><span class="n">train</span><span class="p">(),</span> <span class="mi">128</span><span class="p">)</span>
 <span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">batch_reader</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>trainer.train内部会获取reader的内容：</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">paddle</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">batch_reader</span><span class="p">):</span>
-  <span class="n">r</span> <span class="o">=</span> <span class="n">batch_reader</span><span class="p">()</span> <span class="c1"># create a iterator for one pass of data</span>
-  <span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">r</span><span class="p">:</span>
-    <span class="c1"># train</span>
+<p>以上代码的reader输出的data instance与生成数据集时，reader输出的data instance是一模一样的。</p>
+</div>
+</div>
+<div class="section" id="">
+<span id="id9"></span><h2>上传训练文件<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>使用下面命令，可以把本地的数据上传到存储集群中。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle cp filenames pfs://home/folder/
 </pre></div>
 </div>
-<p>这里面batch是含有128个data instance的mini-batch。每一个data instance会是一个tuple，tuple元素的顺序与<code class="docutils literal"><span class="pre">.list</span></code>文件文件中每一列的顺序是一致的。每一个data instance会是（raw_image_file_binary_data, label）。其中raw_image_file_binary_data是对应图像文件的没有解码的原始二进制数据，用户需要自己解码。label是文本类型（比如：“1“，”2“），这里用户需要的其实是整形，用户需要自己转换成整形。</p>
-</div>
-<div class="section" id="reader">
-<span id="id5"></span><h2>实现reader<a class="headerlink" href="#reader" title="永久链接至标题">¶</a></h2>
-<p>reader的实现需要考虑本地训练程序实现之后，可以不修改程序直接提交集群进行分布式训练。要达到这样的目标，需要实现下面的功能：</p>
-<p>paddle会封装一个在集群中使用的reader: <code class="docutils literal"><span class="pre">paddle.dist.reader()</span></code>。在集群训练时需要使用这个reader指定要使用的数据集开始训练。用户的训练程序需要按照如下方式初始化reader：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;PADDLE_TRAIN_LOCAL&quot;</span><span class="p">):</span>
-  <span class="n">reader</span> <span class="o">=</span> <span class="n">my_local_reader</span><span class="p">(</span><span class="s2">&quot;dataset-name&quot;</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-  <span class="n">reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="s2">&quot;dataset-name&quot;</span><span class="p">)</span>
+<p>比如，把之前示例中转换完毕的random_images数据集上传到云端的<code class="docutils literal"><span class="pre">/home/</span></code>可以用以下指令：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle cp random_images-*-of-* pfs://home/
 </pre></div>
 </div>
-<p>用户训练程序提交到集群之后，集群会自动设置<code class="docutils literal"><span class="pre">PADDLE_TRAIN_LOCAL</span></code>环境变量，reader会被配置成集群训练的版本。其中<code class="docutils literal"><span class="pre">paddle.dist.reader()</span></code>需要从master的队列中获得需要开始执行的训练task，并找到对应的训练数据文件，开始训练任务。如果用户的训练数据源来自于其他服务，比如从集群中的Kafka，zeromq队列读取，也可以根据实际情况实现集群中运行的reader程序。</p>
 </div>
 </div>
 <div class="section" id="todo">
 <span id="todo"></span><h1>TODO<a class="headerlink" href="#todo" title="永久链接至标题">¶</a></h1>
-<div class="section" id="key-value-sharding">
-<span id="key-value-sharding"></span><h2>支持将数据合并成内部的文件格式（key-value），方便sharding与顺序读取<a class="headerlink" href="#key-value-sharding" title="永久链接至标题">¶</a></h2>
-</div>
 <div class="section" id="job">
 <span id="job"></span><h2>支持用户自定义的数据预处理job<a class="headerlink" href="#job" title="永久链接至标题">¶</a></h2>
 </div>
