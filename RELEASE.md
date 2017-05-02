@@ -2,6 +2,8 @@
 
 ## New Features
 
+* We release [new python API](http://research.baidu.com/paddlepaddles-new-api-simplifies-deep-learning-programs/).
+* Deep Learning 101 book in [English](http://book.paddlepaddle.org/index.en.html) and [Chinese](http://book.paddlepaddle.org/).
 * Support rectangle input for CNN.
 * Support stride pooling for seqlastin and seqfirstin.
 * Expose seq_concat_layer/seq_reshape_layer in `trainer_config_helpers`.
@@ -14,6 +16,10 @@
 
 ## Improvements
 
+* Support python virtualenv for `paddle_trainer` process.
+* Add pre-commit hooks, used for automatically format our code.
+* Use Protobuf 3.X as the default Paddle Protobuf version.
+* Add an option to check data type in python data provider.
 * Speedup the backward of average layer on GPU.
 * Reorganize the catalog of doc/ and refine several docs.
 * Add Travis-CI for checking dead links.
@@ -28,6 +34,7 @@
 * Add Relu in layer_math.py.
 * Add packages for automatically downloading public datasets.
 * Rename Argument::sumCost to Argument::sum since Argument does not have to have any relationship with cost.
+  * Expose Argument::sum to Python
 * Add a new `TensorExpression` implementation for matrix-related expression evaluations.
 * Add Lazy Assignment for optimize the calculation of multiple expressions.
 * Add `Function` to reconstruct the computation function.
@@ -38,6 +45,14 @@
   * MulFunc.
 * Add `AutoCompare` and `FunctionCompare`, which make it easier to write unittest for comparing gpu and cpu version of a function.
 * Add `libpaddle_test_main.a` and remove the main function inside the test file.
+* Support dense numpy vector in PyDataProvider2.
+* Clean code base, remove some copy & paste codes before.
+  * Extract RowBuffer class for SparseRowMatrix.
+  * Clean GradientMachine's interface.
+  * Try use `override` keyword in layer.
+  * Simplify Evaluator::create, use `ClassRegister` to create Evaluator.
+* Add md5 check when downloading demo's dataset.
+* Add `paddle::Error` which intentially replace `LOG(FATAL)` in Paddle.
 
 ## Bug Fixes
 
@@ -52,6 +67,7 @@
 * Fix unit test of paramRelu.
 * Fix some warning about CpuSparseMatrix.
 * Fix MultiGradientMachine error if trainer_count > batch_size.
+* Fix when async load data in PyDataProvider2.
 
 # Release v0.9.0
 
