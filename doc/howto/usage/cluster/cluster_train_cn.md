@@ -2,25 +2,30 @@
 .. _cluster_train:
 ```
 
-# 运行分布式训练
+# 概述
+PaddlePaddle 使用如下图的方式完成分布式训练：
 
-在本文中，我们将阐释如何在集群上运行分布式 Paddle 训练作业。我们将以[推荐系统](https://github.com/baidu/Paddle/tree/develop/demo/recommendation)为例创建分布式的单进程训练。
+<img src="../../../design/cluster_train/src/trainer.png" width="500"/>
 
-在本文中使用的[脚本](https://github.com/baidu/Paddle/tree/develop/paddle/scripts/cluster_train)通过 SSH 运行分布式作业。 它们还可以供那些运行更复杂的集群管理系统（如 MPI 和 [Kubernetes](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/k8s) ）的用户参考。
+- data shard（数据分片）: 用于训练神经网络的数据，被切分成多个部分，每个部分分别给每个trainer使用
+- trainer（计算节点）: 每个trainer启动后读取切分好的一部分数据，并开始神经网络的“前馈”和“后馈”计算，并和parameter server通信。在完成一定量数据的训练后，上传计算得出的梯度（gradients）然后下载优化更新后的神经网络参数（parameters）。
+- parameter server（参数服务器）:每个参数服务器只保存整个神经网络所有参数的一部分。参数服务器接收从计算节点上传的梯度，并完成参数优化更新，在将更新后的参数下发到每个计算节点。
 
-## 前提条件
+这样，通过trainer和parameter server的分布式协作，可以完成神经网络的SGD方法的训练。Paddle可以同时支持同步SGD(synchronize SGD)和异步SGD(asynchronize SGD)。
 
-1. 上述脚本使用 Python 库 [fabric](http://www.fabfile.org/) 来运行 SSH 命令。 我们使用 `pip` 来安装 fabric:
+在使用同步SGD训练神经网络时，Paddle使用同步屏障(barrier)，使梯度的提交和参数的更新按照顺序方式执行。在异步SGD中，则并不会等待所有trainer提交梯度才更新参数，这样极大的提高了计算的并行性：parameter server之间不相互依赖，并行的接收梯度和更新参数，parameter server也不会等待trainer全部都提交梯度之后才开始下一步，trainer之间也不会相互依赖，并行的执行模型的训练。可以看出，虽然异步SGD方式会提高参数更新并行度, 但是并不能保证参数同步更新，在任意时间某一台parameter server上保存的参数可能比另一台要更新，与同步SGD相比，梯度会有噪声。
 
-   ```bash
-   pip install fabric
-   ```
+## 使用分布式计算平台或工具
 
-2. 我们需要在集群的所有节点上安装 PaddlePaddle。 如果要启用GPU，需要在 `/usr/local/cuda` 中安装 CUDA; 否则 Paddle 将在运行时报错。
+PaddlePaddle可以使用多种分布式计算平台构建分布式计算任务，比如[Kubernetes](http://kubernetes.io)，[OpenMPI](https://www.open-mpi.org)，也可以使用类似[Fabric](http://www.fabfile.org)的集群管理工具编写集群任务提交和管理脚本。
 
-3. 在 [`cluster_train/conf.py`] 中设置 `ROOT_DIR`， 该 ROOT_DIR 要在所有节点上存在。为了方便起见，我们通常在所有节点上创建一个 Unix 用户 `paddle`，并设置 `ROOT_DIR=/home/paddle`。这样，我们可以将 SSH 公钥写入 `/home/paddle/.ssh/authorized_keys`，以便用户 `paddle` 可以 SSH 到所有节点而不用密码。
+关于如何在Kubernetes上启动分布式训练任务，可以参考这篇说明：[Kubernetes分布式训练](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/usage/k8s/k8s_distributed_cn.md)
 
-## 准备工作空间
+## 环境准备
+
+1. 我们需要在集群的所有节点上安装 PaddlePaddle。 如果要启用GPU，还需要在节点上安装对应的GPU驱动以及CUDA。PaddlePaddle的安装可以参考[这里](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/getstarted/build_and_install)的多种安装方式。我们推荐使用[Docker安装方式](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_cn.rst)来快速安装PaddlePaddle。
+
+## 准备训练数据
 
 我们将放置依赖库、配置等文件的目录视为 *工作空间（workspace）*。
 
