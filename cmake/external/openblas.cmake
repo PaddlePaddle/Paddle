@@ -25,7 +25,13 @@ IF(NOT ${CBLAS_FOUND})
         CACHE FILEPATH "openblas library." FORCE)
 
     # check fortran compiler and library
-    IF(NOT ANDROID)
+    IF(ANDROID)
+        SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
+        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 ARM_SOFTFP_ABI=1 NOFORTRAN=1 USE_THREAD=0 libs)
+    ELSEIF(RPI)
+        SET(OPENBLAS_COMMIT "v0.2.19")
+        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 NOFORTRAN=1 USE_THREAD=0 libs)
+    ELSE()
         IF(CMAKE_COMPILER_IS_GNUCC)
             ENABLE_LANGUAGE(Fortran)
             if (NOT CMAKE_Fortran_COMPILER_VERSION)
@@ -57,9 +63,6 @@ IF(NOT ${CBLAS_FOUND})
 
         SET(OPENBLAS_COMMIT "v0.2.19")
         SET(OPENBLAS_ARGS FC=${CMAKE_Fortran_COMPILER} DYNAMIC_ARCH=1 libs netlib)
-    ELSE()
-        SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
-        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 ARM_SOFTFP_ABI=1 NOFORTRAN=1 USE_THREAD=0 libs)
     ENDIF()
 
     ExternalProject_Add(
@@ -76,7 +79,7 @@ IF(NOT ${CBLAS_FOUND})
         CONFIGURE_COMMAND   ""
     )
 
-    IF(NOT ANDROID)
+    IF(NOT ANDROID AND NOT RPI)
         ExternalProject_Add_Step(
             openblas lapacke_install
             COMMAND ${CMAKE_COMMAND} -E copy "${CBLAS_SOURCES_DIR}/src/openblas/lapack-netlib/LAPACKE/include/lapacke_mangling_with_flags.h" "${CBLAS_INSTALL_DIR}/include/lapacke_mangling.h"

@@ -23,7 +23,7 @@ ENDIF()
 
 GET_FILENAME_COMPONENT(HOST_C_COMPILER_PATH ${HOST_C_COMPILER_NAME} PROGRAM)
 IF(NOT HOST_C_COMPILER_PATH OR NOT EXISTS ${HOST_C_COMPILER_PATH})
-    MESSAGE(FATAL_ERROR "Cannot found host C compiler, set host C compiler:\n"
+    MESSAGE(FATAL_ERROR "Cannot find host C compiler, set host C compiler:\n"
             "\tcmake .. -DHOST_C_COMPILER=...")
 ENDIF()
 
@@ -38,7 +38,7 @@ ENDIF()
 
 GET_FILENAME_COMPONENT(HOST_CXX_COMPILER_PATH ${HOST_CXX_COMPILER_NAME} PROGRAM)
 IF(NOT HOST_CXX_COMPILER_PATH OR NOT EXISTS ${HOST_CXX_COMPILER_PATH})
-    MESSAGE(FATAL_ERROR "Cannot found host CXX compiler, set host CXX compiler:\n"
+    MESSAGE(FATAL_ERROR "Cannot find host CXX compiler, set host CXX compiler:\n"
             "\tcmake .. -DHOST_CXX_COMPILER=...")
 ENDIF()
 
