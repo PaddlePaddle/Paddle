@@ -356,6 +356,9 @@ def mixed(size=0,
     return MixedLayerV2(size, input, name, act, bias_attr, layer_attr)
 
 
+mixed.__doc__ = conf_helps.mixed_layer.__doc__
+
+
 class RecurrentLayerInput(Layer):
     def __init__(self, recurrent_name, index, parent_layers):
         parents_len = len(parent_layers)
@@ -404,6 +407,8 @@ data.__name__ = 'data'
 AggregateLevel = conf_helps.layers.AggregateLevel
 ExpandLevel = conf_helps.layers.ExpandLevel
 memory = MemoryV2
+memory.__name__ = 'memory'
+memory.__doc__ = conf_helps.memory.__doc__
 
 
 def __layer_name_mapping__(inname):
@@ -512,6 +517,9 @@ def recurrent_group(step, input, name=None):
         return retv
 
 
+recurrent_group.__doc__ = conf_helps.recurrent_group.__doc__
+
+
 @wrap_name_default()
 def beam_search(step,
                 input,
@@ -578,6 +586,8 @@ def beam_search(step,
 
     return tmp
 
+
+beam_search.__doc__ = conf_helps.beam_search.__doc__
 
 __projection_names__ = filter(lambda x: x.endswith('_projection'),
                               dir(conf_helps))
