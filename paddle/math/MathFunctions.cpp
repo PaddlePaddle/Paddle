@@ -55,9 +55,8 @@ void* lapack_dso_handle = nullptr;
     __macro(LAPACKE_sgetri)                   \
     __macro(LAPACKE_dgetri)
 #endif
-#endif
-
 LAPACK_ROUTINE_EACH(DYNAMIC_LOAD_LAPACK_WRAP)
+#endif
 
 // clang-format on
 }  // namespace dynload
