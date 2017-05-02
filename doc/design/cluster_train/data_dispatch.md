@@ -21,7 +21,7 @@
 
 ### 文件预处理
 
-在数据集可以被训练之前，文件需要预先被转换成PaddlePaddle集群内部的存储格式（SSTable）。我们提供两个转换方式：
+在数据集可以被训练之前，文件需要预先被转换成PaddlePaddle集群内部的存储格式（RecordIO）。我们提供两个转换方式：
 
 - 提供给用户本地转换的库，用户可以编写程序完成转换。
 - 用户可以上传自己的数据集，在集群运行MapReduce job完成转换。
@@ -92,11 +92,11 @@ random_images-00099-of-00099
 
 #### 进行训练
 
-PaddlePaddle提供专用的[data reader creator](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#python-data-reader-design-doc)，生成给定SSTable文件对应的data reader。**无论在本地还是在云端，reader的使用方式都是一致的**：
+PaddlePaddle提供专用的[data reader creator](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#python-data-reader-design-doc)，生成给定RecordIO文件对应的data reader。**无论在本地还是在云端，reader的使用方式都是一致的**：
 
 ```python
 # ...
-reader = paddle.reader.creator.SSTable("/home/random_images-*-of-*")
+reader = paddle.reader.creator.RecordIO("/home/random_images-*-of-*")
 batch_reader = paddle.batch(paddle.dataset.mnist.train(), 128)
 trainer.train(batch_reader, ...)
 ```
