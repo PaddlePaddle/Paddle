@@ -15,7 +15,6 @@ limitations under the License. */
 #include "hl_cuda_cudnn.h"
 #include <cudnn.h>
 #include <gflags/gflags.h>
-#include <mutex>
 #include "hl_cuda_cudnn.ph"
 #include "hl_thread.ph"
 #include "paddle/utils/DynamicLoad.h"
