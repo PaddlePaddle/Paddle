@@ -57,7 +57,13 @@ if [ ${WITH_DOC} == "ON" ]; then
           -DWITH_SWIG_PY=ON \
           -DWITH_STYLE_CHECK=OFF
     make paddle_docs paddle_docs_cn
+    DOC_DIR="/paddle/paddle/scripts/tools/build_docs/"
+    mkdir -p $DOC_DIR/doc
+    mkdir -p $DOC_DIR/doc_cn
+    cp -r /paddle/build_doc/doc/en/html/* $DOC_DIR/doc
+    cp -r /paddle/build_doc/doc/cn/html/* $DOC_DIR/doc_cn
     popd
+    rm -rf /paddle/build_doc
 fi
 # generate deb package for current build
 # FIXME(typhoonzero): should we remove paddle/scripts/deb ?
@@ -110,7 +116,7 @@ RUN ${MIRROR_UPDATE}
     pip install --upgrade pip && \
     pip install -U 'protobuf==3.1.0' requests numpy
 # Use different deb file when building different type of images
-ADD build/*.deb /usr/local/opt/paddle/deb/
+ADD *.deb /usr/local/opt/paddle/deb/
 # run paddle version to install python packages first
 RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && \
     rm -f /usr/local/opt/paddle/deb/*.deb && \

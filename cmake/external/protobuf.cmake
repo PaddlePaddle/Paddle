@@ -1,11 +1,11 @@
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,7 +18,8 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     SET(PROTOBUF_SOURCES_DIR ${THIRD_PARTY_PATH}/${TARGET_NAME})
     SET(PROTOBUF_INSTALL_DIR ${THIRD_PARTY_PATH}/install/${TARGET_NAME})
 
-    SET(${TARGET_NAME}_INCLUDE_DIR "${PROTOBUF_INSTALL_DIR}/include" PARENT_SCOPE)
+    SET(${TARGET_NAME}_INCLUDE_DIR "${PROTOBUF_INSTALL_DIR}/include"
+    SET(PROTOBUF_INCLUDE_DIR "${PROTOBUF_INSTALL_DIR}/include" PARENT_SCOPE)
     SET(${TARGET_NAME}_LITE_LIBRARY
         "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf-lite${STATIC_LIBRARY_SUFFIX}"
          PARENT_SCOPE)
@@ -81,7 +82,7 @@ IF(NOT CMAKE_CROSSCOMPILING)
     IF(PROTOBUF_FOUND)
         EXEC_PROGRAM(${PROTOBUF_PROTOC_EXECUTABLE} ARGS --version OUTPUT_VARIABLE PROTOBUF_VERSION)
         STRING(REGEX MATCH "[0-9]+.[0-9]+" PROTOBUF_VERSION "${PROTOBUF_VERSION}")
-        IF (${PROTOBUF_VERSION} VERSION_LESS "3.1.0")
+        IF("${PROTOBUF_VERSION}" VERSION_LESS "3.1.0")
             SET(PROTOBUF_FOUND OFF)
         ENDIF()
     ENDIF(PROTOBUF_FOUND)
