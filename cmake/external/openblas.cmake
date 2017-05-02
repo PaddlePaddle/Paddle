@@ -27,8 +27,6 @@ IF(NOT ${CBLAS_FOUND})
         SET(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/libopenblas.a" CACHE FILEPATH "openblas library" FORCE)
     ENDIF(WIN32)
 
-    ADD_DEFINITIONS(-DPADDLE_USE_LAPACK)
-
     ExternalProject_Add(
         openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}

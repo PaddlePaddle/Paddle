@@ -194,8 +194,8 @@ void PyDataProvider::fillSlotsByStr(const std::string& samples) {
     auto& slot = slots_[j];
     CHECK(SlotDef::INDEX >= slot.type || SlotDef::STRING == slot.type)
         << " Slot type:" << slot.type << " is out of range.";
-    CHECK_GE(slot.type, SlotDef::VECTOR_DENSE) << " Slot type:" << slot.type
-                                               << " is out of range.";
+    CHECK_GE(slot.type, SlotDef::VECTOR_DENSE)
+        << " Slot type:" << slot.type << " is out of range.";
     switch (slot.type) {
       case SlotDef::VECTOR_DENSE:
         fillDenseSlot(slot, data, dataEnd);

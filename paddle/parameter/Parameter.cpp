@@ -352,8 +352,8 @@ bool Parameter::load(std::istream& s) {
   Header header;
   CHECK(s.read(reinterpret_cast<char*>(&header), sizeof(header)))
       << "Fail to read parameter " << getName();
-  CHECK_EQ(header.version, kFormatVersion) << "Incorrect format version: "
-                                           << header.version;
+  CHECK_EQ(header.version, kFormatVersion)
+      << "Incorrect format version: " << header.version;
   CHECK_EQ(header.size, getSize())
       << "The size (" << header.size << ") in the file does not match the size "
       << "(" << getSize() << ") of the parameter: " << getName();

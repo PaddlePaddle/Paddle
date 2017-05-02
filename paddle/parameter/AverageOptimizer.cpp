@@ -155,8 +155,9 @@ ParameterOptimizer::TraverseCallback AverageOptimizer::restore() {
     return nullptr;
   }
 
-  return [](
-      const VectorPtr vecs[], const ParameterConfig& config, size_t sparseId) {
+  return [](const VectorPtr vecs[],
+            const ParameterConfig& config,
+            size_t sparseId) {
     vecs[PARAMETER_VALUE]->copyFrom(*vecs[PARAMETER_GRADIENT]);
     vecs[PARAMETER_GRADIENT]->zeroMem();
   };

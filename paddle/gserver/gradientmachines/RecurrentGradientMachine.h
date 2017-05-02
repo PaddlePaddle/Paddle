@@ -107,18 +107,18 @@ public:
       DropCallback;
 
   /**
-    * @brief NormOrDropNodeCallback
-    *
-    * Normalize a path's probabilities or just drop it by modifying path.logProb
-    *
-    * The first parameter is sequence index in a batch
-    *
-    * The second parameter is path.ids
-    *
-    * The third parameter is probabilites for each node in this path.
-    *
-    * The fourth parameter is the probability of the whole path.
-    */
+   * @brief NormOrDropNodeCallback
+   *
+   * Normalize a path's probabilities or just drop it by modifying path.logProb
+   *
+   * The first parameter is sequence index in a batch
+   *
+   * The second parameter is path.ids
+   *
+   * The third parameter is probabilites for each node in this path.
+   *
+   * The fourth parameter is the probability of the whole path.
+   */
   typedef std::function<void(
       int seqId, const std::vector<int>&, std::vector<real>&, real*)>
       NormOrDropNodeCallback;
@@ -348,9 +348,9 @@ protected:
   int targetInfoInlinkId_;
 
   /* create scattered id infomation for all realLayer of inFrameLines one time.
-  *  If hasSubseq, will also create scattered sequenceStartPositions infomation
-  *  for all realLayer of inFrameLines one time.
-  */
+   *  If hasSubseq, will also create scattered sequenceStartPositions infomation
+   *  for all realLayer of inFrameLines one time.
+   */
   void createInFrameInfo(int inlinks_id,
                          const Argument& input,
                          PassType passType);

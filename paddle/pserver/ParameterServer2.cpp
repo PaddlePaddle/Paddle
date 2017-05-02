@@ -1213,8 +1213,8 @@ void ParameterServer2::loadValueVector(const LoadValueRequest& request,
   CHECK_EQ(header.size, (size_t)size_)
       << "The size (" << header.size << ") in the file does not match the size "
       << "(" << size_ << ") of the pserver: " << serverId_;
-  CHECK_EQ(header.valueSize, sizeof(real)) << "Unsupported valueSize "
-                                           << header.valueSize;
+  CHECK_EQ(header.valueSize, sizeof(real))
+      << "Unsupported valueSize " << header.valueSize;
   CHECK(fs.read(reinterpret_cast<char*>(vec.getData()),
                 header.size * sizeof(real)));
 

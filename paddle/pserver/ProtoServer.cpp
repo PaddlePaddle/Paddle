@@ -41,8 +41,8 @@ void ProtoServer::handleRequest(std::unique_ptr<MsgReader> msgReader,
 
 void ProtoServer::registerServiceFunctionImp(const std::string& funcName,
                                              ServiceFunction func) {
-  CHECK(!nameToFuncMap_.count(funcName)) << "Duplicated registration: "
-                                         << funcName;
+  CHECK(!nameToFuncMap_.count(funcName))
+      << "Duplicated registration: " << funcName;
   nameToFuncMap_[funcName] = func;
 }
 

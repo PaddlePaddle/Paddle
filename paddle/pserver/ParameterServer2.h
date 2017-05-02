@@ -545,11 +545,11 @@ protected:
                      std::vector<ParameterServer2::Buffer>* buffers);
 
   const ParameterConfig& getParameterConfig(const ParameterBlock& block) {
-    CHECK_LT(block.para_id(), -1UL) << "invalid parameter id:"
-                                    << block.para_id();
+    CHECK_LT(block.para_id(), -1UL)
+        << "invalid parameter id:" << block.para_id();
     const auto it = configMap_.find(block.para_id());
-    CHECK(it != configMap_.end()) << "can not find parameter id: "
-                                  << block.para_id();
+    CHECK(it != configMap_.end())
+        << "can not find parameter id: " << block.para_id();
     return it->second;
   }
 

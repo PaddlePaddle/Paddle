@@ -62,8 +62,8 @@ public:
   // Create a class instance of type @type using args
   BaseClass* createByType(const std::string& type, CreateArgs... args) {
     ClassCreator creator;
-    CHECK(mapGet(type, creatorMap_, &creator)) << "Unknown class type: "
-                                               << type;
+    CHECK(mapGet(type, creatorMap_, &creator))
+        << "Unknown class type: " << type;
     return creator(args...);
   }
 

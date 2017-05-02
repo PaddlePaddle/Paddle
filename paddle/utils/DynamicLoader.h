@@ -17,8 +17,8 @@ limitations under the License. */
 
 #include <dlfcn.h>
 #include <memory>
-#include <string>
 #include <mutex>
+#include <string>
 
 /**
  * @brief    load the DSO of CUBLAS

@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "DynamicLoad.h"
-#include "Logging.h"
+#include "DynamicLoader.h"
 #include <gflags/gflags.h>
+#include "Logging.h"
 
 DEFINE_string(cudnn_dir,
               "",
@@ -165,8 +165,8 @@ void GetWarpCTCDsoHandle(void** dso_handle) {
 
 void GetLapackDsoHandle(void** dso_handle) {
 #if defined(__APPLE__) || defined(__OSX__)
-  GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "liblapack.dylib", dso_handle);
+  GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.dylib", dso_handle);
 #else
-  GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "liblapack.so", dso_handle);
+  GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.so", dso_handle);
 #endif
 }

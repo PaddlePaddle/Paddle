@@ -165,12 +165,12 @@ void CosSimBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad,
       real reciprocal_square_sum_x = 1.0f / square_sum_x;
       real reciprocal_square_sum_y = 1.0f / square_sum_y;
       for (size_t j = 0; j < dim; ++j) {
-        prev_grad_x[j] +=
-            out[i] * grad[i] * (prev_out_y[j] * reciprocal_xy -
-                                prev_out_x[j] * reciprocal_square_sum_x);
-        prev_grad_y[j] +=
-            out[i] * grad[i] * (prev_out_x[j] * reciprocal_xy -
-                                prev_out_y[j] * reciprocal_square_sum_y);
+        prev_grad_x[j] += out[i] * grad[i] *
+                          (prev_out_y[j] * reciprocal_xy -
+                           prev_out_x[j] * reciprocal_square_sum_x);
+        prev_grad_y[j] += out[i] * grad[i] *
+                          (prev_out_x[j] * reciprocal_xy -
+                           prev_out_y[j] * reciprocal_square_sum_y);
       }
     }
   }
