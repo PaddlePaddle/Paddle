@@ -5,7 +5,7 @@
 # If any cblas implementation found, the following variable will be set.
 #    CBLAS_PROVIDER  # one of MKL, ATLAS, OPENBLAS, REFERENCE
 #    CBLAS_INC_DIR   # the include directory for cblas.
-#    CBLAS_LIBS      # a list of libraries should be linked by paddle. 
+#    CBLAS_LIBS      # a list of libraries should be linked by paddle.
 #                    # Each library should be full path to object file.
 #
 # User should set one of MKL_ROOT, ATLAS_ROOT, OPENBLAS_ROOT, REFERENCE_CBLAS_ROOT
@@ -63,11 +63,11 @@ set(ATLAS_LIB_SEARCH_PATHS
         /usr/lib/atlas
         /usr/lib/atlas-base   # special for ubuntu 14.04.
     )
-find_path(ATLAS_INC_DIR NAMES cblas.h 
+find_path(ATLAS_INC_DIR NAMES cblas.h
   PATHS ${ATLAS_INCLUDE_SEARCH_PATHS})
 find_path(ATLAS_CLAPACK_INC_DIR NAMES clapack.h
   PATHS ${ATLAS_INCLUDE_SEARCH_PATHS})
-find_library(ATLAS_CBLAS_LIB NAMES cblas libcblas.so.3 
+find_library(ATLAS_CBLAS_LIB NAMES cblas libcblas.so.3
   PATHS ${ATLAS_LIB_SEARCH_PATHS})
 find_library(ATLAS_LIB NAMES lapack_atlas liblapack_atlas.so.3
   PATHS ${ATLAS_LIB_SEARCH_PATHS})
@@ -76,11 +76,12 @@ if(ATLAS_INC_DIR AND ATLAS_CBLAS_LIB AND ATLAS_LIB AND NOT CBLAS_FOUND)
   set(CBLAS_PROVIDER ATLAS)
   set(CBLAS_INC_DIR ${ATLAS_INC_DIR})
   set(CBLAS_LIBRARIES ${ATLAS_LIB} ${ATLAS_CBLAS_LIB})
-  add_definitions(-DPADDLE_USE_ATLAS)  
+  add_definitions(-DPADDLE_USE_ATLAS)
   message(STATUS "Found ATLAS (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
   set(CBLAS_FOUND ON)
   if(ATLAS_CLAPACK_INC_DIR)
     add_definitions(-DPADDLE_USE_LAPACK)
+    set(CBLAS_INC_DIR ${ATLAS_CLAPACK_INC_DIR})
     message(STATUS "Found lapack in ATLAS (include: ${ATLAS_CLAPACK_INC_DIR})")
   endif()
   return()
@@ -124,7 +125,7 @@ endif()
 ## Then find the reference-cblas.  www.netlib.org/blas/
 
 
-set(REFERENCE_CBLAS_ROOT $ENV{REFERENCE_CBLAS_ROOT} CACHE PATH 
+set(REFERENCE_CBLAS_ROOT $ENV{REFERENCE_CBLAS_ROOT} CACHE PATH
   "Folder contains reference-cblas")
 set(REFERENCE_CBLAS_INCLUDE_SEARCH_PATHS
   ${REFERENCE_CBLAS_ROOT}/include
