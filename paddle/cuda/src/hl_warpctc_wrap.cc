@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "hl_warpctc_wrap.h"
 #include <mutex>
-#include "hl_dso_loader.h"
+#include "paddle/utils/DynamicLoad.h"
 #include "paddle/utils/Logging.h"
 
 namespace dynload {

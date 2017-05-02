@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "hl_dso_loader.h"
+#include "DynamicLoad.h"
+#include "Logging.h"
 #include <gflags/gflags.h>
-#include "paddle/utils/Logging.h"
 
 DEFINE_string(cudnn_dir,
               "",
@@ -29,6 +29,8 @@ DEFINE_string(cuda_dir,
               "dlopen will search cuda from LD_LIBRARY_PATH");
 
 DEFINE_string(warpctc_dir, "", "Specify path for loading libwarpctc.so.");
+
+DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
 
 static inline std::string join(const std::string& part1,
                                const std::string& part2) {
@@ -158,5 +160,13 @@ void GetWarpCTCDsoHandle(void** dso_handle) {
   GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.dylib", dso_handle);
 #else
   GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.so", dso_handle);
+#endif
+}
+
+void GetLapackDsoHandle(void** dso_handle) {
+#if defined(__APPLE__) || defined(__OSX__)
+  GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "liblapack.dylib", dso_handle);
+#else
+  GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "liblapack.so", dso_handle);
 #endif
 }

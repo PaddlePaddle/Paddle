@@ -27,33 +27,6 @@ IF(NOT ${CBLAS_FOUND})
         SET(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/libopenblas.a" CACHE FILEPATH "openblas library" FORCE)
     ENDIF(WIN32)
 
-    IF(CMAKE_COMPILER_IS_GNUCC)
-        ENABLE_LANGUAGE(Fortran)
-        if (NOT CMAKE_Fortran_COMPILER_VERSION)
-          # cmake < 3.4 cannot get CMAKE_Fortran_COMPILER_VERSION directly.
-          execute_process(COMMAND ${CMAKE_Fortran_COMPILER} -dumpversion
-                    OUTPUT_VARIABLE CMAKE_Fortran_COMPILER_VERSION)
-        endif()
-        string(REGEX MATCHALL "[0-9]+" Fortran_VERSION ${CMAKE_Fortran_COMPILER_VERSION})
-        list(GET Fortran_VERSION 0 Fortran_MAJOR)
-        list(GET Fortran_VERSION 1 Fortran_MINOR)
-        find_library(GFORTRAN_LIBRARY NAMES gfortran PATHS 
-                     /lib
-                     /usr/lib
-                     /usr/lib/gcc/x86_64-linux-gnu/${Fortran_MAJOR}.${Fortran_MINOR}/
-                     /usr/lib/gcc/x86_64-linux-gnu/${Fortran_MAJOR}/)
-        if (NOT GFORTRAN_LIBRARY)
-            message(FATAL_ERROR "Cannot found gfortran library which it is used by openblas")
-        endif()
-        find_package(Threads REQUIRED)
-        LIST(APPEND CBLAS_LIBRARIES ${GFORTRAN_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
-    ENDIF(CMAKE_COMPILER_IS_GNUCC)
-
-    IF(NOT CMAKE_Fortran_COMPILER)
-        MESSAGE(FATAL_ERROR "To build lapack in libopenblas, "
-                "you need to set gfortran compiler: cmake .. -DCMAKE_Fortran_COMPILER=...")
-    ENDIF(NOT CMAKE_Fortran_COMPILER)
-
     ADD_DEFINITIONS(-DPADDLE_USE_LAPACK)
 
     ExternalProject_Add(
@@ -64,7 +37,7 @@ IF(NOT ${CBLAS_FOUND})
         PREFIX              ${CBLAS_SOURCES_DIR}
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     1
-        BUILD_COMMAND       ${CMAKE_MAKE_PROGRAM} FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} HOSTCC=${CMAKE_C_COMPILER} DYNAMIC_ARCH=1 NO_SHARED=1 libs netlib
+        BUILD_COMMAND       ${CMAKE_MAKE_PROGRAM} FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} HOSTCC=${CMAKE_C_COMPILER} NO_LAPACK=1 DYNAMIC_ARCH=1 NO_SHARED=1 libs netlib
         INSTALL_COMMAND     ${CMAKE_MAKE_PROGRAM} install NO_SHARED=1 PREFIX=<INSTALL_DIR>
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""

@@ -24,8 +24,8 @@ limitations under the License. */
 #include <mutex>
 #include "hl_cuda.ph"
 #include "hl_thread.ph"
-#include "hl_dso_loader.h"
 #include "paddle/utils/Logging.h"
+#include "paddle/utils/DynamicLoad.h"
 // clang-format on
 
 namespace dynload {
@@ -98,11 +98,11 @@ int g_cuda_lib_version = 0;
  * Check build-in cuda function using glog and it **does not**
  * support << operator for more details error info.
  */
-#define CHECK_CUDA(cudaFunc)                                         \
-  do {                                                               \
-    cudaError_t cudaStat = cudaFunc;                                 \
-    CHECK_EQ(cudaSuccess, cudaStat) << "Cuda Error: "                \
-                                    << cudaGetErrorString(cudaStat); \
+#define CHECK_CUDA(cudaFunc)                               \
+  do {                                                     \
+    cudaError_t cudaStat = cudaFunc;                       \
+    CHECK_EQ(cudaSuccess, cudaStat)                        \
+        << "Cuda Error: " << cudaGetErrorString(cudaStat); \
   } while (0)
 
 /**
@@ -469,8 +469,8 @@ void hl_specify_devices_start(int *device, int number) {
   CHECK(tmp) << "[Start failed] System memory is not enough.";
 
   g_device = (hl_device_prop *)tmp;
-  device_prop = (hl_device_prop)(
-      (char *)tmp + g_system_device_num * sizeof(hl_device_prop *));
+  device_prop = (hl_device_prop)((char *)tmp + g_system_device_num *
+                                                   sizeof(hl_device_prop *));
   memset(g_device, 0, g_system_device_num * sizeof(hl_device_prop *));
   int num = 0;
   for (int i = 0; i < number; i++) {
@@ -559,8 +559,8 @@ bool hl_get_sync_flag() { return g_sync_flag; }
 void hl_stream_synchronize(hl_stream_t stream) {
   cudaStream_t cu_stream;
 
-  CHECK_LT(stream, HPPL_STREAM_END) << __func__
-                                    << ": the parameter stream is error.";
+  CHECK_LT(stream, HPPL_STREAM_END)
+      << __func__ << ": the parameter stream is error.";
 
   cu_stream = t_resource.stream[stream];
   CHECK_CUDA(cudaStreamSynchronize(cu_stream));
@@ -590,8 +590,8 @@ void hl_stream_record_event(hl_stream_t stream, hl_event_t event) {
   cudaStream_t cu_stream;
 
   CHECK_NOTNULL(event);
-  CHECK_LT(stream, HPPL_STREAM_END) << __func__
-                                    << ": the parameter stream is error.";
+  CHECK_LT(stream, HPPL_STREAM_END)
+      << __func__ << ": the parameter stream is error.";
 
   cu_stream = t_resource.stream[stream];
   CHECK_CUDA(cudaEventRecord(event->cu_event, cu_stream));
@@ -601,8 +601,8 @@ void hl_stream_wait_event(hl_stream_t stream, hl_event_t event) {
   cudaStream_t cu_stream;
 
   CHECK_NOTNULL(event);
-  CHECK_LT(stream, HPPL_STREAM_END) << __func__
-                                    << ": the parameter stream is error.";
+  CHECK_LT(stream, HPPL_STREAM_END)
+      << __func__ << ": the parameter stream is error.";
 
   cu_stream = t_resource.stream[stream];
   CHECK_CUDA(cudaStreamWaitEvent(cu_stream, event->cu_event, 0));

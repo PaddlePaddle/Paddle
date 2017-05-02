@@ -16,8 +16,8 @@ limitations under the License. */
 #include <sys/time.h>
 #include <mutex>
 #include "hl_cuda.h"
-#include "hl_dso_loader.h"
 #include "hl_thread.ph"
+#include "paddle/utils/DynamicLoad.h"
 #include "paddle/utils/Logging.h"
 
 namespace dynload {
