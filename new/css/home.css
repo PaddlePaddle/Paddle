@@ -2337,7 +2337,9 @@
 }
 body,
 html {
-  min-width: 1180px;
+  min-width: 1080px;
+  position: relative;
+  z-index: 1;
   font-family: 'NotoSansHans', 'Microsoft Yahei', Arial, serif;
   margin: 0;
 }
@@ -2347,7 +2349,7 @@ ul {
   list-style: none;
 }
 .row {
-  width: 1180px;
+  width: 1080px;
   margin: 0 auto;
 }
 .row::after {
@@ -2372,12 +2374,13 @@ h2 {
 header.site-header {
   height: 760px;
   margin: 0;
-  background: url(../images/banner.jpg) no-repeat center;
+  background: url(./../images/banner.jpg) no-repeat center;
   background-size: cover;
   text-align: center;
 }
 header.site-header > nav.row > * {
   display: inline-block;
+  height: 70px;
 }
 header.site-header .logo {
   height: 70px;
@@ -2483,7 +2486,8 @@ header.site-header .github-fork {
 header.site-header .github-fork > a {
   display: inline-block;
   line-height: 30px;
-  color: #597cf1 ;
+  width: 186px;
+  color: #597cf1;
   padding: 0 15px;
   border: 1px solid #3c4f85;
   margin: 20px 0;
@@ -2567,7 +2571,7 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
   content: "";
   width: 100%;
   height: 1px;
-  background-color: #f3f4f5;
+  background-color: #e6e8eb;
   display: inline-block;
   position: absolute;
   top: 50%;
@@ -2665,7 +2669,7 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
 }
 .features .feature-desc h3 {
   color: #2f3443;
-  margin: 30px 0 20px;
+  margin: 30px 0 28px;
   font-size: 20px;
   line-height: 20px;
   font-weight: 300;
@@ -2679,7 +2683,7 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
   display: inline-block;
 }
 .get-started {
-  background: url(../images/get-started-bg.png) no-repeat center bottom;
+  background: url(./../images/get-started-bg.jpg) no-repeat center bottom;
   color: #fff;
   text-align: center;
   padding: 60px 0;
@@ -2697,6 +2701,7 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
   margin: 0 0 30px 0;
 }
 .get-started .quick-start {
+  color: #ffffff;
   background-color: #597cf1;
   padding: 8px 30px;
   display: inline-block;
@@ -2746,7 +2751,7 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
   font-size: 12px;
   text-align: center;
   margin: 0;
-  padding: 10px 0 30px;
+  padding: 0 0 40px;
 }
 
 /*# sourceMappingURL=home.css.map*/
