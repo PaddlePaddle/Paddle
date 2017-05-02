@@ -1,0 +1,592 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Text generation Tutorial &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Text generation Tutorial</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="text-generation-tutorial">
+<span id="text-generation-tutorial"></span><h1>Text generation Tutorial<a class="headerlink" href="#text-generation-tutorial" title="Permalink to this headline">¶</a></h1>
+<p>Sequence to sequence has been proven to be a powerful model for language generation. It can be used for machine translation, query rewriting, image captioning, etc.</p>
+<p>This tutorial guides you through training a sequence to sequence model for neural machine translation (NMT) network that translates French to English.</p>
+<p>We follow the paper <a class="reference external" href="http://arxiv.org/abs/1409.0473">Neural Machine Translation by Jointly Learning to Align and Translate</a> , which details the model architecture and training procedure for good performance on WMT-14 dataset. This tutorial reproduces this result in PaddlePaddle.</p>
+<p>We thank &#64;caoying for the pull request that defines the model architecture and solver configurations.</p>
+<div class="section" id="data-preparation">
+<span id="data-preparation"></span><h2>Data Preparation<a class="headerlink" href="#data-preparation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="download-and-extract">
+<span id="download-and-extract"></span><h3>Download and Extract<a class="headerlink" href="#download-and-extract" title="Permalink to this headline">¶</a></h3>
+<p>Download the WMT-14 dataset from <a class="reference external" href="http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/">http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/</a>, extract it, and divide Develop and Test data into separate folder.</p>
+<ul class="simple">
+<li><strong>Train data</strong>: <a class="reference external" href="http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/bitexts.tgz">bitexts (after selection)</a></li>
+<li><strong>Develop and Test data</strong>: <a class="reference external" href="http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/dev+test.tgz">dev+test data</a></li>
+</ul>
+<p>To do this, simply run the following commands in linux, otherwise, you need to download, extract, divide, and rename the file suffix respectively.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/seqToseq/data
+./wmt14_data.sh
+</pre></div>
+</div>
+<p>We should find that the dataset <code class="docutils literal"><span class="pre">wmt14</span></code> has three folders as shown in the following table.</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border">
+<colgroup>
+<col  class="left" />
+<col  class="left" />
+<col  class="left" />
+<col  class="left" />
+</colgroup><thead>
+<tr>
+<th scope="col" class="left">folder name</th>
+<th scope="col" class="left">French-English parallel corpora file</th>
+<th scope="col" class="left">number of total file</th>
+<th scope="col" class="left">size</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">train_data</td>
+<td class="left">ccb2_pc30.src, ccb2_pc30.trg, etc</td>
+<td class="left">twelve</td>
+<td class="left">3.55G</td>
+</tr><tr>
+<td class="left">test_data</td>
+<td class="left">ntst1213.src, ntst1213.trg</td>
+<td class="left">two</td>
+<td class="left">1636k</td>
+</tr><tr>
+<td class="left">gen_data</td>
+<td class="left">ntst14.src, ntst14.trg</td>
+<td class="left">two</td>
+<td class="left">864k</td>
+</tr>
+</tbody>
+</table>
+<br/><ul class="simple">
+<li>Each folder has French-English parallel corpora</li>
+<li><strong>XXX.src</strong> are source French files; <strong>XXX.trg</strong> are target English files.</li>
+<li>The number of lines of <strong>XXX.src</strong> and <strong>XXX.trg</strong> should be the same.</li>
+<li>Each line is a French/English sentence.</li>
+<li>There is a one-to-one correspondence between the sentence at the i-th line of <strong>XXX.src</strong> and <strong>XXX.trg</strong>.</li>
+</ul>
+</div>
+<div class="section" id="user-defined-dataset">
+<span id="user-defined-dataset"></span><h3>User Defined Dataset<a class="headerlink" href="#user-defined-dataset" title="Permalink to this headline">¶</a></h3>
+<p>If you need to do other sequence-to-sequence tasks, such as Paraphrasing, you only need to organize the data as follows, and place them in <code class="docutils literal"><span class="pre">demo/seqToseq/data</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">dataset</span>
+  <span class="n">train</span>
+    <span class="n">file1</span><span class="o">.</span><span class="n">src</span> <span class="n">file1</span><span class="o">.</span><span class="n">trg</span>
+    <span class="n">file2</span><span class="o">.</span><span class="n">src</span> <span class="n">file2</span><span class="o">.</span><span class="n">trg</span>
+    <span class="o">......</span>
+  <span class="n">test</span>
+    <span class="n">file1</span><span class="o">.</span><span class="n">src</span> <span class="n">file1</span><span class="o">.</span><span class="n">trg</span>
+    <span class="n">file2</span><span class="o">.</span><span class="n">src</span> <span class="n">file2</span><span class="o">.</span><span class="n">trg</span>
+    <span class="o">......</span>
+  <span class="n">gen</span>
+    <span class="n">file1</span><span class="o">.</span><span class="n">src</span> <span class="n">file1</span><span class="o">.</span><span class="n">trg</span>
+    <span class="n">file2</span><span class="o">.</span><span class="n">src</span> <span class="n">file2</span><span class="o">.</span><span class="n">trg</span>
+    <span class="o">......</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>1st directory: dataset folder name</li>
+<li>2nd directory: folder of train, test, and gen. The names of these three folders are fixed.</li>
+<li>3rd file: Source-Target parallel corpora files.<ul>
+<li><strong>XXX.src</strong> are source files, <strong>XXX.trg</strong> are target files.</li>
+<li>Each line of the file must be a sequence.</li>
+<li>There should be a one-to-one correspondence between the i-th sequence of <strong>XXX.src</strong> and <strong>XXX.trg</strong>.</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="data-preprocess">
+<span id="data-preprocess"></span><h2>Data Preprocess<a class="headerlink" href="#data-preprocess" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="preprocessing-workflow">
+<span id="preprocessing-workflow"></span><h3>Preprocessing Workflow<a class="headerlink" href="#preprocessing-workflow" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Concat each Source-Target parallel corpora to be one file:<ul>
+<li>concat each <strong>XXX.src</strong> and <strong>XXX.trg</strong> to be <strong>XXX</strong>.</li>
+<li>the i-th line of <strong>XXX</strong> = the i-th line of <strong>XXX.src</strong> + &#8216;\t&#8217; + the i-th line of <strong>XXX.trg</strong></li>
+</ul>
+</li>
+<li>Build source and target dictionary of train data, each dictionary has DICTSIZE words:<ul>
+<li>the most frequent (DICTSIZE-3) words</li>
+<li>3 special token:<ul>
+<li><code class="docutils literal"><span class="pre">&lt;s&gt;</span></code>: the start of a sequence</li>
+<li><code class="docutils literal"><span class="pre">&lt;e&gt;</span></code>: the end of a sequence</li>
+<li><code class="docutils literal"><span class="pre">&lt;unk&gt;</span></code>: a word not included in dictionary</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="preprocessing-command-and-result">
+<span id="preprocessing-command-and-result"></span><h3>Preprocessing Command and Result<a class="headerlink" href="#preprocessing-command-and-result" title="Permalink to this headline">¶</a></h3>
+<p>The general command for preprocessing the dataset is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">seqToseq</span><span class="o">/</span>
+<span class="n">python</span> <span class="n">preprocess</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="n">i</span> <span class="n">INPUT</span> <span class="p">[</span><span class="o">-</span><span class="n">d</span> <span class="n">DICTSIZE</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">m</span><span class="p">]</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">-i</span> <span class="pre">INPUT</span></code>: the path of input original dataset</li>
+<li><code class="docutils literal"><span class="pre">-d</span> <span class="pre">DICTSIZE</span></code>: the specified word count of dictionary, if not set, dictionary will contain all the words in input dataset</li>
+<li><code class="docutils literal"><span class="pre">-m</span> <span class="pre">--mergeDict</span></code>: merge source and target dictionary, thus, two dictionaries have the same context</li>
+</ul>
+<p>And you will see messages like this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">concat</span> <span class="n">parallel</span> <span class="n">corpora</span> <span class="k">for</span> <span class="n">dataset</span>
+<span class="n">build</span> <span class="n">source</span> <span class="n">dictionary</span> <span class="k">for</span> <span class="n">train</span> <span class="n">data</span>
+<span class="n">build</span> <span class="n">target</span> <span class="n">dictionary</span> <span class="k">for</span> <span class="n">train</span> <span class="n">data</span>
+<span class="n">dictionary</span> <span class="n">size</span> <span class="ow">is</span> <span class="n">XXX</span>
+</pre></div>
+</div>
+<p>Here, you can simply run the command:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">preprocess</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="n">i</span> <span class="n">data</span><span class="o">/</span><span class="n">wmt14</span> <span class="o">-</span><span class="n">d</span> <span class="mi">30000</span>
+</pre></div>
+</div>
+<p>It will take several minutes, and store the preprocessed dataset in <code class="docutils literal"><span class="pre">demo/seqToseq/data/pre-wmt14</span></code>, the directory has following structure.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">train</span> <span class="n">test</span> <span class="n">gen</span> <span class="n">train</span><span class="o">.</span><span class="n">list</span> <span class="n">test</span><span class="o">.</span><span class="n">list</span> <span class="n">gen</span><span class="o">.</span><span class="n">list</span> <span class="n">src</span><span class="o">.</span><span class="n">dict</span> <span class="n">trg</span><span class="o">.</span><span class="n">dict</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><strong>train, test, gen</strong>: folder contains French-English parallel corpora of train data, test data and gen data respectively. Each line of file in folder contains two parts, the former is a French sequence, and the latter is a corresponding English sequence.</li>
+<li><strong>train.list, test.list, gen.list</strong>: text contains a file list in train folder, test folder and gen folder respectively</li>
+<li><strong>src.dict, trg.dict</strong>: source (French) / target (English) dictionary, each dictionary has 30000 words: the most frequent 29997 words and 3 special token</li>
+</ul>
+</div>
+</div>
+<div class="section" id="model-training">
+<span id="model-training"></span><h2>Model Training<a class="headerlink" href="#model-training" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="introduction">
+<span id="introduction"></span><h3>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h3>
+<p>Neural machine translation (NMT) aims at building a single neural network that can be jointly tuned to maximize translation performance. Recently proposed NMT models often belong to a family of encoder–decoder models. Encoder-Decoder models encode a source sentence into a fixed-length vector from which a decoder generates a target sentence.</p>
+<p>In this task, we use an extension to the encoder–decoder model which learns to align and translate jointly. Each time the model generates a word in a translation, it searches for a set of positions in the source sentence for the most relevant information.  The decoder predicts a target word based on the context vectors associated with these source positions and all the previous generated target words. For more detailed explanation, readers can refer to paper <a class="reference external" href="http://arxiv.org/abs/1409.0473">Neural Machine Translation by Jointly Learning to Align and Translate</a>.</p>
+<p>The most distinguishing feature of this model is that it doesn&#8217;t encode an input sentence into a single ﬁxed-length vector. Instead, it encodes the input sentence into a sequence of vectors, where one vector corresponds to an input element. A subset of these vectors is chosen adaptively while decoding the translated sentence. This frees a NMT model from having to squash all the information of a source sentence, regardless of its length, into a ﬁxed-length vector. The improvement of this model is more apparent for longer sentences, but the improvement can be observed for sentences of any length.
+<center><img alt="" src="../../_images/encoder-decoder-attention-model1.png" /></center>
+<center>Figure 1. Encoder-Decoder-Attention-Model</center></p>
+</div>
+<div class="section" id="training-model-in-paddlepaddle">
+<span id="training-model-in-paddlepaddle"></span><h3>Training Model in PaddlePaddle<a class="headerlink" href="#training-model-in-paddlepaddle" title="Permalink to this headline">¶</a></h3>
+<p>We need to create a model config file before training. Here is an example <code class="docutils literal"><span class="pre">demo/seqToseq/translation/train.conf</span></code>. The first three lines import python function for defining network, and define the job_mode and attention_mode.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">seqToseq_net</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">is_generating</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="c1">### Data Definiation</span>
+<span class="n">train_conf</span> <span class="o">=</span> <span class="n">seq_to_seq_data</span><span class="p">(</span><span class="n">data_dir</span> <span class="o">=</span> <span class="s2">&quot;./data/pre-wmt14&quot;</span><span class="p">,</span>
+                             <span class="n">is_generating</span> <span class="o">=</span> <span class="n">is_generating</span><span class="p">)</span>
+
+<span class="c1">### Algorithm Configuration</span>
+<span class="n">settings</span><span class="p">(</span>
+    <span class="n">learning_method</span> <span class="o">=</span> <span class="n">AdamOptimizer</span><span class="p">(),</span>
+    <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">5e-4</span><span class="p">)</span>
+
+<span class="c1">### Network Architecture</span>
+<span class="n">gru_encoder_decoder</span><span class="p">(</span><span class="n">train_conf</span><span class="p">,</span> <span class="n">is_generating</span><span class="p">)</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><strong>Data Definiation</strong>: We define a SeqToSeq train and test data in our example. It returns train_conf as the configuration, following is its input arguments:<ul>
+<li>data_dir: directory of train data and test data</li>
+<li>is_generating: whether this config is used for generating, here is false</li>
+</ul>
+</li>
+<li><strong>Algorithm Configuration</strong>: We use the SGD training algorithm (default), ADAM learning method in our example, specify batch_size as 50, and learning rate as 5e-4.</li>
+<li><strong>Network Architecture</strong>: We use an attention version of GRU Encoder-Decoder network in our example. It consists a bidirectional GRU as an encoder and a decoder that emulates searching through a source sentence during decoding a translation.</li>
+</ol>
+</div>
+<div class="section" id="training-command-and-result">
+<span id="training-command-and-result"></span><h3>Training Command and Result<a class="headerlink" href="#training-command-and-result" title="Permalink to this headline">¶</a></h3>
+<p>After writing the model config, we can train the model by running the command:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/seqToseq/translation
+./train.sh
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">train.sh</span></code> is shown as follows:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train <span class="se">\</span>
+--config<span class="o">=</span><span class="s1">&#39;translation/train.conf&#39;</span> <span class="se">\</span>
+--save_dir<span class="o">=</span><span class="s1">&#39;translation/model&#39;</span> <span class="se">\</span>
+--use_gpu<span class="o">=</span><span class="nb">false</span> <span class="se">\</span>
+--num_passes<span class="o">=</span><span class="m">16</span> <span class="se">\</span>
+--show_parameter_stats_period<span class="o">=</span><span class="m">100</span> <span class="se">\</span>
+--trainer_count<span class="o">=</span><span class="m">4</span> <span class="se">\</span>
+--log_period<span class="o">=</span><span class="m">10</span> <span class="se">\</span>
+--dot_period<span class="o">=</span><span class="m">5</span> <span class="se">\</span>
+<span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span> <span class="p">|</span> tee <span class="s1">&#39;translation/train.log&#39;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>config: set config of neural network</li>
+<li>save_dir: set output path to save models</li>
+<li>use_gpu: whether to use GPU to train, here use CPU</li>
+<li>num_passes: set number of passes. One pass in paddle means training all samples in dataset one time</li>
+<li>show_parameter_stats_period: here show parameter statistic every 100 batches</li>
+<li>trainer_count: set number of CPU threads or GPU devices</li>
+<li>log_period: here print log every 10 batches</li>
+<li>dot_period: here print &#8216;.&#8217; every 5 batches</li>
+</ul>
+<p>The training loss function is printed every 10 batch by default, and you will see messages like this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">I0719</span> <span class="mi">19</span><span class="p">:</span><span class="mi">16</span><span class="p">:</span><span class="mf">45.952062</span> <span class="mi">15563</span> <span class="n">TrainerInternal</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">160</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">10</span> <span class="n">samples</span><span class="o">=</span><span class="mi">500</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mf">198.475</span> <span class="n">CurrentCost</span><span class="o">=</span><span class="mf">198.475</span> <span class="n">Eval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.737155</span>  <span class="n">CurrentEval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.737155</span>
+<span class="n">I0719</span> <span class="mi">19</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mf">56.707319</span> <span class="mi">15563</span> <span class="n">TrainerInternal</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">160</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">20</span> <span class="n">samples</span><span class="o">=</span><span class="mi">1000</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mf">157.479</span> <span class="n">CurrentCost</span><span class="o">=</span><span class="mf">116.483</span> <span class="n">Eval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.698392</span>  <span class="n">CurrentEval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.659065</span>
+<span class="o">.....</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>AvgCost: Average Cost from 0th batch to current batch</li>
+<li>CurrentCost: Cost in current batch</li>
+<li>classification_error_evaluator(Eval): False prediction rate for each word from 0th evaluation to current evaluation</li>
+<li>classification_error_evaluator(CurrentEval): False prediction rate for each word in current evaluation</li>
+</ul>
+<p>And when the classification_error_evaluator is less than 0.35, the model is trained sucessfully.</p>
+</div>
+</div>
+<div class="section" id="text-generation">
+<span id="text-generation"></span><h2>Text Generation<a class="headerlink" href="#text-generation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="introduction">
+<span id="id1"></span><h3>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h3>
+<p>Generally speaking, the NMT model is conditioned on the encodings of the source sentence, and then to predict the next target word by given the current target word. In the training process, the current word is always knowns as the ground truth, by contrast. In the generating process, the current word is the output of the decoder in last time step, which is accessed to from a memory in PaddlePaddle.</p>
+<p>Besides, we use Beam Search to generate sequences. Beam search uses breadth-first search to build its search tree. At each level of the tree, it generates all successors of the states at the current level, sorting them in increasing order of heuristic cost. However, it only stores a predetermined number of best states at each level (called the beam size).</p>
+</div>
+<div class="section" id="pretrained-model">
+<span id="pretrained-model"></span><h3>Pretrained model<a class="headerlink" href="#pretrained-model" title="Permalink to this headline">¶</a></h3>
+<p>We trained the model on a cluster with 50 nodes, each node has two 6-core CPUs. We trained 16 passes in 5 days, where each pass takes 7 hours. The model_dir has 16 sub-folder, each of which contains the whole model parameters with 202MB size. And we find pass-00012 model has the highest BLEU 27.77 (see paper <a class="reference external" href="http://www.aclweb.org/anthology/P02-1040.pdf">BLEU: a Method for Automatic Evaluation of Machine Translation</a>). To download and extract this model, simply run the following commands in linux.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/seqToseq/data
+./wmt14_model.sh
+</pre></div>
+</div>
+</div>
+<div class="section" id="generating-model-in-paddlepaddle">
+<span id="generating-model-in-paddlepaddle"></span><h3>Generating Model in PaddlePaddle<a class="headerlink" href="#generating-model-in-paddlepaddle" title="Permalink to this headline">¶</a></h3>
+<p>We need to create a model config file before translating French sequence. Here is an example <code class="docutils literal"><span class="pre">demo/seqToseq/translation/gen.conf</span></code>, the first three lines import python function for defining network, and define the job_mode and attention_mode.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">seqToseq_net</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">is_generating</span> <span class="o">=</span> <span class="bp">True</span>
+
+<span class="c1">################## Data Definiation #####################</span>
+<span class="n">gen_conf</span> <span class="o">=</span> <span class="n">seq_to_seq_data</span><span class="p">(</span><span class="n">data_dir</span> <span class="o">=</span> <span class="s2">&quot;./data/pre-wmt14&quot;</span><span class="p">,</span>
+                           <span class="n">is_generating</span> <span class="o">=</span> <span class="n">is_generating</span><span class="p">,</span>
+                           <span class="n">gen_result</span> <span class="o">=</span> <span class="s2">&quot;./translation/gen_result&quot;</span><span class="p">)</span>
+
+<span class="c1">############## Algorithm Configuration ##################</span>
+<span class="n">settings</span><span class="p">(</span>
+  <span class="n">learning_method</span> <span class="o">=</span> <span class="n">AdamOptimizer</span><span class="p">(),</span>
+  <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+  <span class="n">learning_rate</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+
+<span class="c1">################# Network configure #####################</span>
+<span class="n">gru_encoder_decoder</span><span class="p">(</span><span class="n">gen_conf</span><span class="p">,</span> <span class="n">is_generating</span><span class="p">)</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><strong>Data Definiation</strong>: We defines an SeqToSeq gen data in our example. It returns gen_conf as the configuration, following is its input arguments:<ul>
+<li>data_dir: directory of gen data
+&nbsp; - is_generating: whether this config is used for generating, here is true
+&nbsp; - gen_result: file to store the generation result</li>
+</ul>
+</li>
+<li><strong>Algorithm Configuration</strong>: We use SGD traing algorithm in generation, and specify batch_size as 1 (each time generate one sequence), and learning rate as 0.</li>
+<li><strong>Network Architecture</strong>: Essentially the same as the training model.</li>
+</ol>
+</div>
+<div class="section" id="generating-command-and-result">
+<span id="generating-command-and-result"></span><h3>Generating Command and Result<a class="headerlink" href="#generating-command-and-result" title="Permalink to this headline">¶</a></h3>
+<p>After writing the model config, we can do text translation from French to English by running the command:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/seqToseq/translation
+./gen.sh
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">gen.sh</span></code> is shown as follows, unlike training, there are some different arguments to specify:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train <span class="se">\</span>
+--job<span class="o">=</span><span class="nb">test</span> <span class="se">\</span>
+--config<span class="o">=</span><span class="s1">&#39;translation/gen.conf&#39;</span> <span class="se">\</span>
+--save_dir<span class="o">=</span><span class="s1">&#39;data/wmt14_model&#39;</span> <span class="se">\</span>
+--use_gpu<span class="o">=</span><span class="nb">true</span> <span class="se">\</span>
+--num_passes<span class="o">=</span><span class="m">13</span> <span class="se">\</span>
+--test_pass<span class="o">=</span><span class="m">12</span> <span class="se">\</span>
+--trainer_count<span class="o">=</span><span class="m">1</span> <span class="se">\</span>
+<span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span> <span class="p">|</span> tee <span class="s1">&#39;translation/gen.log&#39;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>job: set job mode to test</li>
+<li>save_dir: the path of saved models</li>
+<li>num_passes and test_pass: loading model parameters from test_pass to (num_passes - 1), here only loads <code class="docutils literal"><span class="pre">data/wmt14_model/pass-00012</span></code></li>
+</ul>
+<p>You will see messages like this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">I0706</span> <span class="mi">14</span><span class="p">:</span><span class="mi">48</span><span class="p">:</span><span class="mf">31.178915</span> <span class="mi">31441</span> <span class="n">GradientMachine</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">143</span><span class="p">]</span> <span class="n">Loading</span> <span class="n">parameters</span> <span class="kn">from</span> <span class="nn">data</span><span class="o">/</span><span class="n">wmt14_model</span><span class="o">/</span><span class="k">pass</span><span class="o">-</span><span class="mi">00012</span>
+<span class="n">I0706</span> <span class="mi">14</span><span class="p">:</span><span class="mi">48</span><span class="p">:</span><span class="mf">40.012039</span> <span class="mi">31441</span> <span class="n">Tester</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">125</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">100</span> <span class="n">samples</span><span class="o">=</span><span class="mi">100</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mi">0</span>
+<span class="n">I0706</span> <span class="mi">14</span><span class="p">:</span><span class="mi">48</span><span class="p">:</span><span class="mf">48.898632</span> <span class="mi">31441</span> <span class="n">Tester</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">125</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">200</span> <span class="n">samples</span><span class="o">=</span><span class="mi">200</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mi">0</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>And the generating result in <code class="docutils literal"><span class="pre">demo/seqToseq/translation/gen_result</span></code> likes:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">0</span>
+<span class="mi">0</span>       <span class="o">-</span><span class="mf">11.1314</span>         <span class="n">The</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">seats</span> <span class="k">while</span> <span class="n">large</span> <span class="n">controls</span> <span class="n">are</span> <span class="n">at</span> <span class="n">stake</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="mi">1</span>       <span class="o">-</span><span class="mf">11.1519</span>         <span class="n">The</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">on</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">seats</span> <span class="k">while</span> <span class="n">large</span> <span class="n">controls</span> <span class="n">are</span> <span class="n">at</span> <span class="n">stake</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="mi">2</span>       <span class="o">-</span><span class="mf">11.5988</span>         <span class="n">The</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">seats</span> <span class="k">while</span> <span class="n">large</span> <span class="n">controls</span> <span class="n">are</span> <span class="n">at</span> <span class="n">stake</span> <span class="o">.</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+
+<span class="mi">1</span>
+<span class="mi">0</span>       <span class="o">-</span><span class="mf">24.4149</span>         <span class="n">The</span> <span class="n">dispute</span> <span class="ow">is</span> <span class="n">between</span> <span class="n">the</span> <span class="n">major</span> <span class="n">aircraft</span> <span class="n">manufacturers</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">tourist</span> <span class="n">seats</span> <span class="n">on</span> <span class="n">the</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">flights</span> <span class="p">,</span> <span class="n">paving</span> <span class="n">the</span> <span class="n">way</span> <span class="k">for</span> <span class="n">a</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">confrontation</span> <span class="n">during</span> <span class="n">the</span> <span class="n">month</span> <span class="n">of</span> <span class="n">the</span> <span class="n">Dubai</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">.</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="mi">1</span>       <span class="o">-</span><span class="mf">26.9524</span>         <span class="n">The</span> <span class="n">dispute</span> <span class="ow">is</span> <span class="n">between</span> <span class="n">the</span> <span class="n">major</span> <span class="n">aircraft</span> <span class="n">manufacturers</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">tourist</span> <span class="n">seats</span> <span class="n">on</span> <span class="n">the</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">flights</span> <span class="p">,</span> <span class="n">paving</span> <span class="n">the</span> <span class="n">way</span> <span class="k">for</span> <span class="n">a</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">confrontation</span> <span class="n">during</span> <span class="n">the</span> <span class="n">month</span> <span class="n">of</span> <span class="n">Dubai</span> <span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">s</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">.</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="mi">2</span>       <span class="o">-</span><span class="mf">27.9574</span>         <span class="n">The</span> <span class="n">dispute</span> <span class="ow">is</span> <span class="n">between</span> <span class="n">the</span> <span class="n">major</span> <span class="n">aircraft</span> <span class="n">manufacturers</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">tourist</span> <span class="n">seats</span> <span class="n">on</span> <span class="n">the</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">flights</span> <span class="p">,</span> <span class="n">paving</span> <span class="n">the</span> <span class="n">way</span> <span class="k">for</span> <span class="n">a</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">confrontation</span> <span class="n">during</span> <span class="n">the</span> <span class="n">month</span> <span class="n">of</span> <span class="n">Dubai</span> <span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">s</span> <span class="n">Dubai</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">.</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>This is the beam search result, where beam size is 3</li>
+<li>&#8216;0&#8217; in 1st-line and &#8216;1&#8217; in 6th-line mean the sequence-id in gen data</li>
+<li>Other six lines list the beam search results<ul>
+<li>The 2nd-column is the score of beam search (from large to small)</li>
+<li>The 3rd-colunm is the generating English sequence</li>
+</ul>
+</li>
+<li>There is 2 special tokens:<ul>
+<li><code class="docutils literal"><span class="pre">&lt;e&gt;</span></code>: the end of a sequence</li>
+<li><code class="docutils literal"><span class="pre">&lt;unk&gt;</span></code>: a word not included in dictionary</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="bleu-evalutaion">
+<span id="bleu-evalutaion"></span><h3>Bleu Evalutaion<a class="headerlink" href="#bleu-evalutaion" title="Permalink to this headline">¶</a></h3>
+<p>Human evaluations of machine translation are extensive but expensive. Paper <a class="reference external" href="http://www.aclweb.org/anthology/P02-1040.pdf">BLEU: a Method for Automatic Evaluation of Machine Translation</a> presents a method as an automated understudy to skilled human judges which substitutes for them when there is need for quick or frequent evaluations. <a class="reference external" href="http://www.statmt.org/moses/">Moses</a> is a statistical machine translation system, and we use <a class="reference external" href="https://github.com/moses-smt/mosesdecoder/blob/master/scripts/generic/multi-bleu.perl">multi-bleu.perl</a> of it to do Bleu Evalution. To download this script, simply run the following command:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/seqToseq/translation
+./moses_bleu.sh
+</pre></div>
+</div>
+<p>Since the standard translation is alrealy downloaded as <code class="docutils literal"><span class="pre">data/wmt14/gen/ntst14.trg</span></code>, we can do Bleu Evalution by running the command:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/seqToseq/translation
+./eval_bleu.sh FILE BEAMSIZE
+</pre></div>
+</div>
+<ul class="simple">
+<li>FILE: the generation result file</li>
+<li>BEAMSIZE: expand width in beam search</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

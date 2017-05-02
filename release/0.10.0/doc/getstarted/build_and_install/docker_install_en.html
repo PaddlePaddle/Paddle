@@ -1,0 +1,464 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>PaddlePaddle in Docker Containers &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/>
+        <link rel="up" title="Install and Build" href="index_en.html"/>
+        <link rel="next" title="Debian Package installation guide" href="ubuntu_install_en.html"/>
+        <link rel="prev" title="Install and Build" href="index_en.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">GET STARTED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">GET STARTED</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index_en.html">Install and Build</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../index_en.html">GET STARTED</a> > </li>
+      
+        <li><a href="index_en.html">Install and Build</a> > </li>
+      
+    <li>PaddlePaddle in Docker Containers</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="paddlepaddle-in-docker-containers">
+<h1>PaddlePaddle in Docker Containers<a class="headerlink" href="#paddlepaddle-in-docker-containers" title="Permalink to this headline">¶</a></h1>
+<p>Docker container is currently the only officially-supported way to
+running PaddlePaddle.  This is reasonable as Docker now runs on all
+major operating systems including Linux, Mac OS X, and Windows.
+Please be aware that you will need to change <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/issues/627">Dockers settings</a> to make full use
+of your hardware resource on Mac OS X and Windows.</p>
+<div class="section" id="working-with-docker">
+<h2>Working With Docker<a class="headerlink" href="#working-with-docker" title="Permalink to this headline">¶</a></h2>
+<p>Docker is simple as long as we understand a few basic concepts:</p>
+<ul>
+<li><p class="first"><em>image</em>: A Docker image is a pack of software. It could contain one or more programs and all their dependencies. For example, the PaddlePaddle&#8217;s Docker image includes pre-built PaddlePaddle and Python and many Python packages. We can run a Docker image directly, other than installing all these software. We can type</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker images
+</pre></div>
+</div>
+<p>to list all images in the system. We can also run</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker pull paddlepaddle/paddle:0.10.0rc2
+</pre></div>
+</div>
+<p>to download a Docker image, paddlepaddle/paddle in this example,
+from Dockerhub.com.</p>
+</li>
+<li><p class="first"><em>container</em>: considering a Docker image a program, a container is a
+&#8220;process&#8221; that runs the image. Indeed, a container is exactly an
+operating system process, but with a virtualized filesystem, network
+port space, and other virtualized environment. We can type</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run paddlepaddle/paddle:0.10.0rc2
+</pre></div>
+</div>
+<p>to start a container to run a Docker image, paddlepaddle/paddle in this example.</p>
+</li>
+<li><p class="first">By default docker container have an isolated file system namespace,
+we can not see the files in the host file system. By using <em>volume</em>,
+mounted files in host will be visible inside docker container.
+Following command will mount current dirctory into /data inside
+docker container, run docker container from debian image with
+command <code class="code docutils literal"><span class="pre">ls</span> <span class="pre">/data</span></code>.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run --rm -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/data debian ls /data
+</pre></div>
+</div>
+</li>
+</ul>
+</div>
+<div class="section" id="usage-of-cpu-only-and-gpu-images">
+<h2>Usage of CPU-only and GPU Images<a class="headerlink" href="#usage-of-cpu-only-and-gpu-images" title="Permalink to this headline">¶</a></h2>
+<p>We package PaddlePaddle&#8217;s compile environment into a Docker image,
+called the develop image, it contains all compiling tools that
+PaddlePaddle needs. We package compiled PaddlePaddle program into a
+Docker image as well, called the production image, it contains all
+runtime environment that running PaddlePaddle needs. For each version
+of PaddlePaddle, we release both of them. Production image includes
+CPU-only version and a CUDA GPU version and their no-AVX versions.</p>
+<p>We put the docker images on <a class="reference external" href="https://hub.docker.com/r/paddledev/paddle/">dockerhub.com</a>. You can find the
+latest versions under &#8220;tags&#8221; tab at dockerhub.com. If you are in
+China, you can use our Docker image registry mirror to speed up the
+download process. To use it, please replace all paddlepaddle/paddle in
+the commands to docker.paddlepaddle.org/paddle.</p>
+<ol class="arabic">
+<li><p class="first">Production images, this image might have multiple variants:</p>
+<ul class="simple">
+<li>GPU/AVX：<code class="code docutils literal"><span class="pre">paddlepaddle/paddle:&lt;version&gt;-gpu</span></code></li>
+<li>GPU/no-AVX：<code class="code docutils literal"><span class="pre">paddlepaddle/paddle:&lt;version&gt;-gpu-noavx</span></code></li>
+<li>CPU/AVX：<code class="code docutils literal"><span class="pre">paddlepaddle/paddle:&lt;version&gt;</span></code></li>
+<li>CPU/no-AVX：<code class="code docutils literal"><span class="pre">paddlepaddle/paddle:&lt;version&gt;-noavx</span></code></li>
+</ul>
+<p>Please be aware that the CPU-only and the GPU images both use the
+AVX instruction set, but old computers produced before 2008 do not
+support AVX.  The following command checks if your Linux computer
+supports AVX:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="k">if</span> cat /proc/cpuinfo <span class="p">|</span> grep -i avx<span class="p">;</span> <span class="k">then</span> <span class="nb">echo</span> Yes<span class="p">;</span> <span class="k">else</span> <span class="nb">echo</span> No<span class="p">;</span> <span class="k">fi</span>
+</pre></div>
+</div>
+<p>To run the CPU-only image as an interactive container:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it --rm paddlepaddle/paddle:0.10.0rc2 /bin/bash
+</pre></div>
+</div>
+<p>Above method work with the GPU image too &#8211; the recommended way is
+using <a class="reference external" href="https://github.com/NVIDIA/nvidia-docker">nvidia-docker</a>.</p>
+<p>Please install nvidia-docker first following this <a class="reference external" href="https://github.com/NVIDIA/nvidia-docker#quick-start">tutorial</a>.</p>
+<p>Now you can run a GPU image:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run -it --rm paddlepaddle/paddle:0.10.0rc2-gpu /bin/bash
+</pre></div>
+</div>
+</li>
+<li><p class="first">development image <code class="code docutils literal"><span class="pre">paddlepaddle/paddle:&lt;version&gt;-dev</span></code></p>
+<p>This image has packed related develop tools and runtime
+environment. Users and developers can use this image instead of
+their own local computer to accomplish development, build,
+releasing, document writing etc. While different version of paddle
+may depends on different version of libraries and tools, if you
+want to setup a local environment, you must pay attention to the
+versions.  The development image contains:</p>
+<ul class="simple">
+<li>gcc/clang</li>
+<li>nvcc</li>
+<li>Python</li>
+<li>sphinx</li>
+<li>woboq</li>
+<li>sshd</li>
+</ul>
+<p>Many developers use servers with GPUs, they can use ssh to login to
+the server and run <code class="code docutils literal"><span class="pre">docker</span> <span class="pre">exec</span></code> to enter the docker
+container and start their work.  Also they can start a development
+docker image with SSHD service, so they can login to the container
+and start work.</p>
+</li>
+</ol>
+</div>
+<div class="section" id="train-model-using-python-api">
+<h2>Train Model Using Python API<a class="headerlink" href="#train-model-using-python-api" title="Permalink to this headline">¶</a></h2>
+<p>Our official docker image provides a runtime for PaddlePaddle
+programs. The typical workflow will be as follows:</p>
+<p>Create a directory as workspace:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>mkdir ~/workspace
+</pre></div>
+</div>
+<p>Edit a PaddlePaddle python program using your favourite editor</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>emacs ~/workspace/example.py
+</pre></div>
+</div>
+<p>Run the program using docker:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2 python /workspace/example.py
+</pre></div>
+</div>
+<p>Or if you are using GPU for training:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2-gpu python /workspace/example.py
+</pre></div>
+</div>
+<p>Above commands will start a docker container by running <code class="code docutils literal"><span class="pre">python</span>
+<span class="pre">/workspace/example.py</span></code>. It will stop once <code class="code docutils literal"><span class="pre">python</span>
+<span class="pre">/workspace/example.py</span></code> finishes.</p>
+<p>Another way is to tell docker to start a <code class="code docutils literal"><span class="pre">/bin/bash</span></code> session and
+run PaddlePaddle program interactively:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2 /bin/bash
+<span class="c1"># now we are inside docker container</span>
+<span class="nb">cd</span> /workspace
+python example.py
+</pre></div>
+</div>
+<p>Running with GPU is identical:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run -it -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2-gpu /bin/bash
+<span class="c1"># now we are inside docker container</span>
+<span class="nb">cd</span> /workspace
+python example.py
+</pre></div>
+</div>
+</div>
+<div class="section" id="develop-paddlepaddle-or-train-model-using-c-api">
+<h2>Develop PaddlePaddle or Train Model Using C++ API<a class="headerlink" href="#develop-paddlepaddle-or-train-model-using-c-api" title="Permalink to this headline">¶</a></h2>
+<p>We will be using PaddlePaddle development image since it contains all
+compiling tools and dependencies.</p>
+<ol class="arabic">
+<li><p class="first">Build PaddlePaddle develop image</p>
+<p>Use following command to build PaddlePaddle develop image:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>git clone https://github.com/PaddlePaddle/Paddle.git <span class="o">&amp;&amp;</span> <span class="nb">cd</span> Paddle
+docker build -t paddle:dev .
+</pre></div>
+</div>
+</li>
+<li><p class="first">Build PaddlePaddle production image</p>
+<p>There are two steps for building production image, the first step is to run:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/paddle -e <span class="s2">&quot;WITH_GPU=OFF&quot;</span> -e <span class="s2">&quot;WITH_AVX=OFF&quot;</span> -e <span class="s2">&quot;WITH_TEST=ON&quot;</span> paddle:dev
+</pre></div>
+</div>
+<p>The above command will compile PaddlePaddle and create a Dockerfile for building production image. All the generated files are in the build directory. &#8220;WITH_GPU&#8221; controls if the generated production image supports GPU. &#8220;WITH_AVX&#8221; controls if the generated production image supports AVX. &#8220;WITH_TEST&#8221; controls if the unit test will be generated.</p>
+<p>The second step is to run:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t paddle:prod -f build/Dockerfile ./build
+</pre></div>
+</div>
+<p>The above command will generate the production image by copying the compiled PaddlePaddle program into the image.</p>
+</li>
+<li><p class="first">Run unit test</p>
+<p>Following command will run unit test:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/paddle paddle:dev bash -c <span class="s2">&quot;cd /paddle/build &amp;&amp; ctest&quot;</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="paddlepaddle-book">
+<h2>PaddlePaddle Book<a class="headerlink" href="#paddlepaddle-book" title="Permalink to this headline">¶</a></h2>
+<p>The Jupyter Notebook is an open-source web application that allows
+you to create and share documents that contain live code, equations,
+visualizations and explanatory text in a single browser.</p>
+<p>PaddlePaddle Book is an interactive Jupyter Notebook for users and developers.
+We already exposed port 8888 for this book. If you want to
+dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.</p>
+<p>We provide a packaged book image, simply issue the command:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -p <span class="m">8888</span>:8888 paddlepaddle/book
+</pre></div>
+</div>
+<p>Then, you would back and paste the address into the local browser:</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>http://localhost:8888/
+</pre></div>
+</div>
+<p>That&#8217;s all. Enjoy your journey!</p>
+</div>
+<div class="section" id="documentation">
+<h2>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h2>
+<p>Paddle Docker images include an HTML version of C++ source code
+generated using <a class="reference external" href="https://github.com/woboq/woboq_codebrowser">woboq code browser</a>.  This makes it easy
+for users to browse and understand the C++ source code.</p>
+<p>As long as we give the Paddle Docker container a name, we can run an
+additional Nginx Docker container to serve the volume from the Paddle
+container:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d --name paddle-cpu-doc paddle:&lt;version&gt;
+docker run -d --volumes-from paddle-cpu-doc -p <span class="m">8088</span>:80 nginx
+</pre></div>
+</div>
+<p>Then we can direct our Web browser to the HTML version of source code
+at <a class="reference external" href="http://localhost:8088/paddle/">http://localhost:8088/paddle/</a></p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="ubuntu_install_en.html" class="btn btn-neutral float-right" title="Debian Package installation guide" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index_en.html" class="btn btn-neutral" title="Install and Build" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>
