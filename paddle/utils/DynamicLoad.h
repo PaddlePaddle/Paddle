@@ -12,12 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef HL_DYNAMIC_LOAD_H_
-#define HL_DYNAMIC_LOAD_H_
+#ifndef DYNAMIC_LOAD_H_
+#define DYNAMIC_LOAD_H_
 
 #include <dlfcn.h>
 #include <memory>
 #include <string>
+#include <mutex>
 
 /**
  * @brief    load the DSO of CUBLAS
@@ -59,4 +60,4 @@ void GetWarpCTCDsoHandle(void** dso_handle);
  */
 void GetLapackDsoHandle(void** dso_handle);
 
-#endif  // HL_DYNAMIC_LOAD_H_
+#endif  // DYNAMIC_LOAD_H_

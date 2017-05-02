@@ -32,7 +32,7 @@ void* lapack_dso_handle = nullptr;
 #define DYNAMIC_LOAD_LAPACK_WRAP(__name)                                       \
   struct DynLoad__##__name {                                                   \
     template <typename... Args>                                                \
-    int operator()(Args... args)->decltype(__name(args...)) {                  \
+    auto operator()(Args... args)->decltype(__name(args...)) {                 \
       using lapack_func = decltype(__name(args...)) (*)(Args...);              \
       std::call_once(lapack_dso_flag, GetLapackDsoHandle, &lapack_dso_handle); \
       void* p_##__name = dlsym(lapack_dso_handle, #__name);                    \
@@ -47,15 +47,18 @@ void* lapack_dso_handle = nullptr;
     __macro(clapack_sgetrf)                   \
     __macro(clapack_dgetrf)                   \
     __macro(clapack_sgetri)                   \
-    __macro(clapack_dgetri)          
+    __macro(clapack_dgetri)
 #else
   #define LAPACK_ROUTINE_EACH(__macro)        \
     __macro(LAPACKE_sgetrf)                   \
     __macro(LAPACKE_dgetrf)                   \
     __macro(LAPACKE_sgetri)                   \
-    __macro(LAPACKE_dgetri)          
+    __macro(LAPACKE_dgetri)
 #endif
 #endif
+
+LAPACK_ROUTINE_EACH(DYNAMIC_LOAD_LAPACK_WRAP)
+
 // clang-format on
 }  // namespace dynload
 
