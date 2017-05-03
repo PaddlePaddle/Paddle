@@ -1,0 +1,464 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Installing from Sources &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/>
+        <link rel="up" title="Install and Build" href="index_en.html"/>
+        <link rel="next" title="HOW TO" href="../../howto/index_en.html"/>
+        <link rel="prev" title="Debian Package installation guide" href="ubuntu_install_en.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">GET STARTED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">GET STARTED</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index_en.html">Install and Build</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../index_en.html">GET STARTED</a> > </li>
+      
+        <li><a href="index_en.html">Install and Build</a> > </li>
+      
+    <li>Installing from Sources</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="installing-from-sources">
+<span id="installing-from-sources"></span><h1>Installing from Sources<a class="headerlink" href="#installing-from-sources" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference external" href="#download">1. Download and Setup</a></li>
+<li><a class="reference external" href="#requirements">2. Requirements</a></li>
+<li><a class="reference external" href="#ubuntu">3. Build on Ubuntu</a></li>
+<li><a class="reference external" href="#centos">4. Build on Centos</a></li>
+</ul>
+<div class="section" id="span-id-download-download-and-setup-span">
+<span id="span-id-download-download-and-setup-span"></span><h2><span id="download">Download and Setup</span><a class="headerlink" href="#span-id-download-download-and-setup-span" title="Permalink to this headline">¶</a></h2>
+<p>You can download PaddlePaddle from the <a class="reference external" href="https://github.com/PaddlePaddle/Paddle">github source</a>.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>git clone https://github.com/PaddlePaddle/Paddle paddle
+<span class="nb">cd</span> paddle
+</pre></div>
+</div>
+</div>
+<div class="section" id="span-id-requirements-requirements-span">
+<span id="span-id-requirements-requirements-span"></span><h2><span id="requirements">Requirements</span><a class="headerlink" href="#span-id-requirements-requirements-span" title="Permalink to this headline">¶</a></h2>
+<p>To compile the source code, your computer must be equipped with the following dependencies.</p>
+<ul class="simple">
+<li><strong>Compiler</strong>: GCC &gt;= 4.8 or Clang &gt;= 3.3 (AppleClang &gt;= 5.1) and gfortran compiler</li>
+<li><strong>CMake</strong>: CMake &gt;= 3.0 (at least CMake 3.4 on Mac OS X)</li>
+<li><strong>BLAS</strong>: MKL, OpenBlas or ATLAS</li>
+<li><strong>Python</strong>: only support Python 2.7</li>
+</ul>
+<p><strong>Note:</strong> For CUDA 7.0 and CUDA 7.5, GCC 5.0 and up are not supported!
+For CUDA 8.0, GCC versions later than 5.3 are not supported!</p>
+<div class="section" id="options">
+<span id="options"></span><h3>Options<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h3>
+<p>PaddlePaddle supports some build options.</p>
+<p><html></p>
+<table> 
+<thead>
+<tr>
+<th scope="col" class="left">Optional</th>
+<th scope="col" class="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr><td class="left">WITH_GPU</td><td class="left">Compile PaddlePaddle with NVIDIA GPU</td></tr>
+<tr><td class="left">WITH_AVX</td><td class="left">Compile PaddlePaddle with AVX intrinsics</td></tr>
+<tr><td class="left">WITH_DSO</td><td class="left">Compile PaddlePaddle with dynamic linked CUDA</td></tr>
+<tr><td class="left">WITH_TESTING</td><td class="left">Compile PaddlePaddle with unit testing</td></tr>
+<tr><td class="left">WITH_SWIG_PY</td><td class="left">Compile PaddlePaddle with inference api</td></tr>
+<tr><td class="left">WITH_STYLE_CHECK</td><td class="left">Compile PaddlePaddle with style check</td></tr>
+<tr><td class="left">WITH_PYTHON</td><td class="left">Compile PaddlePaddle with python interpreter</td></tr>
+<tr><td class="left">WITH_DOUBLE</td><td class="left">Compile PaddlePaddle with double precision</td></tr>
+<tr><td class="left">WITH_RDMA</td><td class="left">Compile PaddlePaddle with RDMA support</td></tr>
+<tr><td class="left">WITH_TIMER</td><td class="left">Compile PaddlePaddle with stats timer</td></tr>
+<tr><td class="left">WITH_PROFILER</td><td class="left">Compile PaddlePaddle with GPU profiler</td></tr>
+<tr><td class="left">WITH_DOC</td><td class="left">Compile PaddlePaddle with documentation</td></tr>
+<tr><td class="left">WITH_COVERAGE</td><td class="left">Compile PaddlePaddle with code coverage</td></tr>
+<tr><td class="left">COVERALLS_UPLOAD</td><td class="left">Package code coverage data to coveralls</td></tr>
+<tr><td class="left">ON_TRAVIS</td><td class="left">Exclude special unit test on Travis CI</td></tr>
+</tbody>
+</table>
+</html><p><strong>Note:</strong></p>
+<ul class="simple">
+<li>The GPU version works best with Cuda Toolkit 8.0 and cuDNN v5.</li>
+<li>Other versions like Cuda Toolkit 7.0, 7.5 and cuDNN v3, v4 are also supported.</li>
+<li><strong>To utilize cuDNN v5, Cuda Toolkit 7.5 is prerequisite and vice versa.</strong></li>
+</ul>
+<p>As a simple example, consider the following:</p>
+<ol>
+<li><p class="first"><strong>BLAS Dependencies(optional)</strong></p>
+<p>CMake will search BLAS libraries from system. If not found, OpenBLAS will be downloaded, built and installed automatically.
+To utilize preinstalled BLAS， you can simply specify MKL, OpenBLAS or ATLAS via <code class="docutils literal"><span class="pre">MKL_ROOT</span></code>, <code class="docutils literal"><span class="pre">OPENBLAS_ROOT</span></code> or <code class="docutils literal"><span class="pre">ATLAS_ROOT</span></code>.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># specify MKL</span>
+cmake .. -DMKL_ROOT<span class="o">=</span>&lt;mkl_path&gt;
+<span class="c1"># or specify OpenBLAS</span>
+cmake .. -DOPENBLAS_ROOT<span class="o">=</span>&lt;openblas_path&gt;
+</pre></div>
+</div>
+</li>
+<li><p class="first"><strong>Doc Dependencies(optional)</strong></p>
+<p>To generate PaddlePaddle&#8217;s documentation, install dependencies and set <code class="docutils literal"><span class="pre">-DWITH_DOC=ON</span></code> as follows:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>pip install <span class="s1">&#39;sphinx&gt;=1.4.0&#39;</span>
+pip install sphinx_rtd_theme recommonmark
+
+<span class="c1"># install doxygen on Ubuntu</span>
+sudo apt-get install doxygen 
+<span class="c1"># install doxygen on Mac OS X</span>
+brew install doxygen
+
+<span class="c1"># active docs in cmake</span>
+cmake .. -DWITH_DOC<span class="o">=</span>ON<span class="sb">`</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="section" id="span-id-ubuntu-build-on-ubuntu-14-04-span">
+<span id="span-id-ubuntu-build-on-ubuntu-14-04-span"></span><h2><span id="ubuntu">Build on Ubuntu 14.04</span><a class="headerlink" href="#span-id-ubuntu-build-on-ubuntu-14-04-span" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="install-dependencies">
+<span id="install-dependencies"></span><h3>Install Dependencies<a class="headerlink" href="#install-dependencies" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p class="first"><strong>Paddle Dependencies</strong></p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># necessary</span>
+sudo apt-get update
+sudo apt-get install -y git curl gcc g++ gfortran make build-essential automake
+sudo apt-get install -y python python-pip python-numpy libpython-dev bison
+sudo pip install <span class="s1">&#39;protobuf==3.1.0.post1&#39;</span>
+
+<span class="c1"># install cmake 3.4</span>
+curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz <span class="p">|</span> tar -xz <span class="o">&amp;&amp;</span> <span class="se">\</span>
+    <span class="nb">cd</span> cmake-3.4.1 <span class="o">&amp;&amp;</span> ./bootstrap <span class="o">&amp;&amp;</span> make -j4 <span class="o">&amp;&amp;</span> sudo make install <span class="o">&amp;&amp;</span> <span class="se">\</span>
+    <span class="nb">cd</span> .. <span class="o">&amp;&amp;</span> rm -rf cmake-3.4.1
+</pre></div>
+</div>
+</li>
+<li><p class="first"><strong>GPU Dependencies (optional)</strong></p>
+<p>To build GPU version, you will need the following installed:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>  <span class="mf">1.</span> <span class="n">a</span> <span class="n">CUDA</span><span class="o">-</span><span class="n">capable</span> <span class="n">GPU</span>
+  <span class="mf">2.</span> <span class="n">A</span> <span class="n">supported</span> <span class="n">version</span> <span class="n">of</span> <span class="n">Linux</span> <span class="k">with</span> <span class="n">a</span> <span class="n">gcc</span> <span class="n">compiler</span> <span class="ow">and</span> <span class="n">toolchain</span>
+  <span class="mf">3.</span> <span class="n">NVIDIA</span> <span class="n">CUDA</span> <span class="n">Toolkit</span> <span class="p">(</span><span class="n">available</span> <span class="n">at</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">developer</span><span class="o">.</span><span class="n">nvidia</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cuda</span><span class="o">-</span><span class="n">downloads</span><span class="p">)</span>
+  <span class="mf">4.</span> <span class="n">NVIDIA</span> <span class="n">cuDNN</span> <span class="n">Library</span> <span class="p">(</span><span class="n">availabel</span> <span class="n">at</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">developer</span><span class="o">.</span><span class="n">nvidia</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cudnn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The CUDA development environment relies on tight integration with the host development environment,
+including the host compiler and C runtime libraries, and is therefore only supported on
+distribution versions that have been qualified for this CUDA Toolkit release.</p>
+<p>After downloading cuDNN library, issue the following commands:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>sudo tar -xzf cudnn-7.5-linux-x64-v5.1.tgz -C /usr/local
+sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
+</pre></div>
+</div>
+<p>Then you need to set LD_LIBRARY_PATH, PATH environment variables in ~/.bashrc.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/usr/local/cuda/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>/usr/local/cuda/bin:<span class="nv">$PATH</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</div>
+<div class="section" id="build-and-install">
+<span id="build-and-install"></span><h3>Build and Install<a class="headerlink" href="#build-and-install" title="Permalink to this headline">¶</a></h3>
+<p>As usual, the best option is to create build folder under paddle project directory.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>mkdir build <span class="o">&amp;&amp;</span> <span class="nb">cd</span> build
+</pre></div>
+</div>
+<p>Finally, you can build and install PaddlePaddle:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># you can add build option here, such as:    </span>
+cmake .. -DCMAKE_INSTALL_PREFIX<span class="o">=</span>&lt;path to install&gt;
+<span class="c1"># please use sudo make install, if you want to install PaddlePaddle into the system</span>
+make -j <span class="sb">`</span>nproc<span class="sb">`</span> <span class="o">&amp;&amp;</span> make install
+<span class="c1"># set PaddlePaddle installation path in ~/.bashrc</span>
+<span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>&lt;path to install&gt;/bin:<span class="nv">$PATH</span>
+<span class="c1"># install PaddlePaddle Python modules.</span>
+sudo pip install &lt;path to install&gt;/opt/paddle/share/wheels/*.whl
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="span-id-centos-build-on-centos-7-span">
+<span id="span-id-centos-build-on-centos-7-span"></span><h2><span id="centos">Build on Centos 7</span><a class="headerlink" href="#span-id-centos-build-on-centos-7-span" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="install-dependencies">
+<span id="id1"></span><h3>Install Dependencies<a class="headerlink" href="#install-dependencies" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p class="first"><strong>CPU Dependencies</strong></p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># necessary</span>
+sudo yum update
+sudo yum install -y epel-release
+sudo yum install -y make cmake3 python-devel python-pip gcc-gfortran swig git
+sudo pip install wheel numpy
+sudo pip install <span class="s1">&#39;protobuf&gt;=3.0.0&#39;</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first"><strong>GPU Dependencies (optional)</strong></p>
+<p>To build GPU version, you will need the following installed:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>  <span class="mf">1.</span> <span class="n">a</span> <span class="n">CUDA</span><span class="o">-</span><span class="n">capable</span> <span class="n">GPU</span>
+  <span class="mf">2.</span> <span class="n">A</span> <span class="n">supported</span> <span class="n">version</span> <span class="n">of</span> <span class="n">Linux</span> <span class="k">with</span> <span class="n">a</span> <span class="n">gcc</span> <span class="n">compiler</span> <span class="ow">and</span> <span class="n">toolchain</span>
+  <span class="mf">3.</span> <span class="n">NVIDIA</span> <span class="n">CUDA</span> <span class="n">Toolkit</span> <span class="p">(</span><span class="n">available</span> <span class="n">at</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">developer</span><span class="o">.</span><span class="n">nvidia</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cuda</span><span class="o">-</span><span class="n">downloads</span><span class="p">)</span>
+  <span class="mf">4.</span> <span class="n">NVIDIA</span> <span class="n">cuDNN</span> <span class="n">Library</span> <span class="p">(</span><span class="n">availabel</span> <span class="n">at</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">developer</span><span class="o">.</span><span class="n">nvidia</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cudnn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The CUDA development environment relies on tight integration with the host development environment,
+including the host compiler and C runtime libraries, and is therefore only supported on
+distribution versions that have been qualified for this CUDA Toolkit release.</p>
+<p>After downloading cuDNN library, issue the following commands:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>sudo tar -xzf cudnn-7.5-linux-x64-v5.1.tgz -C /usr/local
+sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
+</pre></div>
+</div>
+<p>Then you need to set LD_LIBRARY_PATH, PATH environment variables in ~/.bashrc.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/usr/local/cuda/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>/usr/local/cuda/bin:<span class="nv">$PATH</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</div>
+<div class="section" id="build-and-install">
+<span id="id2"></span><h3>Build and Install<a class="headerlink" href="#build-and-install" title="Permalink to this headline">¶</a></h3>
+<p>As usual, the best option is to create build folder under paddle project directory.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>mkdir build <span class="o">&amp;&amp;</span> <span class="nb">cd</span> build
+</pre></div>
+</div>
+<p>Finally, you can build and install PaddlePaddle:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># you can add build option here, such as:    </span>
+cmake3 .. -DCMAKE_INSTALL_PREFIX<span class="o">=</span>&lt;path to install&gt;
+<span class="c1"># please use sudo make install, if you want to install PaddlePaddle into the system</span>
+make -j <span class="sb">`</span>nproc<span class="sb">`</span> <span class="o">&amp;&amp;</span> make install
+<span class="c1"># set PaddlePaddle installation path in ~/.bashrc</span>
+<span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>&lt;path to install&gt;/bin:<span class="nv">$PATH</span>
+<span class="c1"># install PaddlePaddle Python modules.</span>
+sudo pip install &lt;path to install&gt;/opt/paddle/share/wheels/*.whl
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../../howto/index_en.html" class="btn btn-neutral float-right" title="HOW TO" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="ubuntu_install_en.html" class="btn btn-neutral" title="Debian Package installation guide" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

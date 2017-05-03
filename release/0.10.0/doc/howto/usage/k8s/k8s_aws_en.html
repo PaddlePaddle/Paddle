@@ -1,0 +1,866 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Distributed PaddlePaddle Training on AWS with Kubernetes &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html"/>
+        <link rel="up" title="HOW TO" href="../../index_en.html"/>
+        <link rel="next" title="Write New Layers" href="../../dev/new_layer_en.html"/>
+        <link rel="prev" title="Paddle On Kubernetes" href="k8s_en.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">HOW TO</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../../index_en.html">HOW TO</a> > </li>
+      
+    <li>Distributed PaddlePaddle Training on AWS with Kubernetes</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="distributed-paddlepaddle-training-on-aws-with-kubernetes">
+<span id="distributed-paddlepaddle-training-on-aws-with-kubernetes"></span><h1>Distributed PaddlePaddle Training on AWS with Kubernetes<a class="headerlink" href="#distributed-paddlepaddle-training-on-aws-with-kubernetes" title="Permalink to this headline">¶</a></h1>
+<p>We will show you step by step on how to run distributed PaddlePaddle training on AWS cluster with Kubernetes. Let&#8217;s start from core concepts.</p>
+<div class="section" id="distributed-paddlepaddle-training-core-concepts">
+<span id="distributed-paddlepaddle-training-core-concepts"></span><h2>Distributed PaddlePaddle Training Core Concepts<a class="headerlink" href="#distributed-paddlepaddle-training-core-concepts" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="distributed-training-job">
+<span id="distributed-training-job"></span><h3>Distributed Training Job<a class="headerlink" href="#distributed-training-job" title="Permalink to this headline">¶</a></h3>
+<p>A distributed training job is represented by a <a class="reference external" href="https://kubernetes.io/docs/user-guide/jobs/#what-is-a-job">Kubernetes job</a>.</p>
+<p>Each Kuberentes job is described by a job config file, which specifies the information like the number of <a class="reference external" href="https://kubernetes.io/docs/user-guide/pods/#what-is-a-pod">pods</a> in the job and environment variables.</p>
+<p>In a distributed training job, we would:</p>
+<ol class="simple">
+<li>prepare partitioned training data and configuration file on a distributed file system (in this tutorial we use Amazon Elastic File System), and</li>
+<li>create and submit the Kubernetes job config to the Kubernetes cluster to start the training job.</li>
+</ol>
+</div>
+<div class="section" id="parameter-servers-and-trainers">
+<span id="parameter-servers-and-trainers"></span><h3>Parameter Servers and Trainers<a class="headerlink" href="#parameter-servers-and-trainers" title="Permalink to this headline">¶</a></h3>
+<p>There are two roles in a PaddlePaddle cluster: <em>parameter server (pserver)</em> and <em>trainer</em>. Each parameter server process maintains a shard of the global model. Each trainer has its local copy of the model, and uses its local data to update the model. During the training process, trainers send model updates to parameter servers, parameter servers are responsible for aggregating these updates, so that trainers can synchronize their local copy with the global model.</p>
+<p><center><img alt="Model is partitioned into two shards. Managed by two parameter servers respectively." src="../../../_images/pserver_and_trainer.png" /></center></p>
+<p>In order to communicate with pserver, trainer needs to know the ip address of each pserver. In kubernetes it&#8217;s better to use a service discovery mechanism (e.g., DNS hostname) rather than static ip address, since any pserver&#8217;s pod may be killed and a new pod could be schduled onto another node of different ip address. However, now we are using static ip. This will be improved.</p>
+<p>Parameter server and trainer are packaged into a same docker image. They will run once pod is scheduled by kubernetes job.</p>
+</div>
+<div class="section" id="trainer-id">
+<span id="trainer-id"></span><h3>Trainer ID<a class="headerlink" href="#trainer-id" title="Permalink to this headline">¶</a></h3>
+<p>Each trainer process requires a trainer ID, a zero-based index value, passed in as a command-line parameter. The trainer process thus reads the data partition indexed by this ID.</p>
+</div>
+<div class="section" id="training">
+<span id="training"></span><h3>Training<a class="headerlink" href="#training" title="Permalink to this headline">¶</a></h3>
+<p>The entry-point of a container is a shell script. It can see some environment variables pre-defined by Kubernetes. This includes one that gives the job&#8217;s identity, which can be used in a remote call to the Kubernetes apiserver that lists all pods in the job.</p>
+<p>We rank each pod by sorting them by their ips. The rank of each pod could be the &#8220;pod ID&#8221;. Because we run one trainer and one parameter server in each pod, we can use this &#8220;pod ID&#8221; as the trainer ID. A detailed workflow of the entry-point script is as follows:</p>
+<ol class="simple">
+<li>Query the api server to get pod information, and assign the <code class="docutils literal"><span class="pre">trainer_id</span></code> by sorting the ip.</li>
+<li>Copy the training data from EFS persistent volume into container.</li>
+<li>Parse the <code class="docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code> and <code class="docutils literal"><span class="pre">paddle</span> <span class="pre">trainer</span></code> startup parameters from environment variables, and then start up the processes.</li>
+<li>Trainer with <code class="docutils literal"><span class="pre">train_id</span></code> 0 will automatically write results onto EFS volume.</li>
+</ol>
+</div>
+</div>
+<div class="section" id="paddlepaddle-on-aws-with-kubernetes">
+<span id="paddlepaddle-on-aws-with-kubernetes"></span><h2>PaddlePaddle on AWS with Kubernetes<a class="headerlink" href="#paddlepaddle-on-aws-with-kubernetes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="choose-aws-service-region">
+<span id="choose-aws-service-region"></span><h3>Choose AWS Service Region<a class="headerlink" href="#choose-aws-service-region" title="Permalink to this headline">¶</a></h3>
+<p>This tutorial requires several AWS services work in the same region. Before we create anything in AWS, please check the following link
+https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/
+Choose a region which has the following services available: EC2, EFS, VPS, CloudFormation, KMS, VPC, S3.
+In this tutorial, we use &#8220;Oregon(us-west-2)&#8221; as example.</p>
+</div>
+<div class="section" id="create-aws-account-and-iam-account">
+<span id="create-aws-account-and-iam-account"></span><h3>Create AWS Account and IAM Account<a class="headerlink" href="#create-aws-account-and-iam-account" title="Permalink to this headline">¶</a></h3>
+<p>Under each AWS account, we can create multiple <a class="reference external" href="http://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html">IAM</a> users. This allows us to grant some privileges to each IAM user and to create/operate AWS clusters as an IAM user.</p>
+<p>To sign up an AWS account, please
+follow
+<a class="reference external" href="http://docs.aws.amazon.com/lambda/latest/dg/setting-up.html">this guide</a>.
+To create IAM users and user groups under an AWS account, please
+follow
+<a class="reference external" href="http://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html">this guide</a>.</p>
+<p>Please be aware that this tutorial needs the following privileges for the user in IAM:</p>
+<ul class="simple">
+<li>AmazonEC2FullAccess</li>
+<li>AmazonS3FullAccess</li>
+<li>AmazonRoute53FullAccess</li>
+<li>AmazonRoute53DomainsFullAccess</li>
+<li>AmazonElasticFileSystemFullAccess</li>
+<li>AmazonVPCFullAccess</li>
+<li>IAMUserSSHKeys</li>
+<li>IAMFullAccess</li>
+<li>NetworkAdministrator</li>
+<li>AWSKeyManagementServicePowerUser</li>
+</ul>
+</div>
+<div class="section" id="download-kube-aws-and-kubectl">
+<span id="download-kube-aws-and-kubectl"></span><h3>Download kube-aws and kubectl<a class="headerlink" href="#download-kube-aws-and-kubectl" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="kube-aws">
+<span id="kube-aws"></span><h4>kube-aws<a class="headerlink" href="#kube-aws" title="Permalink to this headline">¶</a></h4>
+<p><a class="reference external" href="https://github.com/coreos/kube-aws">kube-aws</a> is a CLI tool to automate cluster deployment to AWS.</p>
+<div class="section" id="verify-kube-aws-integrity">
+<span id="verify-kube-aws-integrity"></span><h5>Verify kube-aws integrity<a class="headerlink" href="#verify-kube-aws-integrity" title="Permalink to this headline">¶</a></h5>
+<p>Note: if you are using a non-official release (e.g RC release) kube-aws, you can skip this setp.
+Import the CoreOS Application Signing Public Key:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">gpg2</span> <span class="o">--</span><span class="n">keyserver</span> <span class="n">pgp</span><span class="o">.</span><span class="n">mit</span><span class="o">.</span><span class="n">edu</span> <span class="o">--</span><span class="n">recv</span><span class="o">-</span><span class="n">key</span> <span class="n">FC8A365E</span>
+</pre></div>
+</div>
+<p>Validate the key fingerprint:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">gpg2</span> <span class="o">--</span><span class="n">fingerprint</span> <span class="n">FC8A365E</span>
+</pre></div>
+</div>
+<p>The correct key fingerprint is <code class="docutils literal"><span class="pre">18AD</span> <span class="pre">5014</span> <span class="pre">C99E</span> <span class="pre">F7E3</span> <span class="pre">BA5F</span> <span class="pre">6CE9</span> <span class="pre">50BD</span> <span class="pre">D3E0</span> <span class="pre">FC8A</span> <span class="pre">365E</span></code></p>
+<p>We can download <code class="docutils literal"><span class="pre">kube-aws</span></code> from its <a class="reference external" href="https://github.com/coreos/kube-aws/releases">release page</a>. In this tutorial, we use version 0.9.1</p>
+<p>Validate the tarball&#8217;s GPG signature:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>PLATFORM=linux-amd64
+ # Or
+PLATFORM=darwin-amd64
+
+gpg2 --verify kube-aws-${PLATFORM}.tar.gz.sig kube-aws-${PLATFORM}.tar.gz
+</pre></div>
+</div>
+</div>
+<div class="section" id="install-kube-aws">
+<span id="install-kube-aws"></span><h5>Install kube-aws<a class="headerlink" href="#install-kube-aws" title="Permalink to this headline">¶</a></h5>
+<p>Extract the binary:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>tar zxvf kube-aws-${PLATFORM}.tar.gz
+</pre></div>
+</div>
+<p>Add kube-aws to your path:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>mv ${PLATFORM}/kube-aws /usr/local/bin
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="kubectl">
+<span id="kubectl"></span><h4>kubectl<a class="headerlink" href="#kubectl" title="Permalink to this headline">¶</a></h4>
+<p><a class="reference external" href="https://kubernetes.io/docs/user-guide/kubectl-overview/">kubectl</a> is a command line interface for running commands against Kubernetes clusters.</p>
+<p>Download <code class="docutils literal"><span class="pre">kubectl</span></code> from the Kubernetes release artifact site with the <code class="docutils literal"><span class="pre">curl</span></code> tool.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># OS X</span>
+<span class="n">curl</span> <span class="o">-</span><span class="n">O</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">storage</span><span class="o">.</span><span class="n">googleapis</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">kubernetes</span><span class="o">-</span><span class="n">release</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="s2">&quot;$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)&quot;</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">darwin</span><span class="o">/</span><span class="n">amd64</span><span class="o">/</span><span class="n">kubectl</span>
+
+<span class="c1"># Linux</span>
+<span class="n">curl</span> <span class="o">-</span><span class="n">O</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">storage</span><span class="o">.</span><span class="n">googleapis</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">kubernetes</span><span class="o">-</span><span class="n">release</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="s2">&quot;$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)&quot;</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">linux</span><span class="o">/</span><span class="n">amd64</span><span class="o">/</span><span class="n">kubectl</span>
+</pre></div>
+</div>
+<p>Make the kubectl binary executable and move it to your PATH (e.g. <code class="docutils literal"><span class="pre">/usr/local/bin</span></code>):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">chmod</span> <span class="o">+</span><span class="n">x</span> <span class="o">./</span><span class="n">kubectl</span>
+<span class="n">sudo</span> <span class="n">mv</span> <span class="o">./</span><span class="n">kubectl</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">kubectl</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="configure-aws-credentials">
+<span id="configure-aws-credentials"></span><h3>Configure AWS Credentials<a class="headerlink" href="#configure-aws-credentials" title="Permalink to this headline">¶</a></h3>
+<p>First check out <a class="reference external" href="http://docs.aws.amazon.com/cli/latest/userguide/installing.html">this</a> for installing the AWS command line interface.</p>
+<p>And then configure your AWS account information:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">aws</span> <span class="n">configure</span>
+</pre></div>
+</div>
+<p>Fill in the required fields:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">AWS</span> <span class="n">Access</span> <span class="n">Key</span> <span class="n">ID</span><span class="p">:</span> <span class="n">YOUR_ACCESS_KEY_ID</span>
+<span class="n">AWS</span> <span class="n">Secrete</span> <span class="n">Access</span> <span class="n">Key</span><span class="p">:</span> <span class="n">YOUR_SECRETE_ACCESS_KEY</span>
+<span class="n">Default</span> <span class="n">region</span> <span class="n">name</span><span class="p">:</span> <span class="n">us</span><span class="o">-</span><span class="n">west</span><span class="o">-</span><span class="mi">2</span>
+<span class="n">Default</span> <span class="n">output</span> <span class="nb">format</span><span class="p">:</span> <span class="n">json</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">YOUR_ACCESS_KEY_ID</span></code>, and <code class="docutils literal"><span class="pre">YOUR_SECRETE_ACCESS_KEY</span></code> is the IAM key and secret from <a class="reference external" href="#create-aws-account-and-iam-account">Create AWS Account and IAM Account</a></p>
+<p>Verify that your credentials work by describing any instances you may already have running on your account:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">aws</span> <span class="n">ec2</span> <span class="n">describe</span><span class="o">-</span><span class="n">instances</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="define-cluster-parameters">
+<span id="define-cluster-parameters"></span><h3>Define Cluster Parameters<a class="headerlink" href="#define-cluster-parameters" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="ec2-key-pair">
+<span id="ec2-key-pair"></span><h4>EC2 key pair<a class="headerlink" href="#ec2-key-pair" title="Permalink to this headline">¶</a></h4>
+<p>The keypair that will authenticate SSH access to your EC2 instances. The public half of this key pair will be configured on each CoreOS node.</p>
+<p>Follow <a class="reference external" href="http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html">EC2 Keypair User Guide</a> to create a EC2 key pair</p>
+<p>After creating a key pair, you will use the key pair name to configure the cluster.</p>
+<p>Key pairs are only available to EC2 instances in the same region. We are using us-west-2 in our tutorial, so make sure to creat key pairs in that region (Oregon).</p>
+<p>Your browser will download a <code class="docutils literal"><span class="pre">key-name.pem</span></code> file which is the key to access the EC2 instances. We will use it later.</p>
+</div>
+<div class="section" id="kms-key">
+<span id="kms-key"></span><h4>KMS key<a class="headerlink" href="#kms-key" title="Permalink to this headline">¶</a></h4>
+<p>Amazon KMS keys are used to encrypt and decrypt cluster TLS assets. If you already have a KMS Key that you would like to use, you can skip creating a new key and provide the Arn string for your existing key.</p>
+<p>You can create a KMS key with the aws command line tool:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">aws</span> <span class="n">kms</span> <span class="o">--</span><span class="n">region</span><span class="o">=</span><span class="n">us</span><span class="o">-</span><span class="n">west</span><span class="o">-</span><span class="mi">2</span> <span class="n">create</span><span class="o">-</span><span class="n">key</span> <span class="o">--</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;kube-aws assets&quot;</span>
+<span class="p">{</span>
+    <span class="s2">&quot;KeyMetadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;CreationDate&quot;</span><span class="p">:</span> <span class="mf">1458235139.724</span><span class="p">,</span>
+        <span class="s2">&quot;KeyState&quot;</span><span class="p">:</span> <span class="s2">&quot;Enabled&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Arn&quot;</span><span class="p">:</span> <span class="s2">&quot;arn:aws:kms:us-west-2:aaaaaaaaaaaaa:key/xxxxxxxxxxxxxxxxxxx&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;AWSAccountId&quot;</span><span class="p">:</span> <span class="s2">&quot;xxxxxxxxxxxxx&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Enabled&quot;</span><span class="p">:</span> <span class="n">true</span><span class="p">,</span>
+        <span class="s2">&quot;KeyUsage&quot;</span><span class="p">:</span> <span class="s2">&quot;ENCRYPT_DECRYPT&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;KeyId&quot;</span><span class="p">:</span> <span class="s2">&quot;xxxxxxxxx&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Description&quot;</span><span class="p">:</span> <span class="s2">&quot;kube-aws assets&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>We will need to use the value of <code class="docutils literal"><span class="pre">Arn</span></code> later.</p>
+<p>And then let&#8217;s add several inline policies in your IAM user permission.</p>
+<p>Go to <a class="reference external" href="https://console.aws.amazon.com/iam/home?region=us-west-2#/home">IAM Console</a>. Click on button <code class="docutils literal"><span class="pre">Users</span></code>, click user that we just created, and then click on <code class="docutils literal"><span class="pre">Add</span> <span class="pre">inline</span> <span class="pre">policy</span></code> button, and select <code class="docutils literal"><span class="pre">Custom</span> <span class="pre">Policy</span></code>.</p>
+<p>Paste into following inline policies:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span> <span class="p">(</span><span class="n">Caution</span><span class="p">:</span> <span class="n">node_0</span><span class="p">,</span> <span class="n">node_1</span><span class="p">,</span> <span class="n">node_2</span> <span class="n">directories</span> <span class="n">represents</span> <span class="n">PaddlePaddle</span> <span class="n">node</span> <span class="ow">and</span> <span class="n">train_id</span><span class="p">,</span> <span class="ow">not</span> <span class="n">the</span> <span class="n">Kubernetes</span> <span class="n">node</span><span class="p">){</span>
+    <span class="s2">&quot;Version&quot;</span><span class="p">:</span> <span class="s2">&quot;2012-10-17&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Statement&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;Sid&quot;</span><span class="p">:</span> <span class="s2">&quot;Stmt1482205552000&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Effect&quot;</span><span class="p">:</span> <span class="s2">&quot;Allow&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Action&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;kms:Decrypt&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;kms:Encrypt&quot;</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;Resource&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;arn:aws:kms:*:AWS_ACCOUNT_ID:key/*&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;Sid&quot;</span><span class="p">:</span> <span class="s2">&quot;Stmt1482205746000&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Effect&quot;</span><span class="p">:</span> <span class="s2">&quot;Allow&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Action&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;cloudformation:CreateStack&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;cloudformation:UpdateStack&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;cloudformation:DeleteStack&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;cloudformation:DescribeStacks&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;cloudformation:DescribeStackResource&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;cloudformation:GetTemplate&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;cloudformation:DescribeStackEvents&quot;</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;Resource&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;arn:aws:cloudformation:us-west-2:AWS_ACCOUNT_ID:stack/MY_CLUSTER_NAME/*&quot;</span>
+            <span class="p">]</span>
+        <span class="p">}</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">Version</span></code> : Its value has to be exactly &#8220;2012-10-17&#8221;.
+<code class="docutils literal"><span class="pre">AWS_ACCOUNT_ID</span></code>: You can get it from following command line:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">aws</span> <span class="n">sts</span> <span class="n">get</span><span class="o">-</span><span class="n">caller</span><span class="o">-</span><span class="n">identity</span> <span class="o">--</span><span class="n">output</span> <span class="n">text</span> <span class="o">--</span><span class="n">query</span> <span class="n">Account</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">MY_CLUSTER_NAME</span></code>: Pick a MY_CLUSTER_NAME that you like, you will use it later as well.
+Please note, stack name must satisfy regular expression pattern: [a-zA-Z][-a-zA-Z0-9<em>]</em>, which means no &#8220;_&#8221; or &#8220;-&#8221; in stack name, or kube-aws will throw error in later steps.</p>
+</div>
+<div class="section" id="external-dns-name">
+<span id="external-dns-name"></span><h4>External DNS name<a class="headerlink" href="#external-dns-name" title="Permalink to this headline">¶</a></h4>
+<p>When the cluster is created, the controller will expose the TLS-secured API on a DNS name.</p>
+<p>DNS name should have a CNAME points to cluster DNS name or an A record points to the cluster IP address.</p>
+<p>We will need to use DNS name later in tutorial. If you don&#8217;t already own one, you can choose any DNS name (e.g., <code class="docutils literal"><span class="pre">paddle</span></code>) and modify <code class="docutils literal"><span class="pre">/etc/hosts</span></code> to associate cluster IP with that DNS name for your local machine. And add name service (route53) in aws to associate the IP to paddle for cluster. We will find the cluster IP in later steps.</p>
+</div>
+<div class="section" id="s3-bucket">
+<span id="s3-bucket"></span><h4>S3 bucket<a class="headerlink" href="#s3-bucket" title="Permalink to this headline">¶</a></h4>
+<p>You need to create an S3 bucket before startup the Kubernetes cluster.</p>
+<p>There are some bugs in aws cli in creating S3 bucket, so let&#8217;s use the <a class="reference external" href="https://console.aws.amazon.com/s3/home?region=us-west-2">S3 Console</a>.</p>
+<p>Click on <code class="docutils literal"><span class="pre">Create</span> <span class="pre">Bucket</span></code>, fill in a unique BUCKET_NAME, and make sure region is us-west-2 (Oregon).</p>
+</div>
+<div class="section" id="initialize-assets">
+<span id="initialize-assets"></span><h4>Initialize Assets<a class="headerlink" href="#initialize-assets" title="Permalink to this headline">¶</a></h4>
+<p>Create a directory on your local machine to hold the generated assets:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ mkdir my-cluster
+$ cd my-cluster
+</pre></div>
+</div>
+<p>Initialize the cluster CloudFormation stack with the KMS Arn, key pair name, and DNS name from the previous step:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">kube</span><span class="o">-</span><span class="n">aws</span> <span class="n">init</span> \
+<span class="o">--</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="o">=</span><span class="n">MY_CLUSTER_NAME</span> \
+<span class="o">--</span><span class="n">external</span><span class="o">-</span><span class="n">dns</span><span class="o">-</span><span class="n">name</span><span class="o">=</span><span class="n">MY_EXTERNAL_DNS_NAME</span> \
+<span class="o">--</span><span class="n">region</span><span class="o">=</span><span class="n">us</span><span class="o">-</span><span class="n">west</span><span class="o">-</span><span class="mi">2</span> \
+<span class="o">--</span><span class="n">availability</span><span class="o">-</span><span class="n">zone</span><span class="o">=</span><span class="n">us</span><span class="o">-</span><span class="n">west</span><span class="o">-</span><span class="mi">2</span><span class="n">a</span> \
+<span class="o">--</span><span class="n">key</span><span class="o">-</span><span class="n">name</span><span class="o">=</span><span class="n">KEY_PAIR_NAME</span> \
+<span class="o">--</span><span class="n">kms</span><span class="o">-</span><span class="n">key</span><span class="o">-</span><span class="n">arn</span><span class="o">=</span><span class="s2">&quot;arn:aws:kms:us-west-2:xxxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx&quot;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">MY_CLUSTER_NAME</span></code>: the one you picked in <a class="reference external" href="#kms-key">KMS key</a></p>
+<p><code class="docutils literal"><span class="pre">MY_EXTERNAL_DNS_NAME</span></code>: see <a class="reference external" href="#external-dns-name">External DNS name</a></p>
+<p><code class="docutils literal"><span class="pre">KEY_PAIR_NAME</span></code>: see <a class="reference external" href="#ec2-key-pair">EC2 key pair</a></p>
+<p><code class="docutils literal"><span class="pre">--kms-key-arn</span></code>: the &#8220;Arn&#8221; in <a class="reference external" href="#kms-key">KMS key</a></p>
+<p>Here <code class="docutils literal"><span class="pre">us-west-2a</span></code> is used for parameter <code class="docutils literal"><span class="pre">--availability-zone</span></code>, but supported availability zone varies among AWS accounts.</p>
+<p>Please check if <code class="docutils literal"><span class="pre">us-west-2a</span></code> is supported by <code class="docutils literal"><span class="pre">aws</span> <span class="pre">ec2</span> <span class="pre">--region</span> <span class="pre">us-west-2</span> <span class="pre">describe-availability-zones</span></code>, if not switch to other supported availability zone. (e.g., <code class="docutils literal"><span class="pre">us-west-2a</span></code>, or <code class="docutils literal"><span class="pre">us-west-2b</span></code>)</p>
+<p>There will now be a cluster.yaml file in the asset directory. This is the main configuration file for your cluster.</p>
+<p>By default <code class="docutils literal"><span class="pre">kube-aws</span></code> will only create one worker node. Let&#8217;s edit <code class="docutils literal"><span class="pre">cluster.yaml</span></code> and change <code class="docutils literal"><span class="pre">workerCount</span></code> from 1 to 3.</p>
+</div>
+<div class="section" id="render-contents-of-the-asset-directory">
+<span id="render-contents-of-the-asset-directory"></span><h4>Render contents of the asset directory<a class="headerlink" href="#render-contents-of-the-asset-directory" title="Permalink to this headline">¶</a></h4>
+<p>In the simplest case, you can have kube-aws generate both your TLS identities and certificate authority for you.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">kube</span><span class="o">-</span><span class="n">aws</span> <span class="n">render</span> <span class="n">credentials</span> <span class="o">--</span><span class="n">generate</span><span class="o">-</span><span class="n">ca</span>
+</pre></div>
+</div>
+<p>The next command generates the default set of cluster assets in your asset directory.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">kube</span><span class="o">-</span><span class="n">aws</span> <span class="n">render</span> <span class="n">stack</span>
+</pre></div>
+</div>
+<p>Assets (templates and credentials) that are used to create, update and interact with your Kubernetes cluster will be created under your current folder.</p>
+</div>
+</div>
+<div class="section" id="kubernetes-cluster-start-up">
+<span id="kubernetes-cluster-start-up"></span><h3>Kubernetes Cluster Start Up<a class="headerlink" href="#kubernetes-cluster-start-up" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="create-the-instances-defined-in-the-cloudformation-template">
+<span id="create-the-instances-defined-in-the-cloudformation-template"></span><h4>Create the instances defined in the CloudFormation template<a class="headerlink" href="#create-the-instances-defined-in-the-cloudformation-template" title="Permalink to this headline">¶</a></h4>
+<p>Now let&#8217;s create your cluster (choose any <code class="docutils literal"><span class="pre">PREFIX</span></code> for the command below):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">kube</span><span class="o">-</span><span class="n">aws</span> <span class="n">up</span> <span class="o">--</span><span class="n">s3</span><span class="o">-</span><span class="n">uri</span> <span class="n">s3</span><span class="p">:</span><span class="o">//</span><span class="n">BUCKET_NAME</span><span class="o">/</span><span class="n">PREFIX</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">BUCKET_NAME</span></code>: the bucket name that you used in <a class="reference external" href="#s3-bucket">S3 bucket</a></p>
+</div>
+<div class="section" id="configure-dns">
+<span id="configure-dns"></span><h4>Configure DNS<a class="headerlink" href="#configure-dns" title="Permalink to this headline">¶</a></h4>
+<p>You can invoke <code class="docutils literal"><span class="pre">kube-aws</span> <span class="pre">status</span></code> to get the cluster API endpoint after cluster creation.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ kube-aws status
+Cluster Name:       paddle-cluster
+Controller DNS Name:    paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-2.elb.amazonaws.com
+</pre></div>
+</div>
+<p>If you own a DNS name, set the A record to any of the above ip. <strong>Or</strong> you can set up CNAME point to <code class="docutils literal"><span class="pre">Controller</span> <span class="pre">DNS</span> <span class="pre">Name</span></code> (<code class="docutils literal"><span class="pre">paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-2.elb.amazonaws.com</span></code>)</p>
+<div class="section" id="find-ip-address">
+<span id="find-ip-address"></span><h5>Find IP address<a class="headerlink" href="#find-ip-address" title="Permalink to this headline">¶</a></h5>
+<p>Use command <code class="docutils literal"><span class="pre">dig</span></code> to check the load balancer hostname to get the ip address.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ dig paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-2.elb.amazonaws.com
+
+;; QUESTION SECTION:
+;paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-2.elb.amazonaws.com. IN A
+
+;; ANSWER SECTION:
+paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-2.elb.amazonaws.com. 59 IN A 54.241.164.52
+paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-2.elb.amazonaws.com. 59 IN A 54.67.102.112
+</pre></div>
+</div>
+<p>In the above output, both ip <code class="docutils literal"><span class="pre">54.241.164.52</span></code>, <code class="docutils literal"><span class="pre">54.67.102.112</span></code> will work.</p>
+<p><em>If you own a DNS name</em>, set the A record to any of the above ip. Then you can skip to the step &#8220;Access the cluster&#8221;.</p>
+<p><em>If you do not own a DNS name</em>:</p>
+</div>
+<div class="section" id="update-local-dns-association">
+<span id="update-local-dns-association"></span><h5>Update local DNS association<a class="headerlink" href="#update-local-dns-association" title="Permalink to this headline">¶</a></h5>
+<p>Edit <code class="docutils literal"><span class="pre">/etc/hosts</span></code> to associate above ip with the DNS name.</p>
+</div>
+<div class="section" id="add-route53-private-name-service-in-vpc">
+<span id="add-route53-private-name-service-in-vpc"></span><h5>Add Route53 private name service in VPC<a class="headerlink" href="#add-route53-private-name-service-in-vpc" title="Permalink to this headline">¶</a></h5>
+<ul>
+<li><p class="first">Open <a class="reference external" href="https://console.aws.amazon.com/route53/home">Route53 Console</a></p>
+</li>
+<li><p class="first">Create hosted zone with following config</p>
+<ul class="simple">
+<li>Domain name: &#8220;paddle&#8221;</li>
+<li>Type: &#8220;Private hosted zone for amazon VPC&#8221;</li>
+<li>VPC ID: <code class="docutils literal"><span class="pre">&lt;Your</span> <span class="pre">VPC</span> <span class="pre">ID&gt;</span></code></li>
+</ul>
+<p><img alt="route53 zone setting" src="../../../_images/route53_create_zone.png" /></p>
+</li>
+<li><p class="first">Add A record</p>
+<ul>
+<li><p class="first">Click on the zone &#8220;paddle&#8221; just created</p>
+</li>
+<li><p class="first">Click the button &#8220;Create record set&#8221;</p>
+<ul class="simple">
+<li>Name : leave blank</li>
+<li>type: &#8220;A&#8221;</li>
+<li>Value: <code class="docutils literal"><span class="pre">&lt;kube-controller</span> <span class="pre">ec2</span> <span class="pre">private</span> <span class="pre">ip&gt;</span></code></li>
+</ul>
+<p><img alt="route53 create recordset" src="../../../_images/route53_create_recordset.png" /></p>
+</li>
+</ul>
+</li>
+<li><p class="first">Verify name service</p>
+<ul class="simple">
+<li>Connect to any instance created by kube-aws via ssh</li>
+<li>Run command &#8220;host paddle&#8221;, see if the ip returned is the private ip of kube-controller</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="access-the-cluster">
+<span id="access-the-cluster"></span><h4>Access the cluster<a class="headerlink" href="#access-the-cluster" title="Permalink to this headline">¶</a></h4>
+<p>Once the API server is running, you should see:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ kubectl --kubeconfig=kubeconfig get nodes 
+NAME                                       STATUS    AGE
+ip-10-0-0-134.us-west-2.compute.internal   Ready     6m
+ip-10-0-0-238.us-west-2.compute.internal   Ready     6m
+ip-10-0-0-50.us-west-2.compute.internal    Ready     6m
+ip-10-0-0-55.us-west-2.compute.internal    Ready     6m
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="setup-elastic-file-system-for-cluster">
+<span id="setup-elastic-file-system-for-cluster"></span><h3>Setup Elastic File System for Cluster<a class="headerlink" href="#setup-elastic-file-system-for-cluster" title="Permalink to this headline">¶</a></h3>
+<p>Training data is usually served on a distributed filesystem, we use Elastic File System (EFS) on AWS.</p>
+<ol class="simple">
+<li>Create security group for EFS in <a class="reference external" href="https://us-west-2.console.aws.amazon.com/ec2/v2/home?region=us-west-2#SecurityGroups:sort=groupId">security group console</a></li>
+<li>Look up security group id for <code class="docutils literal"><span class="pre">paddle-cluster-sg-worker</span></code> (<code class="docutils literal"><span class="pre">sg-055ee37d</span></code> in the image below)
+<center><img alt="" src="../../../_images/worker_security_group.png" /></center></li>
+<li>Add security group <code class="docutils literal"><span class="pre">paddle-efs</span></code> with <code class="docutils literal"><span class="pre">ALL</span> <span class="pre">TCP</span></code> inbound rule and custom source as group id of <code class="docutils literal"><span class="pre">paddle-cluster-sg-worker</span></code>. And VPC of <code class="docutils literal"><span class="pre">paddle-cluster-vpc</span></code>. Make sure availability zone is same as the one you used in <a class="reference external" href="#initialize-assets">Initialize Assets</a>.
+<center><img alt="" src="../../../_images/add_security_group.png" /></center></li>
+<li>Create the Elastic File System in <a class="reference external" href="https://us-west-2.console.aws.amazon.com/efs/home?region=us-west-2#/wizard/1">EFS console</a> with <code class="docutils literal"><span class="pre">paddle-cluster-vpc</span></code> VPC. Make sure subnet is <code class="docutils literal"><span class="pre">paddle-cluster-Subnet0</span></code> andd security group is <code class="docutils literal"><span class="pre">paddle-efs</span></code>.
+<center><img alt="" src="../../../_images/create_efs.png" /></center></li>
+</ol>
+</div>
+<div class="section" id="start-paddlepaddle-training-demo-on-aws">
+<span id="start-paddlepaddle-training-demo-on-aws"></span><h3>Start PaddlePaddle Training Demo on AWS<a class="headerlink" href="#start-paddlepaddle-training-demo-on-aws" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="configure-kubernetes-volume-that-points-to-efs">
+<span id="configure-kubernetes-volume-that-points-to-efs"></span><h4>Configure Kubernetes Volume that Points to EFS<a class="headerlink" href="#configure-kubernetes-volume-that-points-to-efs" title="Permalink to this headline">¶</a></h4>
+<p>First we need to create a <a class="reference external" href="https://kubernetes.io/docs/user-guide/persistent-volumes/">PersistentVolume</a> to provision EFS volumn.</p>
+<p>Save following snippet as <code class="docutils literal"><span class="pre">pv.yaml</span></code></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">apiVersion</span><span class="p">:</span> <span class="n">v1</span>
+<span class="n">kind</span><span class="p">:</span> <span class="n">PersistentVolume</span>
+<span class="n">metadata</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span> <span class="n">efsvol</span>
+<span class="n">spec</span><span class="p">:</span>
+  <span class="n">capacity</span><span class="p">:</span>
+    <span class="n">storage</span><span class="p">:</span> <span class="mi">100</span><span class="n">Gi</span>
+  <span class="n">accessModes</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">ReadWriteMany</span>
+  <span class="n">nfs</span><span class="p">:</span>
+    <span class="n">server</span><span class="p">:</span> <span class="n">EFS_DNS_NAME</span>
+    <span class="n">path</span><span class="p">:</span> <span class="s2">&quot;/&quot;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">EFS_DNS_NAME</span></code>: DNS name as shown in description of <code class="docutils literal"><span class="pre">paddle-efs</span></code> that we created. Looks similar to <code class="docutils literal"><span class="pre">fs-2cbf7385.efs.us-west-2.amazonaws.com</span></code></p>
+<p>Run following command to create a persistent volumn:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="o">--</span><span class="n">kubeconfig</span><span class="o">=</span><span class="n">kubeconfig</span> <span class="n">create</span> <span class="o">-</span><span class="n">f</span> <span class="n">pv</span><span class="o">.</span><span class="n">yaml</span>
+</pre></div>
+</div>
+<p>Next let&#8217;s create a <a class="reference external" href="https://kubernetes.io/docs/user-guide/persistent-volumes/">PersistentVolumeClaim</a> to claim the persistent volume.</p>
+<p>Save following snippet as <code class="docutils literal"><span class="pre">pvc.yaml</span></code>.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">kind</span><span class="p">:</span> <span class="n">PersistentVolumeClaim</span>
+<span class="n">apiVersion</span><span class="p">:</span> <span class="n">v1</span>
+<span class="n">metadata</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span> <span class="n">efsvol</span>
+<span class="n">spec</span><span class="p">:</span>
+  <span class="n">accessModes</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">ReadWriteMany</span>
+  <span class="n">resources</span><span class="p">:</span>
+    <span class="n">requests</span><span class="p">:</span>
+      <span class="n">storage</span><span class="p">:</span> <span class="mi">50</span><span class="n">Gi</span>
+</pre></div>
+</div>
+<p>Run following command to create a persistent volumn claim:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="o">--</span><span class="n">kubeconfig</span><span class="o">=</span><span class="n">kubeconfig</span> <span class="n">create</span> <span class="o">-</span><span class="n">f</span> <span class="n">pvc</span><span class="o">.</span><span class="n">yaml</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="prepare-training-data">
+<span id="prepare-training-data"></span><h4>Prepare Training Data<a class="headerlink" href="#prepare-training-data" title="Permalink to this headline">¶</a></h4>
+<p>We will now launch a kubernetes job that downloads, saves and evenly splits training data into 3 shards on the persistent volumn that we just created.</p>
+<p>save following snippet as <code class="docutils literal"><span class="pre">paddle-data-job.yaml</span></code></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">apiVersion</span><span class="p">:</span> <span class="n">batch</span><span class="o">/</span><span class="n">v1</span>
+<span class="n">kind</span><span class="p">:</span> <span class="n">Job</span>
+<span class="n">metadata</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span> <span class="n">paddle</span><span class="o">-</span><span class="n">data</span>
+<span class="n">spec</span><span class="p">:</span>
+  <span class="n">template</span><span class="p">:</span>
+    <span class="n">metadata</span><span class="p">:</span>
+      <span class="n">name</span><span class="p">:</span> <span class="n">pi</span>
+    <span class="n">spec</span><span class="p">:</span>
+      <span class="n">containers</span><span class="p">:</span>
+      <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">paddle</span><span class="o">-</span><span class="n">data</span>
+        <span class="n">image</span><span class="p">:</span> <span class="n">paddledev</span><span class="o">/</span><span class="n">paddle</span><span class="o">-</span><span class="n">tutorial</span><span class="p">:</span><span class="n">k8s_data</span>
+        <span class="n">imagePullPolicy</span><span class="p">:</span> <span class="n">Always</span>
+        <span class="n">volumeMounts</span><span class="p">:</span>
+        <span class="o">-</span> <span class="n">mountPath</span><span class="p">:</span> <span class="s2">&quot;/efs&quot;</span>
+          <span class="n">name</span><span class="p">:</span> <span class="n">efs</span>
+        <span class="n">env</span><span class="p">:</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">OUT_DIR</span>
+          <span class="n">value</span><span class="p">:</span> <span class="o">/</span><span class="n">efs</span><span class="o">/</span><span class="n">paddle</span><span class="o">-</span><span class="n">cluster</span><span class="o">-</span><span class="n">job</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">SPLIT_COUNT</span>
+          <span class="n">value</span><span class="p">:</span> <span class="s2">&quot;3&quot;</span>
+      <span class="n">volumes</span><span class="p">:</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">efs</span>
+          <span class="n">persistentVolumeClaim</span><span class="p">:</span>
+            <span class="n">claimName</span><span class="p">:</span> <span class="n">efsvol</span>
+      <span class="n">restartPolicy</span><span class="p">:</span> <span class="n">Never</span>
+</pre></div>
+</div>
+<p>Run following command to launch the job:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="o">--</span><span class="n">kubeconfig</span><span class="o">=</span><span class="n">kubeconfig</span> <span class="n">create</span> <span class="o">-</span><span class="n">f</span> <span class="n">paddle</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">job</span><span class="o">.</span><span class="n">yaml</span>
+</pre></div>
+</div>
+<p>Job may take 7 min to finish, use following command to check job status. Do not proceed until <code class="docutils literal"><span class="pre">SUCCESSFUL</span></code> for <code class="docutils literal"><span class="pre">paddle-data</span></code> job is <code class="docutils literal"><span class="pre">1</span></code></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ kubectl --kubeconfig=kubeconfig get jobs
+NAME          DESIRED   SUCCESSFUL   AGE
+paddle-data   1         1            6m
+</pre></div>
+</div>
+<p>Data preparation is done by docker image <code class="docutils literal"><span class="pre">paddledev/paddle-tutorial:k8s_data</span></code>, see <a class="reference internal" href="src/k8s_data/README.html"><span class="doc">here</span></a> for how to build this docker image and source code.</p>
+</div>
+<div class="section" id="start-training">
+<span id="start-training"></span><h4>Start Training<a class="headerlink" href="#start-training" title="Permalink to this headline">¶</a></h4>
+<p>Now we are ready to start paddle training job. Save following snippet as <code class="docutils literal"><span class="pre">paddle-cluster-job.yaml</span></code></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">apiVersion</span><span class="p">:</span> <span class="n">batch</span><span class="o">/</span><span class="n">v1</span>
+<span class="n">kind</span><span class="p">:</span> <span class="n">Job</span>
+<span class="n">metadata</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span> <span class="n">paddle</span><span class="o">-</span><span class="n">cluster</span><span class="o">-</span><span class="n">job</span>
+<span class="n">spec</span><span class="p">:</span>
+  <span class="n">parallelism</span><span class="p">:</span> <span class="mi">3</span>
+  <span class="n">completions</span><span class="p">:</span> <span class="mi">3</span>
+  <span class="n">template</span><span class="p">:</span>
+    <span class="n">metadata</span><span class="p">:</span>
+      <span class="n">name</span><span class="p">:</span> <span class="n">paddle</span><span class="o">-</span><span class="n">cluster</span><span class="o">-</span><span class="n">job</span>
+    <span class="n">spec</span><span class="p">:</span>
+      <span class="n">volumes</span><span class="p">:</span>
+      <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">efs</span>
+        <span class="n">persistentVolumeClaim</span><span class="p">:</span>
+          <span class="n">claimName</span><span class="p">:</span> <span class="n">efsvol</span>
+      <span class="n">containers</span><span class="p">:</span>
+      <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">trainer</span>
+        <span class="n">image</span><span class="p">:</span> <span class="n">paddledev</span><span class="o">/</span><span class="n">paddle</span><span class="o">-</span><span class="n">tutorial</span><span class="p">:</span><span class="n">k8s_train</span>
+        <span class="n">command</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;bin/bash&quot;</span><span class="p">,</span>  <span class="s2">&quot;-c&quot;</span><span class="p">,</span> <span class="s2">&quot;/root/start.sh&quot;</span><span class="p">]</span>
+        <span class="n">env</span><span class="p">:</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">JOB_NAME</span>
+          <span class="n">value</span><span class="p">:</span> <span class="n">paddle</span><span class="o">-</span><span class="n">cluster</span><span class="o">-</span><span class="n">job</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">JOB_PATH</span>
+          <span class="n">value</span><span class="p">:</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">jobpath</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">JOB_NAMESPACE</span>
+          <span class="n">value</span><span class="p">:</span> <span class="n">default</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TRAIN_CONFIG_DIR</span>
+          <span class="n">value</span><span class="p">:</span> <span class="n">quick_start</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">CONF_PADDLE_NIC</span>
+          <span class="n">value</span><span class="p">:</span> <span class="n">eth0</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">CONF_PADDLE_PORT</span>
+          <span class="n">value</span><span class="p">:</span> <span class="s2">&quot;7164&quot;</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">CONF_PADDLE_PORTS_NUM</span>
+          <span class="n">value</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">CONF_PADDLE_PORTS_NUM_SPARSE</span>
+          <span class="n">value</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">CONF_PADDLE_GRADIENT_NUM</span>
+          <span class="n">value</span><span class="p">:</span> <span class="s2">&quot;3&quot;</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TRAINER_COUNT</span>
+          <span class="n">value</span><span class="p">:</span> <span class="s2">&quot;3&quot;</span>
+        <span class="n">volumeMounts</span><span class="p">:</span>
+        <span class="o">-</span> <span class="n">mountPath</span><span class="p">:</span> <span class="s2">&quot;/home/jobpath&quot;</span>
+          <span class="n">name</span><span class="p">:</span> <span class="n">efs</span>
+        <span class="n">ports</span><span class="p">:</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">jobport0</span>
+          <span class="n">hostPort</span><span class="p">:</span> <span class="mi">7164</span>
+          <span class="n">containerPort</span><span class="p">:</span> <span class="mi">7164</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">jobport1</span>
+          <span class="n">hostPort</span><span class="p">:</span> <span class="mi">7165</span>
+          <span class="n">containerPort</span><span class="p">:</span> <span class="mi">7165</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">jobport2</span>
+          <span class="n">hostPort</span><span class="p">:</span> <span class="mi">7166</span>
+          <span class="n">containerPort</span><span class="p">:</span> <span class="mi">7166</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">jobport3</span>
+          <span class="n">hostPort</span><span class="p">:</span> <span class="mi">7167</span>
+          <span class="n">containerPort</span><span class="p">:</span> <span class="mi">7167</span>
+      <span class="n">restartPolicy</span><span class="p">:</span> <span class="n">Never</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">parallelism:</span> <span class="pre">3,</span> <span class="pre">completions:</span> <span class="pre">3</span></code> means this job will simultaneously start 3 PaddlePaddle pods, and this job will be finished when there are 3 finished pods.</p>
+<p><code class="docutils literal"><span class="pre">env</span></code> field represents container&#8217;s environment variables, we specify PaddlePaddle parameters by environment variables.</p>
+<p><code class="docutils literal"><span class="pre">ports</span></code> indicates that TCP port 7164 - 7167 are exposed for communication between <code class="docutils literal"><span class="pre">pserver</span></code> ans trainer. port starts continously from <code class="docutils literal"><span class="pre">CONF_PADDLE_PORT</span></code> (7164) to <code class="docutils literal"><span class="pre">CONF_PADDLE_PORT</span> <span class="pre">+</span> <span class="pre">CONF_PADDLE_PORTS_NUM</span> <span class="pre">+</span> <span class="pre">CONF_PADDLE_PORTS_NUM_SPARSE</span> <span class="pre">-</span> <span class="pre">1</span></code> (7167). We use multiple ports for dense and sparse paramter updates to improve latency.</p>
+<p>Run following command to launch the job.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="o">--</span><span class="n">kubeconfig</span><span class="o">=</span><span class="n">kubeconfig</span> <span class="n">create</span> <span class="o">-</span><span class="n">f</span> <span class="n">paddle</span><span class="o">-</span><span class="n">claster</span><span class="o">-</span><span class="n">job</span><span class="o">.</span><span class="n">yaml</span>
+</pre></div>
+</div>
+<p>Inspect individual pods</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ kubectl --kubeconfig=kubeconfig get pods
+NAME                       READY     STATUS    RESTARTS   AGE
+paddle-cluster-job-cm469   1/1       Running   0          9m
+paddle-cluster-job-fnt03   1/1       Running   0          9m
+paddle-cluster-job-jx4xr   1/1       Running   0          9m
+</pre></div>
+</div>
+<p>Inspect individual console output</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="o">--</span><span class="n">kubeconfig</span><span class="o">=</span><span class="n">kubeconfig</span> <span class="n">log</span> <span class="o">-</span><span class="n">f</span> <span class="n">POD_NAME</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">POD_NAME</span></code>: name of any pod (e.g., <code class="docutils literal"><span class="pre">paddle-cluster-job-cm469</span></code>).</p>
+<p>Run <code class="docutils literal"><span class="pre">kubectl</span> <span class="pre">--kubeconfig=kubeconfig</span> <span class="pre">describe</span> <span class="pre">job</span> <span class="pre">paddle-cluster-job</span></code> to check training job status. It will complete in around 20 minutes.</p>
+<p>The details for start <code class="docutils literal"><span class="pre">pserver</span></code> and <code class="docutils literal"><span class="pre">trainer</span></code> are hidden inside docker image <code class="docutils literal"><span class="pre">paddledev/paddle-tutorial:k8s_train</span></code>, see <a class="reference internal" href="src/k8s_train/README.html"><span class="doc">here</span></a> for how to build the docker image and source code.</p>
+</div>
+<div class="section" id="inspect-training-output">
+<span id="inspect-training-output"></span><h4>Inspect Training Output<a class="headerlink" href="#inspect-training-output" title="Permalink to this headline">¶</a></h4>
+<p>Training output (model snapshot and logs) will be saved in EFS. We can ssh into worker EC2 instance, mount EFS and check training output.</p>
+<ol class="simple">
+<li>ssh Into Worker EC2 instance</li>
+</ol>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">chmod</span> <span class="mi">400</span> <span class="n">key</span><span class="o">-</span><span class="n">name</span><span class="o">.</span><span class="n">pem</span>
+<span class="n">ssh</span> <span class="o">-</span><span class="n">i</span> <span class="n">key</span><span class="o">-</span><span class="n">name</span><span class="o">.</span><span class="n">pem</span> <span class="n">core</span><span class="nd">@INSTANCE_IP</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">INSTANCE_IP</span></code>: public IP address of EC2 kubernetes worker node. Go to <a class="reference external" href="https://us-west-2.console.aws.amazon.com/ec2/v2/home?region=us-west-2#Instances:sort=instanceId">EC2 console</a> and check <code class="docutils literal"><span class="pre">public</span> <span class="pre">IP</span></code> of any <code class="docutils literal"><span class="pre">paddle-cluster-kube-aws-worker</span></code> instance.</p>
+<ol class="simple">
+<li>Mount EFS</li>
+</ol>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="n">efs</span>
+<span class="n">sudo</span> <span class="n">mount</span> <span class="o">-</span><span class="n">t</span> <span class="n">nfs4</span> <span class="o">-</span><span class="n">o</span> <span class="n">nfsvers</span><span class="o">=</span><span class="mf">4.1</span><span class="p">,</span><span class="n">rsize</span><span class="o">=</span><span class="mi">1048576</span><span class="p">,</span><span class="n">wsize</span><span class="o">=</span><span class="mi">1048576</span><span class="p">,</span><span class="n">hard</span><span class="p">,</span><span class="n">timeo</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span><span class="n">retrans</span><span class="o">=</span><span class="mi">2</span> <span class="n">EFS_DNS_NAME</span><span class="p">:</span><span class="o">/</span> <span class="n">efs</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">EFS_DNS_NAME</span></code>: DNS name as shown in description of <code class="docutils literal"><span class="pre">paddle-efs</span></code> that we created. Look similar to <code class="docutils literal"><span class="pre">fs-2cbf7385.efs.us-west-2.amazonaws.com</span></code>.</p>
+<p>Now folder <code class="docutils literal"><span class="pre">efs</span></code> will have structure similar to:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>-- paddle-cluster-job
+    |-- ...
+    |-- output
+    |   |-- node_0
+    |   |   |-- server.log
+    |   |   `-- train.log
+    |   |-- node_1
+    |   |   |-- server.log
+    |   |   `-- train.log
+    |   |-- node_2
+    |   |   |-- server.log
+    |   |   `-- train.log
+    |   |-- pass-00000
+    |   |   |-- ___fc_layer_0__.w0
+    |   |   |-- ___fc_layer_0__.wbias
+    |   |   |-- done
+    |   |   |-- path.txt
+    |   |   `-- trainer_config.lr.py
+    |   |-- pass-00001...
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">server.log</span></code> contains log for <code class="docutils literal"><span class="pre">pserver</span></code>. <code class="docutils literal"><span class="pre">train.log</span></code> contains log for <code class="docutils literal"><span class="pre">trainer</span></code>. Model description and snapshot is stored in <code class="docutils literal"><span class="pre">pass-0000*</span></code>.</p>
+</div>
+</div>
+<div class="section" id="kubernetes-cluster-tear-down">
+<span id="kubernetes-cluster-tear-down"></span><h3>Kubernetes Cluster Tear Down<a class="headerlink" href="#kubernetes-cluster-tear-down" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="delete-efs">
+<span id="delete-efs"></span><h4>Delete EFS<a class="headerlink" href="#delete-efs" title="Permalink to this headline">¶</a></h4>
+<p>Go to <a class="reference external" href="https://us-west-2.console.aws.amazon.com/efs/home?region=us-west-2">EFS Console</a> and delete the EFS volumn that we created.</p>
+</div>
+<div class="section" id="delete-security-group">
+<span id="delete-security-group"></span><h4>Delete security group<a class="headerlink" href="#delete-security-group" title="Permalink to this headline">¶</a></h4>
+<p>Go to <a class="reference external" href="https://us-west-2.console.aws.amazon.com/ec2/v2/home?region=us-west-2#SecurityGroups:sort=groupId">Security Group Console</a> and delete security group <code class="docutils literal"><span class="pre">paddle-efs</span></code>.</p>
+</div>
+<div class="section" id="delete-s3-bucket">
+<span id="delete-s3-bucket"></span><h4>Delete S3 Bucket<a class="headerlink" href="#delete-s3-bucket" title="Permalink to this headline">¶</a></h4>
+<p>Go to <a class="reference external" href="https://console.aws.amazon.com/s3/home?region=us-west-2#">S3 Console</a> and delete the S3 bucket that we created.</p>
+</div>
+<div class="section" id="destroy-cluster">
+<span id="destroy-cluster"></span><h4>Destroy Cluster<a class="headerlink" href="#destroy-cluster" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">kube</span><span class="o">-</span><span class="n">aws</span> <span class="n">destroy</span>
+</pre></div>
+</div>
+<p>The command will return immediately, but it might take 5 min to tear down the whole cluster.</p>
+<p>You can go to <a class="reference external" href="https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks?filter=active">CludFormation Console</a> to check destroy process.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../../dev/new_layer_en.html" class="btn btn-neutral float-right" title="Write New Layers" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="k8s_en.html" class="btn btn-neutral" title="Paddle On Kubernetes" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

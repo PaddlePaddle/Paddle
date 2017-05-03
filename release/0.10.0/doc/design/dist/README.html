@@ -1,0 +1,403 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Design Doc: Distributed Training &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Design Doc: Distributed Training</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="design-doc-distributed-training">
+<span id="design-doc-distributed-training"></span><h1>Design Doc: Distributed Training<a class="headerlink" href="#design-doc-distributed-training" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="objective">
+<span id="objective"></span><h2>Objective<a class="headerlink" href="#objective" title="Permalink to this headline">¶</a></h2>
+<p>In <a class="reference external" href="https://www.slideshare.net/cxwangyi/paddlepaddle-a-complete-solution-for-businesses">this slides</a>, we explained that we&#8217;d like PaddlePaddle running on general-purpose clusters like those managed by Kubernetes, so to address demands for AI from both Internet and non-Internet industries.</p>
+<p>This poses technical challenges to PaddlePaddle:</p>
+<ol class="simple">
+<li>Support fault-recovery.</li>
+<li>Support both offline and online training.</li>
+<li><a class="reference external" href="https://en.wikipedia.org/wiki/Serverless_computing">Serverless computing</a> of distributed training.</li>
+</ol>
+</div>
+<div class="section" id="training-job">
+<span id="training-job"></span><h2>Training Job<a class="headerlink" href="#training-job" title="Permalink to this headline">¶</a></h2>
+<p>A training job will be created once user asks Paddle cloud to train a model. The training job is made up of different processes that collaboratively consume data and produce a trained model. There are three kinds of processes:</p>
+<ol class="simple">
+<li>the <em>master process</em>, which dispatches tasks to</li>
+<li>one or more <em>trainer processes</em>, which run distributed training and synchronize gradients/models via</li>
+<li>one or more <em>parameter server processes</em>, where each holds a shard of the global model.</li>
+</ol>
+<p>Their relation is illustrated in the following graph:</p>
+<p><img src="src/paddle-model-sharding.png"/></p>
+<div class="section" id="master-process">
+<span id="master-process"></span><h3>Master Process<a class="headerlink" href="#master-process" title="Permalink to this headline">¶</a></h3>
+<p>The master process will:</p>
+<ul class="simple">
+<li>Partition a dataset into <a class="reference external" href="#task">tasks</a> and dispatch tasks to trainers.</li>
+<li>Keep track of training progress on the dataset with <a class="reference external" href="#task-queue">task queue</a>. A training job will iterate on the dataset for a full pass until it goes into next pass.</li>
+</ul>
+<div class="section" id="task">
+<span id="task"></span><h4>Task<a class="headerlink" href="#task" title="Permalink to this headline">¶</a></h4>
+<p>A task is a data shard to be trained. The total number of tasks will be much bigger than the total number of trainers. The number of data instances inside a task will be much bigger than the mini-batch size.</p>
+</div>
+<div class="section" id="task-queue">
+<span id="task-queue"></span><h4>Task Queue<a class="headerlink" href="#task-queue" title="Permalink to this headline">¶</a></h4>
+<p>The master process has three task queues to track training progress. As illustrated in the graph below, Job A and Job B both have one master process. Each master process has three task queues.</p>
+<p><img src="src/paddle-task-queues.png"/></p>
+<ul class="simple">
+<li>The todo queue holds tasks to be dispatched. When a job starts, the master process fills in the todo queue with all tasks.</li>
+<li>The pending queue holds tasks that are currently training by trainers.</li>
+<li>the done queue holds tasks that are already trained.</li>
+</ul>
+<p>The life cycle of a single task is illustrated below:</p>
+<p><img src="src/paddle-task-states.png"/></p>
+<ol class="simple">
+<li>When a new pass of training starts, all tasks will be placed in the todo queue.</li>
+<li>The master process will dispatch few tasks to each trainer at a time, puts them in the pending queue and waits for completion.</li>
+<li>The trainer will work on its tasks and tell the master process once a task is completed. The master process will dispatch a new task to that trainer.</li>
+<li>If a task timeout. the master process will move it back to the todo queue. The timeout count will increase by one. If the timeout count is above a threshold, the task is likely to cause a trainer to crash, so it will be discarded.</li>
+<li>The master process will move completed task to the done queue. When the todo queue is empty, the master process will start a new pass by moving all tasks in the done queue to todo queue and reset the timeout counter of all tasks to zero.</li>
+</ol>
+</div>
+</div>
+<div class="section" id="trainer-process">
+<span id="trainer-process"></span><h3>Trainer Process<a class="headerlink" href="#trainer-process" title="Permalink to this headline">¶</a></h3>
+<p>The trainer process will:</p>
+<ul class="simple">
+<li>Receive tasks from the master.</li>
+<li>Work on the tasks: calculate and upload gradient to parameter servers, and update local model by downloading new parameters from parameter servers.</li>
+</ul>
+</div>
+<div class="section" id="parameter-server-process">
+<span id="parameter-server-process"></span><h3>Parameter Server Process<a class="headerlink" href="#parameter-server-process" title="Permalink to this headline">¶</a></h3>
+<p>Parameter server processes hold the parameters collaboratively. The parameters are partitioned on different parameter servers.</p>
+<p>The parameter server will:</p>
+<ul class="simple">
+<li>Receive gradient from the trainers, update its parameters, and give the trainers the latest parameters.</li>
+<li>Periodically save its parameters to distributed file system by overriding the previous save.</li>
+</ul>
+</div>
+<div class="section" id="optimization-algorithms">
+<span id="optimization-algorithms"></span><h3>Optimization Algorithms<a class="headerlink" href="#optimization-algorithms" title="Permalink to this headline">¶</a></h3>
+<p>The communication pattern between the trainers and the parameter servers depends on the category of optimization algorithm:</p>
+<ul>
+<li><p class="first">Synchronous Stochastic Gradient Descent (sync-SGD)</p>
+<p>Parameter server will wait for all trainer finish n-th mini-batch calculation and send their gradients before broadcasting new parameters to every trainer. Every trainer will wait for the new parameters before starting n+1-th mini-batch.</p>
+</li>
+<li><p class="first">Asynchronous Stochastic Gradient Descent (async-SGD)</p>
+<p>There will no synchronization between different trainers, and parameter server updates its parameter as soon as it receives new gradient:</p>
+<ul class="simple">
+<li>Each trainer uploads its accumulated gradient every n mini-batches.</li>
+<li>Every m mini-batches, the trainer downloads new parameters from parameter server.</li>
+<li>n and m do not have to be equal.</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="fault-tolerant">
+<span id="fault-tolerant"></span><h2>Fault Tolerant<a class="headerlink" href="#fault-tolerant" title="Permalink to this headline">¶</a></h2>
+<p>The training job will pause if the master processes is dead, or any of the parameter server process is dead. They will be started by <a class="reference external" href="https://kubernetes.io/">Kubernetes</a> and recover in few minutes. Please refer to <a class="reference external" href="#fault-recovery">fault recovery</a>.</p>
+<p>The training job will continue to make progress if there is at least one training process running. The strategy depends on the type of optimization algorithm:</p>
+<ul>
+<li><p class="first">sync-SGD</p>
+<p>TODO</p>
+</li>
+<li><p class="first">async-SGD</p>
+<p>Since async-SGD does not require synchronization between mini-batches, the system will by definition make process if at least one trainer is running.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="fault-recovery">
+<span id="fault-recovery"></span><h2>Fault Recovery<a class="headerlink" href="#fault-recovery" title="Permalink to this headline">¶</a></h2>
+<p>PaddlePaddle uses <a class="reference external" href="https://github.com/coreos/etcd">etcd</a> to keep track of the states of processes. Because etcd is a distributed reliable key-value store, the restarted process can recover its states from etcd. The model parameters are periodically saved into distributed file system, so a restarted parameter server can recover its parameters from the saved file.</p>
+<p>Now we will introduce how each process recovers from a failure, the graph below shows how etcd is used:</p>
+<p><img src="src/paddle-etcd.png"/></p>
+<div class="section" id="master-process">
+<span id="id1"></span><h3>Master Process<a class="headerlink" href="#master-process" title="Permalink to this headline">¶</a></h3>
+<p>When the master is started by the Kubernetes, it executes the following steps at startup:</p>
+<ol class="simple">
+<li>Grabs a unique <em>master</em> lock in etcd, which prevents concurrent master instantiations.</li>
+<li>Recovers the task queues from etcd if they already exist, otherwise, the master will create them.</li>
+<li>Watches the trainer prefix keys <code class="docutils literal"><span class="pre">/trainer/</span></code> on etcd to find the live trainers.</li>
+<li>Starts dispatching the tasks to the trainers, and updates task queue using an etcd transaction to ensure lock is held during the update.</li>
+</ol>
+<p>The master process will kill itself if its etcd lease expires.</p>
+<p>When the master process is dead for any reason, Kubernetes will restart it. It will be online again with all states recovered from etcd in few minutes.</p>
+</div>
+<div class="section" id="trainer-process">
+<span id="id2"></span><h3>Trainer Process<a class="headerlink" href="#trainer-process" title="Permalink to this headline">¶</a></h3>
+<p>When the trainer is started by the Kubernetes, it executes the following steps at startup:</p>
+<ol class="simple">
+<li>Watches the available parameter server prefix keys <code class="docutils literal"><span class="pre">/ps/</span></code> on etcd and waits until the count of parameter servers reaches the desired count.</li>
+<li>Generates a unique ID, and sets key <code class="docutils literal"><span class="pre">/trainer/&lt;unique</span> <span class="pre">ID&gt;</span></code> with its contact address as value. The key will be deleted when the lease expires, so the master will be aware of the trainer being online and offline.</li>
+<li>Waits for tasks from the master to start training.</li>
+</ol>
+<p>If trainer&#8217;s etcd lease expires, it will try set key <code class="docutils literal"><span class="pre">/trainer/&lt;unique</span> <span class="pre">ID&gt;</span></code> again so that the master process can discover the trainer again.</p>
+</div>
+<div class="section" id="parameter-server-process">
+<span id="id3"></span><h3>Parameter Server Process<a class="headerlink" href="#parameter-server-process" title="Permalink to this headline">¶</a></h3>
+<p>When the parameter server is started by Kubernetes, it executes the following steps at startup:</p>
+<ol>
+<li><p class="first">Read desired total number of parameter servers from etcd <code class="docutils literal"><span class="pre">/ps_desired</span></code></p>
+</li>
+<li><p class="first">Search through etcd keys <code class="docutils literal"><span class="pre">/ps/&lt;index&gt;</span></code> (<code class="docutils literal"><span class="pre">/ps/0</span></code>, <code class="docutils literal"><span class="pre">/ps/1</span></code>, ...) to find the first non-existant key whose index is smaller than the total number of parameter servers. Set the key using a transaction to avoid concurrent writes. The parameter server&#8217;s index is inferred from the key name.</p>
+<p>The desired number of parameter servers is 3:</p>
+<p><img src="src/paddle-ps-0.png"/></p>
+<p>The third parameter server joined:</p>
+<p><img src="src/paddle-ps-1.png"/></p>
+</li>
+<li><p class="first">The parameter server can load parameters if there are already saved parameters in the save path (inferred from its index).</p>
+</li>
+<li><p class="first">Now the parameter server is ready for the trainers&#8217; requests.</p>
+</li>
+</ol>
+<p>If the parameter server&#8217;s etcd lease expires, the parameter server will kill itself.</p>
+</div>
+</div>
+<div class="section" id="dynamic-scaling">
+<span id="dynamic-scaling"></span><h2>Dynamic Scaling<a class="headerlink" href="#dynamic-scaling" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="trainer-scaling">
+<span id="trainer-scaling"></span><h3>Trainer Scaling<a class="headerlink" href="#trainer-scaling" title="Permalink to this headline">¶</a></h3>
+<p>TODO</p>
+</div>
+<div class="section" id="parameter-server-scaling">
+<span id="parameter-server-scaling"></span><h3>Parameter Server Scaling<a class="headerlink" href="#parameter-server-scaling" title="Permalink to this headline">¶</a></h3>
+<p>Not planned for v1.</p>
+</div>
+</div>
+<div class="section" id="training-dataset-format">
+<span id="training-dataset-format"></span><h2>Training Dataset Format<a class="headerlink" href="#training-dataset-format" title="Permalink to this headline">¶</a></h2>
+<p>TODO</p>
+</div>
+<div class="section" id="user-interface">
+<span id="user-interface"></span><h2>User Interface<a class="headerlink" href="#user-interface" title="Permalink to this headline">¶</a></h2>
+<p>TODO</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

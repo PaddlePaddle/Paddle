@@ -183,13 +183,16 @@
 <li><a class="reference internal" href="#">代码要求</a></li>
 <li><a class="reference internal" href="#fork">Fork</a></li>
 <li><a class="reference internal" href="#clone">克隆（Clone）</a></li>
+<li><a class="reference internal" href="#">创建本地分支</a></li>
 <li><a class="reference internal" href="#pre-commit">使用 <code class="docutils literal"><span class="pre">pre-commit</span></code> 钩子</a></li>
-<li><a class="reference internal" href="#commit">提交（Commit）</a></li>
-<li><a class="reference internal" href="#fork">保持 Fork 状态最新</a></li>
-<li><a class="reference internal" href="#push-github">推送（Push）到 GitHub</a></li>
-<li><a class="reference internal" href="#pull-request">拉取请求（Pull Request）</a></li>
-<li><a class="reference internal" href="#pull">使用最新版本更新你的 pull 请求</a></li>
-<li><a class="reference internal" href="#pull-request">修改你的 pull request</a></li>
+<li><a class="reference internal" href="#">开始开发</a></li>
+<li><a class="reference internal" href="#">构建和测试</a></li>
+<li><a class="reference internal" href="#commit">提交（commit）</a></li>
+<li><a class="reference internal" href="#">保持本地仓库最新</a></li>
+<li><a class="reference internal" href="#push">Push 到远程仓库</a></li>
+<li><a class="reference internal" href="#issue-pull-request">建立 Issue 并完成 Pull Request</a></li>
+<li><a class="reference internal" href="#">删除远程分支</a></li>
+<li><a class="reference internal" href="#">删除本地分支</a></li>
 </ul>
 </li>
 </ul>
@@ -227,8 +230,8 @@
 <div class="section" id="">
 <span id="id2"></span><h2>代码要求<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
 <ul class="simple">
-<li>你的代码必须完全遵守 <a class="reference external" href="http://www.stack.nl/~dimitri/doxygen/">doxygen</a> 的样式。</li>
-<li>确保编译器选项 WITH_STYLE_CHECK 已打开，并且编译能通过代码样式检查。</li>
+<li>代码注释请遵守 <a class="reference external" href="http://www.stack.nl/~dimitri/doxygen/">Doxygen</a> 的样式。</li>
+<li>确保编译器选项 <code class="docutils literal"><span class="pre">WITH_STYLE_CHECK</span></code> 已打开，并且编译能通过代码样式检查。</li>
 <li>所有代码必须具有单元测试。</li>
 <li>通过所有单元测试。</li>
 </ul>
@@ -236,107 +239,171 @@
 </div>
 <div class="section" id="fork">
 <span id="fork"></span><h2><a class="reference external" href="https://help.github.com/articles/fork-a-repo/">Fork</a><a class="headerlink" href="#fork" title="永久链接至标题">¶</a></h2>
-<p>跳转到<a class="reference external" href="https://github.com/PaddlePaddle/Paddle">PaddlePaddle</a> GitHub首页，然后单击 <code class="docutils literal"><span class="pre">Fork</span></code> 按钮。</p>
+<p>跳转到<a class="reference external" href="https://github.com/PaddlePaddle/Paddle">PaddlePaddle</a> GitHub首页，然后单击 <code class="docutils literal"><span class="pre">Fork</span></code> 按钮，生成自己目录下的仓库，比如 <a class="reference external" href="https://github.com/USERNAME/Paddle">https://github.com/USERNAME/Paddle</a>。</p>
 </div>
 <div class="section" id="clone">
 <span id="clone"></span><h2>克隆（Clone）<a class="headerlink" href="#clone" title="永久链接至标题">¶</a></h2>
-<p>Paddle 目前使用<a class="reference external" href="http://nvie.com/posts/a-successful-git-branching-model/">git流分支模型</a>进行开发，测试，发行和维护。
-<strong>develop</strong> 是主分支，其他用户分支是特征分支（feature branches）。</p>
-<p>一旦你创建了一个fork，你可以使用你最喜欢的 git 客户端克隆你的仓库（repo）或只是直接在命令行输入：</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># 克隆 fork 到本地</span>
-git clone --branch develop https://github.com/USERNAME/Paddle.git
+<p>将远程仓库 clone 到本地：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git clone https://github.com/USERNAME/Paddle
+➜  <span class="nb">cd</span> Paddle
 </pre></div>
 </div>
-<p>如果你的仓库不包含 <strong>develop</strong> 分支，你只需自己创建它。</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>git clone https://github.com/USERNAME/Paddle.git Paddle
-<span class="nb">cd</span> Paddle
-git checkout -b develop  <span class="c1"># 创建 develop 分支</span>
-git remote add upstream https://github.com/PaddlePaddle/Paddle.git  <span class="c1"># 添加 upstream 到 baidu/Paddle</span>
-git pull upstream develop  <span class="c1"># 更新 upstream</span>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h2>创建本地分支<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>Paddle 目前使用<a class="reference external" href="http://nvie.com/posts/a-successful-git-branching-model/">Git流分支模型</a>进行开发，测试，发行和维护，具体请参考 <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/releasing_process.md#paddle-分支规范">Paddle 分支规范</a>。</p>
+<p>所有的 feature 和 bug fix 的开发工作都应该在一个新的分支上完成，一般从 <code class="docutils literal"><span class="pre">develop</span></code> 分支上创建新分支。</p>
+<p>使用 <code class="docutils literal"><span class="pre">git</span> <span class="pre">checkout</span> <span class="pre">-b</span></code> 创建并切换到新分支。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git checkout -b my-cool-stuff
 </pre></div>
 </div>
-<p>然后你可以通过做一个本地开发分支开始开发</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>git checkout -b MY_COOL_STUFF_BRANCH
-</pre></div>
-</div>
+<p>值得注意的是，在 checkout 之前，需要保持当前分支目录 clean，否则会把 untracked 的文件也带到新分支上，这可以通过 <code class="docutils literal"><span class="pre">git</span> <span class="pre">status</span></code> 查看。</p>
 </div>
 <div class="section" id="pre-commit">
 <span id="pre-commit"></span><h2>使用 <code class="docutils literal"><span class="pre">pre-commit</span></code> 钩子<a class="headerlink" href="#pre-commit" title="永久链接至标题">¶</a></h2>
-<p>Paddle 开发人员使用 <a class="reference external" href="http://pre-commit.com/">pre-commit</a> 工具来管理git预提交钩子。 它可以帮助我们格式化源代码（cpp，python），在提交前检查一些基本事宜（每个文件只有一个 EOL
-，git 中不要添加大文件）。 <code class="docutils literal"><span class="pre">pre-commit</span></code>测试是 Travis-CI 中单元测试的一部分，不满足钩子
-的 PR 不能提交代码到 Paddle。</p>
-<p>你可以通过 <code class="docutils literal"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pre-commit</span></code> 安装 <a class="reference external" href="http://pre-commit.com/">pre-commit</a>，
-目前 Paddle 使用 <code class="docutils literal"><span class="pre">clang-format</span></code> 来调整C/C++源代码格式。请确保 clang-format 版本在3.8以上。</p>
-<p>然后只需在 Paddle clone 目录中运行 <code class="docutils literal"><span class="pre">pre-commit</span> <span class="pre">install</span></code> 。当你
-提交你的代码时，pre-commit 钩子会检查本地代码是否存在
-不适合提交的东西，等等。</p>
+<p>Paddle 开发人员使用 <a class="reference external" href="http://pre-commit.com/">pre-commit</a> 工具来管理 Git 预提交钩子。 它可以帮助我们格式化源代码（C++，Python），在提交（commit）前自动检查一些基本事宜（如每个文件只有一个 EOL，Git 中不要添加大文件等）。</p>
+<p><code class="docutils literal"><span class="pre">pre-commit</span></code>测试是 Travis-CI 中单元测试的一部分，不满足钩子的 PR 不能被提交到 Paddle，首先安装并在当前目录运行它：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  pip install pre-commit
+➜  pre-commit install
+</pre></div>
+</div>
+<p>Paddle 使用 <code class="docutils literal"><span class="pre">clang-format</span></code> 来调整 C/C++ 源代码格式，请确保 <code class="docutils literal"><span class="pre">clang-format</span></code> 版本在 3.8 以上。</p>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h2>开始开发<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>在本例中，我删除了 README.md 中的一行，并创建了一个新文件。</p>
+<p>通过 <code class="docutils literal"><span class="pre">git</span> <span class="pre">status</span></code> 查看当前状态，这会提示当前目录的一些变化，同时也可以通过 <code class="docutils literal"><span class="pre">git</span> <span class="pre">diff</span></code> 查看文件具体被修改的内容。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git status
+On branch <span class="nb">test</span>
+Changes not staged <span class="k">for</span> commit:
+  <span class="o">(</span>use <span class="s2">&quot;git add &lt;file&gt;...&quot;</span> to update what will be committed<span class="o">)</span>
+  <span class="o">(</span>use <span class="s2">&quot;git checkout -- &lt;file&gt;...&quot;</span> to discard changes in working directory<span class="o">)</span>
+
+    modified:   README.md
+
+Untracked files:
+  <span class="o">(</span>use <span class="s2">&quot;git add &lt;file&gt;...&quot;</span> to include in what will be committed<span class="o">)</span>
+
+    <span class="nb">test</span>
+
+no changes added to commit <span class="o">(</span>use <span class="s2">&quot;git add&quot;</span> and/or <span class="s2">&quot;git commit -a&quot;</span><span class="o">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h2>构建和测试<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>编译 PaddlePaddle 的源码以及生成文档需要多种开发工具。为了方便大家，我们的标准开发流程是把这些工具都装进一个Docker image，称为<em>开发镜像</em>，通常名字是 <code class="docutils literal"><span class="pre">paddle:dev</span></code>。然后所有用 <code class="docutils literal"><span class="pre">cmake</span> <span class="pre">&amp;&amp;</span> <span class="pre">make</span></code> 的地方（比如IDE配置里）都用 <code class="docutils literal"><span class="pre">docker</span> <span class="pre">run</span> <span class="pre">paddle:dev</span></code>来代替。</p>
+<p>如要build这个开发镜像，在源码目录树的根目录中运行：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker build -t paddle:dev .
+</pre></div>
+</div>
+<p>随后可以用这个开发镜像开build PaddlePaddle的源码。比如如果要build一个不依赖GPU，但是支持AVX指令集，并且包括unit tests的PaddlePaddle，可以：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker run -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/paddle -e <span class="s2">&quot;WITH_GPU=OFF&quot;</span> -e <span class="s2">&quot;WITH_AVX=ON&quot;</span> -e <span class="s2">&quot;WITH_TEST=ON&quot;</span> paddle:dev
+</pre></div>
+</div>
+<p>这个过程除了编译PaddlePaddle为 <code class="docutils literal"><span class="pre">./build/libpaddle.so</span></code>，并且输出一个 <code class="docutils literal"><span class="pre">./build/paddle.deb</span></code>文件之外，还会输出一个 <code class="docutils literal"><span class="pre">build/Dockerfile</span></code>。我们只需要运行下面命令把编译好的PaddlePaddle打包成一个<em>生产镜像</em>（<code class="docutils literal"><span class="pre">paddle:prod</span></code>）：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker build -t paddle:prod -f build/Dockerfile .
+</pre></div>
+</div>
+<p>如果要运行所有的单元测试，可以用如下命令：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker run -it -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/paddle paddle:dev bash -c <span class="s2">&quot;cd /paddle/build &amp;&amp; ctest&quot;</span>
+</pre></div>
+</div>
+<p>关于构建和测试的更多信息，请参见<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_cn.rst">这篇文档</a>。</p>
 </div>
 <div class="section" id="commit">
-<span id="commit"></span><h2>提交（Commit）<a class="headerlink" href="#commit" title="永久链接至标题">¶</a></h2>
-<p>提交你的代码：</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># 显示工作树状态</span>
-git status
-<span class="c1"># 添加修改过的文件</span>
-git add xx
-env <span class="nv">EDITOR</span><span class="o">=</span>vim git commit  <span class="c1"># 你可以用 vim/nano/emacs 写下你的注释</span>
+<span id="commit"></span><h2>提交（commit）<a class="headerlink" href="#commit" title="永久链接至标题">¶</a></h2>
+<p>接下来我们取消对 README.md 文件的改变，然后提交新添加的 test 文件。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git checkout -- README.md
+➜  git status
+On branch <span class="nb">test</span>
+Untracked files:
+  <span class="o">(</span>use <span class="s2">&quot;git add &lt;file&gt;...&quot;</span> to include in what will be committed<span class="o">)</span>
+
+    <span class="nb">test</span>
+
+nothing added to commit but untracked files present <span class="o">(</span>use <span class="s2">&quot;git add&quot;</span> to track<span class="o">)</span>
+➜  git add <span class="nb">test</span>
 </pre></div>
 </div>
-<p>提交信息的第一行是标题，其他行可以添加一些细节（如果有必要的话）。</p>
-</div>
-<div class="section" id="fork">
-<span id="id3"></span><h2>保持 Fork 状态最新<a class="headerlink" href="#fork" title="永久链接至标题">¶</a></h2>
-<p>在拉（pull）你的请求（request）之前，你应该从最新的 PaddlePaddle 同步代码。
-为此，你需要首先添加远程（remote）：</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># 观察当前远程仓库配置</span>
-git remote -v
-<span class="c1"># 添加上游（upstream）仓库</span>
-git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-<span class="c1"># 验证新的 upstream</span>
-git remote -v
-</pre></div>
-</div>
-<p>用最新的 upstream 更新你的 fork：</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>git pull --rebase upstream develop
-</pre></div>
-</div>
-<p>如果本地没有提交，git 将简单地执行快进。但是，如果你一直在做一些改变（绝大多数情况下不应该），你可能要处理冲突。</p>
-<p>现在，你的本地主分支与上游修改的一致并是最新的。</p>
-</div>
-<div class="section" id="push-github">
-<span id="push-github"></span><h2>推送（Push）到 GitHub<a class="headerlink" href="#push-github" title="永久链接至标题">¶</a></h2>
-<div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># 在 GitHub 上 push 你的仓库</span>
-git push -u origin MY_COOL_STUFF_BRANCH  <span class="c1"># 创建远程分支 MY_COOL_STUFF_BRANCH 到 origin.</span>
+<p>Git 每次提交代码，都需要写提交说明，这可以让其他人知道这次提交做了哪些改变，这可以通过<code class="docutils literal"><span class="pre">git</span> <span class="pre">commit</span></code> 完成。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git commit
+CRLF end-lines remover...............................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+yapf.................................................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+Check <span class="k">for</span> added large files..............................................Passed
+Check <span class="k">for</span> merge conflicts................................................Passed
+Check <span class="k">for</span> broken symlinks................................................Passed
+Detect Private Key...................................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+Fix End of Files.....................................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+clang-formater.......................................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+<span class="o">[</span>my-cool-stuff c703c041<span class="o">]</span> add <span class="nb">test</span> file
+ <span class="m">1</span> file changed, <span class="m">0</span> insertions<span class="o">(</span>+<span class="o">)</span>, <span class="m">0</span> deletions<span class="o">(</span>-<span class="o">)</span>
+ create mode <span class="m">100644</span> <span class="m">233</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="pull-request">
-<span id="pull-request"></span><h2>拉取请求（Pull Request）<a class="headerlink" href="#pull-request" title="永久链接至标题">¶</a></h2>
-<p>转到 GitHub上 你 fork 的页面，选择你的开发分支并单击 <strong>pull request 按钮</strong>。</p>
-</div>
-<div class="section" id="pull">
-<span id="pull"></span><h2>使用最新版本更新你的 pull 请求<a class="headerlink" href="#pull" title="永久链接至标题">¶</a></h2>
-<p>在代码审查（code review）期间，由于 baidu/Paddle 中新的提交导致你的 pull 请求可能会失效。如果没有冲突，GitHub允许自动更新。 你可以点击 pull request 页面中的“更新分支（Update Branch）”按钮。 但是如果存在代码冲突，你需要手动进行更新。你需要在本地仓库执行如下命令：</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>git checkout MY_COOL_STUFF_BRANCH
-git pull upstream develop
-<span class="c1"># 你可能需要根据git提示解决冲突</span>
-<span class="c1"># 创建并测试你的代码</span>
-git push origin MY_COOL_STUFF_BRANCH
+<div class="section" id="">
+<span id="id6"></span><h2>保持本地仓库最新<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>在准备发起 Pull Request 之前，需要同步原仓库（<a class="reference external" href="https://github.com/PaddlePaddle/Paddle">https://github.com/PaddlePaddle/Paddle</a>）最新的代码。</p>
+<p>首先通过 <code class="docutils literal"><span class="pre">git</span> <span class="pre">remote</span></code> 查看当前远程仓库的名字。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git remote
+origin
+➜  git remote -v
+origin  https://github.com/USERNAME/Paddle <span class="o">(</span>fetch<span class="o">)</span>
+origin  https://github.com/USERNAME/Paddle <span class="o">(</span>push<span class="o">)</span>
 </pre></div>
 </div>
-<p>现在你的 Pull Request 是最新的了。</p>
-</div>
-<div class="section" id="pull-request">
-<span id="id4"></span><h2>修改你的 pull request<a class="headerlink" href="#pull-request" title="永久链接至标题">¶</a></h2>
-<p>当根据审阅者的意见修改 pull 请求时，请使用“git commit”而不是“git commit &#8211;amend”来提交更改，以便审阅者可以看到新的请求和旧的请求之间的区别。</p>
-<p>可能的命令是</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>git checkout MY_COOL_STUFF_BRANCH
-git pull upstream develop   <span class="c1"># 将本地更新到最新的代码库</span>
-<span class="c1"># 可能会发生一些冲突</span>
-<span class="c1"># 开始开发吧！</span>
-env <span class="nv">EDITOR</span><span class="o">=</span>vim git commit  <span class="c1"># 添加修改日志</span>
-git push origin MY_COOL_STUFF_BRANCH
+<p>这里 origin 是我们 clone 的远程仓库的名字，也就是自己用户名下的 Paddle，接下来我们创建一个原始 Paddle 仓库的远程主机，命名为 upstream。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git remote add upstream https://github.com/PaddlePaddle/Paddle
+➜  git remote
+origin
+upstream
 </pre></div>
 </div>
+<p>获取 upstream 的最新代码并更新当前分支。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git fetch upstream
+➜  git pull upstream develop
+</pre></div>
+</div>
+</div>
+<div class="section" id="push">
+<span id="push"></span><h2>Push 到远程仓库<a class="headerlink" href="#push" title="永久链接至标题">¶</a></h2>
+<p>将本地的修改推送到 GitHub 上，也就是 https://github.com/USERNAME/Paddle。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># 推送到远程仓库 origin 的 my-cool-stuff 分支上</span>
+➜  git push origin my-cool-stuff
+</pre></div>
+</div>
+</div>
+<div class="section" id="issue-pull-request">
+<span id="issue-pull-request"></span><h2>建立 Issue 并完成 Pull Request<a class="headerlink" href="#issue-pull-request" title="永久链接至标题">¶</a></h2>
+<p>建立一个 Issue 描述问题，并记录它的编号。</p>
+<p>切换到所建分支，然后点击 <code class="docutils literal"><span class="pre">New</span> <span class="pre">pull</span> <span class="pre">request</span></code>。</p>
+<p><img width="295" alt="screen shot 2017-04-26 at 9 09 28 pm" src="https://cloud.githubusercontent.com/assets/11692045/25436054/a6d98c66-2ac4-11e7-9cb1-18dd13150230.png"></p>
+<p>选择目标分支：</p>
+<p><img width="750" alt="screen shot 2017-04-26 at 9 11 52 pm" src="https://cloud.githubusercontent.com/assets/11692045/25436139/f83b1e6c-2ac4-11e7-8c0e-add499023c46.png"></p>
+<p>在 PR 的描述说明中，填写 <code class="docutils literal"><span class="pre">resolve</span> <span class="pre">#Issue编号</span></code> 可以在这个 PR 被 merge 后，自动关闭对应的 Issue，具体请见 <a class="reference external" href="https://help.github.com/articles/closing-issues-via-commit-messages/">https://help.github.com/articles/closing-issues-via-commit-messages/</a>。</p>
+<p>接下来等待 review，如果有需要修改的地方，参照上述步骤更新 origin 中的对应分支即可。</p>
+</div>
+<div class="section" id="">
+<span id="id7"></span><h2>删除远程分支<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>在 PR 被 merge 进主仓库后，我们可以在 PR 的页面删除远程仓库的分支。</p>
+<p><img width="775" alt="screen shot 2017-04-26 at 9 18 24 pm" src="https://cloud.githubusercontent.com/assets/11692045/25436457/e4cdd472-2ac5-11e7-9272-badc76c4a23e.png"></p>
+<p>也可以使用 <code class="docutils literal"><span class="pre">git</span> <span class="pre">push</span> <span class="pre">origin</span> <span class="pre">:分支名</span></code> 删除远程分支，如：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git push origin :my-cool-stuff
+</pre></div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id8"></span><h2>删除本地分支<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>最后，删除本地分支。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># 切换到 develop 分支</span>
+➜  git checkout develop 
+
+<span class="c1"># 删除 my-cool-stuff 分支</span>
+➜  git branch -D my-cool-stuff
+</pre></div>
+</div>
+<p>至此，我们就完成了一次代码贡献的过程。</p>
 </div>
 </div>
 

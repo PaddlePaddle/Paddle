@@ -1,0 +1,572 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Tune GPU Performance &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/>
+        <link rel="up" title="HOW TO" href="../index_en.html"/>
+        <link rel="next" title="API" href="../../api/index_en.html"/>
+        <link rel="prev" title="RNN Models" href="../deep_model/rnn/index_en.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">HOW TO</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../index_en.html">HOW TO</a> > </li>
+      
+    <li>Tune GPU Performance</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="tune-gpu-performance">
+<h1><a class="toc-backref" href="#id1">Tune GPU Performance</a><a class="headerlink" href="#tune-gpu-performance" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#tune-gpu-performance" id="id1">Tune GPU Performance</a><ul>
+<li><a class="reference internal" href="#what-s-profiling" id="id2">What&#8217;s profiling?</a></li>
+<li><a class="reference internal" href="#why-we-need-profiling" id="id3">Why we need profiling?</a></li>
+<li><a class="reference internal" href="#how-to-do-profiling" id="id4">How to do profiling?</a></li>
+<li><a class="reference internal" href="#profiler-tools" id="id5">Profiler Tools</a></li>
+<li><a class="reference internal" href="#hands-on-approach" id="id6">Hands-on Approach</a><ul>
+<li><a class="reference internal" href="#built-in-timer" id="id7">Built-in Timer</a></li>
+<li><a class="reference internal" href="#nvprof-profiler" id="id8">nvprof profiler</a></li>
+<li><a class="reference internal" href="#nvvp-profiler" id="id9">nvvp profiler</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#profiling-tips" id="id10">Profiling tips</a></li>
+<li><a class="reference internal" href="#reference" id="id11">Reference</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<p>This tutorial will guide you step-by-step through how to conduct profiling and performance tuning using built-in timer, <strong>nvprof</strong> and <strong>nvvp</strong>.</p>
+<ul class="simple">
+<li>What is profiling?</li>
+<li>Why we need profiling?</li>
+<li>How to do profiling?</li>
+<li>Profile tools</li>
+<li>Hands-on Tutorial</li>
+<li>Profiling tips</li>
+</ul>
+<div class="section" id="what-s-profiling">
+<h2><a class="toc-backref" href="#id2">What&#8217;s profiling?</a><a class="headerlink" href="#what-s-profiling" title="Permalink to this headline">¶</a></h2>
+<p>In software engineering, profiling is a form of dynamic program analysis that measures the space (memory) or time
+complexity of a program, the usage of particular instructions, or the frequency and duration of function calls.
+Most commonly, profiling information serves to aid program optimization.</p>
+<p>Briefly, profiler is used to measure application performance. Program analysis tools are extremely important for
+understanding program behavior. Simple profiling can tell you that how long does an operation take? For advanced
+profiling, it can interpret why does an operation take a long time?</p>
+</div>
+<div class="section" id="why-we-need-profiling">
+<h2><a class="toc-backref" href="#id3">Why we need profiling?</a><a class="headerlink" href="#why-we-need-profiling" title="Permalink to this headline">¶</a></h2>
+<p>Since training deep neural network typically take a very long time to get over, performance is gradually becoming
+the most important thing in deep learning field. The first step to improve performance is to understand what parts
+are slow.  There is no point in improving performance of a region which doesn’t take much time!</p>
+</div>
+<div class="section" id="how-to-do-profiling">
+<h2><a class="toc-backref" href="#id4">How to do profiling?</a><a class="headerlink" href="#how-to-do-profiling" title="Permalink to this headline">¶</a></h2>
+<p>To achieve maximum performance, there are five steps you can take to reach your goals.</p>
+<ul class="simple">
+<li>Profile the code</li>
+<li>Find the slow parts</li>
+<li>Work out why they’re slow</li>
+<li>Make them fast</li>
+<li>Profile the code again</li>
+</ul>
+<p>Usually, processor has two key performance limits include float point throughput and
+memory throughput. For GPU,  it also need more parallelism to fulfill its potential.
+This is why they can be so fast.</p>
+</div>
+<div class="section" id="profiler-tools">
+<h2><a class="toc-backref" href="#id5">Profiler Tools</a><a class="headerlink" href="#profiler-tools" title="Permalink to this headline">¶</a></h2>
+<p>For general GPU profiling, a bunch of tools are provided from both NVIDIA and third party.</p>
+<p><strong>nvprof</strong> is Nvidia profiler and <strong>nvvp</strong> is (GUI based) Nvidia visual profiler.
+In this tutorial, we will focus on nvprof and nvvp.</p>
+<p><code class="code docutils literal"><span class="pre">test_GpuProfiler</span></code> from <code class="code docutils literal"><span class="pre">paddle/math/tests</span></code> directory will be used to evaluate
+above profilers.</p>
+<div class="highlight-c++"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="n">TEST</span><span class="p">(</span><span class="n">Profiler</span><span class="p">,</span> <span class="n">testBilinearFwdBwd</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">auto</span> <span class="n">numSamples</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+  <span class="k">auto</span> <span class="n">channels</span> <span class="o">=</span> <span class="mi">16</span><span class="p">;</span>
+  <span class="k">auto</span> <span class="n">imgSize</span> <span class="o">=</span> <span class="mi">64</span><span class="p">;</span>
+  <span class="p">{</span>
+    <span class="c1">// nvprof: GPU Proflier</span>
+    <span class="n">REGISTER_GPU_PROFILER</span><span class="p">(</span><span class="s">&quot;testBilinearFwdBwd&quot;</span><span class="p">);</span>
+    <span class="c1">// Paddle built-in timer</span>
+    <span class="n">REGISTER_TIMER_INFO</span><span class="p">(</span>
+        <span class="s">&quot;testBilinearFwdBwd&quot;</span><span class="p">,</span>
+        <span class="s">&quot;numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64&quot;</span><span class="p">);</span>
+    <span class="n">testBilinearFwdBwd</span><span class="p">(</span><span class="n">numSamples</span><span class="p">,</span> <span class="n">imgSize</span><span class="p">,</span> <span class="n">imgSize</span><span class="p">,</span> <span class="n">channels</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="n">globalStat</span><span class="p">.</span><span class="n">printAllStatus</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+<p>The above code snippet includes two methods, you can use any of them to profile the regions of interest.</p>
+<ol class="arabic simple">
+<li><code class="code docutils literal"><span class="pre">REGISTER_TIMER_INFO</span></code> is a built-in timer wrapper which can calculate the time overhead of both cpu functions and cuda kernels.</li>
+</ol>
+<p>2. <code class="code docutils literal"><span class="pre">REGISTER_GPU_PROFILER</span></code> is a general purpose wrapper object of <code class="code docutils literal"><span class="pre">cudaProfilerStart</span></code> and <code class="code docutils literal"><span class="pre">cudaProfilerStop</span></code> to avoid
+program crashes when CPU version of PaddlePaddle invokes them.</p>
+<p>You can find more details about how to use both of them in the next session.</p>
+</div>
+<div class="section" id="hands-on-approach">
+<h2><a class="toc-backref" href="#id6">Hands-on Approach</a><a class="headerlink" href="#hands-on-approach" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="built-in-timer">
+<h3><a class="toc-backref" href="#id7">Built-in Timer</a><a class="headerlink" href="#built-in-timer" title="Permalink to this headline">¶</a></h3>
+<p>To enable built-in timer in PaddlePaddle, first you have to add <code class="code docutils literal"><span class="pre">REGISTER_TIMER_INFO</span></code> into the regions of you interest.
+Then, all information could be stamped in the console via <code class="code docutils literal"><span class="pre">printStatus</span></code> or <code class="code docutils literal"><span class="pre">printAllStatus</span></code> function.
+As a simple example, consider the following:</p>
+<ol class="arabic">
+<li><p class="first">Add <code class="code docutils literal"><span class="pre">REGISTER_TIMER_INFO</span></code> and <code class="code docutils literal"><span class="pre">printAllStatus</span></code> functions (see the emphasize-lines).</p>
+<blockquote>
+<div><div class="highlight-c++"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="n">TEST</span><span class="p">(</span><span class="n">Profiler</span><span class="p">,</span> <span class="n">testBilinearFwdBwd</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">auto</span> <span class="n">numSamples</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+  <span class="k">auto</span> <span class="n">channels</span> <span class="o">=</span> <span class="mi">16</span><span class="p">;</span>
+  <span class="k">auto</span> <span class="n">imgSize</span> <span class="o">=</span> <span class="mi">64</span><span class="p">;</span>
+  <span class="p">{</span>
+    <span class="c1">// nvprof: GPU Proflier</span>
+    <span class="n">REGISTER_GPU_PROFILER</span><span class="p">(</span><span class="s">&quot;testBilinearFwdBwd&quot;</span><span class="p">);</span>
+<span class="hll">    <span class="c1">// Paddle built-in timer</span>
+</span><span class="hll">    <span class="n">REGISTER_TIMER_INFO</span><span class="p">(</span>
+</span><span class="hll">        <span class="s">&quot;testBilinearFwdBwd&quot;</span><span class="p">,</span>
+</span><span class="hll">        <span class="s">&quot;numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64&quot;</span><span class="p">);</span>
+</span><span class="hll">    <span class="n">testBilinearFwdBwd</span><span class="p">(</span><span class="n">numSamples</span><span class="p">,</span> <span class="n">imgSize</span><span class="p">,</span> <span class="n">imgSize</span><span class="p">,</span> <span class="n">channels</span><span class="p">);</span>
+</span>  <span class="p">}</span>
+<span class="hll">  <span class="n">globalStat</span><span class="p">.</span><span class="n">printAllStatus</span><span class="p">();</span>
+</span><span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div></blockquote>
+</li>
+<li><p class="first">Configure cmake with <strong>WITH_TIMER</strong> and recompile PaddlePaddle.</p>
+<blockquote>
+<div><div class="highlight-bash"><div class="highlight"><pre><span></span>cmake .. -DWITH_TIMER<span class="o">=</span>ON
+make
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p class="first">Execute your code and observe the results (see the emphasize-lines).</p>
+<blockquote>
+<div><div class="highlight-bash"><div class="highlight"><pre><span></span><span class="hll">&gt; ./paddle/math/tests/test_GpuProfiler
+</span>I1117 <span class="m">11</span>:13:42.313065 <span class="m">2522362816</span> Util.cpp:155<span class="o">]</span> commandline: ./paddle/math/tests/test_GpuProfiler
+I1117 <span class="m">11</span>:13:42.845065 <span class="m">2522362816</span> Util.cpp:130<span class="o">]</span> Calling runInitFunctions
+I1117 <span class="m">11</span>:13:42.845208 <span class="m">2522362816</span> Util.cpp:143<span class="o">]</span> Call runInitFunctions <span class="k">done</span>.
+<span class="o">[==========]</span> Running <span class="m">1</span> <span class="nb">test</span> from <span class="m">1</span> <span class="nb">test</span> <span class="k">case</span>.
+<span class="o">[</span>----------<span class="o">]</span> Global <span class="nb">test</span> environment set-up.
+<span class="o">[</span>----------<span class="o">]</span> <span class="m">1</span> <span class="nb">test</span> from Profiler
+<span class="o">[</span> RUN      <span class="o">]</span> Profiler.BilinearFwdBwd
+I1117 <span class="m">11</span>:13:42.845310 <span class="m">2522362816</span> test_GpuProfiler.cpp:114<span class="o">]</span> Enable GPU Profiler Stat: <span class="o">[</span>testBilinearFwdBwd<span class="o">]</span> <span class="s2">&quot;numSamples = 10, channels = 16, im</span>
+<span class="s2">gSizeX = 64, imgSizeY = 64&quot;</span>
+I1117 <span class="m">11</span>:13:42.850154 <span class="m">2522362816</span> ThreadLocal.cpp:37<span class="o">]</span> thread use undeterministic rand seed:20659751
+<span class="hll">I1117 <span class="m">11</span>:13:42.981501 <span class="m">2522362816</span> Stat.cpp:130<span class="o">]</span> <span class="o">=======</span> StatSet: <span class="o">[</span>GlobalStatInfo<span class="o">]</span> <span class="nv">status</span> <span class="o">======</span>
+</span><span class="hll">I1117 <span class="m">11</span>:13:42.981539 <span class="m">2522362816</span> Stat.cpp:133<span class="o">]</span> <span class="nv">Stat</span><span class="o">=</span>testBilinearFwdBwd     <span class="nv">total</span><span class="o">=</span><span class="m">136</span>.141    <span class="nv">avg</span><span class="o">=</span><span class="m">136</span>.141    <span class="nv">max</span><span class="o">=</span><span class="m">136</span>.141    <span class="nv">min</span><span class="o">=</span><span class="m">136</span>.141   <span class="nv">count</span><span class="o">=</span><span class="m">1</span>
+</span><span class="hll">I1117 <span class="m">11</span>:13:42.981572 <span class="m">2522362816</span> Stat.cpp:141<span class="o">]</span> <span class="o">=======</span> BarrierStatSet <span class="nv">status</span> <span class="o">======</span>
+</span><span class="hll">I1117 <span class="m">11</span>:13:42.981575 <span class="m">2522362816</span> Stat.cpp:154<span class="o">]</span> --------------------------------------------------
+</span><span class="o">[</span>       OK <span class="o">]</span> Profiler.BilinearFwdBwd <span class="o">(</span><span class="m">136</span> ms<span class="o">)</span>
+<span class="o">[</span>----------<span class="o">]</span> <span class="m">1</span> <span class="nb">test</span> from Profiler <span class="o">(</span><span class="m">136</span> ms total<span class="o">)</span>
+
+<span class="o">[</span>----------<span class="o">]</span> Global <span class="nb">test</span> environment tear-down
+<span class="o">[==========]</span> <span class="m">1</span> <span class="nb">test</span> from <span class="m">1</span> <span class="nb">test</span> <span class="k">case</span> ran. <span class="o">(</span><span class="m">136</span> ms total<span class="o">)</span>
+<span class="o">[</span>  PASSED  <span class="o">]</span> <span class="m">1</span> test.
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ol>
+</div>
+<div class="section" id="nvprof-profiler">
+<h3><a class="toc-backref" href="#id8">nvprof profiler</a><a class="headerlink" href="#nvprof-profiler" title="Permalink to this headline">¶</a></h3>
+<p>To use this command line profiler <strong>nvprof</strong>, you can simply issue the following command:</p>
+<ol class="arabic">
+<li><p class="first">Add <code class="code docutils literal"><span class="pre">REGISTER_GPU_PROFILER</span></code> function (see the emphasize-lines).</p>
+<blockquote>
+<div><div class="highlight-c++"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="n">TEST</span><span class="p">(</span><span class="n">Profiler</span><span class="p">,</span> <span class="n">testBilinearFwdBwd</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">auto</span> <span class="n">numSamples</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+  <span class="k">auto</span> <span class="n">channels</span> <span class="o">=</span> <span class="mi">16</span><span class="p">;</span>
+  <span class="k">auto</span> <span class="n">imgSize</span> <span class="o">=</span> <span class="mi">64</span><span class="p">;</span>
+  <span class="p">{</span>
+<span class="hll">    <span class="c1">// nvprof: GPU Proflier</span>
+</span><span class="hll">    <span class="n">REGISTER_GPU_PROFILER</span><span class="p">(</span><span class="s">&quot;testBilinearFwdBwd&quot;</span><span class="p">);</span>
+</span>    <span class="c1">// Paddle built-in timer</span>
+    <span class="n">REGISTER_TIMER_INFO</span><span class="p">(</span>
+        <span class="s">&quot;testBilinearFwdBwd&quot;</span><span class="p">,</span>
+        <span class="s">&quot;numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64&quot;</span><span class="p">);</span>
+    <span class="n">testBilinearFwdBwd</span><span class="p">(</span><span class="n">numSamples</span><span class="p">,</span> <span class="n">imgSize</span><span class="p">,</span> <span class="n">imgSize</span><span class="p">,</span> <span class="n">channels</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="n">globalStat</span><span class="p">.</span><span class="n">printAllStatus</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div></blockquote>
+</li>
+<li><p class="first">Configure cmake with <strong>WITH_PROFILER</strong> and recompile PaddlePaddle.</p>
+<blockquote>
+<div><div class="highlight-bash"><div class="highlight"><pre><span></span>cmake .. -DWITH_PROFILER<span class="o">=</span>ON
+make
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p class="first">Use Nvidia profiler <strong>nvprof</strong> to profile the binary.</p>
+<blockquote>
+<div><div class="highlight-bash"><div class="highlight"><pre><span></span>nvprof  ./paddle/math/tests/test_GpuProfiler
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ol>
+<p>Then, you can get the following profiling result:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="o">==</span><span class="nv">78544</span><span class="o">==</span> Profiling application: ./paddle/math/tests/test_GpuProfiler
+<span class="o">==</span><span class="nv">78544</span><span class="o">==</span> Profiling result:
+Time<span class="o">(</span>%<span class="o">)</span>     Time     Calls       Avg       Min       Max  Name
+<span class="m">27</span>.60%  <span class="m">9</span>.6305ms         <span class="m">5</span>  <span class="m">1</span>.9261ms  <span class="m">3</span>.4560us  <span class="m">6</span>.4035ms  <span class="o">[</span>CUDA memcpy HtoD<span class="o">]</span>
+<span class="m">26</span>.07%  <span class="m">9</span>.0957ms         <span class="m">1</span>  <span class="m">9</span>.0957ms  <span class="m">9</span>.0957ms  <span class="m">9</span>.0957ms  KeBilinearInterpBw
+<span class="m">23</span>.78%  <span class="m">8</span>.2977ms         <span class="m">1</span>  <span class="m">8</span>.2977ms  <span class="m">8</span>.2977ms  <span class="m">8</span>.2977ms  KeBilinearInterpFw
+<span class="m">22</span>.55%  <span class="m">7</span>.8661ms         <span class="m">2</span>  <span class="m">3</span>.9330ms  <span class="m">1</span>.5798ms  <span class="m">6</span>.2863ms  <span class="o">[</span>CUDA memcpy DtoH<span class="o">]</span>
+
+<span class="o">==</span><span class="nv">78544</span><span class="o">==</span> API calls:
+Time<span class="o">(</span>%<span class="o">)</span>     Time     Calls       Avg       Min       Max  Name
+<span class="m">46</span>.85%  <span class="m">682</span>.28ms         <span class="m">8</span>  <span class="m">85</span>.285ms  <span class="m">12</span>.639us  <span class="m">682</span>.03ms  cudaStreamCreateWithFlags
+<span class="m">39</span>.83%  <span class="m">580</span>.00ms         <span class="m">4</span>  <span class="m">145</span>.00ms     302ns  <span class="m">550</span>.27ms  cudaFree
+<span class="m">9</span>.82%   <span class="m">143</span>.03ms         <span class="m">9</span>  <span class="m">15</span>.892ms  <span class="m">8</span>.7090us  <span class="m">142</span>.78ms  cudaStreamCreate
+<span class="m">1</span>.23%   <span class="m">17</span>.983ms         <span class="m">7</span>  <span class="m">2</span>.5690ms  <span class="m">23</span>.210us  <span class="m">6</span>.4563ms  cudaMemcpy
+<span class="m">1</span>.23%   <span class="m">17</span>.849ms         <span class="m">2</span>  <span class="m">8</span>.9247ms  <span class="m">8</span>.4726ms  <span class="m">9</span>.3768ms  cudaStreamSynchronize
+<span class="m">0</span>.66%   <span class="m">9</span>.5969ms         <span class="m">7</span>  <span class="m">1</span>.3710ms  <span class="m">288</span>.43us  <span class="m">2</span>.4279ms  cudaHostAlloc
+<span class="m">0</span>.13%   <span class="m">1</span>.9530ms        <span class="m">11</span>  <span class="m">177</span>.54us  <span class="m">7</span>.6810us  <span class="m">591</span>.06us  cudaMalloc
+<span class="m">0</span>.07%   <span class="m">1</span>.0424ms         <span class="m">8</span>  <span class="m">130</span>.30us  <span class="m">1</span>.6970us  <span class="m">453</span>.72us  cudaGetDevice
+<span class="m">0</span>.04%   <span class="m">527</span>.90us        <span class="m">40</span>  <span class="m">13</span>.197us     525ns  <span class="m">253</span>.99us  cudaEventCreateWithFlags
+<span class="m">0</span>.03%   <span class="m">435</span>.73us       <span class="m">348</span>  <span class="m">1</span>.2520us     124ns  <span class="m">42</span>.704us  cuDeviceGetAttribute
+<span class="m">0</span>.03%   <span class="m">419</span>.36us         <span class="m">1</span>  <span class="m">419</span>.36us  <span class="m">419</span>.36us  <span class="m">419</span>.36us  cudaGetDeviceCount
+<span class="m">0</span>.02%   <span class="m">260</span>.75us         <span class="m">2</span>  <span class="m">130</span>.38us  <span class="m">129</span>.32us  <span class="m">131</span>.43us  cudaGetDeviceProperties
+<span class="m">0</span>.02%   <span class="m">222</span>.32us         <span class="m">2</span>  <span class="m">111</span>.16us  <span class="m">106</span>.94us  <span class="m">115</span>.39us  cudaLaunch
+<span class="m">0</span>.01%   <span class="m">214</span>.06us         <span class="m">4</span>  <span class="m">53</span>.514us  <span class="m">28</span>.586us  <span class="m">77</span>.655us  cuDeviceGetName
+<span class="m">0</span>.01%   <span class="m">115</span>.45us         <span class="m">4</span>  <span class="m">28</span>.861us  <span class="m">9</span>.8250us  <span class="m">44</span>.526us  cuDeviceTotalMem
+<span class="m">0</span>.01%   <span class="m">83</span>.988us         <span class="m">4</span>  <span class="m">20</span>.997us     578ns  <span class="m">77</span>.760us  cudaSetDevice
+<span class="m">0</span>.00%   <span class="m">38</span>.918us         <span class="m">1</span>  <span class="m">38</span>.918us  <span class="m">38</span>.918us  <span class="m">38</span>.918us  cudaEventCreate
+<span class="m">0</span>.00%   <span class="m">34</span>.573us        <span class="m">31</span>  <span class="m">1</span>.1150us     279ns  <span class="m">12</span>.784us  cudaDeviceGetAttribute
+<span class="m">0</span>.00%   <span class="m">17</span>.767us         <span class="m">1</span>  <span class="m">17</span>.767us  <span class="m">17</span>.767us  <span class="m">17</span>.767us  cudaProfilerStart
+<span class="m">0</span>.00%   <span class="m">15</span>.228us         <span class="m">2</span>  <span class="m">7</span>.6140us  <span class="m">3</span>.5460us  <span class="m">11</span>.682us  cudaConfigureCall
+<span class="m">0</span>.00%   <span class="m">14</span>.536us         <span class="m">2</span>  <span class="m">7</span>.2680us  <span class="m">1</span>.1490us  <span class="m">13</span>.387us  cudaGetLastError
+<span class="m">0</span>.00%   <span class="m">8</span>.6080us        <span class="m">26</span>     331ns     173ns     783ns  cudaSetupArgument
+<span class="m">0</span>.00%   <span class="m">5</span>.5470us         <span class="m">6</span>     924ns     215ns  <span class="m">2</span>.6780us  cuDeviceGet
+<span class="m">0</span>.00%   <span class="m">5</span>.4090us         <span class="m">6</span>     901ns     328ns  <span class="m">3</span>.3320us  cuDeviceGetCount
+<span class="m">0</span>.00%   <span class="m">4</span>.1770us         <span class="m">3</span>  <span class="m">1</span>.3920us  <span class="m">1</span>.0630us  <span class="m">1</span>.8300us  cuDriverGetVersion
+<span class="m">0</span>.00%   <span class="m">3</span>.4650us         <span class="m">3</span>  <span class="m">1</span>.1550us  <span class="m">1</span>.0810us  <span class="m">1</span>.2680us  cuInit
+<span class="m">0</span>.00%      830ns         <span class="m">1</span>     830ns     830ns     830ns  cudaRuntimeGetVersion
+</pre></div>
+</div>
+</div>
+<div class="section" id="nvvp-profiler">
+<h3><a class="toc-backref" href="#id9">nvvp profiler</a><a class="headerlink" href="#nvvp-profiler" title="Permalink to this headline">¶</a></h3>
+<p>For visual profiler <strong>nvvp</strong>, you can either import the output of <code class="code docutils literal"><span class="pre">nvprof</span> <span class="pre">–o</span> <span class="pre">...</span></code> or
+run application through GUI.</p>
+<p><strong>Note: nvvp also support CPU profiling</strong> (Click the box in nvvp to enable profile execution on CPU).</p>
+<a class="reference internal image-reference" href="../../_images/nvvp1.png"><img alt="../../_images/nvvp1.png" class="align-center" src="../../_images/nvvp1.png" style="width: 932.58px; height: 399.3px;" /></a>
+<p>From the perspective of kernel functions, <strong>nvvp</strong> can even illustrate why does an operation take a long time?
+As shown in the following figure, kernel&#8217;s block usage, register usage and shared memory usage from <code class="code docutils literal"><span class="pre">nvvp</span></code>
+allow us to fully utilize all warps on the GPU.</p>
+<a class="reference internal image-reference" href="../../_images/nvvp2.png"><img alt="../../_images/nvvp2.png" class="align-center" src="../../_images/nvvp2.png" style="width: 727.32px; height: 475.86px;" /></a>
+<p>From the perspective of application, <strong>nvvp</strong> can give you some suggestions to address performance bottleneck.
+For instance, some advice in data movement and compute utilization from the below figure can guide you to tune performance.</p>
+<a class="reference internal image-reference" href="../../_images/nvvp3.png"><img alt="../../_images/nvvp3.png" class="align-center" src="../../_images/nvvp3.png" style="width: 717.42px; height: 213.84px;" /></a>
+<a class="reference internal image-reference" href="../../_images/nvvp4.png"><img alt="../../_images/nvvp4.png" class="align-center" src="../../_images/nvvp4.png" style="width: 718.08px; height: 197.34px;" /></a>
+</div>
+</div>
+<div class="section" id="profiling-tips">
+<h2><a class="toc-backref" href="#id10">Profiling tips</a><a class="headerlink" href="#profiling-tips" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>The <strong>nvprof</strong> and <strong>nvvp</strong> output is a very good place to start.</li>
+<li>The timeline is a good place to go next.</li>
+<li>Only dig deep into a kernel if it’s taking a significant amount of your time.</li>
+<li><dl class="first docutils">
+<dt>Where possible, try to match profiler output with theory.</dt>
+<dd><ol class="first last arabic">
+<li>For example, if I know I’m moving 1GB, and my kernel takes 10ms, I expect the profiler to report 100GB/s.</li>
+<li>Discrepancies are likely to mean your application isn’t doing what you thought it was.</li>
+</ol>
+</dd>
+</dl>
+</li>
+<li>Know your hardware: If your GPU can do 6 TFLOPs, and you’re already doing 5.5 TFLOPs, you won’t go much faster!</li>
+</ul>
+<p>Profiling is a key step in optimization. Sometimes quite simple changes can lead to big improvements in performance.
+Your mileage may vary!</p>
+</div>
+<div class="section" id="reference">
+<h2><a class="toc-backref" href="#id11">Reference</a><a class="headerlink" href="#reference" title="Permalink to this headline">¶</a></h2>
+<p>Jeremy Appleyard, <a class="reference external" href="http://www.robots.ox.ac.uk/~seminars/seminars/Extra/2015_10_08_JeremyAppleyard.pdf">GPU Profiling for Deep Learning</a>, 2015</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../../api/index_en.html" class="btn btn-neutral float-right" title="API" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../deep_model/rnn/index_en.html" class="btn btn-neutral" title="RNN Models" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

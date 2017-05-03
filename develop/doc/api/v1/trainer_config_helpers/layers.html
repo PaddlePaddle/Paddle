@@ -1505,9 +1505,15 @@ to maintain tractability.</p>
         <span class="n">simple_rnn</span> <span class="o">+=</span> <span class="n">last_time_step_output</span>
     <span class="k">return</span> <span class="n">simple_rnn</span>
 
+<span class="n">generated_word_embedding</span> <span class="o">=</span> <span class="n">GeneratedInput</span><span class="p">(</span>
+                       <span class="n">size</span><span class="o">=</span><span class="n">target_dictionary_dim</span><span class="p">,</span>
+                       <span class="n">embedding_name</span><span class="o">=</span><span class="s2">&quot;target_language_embedding&quot;</span><span class="p">,</span>
+                       <span class="n">embedding_size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">)</span>
+
 <span class="n">beam_gen</span> <span class="o">=</span> <span class="n">beam_search</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;decoder&quot;</span><span class="p">,</span>
                        <span class="n">step</span><span class="o">=</span><span class="n">rnn_step</span><span class="p">,</span>
-                       <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="n">encoder_last</span><span class="p">)],</span>
+                       <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="n">encoder_last</span><span class="p">),</span>
+                              <span class="n">generated_word_embedding</span><span class="p">],</span>
                        <span class="n">bos_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                        <span class="n">eos_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                        <span class="n">beam_size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
@@ -1529,7 +1535,8 @@ sharing a same set of weights.</p>
 <p>You can refer to the first parameter of recurrent_group, or
 demo/seqToseq/seqToseq_net.py for more details.</p>
 </li>
-<li><strong>input</strong> (<em>list</em>) &#8211; Input data for the recurrent unit</li>
+<li><strong>input</strong> (<em>list</em>) &#8211; Input data for the recurrent unit, which should include the
+previously generated words as a GeneratedInput object.</li>
 <li><strong>bos_id</strong> (<em>int</em>) &#8211; Index of the start symbol in the dictionary. The start symbol
 is a special token for NLP task, which indicates the
 beginning of a sequence. In the generation task, the start
