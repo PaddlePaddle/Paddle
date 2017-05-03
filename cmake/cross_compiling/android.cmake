@@ -129,19 +129,8 @@ IF("${CMAKE_VERSION}" VERSION_LESS "3.7.0")
         MESSAGE(FATAL_ERROR "Cannot find CXX compiler: ${ANDROID_CXX_COMPILER}")
     ENDIF()
 
-    # Fortran compiler
-    IF(NOT CMAKE_Fortran_COMPILER)
-        SET(ANDROID_Fortran_COMPILER "${ANDROID_TOOLCHAIN_PREFIX}gfortran")
-    ELSE()
-        GET_FILENAME_COMPONENT(ANDROID_Fortran_COMPILER ${CMAKE_Fortran_COMPILER})
-    ENDIF()
-    IF(NOT EXISTS ${ANDROID_Fortran_COMPILER})
-        SET(ANDROID_Fortran_COMPILER "")
-    ENDIF()
-
     SET(CMAKE_C_COMPILER ${ANDROID_C_COMPILER} CACHE PATH "C compiler" FORCE)
     SET(CMAKE_CXX_COMPILER ${ANDROID_CXX_COMPILER} CACHE PATH "CXX compiler" FORCE)
-    SET(CMAKE_Fortran_COMPILER ${ANDROID_Fortran_COMPILER} CACHE PATH "Fortran compiler" FORCE)
 
     # Toolchain and ABI specific flags.
     SET(ANDROID_COMPILER_FLAGS "-ffunction-sections -fdata-sections -finline-limit=64")
