@@ -17,6 +17,11 @@ setup(name='paddle',
           "requests",
       ],
       packages=packages,
+      install_requires=[
+          "numpy",
+          "protobuf==${PROTOBUF_VERSION}",
+          "matplotlib",
+      ],
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}'
       }
