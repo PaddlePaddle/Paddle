@@ -155,7 +155,7 @@ PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Node
 
    .. code-block:: bash
       
-      docker build -t paddle:prod -f build/Dockerfile .
+      docker build -t paddle:prod -f build/Dockerfile ./build
 
    以上命令会按照生成的Dockerfile把生成的程序拷贝到生产镜像中并做相应的配置，最终生成名为paddle:prod的生产镜像。
 

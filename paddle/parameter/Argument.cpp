@@ -570,7 +570,7 @@ void Argument::poolSequenceWithStride(const Argument& input,
 
   CHECK(input.sequenceStartPositions);
   CHECK_EQ(input.hasSubseq(), 0UL);
-  CHECK_GT(stride, 0) << "stride must larger than 0";
+  CHECK_GT(stride, 0UL) << "stride must larger than 0";
   size_t numSequences = input.getNumSequences();
   ICpuGpuVector::resizeOrCreate(
       sequenceStartPositions, numSequences + 1, false);
