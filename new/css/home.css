@@ -2509,14 +2509,17 @@ header.site-header .banner {
 }
 header.site-header .banner h1 {
   margin: 168px 0 46px 0;
-  font-size: 50px;
+  font-size: 40px;
   line-height: 50px;
   font-weight: normal;
+}
+header.site-header .banner h1 span {
   letter-spacing: 5px;
 }
 header.site-header .banner p {
   color: #b9bcc4;
   font-size: 18px;
+  font-weight: 100;
   line-height: 18px;
   margin: 0 0 46px 0;
 }
@@ -2525,6 +2528,7 @@ header.site-header .banner .quick-start {
   line-height: 50px;
   padding: 0 30px;
   font-size: 20px;
+  color: #ffffff;
   background-color: #ff9711;
   border-radius: 25px;
 }
@@ -2623,14 +2627,15 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
 .services .service-desc p {
   margin: 20px 0;
   font-size: 16px;
-  line-height: 16px;
+  font-weight: 100;
+  line-height: 24px;
   color: #7f828b;
 }
 .services .service-desc a.view-more {
   color: #597cf1;
   border: 1px solid #597cf1;
-  font-size: 16px;
-  line-height: 16px;
+  font-size: 14px;
+  line-height: 14px;
   padding: 8px 16px;
   border-radius: 20px;
   display: inline-block;
@@ -2676,6 +2681,7 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
 }
 .features .feature-desc p {
   font-size: 14px;
+  font-weight: 100;
   line-height: 30px;
   color: #7f828b;
   max-width: 75%;
@@ -2697,6 +2703,7 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
 }
 .get-started p {
   font-size: 14px;
+  font-weight: 100;
   color: #b4c3f3;
   margin: 0 0 30px 0;
 }
@@ -2712,6 +2719,19 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
 }
 .footer-nav {
   background-color: #303646;
+}
+.footer-nav .tr-code {
+  color: #fff;
+  text-align: center;
+  line-height: 100px;
+  font-size: 14px;
+  padding-top: 30px;
+}
+.footer-nav .tr-code > * {
+  vertical-align: middle;
+}
+.footer-nav .tr-code > img {
+  margin-right: 5px;
 }
 .footer-nav .contact-us {
   color: #fff;
@@ -2744,7 +2764,7 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
   font-size: 12px;
 }
 .footer-nav .friendly-links > li + li {
-  border-left: 1px solid #a7adbd;
+  border-left: 1px solid rgba(241, 242, 244, 0.2);
 }
 .footer-nav .copyright {
   color: #64697b;
