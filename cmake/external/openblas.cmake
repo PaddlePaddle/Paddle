@@ -37,11 +37,18 @@ IF(NOT ${CBLAS_FOUND})
         string(REGEX MATCHALL "[0-9]+" Fortran_VERSION ${CMAKE_Fortran_COMPILER_VERSION})
         list(GET Fortran_VERSION 0 Fortran_MAJOR)
         list(GET Fortran_VERSION 1 Fortran_MINOR)
+        set(GCC_INCLUDE_PATH ${CMAKE_C_COMPILER})
+        string(REPLACE "/bin/gcc" " " GCC_PATH_ ${GCC_INCLUDE_PATH})
+        string(STRIP ${GCC_PATH_} GCC_INCLUDE_PATH)
         find_library(GFORTRAN_LIBRARY NAMES gfortran PATHS 
                      /lib
+                     /lib64
                      /usr/lib
                      /usr/lib/gcc/x86_64-linux-gnu/${Fortran_MAJOR}.${Fortran_MINOR}/
-                     /usr/lib/gcc/x86_64-linux-gnu/${Fortran_MAJOR}/)
+                     /usr/lib/gcc/x86_64-linux-gnu/${Fortran_MAJOR}/
+                     ${GCC_INCLUDE_PATH}/lib
+                     ${GCC_INCLUDE_PATH}/lib64
+                     )
         if (NOT GFORTRAN_LIBRARY)
             message(FATAL_ERROR "Cannot found gfortran library which it is used by openblas")
         endif()
