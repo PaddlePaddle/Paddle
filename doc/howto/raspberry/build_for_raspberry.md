@@ -33,13 +33,15 @@ cmake ../protobuf/cmake \
 注意：这样编译出来的`libprotobuf.a`和`protoc`都是ARM版本的，而我们需要的是一个x86-64版本的`protoc`，所以需要用host gcc再编译一遍protobuf然后使用其中的`protoc`。
 
 
-## 编译Paddle
+## 编译PaddlePaddle
+cmake参数如下；其中`WITH_C_API`设置为ON，编译输出的output目录会中包含`include`和`lib`目录，其中`include`中包含CAPI的头文件，`lib`中包含一个ARM版本的库。另外，`CMAKE_BUILD_TYPE`设置为`MinSizeRel`可以减小编译的库的大小。
 ```
-cmake .. -DWITH_GPU=OFF -DWITH_PYTHON=OFF -DWITH_SWIG_PY=OFF \
+cmake .. -DWITH_GPU=OFF -DWITH_C_API=ON -DWITH_PYTHON=OFF -DWITH_SWIG_PY=OFF \
 -DCMAKE_CXX_COMPILER:FILEPATH=arm-linux-gnueabihf-g++ \
 -DCMAKE_C_COMPILER:FILEPATH=arm-linux-gnueabihf-gcc \
 -DCMAKE_C_FLAGS="-mfpu=neon" \
 -DCMAKE_CXX_FLAGS="-mfpu=neon" \
 -DOPENBLAS_ROOT=openblas \
--DCMAKE_PREFIX_PATH=protobuf
+-DCMAKE_PREFIX_PATH=protobuf \
+-DCMAKE_BUILD_TYPE=MinSizeRel
 ```
