@@ -5,8 +5,8 @@ source ./common.sh
 # Compile Documentation only.
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_Fortran_COMPILER=/usr/bin/gfortran-4.8 -DWITH_GPU=OFF -DWITH_DOC=OFF -DWITH_STYLE_CHECK=OFF ${EXTRA_CMAKE_OPTS}
 mkdir output
-make DESTDIR=./output install -j `nproc`
-pip install ./output/usr/local/opt/paddle/share/wheels/*
+make -j `nproc`
+find .. -name '*whl' | xargs pip install  # install all wheels.
 rm -rf *
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_Fortran_COMPILER=/usr/bin/gfortran-4.8 -DWITH_GPU=OFF -DWITH_DOC=ON ${EXTRA_CMAKE_OPTS}
 make paddle_docs paddle_docs_cn
@@ -60,6 +60,7 @@ function deploy_docs() {
 
 deploy_docs "master" "." 
 deploy_docs "develop" "./develop/"
+deploy_docs "release/0.10.0" "./release/0.10.0/"
 
 # Check is there anything changed.
 set +e

@@ -13,7 +13,7 @@ ARG WITH_DOC
 ARG WITH_STYLE_CHECK
 
 ENV WOBOQ OFF
-ENV WITH_GPU=${WITH_AVX:-OFF}
+ENV WITH_GPU=${WITH_GPU:-OFF}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV WITH_DOC=${WITH_DOC:-OFF}
 ENV WITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
@@ -27,7 +27,7 @@ RUN apt-get update && \
     apt-get install -y wget unzip tar xz-utils bzip2 gzip coreutils && \
     apt-get install -y curl sed grep graphviz libjpeg-dev zlib1g-dev && \
     apt-get install -y python-numpy python-matplotlib gcc g++ gfortran && \
-    apt-get install -y automake locales clang-format-3.8 swig && \
+    apt-get install -y automake locales clang-format-3.8 swig doxygen && \
     apt-get clean -y
 
 # git credential to skip password typing
@@ -43,7 +43,13 @@ RUN pip install --upgrade pip && \
     pip install -U wheel pillow BeautifulSoup && \
     pip install -U docopt PyYAML sphinx && \
     pip install -U sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip install pre-commit 'requests==2.9.2' 'ipykernel==4.6.0' 'jupyter==1.0.0'
+    pip install pre-commit 'requests==2.9.2' 'ipython==5.3.0' && \
+    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0'
+
+# To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
+# the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
+RUN apt-get install -y libssl-dev libffi-dev
+RUN pip install certifi urllib3[secure]
 
 RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd cmake-3.4.1 && ./bootstrap && make -j `nproc` && make install && \

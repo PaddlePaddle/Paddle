@@ -5,13 +5,8 @@ set -e
 # Set BASE_IMAGE according to env variables
 if [ ${WITH_GPU} == "ON" ]; then
   BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04"
-  # additional packages to install when building gpu images
-  GPU_DOCKER_PKG="python-pip python-dev"
 else
-  BASE_IMAGE="python:2.7.13-slim"
-  # FIXME: python base image uses different python version than WITH_GPU
-  # need to change PYTHONHOME to /usr/local when using python base image
-  CPU_DOCKER_PYTHON_HOME_ENV="ENV PYTHONHOME /usr/local"
+  BASE_IMAGE="ubuntu:14.04"
 fi
 
 DOCKERFILE_GPU_ENV=""
@@ -29,25 +24,44 @@ rm *.deb 2>/dev/null || true
 
 cmake .. \
       -DCMAKE_BUILD_TYPE=Release \
-      -DWITH_DOC=${WITH_DOC:-OFF} \
+      -DWITH_DOC=OFF \
       -DWITH_GPU=${WITH_GPU:-OFF} \
       -DWITH_AVX=${WITH_AVX:-OFF} \
       -DWITH_SWIG_PY=ON \
       -DCUDNN_ROOT=/usr/ \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
-      -DON_COVERALLS=${WITH_TEST:-OFF} \
+      -DWITH_TESTING=${WITH_TESTING:-OFF} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 make -j `nproc`
-if [[ ${RUN_TEST:-OFF} == "ON" ]]; then
-    make coveralls
+if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
+    make test
 fi
 make install
+pip install /usr/local/opt/paddle/share/wheels/*.whl
 
+# To build documentation, we need to run cmake twice.
+# This awkwardness is due to https://github.com/PaddlePaddle/Paddle/issues/1854.
+# It also describes a solution.
+if [ ${WITH_DOC} == "ON" ]; then
+    mkdir -p /paddle/build_doc
+    pushd /paddle/build_doc
+    cmake .. \
+          -DWITH_DOC=ON \
+          -DWITH_GPU=OFF \
+          -DWITH_AVX=${WITH_AVX:-OFF} \
+          -DWITH_SWIG_PY=ON \
+          -DWITH_STYLE_CHECK=OFF
+    make paddle_docs paddle_docs_cn
+    DOC_DIR="/paddle/paddle/scripts/tools/build_docs/"
+    mkdir -p $DOC_DIR/doc
+    mkdir -p $DOC_DIR/doc_cn
+    cp -r /paddle/build_doc/doc/en/html/* $DOC_DIR/doc
+    cp -r /paddle/build_doc/doc/cn/html/* $DOC_DIR/doc_cn
+    popd
+    rm -rf /paddle/build_doc
+fi
 # generate deb package for current build
-# FIXME(typhoonzero): should we remove paddle/scripts/deb ?
-# FIXME: CPACK_DEBIAN_PACKAGE_DEPENDS removes all dev dependencies, must
-# install them in docker
-cpack -D CPACK_GENERATOR='DEB' -D CPACK_DEBIAN_PACKAGE_DEPENDS="" ..
+cpack -D CPACK_GENERATOR='DEB' ..
 
 if [[ ${WOBOQ:-OFF} == 'ON' ]]; then
     apt-get install -y clang-3.8 llvm-3.8 libclang-3.8-dev
@@ -75,31 +89,30 @@ fi
 
 paddle version
 
-if [[ -n ${APT_MIRROR} ]]; then
-  MIRROR_UPDATE="sed -i '${APT_MIRROR}' /etc/apt/sources.list && \\"
-else
-  MIRROR_UPDATE="\\"
-fi
-
 cat > /paddle/build/Dockerfile <<EOF
 FROM ${BASE_IMAGE}
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 ENV HOME /root
 ENV LANG en_US.UTF-8
 # Use Fix locales to en_US.UTF-8
-RUN ${MIRROR_UPDATE}
-    apt-get update && \
-    apt-get install -y libgfortran3 libpython2.7 ${GPU_DOCKER_PKG} && \
-    apt-get clean -y && \
-    pip install --upgrade pip && \
-    pip install -U 'protobuf==3.1.0' requests numpy
+EOF
+
+if [[ -n ${APT_MIRROR} ]]; then
+cat >> /paddle/build/Dockerfile <<EOF
+RUN sed -i '${APT_MIRROR}' /etc/apt/sources.list
+EOF
+fi
+
+cat >> /paddle/build/Dockerfile <<EOF
 # Use different deb file when building different type of images
-ADD build/*.deb /usr/local/opt/paddle/deb/
+ADD *.deb /
 # run paddle version to install python packages first
-RUN dpkg -i /usr/local/opt/paddle/deb/*.deb && \
-    rm -f /usr/local/opt/paddle/deb/*.deb && \
+RUN apt-get update &&\
+    apt-get install -y python-pip && pip install -U pip && \
+    dpkg -i /*.deb ; apt-get install -f -y && \
+    apt-get clean -y && \
+    rm -f /*.deb && \
     paddle version
-${CPU_DOCKER_PYTHON_HOME_ENV}
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
 # default command shows the paddle version and exit

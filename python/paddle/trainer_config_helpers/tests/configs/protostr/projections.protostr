@@ -320,6 +320,7 @@ layers {
     }
   }
   drop_rate: 0.5
+  error_clipping_threshold: 40.0
 }
 parameters {
   name: "___embedding_0__.w0"
