@@ -41,7 +41,7 @@ def word_count(f, word_freq=None):
     return word_freq
 
 
-def build_dict():
+def build_dict(typo_freq=50):
     """
     Build a word dictionary from the corpus,  Keys of the dictionary are words,
     and values are zero-based IDs of these words.
@@ -59,8 +59,7 @@ def build_dict():
             # remove <unk> for now, since we will set it as last index
             del word_freq['<unk>']
 
-        TYPO_FREQ = 50
-        word_freq = filter(lambda x: x[1] > TYPO_FREQ, word_freq.items())
+        word_freq = filter(lambda x: x[1] > typo_freq, word_freq.items())
 
         word_freq_sorted = sorted(word_freq, key=lambda x: (-x[1], x[0]))
         words, _ = list(zip(*word_freq_sorted))
