@@ -263,9 +263,8 @@ void Layer::zeroGrad() {
 }
 
 void Layer::initNeedFlags() {
-  auto initFlag = [this](bool& flag,
-                         bool (Layer::*flagQueryFunc)() const,
-                         ParameterType type) {
+  auto initFlag = [this](
+      bool& flag, bool (Layer::*flagQueryFunc)() const, ParameterType type) {
     flag = false;
     if (biasParameter_ && biasParameter_->hasType(type)) {
       flag = true;

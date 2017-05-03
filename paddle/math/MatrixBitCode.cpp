@@ -174,10 +174,8 @@ void CpuMatrix::mulByBitCode(size_t numClasses,
                              const IVector& codes,
                              const Matrix& weight,
                              const Matrix& input) {
-  auto op = [](real& t,
-               const real* weightRow,
-               const real* inputRow,
-               size_t inputDim) {
+  auto op = [](
+      real& t, const real* weightRow, const real* inputRow, size_t inputDim) {
     real sum = 0;
     for (size_t k = 0; k < inputDim; ++k) {
       sum += weightRow[k] * inputRow[k];
@@ -195,12 +193,12 @@ void CpuMatrix::mulByBitCodeBackwardWeight(size_t numClasses,
                                            const IVector& codes,
                                            Matrix& weight,
                                            const Matrix& input) {
-  auto op =
-      [](const real t, real* weightRow, const real* inputRow, size_t inputDim) {
-        for (size_t k = 0; k < inputDim; ++k) {
-          weightRow[k] += t * inputRow[k];
-        }
-      };
+  auto op = [](
+      const real t, real* weightRow, const real* inputRow, size_t inputDim) {
+    for (size_t k = 0; k < inputDim; ++k) {
+      weightRow[k] += t * inputRow[k];
+    }
+  };
 
   mulByBitCodeT(op, SimpleCodeTable(numClasses), codes, *this, weight, input);
 }
@@ -212,12 +210,12 @@ void CpuMatrix::mulByBitCodeBackwardError(size_t numClasses,
                                           const IVector& codes,
                                           const Matrix& weight,
                                           Matrix& input) {
-  auto op =
-      [](const real t, const real* weightRow, real* inputRow, size_t inputDim) {
-        for (size_t k = 0; k < inputDim; ++k) {
-          inputRow[k] += t * weightRow[k];
-        }
-      };
+  auto op = [](
+      const real t, const real* weightRow, real* inputRow, size_t inputDim) {
+    for (size_t k = 0; k < inputDim; ++k) {
+      inputRow[k] += t * weightRow[k];
+    }
+  };
 
   mulByBitCodeT(op, SimpleCodeTable(numClasses), codes, *this, weight, input);
 }

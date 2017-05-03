@@ -344,14 +344,14 @@ private:
   } while (0);
 
 // check end barrier
-#define __CHECK_BARRIER_TIMER(set, statName, numConnThreads, ...) \
-  do {                                                            \
-    std::string internalName =                                    \
-        std::string(statName) + std::string(__VA_ARGS__);         \
-    BarrierStatPtr __stat =                                       \
-        (set).getStat(numConnThreads, internalName, BARRIER_END); \
-    PCHECK(__stat->checkPassBarrier())                            \
-        << internalName << ": invalid barrier data";              \
+#define __CHECK_BARRIER_TIMER(set, statName, numConnThreads, ...)   \
+  do {                                                              \
+    std::string internalName =                                      \
+        std::string(statName) + std::string(__VA_ARGS__);           \
+    BarrierStatPtr __stat =                                         \
+        (set).getStat(numConnThreads, internalName, BARRIER_END);   \
+    PCHECK(__stat->checkPassBarrier()) << internalName              \
+                                       << ": invalid barrier data"; \
   } while (0);
 
 /*

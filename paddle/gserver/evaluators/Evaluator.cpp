@@ -446,9 +446,9 @@ real AucEvaluator::evalImp(std::vector<Argument>& arguments) {
   for (size_t i = 0; i < insNum; ++i) {
     real value = outputD[pos];
     uint32_t binIdx = static_cast<uint32_t>(value * kBinNum_);
-    CHECK(binIdx <= kBinNum_)
-        << "bin index [" << binIdx << "] out of range, predict value[" << value
-        << "]";
+    CHECK(binIdx <= kBinNum_) << "bin index [" << binIdx
+                              << "] out of range, predict value[" << value
+                              << "]";
     real w = supportWeight ? weightD[i] : 1.0;
     if (labelD[i] == kNegativeLabel_) {
       statNeg_[binIdx] += w;

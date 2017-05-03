@@ -126,15 +126,15 @@ TEST(SIMDFunction, decayL1_WithLR) {
   typedef std::function<void(float*, float*, float*, float, size_t)>
       DecayL1MethodType;
 
-  DecayL1MethodType naive =
-      [](float* d, float* s, float* lr, float l, size_t len) {
-        paddle::simd::naive::decayL1<float>(d, s, lr, l, len);
-      };
+  DecayL1MethodType naive = [](
+      float* d, float* s, float* lr, float l, size_t len) {
+    paddle::simd::naive::decayL1<float>(d, s, lr, l, len);
+  };
 
-  DecayL1MethodType simd =
-      [](float* d, float* s, float* lr, float l, size_t len) {
-        paddle::simd::decayL1<float>(d, s, lr, l, len);
-      };
+  DecayL1MethodType simd = [](
+      float* d, float* s, float* lr, float l, size_t len) {
+    paddle::simd::decayL1<float>(d, s, lr, l, len);
+  };
 
   naive(dest.get(), src.get(), lr.get(), lambda, VECTOR_LEN);
   simd(simd_dest.get(), src.get(), lr.get(), lambda, VECTOR_LEN);

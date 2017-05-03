@@ -183,8 +183,8 @@ void TensorCheck(AssertEq compare,
 
 template <typename AssertEq>
 void TensorCheck(AssertEq compare, real args1, real args2) {
-  EXPECT_EQ(compare(args1, args2), true)
-      << "[Test error] args1 = " << args1 << ", args2 = " << args2;
+  EXPECT_EQ(compare(args1, args2), true) << "[Test error] args1 = " << args1
+                                         << ", args2 = " << args2;
 }
 
 template <typename AssertEq>

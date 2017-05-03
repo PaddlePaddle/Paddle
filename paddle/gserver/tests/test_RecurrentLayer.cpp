@@ -292,27 +292,26 @@ void checkRecurrentLayer(LayerConfig layerConfig,
   TestRecurrentLayer<T> testGpu(layerConfig, true, gpuBatch);
   testCpu.init(batchSize);
   testGpu.init(batchSize);
-  auto checkError =
-      [](MatrixPtr cpu, MatrixPtr gpu, int numSequences, const char* str) {
-        CpuMatrix check(gpu->getHeight(), gpu->getWidth());
-        check.copyFrom(*gpu);
-        int height = cpu->getHeight();
-        int width = cpu->getWidth();
-        const real* data1 = cpu->getData();
-        const real* data2 = check.getData();
-        int count = 0;
-        for (int i = 0; i < height; i++) {
-          for (int j = 0; j < width; j++) {
-            if (fabs(data1[i * width + j] - data2[i * width + j]) /
-                    numSequences >
-                1e-4) {
-              count++;
-            }
-          }
+  auto checkError = [](
+      MatrixPtr cpu, MatrixPtr gpu, int numSequences, const char* str) {
+    CpuMatrix check(gpu->getHeight(), gpu->getWidth());
+    check.copyFrom(*gpu);
+    int height = cpu->getHeight();
+    int width = cpu->getWidth();
+    const real* data1 = cpu->getData();
+    const real* data2 = check.getData();
+    int count = 0;
+    for (int i = 0; i < height; i++) {
+      for (int j = 0; j < width; j++) {
+        if (fabs(data1[i * width + j] - data2[i * width + j]) / numSequences >
+            1e-4) {
+          count++;
         }
-        EXPECT_EQ(count, 0) << "[" << str << "]"
-                            << "There are " << count << " different element.";
-      };
+      }
+    }
+    EXPECT_EQ(count, 0) << "[" << str << "]"
+                        << "There are " << count << " different element.";
+  };
   T* cpuLayer = dynamic_cast<T*>(testCpu.testLayer_.get());
   T* gpuLayer = dynamic_cast<T*>(testGpu.testLayer_.get());
 

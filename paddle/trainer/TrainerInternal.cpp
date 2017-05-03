@@ -97,7 +97,7 @@ void TrainerInternal::trainOneBatch(int64_t batchId,
   }
 
   UpdateCallback updateCallback = [this, showStats, &paraStats](
-                                      Parameter* para) {
+      Parameter* para) {
     if (showStats) {
       //! @TODO(yuyang18) Show stats is actually a ParameterHook, refactor
       // it

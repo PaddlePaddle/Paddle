@@ -379,7 +379,7 @@ void Argument::concat(const std::vector<Argument>& args,
   }
 
   auto copyArg = [batchSize, stream](
-                     MatrixPtr& dst, MatrixPtr src, int startRow, bool useGpu) {
+      MatrixPtr& dst, MatrixPtr src, int startRow, bool useGpu) {
     if (!src) {
       dst.reset();
       return;
@@ -395,31 +395,29 @@ void Argument::concat(const std::vector<Argument>& args,
     tmpMatrix->copyFrom(*src, stream);
   };
 
-  auto copyIds =
-      [batchSize, stream](
-          IVectorPtr& dst, const IVectorPtr& src, int startRow, bool useGpu) {
-        if (!src) {
-          dst.reset();
-          return;
-        }
-        IVector::resizeOrCreate(dst, batchSize, useGpu);
-        dst->subVec(startRow, src->getSize())->copyFrom(*src, stream);
-      };
+  auto copyIds = [batchSize, stream](
+      IVectorPtr& dst, const IVectorPtr& src, int startRow, bool useGpu) {
+    if (!src) {
+      dst.reset();
+      return;
+    }
+    IVector::resizeOrCreate(dst, batchSize, useGpu);
+    dst->subVec(startRow, src->getSize())->copyFrom(*src, stream);
+  };
 
-  auto copyStrs =
-      [batchSize, stream](
-          SVectorPtr& dst, const SVectorPtr& src, int startRow, bool useGpu) {
-        if (!src) {
-          dst.reset();
-          return;
-        }
-        if (!dst) {
-          dst = std::make_shared<std::vector<std::string>>(batchSize);
-        } else {
-          dst->resize(batchSize);
-        }
-        std::copy(src->begin(), src->end(), dst->begin() + startRow);
-      };
+  auto copyStrs = [batchSize, stream](
+      SVectorPtr& dst, const SVectorPtr& src, int startRow, bool useGpu) {
+    if (!src) {
+      dst.reset();
+      return;
+    }
+    if (!dst) {
+      dst = std::make_shared<std::vector<std::string>>(batchSize);
+    } else {
+      dst->resize(batchSize);
+    }
+    std::copy(src->begin(), src->end(), dst->begin() + startRow);
+  };
 
   auto copySequencePos = [](ICpuGpuVectorPtr& dstSeq,
                             const ICpuGpuVectorPtr& srcSeq,

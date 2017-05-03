@@ -359,8 +359,8 @@ void SocketClient::TcpClient(const std::string &serverAddr, int serverPort) {
 
 #if defined(__OSX__) || defined(__APPLE__)
   server = getipnodebyname(serverAddr.c_str(), AF_INET, AI_DEFAULT, &errRet);
-  CHECK_NE(HOST_NOT_FOUND, errRet)
-      << "ERROR, no such host: " << serverAddr << " ret = " << errRet;
+  CHECK_NE(HOST_NOT_FOUND, errRet) << "ERROR, no such host: " << serverAddr
+                                   << " ret = " << errRet;
   CHECK(server) << "getipnodebyname error!";
 #else
   struct hostent hostinfo;
