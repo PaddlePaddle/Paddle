@@ -2731,12 +2731,18 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
   vertical-align: middle;
 }
 .footer-nav .tr-code > img {
-  margin-right: 5px;
+  margin-bottom: 0px;
+  margin-top: 0px;
+}
+.footer-nav .tr-code > p {
+  line-height: 40px;
+  margin-top: 0px;
+  margin-bottom: 0px;
 }
 .footer-nav .contact-us {
   color: #fff;
   text-align: center;
-  line-height: 80px;
+  line-height: 70px;
   font-size: 14px;
   border-bottom: 1px solid #484e5e;
   margin-bottom: 30px;
