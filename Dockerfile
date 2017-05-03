@@ -46,8 +46,8 @@ RUN pip install --upgrade pip && \
     pip install pre-commit 'requests==2.9.2' 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0'
 
-# # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
-# # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
+# To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
+# the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev
 RUN pip install certifi urllib3[secure]
 
