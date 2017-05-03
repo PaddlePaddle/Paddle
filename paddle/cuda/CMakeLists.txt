@@ -21,16 +21,13 @@ set(CUDA_CXX_WITH_GPU_SOURCES
 
 if(WITH_GPU)
     set(CUDA_CXX_SOURCES
-        src/hl_dso_loader.cc
         src/hl_warpctc_wrap.cc
         ${CUDA_CXX_WITH_GPU_SOURCES})
 
     set_source_files_properties(${CUDA_CXX_SOURCES}
                                 PROPERTIES COMPILE_FLAGS "-D__NVCC__")
 else()
-    set(CUDA_CXX_SOURCES
-        src/hl_dso_loader.cc
-        src/hl_warpctc_wrap.cc)
+    set(CUDA_CXX_SOURCES src/hl_warpctc_wrap.cc)
 endif()
 
 set(CUDA_CU_SOURCES
@@ -47,7 +44,6 @@ set(CUDA_CU_SOURCES
 
 set(CUDA_HEADERS
     include/hl_time.h
-    include/hl_dso_loader.h
     include/hl_warpctc_wrap.h
     include/hl_sequence.h
     include/hl_cuda_cublas.h
