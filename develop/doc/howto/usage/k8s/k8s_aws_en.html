@@ -78,17 +78,13 @@
           </ul>
         </div>
         <ul class="site-page-links">
-          <li><a>Home</a></li>
-          <li><a>Get Started</a></li>
-          <li class="active"><a>Documentation</a></li>
-          <li><a>About Us</a></li>
+          <li><a href="/">Home</a></li>
         </ul>
       </div>
       <div class="doc-module">
         
         <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index_en.html">TUTORIALS</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">HOW TO</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../api/index_en.html">API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
@@ -120,19 +116,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/basic_usage/index_en.html">Simple Linear Regression</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index_en.html">TUTORIALS</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/quick_start/index_en.html">Quick Start</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/rec/ml_regression_en.html">MovieLens Regression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/image_classification/index_en.html">Image Classification</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/sentiment_analysis/index_en.html">Sentiment Analysis</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/semantic_role_labeling/index_en.html">Semantic Role Labeling</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/text_generation/index_en.html">Text Generation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/gan/index_en.html">Image Auto-Generation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/imagenet_model/resnet_model_en.html">ImageNet: ResNet</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/embedding_model/index_en.html">Embedding: Chinese Word</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">HOW TO</a><ul class="current">
@@ -147,10 +130,7 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../dev/new_layer_en.html">Write New Layers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../dev/contribute_to_paddle_en.html">Contribute Code</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../deep_model/rnn/index_en.html">RNN Models</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/rnn_config_en.html">RNN Configuration</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="../../deep_model/rnn/index_en.html">RNN Models</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
 </ul>
 </li>
@@ -173,70 +153,6 @@
 
         
     </nav>
-    
-    <nav class="local-toc"><ul>
-<li><a class="reference internal" href="#">Distributed PaddlePaddle Training on AWS with Kubernetes</a><ul>
-<li><a class="reference internal" href="#distributed-paddlepaddle-training-core-concepts">Distributed PaddlePaddle Training Core Concepts</a><ul>
-<li><a class="reference internal" href="#distributed-training-job">Distributed Training Job</a></li>
-<li><a class="reference internal" href="#parameter-servers-and-trainers">Parameter Servers and Trainers</a></li>
-<li><a class="reference internal" href="#trainer-id">Trainer ID</a></li>
-<li><a class="reference internal" href="#training">Training</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#paddlepaddle-on-aws-with-kubernetes">PaddlePaddle on AWS with Kubernetes</a><ul>
-<li><a class="reference internal" href="#choose-aws-service-region">Choose AWS Service Region</a></li>
-<li><a class="reference internal" href="#create-aws-account-and-iam-account">Create AWS Account and IAM Account</a></li>
-<li><a class="reference internal" href="#download-kube-aws-and-kubectl">Download kube-aws and kubectl</a><ul>
-<li><a class="reference internal" href="#kube-aws">kube-aws</a><ul>
-<li><a class="reference internal" href="#verify-kube-aws-integrity">Verify kube-aws integrity</a></li>
-<li><a class="reference internal" href="#install-kube-aws">Install kube-aws</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#kubectl">kubectl</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#configure-aws-credentials">Configure AWS Credentials</a></li>
-<li><a class="reference internal" href="#define-cluster-parameters">Define Cluster Parameters</a><ul>
-<li><a class="reference internal" href="#ec2-key-pair">EC2 key pair</a></li>
-<li><a class="reference internal" href="#kms-key">KMS key</a></li>
-<li><a class="reference internal" href="#external-dns-name">External DNS name</a></li>
-<li><a class="reference internal" href="#s3-bucket">S3 bucket</a></li>
-<li><a class="reference internal" href="#initialize-assets">Initialize Assets</a></li>
-<li><a class="reference internal" href="#render-contents-of-the-asset-directory">Render contents of the asset directory</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#kubernetes-cluster-start-up">Kubernetes Cluster Start Up</a><ul>
-<li><a class="reference internal" href="#create-the-instances-defined-in-the-cloudformation-template">Create the instances defined in the CloudFormation template</a></li>
-<li><a class="reference internal" href="#configure-dns">Configure DNS</a><ul>
-<li><a class="reference internal" href="#find-ip-address">Find IP address</a></li>
-<li><a class="reference internal" href="#update-local-dns-association">Update local DNS association</a></li>
-<li><a class="reference internal" href="#add-route53-private-name-service-in-vpc">Add Route53 private name service in VPC</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#access-the-cluster">Access the cluster</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#setup-elastic-file-system-for-cluster">Setup Elastic File System for Cluster</a></li>
-<li><a class="reference internal" href="#start-paddlepaddle-training-demo-on-aws">Start PaddlePaddle Training Demo on AWS</a><ul>
-<li><a class="reference internal" href="#configure-kubernetes-volume-that-points-to-efs">Configure Kubernetes Volume that Points to EFS</a></li>
-<li><a class="reference internal" href="#prepare-training-data">Prepare Training Data</a></li>
-<li><a class="reference internal" href="#start-training">Start Training</a></li>
-<li><a class="reference internal" href="#inspect-training-output">Inspect Training Output</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#kubernetes-cluster-tear-down">Kubernetes Cluster Tear Down</a><ul>
-<li><a class="reference internal" href="#delete-efs">Delete EFS</a></li>
-<li><a class="reference internal" href="#delete-security-group">Delete security group</a></li>
-<li><a class="reference internal" href="#delete-s3-bucket">Delete S3 Bucket</a></li>
-<li><a class="reference internal" href="#destroy-cluster">Destroy Cluster</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</nav>
     
     <section class="doc-content-wrap">
 
@@ -926,7 +842,8 @@ paddle-cluster-job-jx4xr   1/1       Running   0          9m
             VERSION:'',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
         };
     </script>
       <script type="text/javascript" src="../../../_static/jquery.js"></script>

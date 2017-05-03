@@ -75,17 +75,13 @@
           </ul>
         </div>
         <ul class="site-page-links">
-          <li><a>Home</a></li>
-          <li><a>Get Started</a></li>
-          <li class="active"><a>Documentation</a></li>
-          <li><a>About Us</a></li>
+          <li><a href="/">Home</a></li>
         </ul>
       </div>
       <div class="doc-module">
         
         <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index_cn.html">完整教程</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../howto/index_cn.html">进阶指南</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../index_cn.html">API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
@@ -117,18 +113,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/basic_usage/index_cn.html">经典的线性回归任务</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index_cn.html">完整教程</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/quick_start/index_cn.html">快速入门</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/rec/ml_regression_cn.html">个性化推荐</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/image_classification/index_cn.html">图像分类</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/sentiment_analysis/index_cn.html">情感分析</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/semantic_role_labeling/index_cn.html">语义角色标注</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/text_generation/index_cn.html">机器翻译</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/imagenet_model/resnet_model_cn.html">ResNet模型</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/embedding_model/index_cn.html">词向量模型</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../howto/index_cn.html">进阶指南</a><ul>
@@ -146,7 +130,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/rnn_config_cn.html">RNN配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
@@ -174,47 +157,6 @@
 
         
     </nav>
-    
-    <nav class="local-toc"><ul>
-<li><a class="reference internal" href="#">Networks</a><ul>
-<li><a class="reference internal" href="#nlp">NLP</a><ul>
-<li><a class="reference internal" href="#sequence-conv-pool">sequence_conv_pool</a></li>
-<li><a class="reference internal" href="#text-conv-pool">text_conv_pool</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#images">Images</a><ul>
-<li><a class="reference internal" href="#img-conv-bn-pool">img_conv_bn_pool</a></li>
-<li><a class="reference internal" href="#img-conv-group">img_conv_group</a></li>
-<li><a class="reference internal" href="#simple-img-conv-pool">simple_img_conv_pool</a></li>
-<li><a class="reference internal" href="#vgg-16-network">vgg_16_network</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#recurrent">Recurrent</a><ul>
-<li><a class="reference internal" href="#lstm">LSTM</a><ul>
-<li><a class="reference internal" href="#lstmemory-unit">lstmemory_unit</a></li>
-<li><a class="reference internal" href="#lstmemory-group">lstmemory_group</a></li>
-<li><a class="reference internal" href="#simple-lstm">simple_lstm</a></li>
-<li><a class="reference internal" href="#bidirectional-lstm">bidirectional_lstm</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#gru">GRU</a><ul>
-<li><a class="reference internal" href="#gru-unit">gru_unit</a></li>
-<li><a class="reference internal" href="#gru-group">gru_group</a></li>
-<li><a class="reference internal" href="#simple-gru">simple_gru</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#simple-attention">simple_attention</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#miscs">Miscs</a><ul>
-<li><a class="reference internal" href="#dropout-layer">dropout_layer</a></li>
-<li><a class="reference internal" href="#outputs">outputs</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</nav>
     
     <section class="doc-content-wrap">
 
@@ -990,7 +932,8 @@ network, this method will calculate the input order by dfs travel.</p>
             VERSION:'',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
         };
     </script>
       <script type="text/javascript" src="../../../_static/jquery.js"></script>

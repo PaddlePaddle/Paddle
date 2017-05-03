@@ -32,10 +32,7 @@
         <link rel="index" title="Index"
               href="../../genindex.html"/>
         <link rel="search" title="Search" href="../../search.html"/>
-    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/>
-        <link rel="up" title="TUTORIALS" href="../index_en.html"/>
-        <link rel="next" title="HOW TO" href="../../howto/index_en.html"/>
-        <link rel="prev" title="Model Zoo - ImageNet" href="../imagenet_model/resnet_model_en.html"/> 
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/> 
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
   <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
@@ -78,17 +75,13 @@
           </ul>
         </div>
         <ul class="site-page-links">
-          <li><a>Home</a></li>
-          <li><a>Get Started</a></li>
-          <li class="active"><a>Documentation</a></li>
-          <li><a>About Us</a></li>
+          <li><a href="/">Home</a></li>
         </ul>
       </div>
       <div class="doc-module">
         
-        <ul class="current">
+        <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">TUTORIALS</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
@@ -112,7 +105,7 @@
     <nav class="doc-menu-vertical" role="navigation">
         
           
-          <ul class="current">
+          <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
@@ -120,19 +113,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../getstarted/basic_usage/index_en.html">Simple Linear Regression</a></li>
-</ul>
-</li>
-<li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">TUTORIALS</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../quick_start/index_en.html">Quick Start</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../rec/ml_regression_en.html">MovieLens Regression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../image_classification/index_en.html">Image Classification</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../sentiment_analysis/index_en.html">Sentiment Analysis</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../semantic_role_labeling/index_en.html">Semantic Role Labeling</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../text_generation/index_en.html">Text Generation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../gan/index_en.html">Image Auto-Generation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../imagenet_model/resnet_model_en.html">ImageNet: ResNet</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Embedding: Chinese Word</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a><ul>
@@ -147,10 +127,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../howto/dev/new_layer_en.html">Write New Layers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/rnn_config_en.html">RNN Configuration</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
 </ul>
 </li>
@@ -174,30 +151,6 @@
         
     </nav>
     
-    <nav class="local-toc"><ul>
-<li><a class="reference internal" href="#">Chinese Word Embedding Model Tutorial</a><ul>
-<li><a class="reference internal" href="#introduction">Introduction</a><ul>
-<li><a class="reference internal" href="#chinese-word-dictionary">Chinese Word Dictionary</a></li>
-<li><a class="reference internal" href="#pretrained-chinese-word-embedding-model">Pretrained Chinese Word Embedding Model</a></li>
-<li><a class="reference internal" href="#download-and-extract">Download and Extract</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#chinese-paraphrasing-example">Chinese Paraphrasing Example</a><ul>
-<li><a class="reference internal" href="#data-preparation-and-preprocess">Data Preparation and Preprocess</a></li>
-<li><a class="reference internal" href="#user-specified-embedding-model">User Specified Embedding Model</a></li>
-<li><a class="reference internal" href="#training-model-in-paddlepaddle">Training Model in PaddlePaddle</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#optional-function">Optional Function</a><ul>
-<li><a class="reference internal" href="#embedding-parameters-observation">Embedding Parameters Observation</a></li>
-<li><a class="reference internal" href="#embedding-parameters-revision">Embedding Parameters Revision</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</nav>
-    
     <section class="doc-content-wrap">
 
       
@@ -212,8 +165,6 @@
 
 <div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-      
-        <li><a href="../index_en.html">TUTORIALS</a> > </li>
       
     <li>Chinese Word Embedding Model Tutorial</li>
   </ul>
@@ -400,15 +351,6 @@ python paraconvert.py --t2b -i INPUT -o OUTPUT
           </div>
           <footer>
   
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="../../howto/index_en.html" class="btn btn-neutral float-right" title="HOW TO" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="../imagenet_model/resnet_model_en.html" class="btn btn-neutral" title="Model Zoo - ImageNet" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
-    </div>
-  
 
   <hr/>
 
@@ -439,7 +381,8 @@ python paraconvert.py --t2b -i INPUT -o OUTPUT
             VERSION:'',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
         };
     </script>
       <script type="text/javascript" src="../../_static/jquery.js"></script>

@@ -34,7 +34,7 @@
         <link rel="search" title="Search" href="../../search.html"/>
     <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/>
         <link rel="up" title="Install and Build" href="index_en.html"/>
-        <link rel="next" title="Simple Linear Regression" href="../basic_usage/index_en.html"/>
+        <link rel="next" title="HOW TO" href="../../howto/index_en.html"/>
         <link rel="prev" title="Debian Package installation guide" href="ubuntu_install_en.html"/> 
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
@@ -78,17 +78,13 @@
           </ul>
         </div>
         <ul class="site-page-links">
-          <li><a>Home</a></li>
-          <li><a>Get Started</a></li>
-          <li class="active"><a>Documentation</a></li>
-          <li><a>About Us</a></li>
+          <li><a href="/">Home</a></li>
         </ul>
       </div>
       <div class="doc-module">
         
         <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">GET STARTED</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index_en.html">TUTORIALS</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
@@ -120,19 +116,6 @@
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Installing from Sources</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../basic_usage/index_en.html">Simple Linear Regression</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index_en.html">TUTORIALS</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../tutorials/quick_start/index_en.html">Quick Start</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../tutorials/rec/ml_regression_en.html">MovieLens Regression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../tutorials/image_classification/index_en.html">Image Classification</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../tutorials/sentiment_analysis/index_en.html">Sentiment Analysis</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../tutorials/semantic_role_labeling/index_en.html">Semantic Role Labeling</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../tutorials/text_generation/index_en.html">Text Generation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../tutorials/gan/index_en.html">Image Auto-Generation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../tutorials/imagenet_model/resnet_model_en.html">ImageNet: ResNet</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../tutorials/embedding_model/index_en.html">Embedding: Chinese Word</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a><ul>
@@ -147,10 +130,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../howto/dev/new_layer_en.html">Write New Layers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/rnn_config_en.html">RNN Configuration</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
 </ul>
 </li>
@@ -173,28 +153,6 @@
 
         
     </nav>
-    
-    <nav class="local-toc"><ul>
-<li><a class="reference internal" href="#">Installing from Sources</a><ul>
-<li><a class="reference internal" href="#span-id-download-download-and-setup-span"><span id="download">Download and Setup</span></a></li>
-<li><a class="reference internal" href="#span-id-requirements-requirements-span"><span id="requirements">Requirements</span></a><ul>
-<li><a class="reference internal" href="#options">Options</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#span-id-ubuntu-build-on-ubuntu-14-04-span"><span id="ubuntu">Build on Ubuntu 14.04</span></a><ul>
-<li><a class="reference internal" href="#install-dependencies">Install Dependencies</a></li>
-<li><a class="reference internal" href="#build-and-install">Build and Install</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#span-id-centos-build-on-centos-7-span"><span id="centos">Build on Centos 7</span></a><ul>
-<li><a class="reference internal" href="#install-dependencies">Install Dependencies</a></li>
-<li><a class="reference internal" href="#build-and-install">Build and Install</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</nav>
     
     <section class="doc-content-wrap">
 
@@ -445,7 +403,7 @@ sudo pip install &lt;path to install&gt;/opt/paddle/share/wheels/*.whl
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="../basic_usage/index_en.html" class="btn btn-neutral float-right" title="Simple Linear Regression" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="../../howto/index_en.html" class="btn btn-neutral float-right" title="HOW TO" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="ubuntu_install_en.html" class="btn btn-neutral" title="Debian Package installation guide" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -482,7 +440,8 @@ sudo pip install &lt;path to install&gt;/opt/paddle/share/wheels/*.whl
             VERSION:'',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
         };
     </script>
       <script type="text/javascript" src="../../_static/jquery.js"></script>

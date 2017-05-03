@@ -75,17 +75,13 @@
           </ul>
         </div>
         <ul class="site-page-links">
-          <li><a>Home</a></li>
-          <li><a>Get Started</a></li>
-          <li class="active"><a>Documentation</a></li>
-          <li><a>About Us</a></li>
+          <li><a href="/">Home</a></li>
         </ul>
       </div>
       <div class="doc-module">
         
         <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index_en.html">TUTORIALS</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../howto/index_en.html">HOW TO</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../index_en.html">API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
@@ -117,19 +113,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/basic_usage/index_en.html">Simple Linear Regression</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index_en.html">TUTORIALS</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/quick_start/index_en.html">Quick Start</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/rec/ml_regression_en.html">MovieLens Regression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/image_classification/index_en.html">Image Classification</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/sentiment_analysis/index_en.html">Sentiment Analysis</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/semantic_role_labeling/index_en.html">Semantic Role Labeling</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/text_generation/index_en.html">Text Generation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/gan/index_en.html">Image Auto-Generation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/imagenet_model/resnet_model_en.html">ImageNet: ResNet</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/embedding_model/index_en.html">Embedding: Chinese Word</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../howto/index_en.html">HOW TO</a><ul>
@@ -144,10 +127,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/new_layer_en.html">Write New Layers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../howto/deep_model/rnn/index_en.html">RNN Models</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/rnn_config_en.html">RNN Configuration</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
 </ul>
 </li>
@@ -170,134 +150,6 @@
 
         
     </nav>
-    
-    <nav class="local-toc"><ul>
-<li><a class="reference internal" href="#">Layers</a><ul>
-<li><a class="reference internal" href="#base">Base</a><ul>
-<li><a class="reference internal" href="#layertype">LayerType</a></li>
-<li><a class="reference internal" href="#layeroutput">LayerOutput</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#data-layer">Data layer</a><ul>
-<li><a class="reference internal" href="#api-trainer-config-helpers-layers-data-layer">data_layer</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#fully-connected-layers">Fully Connected Layers</a><ul>
-<li><a class="reference internal" href="#fc-layer">fc_layer</a></li>
-<li><a class="reference internal" href="#selective-fc-layer">selective_fc_layer</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#conv-layers">Conv Layers</a><ul>
-<li><a class="reference internal" href="#conv-operator">conv_operator</a></li>
-<li><a class="reference internal" href="#conv-projection">conv_projection</a></li>
-<li><a class="reference internal" href="#conv-shift-layer">conv_shift_layer</a></li>
-<li><a class="reference internal" href="#img-conv-layer">img_conv_layer</a></li>
-<li><a class="reference internal" href="#context-projection">context_projection</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#image-pooling-layer">Image Pooling Layer</a><ul>
-<li><a class="reference internal" href="#img-pool-layer">img_pool_layer</a></li>
-<li><a class="reference internal" href="#spp-layer">spp_layer</a></li>
-<li><a class="reference internal" href="#maxout-layer">maxout_layer</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#norm-layer">Norm Layer</a><ul>
-<li><a class="reference internal" href="#img-cmrnorm-layer">img_cmrnorm_layer</a></li>
-<li><a class="reference internal" href="#batch-norm-layer">batch_norm_layer</a></li>
-<li><a class="reference internal" href="#sum-to-one-norm-layer">sum_to_one_norm_layer</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#recurrent-layers">Recurrent Layers</a><ul>
-<li><a class="reference internal" href="#recurrent-layer">recurrent_layer</a></li>
-<li><a class="reference internal" href="#lstmemory">lstmemory</a></li>
-<li><a class="reference internal" href="#grumemory">grumemory</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#recurrent-layer-group">Recurrent Layer Group</a><ul>
-<li><a class="reference internal" href="#memory">memory</a></li>
-<li><a class="reference internal" href="#recurrent-group">recurrent_group</a></li>
-<li><a class="reference internal" href="#lstm-step-layer">lstm_step_layer</a></li>
-<li><a class="reference internal" href="#gru-step-layer">gru_step_layer</a></li>
-<li><a class="reference internal" href="#beam-search">beam_search</a></li>
-<li><a class="reference internal" href="#get-output-layer">get_output_layer</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#mixed-layer">Mixed Layer</a><ul>
-<li><a class="reference internal" href="#api-trainer-config-helpers-layers-mixed-layer">mixed_layer</a></li>
-<li><a class="reference internal" href="#embedding-layer">embedding_layer</a></li>
-<li><a class="reference internal" href="#scaling-projection">scaling_projection</a></li>
-<li><a class="reference internal" href="#dotmul-projection">dotmul_projection</a></li>
-<li><a class="reference internal" href="#dotmul-operator">dotmul_operator</a></li>
-<li><a class="reference internal" href="#full-matrix-projection">full_matrix_projection</a></li>
-<li><a class="reference internal" href="#identity-projection">identity_projection</a></li>
-<li><a class="reference internal" href="#table-projection">table_projection</a></li>
-<li><a class="reference internal" href="#trans-full-matrix-projection">trans_full_matrix_projection</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#aggregate-layers">Aggregate Layers</a><ul>
-<li><a class="reference internal" href="#pooling-layer">pooling_layer</a></li>
-<li><a class="reference internal" href="#last-seq">last_seq</a></li>
-<li><a class="reference internal" href="#first-seq">first_seq</a></li>
-<li><a class="reference internal" href="#concat-layer">concat_layer</a></li>
-<li><a class="reference internal" href="#seq-concat-layer">seq_concat_layer</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#reshaping-layers">Reshaping Layers</a><ul>
-<li><a class="reference internal" href="#block-expand-layer">block_expand_layer</a></li>
-<li><a class="reference internal" href="#expand-layer">expand_layer</a></li>
-<li><a class="reference internal" href="#repeat-layer">repeat_layer</a></li>
-<li><a class="reference internal" href="#rotate-layer">rotate_layer</a></li>
-<li><a class="reference internal" href="#seq-reshape-layer">seq_reshape_layer</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#math-layers">Math Layers</a><ul>
-<li><a class="reference internal" href="#addto-layer">addto_layer</a></li>
-<li><a class="reference internal" href="#linear-comb-layer">linear_comb_layer</a></li>
-<li><a class="reference internal" href="#interpolation-layer">interpolation_layer</a></li>
-<li><a class="reference internal" href="#bilinear-interp-layer">bilinear_interp_layer</a></li>
-<li><a class="reference internal" href="#power-layer">power_layer</a></li>
-<li><a class="reference internal" href="#scaling-layer">scaling_layer</a></li>
-<li><a class="reference internal" href="#slope-intercept-layer">slope_intercept_layer</a></li>
-<li><a class="reference internal" href="#tensor-layer">tensor_layer</a></li>
-<li><a class="reference internal" href="#cos-sim">cos_sim</a></li>
-<li><a class="reference internal" href="#trans-layer">trans_layer</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#sampling-layers">Sampling Layers</a><ul>
-<li><a class="reference internal" href="#maxid-layer">maxid_layer</a></li>
-<li><a class="reference internal" href="#sampling-id-layer">sampling_id_layer</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#slicing-and-joining-layers">Slicing and Joining Layers</a><ul>
-<li><a class="reference internal" href="#pad-layer">pad_layer</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#cost-layers">Cost Layers</a><ul>
-<li><a class="reference internal" href="#cross-entropy">cross_entropy</a></li>
-<li><a class="reference internal" href="#cross-entropy-with-selfnorm">cross_entropy_with_selfnorm</a></li>
-<li><a class="reference internal" href="#multi-binary-label-cross-entropy">multi_binary_label_cross_entropy</a></li>
-<li><a class="reference internal" href="#mse-cost">mse_cost</a></li>
-<li><a class="reference internal" href="#huber-cost">huber_cost</a></li>
-<li><a class="reference internal" href="#lambda-cost">lambda_cost</a></li>
-<li><a class="reference internal" href="#rank-cost">rank_cost</a></li>
-<li><a class="reference internal" href="#sum-cost">sum_cost</a></li>
-<li><a class="reference internal" href="#crf-layer">crf_layer</a></li>
-<li><a class="reference internal" href="#crf-decoding-layer">crf_decoding_layer</a></li>
-<li><a class="reference internal" href="#ctc-layer">ctc_layer</a></li>
-<li><a class="reference internal" href="#warp-ctc-layer">warp_ctc_layer</a></li>
-<li><a class="reference internal" href="#nce-layer">nce_layer</a></li>
-<li><a class="reference internal" href="#hsigmoid">hsigmoid</a></li>
-<li><a class="reference internal" href="#smooth-l1-cost">smooth_l1_cost</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#check-layer">Check Layer</a><ul>
-<li><a class="reference internal" href="#eos-layer">eos_layer</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</nav>
     
     <section class="doc-content-wrap">
 
@@ -3685,7 +3537,8 @@ It is used by recurrent layer group.</p>
             VERSION:'',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
         };
     </script>
       <script type="text/javascript" src="../../../_static/jquery.js"></script>

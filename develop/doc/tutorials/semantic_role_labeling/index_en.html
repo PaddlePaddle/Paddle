@@ -32,10 +32,7 @@
         <link rel="index" title="Index"
               href="../../genindex.html"/>
         <link rel="search" title="Search" href="../../search.html"/>
-    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/>
-        <link rel="up" title="TUTORIALS" href="../index_en.html"/>
-        <link rel="next" title="Text generation Tutorial" href="../text_generation/index_en.html"/>
-        <link rel="prev" title="Sentiment Analysis Tutorial" href="../sentiment_analysis/index_en.html"/> 
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/> 
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
   <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
@@ -78,17 +75,13 @@
           </ul>
         </div>
         <ul class="site-page-links">
-          <li><a>Home</a></li>
-          <li><a>Get Started</a></li>
-          <li class="active"><a>Documentation</a></li>
-          <li><a>About Us</a></li>
+          <li><a href="/">Home</a></li>
         </ul>
       </div>
       <div class="doc-module">
         
-        <ul class="current">
+        <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">TUTORIALS</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
@@ -112,7 +105,7 @@
     <nav class="doc-menu-vertical" role="navigation">
         
           
-          <ul class="current">
+          <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
@@ -120,19 +113,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../getstarted/basic_usage/index_en.html">Simple Linear Regression</a></li>
-</ul>
-</li>
-<li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">TUTORIALS</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../quick_start/index_en.html">Quick Start</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../rec/ml_regression_en.html">MovieLens Regression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../image_classification/index_en.html">Image Classification</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../sentiment_analysis/index_en.html">Sentiment Analysis</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Semantic Role Labeling</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../text_generation/index_en.html">Text Generation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../gan/index_en.html">Image Auto-Generation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../imagenet_model/resnet_model_en.html">ImageNet: ResNet</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../embedding_model/index_en.html">Embedding: Chinese Word</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a><ul>
@@ -147,10 +127,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../howto/dev/new_layer_en.html">Write New Layers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/rnn_config_en.html">RNN Configuration</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
 </ul>
 </li>
@@ -174,25 +151,6 @@
         
     </nav>
     
-    <nav class="local-toc"><ul>
-<li><a class="reference internal" href="#">Semantic Role labeling Tutorial</a><ul>
-<li><a class="reference internal" href="#data-description">Data Description</a></li>
-<li><a class="reference internal" href="#training">Training</a><ul>
-<li><a class="reference internal" href="#db-lstm">DB-LSTM</a></li>
-<li><a class="reference internal" href="#features">Features</a></li>
-<li><a class="reference internal" href="#data-provider">Data Provider</a></li>
-<li><a class="reference internal" href="#neural-network-config">Neural Network Config</a></li>
-<li><a class="reference internal" href="#run-training">Run Training</a></li>
-<li><a class="reference internal" href="#run-testing">Run testing</a></li>
-<li><a class="reference internal" href="#run-prediction">Run prediction</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#reference">Reference</a></li>
-</ul>
-</li>
-</ul>
-</nav>
-    
     <section class="doc-content-wrap">
 
       
@@ -207,8 +165,6 @@
 
 <div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-      
-        <li><a href="../index_en.html">TUTORIALS</a> > </li>
       
     <li>Semantic Role labeling Tutorial</li>
   </ul>
@@ -422,15 +378,6 @@ feature: the extracted features from data <span class="nb">set</span>
           </div>
           <footer>
   
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="../text_generation/index_en.html" class="btn btn-neutral float-right" title="Text generation Tutorial" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="../sentiment_analysis/index_en.html" class="btn btn-neutral" title="Sentiment Analysis Tutorial" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
-    </div>
-  
 
   <hr/>
 
@@ -461,7 +408,8 @@ feature: the extracted features from data <span class="nb">set</span>
             VERSION:'',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
         };
     </script>
       <script type="text/javascript" src="../../_static/jquery.js"></script>

@@ -75,17 +75,13 @@
           </ul>
         </div>
         <ul class="site-page-links">
-          <li><a>Home</a></li>
-          <li><a>Get Started</a></li>
-          <li class="active"><a>Documentation</a></li>
-          <li><a>About Us</a></li>
+          <li><a href="/">Home</a></li>
         </ul>
       </div>
       <div class="doc-module">
         
         <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index_en.html">TUTORIALS</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../howto/index_en.html">HOW TO</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../index_en.html">API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
@@ -117,19 +113,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/basic_usage/index_en.html">Simple Linear Regression</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index_en.html">TUTORIALS</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/quick_start/index_en.html">Quick Start</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/rec/ml_regression_en.html">MovieLens Regression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/image_classification/index_en.html">Image Classification</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/sentiment_analysis/index_en.html">Sentiment Analysis</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/semantic_role_labeling/index_en.html">Semantic Role Labeling</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/text_generation/index_en.html">Text Generation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/gan/index_en.html">Image Auto-Generation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/imagenet_model/resnet_model_en.html">ImageNet: ResNet</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/embedding_model/index_en.html">Embedding: Chinese Word</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../howto/index_en.html">HOW TO</a><ul>
@@ -144,10 +127,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/new_layer_en.html">Write New Layers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../howto/deep_model/rnn/index_en.html">RNN Models</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/rnn_config_en.html">RNN Configuration</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
 </ul>
 </li>
@@ -170,47 +150,6 @@
 
         
     </nav>
-    
-    <nav class="local-toc"><ul>
-<li><a class="reference internal" href="#">Networks</a><ul>
-<li><a class="reference internal" href="#nlp">NLP</a><ul>
-<li><a class="reference internal" href="#sequence-conv-pool">sequence_conv_pool</a></li>
-<li><a class="reference internal" href="#text-conv-pool">text_conv_pool</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#images">Images</a><ul>
-<li><a class="reference internal" href="#img-conv-bn-pool">img_conv_bn_pool</a></li>
-<li><a class="reference internal" href="#img-conv-group">img_conv_group</a></li>
-<li><a class="reference internal" href="#simple-img-conv-pool">simple_img_conv_pool</a></li>
-<li><a class="reference internal" href="#vgg-16-network">vgg_16_network</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#recurrent">Recurrent</a><ul>
-<li><a class="reference internal" href="#lstm">LSTM</a><ul>
-<li><a class="reference internal" href="#lstmemory-unit">lstmemory_unit</a></li>
-<li><a class="reference internal" href="#lstmemory-group">lstmemory_group</a></li>
-<li><a class="reference internal" href="#simple-lstm">simple_lstm</a></li>
-<li><a class="reference internal" href="#bidirectional-lstm">bidirectional_lstm</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#gru">GRU</a><ul>
-<li><a class="reference internal" href="#gru-unit">gru_unit</a></li>
-<li><a class="reference internal" href="#gru-group">gru_group</a></li>
-<li><a class="reference internal" href="#simple-gru">simple_gru</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#simple-attention">simple_attention</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#miscs">Miscs</a><ul>
-<li><a class="reference internal" href="#dropout-layer">dropout_layer</a></li>
-<li><a class="reference internal" href="#outputs">outputs</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</nav>
     
     <section class="doc-content-wrap">
 
@@ -986,7 +925,8 @@ network, this method will calculate the input order by dfs travel.</p>
             VERSION:'',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
         };
     </script>
       <script type="text/javascript" src="../../../_static/jquery.js"></script>

@@ -78,17 +78,13 @@
           </ul>
         </div>
         <ul class="site-page-links">
-          <li><a>Home</a></li>
-          <li><a>Get Started</a></li>
-          <li class="active"><a>Documentation</a></li>
-          <li><a>About Us</a></li>
+          <li><a href="/">Home</a></li>
         </ul>
       </div>
       <div class="doc-module">
         
         <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index_cn.html">完整教程</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">进阶指南</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
@@ -120,18 +116,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/basic_usage/index_cn.html">经典的线性回归任务</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index_cn.html">完整教程</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/quick_start/index_cn.html">快速入门</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/rec/ml_regression_cn.html">个性化推荐</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/image_classification/index_cn.html">图像分类</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/sentiment_analysis/index_cn.html">情感分析</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/semantic_role_labeling/index_cn.html">语义角色标注</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/text_generation/index_cn.html">机器翻译</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/imagenet_model/resnet_model_cn.html">ResNet模型</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/embedding_model/index_cn.html">词向量模型</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">进阶指南</a><ul class="current">
@@ -149,7 +133,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../dev/write_docs_cn.html">如何贡献/修改文档</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="index_cn.html">RNN相关模型</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="rnn_config_cn.html">RNN配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="recurrent_group_cn.html">Recurrent Group教程</a></li>
 <li class="toctree-l3"><a class="reference internal" href="hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">单双层RNN API对比介绍</a></li>
@@ -177,35 +160,6 @@
 
         
     </nav>
-    
-    <nav class="local-toc"><ul>
-<li><a class="reference internal" href="#">单双层RNN API对比介绍</a><ul>
-<li><a class="reference internal" href="#rnn-memory">示例1：双层RNN，子序列间无Memory</a><ul>
-<li><a class="reference internal" href="#id1">读取双层序列数据</a></li>
-<li><a class="reference internal" href="#id2">模型配置的模型配置</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#id3">示例2：双层RNN，子序列间有Memory</a><ul>
-<li><a class="reference internal" href="#id4">模型配置的模型配置</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#rnn">示例3：双层RNN，输入不等长</a><ul>
-<li><a class="reference internal" href="#id7">模型配置</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#beam-search">示例4：beam_search的生成</a></li>
-<li><a class="reference internal" href="#id8">词汇表</a><ul>
-<li><a class="reference internal" href="#memory">Memory</a></li>
-<li><a class="reference internal" href="#glossary-timestep">时间步</a></li>
-<li><a class="reference internal" href="#glossary-sequence">时间序列</a></li>
-<li><a class="reference internal" href="#glossary-rnn">RNN</a></li>
-<li><a class="reference internal" href="#id14">双层RNN</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</nav>
     
     <section class="doc-content-wrap">
 
@@ -429,8 +383,7 @@
 22
 23
 24
-25
-26</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;word&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">dict_dim</span><span class="p">)</span>
+25</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;word&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">dict_dim</span><span class="p">)</span>
 
 <span class="n">emb</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">word_dim</span><span class="p">)</span>
 
@@ -443,10 +396,9 @@
 </span><span class="hll">    <span class="n">size</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
 </span><span class="hll">    <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
 </span><span class="hll">    <span class="n">gate_act</span><span class="o">=</span><span class="n">SigmoidActivation</span><span class="p">(),</span>
-</span><span class="hll">    <span class="n">state_act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
-</span><span class="hll">    <span class="n">lstm_layer_attr</span><span class="o">=</span><span class="n">ExtraLayerAttribute</span><span class="p">(</span><span class="n">error_clipping_threshold</span><span class="o">=</span><span class="mi">50</span><span class="p">))</span>
-</span>
-<span class="n">lstm_last</span> <span class="o">=</span> <span class="n">last_seq</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">lstm</span><span class="p">)</span>
+</span><span class="hll">    <span class="n">state_act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">())</span>
+</span><span class="hll">
+</span><span class="n">lstm_last</span> <span class="o">=</span> <span class="n">last_seq</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">lstm</span><span class="p">)</span>
 
 <span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span>
         <span class="n">size</span><span class="o">=</span><span class="n">label_dim</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">SoftmaxActivation</span><span class="p">(),</span> <span class="n">bias_attr</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">output</span><span class="p">:</span>
@@ -511,8 +463,7 @@
 </span><span class="hll">        <span class="n">size</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
 </span><span class="hll">        <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
 </span><span class="hll">        <span class="n">gate_act</span><span class="o">=</span><span class="n">SigmoidActivation</span><span class="p">(),</span>
-</span><span class="hll">        <span class="n">state_act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
-</span><span class="hll">        <span class="n">lstm_layer_attr</span><span class="o">=</span><span class="n">ExtraLayerAttribute</span><span class="p">(</span><span class="n">error_clipping_threshold</span><span class="o">=</span><span class="mi">50</span><span class="p">))</span>
+</span><span class="hll">        <span class="n">state_act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">())</span>
 </span><span class="hll">    <span class="k">return</span> <span class="n">lstm_output</span>
 </span><span class="hll">
 </span><span class="hll">
@@ -521,7 +472,8 @@
 </span><span class="hll"><span class="c1"># hasSubseq -&gt;(seqlastins) seq</span>
 </span><span class="hll"><span class="n">lstm_last</span> <span class="o">=</span> <span class="n">last_seq</span><span class="p">(</span>
 </span><span class="hll">    <span class="nb">input</span><span class="o">=</span><span class="n">lstm_nest_group</span><span class="p">,</span> <span class="n">agg_level</span><span class="o">=</span><span class="n">AggregateLevel</span><span class="o">.</span><span class="n">EACH_SEQUENCE</span><span class="p">)</span>
-</span>
+</span><span class="hll">
+</span><span class="c1"># seq -&gt;(expand) hasSubseq</span>
 </pre></div>
 </td></tr></table></div>
 </div>
@@ -907,7 +859,8 @@
             VERSION:'',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
         };
     </script>
       <script type="text/javascript" src="../../../_static/jquery.js"></script>
