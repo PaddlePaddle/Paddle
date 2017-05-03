@@ -24,45 +24,17 @@ IF(NOT ${CBLAS_FOUND})
     SET(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/${LIBRARY_PREFIX}openblas${STATIC_LIBRARY_SUFFIX}"
         CACHE FILEPATH "openblas library." FORCE)
 
-    # check fortran compiler and library
+    SET(COMMON_ARGS CC=${CMAKE_C_COMPILER} NO_LAPACK=1 NO_SHARED=1)
+
     IF(ANDROID)
         SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
-        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 ARM_SOFTFP_ABI=1 NOFORTRAN=1 USE_THREAD=0 libs)
+        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0 libs)
     ELSEIF(RPI)
         SET(OPENBLAS_COMMIT "v0.2.19")
-        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 NOFORTRAN=1 USE_THREAD=0 libs)
+        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 USE_THREAD=0 libs)
     ELSE()
-        IF(CMAKE_COMPILER_IS_GNUCC)
-            ENABLE_LANGUAGE(Fortran)
-            if (NOT CMAKE_Fortran_COMPILER_VERSION)
-              # cmake < 3.4 cannot get CMAKE_Fortran_COMPILER_VERSION directly.
-              execute_process(COMMAND ${CMAKE_Fortran_COMPILER} -dumpversion
-                        OUTPUT_VARIABLE CMAKE_Fortran_COMPILER_VERSION)
-            endif()
-            string(REGEX MATCHALL "[0-9]+" Fortran_VERSION ${CMAKE_Fortran_COMPILER_VERSION})
-            list(GET Fortran_VERSION 0 Fortran_MAJOR)
-            list(GET Fortran_VERSION 1 Fortran_MINOR)
-            find_library(GFORTRAN_LIBRARY NAMES gfortran PATHS
-                         /lib
-                         /usr/lib
-                         /usr/lib/gcc/x86_64-linux-gnu/${Fortran_MAJOR}.${Fortran_MINOR}/
-                         /usr/lib/gcc/x86_64-linux-gnu/${Fortran_MAJOR}/)
-            if (NOT GFORTRAN_LIBRARY)
-                message(FATAL_ERROR "Cannot found gfortran library which it is used by openblas")
-            endif()
-            find_package(Threads REQUIRED)
-            LIST(APPEND CBLAS_LIBRARIES ${GFORTRAN_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
-        ENDIF(CMAKE_COMPILER_IS_GNUCC)
-
-        IF(NOT CMAKE_Fortran_COMPILER)
-            MESSAGE(FATAL_ERROR "To build lapack in libopenblas, "
-                    "you need to set gfortran compiler: cmake .. -DCMAKE_Fortran_COMPILER=...")
-        ENDIF(NOT CMAKE_Fortran_COMPILER)
-
-        ADD_DEFINITIONS(-DPADDLE_USE_LAPACK)
-
         SET(OPENBLAS_COMMIT "v0.2.19")
-        SET(OPENBLAS_ARGS FC=${CMAKE_Fortran_COMPILER} DYNAMIC_ARCH=1 libs netlib)
+        SET(OPENBLAS_ARGS DYNAMIC_ARCH=1 libs)
     ENDIF()
 
     ExternalProject_Add(
@@ -73,7 +45,7 @@ IF(NOT ${CBLAS_FOUND})
         PREFIX              ${CBLAS_SOURCES_DIR}
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     1
-        BUILD_COMMAND       ${CMAKE_MAKE_PROGRAM} CC=${CMAKE_C_COMPILER} NO_SHARED=1 ${OPTIONAL_ARGS}
+        BUILD_COMMAND       ${CMAKE_MAKE_PROGRAM} ${COMMON_ARGS} ${OPTIONAL_ARGS}
         INSTALL_COMMAND     ${CMAKE_MAKE_PROGRAM} install NO_SHARED=1 PREFIX=<INSTALL_DIR>
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""

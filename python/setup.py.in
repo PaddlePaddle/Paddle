@@ -15,6 +15,9 @@ setup(name='paddle',
       description='Parallel Distributed Deep Learning',
       install_requires=[
           "requests",
+          "numpy",
+          "protobuf==${PROTOBUF_VERSION}",
+          "matplotlib",
       ],
       packages=packages,
       package_dir={
