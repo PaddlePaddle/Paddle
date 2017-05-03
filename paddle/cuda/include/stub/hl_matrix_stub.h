@@ -17,14 +17,6 @@ limitations under the License. */
 
 #include "hl_matrix.h"
 
-inline void hl_matrix_add(real* A_d,
-                          real* B_d,
-                          real* C_d,
-                          int dimM,
-                          int dimN,
-                          real alpha,
-                          real beta) {}
-
 inline void hl_matrix_softmax(real* A_d, real* C_d, int dimM, int dimN) {}
 
 inline void hl_sequence_softmax_forward(real* A_d,

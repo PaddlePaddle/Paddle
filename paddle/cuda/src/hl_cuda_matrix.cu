@@ -24,30 +24,6 @@ limitations under the License. */
 #include "hl_gpu_matrix_kernel.cuh"
 
 DEFINE_MATRIX_UNARY_OP(Zero, a = 0);
-DEFINE_MATRIX_TERNARY_PARAMETER_OP(_add, TWO_PARAMETER, c = p1*a + p2*b);
-void hl_matrix_add(real *A_d,
-                   real *B_d,
-                   real *C_d,
-                   int dimM,
-                   int dimN,
-                   real alpha,
-                   real beta) {
-  CHECK_NOTNULL(A_d);
-  CHECK_NOTNULL(B_d);
-  CHECK_NOTNULL(C_d);
-
-  hl_gpu_apply_ternary_op
-    <real, ternary::_add<real>, 0, 0>(ternary::_add<real>(alpha, beta),
-                                      A_d,
-                                      B_d,
-                                      C_d,
-                                      dimM,
-                                      dimN,
-                                      dimN,
-                                      dimN,
-                                      dimN);
-  CHECK_SYNC("hl_matrix_add failed");
-}
 
 #ifdef PADDLE_TYPE_DOUBLE
     #define THRESHOLD   128
