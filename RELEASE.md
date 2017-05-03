@@ -1,8 +1,6 @@
 # Release v0.10.0
 
-We are glad to release version 0.10.0.  In this version, we are happy to
-release the
-new
+We are glad to release version 0.10.0.  In this version, we are happy to release the new 
 [Python API](http://research.baidu.com/paddlepaddles-new-api-simplifies-deep-learning-programs/).
 
 - Our old Python API is kind of out of date.  It's hard to learn and hard to

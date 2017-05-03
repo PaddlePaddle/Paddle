@@ -93,7 +93,7 @@ def train():
 
 def test():
     """
-    MNIST test set cretor.
+    MNIST test set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
     [0, 1] and label in [0, 9].

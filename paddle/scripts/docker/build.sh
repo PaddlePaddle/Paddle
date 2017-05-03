@@ -52,7 +52,13 @@ if [ ${WITH_DOC} == "ON" ]; then
           -DWITH_SWIG_PY=ON \
           -DWITH_STYLE_CHECK=OFF
     make paddle_docs paddle_docs_cn
+    DOC_DIR="/paddle/paddle/scripts/tools/build_docs/"
+    mkdir -p $DOC_DIR/doc
+    mkdir -p $DOC_DIR/doc_cn
+    cp -r /paddle/build_doc/doc/en/html/* $DOC_DIR/doc
+    cp -r /paddle/build_doc/doc/cn/html/* $DOC_DIR/doc_cn
     popd
+    rm -rf /paddle/build_doc
 fi
 # generate deb package for current build
 cpack -D CPACK_GENERATOR='DEB' ..

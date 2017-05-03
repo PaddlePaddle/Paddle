@@ -3616,17 +3616,18 @@ void CpuMatrix::smoothL1(Matrix& output, Matrix& label) {
   CHECK_EQ(output.getHeight(), numSamples);
   CHECK_EQ(label.getWidth(), dim);
   CHECK_EQ(getWidth(), (size_t)1);
-  real* out = output.getData();
+
   real* cost = getData();
+  real* out = output.getData();
   real* lbl = label.getData();
 
-  for (size_t i = 0; i < numSamples; ++i, out += dim, cost += dim, lbl += dim) {
+  for (size_t i = 0; i < numSamples; ++i, out += dim, lbl += dim) {
     for (size_t j = 0; j < dim; ++j) {
-      cost[j] = std::fabs(out[j] - lbl[j]);
-      if (cost[j] < 1.0)
-        cost[j] = 0.5 * cost[j] * cost[j];
+      real absVal = std::fabs(out[j] - lbl[j]);
+      if (absVal < 1.0)
+        cost[i] += 0.5 * absVal * absVal;
       else
-        cost[j] = cost[j] - 0.5;
+        cost[i] += absVal - 0.5;
     }
   }
 }
@@ -3640,17 +3641,20 @@ void CpuMatrix::smoothL1Bp(Matrix& output, Matrix& label) {
   CHECK_EQ(label.getHeight(), numSamples);
   CHECK_EQ(output.getHeight(), numSamples);
   CHECK_EQ(label.getWidth(), dim);
-  CHECK_EQ(getWidth(), (size_t)1);
-  real* out = output.getData();
-  real* cost = getData();
-  real* lbl = label.getData();
+  CHECK_EQ(getWidth(), dim);
 
-  // f'(x) = x         if |x| < 1
-  //       = sign(x)   otherwise
-  for (size_t i = 0; i < numSamples; ++i, out += dim, cost += dim, lbl += dim) {
+  real* out = output.getData();
+  real* lbl = label.getData();
+  real* grad = getData();
+
+  for (size_t i = 0; i < numSamples; ++i, out += dim, grad += dim, lbl += dim) {
     for (size_t j = 0; j < dim; ++j) {
-      cost[j] = out[j] - lbl[j];
-      if (std::fabs(cost[j]) >= 1) cost[j] = (0 < cost[j]) - (cost[j] < 0);
+      real val = out[j] - lbl[j];
+      if (std::fabs(val) < 1) {
+        grad[j] += val;
+      } else {
+        grad[j] += (real(0) < val) - (val < real(0));
+      }
     }
   }
 }
