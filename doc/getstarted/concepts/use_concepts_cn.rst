@@ -1,5 +1,5 @@
 ############
-新手入门
+基本使用概念
 ############
 
 PaddlePaddle是源于百度的一个深度学习平台。PaddlePaddle为深度学习研究人员提供了丰富的API，可以轻松的完成神经网络配置，模型训练等任务。
@@ -146,4 +146,4 @@ PaddlePaddle支持不同类型的输入数据，主要包括四种类型，和�
 ..  literalinclude:: src/train.py
     :linenos:
 
-有关线性回归的实际应用，可以参考Paddle book的 `第一章节 <https://github.com/PaddlePaddle/book/blob/develop/01.fit_a_line/README.md>`_
+有关线性回归的实际应用，可以参考Paddle book的 `第一章节 <http://book.paddlepaddle.org/index.html>`_
