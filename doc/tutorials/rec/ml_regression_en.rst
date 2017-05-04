@@ -296,21 +296,20 @@ If training process starts successfully, the output likes follow:
 
 ..  code-block:: text
 
-    I0601 08:07:22.832059 10549 TrainerInternal.cpp:157]  Batch=100 samples=160000 AvgCost=4.13494 CurrentCost=4.13494 Eval:  CurrentEval:
+    I0503 08:16:51.955983  2289 TrainerInternal.cpp:165]  Batch=100 samples=160000 AvgCost=6.35491 CurrentCost=6.35491 Eval:  CurrentEval:
 
-    I0601 08:07:50.672627 10549 TrainerInternal.cpp:157]  Batch=200 samples=320000 AvgCost=3.80957 CurrentCost=3.48421 Eval:  CurrentEval:
+    I0503 08:18:15.284365  2289 TrainerInternal.cpp:165]  Batch=200 samples=320000 AvgCost=6.28487 CurrentCost=6.21484 Eval:  CurrentEval:
 
-    I0601 08:08:18.877369 10549 TrainerInternal.cpp:157]  Batch=300 samples=480000 AvgCost=3.68145 CurrentCost=3.42519 Eval:  CurrentEval:
+    I0503 08:20:04.080775  2289 TrainerInternal.cpp:165]  Batch=300 samples=480000 AvgCost=6.24399 CurrentCost=6.16221 Eval:  CurrentEval:
 
-    I0601 08:08:46.863963 10549 TrainerInternal.cpp:157]  Batch=400 samples=640000 AvgCost=3.6007 CurrentCost=3.35847 Eval:  CurrentEval:
+    I0503 08:21:30.722985  2289 TrainerInternal.cpp:165]  Batch=400 samples=640000 AvgCost=6.22783 CurrentCost=6.17936 Eval:  CurrentEval:
 
-    I0601 08:09:15.413025 10549 TrainerInternal.cpp:157]  Batch=500 samples=800000 AvgCost=3.54811 CurrentCost=3.33773 Eval:  CurrentEval:
-    I0601 08:09:36.058670 10549 TrainerInternal.cpp:181]  Pass=0 Batch=565 samples=902826 AvgCost=3.52368 Eval:
-    I0601 08:09:46.215489 10549 Tester.cpp:101]  Test samples=97383 cost=3.32155 Eval:
-    I0601 08:09:46.215966 10549 GradientMachine.cpp:132] Saving parameters to ./output/model/pass-00000
-    I0601 08:09:46.233397 10549 ParamUtil.cpp:99] save dir ./output/model/pass-00000
-    I0601 08:09:46.233438 10549 Util.cpp:209] copy trainer_config.py to ./output/model/pass-00000
-    I0601 08:09:46.233541 10549 ParamUtil.cpp:147] fileName trainer_config.py
+    I0503 08:22:45.917711  2289 TrainerInternal.cpp:165]  Batch=500 samples=800000 AvgCost=6.21672 CurrentCost=6.1723 Eval:  CurrentEval:
+    
+    I0503 08:23:33.867655  2289 TrainerInternal.cpp:181]  Pass=0 Batch=565 samples=902826 AvgCost=6.20941 Eval:
+    
+    I0503 08:23:53.043184  2289 Tester.cpp:115]  Test samples=97383 cost=6.15964 Eval:
+    I0503 08:23:53.043618  2289 GradientMachine.cpp:64] Saving parameters to ./output/pass-00000
 
 The model is saved in :code:`output/` directory. You can use :code:`Ctrl-C` to stop training whenever you want.
 
@@ -327,8 +326,8 @@ You will see messages like this:
 
 .. code-block:: text
 
-    Best pass is 00009,  error is 3.06949, which means predict get error as 0.875998002281
-    evaluating from pass output/pass-00009
+    Best pass is 00047,  error is 6.14036, which means predict get error as 1.23898748985
+    evaluating from pass output/pass-00047
 
 Then, you can predict what any user will rate a movie. Just run
 
@@ -342,7 +341,7 @@ Predictor will read user input, and predict scores. It has a command-line user i
 
     Input movie_id: 9
     Input user_id: 4
-    Prediction Score is 2.56
+    Prediction Score is 2.65
     Input movie_id: 8
     Input user_id: 2
-    Prediction Score is 3.13
+    Prediction Score is 2.97
