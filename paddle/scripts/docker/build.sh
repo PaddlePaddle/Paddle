@@ -21,6 +21,8 @@ cd /paddle/build
 
 # build script will not fail if *.deb does not exist
 rm *.deb 2>/dev/null || true
+# delete previous built whl packages
+rm -rf /paddle/paddle/dist 2>/dev/null || true
 
 cmake .. \
       -DCMAKE_BUILD_TYPE=Release \
