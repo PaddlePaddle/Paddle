@@ -138,6 +138,7 @@
 <li class="toctree-l2 current"><a class="reference internal" href="../model_configs.html">Model Configuration</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="activation.html">Activation</a></li>
 <li class="toctree-l3"><a class="reference internal" href="layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="evaluators.html">Evaluators</a></li>
 <li class="toctree-l3"><a class="reference internal" href="optimizer.html">Optimizer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pooling.html">Pooling</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Networks</a></li>
@@ -409,6 +410,9 @@ False if no bias.</li>
 </table>
 </dd></dl>
 
+</div>
+<div class="section" id="small-vgg">
+<h3>small_vgg<a class="headerlink" href="#small-vgg" title="Permalink to this headline">¶</a></h3>
 </div>
 <div class="section" id="vgg-16-network">
 <h3>vgg_16_network<a class="headerlink" href="#vgg-16-network" title="Permalink to this headline">¶</a></h3>
@@ -782,6 +786,86 @@ gru_group, and gru_group is relatively better than simple_gru.</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">the gru group.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">paddle.v2.config_base.Layer</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="simple-gru2">
+<h4>simple_gru2<a class="headerlink" href="#simple-gru2" title="Permalink to this headline">¶</a></h4>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.networks.</code><code class="descname">simple_gru2</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>simple_gru2 is the same with simple_gru, but using grumemory instead
+Please see grumemory in layers.py for more detail about the maths.
+simple_gru2 is faster than simple_gru.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">gru</span> <span class="o">=</span> <span class="n">simple_gru2</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; input layer name.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; name of the gru group.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; hidden size of the gru.</li>
+<li><strong>reverse</strong> (<em>bool</em>) &#8211; whether to process the input data in a reverse order</li>
+<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; type of the activiation</li>
+<li><strong>gate_act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; type of the gate activiation</li>
+<li><strong>gru_bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute|False</em>) &#8211; bias. False means no bias, None means default bias.</li>
+<li><strong>gru_attr</strong> (<em>paddle.v2.attr.ParameterAttribute|False</em>) &#8211; Extra parameter attribute of the gru layer.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">the gru group.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">paddle.v2.config_base.Layer</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="bidirectional-gru">
+<h4>bidirectional_gru<a class="headerlink" href="#bidirectional-gru" title="Permalink to this headline">¶</a></h4>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.networks.</code><code class="descname">bidirectional_gru</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A bidirectional_gru is a recurrent unit that iterates over the input
+sequence both in forward and bardward orders, and then concatenate two
+outputs to form a final output. However, concatenation of two outputs
+is not the only way to form the final output, you can also, for example,
+just add them together.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">bi_gru</span> <span class="o">=</span> <span class="n">bidirectional_gru</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">input1</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; bidirectional gru layer name.</li>
+<li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; input layer.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; gru layer size.</li>
+<li><strong>return_seq</strong> (<em>bool</em>) &#8211; If set False, outputs of the last time step are
+concatenated and returned.
+If set True, the entire output sequences that are
+processed in forward and backward directions are
+concatenated and returned.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">paddle.v2.config_base.Layer object.</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">paddle.v2.config_base.Layer</p>

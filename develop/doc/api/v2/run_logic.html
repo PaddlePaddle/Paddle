@@ -138,6 +138,7 @@
 <li class="toctree-l2"><a class="reference internal" href="model_configs.html">Model Configuration</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="config/activation.html">Activation</a></li>
 <li class="toctree-l3"><a class="reference internal" href="config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/evaluators.html">Evaluators</a></li>
 <li class="toctree-l3"><a class="reference internal" href="config/optimizer.html">Optimizer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="config/pooling.html">Pooling</a></li>
 <li class="toctree-l3"><a class="reference internal" href="config/networks.html">Networks</a></li>
@@ -494,8 +495,9 @@ index that reader returns.</li>
 <dd><p>Infer a neural network by given neural network output and parameters.  The
 user should pass either a batch of input data or reader method.</p>
 <p>Example usages:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="n">SomeData</span><span class="p">,</span>
-                      <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">outptut_layer</span><span class="o">=</span><span class="n">prediction</span><span class="p">,</span>
+                      <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
+                      <span class="nb">input</span><span class="o">=</span><span class="n">SomeData</span><span class="p">)</span>
 <span class="k">print</span> <span class="n">result</span>
 </pre></div>
 </div>

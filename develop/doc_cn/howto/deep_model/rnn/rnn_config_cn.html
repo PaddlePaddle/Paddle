@@ -142,6 +142,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">模型配置</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/evaluators.html">Evaluators</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
@@ -286,7 +287,7 @@ layer(引导层)</strong>，其输出被用作Memory的初始值。
 用于计算编码向量的加权和。加权和用来生成 <span class="math">\(y_t\)</span> 。</p>
 <p>模型的编码器部分如下所示。它叫做<code class="docutils literal"><span class="pre">grumemory</span></code>来表示门控循环神经网络。如果网络架构简单，那么推荐使用循环神经网络的方法，因为它比
 <code class="docutils literal"><span class="pre">recurrent_group</span></code>
-更快。我们已经实现了大多数常用的循环神经网络架构，可以参考 <a class="reference internal" href="../../../api/v1/trainer_config_helpers/layers.html#api-trainer-config-helpers-layers"><span class="std std-ref">Layers</span></a> 了解更多细节。</p>
+更快。我们已经实现了大多数常用的循环神经网络架构，可以参考 <span class="xref std std-ref">api_trainer_config_helpers_layers</span> 了解更多细节。</p>
 <p>我们还将编码向量投射到 <code class="docutils literal"><span class="pre">decoder_size</span></code>
 维空间。这通过获得反向循环网络的第一个实例，并将其投射到
 <code class="docutils literal"><span class="pre">decoder_size</span></code> 维空间完成：</p>

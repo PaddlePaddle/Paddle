@@ -145,6 +145,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">模型配置</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/evaluators.html">Evaluators</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
@@ -304,7 +305,7 @@
 </div>
 <div class="section" id="id6">
 <h3><a class="toc-backref" href="#id14">优化算法配置</a><a class="headerlink" href="#id6" title="永久链接至标题">¶</a></h3>
-<p>通过 <a class="reference internal" href="../../../api/v1/trainer_config_helpers/optimizers.html#api-trainer-config-helpers-optimizers-settings"><span class="std std-ref">settings</span></a> 接口设置神经网络所使用的训练参数和 <a class="reference internal" href="../../../api/v1/trainer_config_helpers/optimizers.html#api-trainer-config-helpers-optimizers"><span class="std std-ref">Optimizers</span></a> ，包括学习率、batch_size、优化算法、正则方法等，具体的使用方法请参考 <a class="reference internal" href="../../../api/v1/trainer_config_helpers/optimizers.html#api-trainer-config-helpers-optimizers-settings"><span class="std std-ref">settings</span></a> 文档。</p>
+<p>通过 <span class="xref std std-ref">api_trainer_config_helpers_optimizers_settings</span> 接口设置神经网络所使用的训练参数和 <span class="xref std std-ref">api_trainer_config_helpers_optimizers</span> ，包括学习率、batch_size、优化算法、正则方法等，具体的使用方法请参考 <span class="xref std std-ref">api_trainer_config_helpers_optimizers_settings</span> 文档。</p>
 </div>
 <div class="section" id="id7">
 <h3><a class="toc-backref" href="#id15">网络结构配置</a><a class="headerlink" href="#id7" title="永久链接至标题">¶</a></h3>
@@ -319,13 +320,13 @@
 </ul>
 <p>这个配置文件网络由 <code class="docutils literal"><span class="pre">data_layer</span></code> 、 <code class="docutils literal"><span class="pre">simple_img_conv_pool</span></code> 、 <code class="docutils literal"><span class="pre">fc_layer</span></code> 组成。</p>
 <ul class="simple">
-<li><a class="reference internal" href="../../../api/v1/trainer_config_helpers/layers.html#api-trainer-config-helpers-layers-data-layer"><span class="std std-ref">data_layer</span></a>  ： 通常每个配置文件都会包括 <code class="docutils literal"><span class="pre">data_layer</span></code> ，定义输入数据大小。</li>
+<li><span class="xref std std-ref">api_trainer_config_helpers_layers_data_layer</span>  ： 通常每个配置文件都会包括 <code class="docutils literal"><span class="pre">data_layer</span></code> ，定义输入数据大小。</li>
 <li><a class="reference internal" href="../../../api/v2/config/networks.html#api-trainer-config-helpers-network-simple-img-conv-pool"><span class="std std-ref">simple_img_conv_pool</span></a> ：是一个组合层，包括了图像的卷积 (convolution)和池化(pooling)。</li>
-<li><a class="reference internal" href="../../../api/v1/trainer_config_helpers/layers.html#api-trainer-config-helpers-layers-fc-layer"><span class="std std-ref">fc_layer</span></a> ：全连接层，激活函数为Softmax，这里也可叫分类层。</li>
+<li><span class="xref std std-ref">api_trainer_config_helpers_layers_fc_layer</span> ：全连接层，激活函数为Softmax，这里也可叫分类层。</li>
 </ul>
 </li>
 <li><p class="first">损失函数和评估器：损失函数即为网络的优化目标，评估器可以评价模型结果。</p>
-<p>PaddlePaddle包括很多损失函数和评估起，详细可以参考 <a class="reference internal" href="../../../api/v1/trainer_config_helpers/layers.html#api-trainer-config-helpers-layers-cost-layers"><span class="std std-ref">Cost Layers</span></a> 和 <a class="reference internal" href="../../../api/v1/trainer_config_helpers/evaluators.html#api-trainer-config-helpers-evaluators"><span class="std std-ref">Evaluators</span></a> 。这里 <code class="docutils literal"><span class="pre">classification_cost</span></code> 默认使用多类交叉熵损失函数和分类错误率统计评估器。</p>
+<p>PaddlePaddle包括很多损失函数和评估起，详细可以参考 <span class="xref std std-ref">api_trainer_config_helpers_layers_cost_layers</span> 和 <span class="xref std std-ref">api_trainer_config_helpers_evaluators</span> 。这里 <code class="docutils literal"><span class="pre">classification_cost</span></code> 默认使用多类交叉熵损失函数和分类错误率统计评估器。</p>
 </li>
 <li><p class="first"><code class="docutils literal"><span class="pre">outputs</span></code>: 标记网络输出的函数为 <code class="docutils literal"><span class="pre">outputs</span></code> 。</p>
 <p>训练阶段，网络的输出为神经网络的优化目标；预测阶段，网络的输出也可通过 <code class="docutils literal"><span class="pre">outputs</span></code> 标记。</p>
@@ -338,7 +339,7 @@
     <span class="n">out</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>PaddlePaddle 可以使用 <code class="docutils literal"><span class="pre">mixed</span> <span class="pre">layer</span></code> 配置出非常复杂的网络，甚至可以直接配置一个完整的LSTM。用户可以参考 <a class="reference internal" href="../../../api/v1/trainer_config_helpers/layers.html#api-trainer-config-helpers-layers-mixed-layer"><span class="std std-ref">mixed_layer</span></a> 的相关文档进行配置。</p>
+<p>PaddlePaddle 可以使用 <code class="docutils literal"><span class="pre">mixed</span> <span class="pre">layer</span></code> 配置出非常复杂的网络，甚至可以直接配置一个完整的LSTM。用户可以参考 <span class="xref std std-ref">api_trainer_config_helpers_layers_mixed_layer</span> 的相关文档进行配置。</p>
 </div>
 </div>
 <div class="section" id="id8">

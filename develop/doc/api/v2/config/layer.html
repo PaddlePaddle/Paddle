@@ -34,7 +34,7 @@
         <link rel="search" title="Search" href="../../../search.html"/>
     <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html"/>
         <link rel="up" title="Model Configuration" href="../model_configs.html"/>
-        <link rel="next" title="Optimizer" href="optimizer.html"/>
+        <link rel="next" title="Evaluators" href="evaluators.html"/>
         <link rel="prev" title="Activation" href="activation.html"/> 
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
@@ -138,6 +138,7 @@
 <li class="toctree-l2 current"><a class="reference internal" href="../model_configs.html">Model Configuration</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="activation.html">Activation</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="evaluators.html">Evaluators</a></li>
 <li class="toctree-l3"><a class="reference internal" href="optimizer.html">Optimizer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pooling.html">Pooling</a></li>
 <li class="toctree-l3"><a class="reference internal" href="networks.html">Networks</a></li>
@@ -1453,10 +1454,10 @@ Each inputs is a projection or operator.</p>
 <li><strong>input</strong> &#8211; inputs layer. It is an optional parameter. If set,
 then this function will just return layer&#8217;s name.</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type.</li>
-<li><strong>bias_attr</strong> (<a class="reference internal" href="../../v1/trainer_config_helpers/attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a><em> or </em><em>None</em><em> or </em><em>bool</em>) &#8211; The Bias Attribute. If no bias, then pass False or
+<li><strong>bias_attr</strong> (<em>ParameterAttribute</em><em> or </em><em>None</em><em> or </em><em>bool</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of ParameterAttribute. None will get a
 default Bias.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v1/trainer_config_helpers/attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; The extra layer config. Default is None.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute</em>) &#8211; The extra layer config. Default is None.</li>
 </ul>
 </td>
 </tr>
@@ -3470,7 +3471,7 @@ It is used by recurrent layer group.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="optimizer.html" class="btn btn-neutral float-right" title="Optimizer" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="evaluators.html" class="btn btn-neutral float-right" title="Evaluators" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="activation.html" class="btn btn-neutral" title="Activation" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
