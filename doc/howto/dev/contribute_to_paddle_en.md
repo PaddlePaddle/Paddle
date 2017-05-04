@@ -178,7 +178,7 @@ Now, your local master branch is up-to-date with everything modified upstream.
 ➜  git push origin my-cool-stuff
 ```
 
-## Create an issue and a Ppull Request
+## Create an issue and a Pull Request
 
 Create an Issue to describe the problem and record its number.
 
@@ -193,7 +193,7 @@ Then select the target branch:
 
 We can add `resolve #Issue number` in PR description to close the issue automatically after the PR is merge. More details in <https://help.github.com/articles/closing-issues-via-commit-messages/>.
 
-Then wait for review, if there is a need to modify, refer to the above steps to update the corresponding branch in origin.
+Then wait for review, if there need to modify, refer to the above steps to update the corresponding origin branch.
 
 ## Delete origin branch
 
