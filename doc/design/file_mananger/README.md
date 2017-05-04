@@ -1,41 +1,35 @@
 # Desgin doc: FileManager
 ## Objetive
 在本文档中，我们设计说明了用户上传、下载、管理自己在PaddlePaddle Cloud上的文件所涉及到的模块和流程
+
 <image src=./src/filemanager.png width=600>
 
 ## Module
 ### Client
-Client是用户操作的命令行程序，支持的命令如下
+Client提供用户管理本地或者远程文件的命令行程序。
 
-- ls
- 
-```bash
-ls
-```
+- 路径参数:
+当用户输入一个命令的时候，最起码需要指定一个路径参数。这里有两种路径参数：LocalPath 或者 PFSPath。
 
-- cp
+LocalPath：代表本地的一个路径  
+PFSPath：代表PaddlePaddle Cloud上的一个路径。它需要满足类似这样的格式：`pfs://dir1/dir2`。路径必须要以`pds://`开始。
 
-```bash
-cp 
-```
+- 路径参数的顺序
+如果命令都有一个或者多个路径参数，那么一般第一个路径参数代表source，第二个路径参数代表destination。
 
-- sync
-
-```bash
-sync
-```
-
-- mv
-
-```bash
-mv
-```
+- 支持的操作命令
+	- [rm](cmd_rm.md)
+	- [mv](cmd_mv.md)
+	- [cp](cmd_cp.md)
+	- [ls](cmd_ls.md)
+	- [mkdir](cmd_mkdir.md)
+	- [sync](cmd_sync.md)
 
 
 ### Ingress
 - 在kubernets中运行
-- 做Http转发
-- 注意配置session保持
+- 做Http转发、负载均衡
+	- 注意配置session保持，以便来自一个用户的访问可以定向到一个固定的机器上，减少冲突写的机会。
 
 
 ### FileServer
@@ -61,7 +55,7 @@ GET /file/chunk: Get a chunk info
 POST /file/chunk: Update a chunk
 ```
 为什么有chunk的抽象：  
-用户文件可能是比较大的，上传到Cloud或者下载到本地的时间可能比较长，而且在传输的过程中也可能出现网络不稳定的情况。为了应对以上的问题，我们提出了chunk的概念。chunk由所在的文件偏移、数据、数据长度及校验值组成。数据内容的上传和下载都是都过chunk的操作来实现的。由于chunk比较小（默认256K），完成一个传输动作的transaction的时间也比较短，不容易出错。
+用户文件可能是比较大的，上传到Cloud或者下载到本地的时间可能比较长，而且在传输的过程中也可能出现网络不稳定的情况。为了应对以上的问题，我们提出了chunk的概念，一个chunk由所在的文件偏移、数据、数据长度及校验值组成。文件数据内容的上传和下载都是都过chunk的操作来实现的。由于chunk比较小（默认256K），完成一个传输动作的transaction的时间也比较短，不容易出错。
 
 ```
 type Chunk struct {
@@ -101,16 +95,20 @@ DELETE /dir: Delete a directory
 	FileServer从Client crt提取Client的身份（username），限制其可以操作的volume。 我们选择这种。
 
 ### 关于cp
-cp的关键在于需要Client端对比src和dst的文件chunks的checkSum是否保持一致，不一致的由Client Get或者Post完成。藉由上述的方法完成断点的数据传输。  
+cp的关键在于需要Client端对比src和dst的文件chunks的checkSum是否保持一致，不一致的由Client Get或者Post完成。藉由上述的方法完成断点的数据传输。 upload文件时，由于一个文件可以是多个FileServer可写的，存在冲突的机会，需要Client端在Post最后一个chunk的时候检查dest文件的MD5值是否和src的一致。
 
-优化的方法:  
+- 优化的方法:  
 
-- dst文件不存在时，可以没有Get的过程，只有Post。
-- 文件的chunks信息可以做cache，不用每次启动传输都去读和计算。这个由于比较复杂，第一期暂时不做。
+	- dst文件不存在时，可以没有Get的过程，只有Post。
+	- 文件的chunks信息可以做cache，不用每次启动传输都去读和计算。这个由于比较复杂，第一期暂时不做。
 
-tricky：
+- 小的技巧：
 
-- 可以用[Fallocate](https://golang.org/pkg/syscall/#Fallocate)让dst和src文件保持相同的大小。这样，chunk就可以写固定的偏移上。
+	- 可以用[Fallocate](https://golang.org/pkg/syscall/#Fallocate)生成sparse文件，让dst和src文件保持相同的大小。不同位置的chunk可以同时写入。
+
+### 关于框架
+准备拿出一点时间测试一下用[swagger-api](https://github.com/swagger-api/swagger-codegen)生成Client和FileServer的框架部分。如果框架生成好用，我们的精力就可以更多的放到逻辑本身上。
 
 ## 参考文档
 - [Do you see tls?](https://github.com/k8sp/tls/blob/master/README.md)
+- [s3](http://docs.aws.amazon.com/cli/latest/reference/s3/)
