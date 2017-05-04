@@ -71,8 +71,6 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
             ${OPTIONAL_CACHE_ARGS}
     )
-
-    LIST(APPEND external_project_dependencies ${TARGET_NAME} PARENT_SCOPE)
 ENDFUNCTION()
 
 SET(PROTOBUF_VERSION 3.1)
@@ -88,12 +86,16 @@ IF(NOT CMAKE_CROSSCOMPILING)
     ENDIF(PROTOBUF_FOUND)
 ELSE()
     build_protobuf(protobuf_host TRUE)
+    LIST(APPEND external_project_dependencies protobuf_host)
+
     SET(PROTOBUF_PROTOC_EXECUTABLE ${protobuf_host_PROTOC_EXECUTABLE}
         CACHE FILEPATH "protobuf executable." FORCE)
 ENDIF()
 
 IF(NOT PROTOBUF_FOUND)
     build_protobuf(protobuf FALSE)
+    LIST(APPEND external_project_dependencies protobuf)
+
     SET(PROTOBUF_INCLUDE_DIR ${protobuf_INCLUDE_DIR}
         CACHE PATH "protobuf include directory." FORCE)
     IF(NOT CMAKE_CROSSCOMPILING)
