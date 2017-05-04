@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import optimizer
 import layer
 import activation
@@ -42,6 +43,12 @@ __all__ = [
 
 def init(**kwargs):
     args = []
+    # NOTE: append arguments if they are in ENV
+    for ek, ev in os.environ.iteritems():
+        if ek.startswith("PADDLE_"):
+            args.append('--%s=%s' % (ek.replace("PADDLE_", "").lower(), str(ev)))
+
+    # NOTE: overwrite arguments from ENV if it is in kwargs
     for key in kwargs.keys():
         args.append('--%s=%s' % (key, str(kwargs[key])))
 
