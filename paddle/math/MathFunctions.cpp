@@ -29,13 +29,20 @@ void* lapack_dso_handle = nullptr;
  *
  * note: default dynamic linked libs
  */
+
+// The argument for stringizing operator is not macro-expanded first.
+// We have to use two levels of macro to do the expansion.
+// See https://gcc.gnu.org/onlinedocs/cpp/Stringizing.html
+#define STR(x) #x
 #define DYNAMIC_LOAD_LAPACK_WRAP(__name)                                       \
   struct DynLoad__##__name {                                                   \
     template <typename... Args>                                                \
     auto operator()(Args... args) -> decltype(__name(args...)) {               \
       using lapack_func = decltype(__name(args...)) (*)(Args...);              \
       std::call_once(lapack_dso_flag, GetLapackDsoHandle, &lapack_dso_handle); \
-      void* p_##__name = dlsym(lapack_dso_handle, #__name);                    \
+      void* p_##__name = dlsym(lapack_dso_handle, STR(__name));                \
+      CHECK(p_##__name) << "Cannot find symbol " << STR(__name)                \
+                        << " in liblapack.so";                                 \
       return reinterpret_cast<lapack_func>(p_##__name)(args...);               \
     }                                                                          \
   } __name;  // struct DynLoad__##__name
@@ -51,7 +58,7 @@ void* lapack_dso_handle = nullptr;
   #define  PADDLE_DGETRF  LAPACKE_dgetrf
   #define  PADDLE_SGETRI  LAPACKE_sgetri
   #define  PADDLE_DGETRI  LAPACKE_dgetri
-#endif  
+#endif
 
 #define LAPACK_ROUTINE_EACH(__macro)       \
   __macro(PADDLE_SGETRF)                   \

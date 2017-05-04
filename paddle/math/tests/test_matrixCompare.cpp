@@ -237,14 +237,7 @@ TEST(Matrix, unary) {
       testMatrixRotate(height, width);
     }
     // inverse matrix
-    void** dso_handler = nullptr;
-    GetLapackDsoHandle(dso_handler);
-    if (nullptr == *dso_handler) {
-      LOG(WARNING) << "Failed to find liblapack.so, please specify its path "
-                      "using LD_LIBRARY_PATH.";
-    } else {
-      testMatrixInverse(height);
-    }
+    testMatrixInverse(height);
   }
 }
 
