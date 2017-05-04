@@ -15,6 +15,7 @@
 INCLUDE(cblas)
 
 IF(NOT ${CBLAS_FOUND})
+    SET(LAPACK_FOUND OFF)
     INCLUDE(ExternalProject)
 
     SET(CBLAS_SOURCES_DIR ${THIRD_PARTY_PATH}/openblas)
