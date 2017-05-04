@@ -81,7 +81,7 @@ cpu_num|NO|1| if `use_gpu=false`, this parameter is required
 gpu_num|NO|1| if `use_gpu=true`, this parameter is required
 
 - Startup Parameter Server and Trainer Jobs
-  - Deploy parameter server job, it's a Kubernetes StatefulSet.
+  - Deploy parameter server job, it's a Kubernetes ReplicaSet.
   - Deploy trainer job, it's a Kubernetes Job.
 
 # Job Server
@@ -107,5 +107,5 @@ gpu_num|NO|1| if `use_gpu=true`, this parameter is required
 
 - Start Up Parameter Server and Trainer Jobs
   `POST /v1/trainer/job` receives the distributed trainning parameters, and deploy the job as follows:
-  - Deploy pserver job, it's a Kubernetes StatefulSet.
+  - Deploy pserver job, it's a Kubernetes ReplicaSet.
   - Deploy trainer job, it's a Kubernetes Job.
