@@ -8,13 +8,13 @@
 ### Client
 Client提供用户管理本地或者远程文件的命令行程序。
 
-- 路径参数:
-当用户输入一个命令的时候，最起码需要指定一个路径参数。这里有两种路径参数：LocalPath 或者 PFSPath。
+- 路径参数:  
+当用户输入一个命令的时候，一般需要指定路径参数。这里有两种路径参数：LocalPath 或者 PFSPath。
 
-LocalPath：代表本地的一个路径  
-PFSPath：代表PaddlePaddle Cloud上的一个路径。它需要满足类似这样的格式：`pfs://dir1/dir2`。路径必须要以`pds://`开始。
+	LocalPath：代表本地的一个路径  
+	PFSPath：代表PaddlePaddle Cloud上的一个路径。它需要满足类似这样的格式：`pfs://dir1/dir2`。路径必须要以`pds://`开始。
 
-- 路径参数的顺序
+- 路径参数的顺序  
 如果命令都有一个或者多个路径参数，那么一般第一个路径参数代表source，第二个路径参数代表destination。
 
 - 支持的操作命令
@@ -94,8 +94,8 @@ DELETE /dir: Delete a directory
 	- 第二种：CephFS crt只有一个，也就是admin crt，拥有所有volume的读写权限。  
 	FileServer从Client crt提取Client的身份（username），限制其可以操作的volume。 我们选择这种。
 
-### 关于cp
-cp的关键在于需要Client端对比src和dst的文件chunks的checkSum是否保持一致，不一致的由Client Get或者Post完成。藉由上述的方法完成断点的数据传输。 upload文件时，由于一个文件可以是多个FileServer可写的，存在冲突的机会，需要Client端在Post最后一个chunk的时候检查dest文件的MD5值是否和src的一致。
+### 关于文件传输
+文件传输的的关键在于需要Client端对比src和dst的文件chunks的checkSum是否保持一致，不一致的由Client Get或者Post chunk完成。藉由上述的方法完成断点的数据传输。 upload文件时，由于一个文件可以是多个FileServer可写的，存在冲突的机会，需要Client端在Post最后一个chunk的时候检查dest文件的MD5值是否和本地文件一致。
 
 - 优化的方法:  
 
