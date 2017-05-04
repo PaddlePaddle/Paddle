@@ -83,7 +83,7 @@ no changes added to commit (use "git add" and/or "git commit -a")
 ➜  docker build -t paddle:dev .
 ```
 
-随后可以用这个开发镜像开build PaddlePaddle的源码。比如如果要build一个不依赖GPU，但是支持AVX指令集，并且包括unit tests的PaddlePaddle，可以：
+随后可以用这个开发镜像开始build PaddlePaddle的源码。比如如果要build一个不依赖GPU，但是支持AVX指令集，并且包括unit tests的PaddlePaddle，可以：
 
 ```bash
 ➜  docker run -v $(pwd):/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TEST=ON" paddle:dev
