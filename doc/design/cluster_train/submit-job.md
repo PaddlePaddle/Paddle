@@ -15,7 +15,7 @@ For a distributed training job, there is two Docker image called *runtime Docker
 
 - Runtime Docker Image
 
-  The trainer package which user upload and some python dependencies are packaged into a runtime Docker image based on base Docker image
+  The trainer package which user upload and some Python dependencies are packaged into a runtime Docker image based on base Docker image
 
 - Python Dependencies
 
