@@ -20,6 +20,8 @@ popd > /dev/null
 
 USE_VIRTUALENV_FOR_TEST=$1; shift
 PYTHON=$1; shift
+echo python: $PYTHON
+pip list
 
 if [ $USE_VIRTUALENV_FOR_TEST -ne 0 ]; then
    rm -rf .test_env
@@ -27,9 +29,22 @@ if [ $USE_VIRTUALENV_FOR_TEST -ne 0 ]; then
    source .test_env/bin/activate
    PYTHON=python
 fi
-$PYTHON -m pip install $SCRIPTPATH/../dist/*.whl requests matplotlib IPython
 
-export PYTHONPATH=$SCRIPTPATH/../../python/
+$PYTHON -m pip install $SCRIPTPATH/../dist/*.whl
+# The next line is for debug, will be deleted
+$PYTHON -m pip list
+$PYTHON -m pip install requests matplotlib numpy ipython==5.3
+$PYTHON -m pip list
+echo $PYTHON
+echo PYTHONPATH: $PYTHONPATH
+python -c 'import pkgutil; print(str(list(pkgutil.iter_modules("/opt/python/2.7.12/lib/python2.7/site-packages"))))'
+echo "========================="
+python -c 'import numpy; import google; print(dir(google)); import google.protobuf; import pkgutil; print(str(list(pkgutil.iter_modules(google.protobuf.__path__)))); import google.protobuf.descriptor;  '
+echo $PYTHON
+echo PYTHONPATH: $PYTHONPATH
+$PYTHON -c 'import numpy; import google.protobuf.descriptor; print("debug---------------")'
+export PYTHONPATH=$PYTHONPATH:$SCRIPTPATH/../../python/
+$PYTHON -c 'import numpy; import google.protobuf.descriptor; print("debug---------------")'
 
 for fn in "$@"
 do
