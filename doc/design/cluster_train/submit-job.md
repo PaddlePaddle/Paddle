@@ -110,6 +110,6 @@ gpu_num|NO|1| if `use_gpu=true`, this parameter is required
   - If we want to change another image type, such as RKT, the user does not need to care about it.
 
 - Start Up Parameter Server and Trainer Jobs
-  `POST /v1/trainer/job` receives the distributed trainning parameters, and deploy the job as follows:
-  - Deploy pserver job, it's a Kubernetes ReplicaSet.
-  - Deploy trainer job, it's a Kubernetes Job.
+  `POST /v1/trainer/job` receives the distributed training parameters, and deploy the job as follows:
+  - Deploy PServer job, it's a Kubernetes ReplicaSet.
+  - Deploy Trainer job, it's a Kubernetes Job.
