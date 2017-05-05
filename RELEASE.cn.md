@@ -13,7 +13,7 @@
 ## 新特点
 
 * 发布新版[Python API](http://research.baidu.com/paddlepaddles-new-api-simplifies-deep-learning-programs/)。
-* 学习深度学习系列课程 [Deep Learning 101](http://book.paddlepaddle.org/index.en.html) 及其[中文版本](http://book.paddlepaddle.org/)。
+* 发布深度学习系列课程 [Deep Learning 101](http://book.paddlepaddle.org/index.en.html) 及其[中文版本](http://book.paddlepaddle.org/)。
 * 支持矩形输入的CNN。
 * 为seqlastin和seqfirstin提供stride pooling。
 * 在`trainer_config_helpers`中暴露`seq_concat_layer/seq_reshape_layer`。
