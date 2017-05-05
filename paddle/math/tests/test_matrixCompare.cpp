@@ -236,8 +236,16 @@ TEST(Matrix, unary) {
       testMatrixTranspose(height, width);
       testMatrixRotate(height, width);
     }
+    #ifdef LAPACK_FOUND
     // inverse matrix
     testMatrixInverse(height);
+    #else
+    LOG(WARNING) << "Cannot run Matrix Inverse Unit Test.\n"
+                 << "Failed to find lapack library in current system.\n"
+                 << "To address this issue, Please adopt one of the following approaches: \n"
+                 << "1. Simply issue `sudo apt-get install liblapacke-dev` to avoid re-build source code. \n"
+                 << "2. Install MKL/Openblas/ATLAS and re-build PaddlePaddle source code."
+    #endif
   }
 }
 
