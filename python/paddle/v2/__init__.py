@@ -46,7 +46,8 @@ def init(**kwargs):
     # NOTE: append arguments if they are in ENV
     for ek, ev in os.environ.iteritems():
         if ek.startswith("PADDLE_"):
-            args.append('--%s=%s' % (ek.replace("PADDLE_", "").lower(), str(ev)))
+            args.append('--%s=%s' % (ek.replace("PADDLE_", "").lower(),
+                                     str(ev)))
 
     # NOTE: overwrite arguments from ENV if it is in kwargs
     for key in kwargs.keys():
