@@ -15,7 +15,7 @@ For a distributed training job, there is two Docker image called *runtime Docker
 
 - Runtime Docker Image
 
-  The trainer package which user upload and some Python dependencies are packaged into a runtime Docker image based on base Docker image
+  The trainer package which user upload and some Python dependencies are packaged into a runtime Docker image based on base Docker image.
 
 - Python Dependencies
 
@@ -37,29 +37,32 @@ For a distributed training job, there is two Docker image called *runtime Docker
 
 ## Submit Distributed Training Job With Python Code
 <img src="./src/submit-job-python.png" width="800">
+- `paddle.job.dist_train()` will call the Job Server API `/v1/packages` to upload the trainer package and save them on CephFS, and then call `/v1/trainer/job` to submit the PaddlePaddle distributed job.
+- `/v1/trainer/job` will start a building job for preparing the runtime Docker image. When the building job is finished, Job Server will submit the PaddlePaddle distributed job to Kubernetes.
+- *NOTE*: The first stage, we only implement submit the PaddlePaddle job in `paddle.job.dist_train()`
 
-You can call `paddle.dist_train` and provide distributed training configuration as the parameters.
+You can call `paddle.job.dist_train` and provide distributed training configuration as the parameters:
 ```python
-paddle.dist_train(
+paddle.job.dist_train(
     trainer=paddle.trainer.SGD(...,
                               paddle.updater.Adam(...)),
     reader=reader,
     paddle_job=PaddleJob(
       job_name="quickstart",
-      pservers=4,
-      volume="quickstart",
+      use_gpu=True,
+      cpu_num=4,
+      gpu_num=2,
+      memory="1G"
       input=/quickstart/input,
       output=/quickstart/output,
-      base_image="paddlepaddle/paddle:0.10.rc2",
-      use_gpu=False,
-      memory="512M")
-    )
+      base_image="paddlepaddle/paddle:0.10.rc2")
 ```
 
-The pseudo code of `paddle.dist_train` is as follows:
+The pseudo code of `paddle.job.dist_train` is as follows:
 ```python
   def dist_train(trainer, reader, num_passes=1, event_handler=None, feeding=None, paddle_job=None):
-    if os.getenv("PADDLE_NOTEBOOK", "NO") == "YES":
+    # if the code is running on cloud, set PADDLE_ON_CLOUD=YES
+    if os.getenv("PADDLE_ON_CLOUD", "NO") == "NO":
       #submit the paddle job
       paddle_job.submit()
     else:
@@ -88,7 +91,8 @@ gpu_num|NO|1| if `use_gpu=true`, this parameter is required
 
 - RESTful API
 
-  Job server provides a RESTful HTTP server receives the trainer packages, list PaddlePaddle job etc...
+  Job server provides a RESTful HTTP API, receive the trainer package and display
+  PaddlePaddle job related informations.
   - `POST   /v1/package` receive the trainer package and save them on CephFS
   - `POST   /v1/trainer/job` submit a trainer job
   - `GET    /v1/jobs/` list all jobs
@@ -98,7 +102,7 @@ gpu_num|NO|1| if `use_gpu=true`, this parameter is required
 
 - Build Runtime Docker Image on Kubernetes
 
-  `paddle.dist_train` will upload the trainer package to Job Server and then save them on the distributed filesystem, and then start up a job for building the runtime Docker image, Parameter Server and Trainer will use this runtime Docker image.
+  `paddle.job.dist_train` will upload the trainer package to Job Server and then save them on the distributed filesystem, and then start up a job for building the runtime Docker image, Parameter Server and Trainer will use this runtime Docker image.
 
   There are some benefits for building runtime Docker image on JobServer:
   - **Docker in Docker** should mount `docker.sock` in the container and set `--privileged`, if the code running in a kubernetes pod, it's not safe.
