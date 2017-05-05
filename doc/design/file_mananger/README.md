@@ -2,7 +2,7 @@
 ## Objetive
 在本文档中，我们设计说明了用户上传、下载、管理自己在PaddlePaddle Cloud上的文件所涉及到的模块和流程
 
-<image src=./src/filemanager.png width=600>
+<image src=./src/filemanager.png width=8900>
 
 ## Module
 ### PFS Client
@@ -25,7 +25,7 @@
 - 在kubernets中运行  
 - [RESTAPI](./RESTAPI.md)接口
 
-## 流程
+## 解释
 ### 为什么有chunk的抽象：  
 用户文件可能是比较大的，上传到Cloud或者下载到本地的时间可能比较长，而且在传输的过程中也可能出现网络不稳定的情况。为了应对以上的问题，我们提出了chunk的概念，一个chunk由所在的文件偏移、数据、数据长度及校验值组成。文件数据内容的上传和下载都是都过chunk的操作来实现的。由于chunk比较小（默认256K），完成一个传输动作的transaction的时间也比较短，不容易出错。
 

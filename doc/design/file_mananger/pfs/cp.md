@@ -1,19 +1,13 @@
 # Name  
-pfs_cp - copy files and directories
+cp - copy files and directories
 
 # Synopsis
-` pfs_cp
+` cp [OPTION]...
 <LocalPath> <PFSPath> or <PFSPath> <LocalPath> or <PFSPath> <PFSPath>`
 
 # Description
 
-```
-	--only-show-errors (boolean) 
-		Only errors and warnings are displayed. All other output is suppressed.
-
-	--page-size (integer) 
-		The number of results to return in each response to a list operation. The default value is 1000 (the maximum allowed). Using a lower value may help if an operation times out.
-		
+```		
 	--preserve--links
        Reserve links when copy files
        
@@ -22,10 +16,10 @@ pfs_cp - copy files and directories
 ```
 
 # Examples
-- The following command cp a single file to pfs
+- The following command copies a single file to pfs
 
 ```
-pfs_cp ./text1.txt pfs://mydir/text1.txt
+paddle pfs cp ./text1.txt pfs://mydir/text1.txt
 ```
 
 Output
@@ -34,10 +28,10 @@ Output
 upload ./text1.txt to pfs://mydir/text1.txt
 ```
 
-- The following command cp pfs file to a local file
+- The following command copies pfs file to a local file
 
 ```
-pfs_cp pfs://mydir/text1.txt ./text1.txt
+paddle pfs cp pfs://mydir/text1.txt ./text1.txt
 ```
 
 Output

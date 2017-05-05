@@ -1,53 +1,42 @@
 # Name  
-pfs_cp - copy files and directories
+sync - sync directories. Recursively copies new and updated files from the source directory to the destination
 
 # Synopsis
-` pfs_cp
+` sync [OPTIONS]...
 <LocalPath> <PFSPath> or <PFSPath> <LocalPath> or <PFSPath> <PFSPath>`
 
 # Description
 
 ```
-	-h, --help 
-		Display this help and exit
-		
-	--version
-       Output version information and exit
-
-	--only-show-errors (boolean) 
-		Only errors and warnings are displayed. All other output is suppressed.
-
-	--page-size (integer) 
-		The number of results to return in each response to a list operation. The default value is 1000 (the maximum allowed). Using a lower value may help if an operation times out.
-		
-	--preserve--links
-       Reserve links when copy files
-       
-    -R, -r, --recursive
-       Copy directories recursively
+	-l, --links                 
+		copy symlinks as symlinks
 ```
 
 # Examples
-- The following command cp a single file to pfs
+- The following command sync locally directory to pfs
 
 ```
-pfs_cp ./text1.txt pfs://mydir/text1.txt
-```
-
-Output
-
-```
-upload ./text1.txt to pfs://mydir/text1.txt
-```
-
-- The following command cp pfs file to a local file
-
-```
-pfs_cp pfs://mydir/text1.txt ./text1.txt
+sync ./dir1 pfs://mydir1
 ```
 
 Output
 
 ```
-download pfs://mydir/text1.txt to ./text1.txt
+upload ./dir1/text1.txt to pfs://mydir1/text2.txt
+upload ./dir1/text2.txt to pfs://mydir1/text2.txt
+...
+```
+
+- The following command sync pfs directory to local
+
+```
+sync pfs://mydir1 .
+```
+
+Output
+
+```
+download pfs://mydir1/text1.txt to ./text1.txt
+download pfs://mydir1/text2.txt to ./text2.txt
+...
 ```

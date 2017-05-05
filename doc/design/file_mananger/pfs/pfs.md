@@ -12,20 +12,26 @@ paddle [options] pfs <subcommand> [parameters]
 ```
 --profile (string)
 	Use a specific profile from your credential file.
---help pfs 
-	Display more information about pfs
+
+--help (string)
+	Display more information about command
+
 --version
 	Output version information and exit
+
 --debug
 	Show detailed debugging log	
+	
+--only-show-errors (boolean) 
+	Only errors and warnings are displayed. All other output is suppressed.
 ```
 
 ## Path Arguments
-When using a commnd, we need to specify path arguments. There are two path argument type: `localpath` and `pfspath`.
-A pfspath begin with `pfs://`, eg: `pfs://mydir/text1.txt`.
+When using a command, we need to specify path arguments. There are two path argument type: `localpath` and `pfspath`.  
+A `pfspath` begin with `pfs://`, eg: `pfs://mydir/text1.txt`.
 
-## Path Arguments‘s order
-Commonly, there maybe two path arguments. The first is source, and the second is destination.
+## order of Path Arguments
+Commonly, if there are two path arguments. The first is the source, and the second is the destination.
 
 ## Subcommonds
 - [rm](rm.md)
