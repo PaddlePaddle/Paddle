@@ -1,5 +1,5 @@
 # Name  
-mv - move (rename) files or directories
+mv - move (rename) files or directories
 
 
 # Synopsis
