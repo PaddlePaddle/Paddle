@@ -1,8 +1,8 @@
 # v0.10.0版本
 
-我们非常高兴发布了PaddlePaddle V0.10.0版。并开发了新的[Python API](http://research.baidu.com/paddlepaddles-new-api-simplifies-deep-learning-programs/)。
+我们非常高兴发布了PaddlePaddle V0.10.0版,并开发了新的[Python API](http://research.baidu.com/paddlepaddles-new-api-simplifies-deep-learning-programs/)。
 
-- 旧的Python API由于难以学习和使用已经过时了。使用旧版本的API至少需要两份python文件，即定义数据生成器和网络拓扑结构的文件。用户通过运行paddle_trainer的C++程序来启动PaddlePaddle任务，该程序调用Python解释器来运行定义网络拓扑结构的配置脚本，然后通过迭代加载数据生成器提供的小批量数据启动训练循环。这与Python的现代编辑方式不符，比如Jupyter Notebook。
+- 旧的Python API由于难以学习和使用已经过时了。使用旧版本的API至少需要两份python文件，分别是定义数据生成器和定义网络拓扑结构的文件。用户通过运行`paddle_trainer`的C++程序来启动PaddlePaddle任务，该程序调用Python解释器来运行定义网络拓扑结构的文件，然后通过迭代加载数据生成器提供的小批量数据启动训练循环。这与Python的现代编辑方式不符，比如Jupyter Notebook。
 
 - 新版的API被称为 *V2 API*，允许我们在单个.py文件中编辑更短的Python程序来定义网络结构和数据。此外，该Python程序也可以在Jupyter Notebook中运行，因为PaddlePaddle可以作为共享库来被Python程序加载和使用，这也是入门级的Python程序使用方式。
 
