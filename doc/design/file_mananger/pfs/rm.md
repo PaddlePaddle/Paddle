@@ -9,11 +9,11 @@ rm [OPTION]... <PFSPath>...
 # Description
 
 ```
-	-r, -R, --recursive 
-		remove directories and their contents recursively
+-r, -R, --recursive 
+	remove directories and their contents recursively
 
-	--page-size (integer) 
-		The number of results to return in each response to a list operation. The default value is 1000 (the maximum allowed). Using a lower value may help if an operation times out	
+--page-size (integer) 
+	The number of results to return in each response to a list operation. The default value is 1000 (the maximum allowed). Using a lower value may help if an operation times out	
 ```
 
 # Examples

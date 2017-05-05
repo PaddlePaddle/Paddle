@@ -8,15 +8,15 @@ sync - sync directories. Recursively copies new and updated files from the sourc
 # Description
 
 ```
-	-l, --links                 
-		copy symlinks as symlinks
+--preserve--links
+   Reserve links when copy links
 ```
 
 # Examples
 - The following command sync locally directory to pfs
 
 ```
-sync ./dir1 pfs://mydir1
+paddle pfs sync ./dir1 pfs://mydir1
 ```
 
 Output
@@ -30,7 +30,7 @@ upload ./dir1/text2.txt to pfs://mydir1/text2.txt
 - The following command sync pfs directory to local
 
 ```
-sync pfs://mydir1 .
+paddle pfs sync pfs://mydir1 .
 ```
 
 Output

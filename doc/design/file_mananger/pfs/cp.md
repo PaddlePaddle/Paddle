@@ -8,11 +8,11 @@ cp - copy files and directories
 # Description
 
 ```		
-	--preserve--links
-       Reserve links when copy files
-       
-    -R, -r, --recursive
-       Copy directories recursively
+--preserve--links
+   Reserve links when copy links
+   
+-R, -r, --recursive
+   Copy directories recursively
 ```
 
 # Examples

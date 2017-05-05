@@ -7,11 +7,11 @@ ls - list directory contents or a file attributes
 # Description
 
 ```       
-    -R, -r, --recursive
-       Copy directories recursively
-       
-    --page-size (integer) 
-    	The number of results to return in each response to a list operation. The default value is 1000 (the maximum allowed). Using a lower value may help if operation time out.
+-R, -r, --recursive
+   Copy directories recursively
+   
+--page-size (integer) 
+	The number of results to return in each response to a list operation. The default value is 1000 (the maximum allowed). Using a lower value may help if operation time out.
 ```
 
 # Examples
