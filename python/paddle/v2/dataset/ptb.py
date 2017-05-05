@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-imikolov's simple dataset.
+langauge model's simple dataset.
 
 This module will download dataset from 
 http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse training set and test set
@@ -69,7 +69,7 @@ def build_dict(min_word_freq=50):
     return word_idx
 
 
-def reader_creator(filename, word_idx, n):
+def reader_creator(filename, reader_type, word_idx, n=-1):
     def reader():
         with tarfile.open(
                 paddle.v2.dataset.common.download(
@@ -78,19 +78,28 @@ def reader_creator(filename, word_idx, n):
             f = tf.extractfile(filename)
 
             UNK = word_idx['<unk>']
+
             for l in f:
-                l = ['<s>'] + l.strip().split() + ['<e>']
-                if len(l) >= n:
+                if 'ngram' == reader_type:
+                    assert n > -1, 'Invalid gram length'
+                    l = ['<s>'] + l.strip().split() + ['<e>']
+                    if len(l) < n: continue
                     l = [word_idx.get(w, UNK) for w in l]
                     for i in range(n, len(l) + 1):
                         yield tuple(l[i - n:i])
+                elif 'seq' == reader_type:
+                    l = l.strip().split()
+                    l = [word_idx.get(w, UNK) for w in l]
+                    src_seq = [word_idx['<s>']] + l
+                    trg_seq = l + [word_idx['<e>']]
+                    yield src_seq, trg_seq
 
     return reader
 
 
-def train(word_idx, n):
+def ngram_train(word_idx, n):
     """
-    imikolov training set creator.
+    ptb ngram type training set creator.
 
     It returns a reader creator, each sample in the reader is a word ID
     tuple.
@@ -102,12 +111,13 @@ def train(word_idx, n):
     :return: Training reader creator
     :rtype: callable
     """
-    return reader_creator('./simple-examples/data/ptb.train.txt', word_idx, n)
+    return reader_creator('./simple-examples/data/ptb.train.txt', 'ngram',
+                          word_idx, n)
 
 
-def test(word_idx, n):
+def ngram_test(word_idx, n):
     """
-    imikolov test set creator.
+    ptb ngram test set creator.
 
     It returns a reader creator, each sample in the reader is a word ID
     tuple.
@@ -119,7 +129,40 @@ def test(word_idx, n):
     :return: Test reader creator
     :rtype: callable
     """
-    return reader_creator('./simple-examples/data/ptb.valid.txt', word_idx, n)
+    return reader_creator('./simple-examples/data/ptb.valid.txt', 'ngram',
+                          word_idx, n)
+
+
+def seq_train(word_idx):
+    """
+    ptb sequence type training set creator.
+
+    It returns a reader creator, each sample in the reader is a word ID
+    pair.
+
+    :param word_idx: word dictionary
+    :type word_idx: dict
+    :return: Test reader creator
+    :rtype: callable
+    """
+    return reader_creator('./simple-examples/data/ptb.train.txt', 'seq',
+                          word_idx)
+
+
+def seq_test(word_idx):
+    """
+    ptb sequence type test set creator.
+
+    It returns a reader creator, each sample in the reader is a word ID
+    pair.
+
+    :param word_idx: word dictionary
+    :type word_idx: dict
+    :return: Test reader creator
+    :rtype: callable
+    """
+    return reader_creator('./simple-examples/data/ptb.valid.txt', 'seq',
+                          word_idx)
 
 
 def fetch():
