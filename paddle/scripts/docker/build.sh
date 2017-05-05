@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -xe
 
 # Set BASE_IMAGE according to env variables
 if [ ${WITH_GPU} == "ON" ]; then
@@ -34,7 +34,7 @@ cmake .. \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 make -j `nproc`
 if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
-    make test
+    ctest -j `nproc`
 fi
 make install
 pip install /usr/local/opt/paddle/share/wheels/*.whl
@@ -71,7 +71,7 @@ if [[ ${WOBOQ:-OFF} == 'ON' ]]; then
     cmake -DLLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config-3.8 \
           -DCMAKE_BUILD_TYPE=Release \
           .
-    make
+    make -j `nproc`
 
     export WOBOQ_OUT=/woboq_out/paddle
     export BUILD_DIR=/paddle/build
