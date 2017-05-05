@@ -4,18 +4,16 @@
 
 - 旧的Python API由于难以学习和使用已经过时了。使用旧版本的API至少需要两份python文件，分别是定义数据生成器和定义网络拓扑结构的文件。用户通过运行`paddle_trainer`的C++程序来启动PaddlePaddle任务，该程序调用Python解释器来运行定义网络拓扑结构的文件，然后通过迭代加载数据生成器提供的小批量数据启动训练循环。这与Python的现代编辑方式不符，比如Jupyter Notebook。
 
-- 新版的API被称为 *V2 API*，允许我们在单个.py文件中编辑更短的Python程序来定义网络结构和数据。此外，该Python程序也可以在Jupyter Notebook中运行，因为PaddlePaddle可以作为共享库来被Python程序加载和使用，这也是入门级的Python程序使用方式。
+- 新版的API被称为 *V2 API*，允许我们在单个.py文件中，通过编辑更短的Python程序来定义网络结构和数据。此外，该Python程序也可以在Jupyter Notebook中运行，因为PaddlePaddle可以作为共享库来被Python程序加载和使用。
 
 基于新的API，我们提供了一个在线的学习文档 [Deep Learning 101](http://book.paddlepaddle.org/index.en.html) 及其[中文版本](http://book.paddlepaddle.org/)。
 
-我们还致力于迭代更新新版API的在线文档。我们将在下一个版本中发布更多的改进文档。
-
-我们还致力于将新版API引入分布式模型训练中（通过MPI和Kubernetes）。这项工作正在进行中。我们将在下一个版本中发布更多内容。
+我们还致力于迭代更新新版API的在线文档，并将新版API引入分布式集群（包括MPI和Kubernetes）训练中。我们将在下一个版本中发布更多的内容。
 
 ## 新特点
 
 * 发布新版[Python API](http://research.baidu.com/paddlepaddles-new-api-simplifies-deep-learning-programs/)。
-* 学习文档 [Deep Learning 101](http://book.paddlepaddle.org/index.en.html) 及其[中文版本](http://book.paddlepaddle.org/)。
+* 学习深度学习系列课程 [Deep Learning 101](http://book.paddlepaddle.org/index.en.html) 及其[中文版本](http://book.paddlepaddle.org/)。
 * 支持矩形输入的CNN。
 * 为seqlastin和seqfirstin提供stride pooling。
 * 在`trainer_config_helpers`中暴露`seq_concat_layer/seq_reshape_layer`。
@@ -29,13 +27,13 @@
 ## 改进
 
 * 提供`paddle_trainer`的Python virtualenv支持。
-* 增加用于自动格式化代码pre-commit hooks。
+* 增加代码自动格式化的pre-commit hooks。
 * 升级protobuf到3.x版本。
 * 在Python数据生成器中提供一个检测数据类型的选项。
-* 加速GPU中average层的后向反馈。
+* 加速GPU中average层的后向反馈计算。
 * 细化文档。
 * 使用Travis-CI检查文档中的死链接。
-* 增加解释`sparse_vector的示例。
+* 增加解释`sparse_vector`的示例。
 * 在layer_math.py中添加ReLU。
 * 简化Quick Start示例中的数据处理流程。
 * 支持CUDNN Deconv。
@@ -45,11 +43,10 @@
 * 增加V1 API的基准文档。
 * 在`layer_math.py`中增加ReLU。
 * 提供公共数据集的自动下载包。
-* 将`Argument::sumCost`重新命名为`Argument::sum`。
-* 将Argument::sum暴露给python。
+* 将`Argument::sumCost`重新命名为`Argument::sum`，并暴露给python。
 * 为矩阵相关的表达式评估增加一个新的`TensorExpression`实现。
 * 增加延迟分配来优化批处理多表达式计算。
-* 增加抽象的类函数及其实现。
+* 增加抽象的类函数及其实现：
   * `PadFunc` 和 `PadGradFunc`。
   * `ContextProjectionForwardFunc` 和 `ContextProjectionBackwardFunc`。
   * `CosSimBackward` 和 `CosSimBackwardFunc`。
@@ -57,8 +54,8 @@
   * `MulFunc`。
 * 增加`AutoCompare`和`FunctionCompare`类，使得编写比较gpu和cpu版本函数的单元测试更容易。
 * 生成`libpaddle_test_main.a`并删除测试文件内的主函数。
-* 支持PyDataProvider2中numpy中的稠密向量。
-* 清理代码库，删除一些复制粘贴的代码片段。
+* 支持PyDataProvider2中numpy的稠密向量。
+* 清理代码库，删除一些复制粘贴的代码片段：
   * 增加`SparseRowMatrix`的抽样类`RowBuffer`。
   * 清理`GradientMachine`的接口。
   * 在layer中增加`override`关键字。
@@ -73,7 +70,7 @@
 * 不要用.cu源文件运行`clang-format`。
 * 修复`LogActivation`的使用错误。
 * 修复运行`test_layerHelpers`多次的错误。
-* 修复seq2seq示例超出原型消息大小限制的错误。
+* 修复seq2seq示例超出消息大小限制的错误。
 * 修复在GPU模式下dataprovider转换的错误。
 * 修复`GatedRecurrentLayer`中的错误。
 * 修复在测试多个模型时`BatchNorm`的错误。
