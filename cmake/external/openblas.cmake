@@ -40,16 +40,6 @@ IF(NOT ${CBLAS_FOUND})
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
-
-    ExternalProject_Add_Step(
-        openblas lapacke_install
-        COMMAND ${CMAKE_COMMAND} -E copy "${CBLAS_SOURCES_DIR}/src/openblas/lapack-netlib/LAPACKE/include/lapacke_mangling_with_flags.h" "${CBLAS_INSTALL_DIR}/include/lapacke_mangling.h"
-        COMMAND ${CMAKE_COMMAND} -E copy "${CBLAS_SOURCES_DIR}/src/openblas/lapack-netlib/LAPACKE/include/lapacke.h" "${CBLAS_INSTALL_DIR}/include/lapacke.h"
-        COMMAND ${CMAKE_COMMAND} -E copy "${CBLAS_SOURCES_DIR}/src/openblas/lapack-netlib/LAPACKE/include/lapacke_config.h" "${CBLAS_INSTALL_DIR}/include/lapacke_config.h"
-        COMMAND ${CMAKE_COMMAND} -E copy "${CBLAS_SOURCES_DIR}/src/openblas/lapack-netlib/LAPACKE/include/lapacke_utils.h" "${CBLAS_INSTALL_DIR}/include/lapacke_utils.h"
-        DEPENDEES install
-    )
-
     LIST(APPEND external_project_dependencies openblas)
 ENDIF(NOT ${CBLAS_FOUND})
 
