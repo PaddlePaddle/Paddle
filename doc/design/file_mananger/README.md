@@ -5,25 +5,11 @@
 <image src=./src/filemanager.png width=600>
 
 ## Module
-### Client
-Client提供用户管理本地或者远程文件的命令行程序。
+### PFS Client
+- 提供用户管理Cloud文件的命令
+- 用Golang写，可以跨平台执行
 
-- 路径参数:  
-当用户输入一个命令的时候，一般需要指定路径参数。这里有两种路径参数：LocalPath 或者 PFSPath。
-
-	LocalPath：代表本地的一个路径  
-	PFSPath：代表PaddlePaddle Cloud上的一个路径。它需要满足类似这样的格式：`pfs://dir1/dir2`。路径必须要以`pds://`开始。
-
-- 路径参数的顺序  
-如果命令都有一个或者多个路径参数，那么一般第一个路径参数代表source，第二个路径参数代表destination。
-
-- 支持的操作命令
-	- [rm](cmd_rm.md)
-	- [mv](cmd_mv.md)
-	- [cp](cmd_cp.md)
-	- [ls](cmd_ls.md)
-	- [mkdir](cmd_mkdir.md)
-	- [sync](cmd_sync.md)
+命令的详细内容看[这里](./pfs/pfs.md)
 
 
 ### Ingress
@@ -37,25 +23,13 @@ Client提供用户管理本地或者远程文件的命令行程序。
 - gorpc写的HttpServer  
 - 响应外部的REST API的请求  
 - 在kubernets中运行  
+- [RESTAPI](./RESTAPI.md)接口
 
-REST API说明:
-
-- file
-
-```
-GET /file: Get attribue of files
-POST /file: Touch a file 
-DELETE /file: Delete a File
-```
-
-- chunk
- 
-```
-GET /file/chunk: Get a chunk info 
-POST /file/chunk: Update a chunk
-```
-为什么有chunk的抽象：  
+## 流程
+### 为什么有chunk的抽象：  
 用户文件可能是比较大的，上传到Cloud或者下载到本地的时间可能比较长，而且在传输的过程中也可能出现网络不稳定的情况。为了应对以上的问题，我们提出了chunk的概念，一个chunk由所在的文件偏移、数据、数据长度及校验值组成。文件数据内容的上传和下载都是都过chunk的操作来实现的。由于chunk比较小（默认256K），完成一个传输动作的transaction的时间也比较短，不容易出错。
+
+一个典型的chunk如下所示：
 
 ```
 type Chunk struct {
@@ -66,16 +40,6 @@ type Chunk struct {
 }
 ```  
 
-- dir
-
-```
-GET /dir: List all files in a directory
-POST /dir: Touch a directory
-DELETE /dir: Delete a directory
-```
-
-
-## 流程
 ### 关于文件权限
 - 每一个用户在Cloud注册后可以申请分配用户空间，系统默认会在CephFS上分配一个固定大小（比如初始10G）的、有所有权限的volume，对用户而言就是自己的`home`目录。用户彼此之间的数据是隔离的、无法访问的。用户的空间大小第一期也不允许扩大。
 - 公共数据集合放到一个单独的volume下，对所有外部用户只读。由于其被读取的可能比较频繁，需要提高其备份数，防止成为热点文件。
@@ -112,3 +76,4 @@ DELETE /dir: Delete a directory
 ## 参考文档
 - [Do you see tls?](https://github.com/k8sp/tls/blob/master/README.md)
 - [s3](http://docs.aws.amazon.com/cli/latest/reference/s3/)
+- linux man document
