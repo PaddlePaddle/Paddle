@@ -144,3 +144,14 @@ function(create_resources res_file output_file)
     COMMAND python ARGS ${PROJ_ROOT}/cmake/make_resource.py ${res_file} ${output_file}
     DEPENDS ${res_file} ${PROJ_ROOT}/cmake/make_resource.py)
 endfunction()
+
+
+# Create a python unittest using run_python_tests.sh,
+# which takes care of making correct running environment
+function(add_python_test TEST_NAME)
+    message("PYTHON: ${PYTHON_EXECUTABLE}")
+    add_test(NAME ${TEST_NAME}
+        COMMAND bash ${PROJ_ROOT}/paddle/scripts/run_python_tests.sh
+        ${USE_VIRTUALENV_FOR_TEST} ${PYTHON_EXECUTABLE} ${ARGN}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+endfunction()

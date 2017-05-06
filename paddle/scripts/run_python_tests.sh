@@ -18,19 +18,29 @@ pushd `dirname $0` > /dev/null
 SCRIPTPATH=$PWD
 popd > /dev/null
 
-cd $SCRIPTPATH
-$1 -m pip install ../../../../../paddle/dist/*.whl
+USE_VIRTUALENV_FOR_TEST=$1; shift
+PYTHON=$1; shift
 
-export DISABLE_PLOT="True"
-test_list="test_ploter.py"
+if [ $USE_VIRTUALENV_FOR_TEST -ne 0 ]; then
+   rm -rf .test_env
+   virtualenv .test_env
+   source .test_env/bin/activate
+   PYTHON=python
+fi
 
-export PYTHONPATH=$PWD/../../../../../python/
+export PYTHONPATH=$SCRIPTPATH/../../python/
+$PYTHON -m pip install $SCRIPTPATH/../dist/*.whl requests matplotlib ipython==5.3
 
-for fn in $test_list
+for fn in "$@"
 do
   echo "test $fn"
-  $1 $fn
+  $PYTHON $fn
   if [ $? -ne 0 ]; then
     exit 1
   fi
 done
+
+if [ $USE_VIRTUALENV_FOR_TEST -ne 0 ]; then
+    deactivate
+    rm -rf .test_env
+fi
