@@ -37,6 +37,7 @@ $PYTHON -m pip install requests matplotlib numpy ipython==5.3
 $PYTHON -m pip list
 echo $PYTHON
 echo PYTHONPATH: $PYTHONPATH
+python -c 'import numpy; import pkgutil; print numpy.__path__; print(str(list(pkgutil.iter_modules(numpy.__path__))))'
 python -c 'import pkgutil; print(str(list(pkgutil.iter_modules("/opt/python/2.7.12/lib/python2.7/site-packages"))))'
 echo "========================="
 python -c 'import numpy; import google; print(dir(google)); import google.protobuf; import pkgutil; print(str(list(pkgutil.iter_modules(google.protobuf.__path__)))); import google.protobuf.descriptor;  '
