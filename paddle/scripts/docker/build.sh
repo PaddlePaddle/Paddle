@@ -34,7 +34,7 @@ cmake .. \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 make -j `nproc`
 if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
-    ctest -j `nproc`
+    ctest -V -j `nproc`
 fi
 make install
 pip install /usr/local/opt/paddle/share/wheels/*.whl
