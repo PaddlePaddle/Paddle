@@ -28,6 +28,11 @@ ELSE(WIN32)
         STRING(REGEX MATCH "[0-9]+.[0-9]+" VERSION "${MACOSX_VERSION}")
         SET(MACOS_VERSION ${VERSION})
         SET(HOST_SYSTEM "macosx")
+        IF(NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET})
+            # Set cache variable - end user may change this during ccmake or cmake-gui configure.
+            SET(CMAKE_OSX_DEPLOYMENT_TARGET ${MACOS_VERSION} CACHE STRING
+                "Minimum OS X version to target for deployment (at runtime); newer APIs weak linked. Set to empty string for default value.")
+        ENDIF()
     ELSE(APPLE)
 
         IF(EXISTS "/etc/issue")
@@ -66,6 +71,12 @@ MARK_AS_ADVANCED(HOST_SYSTEM CPU_CORES)
 
 MESSAGE(STATUS "Found Paddle host system: ${HOST_SYSTEM}")
 MESSAGE(STATUS "Found Paddle host system's CPU: ${CPU_CORES} cores")
+
+IF(DEFINED CMAKE_SYSTEM_NAME)
+    IF(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
+        SET(ANDROID TRUE)
+    ENDIF()
+ENDIF()
 
 # external dependencies log output
 SET(EXTERNAL_PROJECT_LOG_ARGS

@@ -2426,41 +2426,8 @@ void CpuMatrix::mul(CpuMatrix* a, CpuMatrix* b, real scaleAB, real scaleT) {
   int lda = a->getStride();
   int ldb = b->getStride();
   int ldc = getStride();
-#ifndef PADDLE_TYPE_DOUBLE
-  cblas_sgemm(CblasRowMajor,
-              a_trans,
-              b_trans,
-              M,
-              N,
-              K,
-              scaleAB,
-              A,
-              lda,
-              B,
-              ldb,
-              scaleT,
-              C,
-              ldc);
-#else
-  cblas_dgemm(CblasRowMajor,
-              a_trans,
-              b_trans,
-              M,
-              N,
-              K,
-              scaleAB,
-              A,
-              lda,
-              B,
-              ldb,
-              scaleT,
-              C,
-              ldc);
-// TODO(yuyang18): Is gemm defined other place?
-#endif
-
-  VLOG(2) << " A[0]=" << A[0] << " A[1]=" << A[1] << " B[0]=" << B[0]
-          << " B[1]=" << B[1] << " C[0]=" << C[0] << " C[1]=" << C[1];
+  gemm<real>(
+      a_trans, b_trans, M, N, K, scaleAB, A, lda, B, ldb, scaleT, C, ldc);
 }
 
 void CpuMatrix::mul(
@@ -3649,17 +3616,18 @@ void CpuMatrix::smoothL1(Matrix& output, Matrix& label) {
   CHECK_EQ(output.getHeight(), numSamples);
   CHECK_EQ(label.getWidth(), dim);
   CHECK_EQ(getWidth(), (size_t)1);
-  real* out = output.getData();
+
   real* cost = getData();
+  real* out = output.getData();
   real* lbl = label.getData();
 
-  for (size_t i = 0; i < numSamples; ++i, out += dim, cost += dim, lbl += dim) {
+  for (size_t i = 0; i < numSamples; ++i, out += dim, lbl += dim) {
     for (size_t j = 0; j < dim; ++j) {
-      cost[j] = std::fabs(out[j] - lbl[j]);
-      if (cost[j] < 1.0)
-        cost[j] = 0.5 * cost[j] * cost[j];
+      real absVal = std::fabs(out[j] - lbl[j]);
+      if (absVal < 1.0)
+        cost[i] += 0.5 * absVal * absVal;
       else
-        cost[j] = cost[j] - 0.5;
+        cost[i] += absVal - 0.5;
     }
   }
 }
@@ -3673,17 +3641,20 @@ void CpuMatrix::smoothL1Bp(Matrix& output, Matrix& label) {
   CHECK_EQ(label.getHeight(), numSamples);
   CHECK_EQ(output.getHeight(), numSamples);
   CHECK_EQ(label.getWidth(), dim);
-  CHECK_EQ(getWidth(), (size_t)1);
-  real* out = output.getData();
-  real* cost = getData();
-  real* lbl = label.getData();
+  CHECK_EQ(getWidth(), dim);
 
-  // f'(x) = x         if |x| < 1
-  //       = sign(x)   otherwise
-  for (size_t i = 0; i < numSamples; ++i, out += dim, cost += dim, lbl += dim) {
+  real* out = output.getData();
+  real* lbl = label.getData();
+  real* grad = getData();
+
+  for (size_t i = 0; i < numSamples; ++i, out += dim, grad += dim, lbl += dim) {
     for (size_t j = 0; j < dim; ++j) {
-      cost[j] = out[j] - lbl[j];
-      if (std::fabs(cost[j]) >= 1) cost[j] = (0 < cost[j]) - (cost[j] < 0);
+      real val = out[j] - lbl[j];
+      if (std::fabs(val) < 1) {
+        grad[j] += val;
+      } else {
+        grad[j] += (real(0) < val) - (val < real(0));
+      }
     }
   }
 }

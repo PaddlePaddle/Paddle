@@ -29,7 +29,7 @@ settings(
     batch_size=128,
     learning_rate=2e-3,
     learning_method=AdamOptimizer(),
-    average_window=0.5,
+    model_average=ModelAverage(0.5),
     regularization=L2Regularization(8e-4),
     gradient_clipping_threshold=25)
 

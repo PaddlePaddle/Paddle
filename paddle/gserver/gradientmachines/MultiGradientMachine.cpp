@@ -518,7 +518,7 @@ void TrainerThread::computeThread() {
         backward();
         break;
       case MultiGradientMachine::TASK_COPY_IN_ARGS:
-        copyInArgs();
+        batchSize_ = copyInArgs();
         inArgsCopied_ = true;
         multiMachine_->waitForCopyInArgs();
         break;

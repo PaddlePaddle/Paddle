@@ -17,7 +17,6 @@ import collections
 from paddle.proto.ModelConfig_pb2 import ModelConfig
 
 import layer as v2_layer
-from layer import WithExtraParent
 
 __all__ = ['Topology']
 
@@ -41,9 +40,8 @@ def __bfs_travel__(callback, *layers):
         __break__ = callback(each_layer)
         if __break__:
             return
-        __layers__ = each_layer.__parent_layers__.values()
-        if isinstance(each_layer, WithExtraParent):
-            __layers__ = __layers__ + each_layer.extra_parent()
+        __layers__ = each_layer.__parent_layers__.values() + \
+                     each_layer.extra_parent()
         __bfs_travel__(callback, *__layers__)
 
 
@@ -53,15 +51,39 @@ class Topology(object):
     and network configs.
     """
 
-    def __init__(self, layers):
-        if not isinstance(layers, collections.Sequence):
-            __check_layer_type__(layers)
-            layers = [layers]
-        for layer in layers:
-            __check_layer_type__(layer)
+    def __init__(self, layers, extra_layers=None):
+        def __check__(layers):
+            if not isinstance(layers, collections.Sequence):
+                __check_layer_type__(layers)
+                layers = [layers]
+            for layer in layers:
+                __check_layer_type__(layer)
+            return layers
+
+        layers = __check__(layers)
         self.layers = layers
-        self.__model_config__ = v2_layer.parse_network(*layers)
+        if extra_layers is not None:
+            extra_layers = __check__(extra_layers)
+
+        self.__model_config__ = v2_layer.parse_network(
+            layers, extra_layers=extra_layers)
+
+        if extra_layers is not None:
+            self.layers.extend(extra_layers)
+
         assert isinstance(self.__model_config__, ModelConfig)
+
+    def use_sparse_updater(self):
+        """
+        check if any parameter require to use sparse_update
+        :return:
+        """
+        use_sparse = False
+        for parameter in self.__model_config__.parameters:
+            if parameter.sparse_update or parameter.sparse_remote_update:
+                use_sparse = True
+                break
+        return use_sparse
 
     def proto(self):
         return self.__model_config__

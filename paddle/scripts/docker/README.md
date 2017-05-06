@@ -94,7 +94,7 @@ docker build -t paddle:dev --build-arg UBUNTU_MIRROR=mirror://mirrors.ubuntu.com
 Given the development image `paddle:dev`, the following command builds PaddlePaddle from the source tree on the development computer (host):
 
 ```bash
-docker run --rm -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TEST=OFF" -e "RUN_TEST=OFF" paddle:dev
+docker run --rm -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TESTING=OFF" -e "RUN_TEST=OFF" paddle:dev
 ```
 
 This command mounts the source directory on the host into `/paddle` in the container, so the default entry point of `paddle:dev`, `build.sh`, could build the source code with possible local changes.  When it writes to `/paddle/build` in the container, it writes to `$PWD/build` on the host indeed.
@@ -119,7 +119,7 @@ Users can specify the following Docker build arguments with either "ON" or "OFF"
 The following command builds the production image:
 
 ```bash
-docker build -t paddle -f build/Dockerfile .
+docker build -t paddle -f build/Dockerfile ./build
 ```
 
 This production image is minimal -- it includes binary `paddle`, the shared library `libpaddle.so`, and Python runtime.
@@ -165,4 +165,19 @@ docker build -f some/Dockerfile -t myapp .
 docker tag myapp me/myapp
 docker push
 kubectl ...
+```
+
+### Reading source code with woboq codebrowser
+For developers who are interested in the C++ source code, please use -e "WOBOQ=ON" to enable the building of C++ source code into HTML pages using [Woboq codebrowser](https://github.com/woboq/woboq_codebrowser).
+
+- The following command builds PaddlePaddle, generates HTML pages from C++ source code, and writes HTML pages into `$HOME/woboq_out` on the host:
+
+```bash
+docker run -v $PWD:/paddle -v $HOME/woboq_out:/woboq_out -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TEST=ON" -e "WOBOQ=ON" paddle:dev
+```
+
+- You can open the generated HTML files in your Web browser. Or, if you want to run a Nginx container to serve them for a wider audience, you can run:
+
+```
+docker run -v $HOME/woboq_out:/usr/share/nginx/html -d -p 8080:80 nginx
 ```

@@ -67,7 +67,16 @@ class Layer(object):
         self.name = name
         self.__context__ = {}
         self.__parent_layers__ = parent_layers
-        self.__children_layers__ = []  # used for evaluator.
+        # some layer may have some extra parent layer
+        self.__extra_parent__ = []
+        # used for evaluator.
+        self.__children_layers__ = []
+
+    def extra_parent(self):
+        return self.__extra_parent__
+
+    def append_extra_parent(self, parent):
+        self.__extra_parent__.append(parent)
 
     def append_child(self, layer, parent_names):
         self.__children_layers__.append((layer, parent_names))
@@ -78,14 +87,20 @@ class Layer(object):
         """
         self.__context__ = context
 
-        # short cut if myself is parsed before.
+        # STEP: short cut if this layer is parsed before.
         if self.context_name() in context:
             if self.use_context_name():
                 return context[self.context_name()]
             else:
                 return context[self.name]
 
-        # parse parent before myself
+        # STEP: parse extra_parent that is not used by this layer but must
+        # be parsed before this layer.
+        for p in self.__extra_parent__:
+            p.to_proto(context=context)
+
+        # STEP: parse parent that is used by this layer, get the result and
+        # insert into kwargs of the next layer's to_proto_impl method.
         kwargs = dict()
         for layer_name in self.__parent_layers__:
             if not isinstance(self.__parent_layers__[layer_name],
@@ -97,14 +112,13 @@ class Layer(object):
                                self.__parent_layers__[layer_name])
             kwargs[layer_name] = v1_layer
 
-        # parse myself.
+        # STEP: parse myself and add myself into context.
         ret_val = self.to_proto_impl(**kwargs)
-
-        if self.context_name() is not None and \
-                        self.context_name() not in context:
+        if self.context_name() is not None \
+                and self.context_name() not in context:
             context[self.context_name()] = ret_val
 
-        # parse children.
+        # STEP: parse children that should be pased after this layer.
         for layer, pnames in self.__children_layers__:
             drop = False
 
@@ -117,6 +131,7 @@ class Layer(object):
                 continue
             layer.to_proto(context=context)
 
+        # STEP: return v1 layer result
         if self.context_name() is None:
             return ret_val
         elif self.use_context_name():

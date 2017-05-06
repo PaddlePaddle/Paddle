@@ -14,7 +14,12 @@
 """
 Movielens 1-M dataset.
 
-TODO(yuyang18): Complete comments.
+Movielens 1-M dataset contains 1 million ratings from 6000 users on 4000
+movies, which was collected by GroupLens Research. This module will download
+Movielens 1-M dataset from 
+http://files.grouplens.org/datasets/movielens/ml-1m.zip and parse training
+set and test set into paddle reader creators.
+
 """
 
 import zipfile
@@ -35,12 +40,19 @@ MD5 = 'c4d9eecfca2ab87c1945afe126590906'
 
 
 class MovieInfo(object):
+    """
+    Movie id, title and categories information are stored in MovieInfo.
+    """
+
     def __init__(self, index, categories, title):
         self.index = int(index)
         self.categories = categories
         self.title = title
 
     def value(self):
+        """
+        Get information from a movie.
+        """
         return [
             self.index, [CATEGORIES_DICT[c] for c in self.categories],
             [MOVIE_TITLE_DICT[w.lower()] for w in self.title.split()]
@@ -55,6 +67,10 @@ class MovieInfo(object):
 
 
 class UserInfo(object):
+    """
+    User id, gender, age, and job information are stored in UserInfo.
+    """
+
     def __init__(self, index, gender, age, job_id):
         self.index = int(index)
         self.is_male = gender == 'M'
@@ -62,6 +78,9 @@ class UserInfo(object):
         self.job_id = int(job_id)
 
     def value(self):
+        """
+        Get information from a user.
+        """
         return [self.index, 0 if self.is_male else 1, self.age, self.job_id]
 
     def __str__(self):
@@ -148,6 +167,9 @@ test = functools.partial(__reader_creator__, is_test=True)
 
 
 def get_movie_title_dict():
+    """
+    Get movie title dictionary.
+    """
     __initialize_meta_info__()
     return MOVIE_TITLE_DICT
 
@@ -160,11 +182,17 @@ def __max_index_info__(a, b):
 
 
 def max_movie_id():
+    """
+    Get the maximum value of movie id.
+    """
     __initialize_meta_info__()
     return reduce(__max_index_info__, MOVIE_INFO.viewvalues()).index
 
 
 def max_user_id():
+    """
+    Get the maximum value of user id.
+    """
     __initialize_meta_info__()
     return reduce(__max_index_info__, USER_INFO.viewvalues()).index
 
@@ -177,21 +205,33 @@ def __max_job_id_impl__(a, b):
 
 
 def max_job_id():
+    """
+    Get the maximum value of job id.
+    """
     __initialize_meta_info__()
     return reduce(__max_job_id_impl__, USER_INFO.viewvalues()).job_id
 
 
 def movie_categories():
+    """
+    Get movie categoriges dictionary.
+    """
     __initialize_meta_info__()
     return CATEGORIES_DICT
 
 
 def user_info():
+    """
+    Get user info dictionary.
+    """
     __initialize_meta_info__()
     return USER_INFO
 
 
 def movie_info():
+    """
+    Get movie info dictionary.
+    """
     __initialize_meta_info__()
     return MOVIE_INFO
 

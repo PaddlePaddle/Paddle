@@ -804,10 +804,14 @@ TEST(Layer, ExpandLayer) {
   testExpandLayer("seq", true);       // seq expand to hasSubseq
 }
 
-void testDegradeLayer(bool hasSubseq, string layer_type, string trans_type) {
+void testDegradeLayer(bool hasSubseq,
+                      string layer_type,
+                      string trans_type,
+                      int stride) {
   TestConfig config;
   config.layerConfig.set_type(layer_type);
   config.layerConfig.set_size(10);
+  config.layerConfig.set_seq_pool_stride(stride);
   config.biasSize = 0;
 
   config.inputDefs.push_back(
@@ -827,36 +831,46 @@ void testDegradeLayer(bool hasSubseq, string layer_type, string trans_type) {
   if (layer_type == "average") {
     for (auto strategy : {"average", "sum", "squarerootn"}) {
       LOG(INFO) << " hasSubseq=" << hasSubseq << " trans_type=" << trans_type
-                << " average_strategy=" << strategy;
+                << " average_strategy=" << strategy
+                << " seq_pool_stride=" << stride;
       config.layerConfig.set_average_strategy(strategy);
       testDegradeLayerGrad(config, layer_type);
     }
   } else {
-    LOG(INFO) << " hasSubseq=" << hasSubseq << " trans_type=" << trans_type;
+    LOG(INFO) << " hasSubseq=" << hasSubseq << " trans_type=" << trans_type
+              << " seq_pool_stride=" << stride;
     testDegradeLayerGrad(config, layer_type);
   }
 }
 
 TEST(Layer, MaxLayer) {
-  testDegradeLayer(false, "max", "non-seq");  // seq max to non-seq
-  testDegradeLayer(true, "max", "non-seq");   // hasSubseq max to non-seq
-  testDegradeLayer(true, "max", "seq");       // hasSubseq max to seq
+  testDegradeLayer(false, "max", "non-seq", -1);  // seq max to non-seq
+  testDegradeLayer(true, "max", "non-seq", -1);   // hasSubseq max to non-seq
+  testDegradeLayer(true, "max", "seq", -1);       // hasSubseq max to seq
 }
 
 TEST(Layer, SequenceLastInstanceLayer) {
   testDegradeLayer(false,
                    "seqlastins",
-                   "non-seq");  // seq seqlastins to non-seq
+                   "non-seq",
+                   -1);  // seq seqlastins to non-seq
+  testDegradeLayer(false,
+                   "seqlastins",
+                   "non-seq",
+                   5);  // seq seqlastins to a shorten seq, stride window = 5
   testDegradeLayer(true,
                    "seqlastins",
-                   "non-seq");  // hasSubseq seqlastins to non-seq
-  testDegradeLayer(true, "seqlastins", "seq");  // hasSubseq seqlastins to seq
+                   "non-seq",
+                   -1);  // hasSubseq seqlastins to non-seq
+  testDegradeLayer(
+      true, "seqlastins", "seq", -1);  // hasSubseq seqlastins to seq
 }
 
 TEST(Layer, AverageLayer) {
-  testDegradeLayer(false, "average", "non-seq");  // seq average to non-seq
-  testDegradeLayer(true, "average", "non-seq");  // hasSubseq average to non-seq
-  testDegradeLayer(true, "average", "seq");      // hasSubseq average to seq
+  testDegradeLayer(false, "average", "non-seq", -1);  // seq average to non-seq
+  testDegradeLayer(
+      true, "average", "non-seq", -1);           // hasSubseq average to non-seq
+  testDegradeLayer(true, "average", "seq", -1);  // hasSubseq average to seq
 }
 
 TEST(Layer, SequenceConcatLayer) {
@@ -1665,13 +1679,29 @@ TEST(Layer, smooth_l1) {
   TestConfig config;
   config.layerConfig.set_type("smooth_l1");
 
-  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1, 0});
-  config.inputDefs.push_back({INPUT_DATA_TARGET, "layer_1", 1, 0});
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 200, 0});
+  config.inputDefs.push_back({INPUT_DATA_TARGET, "layer_1", 200, 0});
   config.layerConfig.add_inputs();
   config.layerConfig.add_inputs();
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "smooth_l1", 100, false, useGpu, false, 2.0);
+    testLayerGrad(config, "smooth_l1", 100, false, useGpu, false);
+  }
+}
+
+TEST(Layer, TransLayer) {
+  TestConfig config;
+  const int height = 128;
+  const int width = 1028;
+  config.layerConfig.set_type("trans");
+  config.layerConfig.set_size(width);
+
+  config.inputDefs.push_back(
+      {INPUT_DATA, "layer_0", /* dim= */ height * width, /* paraSize= */ 0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "trans", height, /* trans= */ false, useGpu);
   }
 }
 

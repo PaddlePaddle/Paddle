@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <paddle/gserver/gradientmachines/GradientMachine.h>
+#include <paddle/parameter/ParameterUpdateFunctions.h>
 #include <paddle/trainer/Trainer.h>
 #include <paddle/trainer/TrainerInternal.h>
 #include <paddle/utils/PythonUtil.h>

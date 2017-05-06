@@ -34,7 +34,7 @@ set(IGNORE_PATTERN
 #
 # first argument: target name to attach
 # rest arguments: source list to check code style.
-# 
+#
 # NOTE: If WITH_STYLE_CHECK is OFF, then this macro just do nothing.
 macro(add_style_check_target TARGET_NAME)
     if(WITH_STYLE_CHECK)
@@ -48,13 +48,17 @@ macro(add_style_check_target TARGET_NAME)
                 if(filename MATCHES ${pattern})
                     message(STATUS "DROP LINT ${filename}")
                     set(LINT OFF)
-                endif() 
+                endif()
             endforeach()
             if(LINT MATCHES ON)
-                add_custom_command(TARGET ${TARGET_NAME}
+                get_filename_component(base_filename ${filename} NAME)
+                set(CUR_GEN ${CMAKE_CURRENT_BINARY_DIR}/${base_filename}.cpplint)
+                add_custom_command(OUTPUT ${CUR_GEN}
                     PRE_BUILD
                     COMMAND env ${py_env} "${PYTHON_EXECUTABLE}" "${PROJ_ROOT}/paddle/scripts/cpplint.py"
-                                "--filter=${STYLE_FILTER}" ${filename}
+                                "--filter=${STYLE_FILTER}"
+                                "--write-success=${CUR_GEN}" ${filename}
+                    DEPENDS ${filename}
                     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
             endif()
         endforeach()

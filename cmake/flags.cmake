@@ -2,6 +2,7 @@
 include(CheckCXXCompilerFlag)
 include(CheckCCompilerFlag)
 include(CheckCXXSymbolExists)
+include(CheckTypeSize)
 
 function(CheckCompilerCXX11Flag)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -25,7 +26,7 @@ function(CheckCompilerCXX11Flag)
 endfunction()
 
 CheckCompilerCXX11Flag()
-LIST(APPEND CMAKE_CXX_FLAGS -std=c++11)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 # safe_set_flag
 #
@@ -82,6 +83,17 @@ if(NOT UINT64_MAX_EXISTS)
     message(FATAL_ERROR "Cannot find symbol UINT64_MAX")
   endif()
 endif()
+
+SET(CMAKE_EXTRA_INCLUDE_FILES "pthread.h")
+CHECK_TYPE_SIZE(pthread_spinlock_t SPINLOCK_FOUND)
+CHECK_TYPE_SIZE(pthread_barrier_t BARRIER_FOUND)
+if(SPINLOCK_FOUND)
+  add_definitions(-DPADDLE_USE_PTHREAD_SPINLOCK)
+endif(SPINLOCK_FOUND)
+if(BARRIER_FOUND)
+  add_definitions(-DPADDLE_USE_PTHREAD_BARRIER)
+endif(BARRIER_FOUND)
+SET(CMAKE_EXTRA_INCLUDE_FILES "")
 
 # Common flags. the compiler flag used for C/C++ sources whenever release or debug
 # Do not care if this flag is support for gcc.
@@ -185,3 +197,4 @@ if(CUDA_ARCH)
 endif()
 
 set(CUDA_NVCC_FLAGS ${__arch_flags} ${CUDA_NVCC_FLAGS})
+

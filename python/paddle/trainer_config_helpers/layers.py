@@ -18,7 +18,7 @@ import inspect
 
 from paddle.trainer.config_parser import *
 from .activations import LinearActivation, SigmoidActivation, TanhActivation, \
-    ReluActivation, IdentityActivation, SoftmaxActivation
+    ReluActivation, IdentityActivation, SoftmaxActivation, BaseActivation
 from .evaluators import *
 from .poolings import MaxPooling, AvgPooling, BasePoolingType
 from .attrs import *
@@ -84,6 +84,7 @@ __all__ = [
     'GeneratedInput',
     'SubsequenceInput',
     'gru_step_layer',
+    'gru_step_naive_layer',
     'recurrent_layer',
     'BaseGeneratedInput',
     'conv_operator',
@@ -116,6 +117,7 @@ __all__ = [
     'spp_layer',
     'pad_layer',
     'eos_layer',
+    'smooth_l1_cost',
     'layer_support',
 ]
 
@@ -201,6 +203,7 @@ class LayerType(object):
     SOFT_BIN_CLASS_CROSS_ENTROPY = "soft_binary_class_cross_entropy"
     MULTI_BIN_LABEL_CROSS_ENTROPY = "multi_binary_label_cross_entropy"
     SUM_COST = "sum_cost"
+    SMOOTH_L1 = "smooth_l1"
 
     @staticmethod
     def is_layer_type(type_name):
@@ -567,7 +570,7 @@ def dotmul_operator(a=None, b=None, scale=1, **kwargs):
     DotMulOperator takes two inputs and performs element-wise multiplication:
 
     .. math::
-       out.row[i] += scale * (x.row[i] .* y.row[i])
+       out.row[i] += scale * (a.row[i] .* b.row[i])
 
     where :math:`.*` means element-wise multiplication, and
     scale is a config scalar, its default value is one.
@@ -576,7 +579,7 @@ def dotmul_operator(a=None, b=None, scale=1, **kwargs):
 
     .. code-block:: python
 
-       op = dotmul_operator(x=layer1, y=layer2, scale=0.5)
+       op = dotmul_operator(a=layer1, b=layer2, scale=0.5)
 
     :param a: Input layer1
     :type a: LayerOutput
@@ -1342,9 +1345,15 @@ def grumemory(input,
 def last_seq(input,
              name=None,
              agg_level=AggregateLevel.EACH_TIMESTEP,
+             stride=-1,
              layer_attr=None):
     """
     Get Last Timestamp Activation of a sequence.
+
+    If stride > 0, this layer slides a window whose size is determined by stride,
+    and return the last value of the window as the output. Thus, a long sequence
+    will be shorten. Note that for sequence with sub-sequence, the default value
+    of stride is -1.
 
     The simple usage is:
 
@@ -1357,6 +1366,8 @@ def last_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
+    :param stride: window size.
+    :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
@@ -1368,11 +1379,15 @@ def last_seq(input,
                        " series information at all. Maybe you want to use"
                        " first_seq instead.")
 
+    if agg_level == AggregateLevel.EACH_SEQUENCE:
+        assert stride == -1
+
     Layer(
         name=name,
         type=LayerType.SEQUENCE_LAST_INSTANCE,
         inputs=[input.name],
         trans_type=agg_level,
+        stride=stride,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,
@@ -1386,9 +1401,15 @@ def last_seq(input,
 def first_seq(input,
               name=None,
               agg_level=AggregateLevel.EACH_TIMESTEP,
+              stride=-1,
               layer_attr=None):
     """
     Get First Timestamp Activation of a sequence.
+
+    If stride > 0, this layer slides a window whose size is determined by stride,
+    and return the first value of the window as the output. Thus, a long sequence
+    will be shorten. Note that for sequence with sub-sequence, the default value
+    of stride is -1.
 
     The simple usage is:
 
@@ -1401,6 +1422,8 @@ def first_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
+    :param stride: window size.
+    :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
@@ -1413,11 +1436,15 @@ def first_seq(input,
                        ' time series information at all. Maybe you want to use'
                        ' last_seq instead.')
 
+    if agg_level == AggregateLevel.EACH_SEQUENCE:
+        assert stride == -1
+
     Layer(
         name=name,
         type=LayerType.SEQUENCE_FIRST_INSTANCE,
         inputs=[input.name],
         trans_type=agg_level,
+        stride=stride,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,
@@ -1535,7 +1562,7 @@ def seq_reshape_layer(input,
                       bias_attr=None):
     """
     A layer for reshaping the sequence. Assume the input sequence has T instances,
-    the dimension of each instance is M, and the input reshape_size is N, then the 
+    the dimension of each instance is M, and the input reshape_size is N, then the
     output sequence has T*M/N instances, the dimension of each instance is N.
 
     Note that T*M/N must be an integer.
@@ -1916,7 +1943,7 @@ def cos_sim(a, b, scale=1, size=1, name=None, layer_attr=None):
 @layer_support()
 def hsigmoid(input,
              label,
-             num_classes,
+             num_classes=None,
              name=None,
              bias_attr=None,
              param_attr=None,
@@ -1932,8 +1959,7 @@ def hsigmoid(input,
     ..  code-block:: python
 
         cost = hsigmoid(input=[layer1, layer2],
-                        label=data_layer,
-                        num_classes=3)
+                        label=data_layer)
 
     :param input: Input layers. It could be a LayerOutput or list/tuple of
                  LayerOutput.
@@ -1941,12 +1967,14 @@ def hsigmoid(input,
     :param label: Label layer.
     :type label: LayerOutput
     :param num_classes: number of classes.
-    :type num_classes: int
+    :type num_classes: int|None
     :param name: layer name
     :type name: basestring
     :param bias_attr: Bias attribute. None means default bias.
                       False means no bias.
     :type bias_attr: ParameterAttribute|False
+    :param param_attr: Parameter Attribute. None means default parameter.
+    :type param_attr: ParameterAttribute|None
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
@@ -1965,6 +1993,11 @@ def hsigmoid(input,
     assert isinstance(input, collections.Sequence)
     assert isinstance(label, LayerOutput)
     assert label.layer_type == LayerType.DATA
+
+    if num_classes is None:
+        num_classes = label.size
+    if num_classes is None or num_classes <= 2:
+        raise ValueError("hsigmoid label size must larger than 2.")
 
     ipts_for_layer = []
     parents = []
@@ -2086,8 +2119,8 @@ def img_conv_layer(input,
     :param trans: true if it is a convTransLayer, false if it is a convLayer
     :type trans: bool
     :param layer_type: specify the layer_type, default is None. If trans=True,
-                       layer_type has to be "exconvt" or "cudnn_convt", 
-                       otherwise layer_type has to be either "exconv" or 
+                       layer_type has to be "exconvt" or "cudnn_convt",
+                       otherwise layer_type has to be either "exconv" or
                        "cudnn_conv"
     :type layer_type: String
     :return: LayerOutput object.
@@ -2253,8 +2286,9 @@ def img_pool_layer(input,
         pool_type.name = 'avg'
 
     type_name = pool_type.name + '-projection' \
-      if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
-      else pool_type.name
+        if (
+        isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
+        else pool_type.name
 
     pool_size_y = pool_size if pool_size_y is None else pool_size_y
     stride_y = stride if stride_y is None else stride_y
@@ -2304,9 +2338,9 @@ def spp_layer(input,
 
     ..  code-block:: python
 
-        spp = spp_layer(input=data, 
-                        pyramid_height=2, 
-                        num_channels=16, 
+        spp = spp_layer(input=data,
+                        pyramid_height=2,
+                        num_channels=16,
                         pool_type=MaxPooling())
 
     :param name: layer name.
@@ -2400,7 +2434,7 @@ def img_cmrnorm_layer(input,
     The example usage is:
 
     ..  code-block:: python
-    
+
         norm = img_cmrnorm_layer(input=net, size=5)
 
     :param name: layer name.
@@ -2461,7 +2495,7 @@ def batch_norm_layer(input,
     The example usage is:
 
     ..  code-block:: python
-    
+
         norm = batch_norm_layer(input=net, act=ReluActivation())
 
     :param name: layer name.
@@ -2762,11 +2796,11 @@ def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
     """
     Concat sequence a with sequence b.
 
-    Inputs: 
+    Inputs:
       - a = [a1, a2, ..., an]
       - b = [b1, b2, ..., bn]
       - Note that the length of a and b should be the same.
-        
+
     Output: [a1, b1, a2, b2, ..., an, bn]
 
     The example usage is:
@@ -3053,6 +3087,78 @@ def gru_step_layer(input,
         activation=act)
 
 
+@wrap_bias_attr_default()
+@wrap_param_attr_default()
+@wrap_act_default(param_names=['gate_act'], act=SigmoidActivation())
+@wrap_act_default(act=TanhActivation())
+@wrap_name_default('gru_step_naive')
+@layer_support(ERROR_CLIPPING, DROPOUT)
+def gru_step_naive_layer(input,
+                         output_mem,
+                         size=None,
+                         name=None,
+                         act=None,
+                         gate_act=None,
+                         bias_attr=None,
+                         param_attr=None,
+                         layer_attr=None):
+    """
+    GRU Step Layer, but using MixedLayer to generate. It support ERROR_CLIPPING
+    and DROPOUT.
+
+    :param input:
+    :param output_mem:
+    :param size:
+    :param name:
+    :param act:
+    :param gate_act:
+    :param bias_attr:
+    :param param_attr:
+    :param layer_attr:
+    :return:
+    """
+    if input.size % 3 != 0:
+        raise ValueError("GruStep input size must be divided by 3")
+    if size is None:
+        size = input.size / 3
+
+    def __gate__(gate_name, offset):
+        with mixed_layer(
+                name=name + "_" + gate_name,
+                size=size,
+                layer_attr=layer_attr,
+                bias_attr=bias_attr,
+                act=gate_act) as gate:
+            gate += identity_projection(input=input, offset=offset)
+            gate += full_matrix_projection(
+                input=output_mem, param_attr=param_attr)
+        return gate
+
+    update_gate = __gate__("update", 0)
+    reset_gate = __gate__("reset", size)
+
+    with mixed_layer(
+            name=name + "_reset_output", bias_attr=False) as reset_output:
+        reset_output += dotmul_operator(a=output_mem, b=reset_gate)
+
+    with mixed_layer(
+            name=name + "_output_candidate",
+            size=size,
+            layer_attr=layer_attr,
+            bias_attr=bias_attr,
+            act=act) as output_candidate:
+        output_candidate += identity_projection(input=input, offset=2 * size)
+        output_candidate += full_matrix_projection(
+            input=reset_output, param_attr=param_attr)
+
+    with mixed_layer(name=name) as output:
+        output += identity_projection(output_mem)
+        output += dotmul_operator(a=output_mem, b=update_gate, scale=-1.0)
+        output += dotmul_operator(a=output_candidate, b=update_gate)
+
+    return output
+
+
 @wrap_name_default()
 @layer_support()
 def get_output_layer(input, arg_name, name=None, layer_attr=None):
@@ -3294,8 +3400,8 @@ def recurrent_group(step,
 
     assert (targetInlink == None or targetInlink_in_inlinks())
     targetInlinkName = None if targetInlink == None \
-                            else targetInlink.name if isinstance(targetInlink, LayerOutput) \
-                                                   else targetInlink.input.name
+        else targetInlink.name if isinstance(targetInlink, LayerOutput) \
+        else targetInlink.input.name
 
     contains_sub_seq = [False]
 
@@ -3530,9 +3636,15 @@ def beam_search(step,
                 simple_rnn += last_time_step_output
             return simple_rnn
 
+        generated_word_embedding = GeneratedInput(
+                               size=target_dictionary_dim,
+                               embedding_name="target_language_embedding",
+                               embedding_size=word_vector_dim)
+
         beam_gen = beam_search(name="decoder",
                                step=rnn_step,
-                               input=[StaticInput(encoder_last)],
+                               input=[StaticInput(encoder_last),
+                                      generated_word_embedding],
                                bos_id=0,
                                eos_id=1,
                                beam_size=5)
@@ -3551,7 +3663,8 @@ def beam_search(step,
                  You can refer to the first parameter of recurrent_group, or
                  demo/seqToseq/seqToseq_net.py for more details.
     :type step: callable
-    :param input: Input data for the recurrent unit
+    :param input: Input data for the recurrent unit, which should include the
+                  previously generated words as a GeneratedInput object.
     :type input: list
     :param bos_id: Index of the start symbol in the dictionary. The start symbol
                    is a special token for NLP task, which indicates the
@@ -3658,8 +3771,7 @@ def mse_cost(input, label, weight=None, name=None, layer_attr=None):
 
     ..  math::
 
-       $\frac{1}{N}\sum_{i=1}^N(t _i- y_i)^2$
-
+        \frac{1}{N}\sum_{i=1}^N(t_i-y_i)^2
 
     :param name: layer name.
     :type name: basestring
@@ -4807,12 +4919,14 @@ def crf_decoding_layer(input,
     return LayerOutput(name, LayerType.CRF_DECODING_LAYER, parents, size=1)
 
 
+@wrap_act_default(act=SigmoidActivation())
 @wrap_bias_attr_default(has_bias=True)
 @wrap_name_default()
 @layer_support()
 def nce_layer(input,
               label,
               num_classes,
+              act=None,
               weight=None,
               num_neg_samples=10,
               neg_distribution=None,
@@ -4841,6 +4955,8 @@ def nce_layer(input,
     :type weight: LayerOutput
     :param num_classes: number of classes.
     :type num_classes: int
+    :param act: Activation, default is Sigmoid.
+    :type act: BaseActivation
     :param num_neg_samples: number of negative samples. Default is 10.
     :type num_neg_samples: int
     :param neg_distribution: The distribution for generating the random negative labels.
@@ -4862,7 +4978,9 @@ def nce_layer(input,
     if neg_distribution is not None:
         assert isinstance(neg_distribution, collections.Sequence)
         assert len(neg_distribution) == num_classes
-        assert sum(neg_distribution) == 1
+        assert abs(sum(neg_distribution) - 1.0) < 1e-5
+    if not isinstance(act, BaseActivation):
+        raise TypeError()
 
     ipts_for_layer = []
     parents = []
@@ -4884,12 +5002,17 @@ def nce_layer(input,
         type=LayerType.NCE_LAYER,
         num_classes=num_classes,
         neg_sampling_dist=neg_distribution,
+        active_type=act.name,
         num_neg_samples=num_neg_samples,
         inputs=ipts_for_layer,
         bias=ParamAttr.to_bias(bias_attr),
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
-        name, LayerType.NCE_LAYER, parents=parents, size=l.config.size)
+        name,
+        LayerType.NCE_LAYER,
+        parents=parents,
+        size=l.config.size,
+        activation=act)
 
 
 """
@@ -5208,8 +5331,6 @@ def multi_binary_label_cross_entropy(input,
     :type input: LayerOutput
     :param label: The input label.
     :type input: LayerOutput
-    :param type: The type of cost.
-    :type type: basestring
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
@@ -5238,3 +5359,52 @@ def multi_binary_label_cross_entropy(input,
         LayerType.MULTI_BIN_LABEL_CROSS_ENTROPY,
         parents=[input, label],
         size=1)
+
+
+@wrap_name_default()
+@layer_support()
+def smooth_l1_cost(input, label, name=None, layer_attr=None):
+    """
+    This is a L1 loss but more smooth. It requires that the
+    size of input and label are equal. The formula is as follows,
+
+    .. math::
+
+        L = \sum_{i} smooth_{L1}(input_i - label_i)
+
+    in which
+
+    .. math::
+
+        smooth_{L1}(x) = \\begin{cases} 0.5x^2& \\text{if}  \\ |x| < 1 \\\\ |x|-0.5& \\text{otherwise} \end{cases}
+
+    More details can be found by referring to `Fast R-CNN
+    <https://arxiv.org/pdf/1504.08083v2.pdf>`_
+
+    .. code-block:: python
+
+       cost = smooth_l1_cost(input=input_layer,
+                             label=label_layer)
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param label: The input label.
+    :type input: LayerOutput
+    :param name: The name of this layers. It is not necessary.
+    :type name: None|basestring
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    assert isinstance(label, LayerOutput)
+    assert input.size == label.size
+
+    Layer(
+        name=name,
+        type=LayerType.SMOOTH_L1,
+        inputs=[input.name, label.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.SMOOTH_L1, parents=[input, label], size=1)

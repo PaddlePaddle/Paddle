@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-IMDB dataset: http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz
+IMDB dataset.
 
-TODO(yuyang18): Complete comments.
+This module downloads IMDB dataset from
+http://ai.stanford.edu/%7Eamaas/data/sentiment/. This dataset contains a set
+of 25,000 highly polar movie reviews for training, and 25,000 for testing.
+Besides, this module also provides API for building dictionary.
 """
 
 import paddle.v2.dataset.common
+import collections
 import tarfile
 import Queue
 import re
@@ -30,8 +34,11 @@ URL = 'http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz'
 MD5 = '7c2ac02c03563afcf9b574c7e56c153a'
 
 
-# Read files that match pattern.  Tokenize and yield each file.
 def tokenize(pattern):
+    """
+    Read files that match the given pattern.  Tokenize and yield each file.
+    """
+
     with tarfile.open(paddle.v2.dataset.common.download(URL, 'imdb',
                                                         MD5)) as tarf:
         # Note that we should use tarfile.next(), which does
@@ -48,10 +55,14 @@ def tokenize(pattern):
 
 
 def build_dict(pattern, cutoff):
-    word_freq = {}
+    """
+    Build a word dictionary from the corpus. Keys of the dictionary are words,
+    and values are zero-based IDs of these words.
+    """
+    word_freq = collections.defaultdict(int)
     for doc in tokenize(pattern):
         for word in doc:
-            paddle.v2.dataset.common.dict_add(word_freq, word)
+            word_freq[word] += 1
 
     # Not sure if we should prune less-frequent words here.
     word_freq = filter(lambda x: x[1] > cutoff, word_freq.items())
@@ -109,18 +120,46 @@ def reader_creator(pos_pattern, neg_pattern, word_idx, buffer_size):
 
 
 def train(word_idx):
+    """
+    IMDB training set creator.
+
+    It returns a reader creator, each sample in the reader is an zero-based ID
+    sequence and label in [0, 1].
+
+    :param word_idx: word dictionary
+    :type word_idx: dict
+    :return: Training reader creator
+    :rtype: callable
+    """
     return reader_creator(
         re.compile("aclImdb/train/pos/.*\.txt$"),
         re.compile("aclImdb/train/neg/.*\.txt$"), word_idx, 1000)
 
 
 def test(word_idx):
+    """
+    IMDB test set creator.
+
+    It returns a reader creator, each sample in the reader is an zero-based ID
+    sequence and label in [0, 1].
+
+    :param word_idx: word dictionary
+    :type word_idx: dict
+    :return: Test reader creator
+    :rtype: callable
+    """
     return reader_creator(
         re.compile("aclImdb/test/pos/.*\.txt$"),
         re.compile("aclImdb/test/neg/.*\.txt$"), word_idx, 1000)
 
 
 def word_dict():
+    """
+    Build a word dictionary from the corpus.
+
+    :return: Word dictionary
+    :rtype: dict
+    """
     return build_dict(
         re.compile("aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$"), 150)
 
