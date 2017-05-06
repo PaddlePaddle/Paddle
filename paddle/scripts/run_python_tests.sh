@@ -29,7 +29,7 @@ if [ $USE_VIRTUALENV_FOR_TEST -ne 0 ]; then
 fi
 
 export PYTHONPATH=$SCRIPTPATH/../../python/
-$PYTHON -m pip install $SCRIPTPATH/../dist/*.whl requests matplotlib ipython==5.
+$PYTHON -m pip install $SCRIPTPATH/../dist/*.whl requests matplotlib ipython==5.3
 
 for fn in "$@"
 do
