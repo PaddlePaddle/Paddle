@@ -1,9 +1,6 @@
 # Submit a Distributed Training Job
 
-If a user wants to start up a distributed training job, he will submit the distributed training job with Python code.
-
-If a user wants to start up a local train, he will start up a PaddlePaddle production Docker container firstly, and then
-execute `python train.py` in the Docker container. The details about PaddlePaddle Docker image is [here](../../../paddle/scripts/docker/README.md).
+The user can submit a distributed training job with Python code, rather than with a command-line interface.
 
 ## Runtime Environment On Kubernetes
 
@@ -17,29 +14,30 @@ For a distributed training job, there is two Docker image called *runtime Docker
 
   The trainer package which user upload and some Python dependencies are packaged into a runtime Docker image based on base Docker image.
 
-- Python Dependencies
+  - Python Dependencies
 
-  You need to provide requirments.txt file in your "trainer" package. Example:
-  ```txt
-  pillow
-  protobuf==3.1.0
-  ```
-  More [details](https://pip.readthedocs.io/en/1.1/requirements.html) about requirements.
+    You need to provide requirements.txt file in your "trainer" package. Example:
+    ```txt
+    pillow
+    protobuf==3.1.0
+    ```
+    More [details](https://pip.readthedocs.io/en/1.1/requirements.html) about requirements.
 
-  An example project looks like:
-  ```bash
-    paddle_example
-      |-quick_start
-        |-trainer.py
-        |-dataset.py
-        |-requirments.txt
-  ```
+    An example project looks like:
+    ```bash
+      paddle_example
+        |-quick_start
+          |-trainer.py
+          |-dataset.py
+          |-requirements.txt
+    ```
 
 ## Submit Distributed Training Job With Python Code
 <img src="./src/submit-job-python.png" width="800">
+
 - `paddle.job.dist_train()` will call the Job Server API `/v1/packages` to upload the trainer package and save them on CephFS, and then call `/v1/trainer/job` to submit the PaddlePaddle distributed job.
 - `/v1/trainer/job` will start a building job for preparing the runtime Docker image. When the building job is finished, Job Server will submit the PaddlePaddle distributed job to Kubernetes.
-- *NOTE*: The first stage, we only implement submit the PaddlePaddle job in `paddle.job.dist_train()`
+- *NOTE*: For the first version, we will not prepare the runtime docker image, instead, we will mount the trainer package in a temporary folder into the base docker image. We will not support custom Python dependencies in the first version as well.
 
 You can call `paddle.job.dist_train` and provide distributed training configuration as the parameters:
 ```python
@@ -48,14 +46,14 @@ paddle.job.dist_train(
                               paddle.updater.Adam(...)),
     reader=reader,
     paddle_job=PaddleJob(
-      job_name="quickstart",
-      use_gpu=True,
-      cpu_num=4,
-      gpu_num=2,
+      pservers=3,
+      base_image="yancey1989/paddle-cloud",
+      job_name="paddle-job",
+      namespace="paddle-cloud",
+      cpu_num=3,
       memory="1G"
-      input=/quickstart/input,
-      output=/quickstart/output,
-      base_image="paddlepaddle/paddle:0.10.rc2")
+      trainer_package="/example/word2vec",
+      entry_point="python %s" % __file__)
 ```
 
 The pseudo code of `paddle.job.dist_train` is as follows:
@@ -72,20 +70,39 @@ The pseudo code of `paddle.job.dist_train` is as follows:
 
 parameter | required | default | explain
   --- | --- | --- | ---
-job_name|YES||you should special a uniq job name which in a namespace
-trainer_package|YES|| entry point for startup trainer process
-input| YES || input directory on distributed file system
-output|YES|| output directory on distributed file system
-pservers|YES|| parameter server process count
-base-image|YES||PaddlePaddle production Docker image
-memory|YES|| limits for memory
-use_gpu|NO|false| whether use GPU
-cpu_num|NO|1| if `use_gpu=false`, this parameter is required
-gpu_num|NO|1| if `use_gpu=true`, this parameter is required
+job_name|YES||you should special a unique job name which in a namespace
+entry_point|YES|| entry point for startup trainer process
+trainer_package|YES|| trainer package file path, you can special a cloud path with `pfs://home/paddle` or a local path in Docker container with `/home/paddle`
+pserver_bucket|YES|mini| you can special `pserver-bucket` for the PServer resource
+base_image|YES||PaddlePaddle production Docker image
+memory|YES|| memory for the trainers totally used
+cpu_num|YES|1| CPU count for the trainers totally used
+gpu_num|NO|0| GPU count for the trainers totally used
+pservers|NO|1| custom PServer count
+pserver_cpu|NO|1| custom PServer CPU count
+pserver_memory|NO|1| custom PServer memory limit
 
-- Startup Parameter Server and Trainer Jobs
-  - Deploy parameter server job, it's a Kubernetes ReplicaSet.
-  - Deploy trainer job, it's a Kubernetes Job.
+### Special Resource for Distributed Training Job
+- PServer Resource
+  - Special `pserver_bucket`
+    - `pserver_bucket=mini` for only on PServer process.
+    - `pserver_bueckt=stander` for many PServer processes.
+    - `pserver_bucket=premium` for large PServer processes
+  - Custom PServer Resource
+    You can also custom the PServer resource without special `pserver_bucket`
+    - You *must* set `pservers` to special the PServer process count.
+    - You *must* set `pserver_memory` to special the memory limit for each PServer process.
+    - You *must* set `pserver_cpu` to special the CPU count for each PServer process.
+
+- Trainer Resource
+  - you *may* special `gpu_num` for the trainers totally used. By default, trainer count equal GPU count.
+  - you *must* special `cpu_num` for the trainers totally used. if `gpu_num=0`, trainer count equal CPU count.  
+  - you *must* special `memory` for the trainers totally used, you can express memory as a plain integer using one of these suffixes: E, P, T, G, M, K.
+
+### Deploy Parameter Server, Trainer and Master Process
+  - Deploy PaddlePaddle Parameter Server processes, it's a Kubernetes ReplicaSet.
+  - Deploy PaddlePaddle Trainer processes, it's a Kubernetes Job.
+  - Deploy PaddlePaddle Master processes, it's a Kubernetes ReplicaSet.
 
 # Job Server
 
@@ -105,11 +122,12 @@ gpu_num|NO|1| if `use_gpu=true`, this parameter is required
   `paddle.job.dist_train` will upload the trainer package to Job Server and then save them on the distributed filesystem, and then start up a job for building the runtime Docker image, Parameter Server and Trainer will use this runtime Docker image.
 
   There are some benefits for building runtime Docker image on JobServer:
-  - **Docker in Docker** should mount `docker.sock` in the container and set `--privileged`, if the code running in a kubernetes pod, it's not safe.
-  - Users only need to upload the training package files, does not dependency docker engine, docker registry.
+  - On Paddle Cloud, user will run the trainer code in a Jupyter Notebook which is a Kubernetes Pod, if we want to execute `docker build` in the Pod, we should mount the host's `docker.sock` to the Pod, user's code will connect the host's Docker Engine directly, it's not safe.
+  - Users only need to upload the training package files, does not need to install docker engine, docker registry as dependencies.
   - If we want to change another image type, such as RKT, the user does not need to care about it.
 
-- Start Up Parameter Server and Trainer Jobs
+- Deploy Parameter Server, Trainer and Master Processes
   `POST /v1/trainer/job` receives the distributed training parameters, and deploy the job as follows:
-  - Deploy PServer job, it's a Kubernetes ReplicaSet.
-  - Deploy Trainer job, it's a Kubernetes Job.
+  - Deploy PaddlePaddle Parameter Server processes, it's a Kubernetes ReplicaSet.
+  - Deploy PaddlePaddle Trainer processes, it's a Kubernetes Job.
+  - Deploy PaddlePaddle Master processes, it's a Kubernetes ReplicaSet.
