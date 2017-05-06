@@ -73,11 +73,11 @@ parameter | required | default | explain
 job_name|YES||you should special a unique job name which in a namespace
 entry_point|YES|| entry point for startup trainer process
 trainer_package|YES|| trainer package file path, you can special a cloud path with `pfs://home/paddle` or a local path in Docker container with `/home/paddle`
-pserver_bucket|YES|mini| you can special `pserver-bucket` for the PServer resource
 base_image|YES||PaddlePaddle production Docker image
 memory|YES|| memory for the trainers totally used
 cpu_num|YES|1| CPU count for the trainers totally used
 gpu_num|NO|0| GPU count for the trainers totally used
+pserver_bucket|NO|mini| you can special `pserver-bucket` for the PServer resource
 pservers|NO|1| custom PServer count
 pserver_cpu|NO|1| custom PServer CPU count
 pserver_memory|NO|1| custom PServer memory limit
