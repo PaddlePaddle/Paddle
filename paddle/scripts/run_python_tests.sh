@@ -29,7 +29,7 @@ if [ $USE_VIRTUALENV_FOR_TEST -ne 0 ]; then
    source .test_env/bin/activate
    PYTHON=python
 fi
-
+export PYTHONPATH=
 $PYTHON -m pip install $SCRIPTPATH/../dist/*.whl
 # The next line is for debug, will be deleted
 $PYTHON -m pip list
