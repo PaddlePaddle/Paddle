@@ -122,11 +122,12 @@ pserver_memory|NO|1| custom PServer memory limit
   `paddle.job.dist_train` will upload the trainer package to Job Server and then save them on the distributed filesystem, and then start up a job for building the runtime Docker image, Parameter Server and Trainer will use this runtime Docker image.
 
   There are some benefits for building runtime Docker image on JobServer:
-  - On Paddle Cloud, user will run the trainer code in a Jupyter Notebook which is a Kubernetes Pod, if we want to execute `docker build` in the Pod, we should mount the host's `docker.sock` to the Pod, user's code will connect the host's Docker Engine directly, it's not safe.
+  - On Paddle Cloud, the user will run the trainer code in a Jupyter Notebook which is a Kubernetes Pod, if we want to execute `docker build` in the Pod, we should mount the host's `docker.sock` to the Pod, user's code will connect the host's Docker Engine directly, it's not safe.
   - Users only need to upload the training package files, does not need to install docker engine, docker registry as dependencies.
   - If we want to change another image type, such as RKT, the user does not need to care about it.
 
 - Deploy Parameter Server, Trainer and Master Processes
+
   `POST /v1/trainer/job` receives the distributed training parameters, and deploy the job as follows:
   - Deploy PaddlePaddle Parameter Server processes, it's a Kubernetes ReplicaSet.
   - Deploy PaddlePaddle Trainer processes, it's a Kubernetes Job.
