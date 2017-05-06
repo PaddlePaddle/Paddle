@@ -34,7 +34,8 @@ cmake .. \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 make -j `nproc`
 if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
-    ctest -V 
+    pip uninstall -y py-paddle paddle
+    ctest -V
 fi
 make install
 pip install /usr/local/opt/paddle/share/wheels/*.whl
