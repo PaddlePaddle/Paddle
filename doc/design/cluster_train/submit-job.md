@@ -46,7 +46,7 @@ paddle.job.dist_train(
                               paddle.updater.Adam(...)),
     reader=reader,
     paddle_job=PaddleJob(
-      pservers=3,
+      pserver_bucket="stander",
       base_image="yancey1989/paddle-cloud",
       job_name="paddle-job",
       namespace="paddle-cloud",
