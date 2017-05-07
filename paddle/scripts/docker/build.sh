@@ -128,17 +128,6 @@ Generate /paddle/build/Dockerfile ...
 ========================================
 EOF
 
-if [ ${WITH_GPU} == "ON" ]; then
-  BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04"
-  # additional packages to install when building gpu images
-  GPU_DOCKER_PKG="python-pip python-dev"
-else
-  BASE_IMAGE="python:2.7.13-slim"
-  # FIXME: Python base image uses different python version than WITH_GPU
-  # need to change PYTHONHOME to /usr/local when using python base image
-  CPU_DOCKER_PYTHON_HOME_ENV="ENV PYTHONHOME /usr/local"
-fi
-
 cat > /paddle/build/Dockerfile <<EOF
 FROM ${BASE_IMAGE}
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>

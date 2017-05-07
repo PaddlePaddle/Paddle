@@ -92,7 +92,7 @@ add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so
 # TODO(yuyang18) : make wheel name calculated by cmake
 add_custom_target(python_api_wheel ALL DEPENDS ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so)
 
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/dist/
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/dist/
     DESTINATION opt/paddle/share/wheels
 )
 
