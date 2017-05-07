@@ -76,6 +76,7 @@ function(link_paddle_exe TARGET_NAME)
         paddle_gserver
         paddle_function
         ARCHIVE_END
+        paddle_topology
         paddle_pserver
         paddle_trainer_lib
         paddle_network

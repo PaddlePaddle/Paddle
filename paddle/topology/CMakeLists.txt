@@ -1,0 +1,23 @@
+file(GLOB_RECURSE TOPOLOGY_HEADERS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.h")
+file(GLOB_RECURSE TOPOLOGY_SOURCES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.cpp")
+
+macro(filter_test VAR_NAME)
+    set(tmp)
+    foreach(p IN LISTS ${VAR_NAME})
+        if(NOT ${p} MATCHES ".*tests/.*")
+             set(tmp ${p} ${tmp})
+        endif()
+    endforeach()
+    set(${VAR_NAME} ${tmp})
+endmacro()
+
+filter_test(TOPOLOGY_HEADER)
+filter_test(TOPOLOGY_SOURCES)
+add_library(paddle_topology STATIC
+	${TOPOLOGY_SOURCES})
+add_style_check_target(paddle_topology ${TOPOLOGY_HEADERS})
+add_style_check_target(paddle_topology ${TOPOLOGY_SOURCES})
+add_dependencies(paddle_topology gen_proto_cpp)
+if(WITH_TESTING)
+    add_subdirectory(meta/tests)
+endif()
