@@ -52,7 +52,7 @@ paddle.job.dist_train(
       cpu_num=3,
       memory="1G"
       trainer_package="/example/word2vec",
-      entry_point="python %s" % __file__)
+      entry_point="python %s" % __file__))
 ```
 
 The pseudo code of `paddle.job.dist_train` is as follows:
