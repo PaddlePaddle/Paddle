@@ -249,7 +249,7 @@ class Parameters(object):
         size = reduce(lambda a, b: a * b, param.shape)
         f.write(struct.pack("IIQ", 0, 4, size))
         param = param.astype(np.float32)
-        f.write(param.tobytes())
+        f.write(param.tostring())
 
     def deserialize(self, name, f):
         """
