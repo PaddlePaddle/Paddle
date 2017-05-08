@@ -258,15 +258,12 @@ TEST(Compare, img_conv) {
 
 // Test cudnn_conv and exconv give the same result
 TEST(Compare, img_conv2) {
-  std::string config_file_a = "./gserver/tests/img_conv_a.conf";
-  std::string config_file_b = "./gserver/tests/img_conv_c.conf";
+  std::string config_file_a = "./gserver/tests/config_file_a.conf";
+  std::string config_file_b = "./gserver/tests/config_file_b.conf";
   bool useGpu = FLAGS_use_gpu;
-  double eps = FLAGS_checkgrad_eps;
   FLAGS_use_gpu = true;
-  FLAGS_checkgrad_eps = 1e-3;
   compareNetwork(config_file_a, config_file_b);
   FLAGS_use_gpu = useGpu;
-  FLAGS_checkgrad_eps = eps;
 }
 #endif
 
