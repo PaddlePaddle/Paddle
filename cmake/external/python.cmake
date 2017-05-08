@@ -1,11 +1,11 @@
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,7 +19,7 @@ FIND_PACKAGE(PythonInterp 2.7)
 FIND_PACKAGE(PythonLibs 2.7)
 
 SET(py_env "")
-
+SET(USE_VIRTUALENV_FOR_TEST 1)
 IF(PYTHONLIBS_FOUND AND PYTHONINTERP_FOUND)
     find_python_module(pip REQUIRED)
     find_python_module(numpy REQUIRED)
