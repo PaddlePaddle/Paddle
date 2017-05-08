@@ -258,8 +258,8 @@ TEST(Compare, img_conv) {
 
 // Test cudnn_conv and exconv give the same result
 TEST(Compare, img_conv2) {
-  std::string config_file_a = "./gserver/tests/config_file_a.conf";
-  std::string config_file_b = "./gserver/tests/config_file_b.conf";
+  std::string config_file_a = "./gserver/tests/img_conv_cudnn.py";
+  std::string config_file_b = "./gserver/tests/img_conv_exconv.py";
   bool useGpu = FLAGS_use_gpu;
   FLAGS_use_gpu = true;
   compareNetwork(config_file_a, config_file_b);
