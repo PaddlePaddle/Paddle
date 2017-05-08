@@ -16,13 +16,17 @@
 from paddle.trainer_config_helpers import *
 
 settings(batch_size=10)
-data = data_layer(name ="input", size=8*16*16)
-conv = img_conv_layer(input=data, filter_size=1, filter_size_y=1,
-                      num_channels=8,
-                      num_filters=16, stride=1,
-                      bias_attr=True,
-                      act=LinearActivation(),
-                      groups=2,
-                      layer_type="cudnn_conv")
+data = data_layer(name="input", size=8 * 16 * 16)
+conv = img_conv_layer(
+    input=data,
+    filter_size=1,
+    filter_size_y=1,
+    num_channels=8,
+    num_filters=16,
+    stride=1,
+    bias_attr=True,
+    act=LinearActivation(),
+    groups=2,
+    layer_type="cudnn_conv")
 
 outputs(conv)
