@@ -20,4 +20,5 @@ third_party/
 *.#*
 ./build
 *.pyc
+*.ycm*
 
