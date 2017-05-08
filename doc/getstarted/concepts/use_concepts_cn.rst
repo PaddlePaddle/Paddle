@@ -2,9 +2,9 @@
 基本使用概念
 ############
 
-PaddlePaddle是源于百度的一个深度学习平台。PaddlePaddle为深度学习研究人员提供了丰富的API，可以轻松的完成神经网络配置，模型训练等任务。
+PaddlePaddle是源于百度的一个深度学习平台。PaddlePaddle为深度学习研究人员提供了丰富的API，可以轻松地完成神经网络配置，模型训练等任务。
 这里将介绍PaddlePaddle的基本使用概念，并且展示了如何利用PaddlePaddle来解决一个经典的线性回归问题。
-在使用该文档之前，请参考 `安装文档 <http://www.paddlepaddle.org/develop/doc_cn/getstarted/build_and_install/index_cn.html>`_ 完成PaddlePaddle的安装。
+在使用该文档之前，请参考 `安装文档 <../build_and_install/index_cn.html>`_ 完成PaddlePaddle的安装。
 
 
 配置网络
@@ -102,7 +102,7 @@ PaddlePaddle支持不同类型的输入数据，主要包括四种类型，和�
                                  parameters=parameters,
                                  update_equation=optimizer)
 
-其中，trianer接收三个参数，包括神经网络拓扑结构，神经网络参数以及迭代方程。
+其中，trainer接收三个参数，包括神经网络拓扑结构、神经网络参数以及迭代方程。
 
 在搭建神经网络的过程中，我们仅仅对神经网络的输入进行了描述。而trainer需要读取训练数据进行训练，PaddlePaddle中通过reader来加载数据。
 
@@ -137,6 +137,7 @@ PaddlePaddle支持不同类型的输入数据，主要包括四种类型，和�
         event_handler=event_handler,
         num_passes=100)
 
+关于PaddlePaddle的更多使用方法请参考 `进阶指南 <../../howto/index_cn.html>`_。
 
 线性回归完整示例
 ==============
@@ -146,4 +147,4 @@ PaddlePaddle支持不同类型的输入数据，主要包括四种类型，和�
 ..  literalinclude:: src/train.py
     :linenos:
 
-有关线性回归的实际应用，可以参考Paddle book的 `第一章节 <http://book.paddlepaddle.org/index.html>`_
+有关线性回归的实际应用，可以参考PaddlePaddle book的 `第一章节 <http://book.paddlepaddle.org/index.html>`_。
