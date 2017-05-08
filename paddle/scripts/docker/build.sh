@@ -34,7 +34,7 @@ cmake .. \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 make -j `nproc`
 if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
-    pip uninstall -y py-paddle paddle
+    pip uninstall -y py-paddle paddle || true
     ctest -V
 fi
 make install
