@@ -27,9 +27,12 @@ IF(NOT ${CBLAS_FOUND})
     SET(COMMON_ARGS CC=${CMAKE_C_COMPILER} NO_LAPACK=1 NO_SHARED=1)
 
     IF(ANDROID)
+        # arm_soft_fp_abi branch of OpenBLAS to support softfp
+        #   https://github.com/xianyi/OpenBLAS/tree/arm_soft_fp_abi
         SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
         SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0 libs)
     ELSEIF(RPI)
+        # use hardfp
         SET(OPENBLAS_COMMIT "v0.2.19")
         SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 USE_THREAD=0 libs)
     ELSE()
