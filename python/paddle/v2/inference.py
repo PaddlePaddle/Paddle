@@ -79,8 +79,9 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
 
     ..  code-block:: python
 
-        result = paddle.infer(prediction, parameters, input=SomeData,
-                              batch_size=32)
+        result = paddle.infer(outptut_layer=prediction, 
+                              parameters=parameters, 
+                              input=SomeData)
         print result
 
     :param output_layer: output of the neural network that would be inferred
