@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "PadLayer.h"
+#include "paddle/function/Function.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -43,18 +44,20 @@ bool PadLayer::init(const LayerMap& layerMap,
   outDims_ = TensorShape(4);
   setOutDims(0);
 
-  createFunction(forward_,
+  appendFunction(&forward_,
                  "Pad",
                  FuncConfig()
                      .set("channel", padc_)
                      .set("height", padh_)
-                     .set("width", padw_));
-  createFunction(backward_,
+                     .set("width", padw_),
+                 useGpu_);
+  appendFunction(&backward_,
                  "PadGrad",
                  FuncConfig()
                      .set("channel", padc_)
                      .set("height", padh_)
-                     .set("width", padw_));
+                     .set("width", padw_),
+                 useGpu_);
 
   return true;
 }
@@ -90,7 +93,7 @@ void PadLayer::forward(PassType passType) {
   BufferArgs outputs;
   inputs.addArg(*getInputValue(0), inDims_);
   outputs.addArg(*getOutputValue(), outDims_, ASSIGN_TO);
-  forward_[0]->calc(inputs, outputs);
+  forward_[0](inputs, outputs);
 }
 
 void PadLayer::backward(const UpdateCallback& callback) {
@@ -101,6 +104,6 @@ void PadLayer::backward(const UpdateCallback& callback) {
   BufferArgs outputs;
   inputs.addArg(*getOutputGrad(), outDims_);
   outputs.addArg(*getInputGrad(0), inDims_, ADD_TO);
-  backward_[0]->calc(inputs, outputs);
+  backward_[0](inputs, outputs);
 }
 }  // namespace paddle

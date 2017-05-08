@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <vector>
 #include "NormLayer.h"
+#include "WithFunction.h"
+#include "paddle/function/BufferArg.h"
 #include "paddle/math/Matrix.h"
 
 namespace paddle {
@@ -24,7 +26,7 @@ namespace paddle {
  * @brief response normalization across feature maps
  * namely normalize in number of size_ channels
  */
-class CMRProjectionNormLayer : public ResponseNormLayer {
+class CMRProjectionNormLayer : public ResponseNormLayer, public WithFunction {
   size_t imgSizeH_, imgSizeW_;
   size_t outputH_, outputW_;
 

@@ -99,27 +99,6 @@ public:
   size_t getOutputSize() const { return config_.output_size(); }
 
 protected:
-  /**
-   * Create layer function. Function is called in forward or backward.
-   * \param function, Layer::forward_ or Layer::backward_
-   * \param name, function name
-   * \param config, initialization configuration for the function
-   */
-  void createFunction(std::vector<std::shared_ptr<FunctionBase>>& function,
-                      const std::string& name,
-                      const FuncConfig& config) {
-    if (useGpu_) {
-      function.emplace_back(
-          FunctionBase::funcRegistrar_.createByType(name + "-GPU"));
-    } else {
-      function.emplace_back(
-          FunctionBase::funcRegistrar_.createByType(name + "-CPU"));
-    }
-    auto& func = function.back();
-    func->init(config);
-  }
-
-protected:
   /// Config of projection
   ProjectionConfig config_;
   /// Parameter of projection
@@ -132,9 +111,5 @@ protected:
   const Argument* out_;
   /// Store `passType` passed to forward()
   PassType passType_;
-  /// Layer forward function
-  std::vector<std::shared_ptr<FunctionBase>> forward_;
-  /// Layer backward function
-  std::vector<std::shared_ptr<FunctionBase>> backward_;
 };
 }  // namespace paddle

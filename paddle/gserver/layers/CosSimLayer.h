@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #include "Layer.h"
+#include "WithFunction.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/utils/ThreadLocal.h"
 
@@ -32,7 +32,7 @@ namespace paddle {
  *
  * The config file api is cos_sim.
  */
-class CosSimLayer : public Layer {
+class CosSimLayer : public Layer, public WithFunction {
 public:
   explicit CosSimLayer(const LayerConfig& config) : Layer(config) {}
 

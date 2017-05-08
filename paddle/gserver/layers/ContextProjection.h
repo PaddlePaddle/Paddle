@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "Projection.h"
-
+#include "WithFunction.h"
 namespace paddle {
 
 /**
@@ -41,7 +41,7 @@ namespace paddle {
  *
  * The config file api is context_projection.
  */
-class ContextProjection : public Projection {
+class ContextProjection : public Projection, public WithFunction {
 public:
   /**
    * Constructor. If context_start is zero and context_lenth is one, it will
