@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Layer.h"
+#include "WithFunction.h"
+#include "paddle/function/BufferArg.h"
+#include "paddle/function/Function.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
@@ -31,7 +34,7 @@ namespace paddle {
  * Output: a vector (batchSize * weightDim)
  */
 
-class CosSimVecMatLayer : public Layer {
+class CosSimVecMatLayer : public Layer, public WithFunction {
 protected:
   MatrixPtr tmpMtx0;
   MatrixPtr tmpMtx1;
@@ -100,12 +103,14 @@ bool CosSimVecMatLayer::init(const LayerMap& layerMap,
 
   CHECK(tmpRow0 && tmpRow1 && tmpRow2 && tmpRow3 && tmpMtx0 && tmpMtx1);
 
-  createFunction(forward_,
+  appendFunction(&forward_,
                  "CosSimForward",
-                 FuncConfig().set("scale", (real)config_.cos_scale()));
-  createFunction(backward_,
+                 FuncConfig().set("scale", (real)config_.cos_scale()),
+                 useGpu_);
+  appendFunction(&backward_,
                  "CosSimBackward",
-                 FuncConfig().set("scale", (real)config_.cos_scale()));
+                 FuncConfig().set("scale", (real)config_.cos_scale()),
+                 useGpu_);
 
   return true;
 }
@@ -140,7 +145,7 @@ void CosSimVecMatLayer::forward(PassType passType) {
     inputs.addArg(*tmpMtx0);
     inputs.addArg(*tmpRow0);
     outputs.addArg(*tmpRow2, ASSIGN_TO);
-    forward_[0]->calc(inputs, outputs);
+    forward_[0](inputs, outputs);
   }
 }
 
@@ -175,7 +180,7 @@ void CosSimVecMatLayer::backward(const UpdateCallback& callback) {
     outputs.addArg(*tmpMtx1, ADD_TO);
     outputs.addArg(*tmpRow1, ADD_TO);
 
-    backward_[0]->calc(inputs, outputs);
+    backward_[0](inputs, outputs);
   }
 }
 

@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "ContextProjection.h"
+#include "paddle/function/Function.h"
 #include "paddle/utils/Stat.h"
-
 namespace paddle {
 
 REGISTER_PROJECTION(context, ContextProjection);
@@ -48,20 +48,22 @@ bool ContextProjection::init() {
   bool is_padding = config_.trainable_padding();
   size_t total_pad = is_padding ? beginPad_ + endPad_ : 0;
 
-  createFunction(forward_,
+  appendFunction(&forward_,
                  "ContextProjectionForward",
                  FuncConfig()
                      .set("context_length", context_length)
                      .set("context_start", context_start)
-                     .set("begin_pad", beginPad_));
-  createFunction(backward_,
+                     .set("begin_pad", beginPad_),
+                 useGpu_);
+  appendFunction(&backward_,
                  "ContextProjectionBackward",
                  FuncConfig()
                      .set("context_length", context_length)
                      .set("context_start", context_start)
                      .set("begin_pad", beginPad_)
                      .set("is_padding", is_padding)
-                     .set("total_pad", total_pad));
+                     .set("total_pad", total_pad),
+                 useGpu_);
 
   return true;
 }
@@ -127,7 +129,7 @@ void ContextProjection::forward() {
                   *start_pos);
   }
   outputs.addArg(*out_->value, *start_pos, ADD_TO);
-  forward_[0]->calc(inputs, outputs);
+  forward_[0](inputs, outputs);
 
   if (state_ && config_.context_start() < 0) {
     CHECK_EQ(1, in_->getNumSequences());
@@ -175,7 +177,7 @@ void ContextProjection::backward(const UpdateCallback& callback) {
                            w_ptr ? w_ptr->getHeight() : 0,
                            input_dim),
                  ADD_TO);
-  backward_[0]->calc(inputs, outputs);
+  backward_[0](inputs, outputs);
 
   if (config_.trainable_padding()) {
     weight_->getParameterPtr()->incUpdate(callback);

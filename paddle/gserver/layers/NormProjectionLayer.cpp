@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "NormProjectionLayer.h"
+#include "paddle/function/Function.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
@@ -45,14 +46,16 @@ bool CMRProjectionNormLayer::init(const LayerMap& layerMap,
   /* the size of inputs for norm-layer is 1 */
   CHECK_EQ(config_.inputs_size(), 1);
 
-  createFunction(
-      forward_,
+  appendFunction(
+      &forward_,
       "CrossMapNormal",
-      FuncConfig().set("size", size_).set("scale", scale_).set("pow", pow_));
-  createFunction(
-      backward_,
+      FuncConfig().set("size", size_).set("scale", scale_).set("pow", pow_),
+      useGpu_);
+  appendFunction(
+      &backward_,
       "CrossMapNormalGrad",
-      FuncConfig().set("size", size_).set("scale", scale_).set("pow", pow_));
+      FuncConfig().set("size", size_).set("scale", scale_).set("pow", pow_),
+      useGpu_);
 
   return true;
 }
@@ -77,7 +80,7 @@ void CMRProjectionNormLayer::forward(PassType passType) {
   outputs.addArg(*getOutputValue(), shape_, ASSIGN_TO);
   outputs.addArg(*denoms_, shape_, ASSIGN_TO);
 
-  forward_[0]->calc(inputs, outputs);
+  forward_[0](inputs, outputs);
 }
 
 void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
@@ -96,6 +99,6 @@ void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
   inputs.addArg(*denoms_, shape_);
   outputs.addArg(*getInputGrad(0), shape_, ADD_TO);
 
-  backward_[0]->calc(inputs, outputs);
+  backward_[0](inputs, outputs);
 }
 }  // namespace paddle

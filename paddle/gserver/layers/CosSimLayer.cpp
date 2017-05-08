@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "CosSimLayer.h"
+#include "paddle/function/Function.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
@@ -27,12 +28,14 @@ bool CosSimLayer::init(const LayerMap& layerMap,
 
   CHECK_EQ(inputLayers_.size(), 2LU);
 
-  createFunction(forward_,
+  appendFunction(&forward_,
                  "CosSimForward",
-                 FuncConfig().set("scale", (real)config_.cos_scale()));
-  createFunction(backward_,
+                 FuncConfig().set("scale", (real)config_.cos_scale()),
+                 useGpu_);
+  appendFunction(&backward_,
                  "CosSimBackward",
-                 FuncConfig().set("scale", (real)config_.cos_scale()));
+                 FuncConfig().set("scale", (real)config_.cos_scale()),
+                 useGpu_);
 
   return true;
 }
@@ -61,7 +64,7 @@ void CosSimLayer::forward(PassType passType) {
     inputs.addArg(*prevOut1);
     inputs.addArg(*prevOut2);
     outputs.addArg(*outV, ASSIGN_TO);
-    forward_[0]->calc(inputs, outputs);
+    forward_[0](inputs, outputs);
   }
 }
 
@@ -86,7 +89,7 @@ void CosSimLayer::backward(const UpdateCallback& callback) {
     outputs.addArg(*inG1, ADD_TO);
     outputs.addArg(*inG2, ADD_TO);
 
-    backward_[0]->calc(inputs, outputs);
+    backward_[0](inputs, outputs);
   }
 }
 
