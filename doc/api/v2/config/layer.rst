@@ -268,6 +268,11 @@ seq_reshape
 ..  autoclass:: paddle.v2.layer.seq_reshape
     :noindex:
 
+resize
+-----------
+..  autoclass:: paddle.v2.layer.resize
+    :noindex:
+
 Math Layers
 ===========
 
