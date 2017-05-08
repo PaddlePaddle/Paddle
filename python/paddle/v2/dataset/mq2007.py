@@ -240,50 +240,7 @@ def __reader__(filepath, format="pairwise", shuffle=True, fill_missing=-1):
 
 train = functools.partial(__reader__,filepath="MQ2007/MQ2007/Fold1/train.txt")
 test = functools.partial(__reader__, filepath="MQ2007/MQ2007/Fold1/test.txt")
-# def __parse_line__(line_stream):
-#   """
-#   return : score, qid, 46-dim feature vector
-#   parse line of file 
-#   """
-#   score = -1, qid = -1, features = []
-#   line = line_stream[:line_stream.find('#')].strip()
-#   parts = line.split()
-#   assert(len(parts) == 48), "expect 48 space split parts, get ", len(parts)
-#   # format : 0 qid:10 1:0.000272 2:0.000000 .... 
-#   score = int(parts[0])
-#   qid = int(parts[1].split(':')[1])
-#   for p in parts[2:]: 
-#     pair = p.split(':')
-#     features.append(float(part[1]))
-#   return score, qid, features
 
-
-# def __reader__(filename, rand_seed=0, is_test=False, test_rate=0.0):
-#   """
-#   create a line reader Generator
-
-#   Parameters
-#   --------
-#   filename : string
-#   rand_seed : sample instance from dataset, set the sample random seed
-#   is_test : sample test set or generate train set
-#   test_rate : sample test set rate
-
-#   Returns
-#   ------
-#   yield
-#     int int lists
-#     score query_id, features
-#   """
-#   rand = random.Random(x=rand_seed)
-#   with open(file_name, 'r') as f:
-#     for line in f:
-#       if (rand.random() < test_rate) == is_test:
-#         yield __parse_line__(line)
-
-
-# def __pair_reader__(filename, shuffle=True):
-  
 
 def fetch():
   return download(URL, "MQ2007", MD5)
