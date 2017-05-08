@@ -154,9 +154,9 @@ def gen_pair(querylist, partial_order="full"):
     for i, query_left in enumerate(querylist):
       for j, query_right in enumerate(querylist):
         if query_left.relevance_score > query_right.relevance_score:
-          yield np.ones(1), np.array(query_left.feature_vector), np.array(query_right.feature_vector)
+          yield 1, np.array(query_left.feature_vector), np.array(query_right.feature_vector)
         else:
-          yield np.ones(1), np.array(query_left.feature_vector), np.array(query_right.feature_vector)
+          yield 1, np.array(query_left.feature_vector), np.array(query_right.feature_vector)
 
   elif partial_order == "neighbour":
     # C(n)
@@ -165,9 +165,9 @@ def gen_pair(querylist, partial_order="full"):
       query_left = querylist[k]
       query_right = querylist[k+1]
       if query_left.relevance_score > query_right.relevance_score:
-        yield np.ones(1), np.array(query_left.feature_vector), np.array(query_right.feature_vector)
+        yield 1, np.array(query_left.feature_vector), np.array(query_right.feature_vector)
       else:
-        yield np.ones(1), np.array(query_left.feature_vector), np.array(query_right.feature_vector)
+        yield 1, np.array(query_left.feature_vector), np.array(query_right.feature_vector)
       k += 1
   else:
     raise ValueError("unsupport parameter of partial_order, Only can be neighbour or full")
