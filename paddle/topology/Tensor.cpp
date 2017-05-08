@@ -11,20 +11,29 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#pragma once
-#include "Attribute.h"
 #include "Tensor.h"
-
 namespace paddle {
 namespace topology {
 
-class Function : public WithAttribute {
-public:
-  std::string type;
-  std::vector<TensorPtr> inputs;
-  std::vector<TensorPtr> outputs;
-};
+Tensor &Tensor::setDataType(DataType type) {
+  attributes["data_type"] = type;
+  return *this;
+}
+
+Tensor &Tensor::setSequenceType(SequenceType type) {
+  attributes["sequence_type"] = type;
+  return *this;
+}
+
+Tensor &Tensor::setShape(const std::vector<int> &shape) {
+  attributes["shape"] = shape;
+  return *this;
+}
+
+std::vector<int> &Tensor::shape() { return getAttr<std::vector<int>>("shape"); }
+SequenceType Tensor::sequenceType() const {
+  return getAttr<SequenceType>("sequence_type");
+}
 
 }  // namespace topology
 }  // namespace paddle

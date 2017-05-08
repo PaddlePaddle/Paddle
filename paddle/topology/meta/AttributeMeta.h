@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 #include <typeinfo>
+#include <unordered_map>
 #include <vector>
 
 namespace paddle {
@@ -77,6 +78,17 @@ public:
     });
   }
 
+  template <typename SetType>
+  Constraints<T>& in(const SetType& s) {
+    return this->addConstraint([this, s](T* attr, bool) {
+      auto it = s.find(*attr);
+      if (it == s.end()) {
+        return Error("Attribute %s must in a set", name_.c_str());
+      }
+      return Error();
+    });
+  }
+
   Constraints<T>& largerThan(const T& min) {
     return this->addConstraint([this, min](T* attr, bool) {
       if (*attr < min) {
@@ -86,6 +98,29 @@ public:
                              std::to_string(min).c_str());
       }
       return paddle::Error();
+    });
+  }
+
+  Constraints<T>& equal(const T& expect) {
+    return this->addConstraint([this, expect](T* actual, bool) {
+      if (*actual != expect) {
+        return paddle::Error("%s must equals to expect value", name_.c_str());
+      }
+      return paddle::Error();
+    });
+  }
+
+  template <typename U>
+  Constraints<T>& dimsEq(U sz) {
+    static_assert(std::is_same<typename T::size_type, U>::value, "");
+    return this->addConstraint([this, sz](T* actual, bool) {
+      if (sz != actual->size()) {
+        return Error("%s's size should be %d, actually %d",
+                     name_.c_str(),
+                     sz,
+                     actual->size());
+      }
+      return Error();
     });
   }
 
@@ -145,6 +180,43 @@ private:
   paddle::any constraints;
 };
 typedef std::shared_ptr<AttributeMeta> AttributeMetaPtr;
+
+class WithAttributeMeta {
+private:
+  std::unordered_map<std::string, AttributeMetaPtr> attributes_;
+  std::string errTag_;
+
+public:
+  WithAttributeMeta(const std::string& errTag) : errTag_(errTag) {}
+
+  const std::unordered_map<std::string, AttributeMetaPtr>& getAttributes()
+      const {
+    return attributes_;
+  }
+
+  paddle::Error __must_check
+  addAttribute(const AttributeMetaPtr& attributeMeta) {
+    if (attributeMeta == nullptr) {
+      return paddle::Error("NULL Pointer Error");
+    }
+    auto attrName = attributeMeta->name;
+    if (this->attributes_.find(attrName) != this->attributes_.end()) {
+      return paddle::Error(
+          "%s attribute %s has been setted", errTag_.c_str(), attrName.c_str());
+    }
+    this->attributes_[attrName] = attributeMeta;
+    return paddle::Error();
+  }
+
+  template <typename T>
+  Constraints<T>& addAttribute(const std::string& name,
+                               const std::string& description) {
+    auto metaPtr = AttributeMeta::create<T>(name, description);
+    auto err = addAttribute(metaPtr);
+    err.check();
+    return *(metaPtr->template constraintBuilder<T>());
+  }
+};
 
 }  // namespace meta
 }  // namespace topology

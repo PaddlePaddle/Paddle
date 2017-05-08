@@ -15,7 +15,9 @@ limitations under the License. */
 #include <paddle/utils/Any.h>
 #include <string>
 #include <unordered_map>
+#include "../Tensor.h"
 #include "AttributeMeta.h"
+#include "TensorMeta.h"
 namespace paddle {
 namespace topology {
 namespace meta {
@@ -23,44 +25,23 @@ namespace meta {
 class FunctionMeta;
 typedef std::shared_ptr<FunctionMeta> FunctionMetaPtr;
 
-class FunctionMeta {
+class FunctionMeta : public WithAttributeMeta {
+public:
+  typedef std::vector<TensorMetaPtr> TensorMetas;
+  typedef std::function<Error(std::vector<TensorPtr>&, std::vector<TensorPtr>&)>
+      TenserShapeInferer;
+
 private:
   std::string name;
-  std::unordered_map<std::string, AttributeMetaPtr> attributes;
   static std::unordered_map<std::string, FunctionMetaPtr> gFuncMetas;
   std::unordered_map<std::string, any> metaInfos;
 
+  TensorMetas inputs_;
+  TensorMetas outputs_;
+
 public:
-  FunctionMeta(const std::string& name) : name(name) {}
-
-  const std::unordered_map<std::string, AttributeMetaPtr>& getAttributes()
-      const {
-    return attributes;
-  }
-
-  paddle::Error __must_check
-  addAttribute(const AttributeMetaPtr& attributeMeta) {
-    if (attributeMeta == nullptr) {
-      return paddle::Error("NULL Pointer Error");
-    }
-    auto attrName = attributeMeta->name;
-    if (this->attributes.find(attrName) != this->attributes.end()) {
-      return paddle::Error("function(%s)'s attribute %s has been setted",
-                           this->name.c_str(),
-                           attrName.c_str());
-    }
-    this->attributes[attrName] = attributeMeta;
-    return paddle::Error();
-  }
-
-  template <typename T>
-  Constraints<T>& addAttribute(const std::string& name,
-                               const std::string& description) {
-    auto metaPtr = AttributeMeta::create<T>(name, description);
-    auto err = addAttribute(metaPtr);
-    err.check();
-    return *(metaPtr->template constraintBuilder<T>());
-  }
+  explicit FunctionMeta(const std::string& name)
+      : WithAttributeMeta("function(" + name + ")'s"), name(name) {}
 
   template <typename T>
   paddle::Error __must_check addMeta(const std::string& name, const T& val) {
@@ -72,12 +53,14 @@ public:
   }
 
   template <typename T>
-  paddle::Error __must_check getMeta(const std::string& name, T* val) {
+  paddle::Error __must_check getMeta(const std::string& name,
+                                     const T** val) const {
     auto it = metaInfos.find(name);
     if (it == metaInfos.end()) {
       return paddle::Error("Cannot find meta %s", name.c_str());
     }
-    val = any_cast<T>(&it->second);
+    const any* ptr = &it->second;
+    *val = any_cast<T>(ptr);
     if (val == nullptr) {
       return paddle::Error("Cannot cast to type %s", typeid(T).name());
     }
@@ -96,6 +79,29 @@ public:
       return nullptr;
     }
   }
+
+  TensorMetaPtr& addInput() {
+    inputs_.emplace_back(new TensorMeta());
+    return inputs_.back();
+  }
+
+  TensorMetaPtr& addOutput() {
+    outputs_.emplace_back(new TensorMeta());
+    return outputs_.back();
+  }
+
+  void setShapeInferer(TenserShapeInferer inferer) {
+    addMeta("shapeInferer", inferer).check();
+  }
+
+  const TenserShapeInferer& getShapeInferer() const {
+    const TenserShapeInferer* func;
+    getMeta("shapeInferer", &func).check();
+    return *func;
+  }
+
+  const std::vector<TensorMetaPtr>& inputs() const { return inputs_; }
+  const std::vector<TensorMetaPtr>& outputs() const { return outputs_; }
 };
 
 }  // namespace meta

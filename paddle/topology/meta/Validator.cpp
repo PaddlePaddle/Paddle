@@ -49,9 +49,37 @@ Error validate(Function& func) {
   if (meta == nullptr) {
     return Error("No such function type %s", func.type.c_str());
   }
-  AttributeValidator validator(meta->getAttributes());
-  return validator.validate(&func.attributes);
+  auto err = validate(*meta, func);
+  if (!err.isOK()) {
+    return err;
+  }
+  auto& inMetas = meta->inputs();
+  auto& outMetas = meta->outputs();
+
+  if (inMetas.size() != func.inputs.size()) {
+    return Error("Input size mismatch");
+  }
+  if (outMetas.size() != func.outputs.size()) {
+    return Error("Output size mismatch");
+  }
+  for (size_t i = 0; i < inMetas.size(); ++i) {
+    err = validate(*inMetas[i], *func.inputs[i]);
+    if (!err.isOK()) return err;
+  }
+  err = meta->getShapeInferer()(func.inputs, func.outputs);
+  if (!err.isOK()) return err;
+  for (size_t i = 0; i < outMetas.size(); ++i) {
+    err = validate(*outMetas[i], *func.outputs[i]);
+    if (!err.isOK()) return err;
+  }
+  return Error();
 }
+
+Error validate(const WithAttributeMeta& meta, WithAttribute& attr) {
+  AttributeValidator validator(meta.getAttributes());
+  return validator.validate(&attr.attributes);
+}
+
 }  // namespace meta
 }  // namespace topology
 }  // namespace paddle

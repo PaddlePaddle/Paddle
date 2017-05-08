@@ -13,18 +13,31 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "Attribute.h"
-#include "Tensor.h"
-
+#include <unordered_set>
+#include "AttributeMeta.h"
 namespace paddle {
 namespace topology {
+namespace meta {
 
-class Function : public WithAttribute {
+enum DataType { DENSE = 0, SPARSE_INTEGER, SPARSE, INTEGER };
+enum SequenceType { NO_SEQUENCE = 0, SEQUENCE, NESTED_SEQUENCE };
+
+class TensorMeta : public WithAttributeMeta {
 public:
-  std::string type;
-  std::vector<TensorPtr> inputs;
-  std::vector<TensorPtr> outputs;
+  TensorMeta() : WithAttributeMeta("Tensor") {}
+
+  TensorMeta& addShape(size_t dims);
+
+  TensorMeta& addSequenceType(
+      const std::unordered_set<SequenceType, std::hash<int>>& supportedTypes = {
+          NO_SEQUENCE, SEQUENCE, NESTED_SEQUENCE});
+
+  TensorMeta& addDataType(
+      const std::unordered_set<DataType, std::hash<int>>& supportedTypes);
 };
 
+typedef std::shared_ptr<TensorMeta> TensorMetaPtr;
+
+}  // namespace meta
 }  // namespace topology
 }  // namespace paddle

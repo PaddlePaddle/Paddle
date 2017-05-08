@@ -16,34 +16,42 @@ limitations under the License. */
 #include <functional>
 #include "BufferArg.h"
 #include "BufferArgs.h"
+#include "KernelType.h"
 #include "paddle/topology/meta/FunctionMeta.h"
-#include "paddle/utils/Any.h"
 
 namespace paddle {
 namespace function {
 
-typedef std::function<paddle::Error(
-    const BufferArgs& inputs,
-    const BufferArgs& outputs,
-    const std::unordered_map<std::string, any>& attrs)>
-    KernelType;
+typedef std::function<Error(const BufferArgs& ins,
+                            const BufferArgs& outs,
+                            const std::unordered_map<std::string, any>& attrs)>
+    KernelTypeWithAttrs;
 
 class FunctionMetaRegister {
 public:
   FunctionMetaRegister(topology::meta::FunctionMetaPtr& meta) : meta_(meta) {}
 
-  paddle::Error addKernel(const std::string& name, KernelType func) {
-    return meta_->addMeta(name, func);
+  paddle::Error addCPUKernel(KernelType kernel) {
+    return this->addKernel("CPUKernel", kernel);
   }
 
-  paddle::Error addCPUKernel(KernelType func) {
-    return this->addKernel("CPUKernel", func);
+  paddle::Error addGPUKernel(KernelType kernel) {
+    return this->addKernel("GPUKernel", kernel);
   }
-  paddle::Error addGPUKernel(KernelType func) {
-    return this->addKernel("GPUKernel", func);
+
+  paddle::Error addCPUKernel(KernelTypeWithAttrs kernel) {
+    return this->addKernel("CPUKernel", kernel);
+  }
+
+  paddle::Error addGPUKernel(KernelTypeWithAttrs kernel) {
+    return this->addKernel("GPUKernel", kernel);
   }
 
 private:
+  template <typename T>
+  paddle::Error addKernel(const std::string& name, T kernel) {
+    return meta_->addMeta(name, kernel);
+  }
   topology::meta::FunctionMetaPtr& meta_;
 };
 

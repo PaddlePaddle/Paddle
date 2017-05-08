@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "AttributeMeta.h"
 #include <glog/logging.h>
+#include "TensorMeta.h"
 
 namespace paddle {
 namespace topology {
@@ -53,6 +54,9 @@ Error AttributeMeta::check(any* attr, bool setted) const {
   CHECK_HELPER(int);
   CHECK_HELPER(float);
   CHECK_HELPER(double);
+  CHECK_HELPER(DataType);
+  CHECK_HELPER(SequenceType);
+  CHECK_HELPER(std::vector<int>);
   return paddle::Error("Unsupported attribute type");
 }
 

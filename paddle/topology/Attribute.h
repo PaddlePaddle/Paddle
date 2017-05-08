@@ -22,5 +22,21 @@ namespace topology {
 
 class Attribute : public std::unordered_map<std::string, any> {};
 
+class WithAttribute {
+public:
+  Attribute attributes;
+
+  template <typename T>
+  const T& getAttr(const std::string& name) const {
+    auto attrPtr = &attributes.find(name)->second;
+    return *any_cast<T>(attrPtr);
+  }
+
+  template <typename T>
+  T& getAttr(const std::string& name) {
+    auto attrPtr = &attributes.find(name)->second;
+    return *any_cast<T>(attrPtr);
+  }
+};
 }  // namespace topology
 }  // namespace paddle

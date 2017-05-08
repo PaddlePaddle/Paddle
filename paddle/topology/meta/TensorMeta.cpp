@@ -11,32 +11,34 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include "TensorMeta.h"
 
-#pragma once
-#include <unordered_map>
-#include "../Function.h"
-#include "../Tensor.h"
-#include "AttributeMeta.h"
-#include "paddle/utils/Any.h"
 namespace paddle {
 namespace topology {
 namespace meta {
 
-class AttributeValidator {
-public:
-  AttributeValidator(
-      const std::unordered_map<std::string, AttributeMetaPtr>& attributeMetas)
-      : metas_(attributeMetas) {}
+TensorMeta &TensorMeta::addShape(size_t dims) {
+  addAttribute<std::vector<int>>("shape", "The shape of tensor")
+      .mustSet()
+      .dimsEq(dims);
+  return *this;
+}
 
-  paddle::Error validate(std::unordered_map<std::string, any>* attrs) const;
+TensorMeta &TensorMeta::addSequenceType(
+    const std::unordered_set<SequenceType, std::hash<int>> &supportedTypes) {
+  addAttribute<SequenceType>("sequence_type", "The sequence types of tensor")
+      .mustSet()
+      .in(supportedTypes);
+  return *this;
+}
 
-private:
-  const std::unordered_map<std::string, AttributeMetaPtr>& metas_;
-};
-
-paddle::Error validate(paddle::topology::Function& func);
-paddle::Error validate(const WithAttributeMeta& meta,
-                       paddle::topology::WithAttribute& attr);
+TensorMeta &TensorMeta::addDataType(
+    const std::unordered_set<DataType, std::hash<int>> &supportedTypes) {
+  addAttribute<DataType>("data_type", "The data types of tensor")
+      .mustSet()
+      .in(supportedTypes);
+  return *this;
+}
 
 }  // namespace meta
 }  // namespace topology
