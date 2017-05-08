@@ -69,7 +69,8 @@ def gru_encoder_decoder(data_conf,
                         encoder_size=512,
                         decoder_size=512,
                         beam_size=3,
-                        max_length=250):
+                        max_length=250,
+                        error_clipping=50):
     """
     A wrapper for an attention version of GRU Encoder-Decoder network
     is_generating: whether this config is used for generating
@@ -90,9 +91,19 @@ def gru_encoder_decoder(data_conf,
         input=src_word_id,
         size=word_vector_dim,
         param_attr=ParamAttr(name='_source_language_embedding'))
-    src_forward = simple_gru(input=src_embedding, size=encoder_size)
+    src_forward = simple_gru(
+        input=src_embedding,
+        size=encoder_size,
+        naive=True,
+        gru_layer_attr=ExtraLayerAttribute(
+            error_clipping_threshold=error_clipping))
     src_backward = simple_gru(
-        input=src_embedding, size=encoder_size, reverse=True)
+        input=src_embedding,
+        size=encoder_size,
+        reverse=True,
+        naive=True,
+        gru_layer_attr=ExtraLayerAttribute(
+            error_clipping_threshold=error_clipping))
     encoded_vector = concat_layer(input=[src_forward, src_backward])
 
     with mixed_layer(size=decoder_size) as encoded_proj:
@@ -117,11 +128,13 @@ def gru_encoder_decoder(data_conf,
             decoder_inputs += full_matrix_projection(input=context)
             decoder_inputs += full_matrix_projection(input=current_word)
 
-        gru_step = gru_step_layer(
+        gru_step = gru_step_naive_layer(
             name='gru_decoder',
             input=decoder_inputs,
             output_mem=decoder_mem,
-            size=decoder_size)
+            size=decoder_size,
+            layer_attr=ExtraLayerAttribute(
+                error_clipping_threshold=error_clipping))
 
         with mixed_layer(
                 size=target_dict_dim, bias_attr=True,

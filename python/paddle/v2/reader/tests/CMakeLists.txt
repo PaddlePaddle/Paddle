@@ -1,3 +1,1 @@
-add_test(NAME reader_tests
-  COMMAND bash ${PROJ_ROOT}/python/paddle/v2/reader/tests/run_tests.sh
-  ${PYTHON_EXECUTABLE})
+add_python_test(reader_tests creator_test.py decorator_test.py)

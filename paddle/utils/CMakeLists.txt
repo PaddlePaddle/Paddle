@@ -1,8 +1,9 @@
 # The utilities for paddle
 file(GLOB UTIL_HEADERS . *.h)
 file(GLOB UTIL_SOURCES . *.cpp)
-create_resources(enable_virtualenv.py enable_virtualenv.c)
-set(UTIL_RES enable_virtualenv.c)
+create_resources(${CMAKE_CURRENT_SOURCE_DIR}/enable_virtualenv.py
+  ${CMAKE_CURRENT_SOURCE_DIR}/enable_virtualenv.c)
+set(UTIL_RES ${CMAKE_CURRENT_SOURCE_DIR}/enable_virtualenv.c)
 
 if(APPLE)
     file(GLOB UTIL_ARCH_SOURCES . arch/osx/*.cpp)

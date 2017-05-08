@@ -94,7 +94,7 @@ docker build -t paddle:dev --build-arg UBUNTU_MIRROR=mirror://mirrors.ubuntu.com
 Given the development image `paddle:dev`, the following command builds PaddlePaddle from the source tree on the development computer (host):
 
 ```bash
-docker run --rm -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TEST=OFF" -e "RUN_TEST=OFF" paddle:dev
+docker run --rm -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TESTING=OFF" -e "RUN_TEST=OFF" paddle:dev
 ```
 
 This command mounts the source directory on the host into `/paddle` in the container, so the default entry point of `paddle:dev`, `build.sh`, could build the source code with possible local changes.  When it writes to `/paddle/build` in the container, it writes to `$PWD/build` on the host indeed.
@@ -119,7 +119,7 @@ Users can specify the following Docker build arguments with either "ON" or "OFF"
 The following command builds the production image:
 
 ```bash
-docker build -t paddle -f build/Dockerfile .
+docker build -t paddle -f build/Dockerfile ./build
 ```
 
 This production image is minimal -- it includes binary `paddle`, the shared library `libpaddle.so`, and Python runtime.

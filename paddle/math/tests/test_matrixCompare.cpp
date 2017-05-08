@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
 #include "paddle/testing/TestUtil.h"
+#include "paddle/utils/DynamicLoader.h"
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
 
@@ -235,10 +236,8 @@ TEST(Matrix, unary) {
       testMatrixTranspose(height, width);
       testMatrixRotate(height, width);
     }
-// inverse
-#ifdef PADDLE_USE_LAPACK
+    // inverse matrix
     testMatrixInverse(height);
-#endif
   }
 }
 

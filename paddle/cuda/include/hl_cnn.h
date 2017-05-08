@@ -273,23 +273,23 @@ extern void hl_bilinear_forward(const real* inData,
                                 const real ratioW);
 
 /**
-* @brief   Bilinear interpolation backward.
-*
-* @param[out]  inGrad      input gradient.
-* @param[in]   inImgH      input image height.
-* @param[in]   inImgW      input image width.
-* @param[in]   inputH      input batchSize.
-* @param[in]   inputW      input image data dim.
-* @param[in]   outGrad     output gradient.
-* @param[in]   outImgH     output image height.
-* @param[in]   outImgW     output image width.
-* @param[in]   outputH     output batchSize.
-* @param[in]   outputW     output image data dim.
-* @param[in]   numChannels number of channels.
-* @param[in]   ratioH      inImgH / outImgH.
-* @param[in]   ratioW      inImgW / outImgW.
-*
-*/
+ * @brief   Bilinear interpolation backward.
+ *
+ * @param[out]  inGrad      input gradient.
+ * @param[in]   inImgH      input image height.
+ * @param[in]   inImgW      input image width.
+ * @param[in]   inputH      input batchSize.
+ * @param[in]   inputW      input image data dim.
+ * @param[in]   outGrad     output gradient.
+ * @param[in]   outImgH     output image height.
+ * @param[in]   outImgW     output image width.
+ * @param[in]   outputH     output batchSize.
+ * @param[in]   outputW     output image data dim.
+ * @param[in]   numChannels number of channels.
+ * @param[in]   ratioH      inImgH / outImgH.
+ * @param[in]   ratioW      inImgW / outImgW.
+ *
+ */
 extern void hl_bilinear_backward(real* inGrad,
                                  const size_t inImgH,
                                  const size_t inImgW,
