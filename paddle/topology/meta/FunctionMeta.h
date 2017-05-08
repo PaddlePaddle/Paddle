@@ -27,8 +27,8 @@ class FunctionMeta {
 private:
   std::string name;
   std::unordered_map<std::string, AttributeMetaPtr> attributes;
-  std::unordered_map<std::string, any> metaInfos;
   static std::unordered_map<std::string, FunctionMetaPtr> gFuncMetas;
+  std::unordered_map<std::string, any> metaInfos;
 
 public:
   FunctionMeta(const std::string& name) : name(name) {}
@@ -60,6 +60,28 @@ public:
     auto err = addAttribute(metaPtr);
     err.check();
     return *(metaPtr->template constraintBuilder<T>());
+  }
+
+  template <typename T>
+  paddle::Error __must_check addMeta(const std::string& name, const T& val) {
+    if (metaInfos.find(name) != metaInfos.end()) {
+      return paddle::Error("Duplicated meta infos %s", name.c_str());
+    }
+    metaInfos[name] = val;
+    return paddle::Error();
+  }
+
+  template <typename T>
+  paddle::Error __must_check getMeta(const std::string& name, T* val) {
+    auto it = metaInfos.find(name);
+    if (it == metaInfos.end()) {
+      return paddle::Error("Cannot find meta %s", name.c_str());
+    }
+    val = any_cast<T>(&it->second);
+    if (val == nullptr) {
+      return paddle::Error("Cannot cast to type %s", typeid(T).name());
+    }
+    return paddle::Error();
   }
 
   static paddle::Error __must_check
