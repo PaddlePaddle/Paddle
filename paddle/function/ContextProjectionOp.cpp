@@ -101,7 +101,7 @@ void ContextProjectionForward<DEVICE_TYPE_CPU>(CpuMatrix& out_mat,
 template <DeviceType Device>
 class ContextProjectionForwardFunc : public FunctionBase {
 public:
-  void init(const FuncConfig& config) override {
+  void init(const function::Config& config) override {
     context_length_ = config.get<size_t>("context_length");
     context_start_ = config.get<int>("context_start");
     begin_pad_ = config.get<size_t>("begin_pad");
@@ -224,7 +224,7 @@ void ContextProjectionBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad_mat,
 template <DeviceType Device>
 class ContextProjectionBackwardFunc : public FunctionBase {
 public:
-  void init(const FuncConfig& config) override {
+  void init(const function::Config& config) override {
     context_length_ = config.get<size_t>("context_length");
     context_start_ = config.get<int>("context_start");
     begin_pad_ = config.get<size_t>("begin_pad");
@@ -300,7 +300,7 @@ private:
 template <DeviceType Device>
 class ContextProjectionBackwardDataFunc : public FunctionBase {
 public:
-  void init(const FuncConfig& config) override {
+  void init(const function::Config& config) override {
     context_length_ = config.get<size_t>("context_length");
     context_start_ = config.get<int>("context_start");
   }
@@ -349,7 +349,7 @@ private:
 template <DeviceType Device>
 class ContextProjectionBackwardWeightFunc : public FunctionBase {
 public:
-  void init(const FuncConfig& config) override {
+  void init(const function::Config& config) override {
     context_length_ = config.get<size_t>("context_length");
     context_start_ = config.get<int>("context_start");
     begin_pad_ = config.get<size_t>("begin_pad");

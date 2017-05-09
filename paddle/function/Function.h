@@ -16,132 +16,14 @@ limitations under the License. */
 
 #include <map>
 #include <vector>
-#include "BufferArg.h"
+#include "BufferArgs.h"
+#include "FuncConfig.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/utils/Any.h"
 #include "paddle/utils/ClassRegistrar.h"
 #include "paddle/utils/Error.h"
 
 namespace paddle {
-
-/**
- * Function Configuration.
- * The argument type of Function::init.
- */
-class FuncConfig {
-public:
-  template <typename T>
-  T get(const std::string& key, Error* err = nullptr) const {
-    try {
-      return any_cast<T>(valueMap_.at(key));
-    } catch (std::exception& e) {  // could be cast or out of range exception.
-      if (err) {
-        *err = Error(e.what());
-      } else {
-        LOG(FATAL) << "Cannot get key " << key << " with error " << e.what();
-      }
-      return T();
-    }
-  }
-
-  template <typename T>
-  FuncConfig& set(const std::string& key, T v, Error* err = nullptr) {
-    auto it = valueMap_.find(key);
-    if (it != valueMap_.end()) {  // already contains key.
-      if (err) {
-        *err = Error("Key %s is already set in FuncConfig", key.c_str());
-      } else {
-        LOG(FATAL) << "Key " << key << " is already set in FuncConfig.";
-      }
-      return *this;
-    }
-    valueMap_[key] = any(v);
-    return *this;
-  }
-
-protected:
-  mutable std::unordered_map<std::string, any> valueMap_;
-};
-
-/**
- * Argument type for Function::calc().
- * A BufferArgs contains a set of BufferArg,
- * because Function can have multiple inputs and outputs.
- *
- * addArg() with Matix object used to adapt Layer Argument.
- * Will create a BufferArg object in addArg(),
- * and free in destructor of BufferArgs.
- *
- * addArg() with BufferArg object, just save BufferArg object address,
- * and the caller needs to guarantee the validity of the BufferArg object
- * in the BufferArgs life time.
- */
-class BufferArgs {
-public:
-  BufferArgs() {}
-
-  ~BufferArgs() {
-    for (auto arg : _args_) {
-      delete arg;
-    }
-  }
-
-  size_t size() const { return args_.size(); }
-
-  // add argument into BufferArgs
-  // Tensor can be Matrix, Vector, IVector.
-  // For inputs, do not need argType.
-  // For outputs, the argType needs to be specified as ASSIGN_TO or ADD_TO.
-  void addArg(const Matrix& arg, ArgType argType = UNSPECIFIED) {
-    _args_.push_back(new BufferArg(arg, argType));
-    addArg(*_args_.back());
-  }
-
-  void addArg(const Vector& arg, ArgType argType = UNSPECIFIED) {
-    _args_.push_back(new BufferArg(arg, argType));
-    addArg(*_args_.back());
-  }
-
-  void addArg(const IVector& arg, ArgType argType = UNSPECIFIED) {
-    _args_.push_back(new BufferArg(arg, argType));
-    addArg(*_args_.back());
-  }
-
-  // Add arg into BufferArgs and reshape the arg.
-  //
-  // For example, arg represents an image buffer,
-  // but Matrix can only represent a two-dimensional Tensor.
-  // So need an extra argument to describe the shape of the image buffer.
-  void addArg(const Matrix& arg,
-              const TensorShape& shape,
-              ArgType argType = UNSPECIFIED);
-
-  void addArg(const CpuSparseMatrix& arg, ArgType argType = UNSPECIFIED);
-  void addArg(const GpuSparseMatrix& arg, ArgType argType = UNSPECIFIED);
-
-  void addArg(const Matrix& matrix,
-              const IVector& vector,
-              ArgType argType = UNSPECIFIED);
-
-  // get argument
-  const BufferArg& operator[](size_t num) const {
-    CHECK_LT(num, args_.size());
-    return *args_[num];
-  }
-
-  void addArg(BufferArg& arg) { args_.push_back(&arg); }
-
-  void addArg(SequenceIdArg& arg) { args_.push_back(&arg); }
-
-  void addArg(SequenceArg& arg) { args_.push_back(&arg); }
-
-  void addArg(SparseMatrixArg& arg) { args_.push_back(&arg); }
-
-private:
-  std::vector<BufferArg*> args_;
-  // The BufferArg object is constructed and freed by BufferArgs.
-  std::vector<BufferArg*> _args_;
-};
 
 /**
  * \brief Base class for Function.
@@ -166,7 +48,7 @@ class FunctionBase {
 public:
   virtual ~FunctionBase() {}
 
-  virtual void init(const FuncConfig& config) {}
+  virtual void init(const function::Config& config) {}
 
   virtual void calc(const BufferArgs& inputs, const BufferArgs& outputs) {}
 

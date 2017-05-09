@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "Layer.h"
 #include "ModelConfig.pb.h"
+#include "paddle/function/FunctionList.h"
 #include "paddle/parameter/Parameter.h"
-
 namespace paddle {
 
 // Macro for registering a projection type
@@ -111,5 +111,8 @@ protected:
   const Argument* out_;
   /// Store `passType` passed to forward()
   PassType passType_;
+
+  function::FunctionList forward_;
+  function::FunctionList backward_;
 };
 }  // namespace paddle

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "NormProjectionLayer.h"
-#include "paddle/function/Function.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
@@ -46,16 +45,18 @@ bool CMRProjectionNormLayer::init(const LayerMap& layerMap,
   /* the size of inputs for norm-layer is 1 */
   CHECK_EQ(config_.inputs_size(), 1);
 
-  appendFunction(
-      &forward_,
-      "CrossMapNormal",
-      FuncConfig().set("size", size_).set("scale", scale_).set("pow", pow_),
-      useGpu_);
-  appendFunction(
-      &backward_,
-      "CrossMapNormalGrad",
-      FuncConfig().set("size", size_).set("scale", scale_).set("pow", pow_),
-      useGpu_);
+  this->forward_.add("CrossMapNormal",
+                     function::Config()
+                         .set("size", size_)
+                         .set("scale", scale_)
+                         .set("pow", pow_),
+                     useGpu_);
+  this->backward_.add("CrossMapNormalGrad",
+                      function::Config()
+                          .set("size", size_)
+                          .set("scale", scale_)
+                          .set("pow", pow_),
+                      useGpu_);
 
   return true;
 }

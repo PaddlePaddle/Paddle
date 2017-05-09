@@ -71,7 +71,7 @@ void CosSimForward<DEVICE_TYPE_CPU>(CpuMatrix& out_mat,
 
 template <DeviceType Device>
 class CosSimForwardFunc : public FunctionBase {
-  void init(const FuncConfig& config) override {
+  void init(const function::Config& config) override {
     scale_ = config.get<real>("scale");
   }
 
@@ -191,7 +191,7 @@ void CosSimBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad,
  */
 template <DeviceType Device>
 class CosSimBackwardFunc : public FunctionBase {
-  void init(const FuncConfig& config) override {
+  void init(const function::Config& config) override {
     scale_ = config.get<real>("scale");
   }
 

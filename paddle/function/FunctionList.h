@@ -14,15 +14,23 @@ limitations under the License. */
 
 #pragma once
 #include <functional>
+#include "BufferArgs.h"
+#include "FuncConfig.h"
 #include "paddle/utils/Error.h"
 namespace paddle {
-class BufferArgs;
 namespace function {
 
 //! Kernel Function type of Paddle.
 //! Each layer will invoke this KernelType when forward/backward.
-typedef std::function<Error(BufferArgs& inputs, BufferArgs& outputs)>
-    KernelType;
+typedef std::function<Error(const BufferArgs& inputs,
+                            const BufferArgs& outputs)>
+    Function;
+class FunctionList : public std::vector<Function> {
+public:
+  void add(const std::string& name,
+           const function::Config& config,
+           bool useGPU);
+};
 
 }  // namespace function
 }  // namespace paddle

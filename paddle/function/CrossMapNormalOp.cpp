@@ -161,7 +161,7 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
 template <DeviceType Device>
 class CrossMapNormalFunc : public FunctionBase {
 public:
-  void init(const FuncConfig& config) override {
+  void init(const function::Config& config) override {
     // function arguments
     size_ = config.get<size_t>("size");
     scale_ = config.get<real>("scale");
@@ -261,7 +261,7 @@ private:
 template <DeviceType Device>
 class CrossMapNormalGradFunc : public FunctionBase {
 public:
-  void init(const FuncConfig& config) override {
+  void init(const function::Config& config) override {
     // function arguments
     size_ = config.get<size_t>("size");
     scale_ = config.get<real>("scale");
