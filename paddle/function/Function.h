@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 #include "BufferArg.h"
 #include "BufferArgs.h"
-#include "FunctionMetaRegister.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/utils/Any.h"
 #include "paddle/utils/ClassRegistrar.h"

@@ -61,7 +61,7 @@ public:
     }
     const any* ptr = &it->second;
     *val = any_cast<T>(ptr);
-    if (val == nullptr) {
+    if (*val == nullptr) {
       return paddle::Error("Cannot cast to type %s", typeid(T).name());
     }
     return paddle::Error();

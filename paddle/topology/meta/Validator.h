@@ -34,7 +34,8 @@ private:
   const std::unordered_map<std::string, AttributeMetaPtr>& metas_;
 };
 
-paddle::Error validate(paddle::topology::Function& func);
+paddle::Error validate(paddle::topology::Function& func,
+                       bool validOutput = false);
 paddle::Error validate(const WithAttributeMeta& meta,
                        paddle::topology::WithAttribute& attr);
 

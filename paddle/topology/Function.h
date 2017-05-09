@@ -24,6 +24,9 @@ public:
   std::string type;
   std::vector<TensorPtr> inputs;
   std::vector<TensorPtr> outputs;
+
+  bool useGPU() const { return getAttr<bool>("useGPU"); }
+  void setUseGPU(bool flag) { attributes["useGPU"] = flag; }
 };
 
 }  // namespace topology

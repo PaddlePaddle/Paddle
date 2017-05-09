@@ -21,7 +21,8 @@ namespace function {
 
 //! Kernel Function type of Paddle.
 //! Each layer will invoke this KernelType when forward/backward.
-typedef std::function<Error(BufferArgs& inputs, BufferArgs& outputs)>
+typedef std::function<Error(const BufferArgs& inputs,
+                            const BufferArgs& outputs)>
     KernelType;
 
 }  // namespace function

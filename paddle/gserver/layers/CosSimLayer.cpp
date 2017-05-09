@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "CosSimLayer.h"
 #include "paddle/function/Function.h"
+#include "paddle/function/FunctionMetaHelper.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
@@ -28,10 +29,12 @@ bool CosSimLayer::init(const LayerMap& layerMap,
 
   CHECK_EQ(inputLayers_.size(), 2LU);
 
-  appendFunction(&forward_,
-                 "CosSimForward",
-                 FuncConfig().set("scale", (real)config_.cos_scale()),
-                 useGpu_);
+  topology::Function fwd;
+  fwd.type = "cosFwd";
+  fwd.setUseGPU(useGpu_);
+  fwd.attributes["scale"] = (double)config_.cos_scale();
+  forward_.push_back(function::createKernel(fwd));
+
   appendFunction(&backward_,
                  "CosSimBackward",
                  FuncConfig().set("scale", (real)config_.cos_scale()),

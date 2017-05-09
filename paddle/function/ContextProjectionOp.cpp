@@ -15,7 +15,6 @@ limitations under the License. */
 #include "ContextProjectionOp.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/Vector.h"
-
 namespace paddle {
 /**
  * Context Projection Forward with CPU Matrix Device.

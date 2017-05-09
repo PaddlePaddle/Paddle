@@ -17,7 +17,9 @@ limitations under the License. */
 #include "BufferArg.h"
 #include "BufferArgs.h"
 #include "KernelType.h"
+#include "paddle/topology/Function.h"
 #include "paddle/topology/meta/FunctionMeta.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 namespace function {
@@ -54,6 +56,22 @@ private:
   }
   topology::meta::FunctionMetaPtr& meta_;
 };
+
+KernelType createKernel(const topology::Function& conf);
+
+#define BEGIN_REGISTER_FUNCTION_META(name, func) \
+  static paddle::InitFunction __init_##name##__([] {\
+    paddle::topology::meta::FunctionMeta::registerFuncMeta(\
+      #name, [](paddle::topology::meta::FunctionMetaPtr& meta) {\
+  do {\
+  function::FunctionMetaRegister reg(meta);\
+  reg.addCPUKernel(func<DEVICE_TYPE_CPU>);\
+  reg.addGPUKernel(func<DEVICE_TYPE_GPU>);\
+} while(0);
+#define END_REGISTER_FUNCTION_META() \
+  return paddle::Error();            \
+  }).check();                        \
+  });
 
 }  // namespace function
 }  // namespace paddle

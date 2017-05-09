@@ -44,7 +44,7 @@ Error AttributeValidator::validate(
   return Error();
 }
 
-Error validate(Function& func) {
+Error validate(Function& func, bool validOutput) {
   auto meta = FunctionMeta::get(func.type);
   if (meta == nullptr) {
     return Error("No such function type %s", func.type.c_str());
@@ -65,6 +65,12 @@ Error validate(Function& func) {
   for (size_t i = 0; i < inMetas.size(); ++i) {
     err = validate(*inMetas[i], *func.inputs[i]);
     if (!err.isOK()) return err;
+  }
+  if (validOutput) {
+    for (size_t i = 0; i < outMetas.size(); ++i) {
+      err = validate(*outMetas[i], *func.outputs[i]);
+      if (!err.isOK()) return err;
+    }
   }
   err = meta->getShapeInferer()(func.inputs, func.outputs);
   if (!err.isOK()) return err;
