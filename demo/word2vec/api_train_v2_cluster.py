@@ -37,21 +37,21 @@ def main():
 
     # for local training
     TRUTH = ["true", "True", "TRUE", "1", "yes", "Yes", "YES"]
-    cluster_train = os.getenv('PADDLE_CLUSTER_TRAIN', "False") in TRUTH
-    use_gpu = os.getenv('PADDLE_USE_GPU', "False")
+    cluster_train = os.getenv('PADDLE_INIT_CLUSTER_TRAIN', "False") in TRUTH
+    use_gpu = os.getenv('PADDLE_INIT_USE_GPU', "False")
 
     if not cluster_train:
-        paddle.init(use_gpu=use_gpu, trainer_count=int(os.getenv("PADDLE_TRAINER_COUNT", "1")))
+        paddle.init(use_gpu=use_gpu, trainer_count=int(os.getenv("PADDLE_INIT_TRAINER_COUNT", "1")))
     else:
         paddle.init(
             use_gpu=use_gpu,
-            trainer_count=int(os.getenv("PADDLE_TRAINER_COUNT", "1")),
-            port=int(os.getenv("PADDLE_PORT", "7164")),
-            ports_num=int(os.getenv("PADDLE_PORTS_NUM", "1")),
-            ports_num_for_sparse=int(os.getenv("PADDLE_PORTS_NUM_FOR_SPARSE", "1")),
-            num_gradient_servers=int(os.getenv("PADDLE_NUM_GRADIENT_SERVERS", "1")),
-            trainer_id=int(os.getenv("PADDLE_TRAINER_ID", "0")),
-            pservers=os.getenv("PADDLE_PSERVERS", "127.0.0.1"))
+            trainer_count=int(os.getenv("PADDLE_INIT_TRAINER_COUNT", "1")),
+            port=int(os.getenv("PADDLE_INIT_PORT", "7164")),
+            ports_num=int(os.getenv("PADDLE_INIT_PORTS_NUM", "1")),
+            ports_num_for_sparse=int(os.getenv("PADDLE_INIT_PORTS_NUM_FOR_SPARSE", "1")),
+            num_gradient_servers=int(os.getenv("PADDLE_INIT_NUM_GRADIENT_SERVERS", "1")),
+            trainer_id=int(os.getenv("PADDLE_INIT_TRAINER_ID", "0")),
+            pservers=os.getenv("PADDLE_INIT_PSERVERS", "127.0.0.1"))
     #word_dict = paddle.dataset.imikolov.build_dict()
     fn = open("thirdparty/wuyi_train_thdpty/word_dict.pickle", "r")
     word_dict = pickle.load(fn)
