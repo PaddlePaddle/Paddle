@@ -247,7 +247,7 @@ TEST(Matrix, unary) {
                  << "1. Simply issue `sudo apt-get install liblapacke-dev` to "
                     "avoid re-build source code. \n"
                  << "2. Install MKL/Openblas/ATLAS and re-build PaddlePaddle "
-                    "source code."
+                    "source code.";
 #endif
   }
 }
