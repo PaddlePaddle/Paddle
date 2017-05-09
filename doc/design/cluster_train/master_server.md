@@ -1,6 +1,6 @@
 # Design Doc: Master Server
 
-For an overview of master server' role, please refer to [distributed training design doc](./README.md). In this design doc we will discuss the master server in more details. The master will be implemented in [Go](https://golang.org/).
+For an overview of master server's role, please refer to [distributed training design doc](./README.md). In this design doc we will discuss the master server in more details. The master will be implemented in [Go](https://golang.org/).
 
 ## Dataset
 
