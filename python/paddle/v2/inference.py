@@ -5,15 +5,22 @@ import topology
 import minibatch
 from data_feeder import DataFeeder
 
-__all__ = ['infer']
+__all__ = ['infer', 'Inference']
 
 
 class Inference(object):
     """
     Inference combines neural network output and parameters together
     to do inference.
+    
+    ..  code-block:: python
+    
+        inferer = Inference(output_layer=prediction, parameters=parameters)
+        for data_batch in batches:
+            print inferer.infer(data_batch)
 
-    :param outptut_layer: The neural network that should be inferenced.
+
+    :param output_layer: The neural network that should be inferenced.
     :type output_layer: paddle.v2.config_base.Layer or the sequence
                         of paddle.v2.config_base.Layer
     :param parameters: The parameters dictionary.
@@ -56,8 +63,14 @@ class Inference(object):
                 item = [each_result[each_field] for each_field in field]
                 yield item
 
-    def infer(self, field='value', **kwargs):
+    def infer(self, input, field='value', **kwargs):
+        """
+        Infer a data by model.
+        :param input: input data batch. Should be python iterable object.
+        :param field: output field.
+        """
         retv = None
+        kwargs['input'] = input
         for result in self.iter_infer_field(field=field, **kwargs):
             if retv is None:
                 retv = [[] for i in xrange(len(result))]
@@ -79,7 +92,7 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
 
     ..  code-block:: python
 
-        result = paddle.infer(outptut_layer=prediction, 
+        result = paddle.infer(output_layer=prediction, 
                               parameters=parameters, 
                               input=SomeData)
         print result
