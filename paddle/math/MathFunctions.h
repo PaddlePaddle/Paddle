@@ -34,15 +34,15 @@ extern "C" {
 
 #ifndef LAPACK_FOUND
 extern "C" {
-#include <cblas.h>    
-int LAPACKE_sgetrf(int matrix_layout, int m, int n,
-                   float* a, int lda, int* ipiv);
-int LAPACKE_dgetrf(int matrix_layout, int m, int n,
-                   double* a, int lda, int* ipiv);
-int LAPACKE_sgetri(int matrix_layout, int n, float* a,
-                   int lda, const int* ipiv);
-int LAPACKE_dgetri(int matrix_layout, int n, double* a,
-                   int lda, const int* ipiv);
+#include <cblas.h>
+int LAPACKE_sgetrf(
+    int matrix_layout, int m, int n, float* a, int lda, int* ipiv);
+int LAPACKE_dgetrf(
+    int matrix_layout, int m, int n, double* a, int lda, int* ipiv);
+int LAPACKE_sgetri(
+    int matrix_layout, int n, float* a, int lda, const int* ipiv);
+int LAPACKE_dgetri(
+    int matrix_layout, int n, double* a, int lda, const int* ipiv);
 }
 #endif
 
