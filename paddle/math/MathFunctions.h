@@ -47,7 +47,7 @@ int LAPACKE_sgetri(int matrix_layout, int n, float* a,
                    int lda, const int* ipiv);
 int LAPACKE_dgetri(int matrix_layout, int n, double* a,
                    int lda, const int* ipiv);
-}
+};
 #endif
 
 #include <cmath>
