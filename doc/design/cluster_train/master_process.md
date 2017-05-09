@@ -87,3 +87,5 @@ During the RPC call the master will do the following:
 ### Task Retry Logic
 
 When a task is dispatched to the trainer, the master will schedule a function for execution after the timeout duration (based on the moving average of task completion time). If the task entry in still in the pending queue, its timeout counter will increase by one, and the task will be moved to todo queue. If the timeout counter is above the threshold, the master will log the error and discard the task.
+
+Please note that since a timed out task could be completed after it has been dispatched for retry, so it is possible for a task to be processed multiple times. We do not try to prevent it from happening since it's fine to train on the same task multiple times due to the stochastic nature of the stochastic gradient decent algorithm.
