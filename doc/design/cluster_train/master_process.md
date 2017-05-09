@@ -1,6 +1,6 @@
-# Design Doc: Master Process
+# Design Doc: Master Server
 
-For an overview of master process' role, please refer to [distributed training design doc](./README.md). In this design doc we will discuss the master process in more details. The master will be implemented in [Go](https://golang.org/).
+For an overview of master server' role, please refer to [distributed training design doc](./README.md). In this design doc we will discuss the master server in more details. The master will be implemented in [Go](https://golang.org/).
 
 ## Dataset
 
@@ -10,18 +10,18 @@ A dataset is a list of files in *RecordIO* format. A RecordIO file consists of c
 
 ## Task Queue
 
-As mentioned in [distributed training design doc](./README.md), a *task* is a data shard that the master process assigns to the trainer process to train on. A task consists of one or multiple *blocks* from one or multiple files. The master process maintains *task queues* to track the training progress.
+As mentioned in [distributed training design doc](./README.md), a *task* is a data shard that the master server assigns to the trainer process to train on. A task consists of one or multiple *blocks* from one or multiple files. The master server maintains *task queues* to track the training progress.
 
 ### Task Queue Creation
 
-1. Each trainer will make an RPC call (using Go's [rpc](https://golang.org/pkg/net/rpc/) package) to the master process, telling it the RecordIO files representing the dataset specified by the user. Since every trainer will tell the master process the same dataset, only the first RPC call will be honored.
+1. Each trainer will make an RPC call (using Go's [rpc](https://golang.org/pkg/net/rpc/) package) to the master server, telling it the RecordIO files representing the dataset specified by the user. Since every trainer will tell the master server the same dataset, only the first RPC call will be honored.
 
 	The RPC interface is:
 	```go
 	func (m *RPCServer) ReportDataset(Paths []string, dummy *int) error {
 	}
 	```
-1. The master process will scan through each RecordIO file to generate the *block index* and know how many blocks does each file have. A block can be referenced by the file path and the index of the block within the file. The block index is in memory data structure that enables fast access to each block, and the index of the block with the file is an integer start from 0, representing the n-th block within the file.
+1. The master server will scan through each RecordIO file to generate the *block index* and know how many blocks does each file have. A block can be referenced by the file path and the index of the block within the file. The block index is in memory data structure that enables fast access to each block, and the index of the block with the file is an integer start from 0, representing the n-th block within the file.
 
 	The definition of the block is:
 	```go
