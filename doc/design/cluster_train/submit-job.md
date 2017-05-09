@@ -45,7 +45,7 @@ paddle.job.dist_train(
                               paddle.updater.Adam(...)),
     reader=reader,
     paddle_job=PaddleJob(
-      pserver_bucket="stander",
+      pserver_bucket="standard",
       base_image="yancey1989/paddle-cloud",
       job_name="paddle-job",
       namespace="paddle-cloud",
@@ -67,36 +67,28 @@ The pseudo code of `paddle.job.dist_train` is as follows:
       trainer.train(reader, num_passes, event_handler, feeding)
 ```
 
-parameter | required | default | explain
+parameter | required | default | explanation
   --- | --- | --- | ---
-job_name|YES||you should special a unique job name which in a namespace
+job_name|YES||the unique name for the training job
 entry_point|YES|| entry point for startup trainer process
-trainer_package|YES|| trainer package file path, you can special a cloud path with `pfs://home/paddle` or a normal path with `/home/paddle`
-base_image|YES||PaddlePaddle production Docker image
-memory|YES|| memory for the trainers totally used
+trainer_package|YES|| trainer package file path which user have the access right
+base_image|YES||the [base image](#base-docker-image) for building the [runtime image](#runtime-docker-image)
+memory|YES|| memory allocated for each trainer
 cpu_num|YES|1| CPU count for the trainers totally used
 gpu_num|NO|0| GPU count for the trainers totally used
-pserver_bucket|NO|mini| you can special `pserver-bucket` for the PServer resource
-pservers|NO|1| custom PServer count
-pserver_cpu|NO|1| custom PServer CPU count
-pserver_memory|NO|1| custom PServer memory limit
+pserver_bucket|NO|mini| you can specify [pserver-bucket](#pserver-resource) for the PServer resource
 
-### Special Resource for a Distributed Training Job
+### specify Resource for a Distributed Training Job
 - PServer Resource
-  - Special `pserver_bucket`
-    - `pserver_bucket=mini`, a single PServer process, it's suitable for learning how to Paddle Cloud.
-    - `pserver_bueckt=stander`, many PServer processes.
-    - `pserver_bucket=premium`, large PServer processes
-  - Custom PServer Resource
-    You can also custom the PServer resource without set `pserver_bucket`
-    - You *must* set `pservers` to special the PServer process count.
-    - You *must* set `pserver_memory` to special the memory limit for each PServer process.
-    - You *must* set `pserver_cpu` to special the CPU count for each PServer process.
+  - specify `pserver_bucket`
+    - `pserver_bucket=single`, a single PServer process, it's suitable for learning how to Paddle Cloud.
+    - `pserver_bueckt=medium`, many PServer processes.
+    - `pserver_bucket=large`, large PServer processes
 
 - Trainer Resource
-  - you *may* special `gpu_num` for the trainers totally used. By default, trainer count equal GPU count.
-  - you *must* special `cpu_num` for the trainers totally used. if `gpu_num=0`, trainer count equal CPU count.  
-  - you *must* special `memory` for the trainers totally used, you can express memory as a plain integer using one of these suffixes: E, P, T, G, M, K.
+  - you *may* specify `gpu_num`, the trainers totally used. By default, trainer count equal GPU count.
+  - you *must* specify `cpu_num`, the trainers totally used. if `gpu_num=0`, trainer count equal CPU count.  
+  - you *must* specify `memory`, memory allocated for each trainer, you can express memory as a plain integer using one of these suffixes: E, P, T, G, M, K.
 
 ### Deploy Parameter Server, Trainer and Master Process
   - Deploy PaddlePaddle Parameter Server processes, it's a Kubernetes ReplicaSet.
