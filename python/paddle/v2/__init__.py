@@ -43,14 +43,15 @@ __all__ = [
 
 def init(**kwargs):
     args = []
+    args_dict = {}
     # NOTE: append arguments if they are in ENV
     for ek, ev in os.environ.iteritems():
-        if ek.startswith("PADDLE_"):
-            args.append('--%s=%s' % (ek.replace("PADDLE_", "").lower(),
-                                     str(ev)))
+        if ek.startswith("PADDLE_INIT_"):
+            args_dict[ek.replace("PADDLE_INIT_", "").lower()] = str(ev)
 
+    args_dict.update(kwargs)
     # NOTE: overwrite arguments from ENV if it is in kwargs
-    for key in kwargs.keys():
+    for key in args_dict.keys():
         args.append('--%s=%s' % (key, str(kwargs[key])))
 
     api.initPaddle(*args)
