@@ -1,12 +1,12 @@
 # Design Doc: Master Process
 
-For an overview of master process' role, please refer to [distributed training design doc](./README.md). In this design doc we will discuss the master process in more details. The master will be implemented in [golang](https://golang.org/).
+For an overview of master process' role, please refer to [distributed training design doc](./README.md). In this design doc we will discuss the master process in more details. The master will be implemented in [Go](https://golang.org/).
 
 ## Dataset
 
 <img src="src/dataset.png"/>
 
-A dataset is represented by a list of files in *RecordIO* format on the distributed filesystem, each RecordIO file consists of multiple *blocks*, and each block has multiple data instances.
+A dataset is a list of files in *RecordIO* format. A RecordIO file consists of chunks, whereas each chunk consists some records.
 
 ## Task Queue
 
@@ -14,7 +14,7 @@ As mentioned in [distributed training design doc](./README.md), a *task* is a da
 
 ### Task Queue Creation
 
-1. Each trainer will make an RPC call (using [golang rpc](https://golang.org/pkg/net/rpc/)) to the master process, telling it the RecordIO files representing the dataset specified by the user. Since every trainer will tell the master process the same dataset, only the first RPC call will be honored.
+1. Each trainer will make an RPC call (using Go's [rpc](https://golang.org/pkg/net/rpc/) package) to the master process, telling it the RecordIO files representing the dataset specified by the user. Since every trainer will tell the master process the same dataset, only the first RPC call will be honored.
 
 	The RPC interface is:
 	```go
