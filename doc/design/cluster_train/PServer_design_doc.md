@@ -25,7 +25,10 @@ PServer负责以下功能:
 ```c++
 class Evaluator;
 class ParameterUpdater;
-/* Because there is no Tensor data structure, optimizer in PServer does not need the Tensor shape, we just define Vector as Tensor, should be replace with `real Tensor` after the refactoring finish. */
+/* Because there is no Tensor data structure,  \ 
+optimizer in PServer does not need the Tensor shape,  \
+we just define Vector as Tensor, should be replace with `real Tensor` \
+after the refactoring finish. */
 typedef /*Vector*/ Tensor<DIM=1, PVALUE>;
 template<PKEY, PVALUE>
 class PServer {
@@ -40,9 +43,7 @@ PServerConfig config;
 // use Tensor as store fundamental unit
 
 syncThreadPool threadPool;
-/* 2d pointer store a vector of shard pointer. each shard should be unordered_map<block_id, Tensor> parameterMap; 
-block_id is the parameter block id, after scling with the Sclicer(see PClient), slice parameter Matrix generate parameter block; 
-*/
+
 /*
 when init() calls, create SHARD_NUM Shard_Store;
 parameters:
@@ -50,11 +51,11 @@ SHARD_NUM : int, store in PServerConfig.
 	model shard in one PServer node;
 */
 typedef unordered_map<block_id, Tensor<PVALUE>> Shard_Store;
+/* 2d pointer store a vector of shard pointer. each shard should be unordered_map<block_id, Tensor> parameterMap; 
+block_id is the parameter block id, after scling with the Sclicer(see PClient), slice parameter Matrix generate parameter block; 
+*/
 Shard_Store **store_pool;  
-  
-//register operations service,  used between matrix, vectors ooperation
-//operation function name : operationFunction 
-
+ 
 public:
   /* init */
   int32_t init();
@@ -66,33 +67,33 @@ public:
   void PullParameters_process_handler(RpcRequest, RpcResponse);
   /* deserilize/unarchive updating data, need to call setUpdater first time */
   void UpdateParameters_process_handler(RpcRequest, RpcResponse);
- /*  get Parameters thread for parallel */
-int32_t thread_hPullParameters(int32_t thread_id, <map<string/*pname*/>*Tensor params);
- /* set Parameters thread for parallel */
-int32_t thread_UpdateParameters(int32_t thread_id, <map<string/*pname*/>*Tensor params);
+  /*  get Parameters thread for parallel */
+  int32_t thread_hPullParameters(int32_t thread_id, <map<string/*pname*/>*Tensor params);
+  /* set Parameters thread for parallel */
+  int32_t thread_UpdateParameters(int32_t thread_id, <map<string/*pname*/>*Tensor params);
   
- /* set updater/optimizer */
- int32_t set_updater(updater_name) {
+  /* set updater/optimizer */
+  int32_t set_updater(updater_name) {
    updatebase = updater;
- }
+  }
 private:
 // apply update
 ParameterUpdater *updatebase;
-
-
  /* part 2 : checkpoint, ignore the difference of save time between PServer nodes. */
   int32_t saveCheckPoint() {
+    /*
     1, counter match save checkpoint condition, grab the RWLock;
     2, start new thread, generate unique UUID, write to pfs(filesystem), (TODO: Stop update and wait?)
     3, write etcd `/checkpoint/pserver_id : {"uuid": [UUID], "md5", "MD5 sum", "timestamp": xxxx}`
     4, delete earlier checkpoint not equal to UUID
-    5, release lock, wait write thread join; 
+    5, release lock, wait write thread join;  */
     return SUCCESS;
   }
   int32_t recoveryFromCheckPoint() {
+    /*
     1, getUUIDFrometcd(); 
     2, tryLoadCheckPoint();
-    3, PServerController call start interface.
+    3, PServerController call start interface. */
     return SUCCESS;
   }
   
