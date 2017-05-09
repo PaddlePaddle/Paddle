@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <glog/logging.h>
-
 #include "TensorShape.h"
 #include "TensorType.h"
 #include "paddle/math/Matrix.h"

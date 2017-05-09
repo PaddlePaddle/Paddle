@@ -109,7 +109,8 @@ set(COMMON_FLAGS
     -Wno-unused-function
     -Wno-error=literal-suffix
     -Wno-error=sign-compare
-    -Wno-error=unused-local-typedefs)
+    -Wno-error=unused-local-typedefs
+    -Wno-error=deprecated-declarations)
 
 set(GPU_COMMON_FLAGS
     -fPIC

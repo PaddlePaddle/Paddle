@@ -13,9 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Layer.h"
-#include "WithFunction.h"
-#include "paddle/function/BufferArg.h"
-#include "paddle/function/Function.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
@@ -34,7 +31,7 @@ namespace paddle {
  * Output: a vector (batchSize * weightDim)
  */
 
-class CosSimVecMatLayer : public Layer, public WithFunction {
+class CosSimVecMatLayer : public Layer {
 protected:
   MatrixPtr tmpMtx0;
   MatrixPtr tmpMtx1;
@@ -103,14 +100,12 @@ bool CosSimVecMatLayer::init(const LayerMap& layerMap,
 
   CHECK(tmpRow0 && tmpRow1 && tmpRow2 && tmpRow3 && tmpMtx0 && tmpMtx1);
 
-  appendFunction(&forward_,
-                 "CosSimForward",
-                 FuncConfig().set("scale", (real)config_.cos_scale()),
-                 useGpu_);
-  appendFunction(&backward_,
-                 "CosSimBackward",
-                 FuncConfig().set("scale", (real)config_.cos_scale()),
-                 useGpu_);
+  forward_.add("CosSimForward",
+               function::Config().set("scale", (real)config_.cos_scale()),
+               useGpu_);
+  backward_.add("CosSimBackward",
+                function::Config().set("scale", (real)config_.cos_scale()),
+                useGpu_);
 
   return true;
 }

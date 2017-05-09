@@ -16,7 +16,7 @@ limitations under the License. */
 #include <functional>
 #include "BufferArg.h"
 #include "BufferArgs.h"
-#include "KernelType.h"
+#include "FunctionList.h"
 #include "paddle/topology/Function.h"
 #include "paddle/topology/meta/FunctionMeta.h"
 #include "paddle/utils/Util.h"
@@ -33,11 +33,11 @@ class FunctionMetaRegister {
 public:
   FunctionMetaRegister(topology::meta::FunctionMetaPtr& meta) : meta_(meta) {}
 
-  paddle::Error addCPUKernel(KernelType kernel) {
+  paddle::Error addCPUKernel(Function kernel) {
     return this->addKernel("CPUKernel", kernel);
   }
 
-  paddle::Error addGPUKernel(KernelType kernel) {
+  paddle::Error addGPUKernel(Function kernel) {
     return this->addKernel("GPUKernel", kernel);
   }
 
@@ -57,7 +57,7 @@ private:
   topology::meta::FunctionMetaPtr& meta_;
 };
 
-KernelType createKernel(const topology::Function& conf);
+Function createKernel(const topology::Function& conf);
 
 #define BEGIN_REGISTER_FUNCTION_META(name, func) \
   static paddle::InitFunction __init_##name##__([] {\

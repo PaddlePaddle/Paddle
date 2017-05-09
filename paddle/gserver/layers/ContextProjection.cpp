@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "ContextProjection.h"
-#include "paddle/function/Function.h"
 #include "paddle/utils/Stat.h"
 namespace paddle {
 
@@ -48,22 +47,20 @@ bool ContextProjection::init() {
   bool is_padding = config_.trainable_padding();
   size_t total_pad = is_padding ? beginPad_ + endPad_ : 0;
 
-  appendFunction(&forward_,
-                 "ContextProjectionForward",
-                 FuncConfig()
-                     .set("context_length", context_length)
-                     .set("context_start", context_start)
-                     .set("begin_pad", beginPad_),
-                 useGpu_);
-  appendFunction(&backward_,
-                 "ContextProjectionBackward",
-                 FuncConfig()
-                     .set("context_length", context_length)
-                     .set("context_start", context_start)
-                     .set("begin_pad", beginPad_)
-                     .set("is_padding", is_padding)
-                     .set("total_pad", total_pad),
-                 useGpu_);
+  forward_.add("ContextProjectionForward",
+               function::Config()
+                   .set("context_length", context_length)
+                   .set("context_start", context_start)
+                   .set("begin_pad", beginPad_),
+               useGpu_);
+  backward_.add("ContextProjectionBackward",
+                function::Config()
+                    .set("context_length", context_length)
+                    .set("context_start", context_start)
+                    .set("begin_pad", beginPad_)
+                    .set("is_padding", is_padding)
+                    .set("total_pad", total_pad),
+                useGpu_);
 
   return true;
 }

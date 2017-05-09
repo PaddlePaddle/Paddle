@@ -15,8 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "Layer.h"
-#include "WithFunction.h"
-#include "paddle/function/BufferArg.h"
 namespace paddle {
 
 /**
@@ -24,7 +22,7 @@ namespace paddle {
  *         The input and output is a 4D tensor. Padding zeros from the 2nd to
  *         the 4th dimenstion according padc_, padh_ and padw_.
  */
-class PadLayer : public Layer, public WithFunction {
+class PadLayer : public Layer {
 public:
   explicit PadLayer(const LayerConfig& config) : Layer(config) {}
 

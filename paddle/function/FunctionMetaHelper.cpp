@@ -18,11 +18,11 @@ namespace function {
 
 class MetaKernelType {
 private:
-  static KernelType getKernel(topology::Function& topo,
-                              const std::string& metaName) {
+  static Function getKernel(topology::Function& topo,
+                            const std::string& metaName) {
     auto meta = topology::meta::FunctionMeta::get(topo.type);
-    const KernelType* kernel = nullptr;
-    auto err = meta->getMeta<KernelType>(metaName, &kernel);
+    const Function* kernel = nullptr;
+    auto err = meta->getMeta<Function>(metaName, &kernel);
     if (err.isOK()) return *kernel;
     const KernelTypeWithAttrs* kernelEx = nullptr;
     meta->getMeta<KernelTypeWithAttrs>(metaName, &kernelEx).check();
@@ -92,10 +92,10 @@ public:
 
 private:
   topology::Function funcTopo_;
-  KernelType kernel_;
+  Function kernel_;
 };
 
-KernelType createKernel(const topology::Function& conf) {
+Function createKernel(const topology::Function& conf) {
   return MetaKernelType(conf);
 }
 

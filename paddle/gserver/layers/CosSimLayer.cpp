@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "CosSimLayer.h"
-#include "paddle/function/Function.h"
 #include "paddle/function/FunctionMetaHelper.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
@@ -35,10 +34,9 @@ bool CosSimLayer::init(const LayerMap& layerMap,
   fwd.attributes["scale"] = (double)config_.cos_scale();
   forward_.push_back(function::createKernel(fwd));
 
-  appendFunction(&backward_,
-                 "CosSimBackward",
-                 FuncConfig().set("scale", (real)config_.cos_scale()),
-                 useGpu_);
+  backward_.add("CosSimBackward",
+                function::Config().set("scale", (real)config_.cos_scale()),
+                useGpu_);
 
   return true;
 }

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "PadLayer.h"
-#include "paddle/function/Function.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -44,20 +43,18 @@ bool PadLayer::init(const LayerMap& layerMap,
   outDims_ = TensorShape(4);
   setOutDims(0);
 
-  appendFunction(&forward_,
-                 "Pad",
-                 FuncConfig()
-                     .set("channel", padc_)
-                     .set("height", padh_)
-                     .set("width", padw_),
-                 useGpu_);
-  appendFunction(&backward_,
-                 "PadGrad",
-                 FuncConfig()
-                     .set("channel", padc_)
-                     .set("height", padh_)
-                     .set("width", padw_),
-                 useGpu_);
+  forward_.add("Pad",
+               function::Config()
+                   .set("channel", padc_)
+                   .set("height", padh_)
+                   .set("width", padw_),
+               useGpu_);
+  backward_.add("PadGrad",
+                function::Config()
+                    .set("channel", padc_)
+                    .set("height", padh_)
+                    .set("width", padw_),
+                useGpu_);
 
   return true;
 }

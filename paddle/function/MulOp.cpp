@@ -248,7 +248,7 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
 template <DeviceType Device>
 class MulFunc : public FunctionBase {
 public:
-  void init(const FuncConfig& config) override {
+  void init(const function::Config& config) override {
     aTrans_ = config.get<bool>("aTrans");
     bTrans_ = config.get<bool>("bTrans");
   }

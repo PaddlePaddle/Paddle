@@ -71,7 +71,7 @@ void PadGrad<DEVICE_TYPE_CPU>(real* inGrad,
   }
 }
 
-static inline PadConf castToPadConf(const FuncConfig& conf) {
+static inline PadConf castToPadConf(const function::Config& conf) {
   return {conf.get<std::vector<uint32_t>>("channel"),
           conf.get<std::vector<uint32_t>>("height"),
           conf.get<std::vector<uint32_t>>("width")};
@@ -133,7 +133,9 @@ static inline PadConf castToPadConf(const FuncConfig& conf) {
 template <DeviceType Device>
 class PadFunc : public FunctionBase {
 public:
-  void init(const FuncConfig& config) override { pad_ = castToPadConf(config); }
+  void init(const function::Config& config) override {
+    pad_ = castToPadConf(config);
+  }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(1UL, inputs.size());
@@ -174,7 +176,9 @@ private:
 template <DeviceType Device>
 class PadGradFunc : public FunctionBase {
 public:
-  void init(const FuncConfig& config) override { pad_ = castToPadConf(config); }
+  void init(const function::Config& config) override {
+    pad_ = castToPadConf(config);
+  }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(1UL, inputs.size());
