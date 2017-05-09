@@ -128,14 +128,7 @@ class SGDOptimizer : Optimizer {
 class ASGDOptimizer : Optimizer {
   ...
 }
-
 ```
-
-<img src="src/hashring.png" width="300"/>
-
-
-
-
 
 
 
