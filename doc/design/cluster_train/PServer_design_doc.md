@@ -6,86 +6,81 @@ Parameter Server process 是Paddle中负责模型的存储，更新和模型分�
 
 ## 术语
 
-- PServer: Parameter Server 服务器
-- PClient: Parameter Server Client
-- PServerController：PServer管理员，启动Server，动态扩容，容灾等
+- PServer: Parameter Server Server，负责模型存储，调用分布式更新，响应PClient请求
+- PClient: Parameter Server Client，负责均衡PServer请求，打包并转发RPC请求
+- PServerController：负责启动Server，动态扩容，容灾等
 - model: 指深度学习训练之后得到的所有参数，使用这个神经网络可以完成对新数据的预测
-- parameters: 神经网络中的参数，包括权重w和偏置b。一个神经网络的模型由大量的参数组成
-- shard: 分片，通常指将一个整体拆分成多份的其中的一份。
+- Tensor: 一个NDArray结构，Trainer与PServer, PClient交互的基本数据结构
+- shard: 全量模型在某个PServer上的局部分片，通常指将一个Model整体拆分成多份的其中的一份。
 - parameter block: 多个parameter block构成一个model shard(现存的model并行策略是parameter block based，在新架构中继续沿用)
-- 单点故障: 任意时刻只可能同时有一台服务器故障。由于集群中同时存在两台机器故障的概率极低（（平均故障率*平均故障修复时间）^2）只对特殊在线系统考虑两台以上同时故障的容灾。
 
 ##  PServer
 
-PServer负责:
+PServer负责以下功能:
 
-模型存储，模型更新，注册服务并监听端口事件，PServer个数的动态扩张收缩，负责序列化传输数据。
+1、模型存储，2、注册服务并监听端口事件，3、PServer个数的动态扩张收缩，4、负责序列化传输数据。
 
-发送接收数据和命令都使用rpc 接口，例如golang rpc
+发送接收调用都使用rpc 接口，见下文中的RPCServer，例如使用golang rpc实现对应的接口
 
 ```c++
 class Evaluator;
 class ParameterUpdater;
-class DeviceSet;
+/* Because there is no Tensor data structure, optimizer in PServer does not need the Tensor shape, we just define Vector as Tensor, should be replace with `real Tensor` after the refactoring finish. */
+typedef /*Vector*/ Tensor<DIM=1, PVALUE>;
 template<PKEY, PVALUE>
 class PServer {
-  class ParameterSegments {
-  PKEY key; // param_id;
-  
-  ...
-	}
-RWLock lock;
-int32_t serverId;
-PServerConfig config; // start Pserver config 
-  
-// part 1, store model, store model in device, e.g gpu, cpu memory
-// compute resource 
-// treat thread, memory as devices
-syncThreadPool threadPool;
-Device **store_pool[SHARD_NUM];  // memory and gpu memory，2d pointer store a vector of shard pointer. each shard should be unordered_map<ParameterSegments> parameterMap; 
 
-GradientMachine *gmbase; // gradient machine implement forward backward interface, hidden the detail of communication of devices, such as GPUMerge, multithread Merge , see multineuralnet, recurrnet neuralnet, etc
+RWLock lock;
+/* pserver_id used by checkpoint */
+int32_t pserver_id;
+/* start Pserver config, should be persist in ectd for PServer node recovery */
+PServerConfig config;   
+
+// part 1: store model in PServer
+// use Tensor as store fundamental unit
+
+syncThreadPool threadPool;
+/* 2d pointer store a vector of shard pointer. each shard should be unordered_map<block_id, Tensor> parameterMap; 
+block_id is the parameter block id, after scling with the Sclicer(see PClient), slice parameter Matrix generate parameter block; 
+*/
+/*
+when init() calls, create SHARD_NUM Shard_Store;
+parameters:
+SHARD_NUM : int, store in PServerConfig.
+	model shard in one PServer node;
+*/
+typedef unordered_map<block_id, Tensor<PVALUE>> Shard_Store;
+Shard_Store **store_pool;  
   
 //register operations service,  used between matrix, vectors ooperation
 //operation function name : operationFunction 
-unorderedmap<string, operationFunc> serviceRegisted;
-// e.g example from the code in paddle
-1, regist service function in PServer
-serviceRegisted.insert("PSERVER_OP_utu", OpFunc_UTU);
-2, pack rpc call with method_name="PSERVER_OP_utu", PServer will check the service map and execute OpFunc in Parallel
-   OpFuncName = request.request_method_name;
-   auto OpFuncRpcCalled = serviceRegisted.find(OpFuncName)
-   CHECK(OpFuncRpcCalled);
-   parallelExec()
-     or
-   doOperation(OpFuncRpcCalled)
-3, pack response and send to Client
-   response = getResponse()
-   response.set_result(res)
-   serilize/archive to binary blob, send response by rpc call 
+
 public:
+  /* init */
   int32_t init();
-  int32_t isStartedAndAlive(); // for PServerController, check status
+  /* used by PServerController check status */
+  bool is_started;
+  int32_t isStartedAndAlive(); 
   
-  // part 2: update parameter
-  // *ONLY* use this interface execute the callback
+  /* deserilize/unarchive sending data */
+  void PullParameters_process_handler(RpcRequest, RpcResponse);
+  /* deserilize/unarchive updating data, need to call setUpdater first time */
+  void UpdateParameters_process_handler(RpcRequest, RpcResponse);
+ /*  get Parameters thread for parallel */
+int32_t thread_hPullParameters(int32_t thread_id, <map<string/*pname*/>*Tensor params);
+ /* set Parameters thread for parallel */
+int32_t thread_UpdateParameters(int32_t thread_id, <map<string/*pname*/>*Tensor params);
+  
+ /* set updater/optimizer */
+ int32_t set_updater(updater_name) {
+   updatebase = updater;
+ }
 private:
 // apply update
 ParameterUpdater *updatebase;
 
-  typedef std::function<void()> Callback;  // function callback
-  void exec();
-  void parallelExec();
-  or
-  
-  void doOperation(PrepareOperation& ops, ...); // operator topology
-  void doMultipleOperation(PrepareOperation& ops, ...);
-  //TODO: op execute need more detail here
-  
-  // part 4: checkpoint, ignore the difference of save time between PServer nodes.
-  // see hash ring, when there is failed worker, kubernates start a new worker and insert into hashring.
-  hashring registerWorker;
-  
+
+ /* part 2 : checkpoint, ignore the difference of save time between PServer nodes. */
   int32_t saveCheckPoint() {
     1, counter match save checkpoint condition, grab the RWLock;
     2, start new thread, generate unique UUID, write to pfs(filesystem), (TODO: Stop update and wait?)
@@ -95,24 +90,20 @@ ParameterUpdater *updatebase;
     return SUCCESS;
   }
   int32_t recoveryFromCheckPoint() {
-    getUUIDFrometcd(); 
-    tryLoadCheckPoint();
-    PServerController call start interface.
+    1, getUUIDFrometcd(); 
+    2, tryLoadCheckPoint();
+    3, PServerController call start interface.
     return SUCCESS;
   }
   
 private:
-// metrics, evaluate the model in runtime
-// every node send runtime statistics to evaluatorServer during training/testing. when training Pass finish(or event handler notify), trainer leader(e.g node_id=0) send rpc call to evaluatorServer process then produce result. 
-//Evaluator base class, for example, AUC, LOSS, AVERAGE 
-//evalbase->sendAsync(EVAL_DATA_STRUCT)
-//evaluatorServer as standalone thread, can be used in jupyter notebook
-Evaluator *evalbase;  
+
   
-//part 6 : auto scaling 
-a. Trainer/worker auto scaling insert or remove 
+//part 3 : auto scaling of PServers 
+/* part 3.a. Trainer/worker auto scaling insert or remove during training */
+ unordered_map<string/*trainer name*/, Trainer*>
+/* part 3.b. PServer auto scaling during training */
 rehash key based on Pserver, see PClient Part
- 
 } // PServer
 
 
@@ -126,52 +117,62 @@ class SparseParameterUpdater{
 class SparseParameterUpdater {
   
 }
+/* 目前支持sgd 类算法，不支持owlqn, L-BFGS等算法
+   sgd (momentum, adagram, adadelta, adam)，pass based
+   async-sgd
+*/
 class SGDOptimizer : Optimizer {
   ...
 }
 class ASGDOptimizer : Optimizer {
   ...
 }
-class OWLQNOptimizer : Optimizer {
-  ...
-}
+
 ```
 
 <img src="src/hashring.png" width="300"/>
 
-Optimizer需要支持的优化算法
 
-L-BFGS，owlqn，ftrl, TODO：在Paddle中owlqn等需要参数更新方式不同，支持接口是否相同？
 
-sgd (momentum, adagram, adadelta, adam)，pass based
 
-async-sgd
 
 
 
 ## PClient
 
-PClient功能是否已经包含在trainer中？PClient 负责parameter balancer，打包rpc请求转发PServer。
+PClient 负责均衡PServer请求，打包rpc请求转发PServer。
 
 ```c++
-class ParameterPartitioner;
+/* named the block slicer, cut Parameter into blocks, and deletermine its pserver_id(shard_id)*/
+class Slicer;
 template<PKEY, PVALUE>
 PClient {
 public:
-  // pack request as rpc call and serilize/archive sending data 
-  void eventHandler();
+/* get Parameters */
+int32_t PullParameters(<map<string/*pname*/>*Tensor params);
+/* set Parameters */
+int32_t UpdateParameters(<map<string/*pname*/>*Tensor params)
+  
+/* pack request as rpc call and serilize/archive receive data */
+void PullParameters_rpc_handler(RpcRequest, RpcResponse);
+/* pack request as rpc call and serilize/archive sending data */
+void UpdateParameters_rpc_handler(RpcRequest, RpcResponse);
+
 private:
-  // use param_id and node_id as hash key, balance parameter between shard and PServers
-  ParameterPartitioner partitioner;
+/* use param_id and node_id as hash key, balance parameter between shard and PServers */
+  Slicer _slice;
+
+
 }
+
 template<PKEY>
-class ParameterPartitioner {
-  hash(param_id, node_id) // impl hash function generate evenly distributed shard_id/PServerid, when auto scaling of PServer, then store 
+class Slicer {
+  /* impl hash function generate evenly distributed shard_id/PServerid, when auto scaling of PServer, then store  */
+  hash(param_id, node_id) 
     
 // auto scaling, do not implement in v1, 
 //TODO: need more detail
-  rehash(param_id, node_id); // generate new server hash id for each parameter
-  
+  rehash(param_id, node_id); // generate new server hash id for each parameter, moving parameter to new PServer node
 }
 ```
 
@@ -182,15 +183,25 @@ class ParameterPartitioner {
 接口类，屏蔽rpc实现，方便移植rpc lib
 
 ```c++
-// Used for request, package up request into binary
+/* RpcRequest Header, Used for request, package up request into RpcImpl Call */
 struct RpcRequest {
-    uint64_t _request_id;
-    int32_t _src_id;  //node_id
-    int32_t _target_id; //node_id
-    std::string _target_method_name; 
-    std::string _src_method_name;
-    BinaryArchive _args;
-    static uint64_t s_buffer_size;
+    uint64_t _request_id;                // request_id 
+    int32_t _src_id;                     // request source node_id or process_id, is unique in k8s.
+    int32_t _target_id;                  // request target. same as before
+    std::string _target_method_name;     // Command bewteewn two nodes . e.g 
+  /*format example, [COMMAND_NODE]
+    SetUpdater_server_id;
+    PullParameters_server_id;   
+    UpdateParameters_server_id;
+    SaveCheckPoint_server_id;
+    
+    RegisterTrainer_trainer_id;
+    DeregisterTrainer_trainer_id;
+	....
+	DoOperation_server_id; [COMMAND_extension]
+  */
+    BinaryArchive _args;                 // other arguments for extension  
+    static uint64_t s_buffer_size;      
 }
 // Used for response, package up response into binary
 struct RpcResponse {
@@ -199,18 +210,18 @@ public:
     int32_t _target_id;
     std::string _target_method_name;
     BinaryArchive _archive;
-    int32_t _error_code;
+    int32_t _error_code;                  // return status code
 ```
 
 
 
 ```c++
-class AsyncRPCServer {
-  static createRequest(RPCRequest*, RPCResponse);
-  static AsyncRPCServer& singleton();
+class RPCServer {
+  /* ONLY use this method create RPC Calls */
+  void static createRequest(RPCRequest*, RPCResponse);  
+  static RPCServer& singleton();
   // send rpc call asynchronize
-  void send_async(); 
-  void send_sync();
+  void Send(bool sync, ...);
   RPCImpl *rpcimpl;
 }
 ```
@@ -220,6 +231,8 @@ class AsyncRPCServer {
 根据ParameterServer参数创建和管理PServer instance，从命令行读取参数，从etcd读取参数，运行开始将存活的PServer instance配置存储在etcd中
 
 - 启动和运行参数包括：
+
+  这部分参数都会存储于etcd中，用于自动扩容和容灾，运行可以从命令行读取，也可以从etcd读取
 
 `/PS_DESIRED`:, 启动PServer instance个数，etcd存储格式 `/PS_DESIRED:3`
 
@@ -235,7 +248,7 @@ etcd存储格式 `ROOT_PORT:8000, /PS/0:8000，/PS/1:8001 `
 
 ```c++
 int32_t loadConfig(fromCLi);
-int32_t loadConfig(fromEtcdDir);
+int32_t loadConfig(frometcdDir);
 // create PServer fron scratch or recovery from config  
 static PServer* create(PServerConfig& );
 // create PServer in fault tolenrant, recovery from checkpoint 
@@ -245,7 +258,10 @@ static PServer* create(const char* checkpoint_dir);
 - 管理PServer实例
 
 ```c++
-int32_t start(); // start PServer
-int32_t wait();  //wait join
+int32_t start();   // start PServer
+int32_t wait();    //wait join
 int32_t countAlive(); // count alive instance
 ```
+
+
+
