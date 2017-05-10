@@ -130,6 +130,12 @@ class Topology(object):
         return [(nm, data_layers[nm].type)
                 for nm in self.proto().input_layer_names]
 
+    def get_layer_proto(self, name):
+        for layer in self.__model_config__.layers:
+            if layer.name == name:
+                return layer
+        return None
+
 
 def __check_layer_type__(layer):
     if not isinstance(layer, v2_layer.LayerV2):

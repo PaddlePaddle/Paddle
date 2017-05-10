@@ -55,7 +55,8 @@ Building in /paddle/build ...
 EOF
 make -j `nproc`
 if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
-    ctest -V -j `nproc`
+    pip uninstall -y py-paddle paddle || true
+    ctest -V
 fi
 
 

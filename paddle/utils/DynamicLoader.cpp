@@ -165,8 +165,8 @@ void GetWarpCTCDsoHandle(void** dso_handle) {
 
 void GetLapackDsoHandle(void** dso_handle) {
 #if defined(__APPLE__) || defined(__OSX__)
-  GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.dylib", dso_handle);
+  GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.dylib", dso_handle);
 #else
-  GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.so", dso_handle);
+  GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.so", dso_handle);
 #endif
 }
