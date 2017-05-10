@@ -1,45 +1,43 @@
-# Design Doc: Parameter Server Process
+# Design Doc: Parameter Server
 
-Parameter Server process 是Paddle中负责模型的存储，更新和模型分片一致性的组件，在整个系统中的作用请参考 [distributed training design doc](./README.md) ，本文档包含PServer，PClient，PServerContoller等，涉及到的配置参数均使用大写字母
+ParameterServer 是Paddle中分布式训练更新模型的组件，在整个系统中的作用请参考 [distributed training design doc](./README.md) ，本文档包含ParameterServer，ParameterClient，ParameterServerContoller等，涉及到的配置参数均使用大写字母
 
 <img src="src/paddle-model-sharding.png" width="500"/>
 
 ## 术语
 
-- PServer: Parameter Server Server，负责模型存储，调用分布式更新，响应PClient请求
-- PClient: Parameter Server Client，负责均衡PServer请求，打包并转发RPC请求
-- PServerController：负责启动Server，动态扩容，容灾等
-- model: 指深度学习训练之后得到的所有参数，使用这个神经网络可以完成对新数据的预测
-- Tensor: 一个NDArray结构，Trainer与PServer, PClient交互的基本数据结构
-- shard: 全量模型在某个PServer上的局部分片，通常指将一个Model整体拆分成多份的其中的一份。
-- parameter block: 多个parameter block构成一个model shard(现存的model并行策略是parameter block based，在新架构中继续沿用)
+- ParameterServer: ParameterServer Server，负责模型存储，调用分布式更新，响应ParameterClient请求
+- ParameterClient: ParameterServer Client，负责均衡ParameterServer请求，打包并转发RPC请求
+- ParameterServerController：负责启动Server，动态扩容，容灾等
+- Tensor: 一个NDArray结构，Trainer与ParameterServer, ParameterClient交互的基本数据结构
+- shard: 全量模型在某个ParameterServer上的局部分片，通常指将一个模型整体拆分成多份的其中的一份。
+- parameter block: 多个parameter block构成一个shard(现存的model并行策略是parameter block based，在新架构中继续沿用)
 
-##  PServer
+##  ParameterServer
 
-PServer负责以下功能:
+ParameterServer负责以下功能:
 
-1、模型存储，2、注册服务并监听端口事件，3、PServer个数的动态扩张收缩，4、负责序列化传输数据。
+1、模型存储，2、注册服务并监听端口事件，3、ParameterServer instance故障恢复，其中Trainer个数的动态扩张收缩，4、负责序列化传输数据。
 
-发送接收调用都使用rpc 接口，见下文中的RPCServer，例如使用golang rpc实现对应的接口
+发送接收调用都使用RPC 接口，见下文中的RPCServer，例如使用Go RPC实现对应的接口
 
 ```c++
-class Evaluator;
-class ParameterUpdater;
-/* Because there is no Tensor data structure,  \ 
-optimizer in PServer does not need the Tensor shape,  \
+
+/* Because there is no Tensor data structure right now,  \ 
+optimizer in ParameterServer does not need the Tensor shape,  \
 we just define Vector as Tensor, should be replace with `real Tensor` \
 after the refactoring finish. */
 typedef /*Vector*/ Tensor<DIM=1, PVALUE>;
 template<PKEY, PVALUE>
-class PServer {
+class ParameterServer {
 
 RWLock lock;
-/* pserver_id used by checkpoint */
-int32_t pserver_id;
-/* start Pserver config, should be persist in ectd for PServer node recovery */
-PServerConfig config;   
+/* ParameterServer_id used by checkpoint */
+int32_t ParameterServer_id;
+/* start ParameterServer config, should be persist in ectd for ParameterServer node recovery */
+ParameterServerConfig config;   
 
-// part 1: store model in PServer
+// part 1: store model in ParameterServer
 // use Tensor as store fundamental unit
 
 syncThreadPool threadPool;
@@ -47,19 +45,19 @@ syncThreadPool threadPool;
 /*
 when init() calls, create SHARD_NUM Shard_Store;
 parameters:
-SHARD_NUM : int, store in PServerConfig.
-	model shard in one PServer node;
+SHARD_NUM : int, store in ParameterServerConfig.
+	model shard in one ParameterServer node;
 */
 typedef unordered_map<block_id, Tensor<PVALUE>> Shard_Store;
 /* 2d pointer store a vector of shard pointer. each shard should be unordered_map<block_id, Tensor> parameterMap; 
-block_id is the parameter block id, after scling with the Sclicer(see PClient), slice parameter Matrix generate parameter block; 
+block_id is the parameter block id, after scling with the Sclicer(see ParameterClient), slice parameter Matrix generate parameter block; 
 */
 Shard_Store **store_pool;  
  
 public:
   /* init */
   int32_t init();
-  /* used by PServerController check status */
+  /* used by ParameterServerController check status */
   bool is_started;
   int32_t isStartedAndAlive(); 
   
@@ -79,12 +77,12 @@ public:
 private:
 // apply update
 ParameterUpdater *updatebase;
- /* part 2 : checkpoint, ignore the difference of save time between PServer nodes. */
+ /* part 2 : checkpoint, ignore the difference of save time between ParameterServer nodes. */
   int32_t saveCheckPoint() {
     /*
     1, counter match save checkpoint condition, grab the RWLock;
     2, start new thread, generate unique UUID, write to pfs(filesystem), (TODO: Stop update and wait?)
-    3, write etcd `/checkpoint/pserver_id : {"uuid": [UUID], "md5", "MD5 sum", "timestamp": xxxx}`
+    3, write etcd `/checkpoint/ParameterServer_id : {"uuid": [UUID], "md5", "MD5 sum", "timestamp": xxxx}`
     4, delete earlier checkpoint not equal to UUID
     5, release lock, wait write thread join;  */
     return SUCCESS;
@@ -93,19 +91,18 @@ ParameterUpdater *updatebase;
     /*
     1, getUUIDFrometcd(); 
     2, tryLoadCheckPoint();
-    3, PServerController call start interface. */
+    3, ParameterServerController call start interface. */
     return SUCCESS;
   }
   
 private:
 
   
-//part 3 : auto scaling of PServers 
+//part 3 : auto scaling of ParameterServers 
 /* part 3.a. Trainer/worker auto scaling insert or remove during training */
  unordered_map<string/*trainer name*/, Trainer*>
-/* part 3.b. PServer auto scaling during training */
-rehash key based on Pserver, see PClient Part
-} // PServer
+
+} // ParameterServer
 
 
 class ParameterUpdater {
@@ -118,9 +115,9 @@ class SparseParameterUpdater{
 class SparseParameterUpdater {
   
 }
-/* 目前支持sgd 类算法，不支持owlqn, L-BFGS等算法
-   sgd (momentum, adagram, adadelta, adam)，pass based
-   async-sgd
+/* 目前支持SGD(Stochastic Gradient Descent) 类算法，不支持OWLQN (Orthant-Wise Limited-memory Quasi-Newton)等算法
+   SGD (SGD, Momentum, Adam)
+   async-SGD
 */
 class SGDOptimizer : Optimizer {
   ...
@@ -132,15 +129,15 @@ class ASGDOptimizer : Optimizer {
 
 
 
-## PClient
+## ParameterClient
 
-PClient 负责均衡PServer请求，打包rpc请求转发PServer。
+ParameterClient 负责均衡ParameterServer请求，打包rpc请求转发ParameterServer。
 
 ```c++
-/* named the block slicer, cut Parameter into blocks, and deletermine its pserver_id(shard_id)*/
+/* named the block slicer, cut Parameter into blocks, and deletermine its ParameterServer_id(shard_id)*/
 class Slicer;
 template<PKEY, PVALUE>
-PClient {
+ParameterClient {
 public:
 /* get Parameters */
 int32_t PullParameters(<map<string/*pname*/>*Tensor params);
@@ -153,7 +150,7 @@ void PullParameters_rpc_handler(RpcRequest, RpcResponse);
 void UpdateParameters_rpc_handler(RpcRequest, RpcResponse);
 
 private:
-/* use param_id and node_id as hash key, balance parameter between shard and PServers */
+/* use param_id and node_id as hash key, balance parameter between shard and ParameterServers */
   Slicer _slice;
 
 
@@ -161,12 +158,8 @@ private:
 
 template<PKEY>
 class Slicer {
-  /* impl hash function generate evenly distributed shard_id/PServerid, when auto scaling of PServer, then store  */
+  /* impl hash function generate evenly distributed shard_id/ParameterServerid, when auto scaling of ParameterServer, then store  */
   hash(param_id, node_id) 
-    
-// auto scaling, do not implement in v1, 
-//TODO: need more detail
-  rehash(param_id, node_id); // generate new server hash id for each parameter, moving parameter to new PServer node
 }
 ```
 
@@ -220,39 +213,48 @@ class RPCServer {
 }
 ```
 
-## PServerController
+## ParameterServerController
 
-根据ParameterServer参数创建和管理PServer instance，从命令行读取参数，从etcd读取参数，运行开始将存活的PServer instance配置存储在etcd中
+根据ParameterServer参数创建和管理ParameterServer instance，从命令行读取参数，从etcd读取参数，运行开始将存活的ParameterServer instance配置存储在etcd中
 
 - 启动和运行参数包括：
 
   这部分参数都会存储于etcd中，用于自动扩容和容灾，运行可以从命令行读取，也可以从etcd读取
 
-`/PS_DESIRED`:, 启动PServer instance个数，etcd存储格式 `/PS_DESIRED:3`
+`/PS_DESIRED`:, 启动ParameterServer instance个数，etcd存储格式 `/PS_DESIRED:3`
 
-`/ROOT_PORT`：显式指定根端口，PServer端口从PORT+1开始，直到找到可用端口，例如ROOT_PORT=8000, 则PServer0_Port=8000，PServer0_Port=8001,…，当前存在的PServer实例配置以etcd实时存储为准
+`/ROOT_PORT`：显式指定根端口，ParameterServer端口从PORT+1开始，直到找到可用端口，例如ROOT_PORT=8000, 则ParameterServer0_Port=8000，ParameterServer0_Port=8001,…，当前存在的ParameterServer实例配置以etcd实时存储为准
 
 etcd存储格式 `ROOT_PORT:8000, /PS/0:8000，/PS/1:8001 `
 
-`/CHECKPOINT_PERIOD`:PServer运行保存快照存储的时间间隔，default filled
+`
 
-`/CHECKPOINT_DIR`:保存快照的路径，default filled
-
-- 创建PServer接口
+```c++
+/* ParameterServer runtime configuration, used by recovery/rescaling */
+class ParameterServerConfig {
+...
+/* set by trainer process */
+/* CHECKPOINT_PERIOD:ParameterServer运行保存快照存储的时间间隔，default filled */
+/* CHECKPOINT_DIR:保存快照的路径，default filled */
+string CHECKPOINT_DIR:
+int64_t CHECKPOINT_PERIOD;
+}
+```
+- 创建ParameterServer接口
 
 ```c++
 int32_t loadConfig(fromCLi);
 int32_t loadConfig(frometcdDir);
-// create PServer fron scratch or recovery from config  
-static PServer* create(PServerConfig& );
-// create PServer in fault tolenrant, recovery from checkpoint 
-static PServer* create(const char* checkpoint_dir);
+// create ParameterServer fron scratch or recovery from config  
+static ParameterServer* create(ParameterServerConfig& );
+// create ParameterServer in fault tolenrant, recovery from checkpoint 
+static ParameterServer* create(const char* checkpoint_dir);
 ```
 
-- 管理PServer实例
+- 管理ParameterServer实例
 
 ```c++
-int32_t start();   // start PServer
+int32_t start();   // start ParameterServer
 int32_t wait();    //wait join
 int32_t countAlive(); // count alive instance
 ```
