@@ -45,8 +45,13 @@ def load_image(file, is_color=True):
                      return a color image. Otherwise, it will
                      load and return a gray image.
     """
-    flag = cv2.CV_LOAD_IMAGE_COLOR if is_color else \
-           cv2.CV_LOAD_IMAGE_GRAYSCALE
+    # cv2.IMAGE_COLOR for OpenCV3
+    # cv2.CV_LOAD_IMAGE_COLOR for older OpenCV Version
+    # cv2.IMAGE_GRAYSCALE for OpenCV3
+    # cv2.CV_LOAD_IMAGE_GRAYSCALE for older OpenCV Version
+    # Here, use constant 1 and 0
+    # 1: COLOR, 0: GRAYSCALE
+    flag = 1 if is_color else 0
     im = cv2.imread(file, flag)
     return im
 
@@ -178,6 +183,11 @@ def simple_transform(im, resize_size, crop_size, is_train, is_color=True):
     Simply data argumentation for traing. These operations includes
     resizing, croping and flipping.
 
+    Example usage:
+    
+    .. code-block:: python
+        im = simple_transform(im, 256, 224, True)
+
     :param im: The input image with HWC layout.
     :type im: ndarray
     :param resize_size: The shorter edge length of the resized image.
@@ -208,6 +218,11 @@ def load_and_transform(filename,
     Load image from the input file `filename` and transform image for
     data argumentation. Please refer the `simple_transform` interface
     for the transform operation.
+
+    Example usage:
+    
+    .. code-block:: python
+        im = load_and_transform('cat.jpg', 256, 224, True)
 
     :param filename: The file name of input image.
     :type filename: string

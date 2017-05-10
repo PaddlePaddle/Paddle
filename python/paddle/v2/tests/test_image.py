@@ -26,7 +26,7 @@ class Image(unittest.TestCase):
         self.assertEqual(3, im.shape[2])
 
         # flip
-        im = left_right_flip(im)
+        im = image.left_right_flip(im)
         im2 = np.flip(im, 1)
         self.assertEqual(im.all(), im2.all())
 
