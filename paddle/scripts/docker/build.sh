@@ -113,14 +113,12 @@ fi
 
 # generate deb package for current build
 # FIXME(typhoonzero): should we remove paddle/scripts/deb ?
-# FIXME: CPACK_DEBIAN_PACKAGE_DEPENDS removes all dev dependencies, must
-# install them in docker
 cat <<EOF
 ========================================
 Generating .deb package ...
 ========================================
 EOF
-cpack -D CPACK_GENERATOR='DEB' -D CPACK_DEBIAN_PACKAGE_DEPENDS="" ..
+cpack -D CPACK_GENERATOR='DEB' ..
 
 
 cat <<EOF
