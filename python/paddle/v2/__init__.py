@@ -52,7 +52,7 @@ def init(**kwargs):
     args_dict.update(kwargs)
     # NOTE: overwrite arguments from ENV if it is in kwargs
     for key in args_dict.keys():
-        args.append('--%s=%s' % (key, str(kwargs[key])))
+        args.append('--%s=%s' % (key, str(args_dict[key])))
 
     api.initPaddle(*args)
 
