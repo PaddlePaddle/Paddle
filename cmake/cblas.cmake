@@ -33,20 +33,18 @@ find_library(MKL_INTEL_LP64 NAMES mkl_intel_lp64 PATHS
   ${MKL_ROOT}/lib
   ${MKL_ROOT}/lib/intel64)
 
-
-if(MKL_INC_DIR AND MKL_CORE_LIB AND MKL_SEQUENTIAL_LIB AND MKL_INTEL_LP64)
-  set(CBLAS_PROVIDER MKL)
-  set(CBLAS_INC_DIR ${MKL_INC_DIR})
-  set(CBLAS_LIBRARIES ${MKL_INTEL_LP64}
-          ${MKL_SEQUENTIAL_LIB}
-          ${MKL_CORE_LIB})
-  add_definitions(-DPADDLE_USE_MKL)
-  message(STATUS "Found MKL (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+if(MKL_LAPACK_INC_DIR AND MKL_INC_DIR AND MKL_CORE_LIB AND MKL_SEQUENTIAL_LIB AND MKL_INTEL_LP64)
   set(CBLAS_FOUND ON)
-  if(${MKL_LAPACK_INC_DIR})
-    message(STATUS "Found lapack in MKL (include: ${MKL_LAPACK_INC_DIR})")
-  endif()
-  return() # return file.
+  set(CBLAS_PROVIDER MKL)
+  set(CBLAS_INC_DIR ${MKL_INC_DIR} ${MKL_LAPACK_INC_DIR})
+  set(CBLAS_LIBRARIES ${MKL_INTEL_LP64} ${MKL_SEQUENTIAL_LIB} ${MKL_CORE_LIB})
+
+  add_definitions(-DPADDLE_USE_MKL)
+  add_definitions(-DLAPACK_FOUND)
+
+  message(STATUS "Found MKL (include: ${MKL_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+  message(STATUS "Found lapack in MKL (include: ${MKL_LAPACK_INC_DIR})")
+  return()
 endif()
 
 ## Then find atlas.
@@ -68,20 +66,20 @@ find_path(ATLAS_CLAPACK_INC_DIR NAMES clapack.h
   PATHS ${ATLAS_INCLUDE_SEARCH_PATHS})
 find_library(ATLAS_CBLAS_LIB NAMES cblas libcblas.so.3
   PATHS ${ATLAS_LIB_SEARCH_PATHS})
-find_library(ATLAS_LIB NAMES lapack_atlas liblapack_atlas.so.3
+find_library(ATLAS_CLAPACK_LIB NAMES lapack_atlas liblapack_atlas.so.3
   PATHS ${ATLAS_LIB_SEARCH_PATHS})
 
-if(ATLAS_INC_DIR AND ATLAS_CBLAS_LIB AND ATLAS_LIB AND NOT CBLAS_FOUND)
-  set(CBLAS_PROVIDER ATLAS)
-  set(CBLAS_INC_DIR ${ATLAS_INC_DIR})
-  set(CBLAS_LIBRARIES ${ATLAS_LIB} ${ATLAS_CBLAS_LIB})
-  add_definitions(-DPADDLE_USE_ATLAS)
-  message(STATUS "Found ATLAS (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+if(ATLAS_CLAPACK_INC_DIR AND ATLAS_INC_DIR AND ATLAS_CBLAS_LIB AND ATLAS_CLAPACK_LIB)
   set(CBLAS_FOUND ON)
-  if(ATLAS_CLAPACK_INC_DIR)
-    set(CBLAS_INC_DIR ${CBLAS_INC_DIR} ${ATLAS_CLAPACK_INC_DIR})
-    message(STATUS "Found lapack in ATLAS (include: ${ATLAS_CLAPACK_INC_DIR})")
-  endif()
+  set(CBLAS_PROVIDER ATLAS)
+  set(CBLAS_INC_DIR ${ATLAS_INC_DIR} ${ATLAS_CLAPACK_INC_DIR})
+  set(CBLAS_LIBRARIES ${ATLAS_CLAPACK_LIB} ${ATLAS_CBLAS_LIB})
+
+  add_definitions(-DPADDLE_USE_ATLAS)
+  add_definitions(-DLAPACK_FOUND)
+
+  message(STATUS "Found ATLAS (include: ${ATLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+  message(STATUS "Found lapack in ATLAS (include: ${ATLAS_CLAPACK_INC_DIR})")
   return()
 endif()
 
@@ -106,15 +104,17 @@ find_path(OPENBLAS_LAPACKE_INC_DIR NAMES lapacke.h
 find_library(OPENBLAS_LIB NAMES openblas
   PATHS ${OPENBLAS_LIB_SEARCH_PATHS})
 
-if(OPENBLAS_INC_DIR AND OPENBLAS_LIB)
-  set(CBLAS_PROVIDER OPENBLAS)
-  set(CBLAS_INC_DIR ${OPENBLAS_INC_DIR})
-  set(CBLAS_LIBRARIES ${OPENBLAS_LIB})
-  message(STATUS "Found OpenBLAS (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+if(OPENBLAS_LAPACKE_INC_DIR AND OPENBLAS_INC_DIR AND OPENBLAS_LIB)
   set(CBLAS_FOUND ON)
-  if(OPENBLAS_LAPACKE_INC_DIR)
-    message(STATUS "Found lapack in OpenBLAS (include: ${OPENBLAS_LAPACKE_INC_DIR})")
-  endif()
+  set(CBLAS_PROVIDER OPENBLAS)
+  set(CBLAS_INC_DIR ${OPENBLAS_INC_DIR} ${OPENBLAS_LAPACKE_INC_DIR})
+  set(CBLAS_LIBRARIES ${OPENBLAS_LIB})
+
+  add_definitions(-DPADDLE_USE_OPENBLAS)
+  add_definitions(-DLAPACK_FOUND)
+
+  message(STATUS "Found OpenBLAS (include: ${OPENBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+  message(STATUS "Found lapack in OpenBLAS (include: ${OPENBLAS_LAPACKE_INC_DIR})")
   return()
 endif()
 
@@ -143,9 +143,10 @@ find_library(REFERENCE_CBLAS_LIBRARY NAMES cblas PATHS
         ${REFERENCE_CBLAS_LIB_SEARCH_PATHS})
 
 if (REFERENCE_CBLAS_INCLUDE_DIR AND REFERENCE_CBLAS_LIBRARY)
+  set(CBLAS_FOUND ON)
   set(CBLAS_PROVIDER REFERENCE)
   set(CBLAS_INC_DIR ${REFERENCE_CBLAS_INCLUDE_DIR})
   set(CBLAS_LIBRARIES ${REFERENCE_CBLAS_LIBRARY})
-  message(STATUS "Found reference-cblas (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBS})")
-  set(CBLAS_FOUND ON)
+  add_definitions(-DPADDLE_USE_REFERENCE_CBLAS)
+  message(STATUS "Found reference-cblas (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
 endif()

@@ -16,6 +16,7 @@ import collections
 import re
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 import paddle.trainer_config_helpers as conf_helps
+from topology import Topology
 
 
 class LayerType(type):
@@ -160,6 +161,10 @@ class Layer(object):
         :return:
         """
         return self.__context__[self.context_name()].size
+
+    def attr(self):
+        topo = Topology(self)
+        return topo.get_layer_proto(self.name)
 
 
 def __convert_to_v2__(method_name,
