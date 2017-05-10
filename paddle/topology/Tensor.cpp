@@ -30,12 +30,16 @@ Tensor &Tensor::setShape(const std::vector<int> &shape) {
   return *this;
 }
 
-std::vector<int> &Tensor::shape() { return getAttr<std::vector<int>>("shape"); }
+std::vector<int> &Tensor::shape() {
+  return attributes.get<std::vector<int>>("shape");
+}
 SequenceType Tensor::sequenceType() const {
-  return getAttr<SequenceType>("sequence_type");
+  return attributes.get<SequenceType>("sequence_type");
 }
 
-DataType Tensor::dataType() const { return getAttr<DataType>("data_type"); }
+DataType Tensor::dataType() const {
+  return attributes.get<DataType>("data_type");
+}
 
 }  // namespace topology
 }  // namespace paddle

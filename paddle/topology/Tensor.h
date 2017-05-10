@@ -18,7 +18,7 @@ namespace paddle {
 namespace topology {
 using meta::DataType;
 using meta::SequenceType;
-class Tensor : public WithAttribute {
+class Tensor {
 public:
   Tensor& setDataType(DataType type);
   Tensor& setSequenceType(SequenceType type);
@@ -26,6 +26,9 @@ public:
   std::vector<int>& shape();
   SequenceType sequenceType() const;
   DataType dataType() const;
+
+public:
+  Attribute attributes;
 };
 
 typedef std::shared_ptr<Tensor> TensorPtr;

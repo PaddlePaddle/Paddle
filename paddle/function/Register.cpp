@@ -92,6 +92,10 @@ private:
         return Error("Tensor shape mismatch");
       }
     }
+
+    if (tensor->attributes.get<int>("arg_type") != arg.getArgType())
+      return Error("Arg type mismatch");
+
     return Error();
   }
 
@@ -128,7 +132,7 @@ public:
     }
 
     //! Only check when first invoke.
-    auto err = topology::meta::validate(funcTopo_);
+    auto err = topology::meta::validateAndInferShape(funcTopo_);
     if (!err.isOK()) return Error("Topology error: %s", err.msg());
 
     for (size_t i = 0; i < out.size(); ++i) {

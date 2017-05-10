@@ -19,14 +19,17 @@ limitations under the License. */
 namespace paddle {
 namespace topology {
 
-class Function : public WithAttribute {
+class Function {
 public:
   std::string type;
   std::vector<TensorPtr> inputs;
   std::vector<TensorPtr> outputs;
 
-  bool useGPU() const { return getAttr<bool>("useGPU"); }
+  bool useGPU() const { return attributes.get<bool>("useGPU"); }
   void setUseGPU(bool flag) { attributes["useGPU"] = flag; }
+
+public:
+  Attribute attributes;
 };
 
 }  // namespace topology

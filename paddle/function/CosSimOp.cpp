@@ -56,52 +56,6 @@ void CosSimForward<DEVICE_TYPE_CPU>(CpuMatrix& out_mat,
     out[i] = scale * xy / (std::sqrt(square_sum_x) * std::sqrt(square_sum_y));
   }
 }
-
-/**
- * Cosine Similarity
- * for each row i,
- *   out[i] = scale * cos(input1[i], input2[i])
- *      = scale * <input1[i], input2[i]>/sqrt(|input1[i]|^2 * |input2[i]|^2)
- * when input2 only has one row, then for each row i,
- *   out[i] = cos(input1[i], input2[0])
- *
- * \param inputs[0] input matrix 1, size: nSamples * dim.
- * \param inputs[1] input matrix 2, size: n2 * dim (n2 == 1 or n2 == nSamples).
- * \param outputs[0] output matrix, size : nSamples * 1.
- */
-
-template <DeviceType Device>
-class CosSimForwardFunc : public FunctionBase {
-  void init(const function::Config& config) override {
-    scale_ = config.get<real>("scale");
-  }
-
-  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(inputs.size(), 2UL);
-    CHECK_EQ(outputs.size(), 1UL);
-
-    CHECK_EQ(inputs[0].shape().ndims(), 2UL);
-    CHECK_EQ(inputs[1].shape().ndims(), 2UL);
-    CHECK_EQ(outputs[0].shape().ndims(), 2UL);
-
-    CHECK_EQ(inputs[0].shape()[0], outputs[0].shape()[0]);
-    CHECK_EQ(inputs[0].shape()[1], inputs[1].shape()[1]);
-    CHECK_EQ(outputs[0].shape()[1], 1UL);
-
-    CHECK(outputs[0].data() && inputs[0].data() && inputs[1].data());
-
-    CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
-    auto out_mat = outputs[0].matrix<Device>();
-    const auto in1_mat = inputs[0].matrix<Device>();
-    const auto in2_mat = inputs[1].matrix<Device>();
-
-    CosSimForward<Device>(out_mat, in1_mat, in2_mat, scale_);
-  }
-
-private:
-  real scale_;
-};
-
 template <DeviceType Device>
 Error cosineForward(const BufferArgs& inputs,
                     const BufferArgs& outputs,
@@ -130,15 +84,24 @@ func->addInput()                                // second input
     .addSequenceType()                          // could be any sequence type
     .addShape(2);                               // dimension is 2
 
-func->addOutput()
-    ->addDataType({topology::DataType::DENSE})
-    .addSequenceType()
-    .addShape(2);
+auto& out = func -> addOutput() -> addDataType({topology::DataType::DENSE})
+                .addSequenceType()
+                .addShape(2);
+
+out.addAttribute<int>(
+       "arg_type",
+       "argument type of operator")  // output only support assign to
+    .defaultValue(ASSIGN_TO)
+    .in(std::unordered_set<int>({ASSIGN_TO}));
 
 func->setShapeInferer([](std::vector<topology::TensorPtr>& ins,
                          std::vector<topology::TensorPtr>& outs) {
-  if (ins[0]->shape() != ins[1]->shape())
-    return Error("Input shape should be same");
+  auto& shape0 = ins[0]->shape();
+  auto& shape1 = ins[1]->shape();
+
+  if (shape0 != shape1 && (shape0[1] != shape1[1] || shape1[0] != 1))
+    return Error(
+        "Input shape should be same, or the second height should be 1");
   if (ins[0]->sequenceType() != ins[1]->sequenceType())
     return Error("Input sequence type should be same");
   outs[0]->setShape({ins[0]->shape()[0], 1});
@@ -279,10 +242,8 @@ private:
   real scale_;
 };
 
-REGISTER_TYPED_FUNC(CosSimForward, CPU, CosSimForwardFunc);
 REGISTER_TYPED_FUNC(CosSimBackward, CPU, CosSimBackwardFunc);
 #ifndef PADDLE_ONLY_CPU
-REGISTER_TYPED_FUNC(CosSimForward, GPU, CosSimForwardFunc);
 REGISTER_TYPED_FUNC(CosSimBackward, GPU, CosSimBackwardFunc);
 #endif
 }  // namespace paddle

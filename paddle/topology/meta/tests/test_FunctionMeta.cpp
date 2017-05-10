@@ -65,7 +65,7 @@ TEST(FunctionMeta, cosSimMeta) {
       .setShape({890, 200});
   func.outputs.emplace_back(new paddle::topology::Tensor());
 
-  err = paddle::topology::meta::validate(func);
+  err = paddle::topology::meta::validateAndInferShape(func);
   ASSERT_TRUE(err.isOK());
   // Default value
   ASSERT_NEAR(paddle::any_cast<double>(func.attributes["scale"]), 1.0, 1e-5);

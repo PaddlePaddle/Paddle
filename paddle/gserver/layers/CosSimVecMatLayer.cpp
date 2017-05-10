@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Layer.h"
+#include "paddle/function/Register.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
@@ -100,9 +101,12 @@ bool CosSimVecMatLayer::init(const LayerMap& layerMap,
 
   CHECK(tmpRow0 && tmpRow1 && tmpRow2 && tmpRow3 && tmpMtx0 && tmpMtx1);
 
-  forward_.add("CosSimForward",
-               function::Config().set("scale", (real)config_.cos_scale()),
-               useGpu_);
+  topology::Function fwd;
+  fwd.type = "cosFwd";
+  fwd.setUseGPU(useGpu_);
+  fwd.attributes["scale"] = (double)config_.cos_scale();
+  forward_.push_back(function::createFunction(fwd));
+
   backward_.add("CosSimBackward",
                 function::Config().set("scale", (real)config_.cos_scale()),
                 useGpu_);

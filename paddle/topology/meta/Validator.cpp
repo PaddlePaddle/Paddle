@@ -44,12 +44,12 @@ Error AttributeValidator::validate(
   return Error();
 }
 
-Error validate(Function& func, bool validOutput) {
+Error validateAndInferShape(Function& func, bool validOutput) {
   auto meta = FunctionMeta::get(func.type);
   if (meta == nullptr) {
     return Error("No such function type %s", func.type.c_str());
   }
-  auto err = validate(*meta, func);
+  auto err = validate(*meta, func.attributes);
   if (!err.isOK()) {
     return Error("AttrErr(%s)", err.msg());
   }
@@ -63,27 +63,27 @@ Error validate(Function& func, bool validOutput) {
     return Error("Output size mismatch");
   }
   for (size_t i = 0; i < inMetas.size(); ++i) {
-    err = validate(*inMetas[i], *func.inputs[i]);
+    err = validate(*inMetas[i], func.inputs[i]->attributes);
     if (!err.isOK()) return Error("Input %d error %s", i, err.msg());
   }
   if (validOutput) {
     for (size_t i = 0; i < outMetas.size(); ++i) {
-      err = validate(*outMetas[i], *func.outputs[i]);
+      err = validate(*outMetas[i], func.outputs[i]->attributes);
       if (!err.isOK()) return err;
     }
   }
   err = meta->getShapeInferer()(func.inputs, func.outputs);
   if (!err.isOK()) return err;
   for (size_t i = 0; i < outMetas.size(); ++i) {
-    err = validate(*outMetas[i], *func.outputs[i]);
+    err = validate(*outMetas[i], func.outputs[i]->attributes);
     if (!err.isOK()) return Error("Output %d error %s", i, err.msg());
   }
   return Error();
 }
 
-Error validate(const WithAttributeMeta& meta, WithAttribute& attr) {
+Error validate(const WithAttributeMeta& meta, Attribute& attr) {
   AttributeValidator validator(meta.getAttributes());
-  return validator.validate(&attr.attributes);
+  return validator.validate(&attr);
 }
 
 }  // namespace meta

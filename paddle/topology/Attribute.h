@@ -20,23 +20,20 @@ limitations under the License. */
 namespace paddle {
 namespace topology {
 
-class Attribute : public std::unordered_map<std::string, any> {};
-
-class WithAttribute {
+class Attribute : public std::unordered_map<std::string, any> {
 public:
-  Attribute attributes;
-
   template <typename T>
-  const T& getAttr(const std::string& name) const {
-    auto attrPtr = &attributes.find(name)->second;
+  const T& get(const std::string& name) const {
+    auto attrPtr = &at(name);
     return *any_cast<T>(attrPtr);
   }
 
   template <typename T>
-  T& getAttr(const std::string& name) {
-    auto attrPtr = &attributes.find(name)->second;
+  T& get(const std::string& name) {
+    auto attrPtr = &at(name);
     return *any_cast<T>(attrPtr);
   }
 };
+
 }  // namespace topology
 }  // namespace paddle
