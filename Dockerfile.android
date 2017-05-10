@@ -40,4 +40,4 @@ RUN mkdir /opt/android-ndk-tmp && \
     ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh --arch=arm --platform=android-21 --install-dir=${ANDROID_STANDALONE_TOOLCHAIN} && \
     rm -rf /opt/android-ndk-tmp
 
-CMD ["bash", "paddle/paddle/scripts/docker/build_android.sh"]
+CMD ["bash", "/paddle/paddle/scripts/docker/build_android.sh"]
