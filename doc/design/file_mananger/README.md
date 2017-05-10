@@ -40,9 +40,9 @@
 ### FileServer
 FileServer是一个用GoRPC写的HTTPServer，提供[RESTful API](./RESTAPI.md)接口，接收处理PFSClient端的文件管理请求，并且把结果返回PFSClient端。
 
-## 大文件传输优化
+## 文件传输优化
 
-### 分块文件上传
+### 分块文件传输
 用户文件可能是比较大的，上传到Cloud或者下载到本地的时间可能比较长，而且在传输的过程中也可能出现网络不稳定的情况。为了应对以上的问题，我们提出了Chunk的概念，一个Chunk由所在的文件偏移、数据、数据长度及校验值组成。文件数据内容的上传和下载都是都过Chunk的操作来实现的。由于Chunk比较小（默认256K），完成一个传输动作完成的时间也比较短，不容易出错。PFSClient在传输完毕最后一个Chunk的时候检查desttination文件的MD5值是否和source文件一致。
 
 一个典型的Chunk如下所示：
@@ -61,7 +61,6 @@ type Chunk struct {
 
 ### 覆盖不一致的部分
 文件传输的的关键在于需要PFSClient端对比source和destination的文件Chunks的checksum是否保持一致，不一致的由PFSClient下载或者传输Chunk完成。这样已经传输成功的部分就不用重新传输了。
-
 
 ## 框架生成
 用[swagger-api](https://github.com/swagger-api/swagger-codegen)生成Client和FileServer的框架部分，以便我们可以把更多的精力放到逻辑本身上。
