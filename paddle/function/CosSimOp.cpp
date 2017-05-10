@@ -183,63 +183,91 @@ void CosSimBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad,
   }
 }
 
-/**
- * Cosine Similarity backward Derivative
- *
- * \param outputs[0] forward input grad 1, size: nSamples * dim.
- * \param outputs[1] forward input grad 2,
- *                  size: n2 * dim (n2 == 1 or n2 == nSamples).
- *
- * \param inputs[0] backward loss output grad, size : nSamples * 1.
- * \param inputs[1] forward output value, size: nSamples * 1.
- * \param inputs[2] forward input value 1, size: nSamples * dim.
- * \param inputs[3] forward input value 2,
- *                  size: n2 * dim (n2 == 1 or n2 == nSamples).
- */
 template <DeviceType Device>
-class CosSimBackwardFunc : public FunctionBase {
-  void init(const function::Config& config) override {
-    scale_ = config.get<real>("scale");
-  }
+Error cosBackward(const BufferArgs& ins,
+                  const BufferArgs& outs,
+                  const std::unordered_map<std::string, any>& attrs) {
+  const auto out_grad = ins[0].matrix<Device>();
+  const auto out_val = ins[1].matrix<Device>();
+  const auto in1_val = ins[2].matrix<Device>();
+  const auto in2_val = ins[3].matrix<Device>();
+  auto in1_grad = outs[0].matrix<Device>();
+  auto in2_grad = outs[1].matrix<Device>();
 
-  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(inputs.size(), 4UL);
-    CHECK_EQ(outputs.size(), 2UL);
-    /// dim of out_grad and out_val == 1, column vector
-    CHECK_EQ(inputs[0].shape()[1], 1UL);
-    CHECK_EQ(inputs[1].shape()[1], 1UL);
-    /// nSamples of out_grad == out_val == in_val1 == in_grad1
-    CHECK_EQ(inputs[1].shape()[0], inputs[0].shape()[0]);
-    CHECK_EQ(inputs[0].shape()[0], inputs[0].shape()[0]);
-    CHECK_EQ(outputs[0].shape()[0], inputs[0].shape()[0]);
-    /// dim of in1_val1 == in_val2 == in_grad1 == in_grad2
-    CHECK_EQ(inputs[3].shape()[1], inputs[2].shape()[1]);
-    CHECK_EQ(outputs[0].shape()[1], inputs[2].shape()[1]);
-    CHECK_EQ(outputs[1].shape()[1], inputs[2].shape()[1]);
+  CosSimBackward<Device>(out_grad,
+                         out_val,
+                         in1_val,
+                         in2_val,
+                         in1_grad,
+                         in2_grad,
+                         any_cast<double>(attrs.at("scale")));
+  return Error();
+}
 
-    CHECK(inputs[0].data() && inputs[1].data() && inputs[2].data() &&
-          inputs[3].data() && outputs[0].data() && outputs[1].data());
+BEGIN_REGISTER_FUNCTION(cosBwd, cosBackward)
+func->addAttribute<double>("scale", "the scale of cosine operator")
+    .defaultValue(1.0)
+    .largerThan(0.0);
 
-    CHECK_EQ(outputs[0].getArgType(), ADD_TO);
-    CHECK_EQ(outputs[1].getArgType(), ADD_TO);
-
-    const auto out_grad = inputs[0].matrix<Device>();
-    const auto out_val = inputs[1].matrix<Device>();
-    const auto in1_val = inputs[2].matrix<Device>();
-    const auto in2_val = inputs[3].matrix<Device>();
-    auto in1_grad = outputs[0].matrix<Device>();
-    auto in2_grad = outputs[1].matrix<Device>();
-
-    CosSimBackward<Device>(
-        out_grad, out_val, in1_val, in2_val, in1_grad, in2_grad, scale_);
-  }
-
-private:
-  real scale_;
+auto widthShouldBeOne = [](std::vector<int>* attr, bool) {
+  if (attr->at(1) != 1) return Error("width should be 1");
+  return Error();
 };
 
-REGISTER_TYPED_FUNC(CosSimBackward, CPU, CosSimBackwardFunc);
-#ifndef PADDLE_ONLY_CPU
-REGISTER_TYPED_FUNC(CosSimBackward, GPU, CosSimBackwardFunc);
-#endif
+topology::meta::Constraints<std::vector<int>>* shapeConstraints;
+func->addInput()
+    ->addDataType({topology::DataType::DENSE})
+    .addShape(2, &shapeConstraints)
+    .addSequenceType();
+
+shapeConstraints->addConstraint(widthShouldBeOne);
+
+func->addInput()
+    ->addDataType({topology::DataType::DENSE})
+    .addShape(2, &shapeConstraints)
+    .addSequenceType();
+shapeConstraints->addConstraint(widthShouldBeOne);
+
+func->addInput()
+    ->addDataType({topology::DataType::DENSE})
+    .addShape(2)
+    .addSequenceType();
+func->addInput()
+    ->addDataType({topology::DataType::DENSE})
+    .addShape(2)
+    .addSequenceType();
+
+func->addOutput()
+    ->addDataType({topology::DataType::DENSE})
+    .addShape(2)
+    .addSequenceType()
+    .addArgType(ADD_TO);
+func->addOutput()
+    ->addDataType({topology::DataType::DENSE})
+    .addShape(2)
+    .addSequenceType()
+    .addArgType(ADD_TO);
+
+func->setShapeInferer([](std::vector<topology::TensorPtr>& ins,
+                         std::vector<topology::TensorPtr>& outs) -> Error {
+  if (ins[0]->shape() != ins[1]->shape() ||
+      ins[2]->shape()[1] != ins[3]->shape()[1]) {
+    return Error("Input shape mismatch");
+  }
+
+  if (ins[0]->shape()[0] != ins[2]->shape()[0]) {
+    return Error("Input shape mismatch, height should be same.");
+  }
+
+  for (size_t i = 0; i < outs.size(); ++i) {
+    auto& out = outs[i];
+    out->setShape(ins[2 + i]->shape());
+    out->setSequenceType(ins[2 + i]->sequenceType());
+    out->setDataType(ins[2 + i]->dataType());
+  }
+
+  return Error();
+});
+
+END_REGISTER_FUNCTION()
 }  // namespace paddle

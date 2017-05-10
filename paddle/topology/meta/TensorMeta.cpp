@@ -17,18 +17,25 @@ namespace paddle {
 namespace topology {
 namespace meta {
 
-TensorMeta &TensorMeta::addShape(size_t dims) {
-  addAttribute<std::vector<int>>("shape", "The shape of tensor")
-      .mustSet()
-      .dimsEq(dims);
+TensorMeta &TensorMeta::addShape(size_t dims,
+                                 Constraints<std::vector<int>> **constraints) {
+  auto &cons = addAttribute<std::vector<int>>("shape", "The shape of tensor")
+                   .mustSet()
+                   .dimsEq(dims);
+  if (constraints != nullptr) *constraints = &cons;
   return *this;
 }
 
 TensorMeta &TensorMeta::addSequenceType(
-    const std::unordered_set<SequenceType, std::hash<int>> &supportedTypes) {
-  addAttribute<SequenceType>("sequence_type", "The sequence types of tensor")
-      .mustSet()
-      .in(supportedTypes);
+    const std::unordered_set<SequenceType, std::hash<int>> &supportedTypes,
+    Constraints<SequenceType> **constraints) {
+  auto &cons = addAttribute<SequenceType>("sequence_type",
+                                          "The sequence types of tensor")
+                   .mustSet()
+                   .in(supportedTypes);
+  if (constraints != nullptr) {
+    *constraints = &cons;
+  }
   return *this;
 }
 

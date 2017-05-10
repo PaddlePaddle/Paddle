@@ -41,7 +41,7 @@ public:
   };
 
   // get the size of specified dimension
-  size_t operator[](size_t dim) const {
+  const size_t& operator[](size_t dim) const {
     CHECK_GE(dim, (size_t)0);
     CHECK_LT(dim, ndims_);
     return dims_[dim];

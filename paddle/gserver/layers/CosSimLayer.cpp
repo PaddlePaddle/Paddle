@@ -34,9 +34,11 @@ bool CosSimLayer::init(const LayerMap& layerMap,
   fwd.attributes["scale"] = (double)config_.cos_scale();
   forward_.push_back(function::createFunction(fwd));
 
-  backward_.add("CosSimBackward",
-                function::Config().set("scale", (real)config_.cos_scale()),
-                useGpu_);
+  topology::Function bwd;
+  bwd.type = "cosBwd";
+  bwd.setUseGPU(useGpu_);
+  bwd.attributes["scale"] = (double)config_.cos_scale();
+  backward_.push_back(function::createFunction(bwd));
 
   return true;
 }

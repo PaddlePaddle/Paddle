@@ -26,11 +26,13 @@ class TensorMeta : public WithAttributeMeta {
 public:
   TensorMeta() : WithAttributeMeta("Tensor") {}
 
-  TensorMeta& addShape(size_t dims);
+  TensorMeta& addShape(size_t dims,
+                       Constraints<std::vector<int>>** constraints = nullptr);
 
   TensorMeta& addSequenceType(
-      const std::unordered_set<SequenceType, std::hash<int>>& supportedTypes = {
-          NO_SEQUENCE, SEQUENCE, NESTED_SEQUENCE});
+      const std::unordered_set<SequenceType, std::hash<int>>& supportedTypes =
+          {NO_SEQUENCE, SEQUENCE, NESTED_SEQUENCE},
+      Constraints<SequenceType>** constraints = nullptr);
 
   TensorMeta& addDataType(
       const std::unordered_set<DataType, std::hash<int>>& supportedTypes);

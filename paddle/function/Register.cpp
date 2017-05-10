@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "Register.h"
+#include <algorithm>
+#include <iterator>
+#include <sstream>
 #include "paddle/topology/meta/Validator.h"
 
 namespace paddle {
@@ -89,7 +92,18 @@ private:
     for (size_t i = 0; i < tensorShape.size(); ++i) {
       if (tensorShape[i] !=
           std::remove_reference<decltype(tensorShape[i])>::type(argShape[i])) {
-        return Error("Tensor shape mismatch");
+        std::ostringstream sout;
+        sout << "Tensor shape mismatch: Tensor (";
+        std::copy(tensorShape.begin(),
+                  tensorShape.end(),
+                  std::ostream_iterator<int>(sout, ","));
+        sout << "), Arg (";
+        std::copy(&argShape[0],
+                  &argShape[0] + argShape.ndims(),
+                  std::ostream_iterator<size_t>(sout, ","));
+        sout << ")";
+
+        return Error(sout.str().c_str());
       }
     }
 
@@ -125,8 +139,8 @@ public:
     for (size_t i = 0; i < funcTopo_.inputs.size(); ++i) {
       std::vector<int> shape;
       shape.resize(in[i].shape().ndims());
-      for (size_t i = 0; i < shape.size(); ++i) {
-        shape[i] = (int)in[i].shape()[i];
+      for (size_t j = 0; j < shape.size(); ++j) {
+        shape[j] = (int)in[i].shape()[j];
       }
       funcTopo_.inputs[i]->setShape(shape);
     }
@@ -137,7 +151,7 @@ public:
 
     for (size_t i = 0; i < out.size(); ++i) {
       err = checkSame(funcTopo_.outputs[i], out[i]);
-      if (!err.isOK()) return Error("Output error: %s", err.msg());
+      if (!err.isOK()) return Error("Output error %d: %s", i, err.msg());
     }
 
     return kernel_(in, out);
