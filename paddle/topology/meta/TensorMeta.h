@@ -34,6 +34,9 @@ public:
 
   TensorMeta& addDataType(
       const std::unordered_set<DataType, std::hash<int>>& supportedTypes);
+
+  TensorMeta& addArgType(int defaultArgType,
+                         const std::unordered_set<int>& supportedTypes = {});
 };
 
 typedef std::shared_ptr<TensorMeta> TensorMetaPtr;

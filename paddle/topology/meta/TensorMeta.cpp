@@ -40,6 +40,20 @@ TensorMeta &TensorMeta::addDataType(
   return *this;
 }
 
+TensorMeta &TensorMeta::addArgType(
+    int defaultArgType, const std::unordered_set<int> &supportedTypes) {
+  std::unordered_set<int> tmp;
+  const std::unordered_set<int> *ptr = &supportedTypes;
+  if (supportedTypes.empty()) {
+    tmp = {defaultArgType};
+    ptr = &tmp;
+  }
+  addAttribute<int>("arg_type", "The argument type of tensor")
+      .defaultValue(defaultArgType)
+      .in(*ptr);
+  return *this;
+}
+
 }  // namespace meta
 }  // namespace topology
 }  // namespace paddle

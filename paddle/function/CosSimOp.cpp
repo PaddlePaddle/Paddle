@@ -84,15 +84,11 @@ func->addInput()                                // second input
     .addSequenceType()                          // could be any sequence type
     .addShape(2);                               // dimension is 2
 
-auto& out = func -> addOutput() -> addDataType({topology::DataType::DENSE})
-                .addSequenceType()
-                .addShape(2);
-
-out.addAttribute<int>(
-       "arg_type",
-       "argument type of operator")  // output only support assign to
-    .defaultValue(ASSIGN_TO)
-    .in(std::unordered_set<int>({ASSIGN_TO}));
+func->addOutput()
+    ->addDataType({topology::DataType::DENSE})
+    .addSequenceType()
+    .addShape(2)
+    .addArgType(ASSIGN_TO);
 
 func->setShapeInferer([](std::vector<topology::TensorPtr>& ins,
                          std::vector<topology::TensorPtr>& outs) {
