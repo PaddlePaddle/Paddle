@@ -57,8 +57,14 @@ type UpdateRule struct {
 // closing the send channel.
 func (*PServerClient) ParamInitChan() (send chan<- Parameter, err error)
 
-// SendGrad sends gradients to parameter servers.
+// SendGrad sends gradients to parameter servers for updating parameters.
 func (*PServerClient) SendGrad(method UpdateMethod, grads []Gradient) error
+
+// SetParam sets parameters.
+//
+// SetParam can be used for the parameters that are not suitable for updating
+// using gradients.
+func (*PServerClient) SetParam(params []Paramter) error
 
 // GetParam gets parameters from parameter servers.
 func (*PServerClient) GetParam(names []string) ([]Parameter, error)
