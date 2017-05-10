@@ -27,7 +27,7 @@ const (
 	Float64
 )
 
-// Parameter is a piece data to sync with the parameter server.
+// Parameter is a piece of data to sync with the parameter server.
 type Parameter struct {
 	Name        string
 	ElementType ElementType
