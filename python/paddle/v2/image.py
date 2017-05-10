@@ -11,22 +11,20 @@ __all__ = [
     "left_right_flip", "simple_transform", "load_and_transform"
 ]
 """
-This file contains some common interface for image preprocess.
+This file contains some common interfaces for image preprocess.
 Many users are confused about the image layout. We introduce
-the image layout firstly.
+the image layout as follows.
 
 - CHW Layout
   - The abbreviations: C=channel, H=Height, W=Width
-  - The default image layout is HWC opened by cv2 or PIL.
-    PaddlePaddle only support the image layout with CHW.
-    CHW is simply a transpose of HWC. It must transpose
-    the input image.
+  - The default layout of image opened by cv2 or PIL is HWC.
+    PaddlePaddle only supports the CHW layout. And CHW is simply
+    a transpose of HWC. It must transpose the input image.
 
 - Color format: RGB or BGR
   OpenCV use BGR color format. PIL use RGB color format. Both
-  formats can be used for training. But it must be noted that,
-  the format should be keep consistent between the training and
-  inference peroid.
+  formats can be used for training. Noted that, the format should
+  be keep consistent between the training and inference peroid.
 """
 
 
@@ -85,8 +83,8 @@ def resize_short(im, size):
 def to_chw(im, order=(2, 0, 1)):
     """
     Transpose the input image order. The image layout is HWC format
-    opened by cv2 or PIL. Transposed the input image to CHW layouts
-    by order (2,0,1).
+    opened by cv2 or PIL. Transpose the input image to CHW layout
+    according the order (2,0,1).
 
     Example usage:
     
@@ -116,7 +114,7 @@ def center_crop(im, size, is_color=True):
     
     :param im: the input image with HWC layout.
     :type im: ndarray
-    :param size: the cropping size
+    :param size: the cropping size.
     :type size: int
     :param is_color: whether the image is color or not.
     :type is_color: bool
@@ -143,7 +141,7 @@ def random_crop(im, size, is_color=True):
     
     :param im: the input image with HWC layout.
     :type im: ndarray
-    :param size: the cropping size
+    :param size: the cropping size.
     :type size: int
     :param is_color: whether the image is color or not.
     :type is_color: bool
@@ -180,7 +178,7 @@ def left_right_flip(im):
 
 def simple_transform(im, resize_size, crop_size, is_train, is_color=True):
     """
-    Simply data argumentation for traing. These operations includes
+    Simply data argumentation for training. These operations include
     resizing, croping and flipping.
 
     Example usage:
@@ -216,8 +214,8 @@ def load_and_transform(filename,
                        is_color=True):
     """
     Load image from the input file `filename` and transform image for
-    data argumentation. Please refer the `simple_transform` interface
-    for the transform operation.
+    data argumentation. Please refer to the `simple_transform` interface
+    for the transform operations.
 
     Example usage:
     
