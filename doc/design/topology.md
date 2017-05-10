@@ -85,3 +85,35 @@ After thinking lots of user stories, we make the conclusion of what we want in T
 * We should let our kernel developer easily to register their kernel functions to Paddle and not make them write configuration APIs in Python.
 
 ## Implementation
+
+### Meta Information
+To achieve goals above, we need a place to store meta information of each layer. The meta information is used to describe what a layer could be configured, what the attributes of one layer could set, what the input types could be.
+
+For example, the cosine layer should have two inputs, and the two inputs should be the same shape. The two inputs should both be the dense matrix. The cosine layer should have only one output, and the output shape should be [batch_size, 1] because, for each pair of input sample, the cosine similarity should be a scalar. The cosine layer has one configurable argument, `scale`. It is the scalar number multiplied to the cosine similarity.  `scale` should be a `double` value,  the default value is 1.0,  and should be larger than 0.0.
+
+All these meta information should be written in namespace `paddle::topology::meta`. There are several basic classes in this namespace.
+
+* Constraints:  It is a function list which stores the constraints of one attribute. It used to validate user input must be correct.
+* AttributeMeta:  It represent a meta information of an attribute, e.g. `scale`. It contains the attribute name,  description, type information and `Constraints`.
+* TensorMeta: Tensor is the input/output of the Layer or Function. It contains a vector of `AttributeMeta`. The data type, sequence type is just an attribute of the tensor.
+* FunctionMeta: It represent a meta information of a paddle::Function. It contains two vectors of TensorMeta, and they are inputs and outputs. The FunctionMeta also contains a vector of AttributeMeta, that kernel developers can add the attributes used by their kernel.
+* LayerMeta: A similar concept like FunctionMeta, but used to represent `Layer'.
+* TopologyMeta: A topology meta contains a vector of `AttributeMeta`, which represent the attributes can be set globally in a topology.
+
+### Topology information
+
+The topology information is the actual information of a neural network. It is one to one correspondence to meta information. We use `std::any`(a.k.a `boost::any`) to represent the attribute value of each attribute because attribute could be any type(double/int/vector<int>, etc).
+
+So the `topology::Tensor` contains an attribute map, e.g. `map<string, any>`.  The `Function` contains an attribute map, input tensors, and output tensors. The rest types of topology information are correspondent to its meta information.
+
+## Step by step approach
+
+After building the `Topology` concept in C++, Paddle's Python code could be clean up. However, the development process would be broken down into step by step, carefully completed, to make Paddle code steady and not introduce bugs.
+
+The step by step approach are:
+
+1. Add `Constraints`, `AttributeMeta` , `TensorMeta`, `FunctionMeta` to refactor the `paddle::Function` package. Make `paddle::Function` just a plain function registered to `FunctionMeta`. Use a small scope experiment make sure we could uses `topology::meta` and `topology` represent a piece of neural network.
+
+2. Complete the `LayerMeta`, `TopologyMeta`, etc. But write a conversion method from `protobuf::LayerConfig`/`protobuf::ModelConfig` to `topology::Layer`/`topology::Topology`. Make `paddle_trainer` can use and test `topology` package. A side-effect of this job is to let `paddle_trainer` validation users' `trainer_config.conf` file, and give a reasonalbe error message when user gives a wrong configuration.
+
+3. Clean up the implementation of `paddle.v2` topology. Let `v2` package not invoke `trainer_config_helper`, just invoke `topology` package directly from C-API.
