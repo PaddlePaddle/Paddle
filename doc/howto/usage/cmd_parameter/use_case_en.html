@@ -1,0 +1,431 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Use Case &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html"/>
+        <link rel="up" title="Set Command-line Parameters" href="index_en.html"/>
+        <link rel="next" title="Argument Outline" href="arguments_en.html"/>
+        <link rel="prev" title="Set Command-line Parameters" href="index_en.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">HOW TO</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index_en.html">Set Command-line Parameters</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../../index_en.html">HOW TO</a> > </li>
+      
+        <li><a href="index_en.html">Set Command-line Parameters</a> > </li>
+      
+    <li>Use Case</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="use-case">
+<span id="use-case"></span><h1>Use Case<a class="headerlink" href="#use-case" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="local-training">
+<span id="local-training"></span><h2>Local Training<a class="headerlink" href="#local-training" title="Permalink to this headline">¶</a></h2>
+<p>These command line arguments are commonly used by local training experiments, such as image classification, natural language processing, et al.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> \
+  <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">0</span> \                        <span class="c1">#1:GPU,0:CPU(default:true)</span>
+  <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">network_config</span> \
+  <span class="o">--</span><span class="n">save_dir</span><span class="o">=</span><span class="n">output</span> \
+  <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span> \                <span class="c1">#(default:1)</span>
+  <span class="o">--</span><span class="n">test_period</span><span class="o">=</span><span class="n">M</span> \                      <span class="c1">#(default:0) </span>
+  <span class="o">--</span><span class="n">num_passes</span><span class="o">=</span><span class="n">N</span> \                       <span class="c1">#(defalut:100)</span>
+  <span class="o">--</span><span class="n">log_period</span><span class="o">=</span><span class="n">K</span> \                       <span class="c1">#(default:100)</span>
+  <span class="o">--</span><span class="n">dot_period</span><span class="o">=</span><span class="mi">1000</span> \                    <span class="c1">#(default:1)</span>
+  <span class="c1">#[--show_parameter_stats_period=100] \ #(default:0)</span>
+  <span class="c1">#[--saving_period_by_batches=200] \    #(default:0)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">show_parameter_stats_period</span></code> and <code class="docutils literal"><span class="pre">saving_period_by_batches</span></code> are optional according to your task.</p>
+<div class="section" id="pass-command-argument-to-network-config">
+<span id="pass-command-argument-to-network-config"></span><h3>1) Pass Command Argument to Network config<a class="headerlink" href="#pass-command-argument-to-network-config" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">config_args</span></code> is a useful parameter to pass arguments to network config.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">config_args</span><span class="o">=</span><span class="n">generating</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">beam_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">layer_num</span><span class="o">=</span><span class="mi">10</span> \
+</pre></div>
+</div>
+<p>And <code class="docutils literal"><span class="pre">get_config_arg</span></code> can be used to parse these arguments in network config as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">generating</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;generating&#39;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+<span class="n">beam_size</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;beam_size&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">layer_num</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;layer_num&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">get_config_arg</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">get_config_arg</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">default_value</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>name: the name specified in the <code class="docutils literal"><span class="pre">--config_args</span></code></li>
+<li>type: value type, bool, int, str, float etc.</li>
+<li>default_value: default value if not set.</li>
+</ul>
+</div>
+<div class="section" id="use-model-to-initialize-network">
+<span id="use-model-to-initialize-network"></span><h3>2) Use Model to Initialize Network<a class="headerlink" href="#use-model-to-initialize-network" title="Permalink to this headline">¶</a></h3>
+<p>add argument:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">init_model_path</span><span class="o">=</span><span class="n">model_path</span>
+<span class="o">--</span><span class="n">load_missing_parameter_strategy</span><span class="o">=</span><span class="n">rand</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="local-testing">
+<span id="local-testing"></span><h2>Local Testing<a class="headerlink" href="#local-testing" title="Permalink to this headline">¶</a></h2>
+<p>Method 1:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">job</span><span class="o">=</span><span class="n">test</span> \
+             <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">0</span> \ 
+             <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">network_config</span> \
+             <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span> \ 
+             <span class="o">--</span><span class="n">init_model_path</span><span class="o">=</span><span class="n">model_path</span> \
+</pre></div>
+</div>
+<ul class="simple">
+<li>use init_model_path to specify test model.</li>
+<li>only can test one model.</li>
+</ul>
+<p>Method 2:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">job</span><span class="o">=</span><span class="n">test</span> \
+             <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">0</span> \ 
+             <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">network_config</span> \
+             <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span> \ 
+             <span class="o">--</span><span class="n">model_list</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">list</span> \
+</pre></div>
+</div>
+<ul class="simple">
+<li>use model_list to specify test models</li>
+<li>can test several models, where model.list likes:</li>
+</ul>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">alexnet_pass1</span>
+<span class="o">./</span><span class="n">alexnet_pass2</span>
+</pre></div>
+</div>
+<p>Method 3:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">job</span><span class="o">=</span><span class="n">test</span> \
+             <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">0</span> \
+             <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">network_config</span> \
+             <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span> \
+             <span class="o">--</span><span class="n">save_dir</span><span class="o">=</span><span class="n">model</span> \
+             <span class="o">--</span><span class="n">test_pass</span><span class="o">=</span><span class="n">M</span> \
+             <span class="o">--</span><span class="n">num_passes</span><span class="o">=</span><span class="n">N</span> \
+</pre></div>
+</div>
+<p>This way must use model path saved by Paddle like this: <code class="docutils literal"><span class="pre">model/pass-%5d</span></code>. Testing model is from M-th pass to (N-1)-th pass. For example: M=12 and N=14 will test <code class="docutils literal"><span class="pre">model/pass-00012</span></code> and <code class="docutils literal"><span class="pre">model/pass-00013</span></code>.</p>
+</div>
+<div class="section" id="sparse-training">
+<span id="sparse-training"></span><h2>Sparse Training<a class="headerlink" href="#sparse-training" title="Permalink to this headline">¶</a></h2>
+<p>Sparse training is usually used to accelerate calculation when input is sparse data with highly dimension. For example, dictionary dimension of input data is 1 million, but one sample just have several words. In paddle, sparse matrix multiplication is used in forward propagation and sparse updating is perfomed on weight updating after backward propagation.</p>
+<div class="section" id="local-training">
+<span id="id1"></span><h3>1) Local training<a class="headerlink" href="#local-training" title="Permalink to this headline">¶</a></h3>
+<p>You need to set <strong>sparse_update=True</strong> in network config.  Check the network config documentation for more details.</p>
+</div>
+<div class="section" id="cluster-training">
+<span id="cluster-training"></span><h3>2) cluster training<a class="headerlink" href="#cluster-training" title="Permalink to this headline">¶</a></h3>
+<p>Add the following argument for cluster training of a sparse model. At the same time you need to set <strong>sparse_remote_update=True</strong> in network config. Check the network config documentation for more details.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">ports_num_for_sparse</span><span class="o">=</span><span class="mi">1</span>    <span class="c1">#(default: 0)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="parallel-nn">
+<span id="parallel-nn"></span><h2>parallel_nn<a class="headerlink" href="#parallel-nn" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal"><span class="pre">parallel_nn</span></code> can be set to mixed use of GPUs and CPUs to compute layers. That is to say, you can deploy network to use a GPU to compute some layers and use a CPU to compute other layers. The other way is to split layers into different GPUs, which can <strong>reduce GPU memory</strong> or <strong>use parallel computation to accelerate some layers</strong>.</p>
+<p>If you want to use these characteristics, you need to specify device ID in network config (denote it as deviceId) and add command line argument:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">parallel_nn</span><span class="o">=</span><span class="n">true</span>
+</pre></div>
+</div>
+<div class="section" id="case-1-mixed-use-of-gpu-and-cpu">
+<span id="case-1-mixed-use-of-gpu-and-cpu"></span><h3>case 1: Mixed Use of GPU and CPU<a class="headerlink" href="#case-1-mixed-use-of-gpu-and-cpu" title="Permalink to this headline">¶</a></h3>
+<p>Consider the following example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1">#command line:</span>
+<span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="n">true</span> <span class="o">--</span><span class="n">parallel_nn</span><span class="o">=</span><span class="n">true</span> <span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span>
+
+<span class="n">default_device</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="n">fc1</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">fc2</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">fc3</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="o">...</span><span class="p">,</span><span class="n">layer_attr</span><span class="o">=</span><span class="n">ExtraAttr</span><span class="p">(</span><span class="n">device</span><span class="o">=-</span><span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>default_device(0): set default device ID to 0. This means that except the layers with device=-1, all layers will use a GPU, and the specific GPU used for each layer depends on trainer_count and gpu_id (0 by default). Here, layer fc1 and fc2 are computed on the GPU.</li>
+<li>device=-1: use the CPU for layer fc3.</li>
+<li>trainer_count:<ul>
+<li>trainer_count=1: if gpu_id is not set, then use the first GPU to compute layers fc1 and fc2. Otherwise use the GPU with gpu_id.</li>
+<li>trainer_count&gt;1: use trainer_count GPUs to compute one layer using data parallelism. For example, trainer_count=2 means that GPUs 0 and 1 will use data parallelism to compute layer fc1 and fc2.</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="case-2-specify-layers-in-different-devices">
+<span id="case-2-specify-layers-in-different-devices"></span><h3>Case 2: Specify Layers in Different Devices<a class="headerlink" href="#case-2-specify-layers-in-different-devices" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1">#command line:</span>
+<span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="n">true</span> <span class="o">--</span><span class="n">parallel_nn</span><span class="o">=</span><span class="n">true</span> <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span>
+
+<span class="c1">#network:</span>
+<span class="n">fc2</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">l1</span><span class="p">,</span> <span class="n">layer_attr</span><span class="o">=</span><span class="n">ExtraAttr</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">fc3</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">l1</span><span class="p">,</span> <span class="n">layer_attr</span><span class="o">=</span><span class="n">ExtraAttr</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">fc4</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">fc2</span><span class="p">,</span> <span class="n">layer_attr</span><span class="o">=</span><span class="n">ExtraAttr</span><span class="p">(</span><span class="n">device</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this case, we assume that there are 4 GPUs in one machine.</p>
+<ul class="simple">
+<li>trainer_count=1:<ul>
+<li>Use GPU 0 to compute layer fc2.</li>
+<li>Use GPU 1 to compute layer fc3.</li>
+<li>Use CPU to compute layer fc4.</li>
+</ul>
+</li>
+<li>trainer_count=2:<ul>
+<li>Use GPU 0 and 1 to compute layer fc2.</li>
+<li>Use GPU 2 and 3 to compute layer fc3.</li>
+<li>Use CPU to compute fc4 in two threads.</li>
+</ul>
+</li>
+<li>trainer_count=4:<ul>
+<li>It will fail (note, we have assumed that there are 4 GPUs in machine), because argument <code class="docutils literal"><span class="pre">allow_only_one_model_on_one_gpu</span></code> is true by default.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Allocation of device ID when <code class="docutils literal"><span class="pre">device!=-1</span></code></strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">deviceId</span> <span class="o">+</span> <span class="n">gpu_id</span> <span class="o">+</span> <span class="n">threadId</span> <span class="o">*</span> <span class="n">numLogicalDevices_</span><span class="p">)</span> <span class="o">%</span> <span class="n">numDevices_</span>
+
+<span class="n">deviceId</span><span class="p">:</span>             <span class="n">specified</span> <span class="ow">in</span> <span class="n">layer</span><span class="o">.</span>
+<span class="n">gpu_id</span><span class="p">:</span>               <span class="mi">0</span> <span class="n">by</span> <span class="n">default</span><span class="o">.</span>
+<span class="n">threadId</span><span class="p">:</span>             <span class="n">thread</span> <span class="n">ID</span><span class="p">,</span> <span class="nb">range</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="o">...</span><span class="p">,</span> <span class="n">trainer_count</span><span class="o">-</span><span class="mi">1</span>
+<span class="n">numDevices_</span><span class="p">:</span>          <span class="n">device</span> <span class="p">(</span><span class="n">GPU</span><span class="p">)</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">machine</span><span class="o">.</span>
+<span class="n">numLogicalDevices_</span><span class="p">:</span>   <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">deviceId</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">numDevices_</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="arguments_en.html" class="btn btn-neutral float-right" title="Argument Outline" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index_en.html" class="btn btn-neutral" title="Set Command-line Parameters" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

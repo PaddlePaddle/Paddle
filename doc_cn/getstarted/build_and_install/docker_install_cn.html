@@ -1,0 +1,401 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>PaddlePaddle的Docker容器使用方式 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/>
+        <link rel="up" title="安装与编译" href="index_cn.html"/>
+        <link rel="next" title="Ubuntu部署PaddlePaddle" href="ubuntu_install_cn.html"/>
+        <link rel="prev" title="安装与编译" href="index_cn.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index_cn.html">新手入门</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index_cn.html">安装与编译</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../index_cn.html">新手入门</a> > </li>
+      
+        <li><a href="index_cn.html">安装与编译</a> > </li>
+      
+    <li>PaddlePaddle的Docker容器使用方式</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="paddlepaddledocker">
+<h1>PaddlePaddle的Docker容器使用方式<a class="headerlink" href="#paddlepaddledocker" title="永久链接至标题">¶</a></h1>
+<p>PaddlePaddle目前唯一官方支持的运行的方式是Docker容器。因为Docker能在所有主要操作系统（包括Linux，Mac OS X和Windows）上运行。 请注意，您需要更改 <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/issues/627">Dockers设置</a> 才能充分利用Mac OS X和Windows上的硬件资源。</p>
+<div class="section" id="id1">
+<h2>PaddlePaddle发布的Docker镜像使用说明<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h2>
+<p>我们把PaddlePaddle的编译环境打包成一个镜像，称为开发镜像，里面涵盖了
+PaddlePaddle需要的所有编译工具。把编译出来的PaddlePaddle也打包成一个镜
+像，称为生产镜像，里面涵盖了PaddlePaddle运行所需的所有环境。每次
+PaddlePaddle发布新版本的时候都会发布对应版本的生产镜像以及开发镜像。运
+行镜像包括纯CPU版本和GPU版本以及其对应的非AVX版本。我们会在
+<a class="reference external" href="https://hub.docker.com/r/paddledev/paddle/">dockerhub.com</a> 提供最新
+的Docker镜像，可以在&#8221;tags&#8221;标签下找到最新的Paddle镜像版本。为了方便在国
+内的开发者下载Docker镜像，我们提供了国内的镜像服务器供大家使用。如果您
+在国内，请把文档里命令中的paddlepaddle/paddle替换成
+docker.paddlepaddle.org/paddle。</p>
+<ol class="arabic">
+<li><p class="first">开发镜像：<code class="code docutils literal"><span class="pre">paddlepaddle/paddle:&lt;version&gt;-dev</span></code></p>
+<p>这个镜像包含了Paddle相关的开发工具以及编译和运行环境。用户可以使用开发镜像代替配置本地环境，完成开发，编译，发布，
+文档编写等工作。由于不同的Paddle的版本可能需要不同的依赖和工具，所以如果需要自行配置开发环境需要考虑版本的因素。
+开发镜像包含了以下工具：</p>
+<ul class="simple">
+<li>gcc/clang</li>
+<li>nvcc</li>
+<li>Python</li>
+<li>sphinx</li>
+<li>woboq</li>
+<li>sshd</li>
+</ul>
+<p>很多开发者会使用远程的安装有GPU的服务器工作，用户可以使用ssh登录到这台服务器上并执行 :code:<a href="#id2"><span class="problematic" id="id3">`</span></a>docker exec`进入开发镜像并开始工作，
+也可以在开发镜像中启动一个SSHD服务，方便开发者直接登录到镜像中进行开发:</p>
+<p>以交互容器方式运行开发镜像：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it --rm paddlepaddle/paddle:&lt;version&gt;-dev /bin/bash
+</pre></div>
+</div>
+<p>或者，可以以后台进程方式运行容器：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d -p <span class="m">2202</span>:22 -p <span class="m">8888</span>:8888 paddledev/paddle:&lt;version&gt;-dev
+</pre></div>
+</div>
+<p>然后用密码 <code class="code docutils literal"><span class="pre">root</span></code> SSH进入容器：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>ssh -p <span class="m">2202</span> root@localhost
+</pre></div>
+</div>
+<p>SSH方式的一个优点是我们可以从多个终端进入容器。比如，一个终端运行vi，另一个终端运行Python。另一个好处是我们可以把PaddlePaddle容器运行在远程服务器上，并在笔记本上通过SSH与其连接。</p>
+</li>
+<li><p class="first">生产镜像：根据CPU、GPU和非AVX区分了如下4个镜像：</p>
+<ul class="simple">
+<li>GPU/AVX：<code class="code docutils literal"><span class="pre">paddlepaddle/paddle:&lt;version&gt;-gpu</span></code></li>
+<li>GPU/no-AVX：<code class="code docutils literal"><span class="pre">paddlepaddle/paddle:&lt;version&gt;-gpu-noavx</span></code></li>
+<li>CPU/AVX：<code class="code docutils literal"><span class="pre">paddlepaddle/paddle:&lt;version&gt;</span></code></li>
+<li>CPU/no-AVX：<code class="code docutils literal"><span class="pre">paddlepaddle/paddle:&lt;version&gt;-noavx</span></code></li>
+</ul>
+<p>纯CPU镜像以及GPU镜像都会用到AVX指令集，但是2008年之前生产的旧电脑不支持AVX。以下指令能检查Linux电脑是否支持AVX：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="k">if</span> cat /proc/cpuinfo <span class="p">|</span> grep -i avx<span class="p">;</span> <span class="k">then</span> <span class="nb">echo</span> Yes<span class="p">;</span> <span class="k">else</span> <span class="nb">echo</span> No<span class="p">;</span> <span class="k">fi</span>
+</pre></div>
+</div>
+<p>如果输出是No，就需要选择使用no-AVX的镜像</p>
+<p>以上方法在GPU镜像里也能用，只是请不要忘记提前在物理机上安装GPU最新驱动。
+为了保证GPU驱动能够在镜像里面正常运行，我们推荐使用[nvidia-docker](<a class="reference external" href="https://github.com/NVIDIA/nvidia-docker">https://github.com/NVIDIA/nvidia-docker</a>)来运行镜像。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run -it --rm paddledev/paddle:0.10.0rc1-gpu /bin/bash
+</pre></div>
+</div>
+<p>注意: 如果使用nvidia-docker存在问题，你也许可以尝试更老的方法，具体如下，但是我们并不推荐这种方法。：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
+docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:&lt;version&gt;-gpu
+</pre></div>
+</div>
+</li>
+<li><p class="first">运行以及发布您的AI程序</p>
+<p>假设您已经完成了一个AI训练的python程序 <code class="code docutils literal"><span class="pre">a.py</span></code>，这个程序是您在开发机上使用开发镜像完成开发。此时您可以运行这个命令在开发机上进行测试运行：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it -v <span class="nv">$PWD</span>:/work paddle /work/a.py
+</pre></div>
+</div>
+<p>如果要使用GPU，请运行：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run -it -v <span class="nv">$PWD</span>:/work paddle /work/a.py
+</pre></div>
+</div>
+<p>这里`a.py`包含的所有依赖假设都可以在Paddle的运行容器中。如果需要包含更多的依赖、或者需要发布您的应用的镜像，可以编写`Dockerfile`使用`FROM paddledev/paddle:&lt;version&gt;`
+创建和发布自己的AI程序镜像。</p>
+</li>
+</ol>
+</div>
+<div class="section" id="paddlepaddle-book">
+<h2>运行PaddlePaddle Book<a class="headerlink" href="#paddlepaddle-book" title="永久链接至标题">¶</a></h2>
+<p>Jupyter Notebook是一个开源的web程序，大家可以通过它制作和分享带有代码、公式、图表、文字的交互式文档。用户可以通过网页浏览文档。</p>
+<p>PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Nodebook。
+如果您想要更深入了解deep learning，PaddlePaddle Book一定是您最好的选择。</p>
+<p>我们提供可以直接运行PaddlePaddle Book的Docker镜像，直接运行：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -p <span class="m">8888</span>:8888 paddlepaddle/book
+</pre></div>
+</div>
+<p>然后在浏览器中输入以下网址：</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>http://localhost:8888/
+</pre></div>
+</div>
+<p>就这么简单，享受您的旅程！</p>
+</div>
+<div class="section" id="dockerpaddlepaddle">
+<h2>通过Docker容器开发PaddlePaddle<a class="headerlink" href="#dockerpaddlepaddle" title="永久链接至标题">¶</a></h2>
+<p>开发人员可以在Docker开发镜像中开发PaddlePaddle。这样开发人员可以以一致的方式在不同的平台上工作 - Linux，Mac OS X和Windows。</p>
+<ol class="arabic">
+<li><p class="first">制作PaddlePaddle开发镜像</p>
+<p>PaddlePaddle每次发布新版本都会发布对应的开发镜像供开发者直接使用。这里介绍如生成造这个开发镜像。
+生成Docker镜像的方式有两个，一个是直接把一个容器转换成镜像，另一个是创建Dockerfile并运行docker build指令按照Dockerfile生成镜像。第一个方法的好处是简单快捷，适合自己实验，可以快速迭代。第二个方法的好处是Dockerfile可以把整个生成流程描述很清楚，其他人很容易看懂镜像生成过程，持续集成系统也可以简单地复现这个过程。我们采用第二个方法。Dockerfile位于PaddlePaddle repo的根目录。生成生产镜像只需要运行：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>git clone https://github.com/PaddlePaddle/Paddle.git
+<span class="nb">cd</span> Paddle
+docker build -t paddle:dev .
+</pre></div>
+</div>
+<p>docker build这个命令的-t指定了生成的镜像的名字，这里我们用paddle:dev。到此，PaddlePaddle开发镜像就被构建完毕了。</p>
+</li>
+<li><p class="first">制作PaddlePaddle生产镜像</p>
+<p>生产镜像的生成分为两步，第一步是运行：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/paddle -e <span class="s2">&quot;WITH_GPU=OFF&quot;</span> -e <span class="s2">&quot;WITH_AVX=OFF&quot;</span> -e <span class="s2">&quot;WITH_TEST=ON&quot;</span> paddle:dev
+</pre></div>
+</div>
+<p>以上命令会编译PaddlePaddle，生成运行程序，以及生成创建生产镜像的Dockerfile。所有生成的的文件都在build目录下。“WITH_GPU”控制生成的生产镜像是否支持GPU，“WITH_AVX”控制生成的生产镜像是否支持AVX，”WITH_TEST“控制是否生成单元测试。</p>
+<p>第二步是运行：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t paddle:prod -f build/Dockerfile ./build
+</pre></div>
+</div>
+<p>以上命令会按照生成的Dockerfile把生成的程序拷贝到生产镜像中并做相应的配置，最终生成名为paddle:prod的生产镜像。</p>
+</li>
+<li><p class="first">运行单元测试</p>
+<p>运行以下指令：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/paddle paddle:dev bash -c <span class="s2">&quot;cd /paddle/build &amp;&amp; ctest&quot;</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="id4">
+<h2>文档<a class="headerlink" href="#id4" title="永久链接至标题">¶</a></h2>
+<p>Paddle的Docker开发镜像带有一个通过 <a class="reference external" href="https://github.com/woboq/woboq_codebrowser">woboq code browser</a> 生成的HTML版本的C++源代码，便于用户浏览C++源码。</p>
+<p>只要在Docker里启动PaddlePaddle的时候给它一个名字，就可以再运行另一个Nginx Docker镜像来服务HTML代码：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d --name paddle-cpu-doc paddle:&lt;version&gt;-dev
+docker run -d --volumes-from paddle-cpu-doc -p <span class="m">8088</span>:80 nginx
+</pre></div>
+</div>
+<p>接着我们就能够打开浏览器在 <a class="reference external" href="http://localhost:8088/paddle/">http://localhost:8088/paddle/</a> 浏览代码。</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="ubuntu_install_cn.html" class="btn btn-neutral float-right" title="Ubuntu部署PaddlePaddle" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index_cn.html" class="btn btn-neutral" title="安装与编译" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

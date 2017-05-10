@@ -1,0 +1,257 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>DataProvider的介绍 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>DataProvider的介绍</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="dataprovider">
+<span id="api-dataprovider"></span><h1>DataProvider的介绍<a class="headerlink" href="#dataprovider" title="永久链接至标题">¶</a></h1>
+<p>DataProvider是PaddlePaddle负责提供数据的模块。其作用是将数据传入内存或显存，让神经网络可以进行训练或预测。用户可以通过简单使用Python接口 <a class="reference internal" href="pydataprovider2_cn.html#api-pydataprovider2"><span class="std std-ref">PyDataProvider2的使用</span></a> ，来自定义传数据的过程。如果有更复杂的使用，或者需要更高的效率，用户也可以在C++端自定义一个 <code class="docutils literal"><span class="pre">DataProvider</span></code> 。</p>
+<p>PaddlePaddle需要用户在网络配置（trainer_config.py）中定义使用哪种DataProvider，并且在DataProvider中实现如何访问训练文件列表（train.list）或测试文件列表（test.list）。</p>
+<ul class="simple">
+<li>train.list和test.list存放在本地（推荐直接存放到训练目录，以相对路径引用)。一般情况下，两者均为纯文本文件，其中每一行对应一个数据文件地址：<ul>
+<li>如果数据文件存于本地磁盘，这个地址则为它的绝对路径或相对路径(相对于PaddlePaddle程序运行时的路径)。</li>
+<li>地址也可以为hdfs文件路径，或者数据库连接路径等。</li>
+<li>由于这个地址会被DataProvider使用，因此，如何解析该地址也是用户自定义DataProvider时需要考虑的地方。</li>
+</ul>
+</li>
+<li>如果没有设置test.list，或设置为None，那么在训练过程中不会执行测试操作；否则，会根据命令行参数指定的测试方式，在训练过程中进行测试，从而防止过拟合。</li>
+</ul>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

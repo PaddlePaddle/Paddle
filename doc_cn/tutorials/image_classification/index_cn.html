@@ -1,0 +1,432 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>图像分类教程 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>图像分类教程</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="">
+<span id="id1"></span><h1>图像分类教程<a class="headerlink" href="#" title="永久链接至标题">¶</a></h1>
+<p>在本教程中，我们将使用CIFAR-10数据集训练一个卷积神经网络，并使用这个神经网络来对图片进行分类。如下图所示，卷积神经网络可以辨识图片中的主体，并给出分类结果。
+<center><img alt="Image Classification" src="../../_images/image_classification.png" /></center></p>
+<div class="section" id="">
+<span id="id2"></span><h2>数据准备<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>首先下载CIFAR-10数据集。下面是CIFAR-10数据集的官方网址：</p>
+<p><a class="reference external" href="https://www.cs.toronto.edu/~kriz/cifar.html">https://www.cs.toronto.edu/~kriz/cifar.html</a></p>
+<p>我们准备了一个脚本，可以用于从官方网站上下载CIFAR-10数据集，转为jpeg文件并存入特定的目录。使用这个脚本前请确认已经安装了pillow及相关依赖模块。可以参照下面的命令进行安装：</p>
+<ol class="simple">
+<li>安装pillow</li>
+</ol>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>sudo apt-get install libjpeg-dev
+pip install pillow
+</pre></div>
+</div>
+<ol class="simple">
+<li>下载数据集</li>
+</ol>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/image_classification/data/
+sh download_cifar.sh
+</pre></div>
+</div>
+<p>CIFAR-10数据集包含60000张32x32的彩色图片。图片分为10类，每个类包含6000张。其中50000张图片作为训练集，10000张作为测试集。</p>
+<p>下图展示了所有的图片类别，每个类别中随机抽取了10张图片。
+<center><img alt="Image Classification" src="../../_images/cifar.png" /></center></p>
+<p>脚本运行完成后，我们应当会得到一个名为cifar-out的文件夹，其下子文件夹的结构如下</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">train</span>
+<span class="o">---</span><span class="n">airplane</span>
+<span class="o">---</span><span class="n">automobile</span>
+<span class="o">---</span><span class="n">bird</span>
+<span class="o">---</span><span class="n">cat</span>
+<span class="o">---</span><span class="n">deer</span>
+<span class="o">---</span><span class="n">dog</span>
+<span class="o">---</span><span class="n">frog</span>
+<span class="o">---</span><span class="n">horse</span>
+<span class="o">---</span><span class="n">ship</span>
+<span class="o">---</span><span class="n">truck</span>
+<span class="n">test</span>
+<span class="o">---</span><span class="n">airplane</span>
+<span class="o">---</span><span class="n">automobile</span>
+<span class="o">---</span><span class="n">bird</span>
+<span class="o">---</span><span class="n">cat</span>
+<span class="o">---</span><span class="n">deer</span>
+<span class="o">---</span><span class="n">dog</span>
+<span class="o">---</span><span class="n">frog</span>
+<span class="o">---</span><span class="n">horse</span>
+<span class="o">---</span><span class="n">ship</span>
+<span class="o">---</span><span class="n">truck</span>
+</pre></div>
+</div>
+<p>cifar-out下包含<code class="docutils literal"><span class="pre">train</span></code>和<code class="docutils literal"><span class="pre">test</span></code>两个文件夹，其中分别包含了CIFAR-10中的训练集和测试集。这两个文件夹下各自有10个子文件夹，每个子文件夹下存储相应分类的图片。将图片按照上述结构存储好之后，我们就可以着手对分类模型进行训练了。</p>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h2>预处理<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>数据下载之后，还需要进行预处理，将数据转换为Paddle的格式。我们可以通过如下命令进行预处理工作：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">image_classification</span><span class="o">/</span>
+<span class="n">sh</span> <span class="n">preprocess</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>其中<code class="docutils literal"><span class="pre">preprocess.sh</span></code> 调用 <code class="docutils literal"><span class="pre">./demo/image_classification/preprocess.py</span></code> 对图片进行预处理</p>
+<div class="highlight-sh"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PYTHONPATH</span>:../../
+<span class="nv">data_dir</span><span class="o">=</span>./data/cifar-out
+python preprocess.py -i <span class="nv">$data_dir</span> -s <span class="m">32</span> -c <span class="m">1</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">./demo/image_classification/preprocess.py</span></code> 使用如下参数：</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">-i</span></code> 或 <code class="docutils literal"><span class="pre">--input</span></code> 给出输入数据所在路径；</li>
+<li><code class="docutils literal"><span class="pre">-s</span></code> 或 <code class="docutils literal"><span class="pre">--size</span></code> 给出图片尺寸；</li>
+<li><code class="docutils literal"><span class="pre">-c</span></code> 或 <code class="docutils literal"><span class="pre">--color</span></code> 标示图片是彩色图或灰度图</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h2>模型训练<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>在开始训练之前，我们需要先创建一个模型配置文件。下面我们给出了一个配置示例。<strong>注意</strong>，这里的列出的和<code class="docutils literal"><span class="pre">vgg_16_cifar.py</span></code>文件稍有差别，因为该文件可适用于预测。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">data_dir</span><span class="o">=</span><span class="s1">&#39;data/cifar-out/batches/&#39;</span>
+<span class="n">meta_path</span><span class="o">=</span><span class="n">data_dir</span><span class="o">+</span><span class="s1">&#39;batches.meta&#39;</span>
+<span class="n">args</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;meta&#39;</span><span class="p">:</span><span class="n">meta_path</span><span class="p">,</span> <span class="s1">&#39;mean_img_size&#39;</span><span class="p">:</span> <span class="mi">32</span><span class="p">,</span>
+        <span class="s1">&#39;img_size&#39;</span><span class="p">:</span> <span class="mi">32</span><span class="p">,</span> <span class="s1">&#39;num_classes&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="s1">&#39;use_jpeg&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s2">&quot;color&quot;</span><span class="p">}</span>
+<span class="n">define_py_data_sources2</span><span class="p">(</span><span class="n">train_list</span><span class="o">=</span><span class="n">data_dir</span><span class="o">+</span><span class="s2">&quot;train.list&quot;</span><span class="p">,</span>
+                        <span class="n">test_list</span><span class="o">=</span><span class="n">data_dir</span><span class="o">+</span><span class="s1">&#39;test.list&#39;</span><span class="p">,</span>
+                        <span class="n">module</span><span class="o">=</span><span class="s1">&#39;image_provider&#39;</span><span class="p">,</span>
+                        <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;processData&#39;</span><span class="p">,</span>
+                        <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">)</span>
+<span class="n">settings</span><span class="p">(</span>
+    <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span>
+    <span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="o">/</span> <span class="mf">128.0</span><span class="p">,</span>
+    <span class="n">learning_method</span> <span class="o">=</span> <span class="n">MomentumOptimizer</span><span class="p">(</span><span class="mf">0.9</span><span class="p">),</span>
+    <span class="n">regularization</span> <span class="o">=</span> <span class="n">L2Regularization</span><span class="p">(</span><span class="mf">0.0005</span> <span class="o">*</span> <span class="mi">128</span><span class="p">))</span>
+
+<span class="n">img</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">3</span><span class="o">*</span><span class="mi">32</span><span class="o">*</span><span class="mi">32</span><span class="p">)</span>
+<span class="n">lbl</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="c1"># small_vgg is predined in trainer_config_helpers.network</span>
+<span class="n">predict</span> <span class="o">=</span> <span class="n">small_vgg</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="n">img</span><span class="p">,</span> <span class="n">num_channels</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">outputs</span><span class="p">(</span><span class="n">classification_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">predict</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">lbl</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>在第一行中我们载入用于定义网络的函数。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="kn">import</span> <span class="o">*</span>
+</pre></div>
+</div>
+<p>之后定义的<code class="docutils literal"><span class="pre">define_py_data_sources2</span></code>使用Python数据提供器，其中 <code class="docutils literal"><span class="pre">args</span></code>将在<code class="docutils literal"><span class="pre">image_provider.py</span></code>进行使用，该文件负责产生图片数据并传递给Paddle系统</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">meta</span></code>: 训练集平均值。</li>
+<li><code class="docutils literal"><span class="pre">mean_img_size</span></code>: 平均特征图的高度及宽度。</li>
+<li><code class="docutils literal"><span class="pre">img_size</span></code>：输入图片的高度及宽度。</li>
+<li><code class="docutils literal"><span class="pre">num_classes</span></code>：类别个数。</li>
+<li><code class="docutils literal"><span class="pre">use_jpeg</span></code>：处理过程中数据存储格式。</li>
+<li><code class="docutils literal"><span class="pre">color</span></code>：标示是否为彩色图片。</li>
+</ul>
+<p><code class="docutils literal"><span class="pre">settings</span></code>用于设置训练算法。在下面的例子中，learning rate被设置为0.1除以batch size，而weight decay则为0.0005乘以batch size。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">settings</span><span class="p">(</span>
+   <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span>
+   <span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="o">/</span> <span class="mf">128.0</span><span class="p">,</span>
+   <span class="n">learning_method</span> <span class="o">=</span> <span class="n">MomentumOptimizer</span><span class="p">(</span><span class="mf">0.9</span><span class="p">),</span>
+   <span class="n">regularization</span> <span class="o">=</span> <span class="n">L2Regularization</span><span class="p">(</span><span class="mf">0.0005</span> <span class="o">*</span> <span class="mi">128</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">small_vgg</span></code>定义了网络结构。这里我们使用的是一个小的VGG网络。关于VGG卷积神经网络的描述可以参考：<a class="reference external" href="http://www.robots.ox.ac.uk/~vgg/research/very_deep/">http://www.robots.ox.ac.uk/~vgg/research/very_deep/</a>。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># small_vgg is predined in trainer_config_helpers.network</span>
+<span class="n">predict</span> <span class="o">=</span> <span class="n">small_vgg</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="n">img</span><span class="p">,</span> <span class="n">num_channels</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>配置创建完毕后，可以运行脚本train.sh来训练模型。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">config</span><span class="o">=</span>vgg_16_cifar.py
+<span class="nv">output</span><span class="o">=</span>./cifar_vgg_model
+<span class="nv">log</span><span class="o">=</span>train.log
+
+paddle train <span class="se">\</span>
+--config<span class="o">=</span><span class="nv">$config</span> <span class="se">\</span>
+--dot_period<span class="o">=</span><span class="m">10</span> <span class="se">\</span>
+--log_period<span class="o">=</span><span class="m">100</span> <span class="se">\</span>
+--test_all_data_in_one_period<span class="o">=</span><span class="m">1</span> <span class="se">\</span>
+--use_gpu<span class="o">=</span><span class="m">1</span> <span class="se">\</span>
+--save_dir<span class="o">=</span><span class="nv">$output</span> <span class="se">\</span>
+<span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span> <span class="p">|</span> tee <span class="nv">$log</span>
+
+python -m paddle.utils.plotcurve -i <span class="nv">$log</span> &gt; plot.png
+</pre></div>
+</div>
+<ul class="simple">
+<li>这里我们使用的是GPU模式进行训练。如果你没有GPU环境，可以设置<code class="docutils literal"><span class="pre">use_gpu=0</span></code>。</li>
+<li><code class="docutils literal"><span class="pre">./demo/image_classification/vgg_16_cifar.py</span></code>是网络和数据配置文件。各项参数的详细说明可以在命令行参数相关文档中找到。</li>
+<li>脚本<code class="docutils literal"><span class="pre">plotcurve.py</span></code>依赖于python的<code class="docutils literal"><span class="pre">matplotlib</span></code>模块。因此如果这个脚本运行失败，也许是因为需要安装<code class="docutils literal"><span class="pre">matplotlib</span></code>。
+在训练完成后，训练及测试误差曲线图会被<code class="docutils literal"><span class="pre">plotcurve.py</span></code>脚本保存在 <code class="docutils literal"><span class="pre">plot.png</span></code>中。下面是一个误差曲线图的示例：</li>
+</ul>
+<p><center><img alt="Training and testing curves." src="../../_images/plot.png" /></center></p>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h2>预测<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>在训练完成后，模型及参数会被保存在路径<code class="docutils literal"><span class="pre">./cifar_vgg_model/pass-%05d</span></code>下。例如第300个pass的模型会被保存在<code class="docutils literal"><span class="pre">./cifar_vgg_model/pass-00299</span></code>。</p>
+<p>要对一个图片的进行分类预测，我们可以使用<code class="docutils literal"><span class="pre">predict.sh</span></code>，该脚本将输出预测分类的标签：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">sh</span> <span class="n">predict</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>predict.sh:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>model=cifar_vgg_model/pass-00299/
+image=data/cifar-out/test/airplane/seaplane_s_000978.png
+use_gpu=1
+python prediction.py $model $image $use_gpu
+</pre></div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id6"></span><h2>练习<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>在CUB-200数据集上使用VGG模型训练一个鸟类图片分类模型。相关的鸟类数据集可以从如下地址下载，其中包含了200种鸟类的照片（主要来自北美洲）。</p>
+<p><a class="reference external" href="http://www.vision.caltech.edu/visipedia/CUB-200.html">http://www.vision.caltech.edu/visipedia/CUB-200.html</a></p>
+</div>
+<div class="section" id="">
+<span id="id7"></span><h2>细节探究<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<div class="section" id="">
+<span id="id8"></span><h3>卷积神经网络<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>卷积神经网络是一种使用卷积层的前向神经网络，很适合构建用于理解图片内容的模型。一个典型的神经网络如下图所示：</p>
+<p><img alt="Convolutional Neural Network" src="../../_images/lenet.png" /></p>
+<p>一个卷积神经网络包含如下层：</p>
+<ul class="simple">
+<li>卷积层：通过卷积操作从图片或特征图中提取特征</li>
+<li>池化层：使用max-pooling对特征图下采样</li>
+<li>全连接层：使输入层到隐藏层的神经元是全部连接的。</li>
+</ul>
+<p>卷积神经网络在图片分类上有着惊人的性能，这是因为它发掘出了图片的两类重要信息：局部关联性质和空间不变性质。通过交替使用卷积和池化处理， 卷积神经网络能够很好的表示这两类信息。</p>
+<p>关于如何定义网络中的层，以及如何在层之间进行连接，请参考Layer文档。</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

@@ -1,0 +1,584 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>GPU性能分析与调优 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/>
+        <link rel="up" title="进阶指南" href="../index_cn.html"/>
+        <link rel="next" title="API" href="../../api/index_cn.html"/>
+        <link rel="prev" title="单双层RNN API对比介绍" href="../deep_model/rnn/hrnn_rnn_api_compare_cn.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index_cn.html">进阶指南</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../index_cn.html">进阶指南</a> > </li>
+      
+    <li>GPU性能分析与调优</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="gpu">
+<h1><a class="toc-backref" href="#id9">GPU性能分析与调优</a><a class="headerlink" href="#gpu" title="永久链接至标题">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#gpu" id="id9">GPU性能分析与调优</a><ul>
+<li><a class="reference internal" href="#id1" id="id10">什么是性能分析？</a></li>
+<li><a class="reference internal" href="#id2" id="id11">为什么需要性能分析？</a></li>
+<li><a class="reference internal" href="#id3" id="id12">如何进行性能分析？</a></li>
+<li><a class="reference internal" href="#id4" id="id13">性能分析工具介绍</a></li>
+<li><a class="reference internal" href="#id5" id="id14">详细教程</a><ul>
+<li><a class="reference internal" href="#id6" id="id15">内置定时器</a></li>
+<li><a class="reference internal" href="#nvprof" id="id16">nvprof 工具</a></li>
+<li><a class="reference internal" href="#nvvp" id="id17">nvvp 工具</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id7" id="id18">性能分析小技巧</a></li>
+<li><a class="reference internal" href="#id8" id="id19">参考资料</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<p>此教程将向您分步介绍如何使用内置的定时工具、 <strong>nvprof</strong> 或 <strong>nvvp</strong> 来运行性能分析和调优。</p>
+<ul class="simple">
+<li>什么是性能分析？</li>
+<li>为什么需要性能分析？</li>
+<li>如何进行性能分析？</li>
+<li>性能分析工具介绍</li>
+<li>详细教程</li>
+<li>性能分析小技巧</li>
+</ul>
+<div class="section" id="id1">
+<h2><a class="toc-backref" href="#id10">什么是性能分析？</a><a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h2>
+<p>在软件工程的范畴里，性能分析（Profiling）是一个动态程序分析的术语，它可以指测量一个程序的空间（内存）复杂度或时间复杂度，
+也可以说是某些特定指令的使用情况，或者是函数调用的频率和耗时等。通常情况下，分析得到的信息用于协助进行程序的优化。</p>
+<p>简单来说，性能分析工具是用于给应用程序的性能做定量分析的。如果想很好的理解程序的行为，那程序分析工具是必不可少的利器。简单的性能分析，可以告诉您某个操作到底花了多长时间？而更深入的分析，甚至能解释为什么某个操作花了很长时间？</p>
+</div>
+<div class="section" id="id2">
+<h2><a class="toc-backref" href="#id11">为什么需要性能分析？</a><a class="headerlink" href="#id2" title="永久链接至标题">¶</a></h2>
+<p>训练好一个深层神经网络通常要耗费非常长的时间，所以性能也就逐步变成了深度学习领域最重要的指标。
+而优化性能的首要任务，是需要了解哪些步骤拖慢了整体。
+如果某一块根本就不怎么耗时，那也就不需要急着优化性能啦！</p>
+</div>
+<div class="section" id="id3">
+<h2><a class="toc-backref" href="#id12">如何进行性能分析？</a><a class="headerlink" href="#id3" title="永久链接至标题">¶</a></h2>
+<p>为了达到性能最优，您可以采用下面五个步骤：</p>
+<ul class="simple">
+<li>对代码进行性能分析</li>
+<li>找到运行慢的部分</li>
+<li>找到运行慢的原因</li>
+<li>修改成更快的版本</li>
+<li>再次对代码进行性能分析</li>
+</ul>
+<p>Usually, processor has two key performance limits include float point throughput and
+memory throughput. For GPU,  it also need more parallelism to fulfill its potential.
+This is why they can be so fast.</p>
+<p>通常情况下，处理器有两个关键性能限制：一个是浮点计算量，另一个是内存操作量。
+GPU则还需要高并行性，才能发挥其全部能力。这正是它们速度快的原因。</p>
+</div>
+<div class="section" id="id4">
+<h2><a class="toc-backref" href="#id13">性能分析工具介绍</a><a class="headerlink" href="#id4" title="永久链接至标题">¶</a></h2>
+<p>就通常的GPU性能分析来说，市面上已经有NVIDIA或第三方提供的众多工具。</p>
+<p><strong>nvprof</strong> 是Nvidia性能分析工具， <strong>nvvp</strong> 则是带GUI的Nvidia可视化性能分析工具。
+在这个教程中，我们主要会介绍nvprof和nvvp。</p>
+<p><code class="code docutils literal"><span class="pre">test_GpuProfiler</span></code> from <code class="code docutils literal"><span class="pre">paddle/math/tests</span></code> directory will be used to evaluate
+above profilers.</p>
+<p><code class="code docutils literal"><span class="pre">paddle/math/test</span></code> 目录中的 <code class="code docutils literal"><span class="pre">test_GpuProfiler</span></code> 就是用于展示上述分析工具的用法。</p>
+<div class="highlight-c++"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="n">TEST</span><span class="p">(</span><span class="n">Profiler</span><span class="p">,</span> <span class="n">testBilinearFwdBwd</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">auto</span> <span class="n">numSamples</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+  <span class="k">auto</span> <span class="n">channels</span> <span class="o">=</span> <span class="mi">16</span><span class="p">;</span>
+  <span class="k">auto</span> <span class="n">imgSize</span> <span class="o">=</span> <span class="mi">64</span><span class="p">;</span>
+  <span class="p">{</span>
+    <span class="c1">// nvprof: GPU Proflier</span>
+    <span class="n">REGISTER_GPU_PROFILER</span><span class="p">(</span><span class="s">&quot;testBilinearFwdBwd&quot;</span><span class="p">);</span>
+    <span class="c1">// Paddle built-in timer</span>
+    <span class="n">REGISTER_TIMER_INFO</span><span class="p">(</span>
+        <span class="s">&quot;testBilinearFwdBwd&quot;</span><span class="p">,</span>
+        <span class="s">&quot;numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64&quot;</span><span class="p">);</span>
+    <span class="n">testBilinearFwdBwd</span><span class="p">(</span><span class="n">numSamples</span><span class="p">,</span> <span class="n">imgSize</span><span class="p">,</span> <span class="n">imgSize</span><span class="p">,</span> <span class="n">channels</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="n">globalStat</span><span class="p">.</span><span class="n">printAllStatus</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+<p>上述的代码片段包含了两种方法，您可以任意使用一个或两个来对感兴趣的代码段做性能分析。</p>
+<ol class="arabic simple">
+<li><code class="code docutils literal"><span class="pre">REGISTER_TIMER_INFO</span></code> 是一个内置的定时器封装，可以用来计算CPU函数或cuda内核的时间消耗。</li>
+</ol>
+<p>2. <code class="code docutils literal"><span class="pre">REGISTER_GPU_PROFILER</span></code> is a general purpose wrapper object of <code class="code docutils literal"><span class="pre">cudaProfilerStart</span></code> and <code class="code docutils literal"><span class="pre">cudaProfilerStop</span></code> to avoid
+program crashes when CPU version of PaddlePaddle invokes them.</p>
+<ol class="arabic simple" start="3">
+<li><code class="code docutils literal"><span class="pre">REGISTER_GPU_PROFILER</span></code> 是一个封装对象，封装了 <code class="code docutils literal"><span class="pre">cudaProfilerStart</span></code> 和 <code class="code docutils literal"><span class="pre">cudaProfileStop</span></code> 两个操作；同时其内部实现可以避免纯CPU版本PaddlePaddle在执行本语句时发生崩溃。</li>
+</ol>
+<p>您会在接下来的部分中获得更多的细节介绍。</p>
+</div>
+<div class="section" id="id5">
+<h2><a class="toc-backref" href="#id14">详细教程</a><a class="headerlink" href="#id5" title="永久链接至标题">¶</a></h2>
+<div class="section" id="id6">
+<h3><a class="toc-backref" href="#id15">内置定时器</a><a class="headerlink" href="#id6" title="永久链接至标题">¶</a></h3>
+<p>如果想要启用PaddlePaddle的内置定时器，您首先需要在相关代码段中加入 <code class="code docutils literal"><span class="pre">REGISTER_TIMER_INFO</span></code>。
+接下来就可以使用 <code class="code docutils literal"><span class="pre">printStatus</span></code> 或者 <code class="code docutils literal"><span class="pre">printAllStatus</span></code> 函数来将信息输出到界面中。
+下面举个简单的例子：</p>
+<ol class="arabic">
+<li><p class="first">加入 <code class="code docutils literal"><span class="pre">REGISTER_TIMER_INFO</span></code> 和 <code class="code docutils literal"><span class="pre">printAllStatus</span></code> 函数（如高亮部分）。</p>
+<blockquote>
+<div><div class="highlight-c++"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="n">TEST</span><span class="p">(</span><span class="n">Profiler</span><span class="p">,</span> <span class="n">testBilinearFwdBwd</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">auto</span> <span class="n">numSamples</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+  <span class="k">auto</span> <span class="n">channels</span> <span class="o">=</span> <span class="mi">16</span><span class="p">;</span>
+  <span class="k">auto</span> <span class="n">imgSize</span> <span class="o">=</span> <span class="mi">64</span><span class="p">;</span>
+  <span class="p">{</span>
+    <span class="c1">// nvprof: GPU Proflier</span>
+    <span class="n">REGISTER_GPU_PROFILER</span><span class="p">(</span><span class="s">&quot;testBilinearFwdBwd&quot;</span><span class="p">);</span>
+<span class="hll">    <span class="c1">// Paddle built-in timer</span>
+</span><span class="hll">    <span class="n">REGISTER_TIMER_INFO</span><span class="p">(</span>
+</span><span class="hll">        <span class="s">&quot;testBilinearFwdBwd&quot;</span><span class="p">,</span>
+</span><span class="hll">        <span class="s">&quot;numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64&quot;</span><span class="p">);</span>
+</span><span class="hll">    <span class="n">testBilinearFwdBwd</span><span class="p">(</span><span class="n">numSamples</span><span class="p">,</span> <span class="n">imgSize</span><span class="p">,</span> <span class="n">imgSize</span><span class="p">,</span> <span class="n">channels</span><span class="p">);</span>
+</span>  <span class="p">}</span>
+<span class="hll">  <span class="n">globalStat</span><span class="p">.</span><span class="n">printAllStatus</span><span class="p">();</span>
+</span><span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div></blockquote>
+</li>
+<li><p class="first">cmake配置中将 <strong>WITH_TIMER</strong> 打开，重新编译PaddlePaddle。</p>
+<blockquote>
+<div><div class="highlight-bash"><div class="highlight"><pre><span></span>cmake .. -DWITH_TIMER<span class="o">=</span>ON
+make
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p class="first">执行您的代码，并观察结果(如高亮部分）。</p>
+<blockquote>
+<div><div class="highlight-bash"><div class="highlight"><pre><span></span><span class="hll">&gt; ./paddle/math/tests/test_GpuProfiler
+</span>I1117 <span class="m">11</span>:13:42.313065 <span class="m">2522362816</span> Util.cpp:155<span class="o">]</span> commandline: ./paddle/math/tests/test_GpuProfiler
+I1117 <span class="m">11</span>:13:42.845065 <span class="m">2522362816</span> Util.cpp:130<span class="o">]</span> Calling runInitFunctions
+I1117 <span class="m">11</span>:13:42.845208 <span class="m">2522362816</span> Util.cpp:143<span class="o">]</span> Call runInitFunctions <span class="k">done</span>.
+<span class="o">[==========]</span> Running <span class="m">1</span> <span class="nb">test</span> from <span class="m">1</span> <span class="nb">test</span> <span class="k">case</span>.
+<span class="o">[</span>----------<span class="o">]</span> Global <span class="nb">test</span> environment set-up.
+<span class="o">[</span>----------<span class="o">]</span> <span class="m">1</span> <span class="nb">test</span> from Profiler
+<span class="o">[</span> RUN      <span class="o">]</span> Profiler.BilinearFwdBwd
+I1117 <span class="m">11</span>:13:42.845310 <span class="m">2522362816</span> test_GpuProfiler.cpp:114<span class="o">]</span> Enable GPU Profiler Stat: <span class="o">[</span>testBilinearFwdBwd<span class="o">]</span> <span class="s2">&quot;numSamples = 10, channels = 16, im</span>
+<span class="s2">gSizeX = 64, imgSizeY = 64&quot;</span>
+I1117 <span class="m">11</span>:13:42.850154 <span class="m">2522362816</span> ThreadLocal.cpp:37<span class="o">]</span> thread use undeterministic rand seed:20659751
+<span class="hll">I1117 <span class="m">11</span>:13:42.981501 <span class="m">2522362816</span> Stat.cpp:130<span class="o">]</span> <span class="o">=======</span> StatSet: <span class="o">[</span>GlobalStatInfo<span class="o">]</span> <span class="nv">status</span> <span class="o">======</span>
+</span><span class="hll">I1117 <span class="m">11</span>:13:42.981539 <span class="m">2522362816</span> Stat.cpp:133<span class="o">]</span> <span class="nv">Stat</span><span class="o">=</span>testBilinearFwdBwd     <span class="nv">total</span><span class="o">=</span><span class="m">136</span>.141    <span class="nv">avg</span><span class="o">=</span><span class="m">136</span>.141    <span class="nv">max</span><span class="o">=</span><span class="m">136</span>.141    <span class="nv">min</span><span class="o">=</span><span class="m">136</span>.141   <span class="nv">count</span><span class="o">=</span><span class="m">1</span>
+</span><span class="hll">I1117 <span class="m">11</span>:13:42.981572 <span class="m">2522362816</span> Stat.cpp:141<span class="o">]</span> <span class="o">=======</span> BarrierStatSet <span class="nv">status</span> <span class="o">======</span>
+</span><span class="hll">I1117 <span class="m">11</span>:13:42.981575 <span class="m">2522362816</span> Stat.cpp:154<span class="o">]</span> --------------------------------------------------
+</span><span class="o">[</span>       OK <span class="o">]</span> Profiler.BilinearFwdBwd <span class="o">(</span><span class="m">136</span> ms<span class="o">)</span>
+<span class="o">[</span>----------<span class="o">]</span> <span class="m">1</span> <span class="nb">test</span> from Profiler <span class="o">(</span><span class="m">136</span> ms total<span class="o">)</span>
+
+<span class="o">[</span>----------<span class="o">]</span> Global <span class="nb">test</span> environment tear-down
+<span class="o">[==========]</span> <span class="m">1</span> <span class="nb">test</span> from <span class="m">1</span> <span class="nb">test</span> <span class="k">case</span> ran. <span class="o">(</span><span class="m">136</span> ms total<span class="o">)</span>
+<span class="o">[</span>  PASSED  <span class="o">]</span> <span class="m">1</span> test.
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ol>
+</div>
+<div class="section" id="nvprof">
+<h3><a class="toc-backref" href="#id16">nvprof 工具</a><a class="headerlink" href="#nvprof" title="永久链接至标题">¶</a></h3>
+<p>要使用命令行分析工具 <strong>nvprof</strong>，您按如下步骤操作即可：</p>
+<ol class="arabic">
+<li><p class="first">将 <code class="code docutils literal"><span class="pre">REGISTER_GPU_PROFILER</span></code> 函数加到代码中（参考强调部分）。</p>
+<blockquote>
+<div><div class="highlight-c++"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="n">TEST</span><span class="p">(</span><span class="n">Profiler</span><span class="p">,</span> <span class="n">testBilinearFwdBwd</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">auto</span> <span class="n">numSamples</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+  <span class="k">auto</span> <span class="n">channels</span> <span class="o">=</span> <span class="mi">16</span><span class="p">;</span>
+  <span class="k">auto</span> <span class="n">imgSize</span> <span class="o">=</span> <span class="mi">64</span><span class="p">;</span>
+  <span class="p">{</span>
+<span class="hll">    <span class="c1">// nvprof: GPU Proflier</span>
+</span><span class="hll">    <span class="n">REGISTER_GPU_PROFILER</span><span class="p">(</span><span class="s">&quot;testBilinearFwdBwd&quot;</span><span class="p">);</span>
+</span>    <span class="c1">// Paddle built-in timer</span>
+    <span class="n">REGISTER_TIMER_INFO</span><span class="p">(</span>
+        <span class="s">&quot;testBilinearFwdBwd&quot;</span><span class="p">,</span>
+        <span class="s">&quot;numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64&quot;</span><span class="p">);</span>
+    <span class="n">testBilinearFwdBwd</span><span class="p">(</span><span class="n">numSamples</span><span class="p">,</span> <span class="n">imgSize</span><span class="p">,</span> <span class="n">imgSize</span><span class="p">,</span> <span class="n">channels</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="n">globalStat</span><span class="p">.</span><span class="n">printAllStatus</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div></blockquote>
+</li>
+<li><p class="first">cmake中将 <strong>WITH_PROFILER</strong> 配置打开，重新编译PaddlePaddle。</p>
+<blockquote>
+<div><div class="highlight-bash"><div class="highlight"><pre><span></span>cmake .. -DWITH_PROFILER<span class="o">=</span>ON
+make
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p class="first">使用 <strong>nvprof</strong> 来分析执行文件。</p>
+<blockquote>
+<div><div class="highlight-bash"><div class="highlight"><pre><span></span>nvprof  ./paddle/math/tests/test_GpuProfiler
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ol>
+<p>然后，您就能获得如下的分析结果：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="o">==</span><span class="nv">78544</span><span class="o">==</span> Profiling application: ./paddle/math/tests/test_GpuProfiler
+<span class="o">==</span><span class="nv">78544</span><span class="o">==</span> Profiling result:
+Time<span class="o">(</span>%<span class="o">)</span>     Time     Calls       Avg       Min       Max  Name
+<span class="m">27</span>.60%  <span class="m">9</span>.6305ms         <span class="m">5</span>  <span class="m">1</span>.9261ms  <span class="m">3</span>.4560us  <span class="m">6</span>.4035ms  <span class="o">[</span>CUDA memcpy HtoD<span class="o">]</span>
+<span class="m">26</span>.07%  <span class="m">9</span>.0957ms         <span class="m">1</span>  <span class="m">9</span>.0957ms  <span class="m">9</span>.0957ms  <span class="m">9</span>.0957ms  KeBilinearInterpBw
+<span class="m">23</span>.78%  <span class="m">8</span>.2977ms         <span class="m">1</span>  <span class="m">8</span>.2977ms  <span class="m">8</span>.2977ms  <span class="m">8</span>.2977ms  KeBilinearInterpFw
+<span class="m">22</span>.55%  <span class="m">7</span>.8661ms         <span class="m">2</span>  <span class="m">3</span>.9330ms  <span class="m">1</span>.5798ms  <span class="m">6</span>.2863ms  <span class="o">[</span>CUDA memcpy DtoH<span class="o">]</span>
+
+<span class="o">==</span><span class="nv">78544</span><span class="o">==</span> API calls:
+Time<span class="o">(</span>%<span class="o">)</span>     Time     Calls       Avg       Min       Max  Name
+<span class="m">46</span>.85%  <span class="m">682</span>.28ms         <span class="m">8</span>  <span class="m">85</span>.285ms  <span class="m">12</span>.639us  <span class="m">682</span>.03ms  cudaStreamCreateWithFlags
+<span class="m">39</span>.83%  <span class="m">580</span>.00ms         <span class="m">4</span>  <span class="m">145</span>.00ms     302ns  <span class="m">550</span>.27ms  cudaFree
+<span class="m">9</span>.82%   <span class="m">143</span>.03ms         <span class="m">9</span>  <span class="m">15</span>.892ms  <span class="m">8</span>.7090us  <span class="m">142</span>.78ms  cudaStreamCreate
+<span class="m">1</span>.23%   <span class="m">17</span>.983ms         <span class="m">7</span>  <span class="m">2</span>.5690ms  <span class="m">23</span>.210us  <span class="m">6</span>.4563ms  cudaMemcpy
+<span class="m">1</span>.23%   <span class="m">17</span>.849ms         <span class="m">2</span>  <span class="m">8</span>.9247ms  <span class="m">8</span>.4726ms  <span class="m">9</span>.3768ms  cudaStreamSynchronize
+<span class="m">0</span>.66%   <span class="m">9</span>.5969ms         <span class="m">7</span>  <span class="m">1</span>.3710ms  <span class="m">288</span>.43us  <span class="m">2</span>.4279ms  cudaHostAlloc
+<span class="m">0</span>.13%   <span class="m">1</span>.9530ms        <span class="m">11</span>  <span class="m">177</span>.54us  <span class="m">7</span>.6810us  <span class="m">591</span>.06us  cudaMalloc
+<span class="m">0</span>.07%   <span class="m">1</span>.0424ms         <span class="m">8</span>  <span class="m">130</span>.30us  <span class="m">1</span>.6970us  <span class="m">453</span>.72us  cudaGetDevice
+<span class="m">0</span>.04%   <span class="m">527</span>.90us        <span class="m">40</span>  <span class="m">13</span>.197us     525ns  <span class="m">253</span>.99us  cudaEventCreateWithFlags
+<span class="m">0</span>.03%   <span class="m">435</span>.73us       <span class="m">348</span>  <span class="m">1</span>.2520us     124ns  <span class="m">42</span>.704us  cuDeviceGetAttribute
+<span class="m">0</span>.03%   <span class="m">419</span>.36us         <span class="m">1</span>  <span class="m">419</span>.36us  <span class="m">419</span>.36us  <span class="m">419</span>.36us  cudaGetDeviceCount
+<span class="m">0</span>.02%   <span class="m">260</span>.75us         <span class="m">2</span>  <span class="m">130</span>.38us  <span class="m">129</span>.32us  <span class="m">131</span>.43us  cudaGetDeviceProperties
+<span class="m">0</span>.02%   <span class="m">222</span>.32us         <span class="m">2</span>  <span class="m">111</span>.16us  <span class="m">106</span>.94us  <span class="m">115</span>.39us  cudaLaunch
+<span class="m">0</span>.01%   <span class="m">214</span>.06us         <span class="m">4</span>  <span class="m">53</span>.514us  <span class="m">28</span>.586us  <span class="m">77</span>.655us  cuDeviceGetName
+<span class="m">0</span>.01%   <span class="m">115</span>.45us         <span class="m">4</span>  <span class="m">28</span>.861us  <span class="m">9</span>.8250us  <span class="m">44</span>.526us  cuDeviceTotalMem
+<span class="m">0</span>.01%   <span class="m">83</span>.988us         <span class="m">4</span>  <span class="m">20</span>.997us     578ns  <span class="m">77</span>.760us  cudaSetDevice
+<span class="m">0</span>.00%   <span class="m">38</span>.918us         <span class="m">1</span>  <span class="m">38</span>.918us  <span class="m">38</span>.918us  <span class="m">38</span>.918us  cudaEventCreate
+<span class="m">0</span>.00%   <span class="m">34</span>.573us        <span class="m">31</span>  <span class="m">1</span>.1150us     279ns  <span class="m">12</span>.784us  cudaDeviceGetAttribute
+<span class="m">0</span>.00%   <span class="m">17</span>.767us         <span class="m">1</span>  <span class="m">17</span>.767us  <span class="m">17</span>.767us  <span class="m">17</span>.767us  cudaProfilerStart
+<span class="m">0</span>.00%   <span class="m">15</span>.228us         <span class="m">2</span>  <span class="m">7</span>.6140us  <span class="m">3</span>.5460us  <span class="m">11</span>.682us  cudaConfigureCall
+<span class="m">0</span>.00%   <span class="m">14</span>.536us         <span class="m">2</span>  <span class="m">7</span>.2680us  <span class="m">1</span>.1490us  <span class="m">13</span>.387us  cudaGetLastError
+<span class="m">0</span>.00%   <span class="m">8</span>.6080us        <span class="m">26</span>     331ns     173ns     783ns  cudaSetupArgument
+<span class="m">0</span>.00%   <span class="m">5</span>.5470us         <span class="m">6</span>     924ns     215ns  <span class="m">2</span>.6780us  cuDeviceGet
+<span class="m">0</span>.00%   <span class="m">5</span>.4090us         <span class="m">6</span>     901ns     328ns  <span class="m">3</span>.3320us  cuDeviceGetCount
+<span class="m">0</span>.00%   <span class="m">4</span>.1770us         <span class="m">3</span>  <span class="m">1</span>.3920us  <span class="m">1</span>.0630us  <span class="m">1</span>.8300us  cuDriverGetVersion
+<span class="m">0</span>.00%   <span class="m">3</span>.4650us         <span class="m">3</span>  <span class="m">1</span>.1550us  <span class="m">1</span>.0810us  <span class="m">1</span>.2680us  cuInit
+<span class="m">0</span>.00%      830ns         <span class="m">1</span>     830ns     830ns     830ns  cudaRuntimeGetVersion
+</pre></div>
+</div>
+</div>
+<div class="section" id="nvvp">
+<h3><a class="toc-backref" href="#id17">nvvp 工具</a><a class="headerlink" href="#nvvp" title="永久链接至标题">¶</a></h3>
+<p>如果想使用可视化的分析器 <strong>nvvp</strong>，您可以导入 <code class="code docutils literal"><span class="pre">nvprof</span> <span class="pre">-o</span> <span class="pre">...</span></code> 的输出，或者从工具的界面里运行您的应用。</p>
+<p><strong>备注: nvvp 也支持CPU的性能分析</strong> (需在nvvp界面中选上才能开启）</p>
+<a class="reference internal image-reference" href="../../_images/nvvp1.png"><img alt="../../_images/nvvp1.png" class="align-center" src="../../_images/nvvp1.png" style="width: 932.58px; height: 399.3px;" /></a>
+<p>从内核函数的角度， <strong>nvvp</strong> 可以精确说明一个长耗时操作的具体原因。
+同时，如下图所示， <strong>nvvp</strong> 的内核block使用情况、寄存器使用情况和共享内存使用情况能让我们对GPU的整体使用有更好的理解。</p>
+<a class="reference internal image-reference" href="../../_images/nvvp2.png"><img alt="../../_images/nvvp2.png" class="align-center" src="../../_images/nvvp2.png" style="width: 727.32px; height: 475.86px;" /></a>
+<p>而从应用的角度， <strong>nvvp</strong> 可以帮您提供一些定位性能瓶颈的建议。
+例如，下图中就展示了一些关于内存数据迁徙和计算资源利用率的建议，为您做性能调优提供了方向。</p>
+<a class="reference internal image-reference" href="../../_images/nvvp3.png"><img alt="../../_images/nvvp3.png" class="align-center" src="../../_images/nvvp3.png" style="width: 717.42px; height: 213.84px;" /></a>
+<a class="reference internal image-reference" href="../../_images/nvvp4.png"><img alt="../../_images/nvvp4.png" class="align-center" src="../../_images/nvvp4.png" style="width: 718.08px; height: 197.34px;" /></a>
+</div>
+</div>
+<div class="section" id="id7">
+<h2><a class="toc-backref" href="#id18">性能分析小技巧</a><a class="headerlink" href="#id7" title="永久链接至标题">¶</a></h2>
+<ul>
+<li><p class="first">开始阶段，从 <strong>nvprof</strong> 和 <strong>nvvp</strong> 的输出信息入手是个不错的选择。</p>
+</li>
+<li><p class="first">接下来可以考虑下时间线的分析。</p>
+</li>
+<li><p class="first">如果真想挖掘内核深处的某个秘密，您最好先确认：这一块的耗时比例真的太高，值得深入分析。</p>
+</li>
+<li><p class="first">可能的情况下，试着让输出的分析数据和理论值对应。</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>例如，如果我知道内核花了10ms来移动1GB数据，那我会期望分析工具统计到速度是100GB/s。</li>
+<li>若有不一致之处，很有可能实际应用就是没有按照您的预期情况运行。</li>
+</ol>
+</div></blockquote>
+</li>
+<li><p class="first">了解您的硬件：如果您的GPU理论可以达到6 TFLOPs（6万亿次浮点运算每秒），而当前已经有5.5 TFLOPs了，那估计这里的潜力就没啥好挖的了……</p>
+</li>
+</ul>
+<p>性能分析是性能优化的关键一步。有的时候简简单单的改变就能在性能上产生明显的优化效果！
+当然，具体情况因人而异。</p>
+</div>
+<div class="section" id="id8">
+<h2><a class="toc-backref" href="#id19">参考资料</a><a class="headerlink" href="#id8" title="永久链接至标题">¶</a></h2>
+<p>Jeremy Appleyard, <a class="reference external" href="http://www.robots.ox.ac.uk/~seminars/seminars/Extra/2015_10_08_JeremyAppleyard.pdf">GPU Profiling for Deep Learning</a>, 2015</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../../api/index_cn.html" class="btn btn-neutral float-right" title="API" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../deep_model/rnn/hrnn_rnn_api_compare_cn.html" class="btn btn-neutral" title="单双层RNN API对比介绍" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

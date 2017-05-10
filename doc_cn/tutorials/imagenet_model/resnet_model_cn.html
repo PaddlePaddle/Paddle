@@ -1,0 +1,500 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Model Zoo - ImageNet &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Model Zoo - ImageNet</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="model-zoo-imagenet">
+<span id="model-zoo-imagenet"></span><h1>Model Zoo - ImageNet<a class="headerlink" href="#model-zoo-imagenet" title="永久链接至标题">¶</a></h1>
+<p><a class="reference external" href="http://www.image-net.org/">ImageNet</a> 是通用物体分类领域一个众所周知的数据库。本教程提供了一个用于ImageNet上的卷积分类网络模型。</p>
+<div class="section" id="resnet">
+<span id="resnet"></span><h2>ResNet 介绍<a class="headerlink" href="#resnet" title="永久链接至标题">¶</a></h2>
+<p>论文 <a class="reference external" href="http://arxiv.org/abs/1512.03385">Deep Residual Learning for Image Recognition</a> 中提出的ResNet网络结构在2015年ImageNet大规模视觉识别竞赛(ILSVRC 2015)的分类任务中赢得了第一名。他们提出残差学习的框架来简化网络的训练，所构建网络结构的的深度比之前使用的网络有大幅度的提高。下图展示的是基于残差的连接方式。左图构造网络模块的方式被用于34层的网络中，而右图的瓶颈连接模块用于50层，101层和152层的网络结构中。</p>
+<p><center><img alt="resnet_block" src="../../_images/resnet_block.jpg" /></center>
+<center>图 1. ResNet 网络模块</center></p>
+<p>本教程中我们给出了三个ResNet模型，这些模型都是由原作者提供的模型<a class="reference external" href="https://github.com/KaimingHe/deep-residual-networks">https://github.com/KaimingHe/deep-residual-networks</a>转换过来的。我们使用PaddlePaddle在ILSVRC的验证集共50,000幅图像上测试了模型的分类错误率，其中输入图像的颜色通道顺序为<strong>BGR</strong>，保持宽高比缩放到短边为256，只截取中心方形的图像区域。分类错误率和模型大小由下表给出。
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border">
+<colgroup>
+<col  class="left" />
+<col  class="left" />
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">ResNet</th>
+<th scope="col" class="left">Top-1</th>
+<th scope="col" class="left">Model Size</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">ResNet-50</td>
+<td class="left">24.9%</td>
+<td class="left">99M</td>
+</tr>
+<tr>
+<td class="left">ResNet-101</td>
+<td class="left">23.7%</td>
+<td class="left">173M</td>
+</tr>
+<tr>
+<td class="left">ResNet-152</td>
+<td class="left">23.2%</td>
+<td class="left">234M</td>
+</tr>
+</tbody></table></center>
+<br></div>
+<div class="section" id="resnet">
+<span id="id1"></span><h2>ResNet 模型<a class="headerlink" href="#resnet" title="永久链接至标题">¶</a></h2>
+<p>50层，101层和152层的网络配置文件可参照<code class="docutils literal"><span class="pre">demo/model_zoo/resnet/resnet.py</span></code>。你也可以通过在命令行参数中增加一个参数如<code class="docutils literal"><span class="pre">--config_args=layer_num=50</span></code>来指定网络层的数目。</p>
+<div class="section" id="">
+<span id="id2"></span><h3>网络可视化<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>你可以通过执行下面的命令来得到ResNet网络的结构可视化图。该脚本会生成一个dot文件，然后可以转换为图片。需要安装graphviz来转换dot文件为图片。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">model_zoo</span><span class="o">/</span><span class="n">resnet</span>
+<span class="o">./</span><span class="n">net_diagram</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h3>模型下载<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">model_zoo</span><span class="o">/</span><span class="n">resnet</span>
+<span class="o">./</span><span class="n">get_model</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>你可以执行上述命令来下载所有的模型和均值文件，如果下载成功，这些文件将会被保存在<code class="docutils literal"><span class="pre">demo/model_zoo/resnet/model</span></code>路径下。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">mean_meta_224</span>  <span class="n">resnet_101</span>  <span class="n">resnet_152</span>  <span class="n">resnet_50</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>resnet_50: 50层网络模型。</li>
+<li>resnet_101: 101层网络模型。</li>
+<li>resnet_152: 152层网络模型。</li>
+<li>mean_meta_224: 均值图像文件，图像大小为3 x 224 x 224，颜色通道顺序为<strong>BGR</strong>。你也可以使用这三个值: 103.939, 116.779, 123.68。</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h3>参数信息<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<ul>
+<li><p class="first"><strong>卷积层权重</strong></p>
+<p>由于每个卷积层后面连接的是batch normalization层，因此该层中没有偏置(bias)参数，并且只有一个权重。
+形状: <code class="docutils literal"><span class="pre">(Co,</span> <span class="pre">ky,</span> <span class="pre">kx,</span> <span class="pre">Ci)</span></code></p>
+<ul class="simple">
+<li>Co: 输出特征图的通道数目</li>
+<li>ky: 滤波器核在垂直方向上的尺寸</li>
+<li>kx: 滤波器核在水平方向上的尺寸</li>
+<li>Ci: 输入特征图的通道数目</li>
+</ul>
+<p>二维矩阵: (Co * ky * kx, Ci), 行优先次序存储。</p>
+</li>
+<li><p class="first"><strong>全连接层权重</strong></p>
+<p>二维矩阵: (输入层尺寸, 本层尺寸), 行优先次序存储。</p>
+</li>
+<li><p class="first"><strong><a class="reference external" href="http://arxiv.org/abs/1502.03167">Batch Normalization</a> 层权重</strong></p>
+</li>
+</ul>
+<p>本层有四个参数，实际上只有.w0和.wbias是需要学习的参数，另外两个分别是滑动均值和方差。在测试阶段它们将会被加载到模型中。下表展示了batch normalization层的参数。
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border">
+<colgroup>
+<col  class="left" />
+<col  class="left" />
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">参数名</th>
+<th scope="col" class="left">尺寸</th>
+<th scope="col" class="left">含义</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">_res2_1_branch1_bn.w0</td>
+<td class="left">256</td>
+<td class="left">gamma, 缩放参数</td>
+</tr>
+<tr>
+<td class="left">_res2_1_branch1_bn.w1</td>
+<td class="left">256</td>
+<td class="left">特征图均值</td>
+</tr>
+<tr>
+<td class="left">_res2_1_branch1_bn.w2</td>
+<td class="left">256</td>
+<td class="left">特征图方差</td>
+</tr>
+<tr>
+<td class="left">_res2_1_branch1_bn.wbias</td>
+<td class="left">256</td>
+<td class="left">beta, 偏置参数</td>
+</tr>
+</tbody></table></center>
+<br></div>
+<div class="section" id="">
+<span id="id5"></span><h3>参数读取<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>使用者可以使用下面的Python脚本来读取参数值:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">file_name</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span> <span class="c1"># skip header for float type.</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span><span class="o">==</span><span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">weight</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>或者直接使用下面的shell命令:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">od</span> <span class="o">-</span><span class="n">j</span> <span class="mi">16</span> <span class="o">-</span><span class="n">f</span> <span class="n">_res2_1_branch1_bn</span><span class="o">.</span><span class="n">w0</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id6"></span><h2>特征提取<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>我们提供了C++和Python接口来提取特征。下面的例子使用了<code class="docutils literal"><span class="pre">demo/model_zoo/resnet/example</span></code>中的数据，详细地展示了整个特征提取的过程。</p>
+<div class="section" id="c">
+<span id="c"></span><h3>C++接口<a class="headerlink" href="#c" title="永久链接至标题">¶</a></h3>
+<p>首先，在配置文件中的<code class="docutils literal"><span class="pre">define_py_data_sources2</span></code>里指定图像数据列表，具体请参照示例<code class="docutils literal"><span class="pre">demo/model_zoo/resnet/resnet.py</span></code>。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>    <span class="n">train_list</span> <span class="o">=</span> <span class="s1">&#39;train.list&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_test</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="c1"># mean.meta is mean file of ImageNet dataset.</span>
+    <span class="c1"># mean.meta size : 3 x 224 x 224.</span>
+    <span class="c1"># If you use three mean value, set like:</span>
+    <span class="c1"># &quot;mean_value:103.939,116.779,123.68;&quot;</span>
+    <span class="n">args</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;mean_meta&#39;</span><span class="p">:</span> <span class="s2">&quot;model/mean_meta_224/mean.meta&quot;</span><span class="p">,</span>
+        <span class="s1">&#39;image_size&#39;</span><span class="p">:</span> <span class="mi">224</span><span class="p">,</span> <span class="s1">&#39;crop_size&#39;</span><span class="p">:</span> <span class="mi">224</span><span class="p">,</span>
+        <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span><span class="s1">&#39;swap_channel:&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]}</span>
+    <span class="n">define_py_data_sources2</span><span class="p">(</span><span class="n">train_list</span><span class="p">,</span>
+                           <span class="s1">&#39;example/test.list&#39;</span><span class="p">,</span>
+                           <span class="n">module</span><span class="o">=</span><span class="s2">&quot;example.image_list_provider&quot;</span><span class="p">,</span>
+                           <span class="n">obj</span><span class="o">=</span><span class="s2">&quot;processData&quot;</span><span class="p">,</span>
+                           <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>第二步，在<code class="docutils literal"><span class="pre">resnet.py</span></code>文件中指定要提取特征的网络层的名字。例如，</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Outputs</span><span class="p">(</span><span class="s2">&quot;res5_3_branch2c_conv&quot;</span><span class="p">,</span> <span class="s2">&quot;res5_3_branch2c_bn&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>第三步，在<code class="docutils literal"><span class="pre">extract_fea_c++.sh</span></code>文件中指定模型路径和输出的目录，然后执行下面的命令。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">model_zoo</span><span class="o">/</span><span class="n">resnet</span>
+<span class="o">./</span><span class="n">extract_fea_c</span><span class="o">++.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>如果执行成功，特征将会存到<code class="docutils literal"><span class="pre">fea_output/rank-00000</span></code>文件中，如下所示。同时你可以使用<code class="docutils literal"><span class="pre">load_feature.py</span></code>文件中的<code class="docutils literal"><span class="pre">load_feature_c</span></code>接口来加载该文件。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">-</span><span class="mf">0.115318</span> <span class="o">-</span><span class="mf">0.108358</span> <span class="o">...</span> <span class="o">-</span><span class="mf">0.087884</span><span class="p">;</span><span class="o">-</span><span class="mf">1.27664</span> <span class="o">...</span> <span class="o">-</span><span class="mf">1.11516</span> <span class="o">-</span><span class="mf">2.59123</span><span class="p">;</span>
+<span class="o">-</span><span class="mf">0.126383</span> <span class="o">-</span><span class="mf">0.116248</span> <span class="o">...</span> <span class="o">-</span><span class="mf">0.00534909</span><span class="p">;</span><span class="o">-</span><span class="mf">1.42593</span> <span class="o">...</span> <span class="o">-</span><span class="mf">1.04501</span> <span class="o">-</span><span class="mf">1.40769</span><span class="p">;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>每行存储的是一个样本的特征。其中，第一行存的是图像<code class="docutils literal"><span class="pre">example/dog.jpg</span></code>的特征，第二行存的是图像<code class="docutils literal"><span class="pre">example/cat.jpg</span></code>的特征。</li>
+<li>不同层的特征由分号<code class="docutils literal"><span class="pre">;</span></code>隔开，并且它们的顺序与<code class="docutils literal"><span class="pre">Outputs()</span></code>中指定的层顺序一致。这里，左边是<code class="docutils literal"><span class="pre">res5_3_branch2c_conv</span></code>层的特征，右边是<code class="docutils literal"><span class="pre">res5_3_branch2c_bn</span></code>层特征。</li>
+</ul>
+</div>
+<div class="section" id="python">
+<span id="python"></span><h3>Python接口<a class="headerlink" href="#python" title="永久链接至标题">¶</a></h3>
+<p>示例<code class="docutils literal"><span class="pre">demo/model_zoo/resnet/classify.py</span></code>中展示了如何使用Python来提取特征。下面的例子同样使用了<code class="docutils literal"><span class="pre">./example/test.list</span></code>中的数据。执行的命令如下：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">model_zoo</span><span class="o">/</span><span class="n">resnet</span>
+<span class="o">./</span><span class="n">extract_fea_py</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>extract_fea_py.sh:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">classify</span><span class="o">.</span><span class="n">py</span> \
+     <span class="o">--</span><span class="n">job</span><span class="o">=</span><span class="n">extract</span> \
+     <span class="o">--</span><span class="n">conf</span><span class="o">=</span><span class="n">resnet</span><span class="o">.</span><span class="n">py</span>\
+     <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span> \
+     <span class="o">--</span><span class="n">mean</span><span class="o">=</span><span class="n">model</span><span class="o">/</span><span class="n">mean_meta_224</span><span class="o">/</span><span class="n">mean</span><span class="o">.</span><span class="n">meta</span> \
+     <span class="o">--</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="o">/</span><span class="n">resnet_50</span> \
+     <span class="o">--</span><span class="n">data</span><span class="o">=./</span><span class="n">example</span><span class="o">/</span><span class="n">test</span><span class="o">.</span><span class="n">list</span> \
+     <span class="o">--</span><span class="n">output_layer</span><span class="o">=</span><span class="s2">&quot;res5_3_branch2c_conv,res5_3_branch2c_bn&quot;</span> \
+     <span class="o">--</span><span class="n">output_dir</span><span class="o">=</span><span class="n">features</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>--job=extract:              指定工作模式来提取特征。</li>
+<li>--conf=resnet.py:           网络配置文件。</li>
+<li>--use_gpu=1:                指定是否使用GPU。</li>
+<li>--model=model/resnet_50:    模型路径。</li>
+<li>--data=./example/test.list: 数据列表。</li>
+<li>--output_layer=&#8221;xxx,xxx&#8221;:   指定提取特征的层。</li>
+<li>--output_dir=features:      输出目录。</li>
+</ul>
+<p>如果运行成功，你将会看到特征存储在<code class="docutils literal"><span class="pre">features/batch_0</span></code>文件中，该文件是由cPickle产生的。你可以使用<code class="docutils literal"><span class="pre">load_feature.py</span></code>中的<code class="docutils literal"><span class="pre">load_feature_py</span></code>接口来打开该文件，它将返回如下的字典：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="s1">&#39;cat.jpg&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;res5_3_branch2c_conv&#39;</span><span class="p">:</span> <span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">0.12638293</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.116248</span>  <span class="p">,</span> <span class="o">-</span><span class="mf">0.11883899</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.00895038</span><span class="p">,</span> <span class="mf">0.01994277</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.00534909</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">),</span> <span class="s1">&#39;res5_3_branch2c_bn&#39;</span><span class="p">:</span> <span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">1.42593431</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.28918779</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.32414699</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.45933616</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.04501402</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.40769434</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">)},</span>
+<span class="s1">&#39;dog.jpg&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;res5_3_branch2c_conv&#39;</span><span class="p">:</span> <span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">0.11531784</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.10835785</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.08809858</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span><span class="mf">0.0055237</span><span class="p">,</span> <span class="mf">0.01505112</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.08788397</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">),</span> <span class="s1">&#39;res5_3_branch2c_bn&#39;</span><span class="p">:</span> <span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">1.27663755</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.18272924</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.90937918</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.25178063</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.11515927</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.59122872</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">)}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>仔细观察，这些特征值与上述使用C++接口提取的结果是一致的。</p>
+</div>
+</div>
+<div class="section" id="">
+<span id="id7"></span><h2>预测<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p><code class="docutils literal"><span class="pre">classify.py</span></code>文件也可以用于对样本进行预测。我们提供了一个示例脚本<code class="docutils literal"><span class="pre">predict.sh</span></code>，它使用50层的ResNet模型来对<code class="docutils literal"><span class="pre">example/test.list</span></code>中的数据进行预测。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">model_zoo</span><span class="o">/</span><span class="n">resnet</span>
+<span class="o">./</span><span class="n">predict</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>predict.sh调用了<code class="docutils literal"><span class="pre">classify.py</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">classify</span><span class="o">.</span><span class="n">py</span> \
+     <span class="o">--</span><span class="n">job</span><span class="o">=</span><span class="n">predict</span> \
+     <span class="o">--</span><span class="n">conf</span><span class="o">=</span><span class="n">resnet</span><span class="o">.</span><span class="n">py</span>\
+     <span class="o">--</span><span class="n">multi_crop</span> \
+     <span class="o">--</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="o">/</span><span class="n">resnet_50</span> \
+     <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span> \
+     <span class="o">--</span><span class="n">data</span><span class="o">=./</span><span class="n">example</span><span class="o">/</span><span class="n">test</span><span class="o">.</span><span class="n">list</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>--job=extract:              指定工作模型进行预测。</li>
+<li>--conf=resnet.py:           网络配置文件。network configure.</li>
+<li>--multi_crop:               使用10个裁剪图像块，预测概率取平均。</li>
+<li>--use_gpu=1:                指定是否使用GPU。</li>
+<li>--model=model/resnet_50:    模型路径。</li>
+<li>--data=./example/test.list: 数据列表。</li>
+</ul>
+<p>如果运行成功，你将会看到如下结果，其中156和285是这些图像的分类标签。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Label</span> <span class="n">of</span> <span class="n">example</span><span class="o">/</span><span class="n">dog</span><span class="o">.</span><span class="n">jpg</span> <span class="ow">is</span><span class="p">:</span> <span class="mi">156</span>
+<span class="n">Label</span> <span class="n">of</span> <span class="n">example</span><span class="o">/</span><span class="n">cat</span><span class="o">.</span><span class="n">jpg</span> <span class="ow">is</span><span class="p">:</span> <span class="mi">282</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

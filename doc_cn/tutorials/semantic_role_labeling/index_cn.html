@@ -1,0 +1,440 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>语义角色标注教程 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>语义角色标注教程</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="">
+<span id="id1"></span><h1>语义角色标注教程<a class="headerlink" href="#" title="永久链接至标题">¶</a></h1>
+<p>语义角色标注（Semantic role labeling, SRL）是浅层语义解析的一种形式，其目的是在给定的输入句子中发现每个谓词的谓词论元结构。 SRL作为很多自然语言处理任务中的中间步骤是很有用的，如信息提取、文档自动分类和问答。 实例如下 [1]:</p>
+<p>[ <sub>A0</sub> He ] [ <sub>AM-MOD</sub> would ][ <sub>AM-NEG</sub> n’t ] [ <sub>V</sub> accept] [ <sub>A1</sub> anything of value ] from [<sub>A2</sub> those he was writing about ].</p>
+<ul class="simple">
+<li>V: 动词</li>
+<li>A0: 接受者</li>
+<li>A1: 接受的东西</li>
+<li>A2: 从……接受</li>
+<li>A3: 属性</li>
+<li>AM-MOD: 情态动词</li>
+<li>AM-NEG: 否定</li>
+</ul>
+<p>给定动词“accept”，句子中的组块将会扮演某些语义角色。这里，标签方案来自 Penn Proposition Bank。</p>
+<p>到目前为止，大多数成功的SRL系统是建立在某种形式的句法分析结果之上的，使用了基于句法结构的预定义特征模板。 本教程将介绍使用深度双向长短期记忆（DB-LSTM）模型[2]的端到端系统来解决SRL任务，这在很大程度上优于先前的最先进的系统。 这个系统将SRL任务视为序列标注问题。</p>
+<div class="section" id="">
+<span id="id2"></span><h2>数据描述<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>相关论文[2]采用 CoNLL-2005＆2012 共享任务中设置的数据进行训练和测试。由于数据许可的原因，演示采用 CoNLL-2005 的测试数据集，可以在网站上找到。</p>
+<p>用户只需执行以下命令就可以下载并处理原始数据：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> data
+./get_data.sh
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">data</span></code>目录会出现如下几个新的文件：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>conll05st-release：the <span class="nb">test</span> data <span class="nb">set</span> of CoNll-2005 shared task 
+test.wsj.words：the Wall Street Journal data sentences
+test.wsj.props:  the propositional arguments
+feature: the extracted features from data <span class="nb">set</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h2>训练<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<div class="section" id="db-lstm">
+<span id="db-lstm"></span><h3>DB-LSTM<a class="headerlink" href="#db-lstm" title="永久链接至标题">¶</a></h3>
+<p>请参阅情感分析的演示以了解有关长期短期记忆单元的更多信息。</p>
+<p>与在 Sentiment Analysis 演示中使用的 Bidirectional-LSTM 不同，DB-LSTM 采用另一种方法来堆叠LSTM层。首先，标准LSTM以正向处理该序列。该 LSTM 层的输入和输出作为下一个 LSTM 层的输入，并被反向处理。这两个标准 LSTM 层组成一对 LSTM。然后我们堆叠一对对的 LSTM 层后得到深度 LSTM 模型。</p>
+<p>下图展示了时间扩展的2层 DB-LSTM 网络。
+<center>
+<img alt="pic" src="../../_images/network_arch.png" />
+</center></p>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h3>特征<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>两个输入特征在这个流程中起着至关重要的作用：predicate（pred）和argument（arguments）。 还采用了两个其他特征：谓词上下文（ctx-p）和区域标记（mr）。 因为单个谓词不能精确地描述谓词信息，特别是当相同的词在句子中出现多于一次时。 使用谓词上下文，可以在很大程度上消除歧义。类似地，如果它位于谓词上下文区域中，则使用区域标记 m<sub>r</sub> = 1 来表示参数位置，反之则 m<sub>r</sub> = 0。这四个简单的特征是我们的SRL系统所需要的。上下文大小设置为1的一个样本的特征如下[2]所示：
+<center>
+<img alt="pic" src="../../_images/feature.jpg" />
+</center></p>
+<p>在这个示例中，相应的标记句子是：</p>
+<p>[ <sub>A1</sub> A record date ] has [ <sub>AM-NEG</sub> n&#8217;t ] been [ <sub>V</sub> set ] .</p>
+<p>在演示中, 我们采用上面的特征模板, 包括：  <code class="docutils literal"><span class="pre">argument</span></code>, <code class="docutils literal"><span class="pre">predicate</span></code>, <code class="docutils literal"><span class="pre">ctx-p</span> <span class="pre">(p=-1,0,1)</span></code>, <code class="docutils literal"><span class="pre">mark</span></code> 并使用 <code class="docutils literal"><span class="pre">B/I/O</span></code> 方案来标记每个参数。这些特征和标签存储在 <code class="docutils literal"><span class="pre">feature</span></code> 文件中, 用<code class="docutils literal"><span class="pre">\t</span></code>分割。</p>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h3>数据提供<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">dataprovider.py</span></code> 是一个包装数据的 Python 文件。 函数 <code class="docutils literal"><span class="pre">hook()</span></code> 定义了网络的数据槽。六个特征和标签都是索引槽。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">hook</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">word_dict</span><span class="p">,</span> <span class="n">label_dict</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span> <span class="o">=</span> <span class="n">word_dict</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">label_dict</span> <span class="o">=</span> <span class="n">label_dict</span>
+    <span class="c1">#all inputs are integral and sequential type</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">slots</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">word_dict</span><span class="p">)),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">predicate_dict</span><span class="p">)),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">word_dict</span><span class="p">)),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">word_dict</span><span class="p">)),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">word_dict</span><span class="p">)),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">word_dict</span><span class="p">)),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">word_dict</span><span class="p">)),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">label_dict</span><span class="p">))]</span>
+</pre></div>
+</div>
+<p>相应的数据迭代器如下：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="nd">@provider</span><span class="p">(</span><span class="n">init_hook</span><span class="o">=</span><span class="n">hook</span><span class="p">,</span> <span class="n">should_shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">calc_batch_size</span><span class="o">=</span><span class="n">get_batch_size</span><span class="p">,</span>
+          <span class="n">can_over_batch_size</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">CacheType</span><span class="o">.</span><span class="n">CACHE_PASS_IN_MEM</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fdata</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">fdata</span><span class="p">:</span>
+            <span class="n">sentence</span><span class="p">,</span> <span class="n">predicate</span><span class="p">,</span> <span class="n">ctx_n2</span><span class="p">,</span> <span class="n">ctx_n1</span><span class="p">,</span> <span class="n">ctx_0</span><span class="p">,</span> <span class="n">ctx_p1</span><span class="p">,</span> <span class="n">ctx_p2</span><span class="p">,</span>  <span class="n">mark</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> \
+                <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
+
+            <span class="n">words</span> <span class="o">=</span> <span class="n">sentence</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="n">sen_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+            <span class="n">word_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">UNK_IDX</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span><span class="p">]</span>
+
+            <span class="n">predicate_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">settings</span><span class="o">.</span><span class="n">predicate_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">predicate</span><span class="p">)]</span> <span class="o">*</span> <span class="n">sen_len</span>
+            <span class="n">ctx_n2_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ctx_n2</span><span class="p">,</span> <span class="n">UNK_IDX</span><span class="p">)]</span> <span class="o">*</span> <span class="n">sen_len</span>
+            <span class="n">ctx_n1_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ctx_n1</span><span class="p">,</span> <span class="n">UNK_IDX</span><span class="p">)]</span> <span class="o">*</span> <span class="n">sen_len</span>
+            <span class="n">ctx_0_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ctx_0</span><span class="p">,</span> <span class="n">UNK_IDX</span><span class="p">)]</span> <span class="o">*</span> <span class="n">sen_len</span>
+            <span class="n">ctx_p1_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ctx_p1</span><span class="p">,</span> <span class="n">UNK_IDX</span><span class="p">)]</span> <span class="o">*</span> <span class="n">sen_len</span>
+            <span class="n">ctx_p2_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ctx_p2</span><span class="p">,</span> <span class="n">UNK_IDX</span><span class="p">)]</span> <span class="o">*</span> <span class="n">sen_len</span>
+
+            <span class="n">marks</span> <span class="o">=</span> <span class="n">mark</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="n">mark_slot</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">marks</span><span class="p">]</span>
+
+            <span class="n">label_list</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="n">label_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">settings</span><span class="o">.</span><span class="n">label_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">label_list</span><span class="p">]</span>
+            <span class="k">yield</span> <span class="n">word_slot</span><span class="p">,</span> <span class="n">predicate_slot</span><span class="p">,</span> <span class="n">ctx_n2_slot</span><span class="p">,</span> <span class="n">ctx_n1_slot</span><span class="p">,</span> \
+                  <span class="n">ctx_0_slot</span><span class="p">,</span> <span class="n">ctx_p1_slot</span><span class="p">,</span> <span class="n">ctx_p2_slot</span><span class="p">,</span> <span class="n">mark_slot</span><span class="p">,</span> <span class="n">label_slot</span>
+</pre></div>
+</div>
+<p>函数 <code class="docutils literal"><span class="pre">process</span></code> 返回8个特征list和1个标签list。</p>
+</div>
+<div class="section" id="">
+<span id="id6"></span><h3>神经网络配置<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">db_lstm.py</span></code> 是在训练过程中加载字典并定义数据提供程序模块和网络架构的神经网络配置文件。</p>
+<p>九个 <code class="docutils literal"><span class="pre">data_layer</span></code> 从数据提供程序加载实例。八个特征分别转换为向量，并由<code class="docutils literal"><span class="pre">mixed_layer</span></code>混合。 深度双向LSTM层提取softmax层的特征。目标函数是标签的交叉熵。</p>
+</div>
+<div class="section" id="">
+<span id="id7"></span><h3>训练<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>训练的脚本是 <code class="docutils literal"><span class="pre">train.sh</span></code>，用户只需执行:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>  ./train.sh
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">train.sh</span></code> 中的内容：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> \
+  <span class="o">--</span><span class="n">config</span><span class="o">=./</span><span class="n">db_lstm</span><span class="o">.</span><span class="n">py</span> \
+  <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">0</span> \
+  <span class="o">--</span><span class="n">log_period</span><span class="o">=</span><span class="mi">5000</span> \
+  <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="mi">1</span> \
+  <span class="o">--</span><span class="n">show_parameter_stats_period</span><span class="o">=</span><span class="mi">5000</span> \
+  <span class="o">--</span><span class="n">save_dir</span><span class="o">=./</span><span class="n">output</span> \
+  <span class="o">--</span><span class="n">num_passes</span><span class="o">=</span><span class="mi">10000</span> \
+  <span class="o">--</span><span class="n">average_test_period</span><span class="o">=</span><span class="mi">10000000</span> \
+  <span class="o">--</span><span class="n">init_model_path</span><span class="o">=./</span><span class="n">data</span> \
+  <span class="o">--</span><span class="n">load_missing_parameter_strategy</span><span class="o">=</span><span class="n">rand</span> \
+  <span class="o">--</span><span class="n">test_all_data_in_one_period</span><span class="o">=</span><span class="mi">1</span> \
+<span class="mi">2</span><span class="o">&gt;&amp;</span><span class="mi">1</span> <span class="o">|</span> <span class="n">tee</span> <span class="s1">&#39;train.log&#39;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>--config=./db_lstm.py : 网络配置文件</li>
+<li>--use_gpu=false: 使用 CPU 训练（如果已安装 PaddlePaddle GPU版本并想使用 GPU 训练可以设置为true，目前 crf_layer 不支持 GPU）</li>
+<li>--log_period=500: 每20个batch输出日志</li>
+<li>--trainer_count=1: 设置线程数（或 GPU 数）</li>
+<li>--show_parameter_stats_period=5000: 每100个batch显示参数统计</li>
+<li>--save_dir=./output: 模型输出路径</li>
+<li>--num_passes=10000: 设置数据遍历次数，一个pass意味着PaddlePaddle训练数据集中的所有样本被遍历一次</li>
+<li>--average_test_period=10000000:  每个 average_test_period 批次对平均参数进行测试</li>
+<li>--init_model_path=./data: 参数初始化路径</li>
+<li>--load_missing_parameter_strategy=rand: 随机初始不存在的参数</li>
+<li>--test_all_data_in_one_period=1: 在一个周期内测试所有数据</li>
+</ul>
+<p>训练后，模型将保存在目录<code class="docutils literal"><span class="pre">output</span></code>中。 我们的训练曲线如下：
+<center>
+<img alt="pic" src="../../_images/curve.jpg" />
+</center></p>
+</div>
+<div class="section" id="">
+<span id="id8"></span><h3>测试<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>测试脚本是 <code class="docutils literal"><span class="pre">test.sh</span></code>, 执行:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>  ./test.sh
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">tesh.sh</span></code> 的主要部分：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>paddle train \
+  --config=./db_lstm.py \
+  --model_list=$model_list \
+  --job=test \
+  --config_args=is_test=1 \
+</pre></div>
+</div>
+<ul class="simple">
+<li>--config=./db_lstm.py: 网络配置文件</li>
+<li>--model_list=$model_list.list: 模型列表文件</li>
+<li>--job=test: 指示测试任务</li>
+<li>--config_args=is_test=1: 指示测试任务的标记</li>
+<li>--test_all_data_in_one_period=1: 在一个周期内测试所有数据</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id9"></span><h3>预测<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>预测脚本是 <code class="docutils literal"><span class="pre">predict.sh</span></code>，用户只需执行：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>  ./predict.sh
+  
+</pre></div>
+</div>
+<p>在<code class="docutils literal"><span class="pre">predict.sh</span></code>中，用户应该提供网络配置文件，模型路径，标签文件，字典文件，特征文件。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>python predict.py 
+     -c $config_file \
+     -w $best_model_path \
+     -l $label_file \
+     -p $predicate_dict_file  \
+     -d $dict_file \
+     -i $input_file \
+     -o $output_file
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">predict.py</span></code> 是主要的可执行python脚本，其中包括函数：加载模型，加载数据，数据预测。网络模型将输出标签的概率分布。 在演示中，我们使用最大概率的标签作为结果。用户还可以根据概率分布矩阵实现柱搜索或维特比解码。</p>
+<p>预测后，结果保存在 <code class="docutils literal"><span class="pre">predict.res</span></code> 中。</p>
+</div>
+</div>
+<div class="section" id="">
+<span id="id10"></span><h2>引用<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>[1] Martha Palmer, Dan Gildea, and Paul Kingsbury. The Proposition Bank: An Annotated Corpus of Semantic Roles , Computational Linguistics, 31(1), 2005.</p>
+<p>[2] Zhou, Jie, and Wei Xu. &#8220;End-to-end learning of semantic role labeling using recurrent neural networks.&#8221; Proceedings of the Annual Meeting of the Association for Computational Linguistics. 2015.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

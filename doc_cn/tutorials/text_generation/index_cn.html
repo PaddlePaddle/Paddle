@@ -1,0 +1,602 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>文本生成教程 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>文本生成教程</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="">
+<span id="id1"></span><h1>文本生成教程<a class="headerlink" href="#" title="永久链接至标题">¶</a></h1>
+<p>在语言生成领域中，“序列到序列”（sequence to sequence）的方法已被证明是一种强大的模型。它可以被应用于进行机器翻译（machine translation）、query改写（query rewriting）、图像描述（image captioning）等等。</p>
+<p>本篇教程将会指导你通过训练一个“序列到序列”的神经网络机器翻译（NMT）模型来将法语翻译成英语。</p>
+<p>我们遵循 <a class="reference external" href="http://arxiv.org/abs/1409.0473">Neural Machine Translation by Jointly Learning to Align and Translate</a> 这篇文章，其中详细说明了模型架构，以及在WMT-14数据集上得到良好表现的训练过程。本篇教程在PaddlePaddle中重现了这一良好的训练结果。</p>
+<p>我们感谢&#64;caoying的pull request，其中定义了模型架构和solver配置。</p>
+<div class="section" id="">
+<span id="id2"></span><h2>数据准备<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<div class="section" id="">
+<span id="id3"></span><h3>下载与解压缩<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>从该链接 <a class="reference external" href="http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/">http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/</a> 下载WMT-14数据集，然后解压，并将Develop和Test数据分别放入不同的文件夹。</p>
+<ul class="simple">
+<li><strong>Train data</strong>: <a class="reference external" href="http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/bitexts.tgz">bitexts (选择过后的)</a></li>
+<li><strong>Develop and Test data</strong>: <a class="reference external" href="http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/dev+test.tgz">dev 与 test 数据</a></li>
+</ul>
+<p>在Linux下，只需要简单地运行以下命令。否则你需要自己下载、解压、拆分到不同文件夹、并且分别重命名文件后缀。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/seqToseq/data
+./wmt14_data.sh
+</pre></div>
+</div>
+<p>我们会发现数据集 <code class="docutils literal"><span class="pre">wmt14</span></code> 中包含如下表所示的3个文件夹。</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border">
+<colgroup>
+<col  class="left" />
+<col  class="left" />
+<col  class="left" />
+<col  class="left" />
+</colgroup><thead>
+<tr>
+<th scope="col" class="left">folder name</th>
+<th scope="col" class="left">French-English parallel corpora file</th>
+<th scope="col" class="left">number of total file</th>
+<th scope="col" class="left">size</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">train_data</td>
+<td class="left">ccb2_pc30.src, ccb2_pc30.trg, etc</td>
+<td class="left">12</td>
+<td class="left">3.55G</td>
+</tr><tr>
+<td class="left">test_data</td>
+<td class="left">ntst1213.src, ntst1213.trg</td>
+<td class="left">2</td>
+<td class="left">1636k</td>
+</tr><tr>
+<td class="left">gen_data</td>
+<td class="left">ntst14.src, ntst14.trg</td>
+<td class="left">2</td>
+<td class="left">864k</td>
+</tr>
+</tbody>
+</table>
+<br/><ul class="simple">
+<li>每个文件夹都包含法语到英语的平行语料库</li>
+<li><strong>XXX.src</strong> 是原始法语文件；<strong>XXX.trg</strong> 是目标英语文件</li>
+<li><strong>XXX.src</strong> 和 <strong>XXX.trg</strong> 的行数应该一致</li>
+<li>每行都是一个法语或者英语的句子</li>
+<li><strong>XXX.src</strong> 和 <strong>XXX.trg</strong> 中任意第i行的句子之间都有着一一对应的关系</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h3>用户自定义数据集<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>如果你想进行诸如语义转述（Paraphrasing）等其他“序列到序列”的任务，你只需要按照如下方式组织数据，并将它们放在<code class="docutils literal"><span class="pre">demo/seqToseq/data</span></code>目录下：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">dataset</span>
+  <span class="n">train</span>
+    <span class="n">file1</span><span class="o">.</span><span class="n">src</span> <span class="n">file1</span><span class="o">.</span><span class="n">trg</span>
+    <span class="n">file2</span><span class="o">.</span><span class="n">src</span> <span class="n">file2</span><span class="o">.</span><span class="n">trg</span>
+    <span class="o">......</span>
+  <span class="n">test</span>
+    <span class="n">file1</span><span class="o">.</span><span class="n">src</span> <span class="n">file1</span><span class="o">.</span><span class="n">trg</span>
+    <span class="n">file2</span><span class="o">.</span><span class="n">src</span> <span class="n">file2</span><span class="o">.</span><span class="n">trg</span>
+    <span class="o">......</span>
+  <span class="n">gen</span>
+    <span class="n">file1</span><span class="o">.</span><span class="n">src</span> <span class="n">file1</span><span class="o">.</span><span class="n">trg</span>
+    <span class="n">file2</span><span class="o">.</span><span class="n">src</span> <span class="n">file2</span><span class="o">.</span><span class="n">trg</span>
+    <span class="o">......</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>一级目录：数据集文件夹名称</li>
+<li>二级目录：train、test和gen这三个文件夹是固定的</li>
+<li>三级目录：源语言到目标语言的平行语料库文件<ul>
+<li><strong>XXX.src</strong> 是源语言的文件，<strong>XXX.trg</strong> 时目标语言的文件</li>
+<li>文件中的每行都必须是一个句子</li>
+<li><strong>XXX.src</strong> 和 <strong>XXX.trg</strong> 中任意第i行的句子之间都必须有着一一对应的关系</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h2>数据预处理<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<div class="section" id="">
+<span id="id6"></span><h3>预处理工作流程<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<ul class="simple">
+<li>将每个源语言到目标语言的平行语料库文件合并为一个文件：<ul>
+<li>合并每个 <strong>XXX.src</strong> 和 <strong>XXX.trg</strong> 文件为 <strong>XXX</strong></li>
+<li><strong>XXX</strong> 中的第i行 = <strong>XXX.src</strong> 中的第i行 + &#8216;\t&#8217; + <strong>XXX.trg</strong>中的第i行</li>
+</ul>
+</li>
+<li>创建训练数据的“源字典”和“目标字典”，每个字典都有DICTSIZE个单词，包括：<ul>
+<li>词频最高的（DICTSIZE - 3）个单词</li>
+<li>3个特殊符号</li>
+<li><code class="docutils literal"><span class="pre">&lt;s&gt;</span></code>：序列的开始</li>
+<li><code class="docutils literal"><span class="pre">&lt;e&gt;</span></code>：序列的结束</li>
+<li><code class="docutils literal"><span class="pre">&lt;unk&gt;</span></code>：未包含在字典中的单词</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id7"></span><h3>预处理命令和结果<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>对数据集进行预处理的基本命令是：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">seqToseq</span><span class="o">/</span>
+<span class="n">python</span> <span class="n">preprocess</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="n">i</span> <span class="n">INPUT</span> <span class="p">[</span><span class="o">-</span><span class="n">d</span> <span class="n">DICTSIZE</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">m</span><span class="p">]</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">-i</span> <span class="pre">INPUT</span></code>：输入的原始数据集路径</li>
+<li><code class="docutils literal"><span class="pre">-d</span> <span class="pre">DICTSIZE</span></code>：指定的字典单词数，如果没有设置，字典会包含输入数据集中的所有单词</li>
+<li><code class="docutils literal"><span class="pre">-m</span> <span class="pre">--mergeDict</span></code>：合并 “源字典”和“目标字典”，使得两个字典有相同的上下文</li>
+</ul>
+<p>你将会看到如下消息：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">concat</span> <span class="n">parallel</span> <span class="n">corpora</span> <span class="k">for</span> <span class="n">dataset</span>
+<span class="n">build</span> <span class="n">source</span> <span class="n">dictionary</span> <span class="k">for</span> <span class="n">train</span> <span class="n">data</span>
+<span class="n">build</span> <span class="n">target</span> <span class="n">dictionary</span> <span class="k">for</span> <span class="n">train</span> <span class="n">data</span>
+<span class="n">dictionary</span> <span class="n">size</span> <span class="ow">is</span> <span class="n">XXX</span>
+</pre></div>
+</div>
+<p>然后你只需要运行以下命令：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">preprocess</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="n">i</span> <span class="n">data</span><span class="o">/</span><span class="n">wmt14</span> <span class="o">-</span><span class="n">d</span> <span class="mi">30000</span>
+</pre></div>
+</div>
+<p>这将花费数分钟的时间，并且将预处理好的数据集存放在<code class="docutils literal"><span class="pre">demo/seqToseq/data/pre-wmt14</span></code>目录下。目录结构如下：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">train</span> <span class="n">test</span> <span class="n">gen</span> <span class="n">train</span><span class="o">.</span><span class="n">list</span> <span class="n">test</span><span class="o">.</span><span class="n">list</span> <span class="n">gen</span><span class="o">.</span><span class="n">list</span> <span class="n">src</span><span class="o">.</span><span class="n">dict</span> <span class="n">trg</span><span class="o">.</span><span class="n">dict</span><span class="c1"># Text generation Tutorial #</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><strong>train, test, gen</strong>：分别包含了法语到英语的平行语料库的训练数据、测试数据和生成数据。文件夹中的每个文件的每一行包含两部分，首先是法语序列，然后是对应的英语序列。</li>
+<li><strong>train.list, test.list, gen.list</strong>：分别为train，test，gen文件夹中的文件列表</li>
+<li><strong>src.dict, trg.dict</strong>：源（法语）/目标（英语）字典，每个字典包含总共30000个单词：29997个最高频单词和3个特殊符号</li>
+</ul>
+</div>
+</div>
+<div class="section" id="">
+<span id="id8"></span><h2>模型训练<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<div class="section" id="">
+<span id="id9"></span><h3>简介<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>神经网络机器翻译（NMT）旨在建立一个可以被协同调至最优翻译效果的单神经元网络。近期提出的NMT模型通常都属于编解码模型（encoder–decoder models）的一种。编解码模型将一个源语句编码为一个定长的向量，然后解码器通过这个向量生成一个目标语句。</p>
+<p>在这个任务中，我们使用了一个编解码模型的扩展，它同时学习排列(align)与翻译。每当模型在翻译过程中生成了一个单词，它就会在源语句中搜索出最相关信息的位置的集合。解码器根据上下文向量预测出一个目标单词，这个向量与源中搜索出的位置和所有之前生成的目标单词有关。如想了解更多详细的解释，可以参考 <a class="reference external" href="http://arxiv.org/abs/1409.0473">Neural Machine Translation by Jointly Learning to Align and Translate</a>。</p>
+<p>这个模型对于编解码模型来说，最不同的特色是它并没有将输入语句编码为一个单独的定长向量。相反，它将输入语句编码为向量的序列，其中每个向量对应输入语句中的一个元素。然后在解码被翻译的语句时，会自适应地从这些向量中选择一个子集出来。这使得NMT模型得以解放出来，不必再将任意长度源语句中的所有信息压缩至一个定长的向量中。该模型在长语句翻译的场景下效果提升更加明显，在任意长度语句翻译的场景下都可以观察到其效果的提升。
+<center><img alt="" src="../../_images/encoder-decoder-attention-model1.png" /></center>
+<center>Figure 1. Encoder-Decoder-Attention-Model</center></p>
+</div>
+<div class="section" id="paddlepaddle">
+<span id="paddlepaddle"></span><h3>使用PaddlePaddle训练模型<a class="headerlink" href="#paddlepaddle" title="永久链接至标题">¶</a></h3>
+<p>我们在训练之前需要常见一个模型配置文件，这里是一个例子<code class="docutils literal"><span class="pre">demo/seqToseq/translation/train.conf</span></code>。前三行import了定义network，job_mode和attention_mode的python函数。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">seqToseq_net</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">is_generating</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="c1">### Data Definiation</span>
+<span class="n">train_conf</span> <span class="o">=</span> <span class="n">seq_to_seq_data</span><span class="p">(</span><span class="n">data_dir</span> <span class="o">=</span> <span class="s2">&quot;./data/pre-wmt14&quot;</span><span class="p">,</span>
+                             <span class="n">is_generating</span> <span class="o">=</span> <span class="n">is_generating</span><span class="p">)</span>
+
+<span class="c1">### Algorithm Configuration</span>
+<span class="n">settings</span><span class="p">(</span>
+    <span class="n">learning_method</span> <span class="o">=</span> <span class="n">AdamOptimizer</span><span class="p">(),</span>
+    <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">5e-4</span><span class="p">)</span>
+
+<span class="c1">### Network Architecture</span>
+<span class="n">gru_encoder_decoder</span><span class="p">(</span><span class="n">train_conf</span><span class="p">,</span> <span class="n">is_generating</span><span class="p">)</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><strong>Data Definiation</strong>：在示例中我们定义了一个序列到序列的训练和测试数据。它返回train_conf作为配置，其输入参数如下：</li>
+</ol>
+<ul class="simple">
+<li>data_dir：训练数据和测试数据的目录</li>
+<li>is_generating：这个配置是否用来生成，这里设置为False</li>
+</ul>
+<ol class="simple">
+<li><strong>Algorithm Configuration</strong>：在示例中我们使用SGD训练算法（默认），和ADAM学习方法，指定batch_size为50，learning_rate为5e-4</li>
+<li><strong>Network Architecture</strong>：在示例中我们使用attention版本的GRU编解码网络。它包括了一个双向的GRU作为编码器和解码器，它模拟了解码翻译过程中在源语句中的搜索。</li>
+</ol>
+</div>
+<div class="section" id="">
+<span id="id10"></span><h3>训练模型的命令与结果<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>写完模型配置之后，我们可以通过以下命令来训练模型：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/seqToseq/translation
+./train.sh
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">train.sh</span></code> 的内容如下所示：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train <span class="se">\</span>
+--config<span class="o">=</span><span class="s1">&#39;translation/train.conf&#39;</span> <span class="se">\</span>
+--save_dir<span class="o">=</span><span class="s1">&#39;translation/model&#39;</span> <span class="se">\</span>
+--use_gpu<span class="o">=</span><span class="nb">false</span> <span class="se">\</span>
+--num_passes<span class="o">=</span><span class="m">16</span> <span class="se">\</span>
+--show_parameter_stats_period<span class="o">=</span><span class="m">100</span> <span class="se">\</span>
+--trainer_count<span class="o">=</span><span class="m">4</span> <span class="se">\</span>
+--log_period<span class="o">=</span><span class="m">10</span> <span class="se">\</span>
+--dot_period<span class="o">=</span><span class="m">5</span> <span class="se">\</span>
+<span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span> <span class="p">|</span> tee <span class="s1">&#39;translation/train.log&#39;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>config: 设置神经网络的配置文件</li>
+<li>save_dir: 设置保存模型的输出路径</li>
+<li>use_gpu: 是否使用GPU训练，这里设置为使用CPU</li>
+<li>num_passes: 设置passes的数量。paddle中的一条pass表示训练数据集中所有的样本一次</li>
+<li>show_parameter_stats_period: 这里每隔100个batch显示一次参数统计信息</li>
+<li>trainer_count: 设置CPU线程数或者GPU设备数</li>
+<li>log_period: 这里每隔10个batch打印一次日志</li>
+<li>dot_period: 这里每个5个batch打印一个点&#8221;.&#8221;</li>
+</ul>
+<p>训练的损失函数默认每隔10个batch打印一次，你将会看到如下消息：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">I0719</span> <span class="mi">19</span><span class="p">:</span><span class="mi">16</span><span class="p">:</span><span class="mf">45.952062</span> <span class="mi">15563</span> <span class="n">TrainerInternal</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">160</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">10</span> <span class="n">samples</span><span class="o">=</span><span class="mi">500</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mf">198.475</span> <span class="n">CurrentCost</span><span class="o">=</span><span class="mf">198.475</span> <span class="n">Eval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.737155</span>  <span class="n">CurrentEval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.737155</span>
+<span class="n">I0719</span> <span class="mi">19</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mf">56.707319</span> <span class="mi">15563</span> <span class="n">TrainerInternal</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">160</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">20</span> <span class="n">samples</span><span class="o">=</span><span class="mi">1000</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mf">157.479</span> <span class="n">CurrentCost</span><span class="o">=</span><span class="mf">116.483</span> <span class="n">Eval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.698392</span>  <span class="n">CurrentEval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.659065</span>
+<span class="o">.....</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>AvgCost：从第0个batch到当前batch的平均cost</li>
+<li>CurrentCost:：当前batch的cost</li>
+<li>classification_error_evaluator(Eval)：从第0个评估到当前评估中，每个单词的预测错误率</li>
+<li>classification_error_evaluator(CurrentEval)：当前评估中，每个单词的预测错误率</li>
+</ul>
+<p>当classification_error_evaluator的值低于0.35时，模型就训练成功了。</p>
+</div>
+</div>
+<div class="section" id="">
+<span id="id11"></span><h2>文本生成<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<div class="section" id="">
+<span id="id12"></span><h3>简介<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>一般而言，NMT模型受制于源语句的编码，并且通过给出当前目标单词来预测下一个目标单词。在训练过程中，当前单词在相比之下总是被当作真值（ground truth）。在生成过程中，当前单词是解码器最后一步的输出，这来自于PaddlePaddle的内存中。</p>
+<p>而且，我们使用集束搜索（Beam Search）来生成序列。集束搜索使用广度优先搜索来构建搜索树。对于树的每一层，生成当前层的所有后继状态，并将它们按照启发代价（heuristic cost）升序排列。但是这种方法在每层只保存预设数量的最优状态（这个数量称为beam size）。</p>
+</div>
+<div class="section" id="">
+<span id="id13"></span><h3>预训练的模型<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>我们在拥有50个节点的集群中训练模型，每个节点有两个6核CPU。我们在5天里训练了16个pass，其中每条pass花费了7个小时。model_dir中有16个子目录，每个里面都包含202MB的全部的模型参数。然后我们发现pass-00012的模型有着最高的BLEU值27.77（参考文献<a class="reference external" href="http://www.aclweb.org/anthology/P02-1040.pdf">BLEU: a Method for Automatic Evaluation of Machine Translation</a>）。要下载解压这个模型，只需在linux下运行如下命令：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/seqToseq/data
+./wmt14_model.sh
+</pre></div>
+</div>
+</div>
+<div class="section" id="paddlepaddle">
+<span id="id14"></span><h3>使用PaddlePaddle生成模型<a class="headerlink" href="#paddlepaddle" title="永久链接至标题">¶</a></h3>
+<p>在翻译法语句子之前，我们需要创建模型配置文件。这里是一个例子<code class="docutils literal"><span class="pre">demo/seqToseq/translation/gen.conf</span></code>。前三行import了定义network，job_mode和attention_mode的python函数。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">seqToseq_net</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">is_generating</span> <span class="o">=</span> <span class="bp">True</span>
+
+<span class="c1">################## Data Definiation #####################</span>
+<span class="n">gen_conf</span> <span class="o">=</span> <span class="n">seq_to_seq_data</span><span class="p">(</span><span class="n">data_dir</span> <span class="o">=</span> <span class="s2">&quot;./data/pre-wmt14&quot;</span><span class="p">,</span>
+                           <span class="n">is_generating</span> <span class="o">=</span> <span class="n">is_generating</span><span class="p">,</span>
+                           <span class="n">gen_result</span> <span class="o">=</span> <span class="s2">&quot;./translation/gen_result&quot;</span><span class="p">)</span>
+
+<span class="c1">############## Algorithm Configuration ##################</span>
+<span class="n">settings</span><span class="p">(</span>
+  <span class="n">learning_method</span> <span class="o">=</span> <span class="n">AdamOptimizer</span><span class="p">(),</span>
+  <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+  <span class="n">learning_rate</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+
+<span class="c1">################# Network configure #####################</span>
+<span class="n">gru_encoder_decoder</span><span class="p">(</span><span class="n">gen_conf</span><span class="p">,</span> <span class="n">is_generating</span><span class="p">)</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><strong>Data Definiation</strong>：在示例中我们定义了一个序列到序列的生成数据。它返回gen_conf作为配置，其输入参数如下：</li>
+</ol>
+<ul class="simple">
+<li>data_dir：生成数据的目录
+&nbsp;- is_generating：这个配置是否用来生成，这里设置为True
+&nbsp;- gen_result：保存生成结果的文件</li>
+</ul>
+<ol class="simple">
+<li><strong>Algorithm Configuration</strong>：在生成过程中我们使用SGD训练算法，并指定batch_size为1（每次生成1个序列），learning_rate为0</li>
+<li><strong>Network Architecture</strong>：本质上与训练模型一样</li>
+</ol>
+</div>
+<div class="section" id="">
+<span id="id15"></span><h3>生成模型的命令与结果<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>写完模型配置之后，我们可以通过以下命令来进行从法语到英语的文本翻译：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/seqToseq/translation
+./gen.sh
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">gen.sh</span></code> 的内容如下所示。与训练模型不同的是，这里有一些不同的参数需要指定：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train <span class="se">\</span>
+--job<span class="o">=</span><span class="nb">test</span> <span class="se">\</span>
+--config<span class="o">=</span><span class="s1">&#39;translation/gen.conf&#39;</span> <span class="se">\</span>
+--save_dir<span class="o">=</span><span class="s1">&#39;data/wmt14_model&#39;</span> <span class="se">\</span>
+--use_gpu<span class="o">=</span><span class="nb">true</span> <span class="se">\</span>
+--num_passes<span class="o">=</span><span class="m">13</span> <span class="se">\</span>
+--test_pass<span class="o">=</span><span class="m">12</span> <span class="se">\</span>
+--trainer_count<span class="o">=</span><span class="m">1</span> <span class="se">\</span>
+<span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span> <span class="p">|</span> tee <span class="s1">&#39;translation/gen.log&#39;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>job：设置任务的模式为测试</li>
+<li>save_dir：存储模型的路径</li>
+<li>num_passes and test_pass：从test_pass到（num_passes - 1）加载模型参数，这里只加载 <code class="docutils literal"><span class="pre">data/wmt14_model/pass-00012</span></code></li>
+</ul>
+<p>你将会看到这样的消息：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">I0706</span> <span class="mi">14</span><span class="p">:</span><span class="mi">48</span><span class="p">:</span><span class="mf">31.178915</span> <span class="mi">31441</span> <span class="n">GradientMachine</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">143</span><span class="p">]</span> <span class="n">Loading</span> <span class="n">parameters</span> <span class="kn">from</span> <span class="nn">data</span><span class="o">/</span><span class="n">wmt14_model</span><span class="o">/</span><span class="k">pass</span><span class="o">-</span><span class="mi">00012</span>
+<span class="n">I0706</span> <span class="mi">14</span><span class="p">:</span><span class="mi">48</span><span class="p">:</span><span class="mf">40.012039</span> <span class="mi">31441</span> <span class="n">Tester</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">125</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">100</span> <span class="n">samples</span><span class="o">=</span><span class="mi">100</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mi">0</span>
+<span class="n">I0706</span> <span class="mi">14</span><span class="p">:</span><span class="mi">48</span><span class="p">:</span><span class="mf">48.898632</span> <span class="mi">31441</span> <span class="n">Tester</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">125</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">200</span> <span class="n">samples</span><span class="o">=</span><span class="mi">200</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mi">0</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>然后在<code class="docutils literal"><span class="pre">demo/seqToseq/translation/gen_result</span></code>中的生成结果如下所示：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">0</span>
+<span class="mi">0</span>       <span class="o">-</span><span class="mf">11.1314</span>         <span class="n">The</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">seats</span> <span class="k">while</span> <span class="n">large</span> <span class="n">controls</span> <span class="n">are</span> <span class="n">at</span> <span class="n">stake</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="mi">1</span>       <span class="o">-</span><span class="mf">11.1519</span>         <span class="n">The</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">on</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">seats</span> <span class="k">while</span> <span class="n">large</span> <span class="n">controls</span> <span class="n">are</span> <span class="n">at</span> <span class="n">stake</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="mi">2</span>       <span class="o">-</span><span class="mf">11.5988</span>         <span class="n">The</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">seats</span> <span class="k">while</span> <span class="n">large</span> <span class="n">controls</span> <span class="n">are</span> <span class="n">at</span> <span class="n">stake</span> <span class="o">.</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+
+<span class="mi">1</span>
+<span class="mi">0</span>       <span class="o">-</span><span class="mf">24.4149</span>         <span class="n">The</span> <span class="n">dispute</span> <span class="ow">is</span> <span class="n">between</span> <span class="n">the</span> <span class="n">major</span> <span class="n">aircraft</span> <span class="n">manufacturers</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">tourist</span> <span class="n">seats</span> <span class="n">on</span> <span class="n">the</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">flights</span> <span class="p">,</span> <span class="n">paving</span> <span class="n">the</span> <span class="n">way</span> <span class="k">for</span> <span class="n">a</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">confrontation</span> <span class="n">during</span> <span class="n">the</span> <span class="n">month</span> <span class="n">of</span> <span class="n">the</span> <span class="n">Dubai</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">.</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="mi">1</span>       <span class="o">-</span><span class="mf">26.9524</span>         <span class="n">The</span> <span class="n">dispute</span> <span class="ow">is</span> <span class="n">between</span> <span class="n">the</span> <span class="n">major</span> <span class="n">aircraft</span> <span class="n">manufacturers</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">tourist</span> <span class="n">seats</span> <span class="n">on</span> <span class="n">the</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">flights</span> <span class="p">,</span> <span class="n">paving</span> <span class="n">the</span> <span class="n">way</span> <span class="k">for</span> <span class="n">a</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">confrontation</span> <span class="n">during</span> <span class="n">the</span> <span class="n">month</span> <span class="n">of</span> <span class="n">Dubai</span> <span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">s</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">.</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="mi">2</span>       <span class="o">-</span><span class="mf">27.9574</span>         <span class="n">The</span> <span class="n">dispute</span> <span class="ow">is</span> <span class="n">between</span> <span class="n">the</span> <span class="n">major</span> <span class="n">aircraft</span> <span class="n">manufacturers</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">tourist</span> <span class="n">seats</span> <span class="n">on</span> <span class="n">the</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">flights</span> <span class="p">,</span> <span class="n">paving</span> <span class="n">the</span> <span class="n">way</span> <span class="k">for</span> <span class="n">a</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">confrontation</span> <span class="n">during</span> <span class="n">the</span> <span class="n">month</span> <span class="n">of</span> <span class="n">Dubai</span> <span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">s</span> <span class="n">Dubai</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">.</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>这是集束搜索的结果，其中beam size是3</li>
+<li>第一行的“0”和第6行的“1”表示生成数据的序列id</li>
+<li>其他六行列出了集束搜索的结果<ul>
+<li>第二列是集束搜索的得分（从大到小）</li>
+<li>第三列是生成的英语序列</li>
+</ul>
+</li>
+<li>有两个特殊标识：<ul>
+<li><code class="docutils literal"><span class="pre">&lt;e&gt;</span></code>：序列的结尾</li>
+<li><code class="docutils literal"><span class="pre">&lt;unk&gt;</span></code>：不包含在字典中的单词</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="bleu">
+<span id="bleu"></span><h3>BLEU评估<a class="headerlink" href="#bleu" title="永久链接至标题">¶</a></h3>
+<p>对机器翻译的人工评估工作很广泛但也很昂贵。一篇论文 <a class="reference external" href="http://www.aclweb.org/anthology/P02-1040.pdf">BLEU: a Method for Automatic Evaluation of Machine Translation</a> 展示了一种方法，当需要快速或者频繁的评估时，使用自动的替补来替代经验丰富的人工评判。<a class="reference external" href="http://www.statmt.org/moses/">Moses</a> 是一个统计学的机器翻译系统，我们使用其中的 <a class="reference external" href="https://github.com/moses-smt/mosesdecoder/blob/master/scripts/generic/multi-bleu.perl">multi-bleu.perl</a> 来做BLEU评估。运行以下命令来下载这个脚本：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/seqToseq/translation
+./moses_bleu.sh
+</pre></div>
+</div>
+<p>由于标准的翻译结果已经下载到这里<code class="docutils literal"><span class="pre">data/wmt14/gen/ntst14.trg</span></code>，我们可以运行以下命令来做BLEU评估。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/seqToseq/translation
+./eval_bleu.sh FILE BEAMSIZE
+</pre></div>
+</div>
+<ul class="simple">
+<li>FILE：生成的结果文件</li>
+<li>BEAMSIZE：集束搜索中的扩展广度</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

@@ -1,0 +1,391 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>运行分布式训练 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../../index.html"/>
+        <link rel="up" title="进阶指南" href="../../index_cn.html"/>
+        <link rel="next" title="Kubernetes 简介" href="../k8s/k8s_basis_cn.html"/>
+        <link rel="prev" title="细节描述" href="../cmd_parameter/detail_introduction_cn.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">进阶指南</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../../index_cn.html">进阶指南</a> > </li>
+      
+    <li>运行分布式训练</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="">
+<span id="cluster-train"></span><span id="id1"></span><h1>运行分布式训练<a class="headerlink" href="#" title="永久链接至标题">¶</a></h1>
+<p>在本文中，我们将阐释如何在集群上运行分布式 Paddle 训练作业。我们将以<a class="reference external" href="https://github.com/baidu/Paddle/tree/develop/demo/recommendation">推荐系统</a>为例创建分布式的单进程训练。</p>
+<p>在本文中使用的<a class="reference external" href="https://github.com/baidu/Paddle/tree/develop/paddle/scripts/cluster_train">脚本</a>通过 SSH 运行分布式作业。 它们还可以供那些运行更复杂的集群管理系统（如 MPI 和 <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/k8s">Kubernetes</a> ）的用户参考。</p>
+<div class="section" id="">
+<span id="id2"></span><h2>前提条件<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<ol>
+<li><p class="first">上述脚本使用 Python 库 <a class="reference external" href="http://www.fabfile.org/">fabric</a> 来运行 SSH 命令。 我们使用 <code class="docutils literal"><span class="pre">pip</span></code> 来安装 fabric:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>pip install fabric
+</pre></div>
+</div>
+</li>
+<li><p class="first">我们需要在集群的所有节点上安装 PaddlePaddle。 如果要启用GPU，需要在 <code class="docutils literal"><span class="pre">/usr/local/cuda</span></code> 中安装 CUDA; 否则 Paddle 将在运行时报错。</p>
+</li>
+<li><p class="first">在 [<code class="docutils literal"><span class="pre">cluster_train/conf.py</span></code>] 中设置 <code class="docutils literal"><span class="pre">ROOT_DIR</span></code>， 该 ROOT_DIR 要在所有节点上存在。为了方便起见，我们通常在所有节点上创建一个 Unix 用户 <code class="docutils literal"><span class="pre">paddle</span></code>，并设置 <code class="docutils literal"><span class="pre">ROOT_DIR=/home/paddle</span></code>。这样，我们可以将 SSH 公钥写入 <code class="docutils literal"><span class="pre">/home/paddle/.ssh/authorized_keys</span></code>，以便用户 <code class="docutils literal"><span class="pre">paddle</span></code> 可以 SSH 到所有节点而不用密码。</p>
+</li>
+</ol>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h2>准备工作空间<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>我们将放置依赖库、配置等文件的目录视为 <em>工作空间（workspace）</em>。</p>
+<p>这些 <code class="docutils literal"><span class="pre">train/test</span></code> 数据应该在启动集群作业之前准备好。 为了满足训练/测试数据放置在工作空间中不同目录的要求，PADDLE 根据在模型配置文件中使用的名为 <code class="docutils literal"><span class="pre">train.list/test.list</span></code> 的索引文件引用训练/测试数据，所以训练/测试数据也包含 train.list/test.list 两个列表文件。所有本地训练 demo 已经提供了脚本来帮助您创建这两个文件，并且集群作业中的所有节点将在正常情况下处理具有相同逻辑代码的文件。</p>
+<p>通常，你可以使用本地训练中的相同模型文件进行集群训练。请记住，在模型文件的 <code class="docutils literal"><span class="pre">setting</span></code>函数中设置的 <code class="docutils literal"><span class="pre">batch_size</span></code> 表示在集群作业<strong>每个</strong>节点中的 batch 大小，而不是使用同步 SGD 的总 batch 大小。</p>
+<p>以下步骤基于 demo 目录中的 <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/tree/develop/demo/recommendation">demo/recommendation</a>。</p>
+<p>你只需完成 demo/recommendation 教程文档到 <code class="docutils literal"><span class="pre">Train</span></code> 的部分，之后你会得到训练/测试数据和模型配置文件。最后，只需使用 demo/recommendation 作为集群训练的工作空间。</p>
+<p>最后，你的工作空间应如下所示：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>.
+|-- common_utils.py
+|-- data
+|   |-- config.json
+|   |-- config_generator.py
+|   |-- meta.bin
+|   |-- meta_config.json
+|   |-- meta_generator.py
+|   |-- ml-1m
+|   |-- ml_data.sh
+|   |-- ratings.dat.test
+|   |-- ratings.dat.train
+|   |-- split.py
+|   |-- test.list
+|   `-- train.list
+|-- dataprovider.py
+|-- evaluate.sh
+|-- prediction.py
+|-- preprocess.sh
+|-- requirements.txt
+|-- run.sh
+`-- trainer_config.py
+</pre></div>
+</div>
+<p>虽然这些文件并非都需要集群训练，但是也没有必要删除无用的文件。</p>
+<p><code class="docutils literal"><span class="pre">trainer_config.py</span></code>
+表示模型配置文件。</p>
+<p><code class="docutils literal"><span class="pre">train.list</span></code> 和 <code class="docutils literal"><span class="pre">test.list</span></code>
+文件索引。它存储当前节点所有训练/测试数据的所有相对或绝对文件路径。</p>
+<p><code class="docutils literal"><span class="pre">dataprovider.py</span></code>
+用于读取训练/测试样本。这与本地训练相同。</p>
+<p><code class="docutils literal"><span class="pre">data</span></code>
+数据目录中的所有文件被 train.list/test.list 引用。</p>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h2>准备集群作业配置<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>以下选项必须在 cluster_train/conf.py 中认真设置</p>
+<p><code class="docutils literal"><span class="pre">HOSTS</span></code>  所有节点运行集群作业的主机名或 IP 。你还可以将用户和 ssh 端口附加到主机名上，例如 root&#64;192.168.100.17:9090。</p>
+<p><code class="docutils literal"><span class="pre">ROOT_DIR</span></code> 用于放置 JOB 工作空间目录的工作空间 ROOT 目录</p>
+<p><code class="docutils literal"><span class="pre">PADDLE_NIC</span></code> 集群通信通道的 NIC(Network Interface Card, 网络接口卡) 接口名称，例如以太网的 eth0，infiniband 的 ib0。</p>
+<p><code class="docutils literal"><span class="pre">PADDLE_PORT</span></code> 集群通信通道的端口号</p>
+<p><code class="docutils literal"><span class="pre">PADDLE_PORTS_NUM</span></code> 用于集群通信通道的端口数。 如果集群节点数量少（少于5〜6个节点），建议将其设置为较大，如2〜8，以获得更好的网络性能。</p>
+<p><code class="docutils literal"><span class="pre">PADDLE_PORTS_NUM_FOR_SPARSE</span></code> 用于 sparse remote updater 集群通信信道的端口数。如果使用 sparse remote update，则可以像 <code class="docutils literal"><span class="pre">PADDLE_PORTS_NUM</span></code> 一样设置。</p>
+<p><code class="docutils literal"><span class="pre">LD_LIBRARY_PATH</span></code> 为集群作业设置额外的 LD_LIBRARY_PATH。你可以使用它来设置 CUDA 库的路径。</p>
+<p>默认配置如下：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">HOSTS</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;root@192.168.100.17&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;root@192.168.100.18&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">工作空间配置</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="c1">#工作空间根目录</span>
+<span class="n">ROOT_DIR</span> <span class="o">=</span> <span class="s2">&quot;/home/paddle&quot;</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">网络配置</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="c1">#pserver NIC</span>
+<span class="n">PADDLE_NIC</span> <span class="o">=</span> <span class="s2">&quot;eth0&quot;</span>
+<span class="c1">#pserver 端口</span>
+<span class="n">PADDLE_PORT</span> <span class="o">=</span> <span class="mi">7164</span>
+<span class="c1">#pserver 端口数</span>
+<span class="n">PADDLE_PORTS_NUM</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="c1">#pserver sparse ports num</span>
+<span class="n">PADDLE_PORTS_NUM_FOR_SPARSE</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="c1">#集群作业中所有进程的环境设置</span>
+<span class="n">LD_LIBRARY_PATH</span><span class="o">=</span><span class="s2">&quot;/usr/local/cuda/lib64:/usr/lib64&quot;</span>
+</pre></div>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h3>启动集群作业<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">paddle.py</span></code> 提供了自动化脚本来启动不同节点中的所有 PaddlePaddle 集群进程。默认情况下，所有命令行选项可以设置为<code class="docutils literal"><span class="pre">paddle.py</span></code> 命令选项并且 <code class="docutils literal"><span class="pre">paddle.py</span></code> 将透明、自动地将这些选项应用到 PaddlePaddle 底层进程。</p>
+<p><code class="docutils literal"><span class="pre">paddle.py</span></code> 为方便作业启动提供了两个独特的命令选项。</p>
+<p><code class="docutils literal"><span class="pre">job_dispatch_package</span></code>  设为本地 <code class="docutils literal"><span class="pre">workspace</span></code> 目录，它将被分发到 conf.py 中设置的所有节点。  它有助于帮助频繁修改和访问工作区文件的用户减少负担，否则频繁的多节点工作空间部署可能会很麻烦。
+<code class="docutils literal"><span class="pre">job_workspace</span></code>  设为已部署的工作空间目录，<code class="docutils literal"><span class="pre">paddle.py</span></code> 将跳过分发阶段直接启动所有节点的集群作业。它可以帮助减少分发延迟。</p>
+<p><code class="docutils literal"><span class="pre">cluster_train/run.sh</span></code> 提供了命令样例来运行 <code class="docutils literal"><span class="pre">demo/recommendation</span></code> 集群工作，只需用你定义的目录修改 <code class="docutils literal"><span class="pre">job_dispatch_package</span></code> 和 <code class="docutils literal"><span class="pre">job_workspace</span></code>，然后：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">sh</span> <span class="n">run</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>集群作业将会在几秒后启动。</p>
+</div>
+<div class="section" id="">
+<span id="id6"></span><h3>终止集群作业<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">paddle.py</span></code>能获取<code class="docutils literal"><span class="pre">Ctrl</span> <span class="pre">+</span> <span class="pre">C</span></code> SIGINT 信号来自动终止它启动的所有进程。只需中断 <code class="docutils literal"><span class="pre">paddle.py</span></code> 任务来终止集群作业。如果程序崩溃你也可以手动终止。</p>
+</div>
+<div class="section" id="">
+<span id="id7"></span><h3>检查集群训练结果<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>详细信息请检查 $workspace/log 里的日志，每一个节点都有相同的日志结构。</p>
+<p><code class="docutils literal"><span class="pre">paddle_trainer.INFO</span></code>
+提供几乎所有训练的内部输出日志，与本地训练相同。这里检验运行时间模型的收敛。</p>
+<p><code class="docutils literal"><span class="pre">paddle_pserver2.INFO</span></code>
+提供 pserver 运行日志，有助于诊断分布式错误。</p>
+<p><code class="docutils literal"><span class="pre">server.log</span></code>
+提供 pserver 进程的 stderr 和 stdout。训练失败时可以检查错误日志。</p>
+<p><code class="docutils literal"><span class="pre">train.log</span></code>
+提供训练过程的 stderr 和 stdout。训练失败时可以检查错误日志。</p>
+</div>
+<div class="section" id="">
+<span id="id8"></span><h3>检查模型输出<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>运行完成后，模型文件将被写入节点 0 的 <code class="docutils literal"><span class="pre">output</span></code> 目录中。
+工作空间中的 <code class="docutils literal"><span class="pre">nodefile</span></code> 表示当前集群作业的节点 ID。</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../k8s/k8s_basis_cn.html" class="btn btn-neutral float-right" title="Kubernetes 简介" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../cmd_parameter/detail_introduction_cn.html" class="btn btn-neutral" title="细节描述" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

@@ -1,0 +1,374 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Paddle多语言接口实现 &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Paddle多语言接口实现</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="paddle">
+<span id="paddle"></span><h1>Paddle多语言接口实现<a class="headerlink" href="#paddle" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="">
+<span id="id1"></span><h2>背景<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>Paddle需要一个多语言接口，这个接口需要做到:</p>
+<ul class="simple">
+<li>有标准的，良好的文档<ul>
+<li>例如Python可以使用<a class="reference external" href="http://www.sphinx-doc.org/en/stable/">Sphinx</a>生成API文档，golang可以使用<a class="reference external" href="https://godoc.org/golang.org/x/tools/cmd/godoc">GoDoc</a>生成文档。这都需要这个接口按照约定俗成的规则来注释完备。</li>
+</ul>
+</li>
+<li>不同语言的接口适应不同语言的特性<ul>
+<li>例如Java与Python的错误处理是直接扔出来Exception，而对于golang错误处理应该使用返回值。</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id2"></span><h2>基本要求<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>Paddle的多语言接口实现包括一下几个方面:</p>
+<ul class="simple">
+<li>我们使用动态库来分发Paddle。在这个动态库中不嵌入任何其他语言的解释器，也不使用其他动态库。</li>
+<li>这个动态库使用C99标准的头文件导出一些函数，不使用/导出C++符号。</li>
+<li>不导出Paddle内部的结构体、类，仅仅使用<code class="docutils literal"><span class="pre">void*</span></code>指针作为类型的句柄(handler)。</li>
+<li>不使用SWIG这种代码生成器，而是手写多语言绑定。</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h2>原因<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="paddle">
+<span id="id4"></span><h3>使用动态库来分发Paddle<a class="headerlink" href="#paddle" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Paddle的链接方式比较复杂<ul>
+<li>如果用户要把Paddle的静态库（libpaddle.a）链接到自己的程序里，得使用 <code class="docutils literal"><span class="pre">--whole-archive</span></code> (for GCC) 或者 <code class="docutils literal"><span class="pre">--force_load</span></code> (for Clang) 参数，来确保把 libpaddle.a 里所有的符号都写入自己的程序的二进制文件里。这是因为 Paddle 的源码里使用了<a class="reference external" href="http://stackoverflow.com/a/1310326/724872">object factory design pattern</a>。</li>
+</ul>
+</li>
+<li>编译型语言，例如C/C++使用静态库和动态库难度差不多。但是解释性语言，例如<a class="reference external" href="http://stackoverflow.com/questions/19560594/how-to-import-static-library-in-python">Python</a>或者<a class="reference external" href="http://stackoverflow.com/questions/24493337/linking-static-library-with-jni">Java</a>，只能调用Paddle的动态库，否则得把Paddle静态库链接到解释器里。<ul>
+<li>解释性语言实际运行的二进制是解释器本身，如果调用静态库只能将静态库与解释器链接。例如对于Java来说，便是将静态库加入JVM中。这对于通常的Java的开发者来说，是不常见的做法。</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h3>动态库中不嵌入任何其他语言的解释器<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>目前Paddle的进程模型是C++内部驱动Python解释器进行模型配置解析和数据读取</li>
+<li>我们最终的动态库中不嵌入Python或者其他任何语言的解释器。模型配置解析，数据读取均交由其他语言完成</li>
+</ul>
+<p>现阶段Paddle有一个问题是，Paddle内嵌的Python解释器和外部使用的Python如果版本不同，会直接报错退出。</p>
+</div>
+<div class="section" id="paddle">
+<span id="id6"></span><h3>Paddle动态库中，不引用其他动态库<a class="headerlink" href="#paddle" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>即这个动态库是不依赖于其他任何文件的，可以在任何机器上执行的。</li>
+</ul>
+</div>
+<div class="section" id="c99-c">
+<span id="c99-c"></span><h3>这个动态库使用C99标准的头文件导出一些函数，不使用/导出C++符号<a class="headerlink" href="#c99-c" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>由于C++编译器没有<a class="reference external" href="https://en.wikipedia.org/wiki/Name_mangling#C.2B.2B">名字修饰</a>的规范，不同版本的编译器之间，对于同一段C++代码生成的符号可能不一致。而多语言接口需要直接读取生成的二进制(动态库)，需要有稳定的导出符号。</li>
+<li>C语言是有导出符号的标准的，并且在常见的平台上，都是ABI调用标准的。</li>
+<li>大多数语言都支持使用C语言API</li>
+<li>使用C99而不使用C89，是因为C99支持<a class="reference external" href="https://en.wikipedia.org/wiki/C_data_types#Fixed-width_integer_types">Fixed-width integer types</a>和<a class="reference external" href="https://en.wikipedia.org/wiki/C_data_types#Boolean_type">Boolean type</a>。</li>
+<li>使用C99而不使用C11的原因是，<a class="reference external" href="https://en.wikipedia.org/wiki/C11_(C_standard_revision)">C11</a>并没有Paddle特别需要的特性，且C99相对于C11使用更加广泛。</li>
+</ul>
+</div>
+<div class="section" id="paddle-void-handler">
+<span id="paddle-void-handler"></span><h3>不导出Paddle内部的结构体、类，仅仅使用<code class="docutils literal"><span class="pre">void*</span></code>指针作为类型的句柄(handler)<a class="headerlink" href="#paddle-void-handler" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Paddle内部的类为C++书写，直接导出到C的接口比较困难。</li>
+<li>在C-API中使用<code class="docutils literal"><span class="pre">void*</span></code>来表示Paddle内部类。再在每一个API中自己检查类型。</li>
+</ul>
+<p>在C的头文件 <code class="docutils literal"><span class="pre">paddle_matrix.h</span></code> 中:</p>
+<div class="highlight-C"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="kt">void</span><span class="o">*</span> <span class="n">paddle_matrix</span><span class="p">;</span>
+<span class="k">typedef</span> <span class="kt">int</span> <span class="n">paddle_error</span><span class="p">;</span>
+
+<span class="k">extern</span> <span class="s">&quot;C&quot;</span>
+<span class="n">paddle_error</span> <span class="n">paddle_matrix_shape</span><span class="p">(</span><span class="n">paddle_matrix</span> <span class="n">matrix</span><span class="p">,</span>
+                                 <span class="kt">uint64_t</span><span class="o">*</span> <span class="n">width</span><span class="p">,</span>
+                                 <span class="kt">uint64_t</span><span class="o">*</span> <span class="n">height</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>而在CPP里面实现这个C的接口，文件 <code class="docutils literal"><span class="pre">paddle_matrix.cpp</span></code></p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&quot;paddle/math/matrix.hpp&quot;</span><span class="cp"></span>
+<span class="k">extern</span> <span class="s">&quot;C&quot;</span>
+<span class="n">paddle_error</span> <span class="n">paddle_matrix_shape</span><span class="p">(</span><span class="n">paddle_matrix</span> <span class="n">matrix</span><span class="p">,</span>
+                                 <span class="kt">uint64_t</span> <span class="o">*</span><span class="n">width</span><span class="p">,</span>
+                                 <span class="kt">uint64_t</span> <span class="o">*</span><span class="n">height</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">auto</span> <span class="n">m</span> <span class="o">=</span> <span class="p">(</span><span class="n">paddle</span><span class="o">::</span><span class="n">math</span><span class="o">::</span><span class="n">matrix</span><span class="o">*</span><span class="p">)(</span><span class="n">matrix</span><span class="p">);</span>
+  <span class="o">*</span><span class="n">width</span> <span class="o">=</span> <span class="n">m</span><span class="o">-&gt;</span><span class="n">width</span><span class="p">();</span>
+  <span class="o">*</span><span class="n">height</span> <span class="o">=</span> <span class="n">m</span><span class="o">-&gt;</span><span class="n">height</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>其中<code class="docutils literal"><span class="pre">paddle/math/matrix.hpp</span></code>文件内容为:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">namespace</span> <span class="n">paddle</span> <span class="p">{</span>
+<span class="k">namespace</span> <span class="n">math</span> <span class="p">{</span>  
+
+<span class="k">class</span> <span class="nc">Matrix</span> <span class="p">{</span>
+  <span class="c1">//...</span>
+<span class="p">};</span>
+
+<span class="p">}</span>  <span class="c1">// namespace math</span>
+<span class="p">}</span>  <span class="c1">// namespace paddle</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="swig">
+<span id="swig"></span><h3>不使用SWIG这种代码生成器，而是手写多语言绑定<a class="headerlink" href="#swig" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><a class="reference external" href="http://www.swig.org/">SWIG</a>是一个多语言接口的代码生成器。他的目标是使用C/C++写代码，SWIG直接读取C/C++的头文件，生成各种语言的绑定代码。<ul>
+<li>对于多语言接口，SWIG需要写一个interface文件。这个文件具有独特的语法，学习成本高。且增加一个第三方语言，就需要对这个第三方语言增加一些定义。有的时候，interface文件的写法非常<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/api/Paddle.swig#L36">tricky</a>。社区贡献代码学习成本高。</li>
+<li>SWIG暴露的接口保留了C++的接口样式，很难保证多语言代码风格的一致性。(函数命名，错误处理)<ul>
+<li>因为SWIG在第三方语言中暴露的函数名，类名和C++中完全一致。C++的命名风格并不能适应其他第三方语言。如果使用SWIG我们需要将在interface文件里，将大量的<code class="docutils literal"><span class="pre">SomeCppClass</span></code>重命名成<code class="docutils literal"><span class="pre">some_python_class</span></code>，或者<code class="docutils literal"><span class="pre">SomeGoTypes</span></code>。</li>
+<li>对于不同语言，错误处理的方式也不尽相同。例如对于Java或者Python，最常见的错误处理方式是Exception，而对于Golang，错误处理方式是返回值。而SWIG只能简单的暴露C++接口，无法做到对于各种语言错误处理方式的适配。</li>
+</ul>
+</li>
+<li>对于大多数语言，直接使用C语言的.h并不困难。例如Python的<a class="reference external" href="https://cffi.readthedocs.io/en/latest/overview.html#simple-example-abi-level-in-line">cffi</a>或者<a class="reference external" href="http://cython.org/">Cython</a>, golang的<a class="reference external" href="https://golang.org/cmd/cgo/">cgo</a>。</li>
+<li>SWIG支持的语言或者解释器有局限。例如对于Python，使用SWIG只支持CPython解释器，而不支持PyPy解释器。</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="">
+<span id="id7"></span><h2>原因列表<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>| 结论 | 对比 | 原因 |
+|&#8212;| &#8212; | &#8212; |
+| 使用动态库 | 不使用静态库 | 解释型语言只能调用动态库，Paddle静态库链接复杂 |
+| 不嵌入其他语言解释器 | 不嵌入Python解释器 | Paddle C++目前嵌入Python解释器，会导致不同版本Python在一个进程里的bug |
+| 不引用其他动态库 | | Paddle一个动态库可以在任何Linux系统上运行 |
+| 使用C99做接口 | 不使用C++做接口 | C有标准的ABI，C99是目前C最广泛的使用标准，且C99支持bool类型和定长整数(uint64_t等)类型 |
+| 使用void*作为类句柄 | 不显示的写每个类具体包含什么| 实现简单，并且让接口脱离实现细节 |
+| 手写多语言绑定 | 不使用SWIG | 使用SWIG需要多语言绑定的开发人员熟练掌握SWIG配置，社区参与困难。SWIG生成的代码不能保证多语言代码风格的一致性 |</p>
+</div>
+<div class="section" id="">
+<span id="id8"></span><h2>简单实现<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>TBD</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

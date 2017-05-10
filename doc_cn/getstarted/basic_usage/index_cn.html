@@ -1,0 +1,336 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>经典的线性回归任务 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>经典的线性回归任务</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="id1">
+<h1>经典的线性回归任务<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h1>
+<p>PaddlePaddle是源于百度的一个深度学习平台。这份简短的介绍将向你展示如何利用PaddlePaddle来解决一个经典的线性回归问题。</p>
+<div class="section" id="id2">
+<h2>任务简介<a class="headerlink" href="#id2" title="永久链接至标题">¶</a></h2>
+<p>我们展示如何用PaddlePaddle解决 <a class="reference external" href="https://www.baidu.com/s?wd=单变量线性回归">单变量的线性回归</a> 问题。线性回归的输入是一批点 <cite>(x, y)</cite> ，其中 <cite>y = wx + b + ε</cite>， 而 ε 是一个符合高斯分布的随机变量。线性回归的输出是从这批点估计出来的参数 <cite>w</cite> 和 <cite>b</cite> 。</p>
+<p>一个例子是房产估值。我们假设房产的价格（y）是其大小（x）的一个线性函数，那么我们可以通过收集市场上房子的大小和价格，用来估计线性函数的参数w 和 b。</p>
+</div>
+<div class="section" id="id4">
+<h2>准备数据<a class="headerlink" href="#id4" title="永久链接至标题">¶</a></h2>
+<p>假设变量 <cite>x</cite> 和 <cite>y</cite> 的真实关系为： <cite>y = 2x + 0.3 + ε</cite>，这里展示如何使用观测数据来拟合这一线性关系。首先，Python代码将随机产生2000个观测点，作为线性回归的输入。下面脚本符合PaddlePaddle期待的读取数据的Python程序的模式。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># dataprovider.py</span>
+<span class="kn">from</span> <span class="nn">paddle.trainer.PyDataProvider2</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">random</span>
+
+<span class="c1"># 定义输入数据的类型: 2个浮点数</span>
+<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">[</span><span class="n">dense_vector</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">dense_vector</span><span class="p">(</span><span class="mi">1</span><span class="p">)],</span><span class="n">use_seq</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">input_file</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">2000</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
+        <span class="k">yield</span> <span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="o">*</span><span class="n">x</span><span class="o">+</span><span class="mf">0.3</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id5">
+<h2>训练模型<a class="headerlink" href="#id5" title="永久链接至标题">¶</a></h2>
+<p>为了还原 <cite>y = 2x + 0.3</cite>，我们先从一条随机的直线 <cite>y&#8217; = wx + b</cite> 开始，然后利用观测数据调整 <cite>w</cite> 和 <cite>b</cite> 使得 <cite>y&#8217;</cite> 和 <cite>y</cite> 的差距不断减小，最终趋于接近。这个过程就是模型的训练过程，而 <cite>w</cite> 和 <cite>b</cite> 就是模型的参数，即我们的训练目标。</p>
+<p>在PaddlePaddle里，该模型的网络配置如下。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span># trainer_config.py
+from paddle.trainer_config_helpers import *
+
+# 1. 定义数据来源，调用上面的process函数获得观测数据
+data_file = &#39;empty.list&#39;
+with open(data_file, &#39;w&#39;) as f: f.writelines(&#39; &#39;)
+define_py_data_sources2(train_list=data_file, test_list=None,
+                        module=&#39;dataprovider&#39;, obj=&#39;process&#39;,args={})
+
+# 2. 学习算法。控制如何改变模型参数 w 和 b
+settings(batch_size=12, learning_rate=1e-3, learning_method=MomentumOptimizer())
+
+# 3. 神经网络配置
+x = data_layer(name=&#39;x&#39;, size=1)
+y = data_layer(name=&#39;y&#39;, size=1)
+# 线性计算网络层: ȳ = wx + b
+ȳ = fc_layer(input=x, param_attr=ParamAttr(name=&#39;w&#39;), size=1, act=LinearActivation(), bias_attr=ParamAttr(name=&#39;b&#39;))
+# 计算误差函数，即  ȳ 和真实 y 之间的距离
+cost = mse_cost(input= ȳ, label=y)
+outputs(cost)
+</pre></div>
+</div>
+<p>这段简短的配置展示了PaddlePaddle的基本用法：</p>
+<ul>
+<li><p class="first">第一部分定义了数据输入。一般情况下，PaddlePaddle先从一个文件列表里获得数据文件地址，然后交给用户自定义的函数（例如上面的 <cite>process`函数）进行读入和预处理从而得到真实输入。本文中由于输入数据是随机生成的不需要读输入文件，所以放一个空列表（`empty.list</cite>）即可。</p>
+</li>
+<li><p class="first">第二部分主要是选择学习算法，它定义了模型参数改变的规则。PaddlePaddle提供了很多优秀的学习算法，这里使用一个基于momentum的随机梯度下降(SGD)算法，该算法每批量(batch)读取12个采样数据进行随机梯度计算来更新更新。</p>
+</li>
+<li><p class="first">最后一部分是神经网络的配置。由于PaddlePaddle已经实现了丰富的网络层，所以很多时候你需要做的只是定义正确的网络层并把它们连接起来。这里使用了三种网络单元：</p>
+<blockquote>
+<div><ul class="simple">
+<li><strong>数据层</strong>：数据层 <cite>data_layer</cite> 是神经网络的入口，它读入数据并将它们传输到接下来的网络层。这里数据层有两个，分别对应于变量 <cite>x</cite> 和 <cite>y</cite>。</li>
+<li><strong>全连接层</strong>：全连接层 <cite>fc_layer</cite> 是基础的计算单元，这里利用它建模变量之间的线性关系。计算单元是神经网络的核心，PaddlePaddle支持大量的计算单元和任意深度的网络连接，从而可以拟合任意的函数来学习复杂的数据关系。</li>
+<li><strong>回归误差代价层</strong>：回归误差代价层 <cite>mse_cost</cite> 是众多误差代价函数层的一种，它们在训练过程作为网络的出口，用来计算模型的误差，是模型参数优化的目标函数。</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>定义了网络结构并保存为 <cite>trainer_config.py</cite> 之后，运行以下训练命令：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train --config<span class="o">=</span>trainer_config.py --save_dir<span class="o">=</span>./output --num_passes<span class="o">=</span><span class="m">30</span>
+</pre></div>
+</div>
+<p>PaddlePaddle将在观测数据集上迭代训练30轮，并将每轮的模型结果存放在 <cite>./output</cite> 路径下。从输出日志可以看到，随着轮数增加误差代价函数的输出在不断的减小，这意味着模型在训练数据上不断的改进，直到逼近真实解：` y = 2x + 0.3 `</p>
+</div>
+<div class="section" id="id6">
+<h2>模型检验<a class="headerlink" href="#id6" title="永久链接至标题">¶</a></h2>
+<p>训练完成后，我们希望能够检验模型的好坏。一种常用的做法是用学习的模型对另外一组测试数据进行预测，评价预测的效果。在这个例子中，由于已经知道了真实答案，我们可以直接观察模型的参数是否符合预期来进行检验。</p>
+<p>PaddlePaddle将每个模型参数作为一个numpy数组单独存为一个文件，所以可以利用如下方法读取模型的参数。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">file_name</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span> <span class="c1"># skip header for float type.</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="k">print</span> <span class="s1">&#39;w=</span><span class="si">%.6f</span><span class="s1">, b=</span><span class="si">%.6f</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;output/pass-00029/w&#39;</span><span class="p">),</span> <span class="n">load</span><span class="p">(</span><span class="s1">&#39;output/pass-00029/b&#39;</span><span class="p">))</span>
+<span class="c1"># w=1.999743, b=0.300137</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="../../_images/parameters.png"><img alt="../../_images/parameters.png" class="align-center" src="../../_images/parameters.png" style="width: 512.0px; height: 344.8px;" /></a>
+<p>从图中可以看到，虽然 <cite>w</cite> 和 <cite>b</cite> 都使用随机值初始化，但在起初的几轮训练中它们都在快速逼近真实值，并且后续仍在不断改进，使得最终得到的模型几乎与真实模型一致。</p>
+<p>这样，我们用PaddlePaddle解决了单变量线性回归问题， 包括数据输入、模型训练和最后的结果验证。</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

@@ -1,0 +1,593 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>FAQ &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../genindex.html"/>
+        <link rel="search" title="搜索" href="../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../index.html"/>
+        <link rel="prev" title="Training and Inference" href="../api/v2/run_logic.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index_cn.html">API</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>FAQ</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="faq">
+<h1><a class="toc-backref" href="#id9">FAQ</a><a class="headerlink" href="#faq" title="永久链接至标题">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#faq" id="id9">FAQ</a><ul>
+<li><a class="reference internal" href="#id1" id="id10">1. 如何减少内存占用</a><ul>
+<li><a class="reference internal" href="#dataprovider" id="id11">减少DataProvider缓冲池内存</a></li>
+<li><a class="reference internal" href="#id2" id="id12">神经元激活内存</a></li>
+<li><a class="reference internal" href="#id3" id="id13">参数内存</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#paddlepaddle" id="id14">2. 如何加速PaddlePaddle的训练速度</a><ul>
+<li><a class="reference internal" href="#id4" id="id15">减少数据载入的耗时</a></li>
+<li><a class="reference internal" href="#id5" id="id16">加速训练速度</a></li>
+<li><a class="reference internal" href="#id6" id="id17">利用更多的计算资源</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#illegal-instruction" id="id18">3. 遇到“非法指令”或者是“illegal instruction”</a></li>
+<li><a class="reference internal" href="#sgd" id="id19">4. 如何选择SGD算法的学习率</a></li>
+<li><a class="reference internal" href="#id7" id="id20">5. 如何初始化参数</a></li>
+<li><a class="reference internal" href="#id8" id="id21">6. 如何共享参数</a></li>
+<li><a class="reference internal" href="#cp27mu-linux-x86-64-whl-is-not-a-supported-wheel-on-this-platform" id="id22">7. *-cp27mu-linux_x86_64.whl is not a supported wheel on this platform.</a></li>
+<li><a class="reference internal" href="#python" id="id23">8.  python相关的单元测试都过不了</a></li>
+<li><a class="reference internal" href="#docker-gpu-cuda-driver-version-is-insufficient" id="id24">9. 运行Docker GPU镜像出现 &#8220;CUDA driver version is insufficient&#8221;</a></li>
+<li><a class="reference internal" href="#cmake-pythonlibspythoninterp" id="id25">10. CMake源码编译, 找到的PythonLibs和PythonInterp版本不一致</a></li>
+<li><a class="reference internal" href="#a-protocol-message-was-rejected-because-it-was-too-big" id="id26">10. A protocol message was rejected because it was too big</a></li>
+<li><a class="reference internal" href="#gpu" id="id27">11. 如何指定GPU设备</a></li>
+<li><a class="reference internal" href="#floating-point-exception" id="id28">12. 训练过程中出现 <code class="code docutils literal"><span class="pre">Floating</span> <span class="pre">point</span> <span class="pre">exception</span></code>, 训练因此退出怎么办?</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="id1">
+<h2><a class="toc-backref" href="#id10">1. 如何减少内存占用</a><a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h2>
+<p>神经网络的训练本身是一个非常消耗内存和显存的工作，经常会消耗数10GB的内存和数GB的显存。
+PaddlePaddle的内存占用主要分为如下几个方面:</p>
+<ul class="simple">
+<li>DataProvider缓冲池内存（只针对内存）</li>
+<li>神经元激活内存（针对内存和显存）</li>
+<li>参数内存 （针对内存和显存）</li>
+<li>其他内存杂项</li>
+</ul>
+<p>其中，其他内存杂项是指PaddlePaddle本身所用的一些内存，包括字符串分配，临时变量等等，暂不考虑在内。</p>
+<div class="section" id="dataprovider">
+<h3><a class="toc-backref" href="#id11">减少DataProvider缓冲池内存</a><a class="headerlink" href="#dataprovider" title="永久链接至标题">¶</a></h3>
+<p>PyDataProvider使用的是异步加载，同时在内存里直接随即选取数据来做Shuffle。即</p>
+<img src="../_images/graphviz-9be6aad37f57c60f4b971dde0ef44ce27179cf9a.png" alt="digraph {
+    rankdir=LR;
+    数据文件 -&gt; 内存池 -&gt; PaddlePaddle训练
+}" />
+<p>所以，减小这个内存池即可减小内存占用，同时也可以加速开始训练前数据载入的过程。但是，这
+个内存池实际上决定了shuffle的粒度。所以，如果将这个内存池减小，又要保证数据是随机的，
+那么最好将数据文件在每次读取之前做一次shuffle。可能的代码为</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="nd">@provider</span><span class="p">(</span><span class="n">min_pool_size</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s1">&#39;shuf </span><span class="si">%s</span><span class="s1"> &gt; </span><span class="si">%s</span><span class="s1">.shuf&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">filename</span><span class="p">))</span>  <span class="c1"># shuffle before.</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.shuf&#39;</span> <span class="o">%</span> <span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">get_sample_from_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>这样做可以极大的减少内存占用，并且可能会加速训练过程，详细文档参考 <a class="reference internal" href="../api/v1/data_provider/pydataprovider2_cn.html#api-pydataprovider2"><span class="std std-ref">PyDataProvider2的使用</span></a> 。</p>
+</div>
+<div class="section" id="id2">
+<h3><a class="toc-backref" href="#id12">神经元激活内存</a><a class="headerlink" href="#id2" title="永久链接至标题">¶</a></h3>
+<p>神经网络在训练的时候，会对每一个激活暂存一些数据，如神经元激活值等。
+在反向传递的时候，这些数据会被用来更新参数。这些数据使用的内存主要和两个参数有关系，
+一是batch size，另一个是每条序列(Sequence)长度。所以，其实也是和每个mini-batch中包含
+的时间步信息成正比。</p>
+<p>所以做法可以有两种：</p>
+<ul class="simple">
+<li>减小batch size。 即在网络配置中 <code class="code docutils literal"><span class="pre">settings(batch_size=1000)</span></code> 设置成一个小一些的值。但是batch size本身是神经网络的超参数，减小batch size可能会对训练结果产生影响。</li>
+<li>减小序列的长度，或者直接扔掉非常长的序列。比如，一个数据集大部分序列长度是100-200,
+但是突然有一个10000长的序列，就很容易导致内存超限，特别是在LSTM等RNN中。</li>
+</ul>
+</div>
+<div class="section" id="id3">
+<h3><a class="toc-backref" href="#id13">参数内存</a><a class="headerlink" href="#id3" title="永久链接至标题">¶</a></h3>
+<p>PaddlePaddle支持非常多的优化算法(Optimizer)，不同的优化算法需要使用不同大小的内存。
+例如使用 <code class="code docutils literal"><span class="pre">adadelta</span></code> 算法，则需要使用等于权重参数规模大约5倍的内存。举例，如果参数保存下来的模型目录
+文件为 <code class="code docutils literal"><span class="pre">100M</span></code>， 那么该优化算法至少需要 <code class="code docutils literal"><span class="pre">500M</span></code> 的内存。</p>
+<p>可以考虑使用一些优化算法，例如 <code class="code docutils literal"><span class="pre">momentum</span></code>。</p>
+</div>
+</div>
+<div class="section" id="paddlepaddle">
+<h2><a class="toc-backref" href="#id14">2. 如何加速PaddlePaddle的训练速度</a><a class="headerlink" href="#paddlepaddle" title="永久链接至标题">¶</a></h2>
+<p>加速PaddlePaddle训练可以考虑从以下几个方面：</p>
+<ul class="simple">
+<li>减少数据载入的耗时</li>
+<li>加速训练速度</li>
+<li>利用分布式训练驾驭更多的计算资源</li>
+</ul>
+<div class="section" id="id4">
+<h3><a class="toc-backref" href="#id15">减少数据载入的耗时</a><a class="headerlink" href="#id4" title="永久链接至标题">¶</a></h3>
+<p>使用<code class="code docutils literal"><span class="pre">pydataprovider</span></code>时，可以减少缓存池的大小，同时设置内存缓存功能，即可以极大的加速数据载入流程。
+<code class="code docutils literal"><span class="pre">DataProvider</span></code> 缓存池的减小，和之前减小通过减小缓存池来减小内存占用的原理一致。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="nd">@provider</span><span class="p">(</span><span class="n">min_pool_size</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s1">&#39;shuf </span><span class="si">%s</span><span class="s1"> &gt; </span><span class="si">%s</span><span class="s1">.shuf&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">filename</span><span class="p">))</span>  <span class="c1"># shuffle before.</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.shuf&#39;</span> <span class="o">%</span> <span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">get_sample_from_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>同时 <code class="code docutils literal"><span class="pre">&#64;provider</span></code> 接口有一个 <code class="code docutils literal"><span class="pre">cache</span></code> 参数来控制缓存方法，将其设置成 <code class="code docutils literal"><span class="pre">CacheType.CACHE_PASS_IN_MEM</span></code> 的话，会将第一个 <code class="code docutils literal"><span class="pre">pass</span></code> (过完所有训练数据即为一个pass)生成的数据缓存在内存里，在之后的 <code class="code docutils literal"><span class="pre">pass</span></code> 中，不会再从 <code class="code docutils literal"><span class="pre">python</span></code> 端读取数据，而是直接从内存的缓存里读取数据。这也会极大减少数据读入的耗时。</p>
+</div>
+<div class="section" id="id5">
+<h3><a class="toc-backref" href="#id16">加速训练速度</a><a class="headerlink" href="#id5" title="永久链接至标题">¶</a></h3>
+<p>PaddlePaddle支持Sparse的训练，sparse训练需要训练特征是 <code class="code docutils literal"><span class="pre">sparse_binary_vector</span></code> 、 <code class="code docutils literal"><span class="pre">sparse_vector</span></code> 、或者 <code class="code docutils literal"><span class="pre">integer_value</span></code> 的任一一种。同时，与这个训练数据交互的Layer，需要将其Parameter设置成 sparse 更新模式，即设置 <code class="code docutils literal"><span class="pre">sparse_update=True</span></code></p>
+<p>这里使用简单的 <code class="code docutils literal"><span class="pre">word2vec</span></code> 训练语言模型距离，具体使用方法为:</p>
+<p>使用一个词前两个词和后两个词，来预测这个中间的词。这个任务的DataProvider为:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">DICT_DIM</span> <span class="o">=</span> <span class="mi">3000</span>
+
+
+<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">[</span><span class="n">integer_sequence</span><span class="p">(</span><span class="n">DICT_DIM</span><span class="p">),</span> <span class="n">integer_value</span><span class="p">(</span><span class="n">DICT_DIM</span><span class="p">)])</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="c1"># yield word ids to predict inner word id</span>
+        <span class="c1"># such as [28, 29, 10, 4], 4</span>
+        <span class="c1"># It means the sentance is  28, 29, 4, 10, 4.</span>
+        <span class="k">yield</span> <span class="n">read_next_from_file</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>这个任务的配置为:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">...</span>  <span class="c1"># the settings and define data provider is omitted.</span>
+<span class="n">DICT_DIM</span> <span class="o">=</span> <span class="mi">3000</span>  <span class="c1"># dictionary dimension.</span>
+<span class="n">word_ids</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="s1">&#39;word_ids&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">DICT_DIM</span><span class="p">)</span>
+
+<span class="n">emb</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span>
+    <span class="nb">input</span><span class="o">=</span><span class="n">word_ids</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">sparse_update</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+<span class="n">emb_sum</span> <span class="o">=</span> <span class="n">pooling_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">emb</span><span class="p">,</span> <span class="n">pooling_type</span><span class="o">=</span><span class="n">SumPooling</span><span class="p">())</span>
+<span class="n">predict</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">emb_sum</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">DICT_DIM</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">Softmax</span><span class="p">())</span>
+<span class="n">outputs</span><span class="p">(</span>
+    <span class="n">classification_cost</span><span class="p">(</span>
+        <span class="nb">input</span><span class="o">=</span><span class="n">predict</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span>
+            <span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">DICT_DIM</span><span class="p">)))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id6">
+<h3><a class="toc-backref" href="#id17">利用更多的计算资源</a><a class="headerlink" href="#id6" title="永久链接至标题">¶</a></h3>
+<p>利用更多的计算资源可以分为一下几个方式来进行:</p>
+<ul class="simple">
+<li>单机CPU训练<ul>
+<li>使用多线程训练。设置命令行参数 <code class="code docutils literal"><span class="pre">trainer_count</span></code>。</li>
+</ul>
+</li>
+<li>单机GPU训练<ul>
+<li>使用显卡训练。设置命令行参数 <code class="code docutils literal"><span class="pre">use_gpu</span></code>。</li>
+<li>使用多块显卡训练。设置命令行参数 <code class="code docutils literal"><span class="pre">use_gpu</span></code> 和 <code class="code docutils literal"><span class="pre">trainer_count</span></code> 。</li>
+</ul>
+</li>
+<li>多机训练<ul>
+<li>请参考 <a class="reference internal" href="../howto/usage/cluster/cluster_train_cn.html#cluster-train"><span class="std std-ref">运行分布式训练</span></a> 。</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="illegal-instruction">
+<h2><a class="toc-backref" href="#id18">3. 遇到“非法指令”或者是“illegal instruction”</a><a class="headerlink" href="#illegal-instruction" title="永久链接至标题">¶</a></h2>
+<p>PaddlePaddle使用avx SIMD指令提高cpu执行效率，因此错误的使用二进制发行版可能会导致这种错误，请选择正确的版本。</p>
+</div>
+<div class="section" id="sgd">
+<h2><a class="toc-backref" href="#id19">4. 如何选择SGD算法的学习率</a><a class="headerlink" href="#sgd" title="永久链接至标题">¶</a></h2>
+<p>在采用sgd/async_sgd进行训练时，一个重要的问题是选择正确的learning_rate。如果learning_rate太大，那么训练有可能不收敛，如果learning_rate太小，那么收敛可能很慢，导致训练时间过长。</p>
+<p>通常做法是从一个比较大的learning_rate开始试，如果不收敛，那减少学习率10倍继续试验，直到训练收敛为止。那么如何判断训练不收敛呢？可以估计出如果模型采用不变的输出最小的cost0是多少。</p>
+<p>如果训练过程的的cost明显高于这个常数输出的cost，那么我们可以判断为训练不收敛。举一个例子，假如我们是三分类问题，采用multi-class-cross-entropy作为cost，数据中0,1,2三类的比例为 <code class="code docutils literal"><span class="pre">0.2,</span> <span class="pre">0.5,</span> <span class="pre">0.3</span></code> , 那么常数输出所能达到的最小cost是 <code class="code docutils literal"><span class="pre">-(0.2*log(0.2)+0.5*log(0.5)+0.3*log(0.3))=1.03</span></code> 。如果训练一个pass（或者更早）后，cost还大于这个数，那么可以认为训练不收敛，应该降低学习率。</p>
+</div>
+<div class="section" id="id7">
+<h2><a class="toc-backref" href="#id20">5. 如何初始化参数</a><a class="headerlink" href="#id7" title="永久链接至标题">¶</a></h2>
+<p>默认情况下，PaddlePaddle使用均值0，标准差为 <span class="math">\(\frac{1}{\sqrt{d}}\)</span> 来初始化参数。其中 <span class="math">\(d\)</span> 为参数矩阵的宽度。这种初始化方式在一般情况下不会产生很差的结果。如果用户想要自定义初始化方式，PaddlePaddle目前提供两种参数初始化的方式:</p>
+<ul class="simple">
+<li>高斯分布。将 <code class="code docutils literal"><span class="pre">param_attr</span></code> 设置成 <code class="code docutils literal"><span class="pre">param_attr=ParamAttr(initial_mean=0.0,</span> <span class="pre">initial_std=1.0)</span></code></li>
+<li>均匀分布。将 <code class="code docutils literal"><span class="pre">param_attr</span></code> 设置成 <code class="code docutils literal"><span class="pre">param_attr=ParamAttr(initial_max=1.0,</span> <span class="pre">initial_min=-1.0)</span></code></li>
+</ul>
+<p>比如设置一个全连接层的参数初始化方式和bias初始化方式，可以使用如下代码。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">hidden</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">ipt</span><span class="p">,</span> <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">initial_max</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">initial_min</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">),</span>
+                  <span class="n">bias_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">initial_mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">initial_std</span><span class="o">=</span><span class="mf">0.0</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>上述代码将bias全部初始化为1.0, 同时将参数初始化为 <code class="code docutils literal"><span class="pre">[1.0,</span> <span class="pre">-1.0]</span></code> 的均匀分布。</p>
+</div>
+<div class="section" id="id8">
+<h2><a class="toc-backref" href="#id21">6. 如何共享参数</a><a class="headerlink" href="#id8" title="永久链接至标题">¶</a></h2>
+<p>PaddlePaddle的参数使用名字 <code class="code docutils literal"><span class="pre">name</span></code> 作为参数的ID，相同名字的参数，会共享参数。设置参数的名字，可以使用 <code class="code docutils literal"><span class="pre">ParamAttr(name=&quot;YOUR_PARAM_NAME&quot;)</span></code> 来设置。更方便的设置方式，是使得要共享的参数使用同样的 <code class="code docutils literal"><span class="pre">ParamAttr</span></code> 对象。</p>
+<p>简单的全连接网络，参数共享的配置示例为:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="k">import</span> <span class="o">*</span>
+
+<span class="n">settings</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;feature_a&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;feature_b&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+
+<span class="n">fc_param</span> <span class="o">=</span> <span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;fc_param&#39;</span><span class="p">,</span> <span class="n">initial_max</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">initial_min</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="n">bias_param</span> <span class="o">=</span> <span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;bias_param&#39;</span><span class="p">,</span> <span class="n">initial_mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">initial_std</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+
+<span class="n">softmax_param</span> <span class="o">=</span> <span class="n">ParamAttr</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;softmax_param&#39;</span><span class="p">,</span> <span class="n">initial_max</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">initial_min</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">)</span>
+
+<span class="n">hidden_a</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span>
+    <span class="nb">input</span><span class="o">=</span><span class="n">a</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">param_attr</span><span class="o">=</span><span class="n">fc_param</span><span class="p">,</span> <span class="n">bias_attr</span><span class="o">=</span><span class="n">bias_param</span><span class="p">)</span>
+<span class="n">hidden_b</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span>
+    <span class="nb">input</span><span class="o">=</span><span class="n">b</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">param_attr</span><span class="o">=</span><span class="n">fc_param</span><span class="p">,</span> <span class="n">bias_attr</span><span class="o">=</span><span class="n">bias_param</span><span class="p">)</span>
+
+<span class="n">predict</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span>
+    <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">hidden_a</span><span class="p">,</span> <span class="n">hidden_b</span><span class="p">],</span>
+    <span class="n">param_attr</span><span class="o">=</span><span class="p">[</span><span class="n">softmax_param</span><span class="p">,</span> <span class="n">softmax_param</span><span class="p">],</span>
+    <span class="n">bias_attr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">act</span><span class="o">=</span><span class="n">SoftmaxActivation</span><span class="p">())</span>
+
+<span class="n">outputs</span><span class="p">(</span>
+    <span class="n">classification_cost</span><span class="p">(</span>
+        <span class="nb">input</span><span class="o">=</span><span class="n">predict</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">)))</span>
+</pre></div>
+</div>
+<p>这里 <code class="code docutils literal"><span class="pre">hidden_a</span></code> 和 <code class="code docutils literal"><span class="pre">hidden_b</span></code> 使用了同样的parameter和bias。并且softmax层的两个输入也使用了同样的参数 <code class="code docutils literal"><span class="pre">softmax_param</span></code>。</p>
+</div>
+<div class="section" id="cp27mu-linux-x86-64-whl-is-not-a-supported-wheel-on-this-platform">
+<h2><a class="toc-backref" href="#id22">7. *-cp27mu-linux_x86_64.whl is not a supported wheel on this platform.</a><a class="headerlink" href="#cp27mu-linux-x86-64-whl-is-not-a-supported-wheel-on-this-platform" title="永久链接至标题">¶</a></h2>
+<p>出现这个问题的主要原因是，系统编译wheel包的时候，使用的 <code class="code docutils literal"><span class="pre">wheel</span></code> 包是最新的，
+而系统中的 <code class="code docutils literal"><span class="pre">pip</span></code> 包比较老。具体的解决方法是，更新 <code class="code docutils literal"><span class="pre">pip</span></code> 包并重新编译PaddlePaddle。
+更新 <code class="code docutils literal"><span class="pre">pip</span></code> 包的方法是:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>pip install --upgrade pip
+</pre></div>
+</div>
+</div>
+<div class="section" id="python">
+<h2><a class="toc-backref" href="#id23">8.  python相关的单元测试都过不了</a><a class="headerlink" href="#python" title="永久链接至标题">¶</a></h2>
+<p>如果出现以下python相关的单元测试都过不了的情况：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="m">24</span> - test_PyDataProvider <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">26</span> - test_RecurrentGradientMachine <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">27</span> - test_NetworkCompare <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">28</span> - test_PyDataProvider2 <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">32</span> - test_Prediction <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">33</span> - test_Compare <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">34</span> - test_Trainer <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">35</span> - test_TrainerOnePass <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">36</span> - test_CompareTwoNets <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">37</span> - test_CompareTwoOpts <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">38</span> - test_CompareSparse <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">39</span> - test_recurrent_machine_generation <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">40</span> - test_PyDataProviderWrapper <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">41</span> - test_config_parser <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">42</span> - test_swig_api <span class="o">(</span>Failed<span class="o">)</span>
+<span class="m">43</span> - layers_test <span class="o">(</span>Failed<span class="o">)</span>
+</pre></div>
+</div>
+<p>并且查询PaddlePaddle单元测试的日志，提示：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle package is already in your PYTHONPATH. But unittest need a clean environment.
+Please uninstall paddle package before start unittest. Try to <span class="s1">&#39;pip uninstall paddle&#39;</span>.
+</pre></div>
+</div>
+<p>解决办法是：</p>
+<ul class="simple">
+<li>卸载PaddlePaddle包 <code class="code docutils literal"><span class="pre">pip</span> <span class="pre">uninstall</span> <span class="pre">paddle</span></code>, 清理掉老旧的PaddlePaddle安装包，使得单元测试有一个干净的环境。如果PaddlePaddle包已经在python的site-packages里面，单元测试会引用site-packages里面的python包，而不是源码目录里 <code class="code docutils literal"><span class="pre">/python</span></code> 目录下的python包。同时，即便设置 <code class="code docutils literal"><span class="pre">PYTHONPATH</span></code> 到 <code class="code docutils literal"><span class="pre">/python</span></code> 也没用，因为python的搜索路径是优先已经安装的python包。</li>
+</ul>
+</div>
+<div class="section" id="docker-gpu-cuda-driver-version-is-insufficient">
+<h2><a class="toc-backref" href="#id24">9. 运行Docker GPU镜像出现 &#8220;CUDA driver version is insufficient&#8221;</a><a class="headerlink" href="#docker-gpu-cuda-driver-version-is-insufficient" title="永久链接至标题">¶</a></h2>
+<p>用户在使用PaddlePaddle GPU的Docker镜像的时候，常常出现 <cite>Cuda Error: CUDA driver version is insufficient for CUDA runtime version</cite>, 原因在于没有把机器上CUDA相关的驱动和库映射到容器内部。
+具体的解决方法是：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ <span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+$ <span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
+$ docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddlepaddle:latest-gpu
+</pre></div>
+</div>
+<p>更多关于Docker的安装与使用, 请参考 <a class="reference external" href="http://www.paddlepaddle.org/doc_cn/build_and_install/install/docker_install.html">PaddlePaddle Docker 文档</a> 。</p>
+</div>
+<div class="section" id="cmake-pythonlibspythoninterp">
+<h2><a class="toc-backref" href="#id25">10. CMake源码编译, 找到的PythonLibs和PythonInterp版本不一致</a><a class="headerlink" href="#cmake-pythonlibspythoninterp" title="永久链接至标题">¶</a></h2>
+<p>这是目前CMake寻找Python的逻辑存在缺陷，如果系统安装了多个Python版本，CMake找到的Python库和Python解释器版本可能有不一致现象，导致编译PaddlePaddle失败。正确的解决方法是，
+用户强制指定特定的Python版本，具体操作如下：</p>
+<blockquote>
+<div><div class="highlight-bash"><div class="highlight"><pre><span></span>cmake .. -DPYTHON_EXECUTABLE<span class="o">=</span>&lt;exc_path&gt; -DPYTHON_LIBRARY<span class="o">=</span>&lt;lib_path&gt;  -DPYTHON_INCLUDE_DIR<span class="o">=</span>&lt;inc_path&gt;
+</pre></div>
+</div>
+</div></blockquote>
+<p>用户需要指定本机上Python的路径：<code class="docutils literal"><span class="pre">&lt;exc_path&gt;</span></code>, <code class="docutils literal"><span class="pre">&lt;lib_path&gt;</span></code>, <code class="docutils literal"><span class="pre">&lt;inc_path&gt;</span></code></p>
+</div>
+<div class="section" id="a-protocol-message-was-rejected-because-it-was-too-big">
+<h2><a class="toc-backref" href="#id26">10. A protocol message was rejected because it was too big</a><a class="headerlink" href="#a-protocol-message-was-rejected-because-it-was-too-big" title="永久链接至标题">¶</a></h2>
+<p>如果在训练NLP相关模型时，出现以下错误：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="o">[</span>libprotobuf ERROR google/protobuf/io/coded_stream.cc:171<span class="o">]</span> A protocol message was rejected because it was too big <span class="o">(</span>more than <span class="m">67108864</span> bytes<span class="o">)</span>.  To increase the limit <span class="o">(</span>or to disable these warnings<span class="o">)</span>, see CodedInputStream::SetTotalBytesLimit<span class="o">()</span> in google/protobuf/io/coded_stream.h.
+F1205 <span class="m">14</span>:59:50.295174 <span class="m">14703</span> TrainerConfigHelper.cpp:59<span class="o">]</span> Check failed: m-&gt;conf.ParseFromString<span class="o">(</span>configProtoStr<span class="o">)</span>
+</pre></div>
+</div>
+<p>可能的原因是：传给dataprovider的某一个args过大，一般是由于直接传递大字典导致的。错误的define_py_data_sources2类似：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">src_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">line_count</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">src_dict_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)):</span>
+   <span class="n">src_dict</span><span class="p">[</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span> <span class="o">=</span> <span class="n">line_count</span>
+
+<span class="n">define_py_data_sources2</span><span class="p">(</span>
+   <span class="n">train_list</span><span class="p">,</span>
+   <span class="n">test_list</span><span class="p">,</span>
+   <span class="n">module</span><span class="o">=</span><span class="s2">&quot;dataprovider&quot;</span><span class="p">,</span>
+   <span class="n">obj</span><span class="o">=</span><span class="s2">&quot;process&quot;</span><span class="p">,</span>
+   <span class="n">args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;src_dict&quot;</span><span class="p">:</span> <span class="n">src_dict</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>解决方案是：将字典的地址作为args传给dataprovider，然后在dataprovider里面根据该地址加载字典。即define_py_data_sources2应改为：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">define_py_data_sources2</span><span class="p">(</span>
+   <span class="n">train_list</span><span class="p">,</span>
+   <span class="n">test_list</span><span class="p">,</span>
+   <span class="n">module</span><span class="o">=</span><span class="s2">&quot;dataprovider&quot;</span><span class="p">,</span>
+   <span class="n">obj</span><span class="o">=</span><span class="s2">&quot;process&quot;</span><span class="p">,</span>
+   <span class="n">args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;src_dict_path&quot;</span><span class="p">:</span> <span class="n">src_dict_path</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>完整源码可参考 <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/tree/develop/demo/seqToseq">seqToseq</a> 示例。</p>
+</div>
+<div class="section" id="gpu">
+<h2><a class="toc-backref" href="#id27">11. 如何指定GPU设备</a><a class="headerlink" href="#gpu" title="永久链接至标题">¶</a></h2>
+<p>例如机器上有4块GPU，编号从0开始，指定使用2、3号GPU：</p>
+<ul class="simple">
+<li>方式1：通过 <a class="reference external" href="http://www.acceleware.com/blog/cudavisibledevices-masking-gpus">CUDA_VISIBLE_DEVICES</a> 环境变量来指定特定的GPU。</li>
+</ul>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>env <span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="m">2</span>,3 paddle train --use_gpu<span class="o">=</span><span class="nb">true</span> --trainer_count<span class="o">=</span><span class="m">2</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>方式2：通过命令行参数 <code class="docutils literal"><span class="pre">--gpu_id</span></code> 指定。</li>
+</ul>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train --use_gpu<span class="o">=</span><span class="nb">true</span> --trainer_count<span class="o">=</span><span class="m">2</span> --gpu_id<span class="o">=</span><span class="m">2</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="floating-point-exception">
+<h2><a class="toc-backref" href="#id28">12. 训练过程中出现 <code class="code docutils literal"><span class="pre">Floating</span> <span class="pre">point</span> <span class="pre">exception</span></code>, 训练因此退出怎么办?</a><a class="headerlink" href="#floating-point-exception" title="永久链接至标题">¶</a></h2>
+<p>Paddle二进制在运行时捕获了浮点数异常，只要出现浮点数异常(即训练过程中出现NaN或者Inf)，立刻退出。浮点异常通常的原因是浮点数溢出、除零等问题。
+主要原因包括两个方面:</p>
+<ul class="simple">
+<li>训练过程中参数或者训练过程中的梯度尺度过大，导致参数累加，乘除等时候，导致了浮点数溢出。</li>
+<li>模型一直不收敛，发散到了一个数值特别大的地方。</li>
+<li>训练数据有问题，导致参数收敛到了一些奇异的情况。或者输入数据尺度过大，有些特征的取值达到数百万，这时进行矩阵乘法运算就可能导致浮点数溢出。</li>
+</ul>
+<p>主要的解决办法是减小学习律或者对数据进行归一化处理。</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../api/v2/run_logic.html" class="btn btn-neutral" title="Training and Inference" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

@@ -1,0 +1,478 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>PaddlePaddle Design Doc &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../genindex.html"/>
+        <link rel="search" title="搜索" href="../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>PaddlePaddle Design Doc</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="paddlepaddle-design-doc">
+<span id="paddlepaddle-design-doc"></span><h1>PaddlePaddle Design Doc<a class="headerlink" href="#paddlepaddle-design-doc" title="永久链接至标题">¶</a></h1>
+<div class="section" id="ingredients">
+<span id="ingredients"></span><h2>Ingredients<a class="headerlink" href="#ingredients" title="永久链接至标题">¶</a></h2>
+<p>As our design principle is starting from the essence: how could we
+allow users to express and solve their problems at neural networks.
+Some essential concepts that our API have to provide include:</p>
+<ol class="simple">
+<li>A <em>topology</em> is an expression of <em>layers</em>.</li>
+<li>A layer could be any kind of computation, including <em>cost</em>.</li>
+<li>Some layers have parameters, some don&#8217;t. Most costs don&#8217;t have
+parameters.</li>
+<li>In some topologies, layers share parameters.  For
+example,
+<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/issues/1311#issuecomment-279121850">the network for training a ranking model</a>.</li>
+<li>At programming time, users specify topologies and possible sharing
+of parameters.  PaddlePaddle can figure out and create parameters
+required (and possibly shared) by one or more topologies.</li>
+</ol>
+</div>
+<div class="section" id="starting-from-examples">
+<span id="starting-from-examples"></span><h2>Starting from Examples<a class="headerlink" href="#starting-from-examples" title="永久链接至标题">¶</a></h2>
+<p>As a summarization
+of
+<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/issues/1315">our disucssion</a>,
+let us present two examples here:</p>
+<div class="section" id="example-1-sharing-parameters-between-layers">
+<span id="example-1-sharing-parameters-between-layers"></span><h3>Example 1. Sharing Parameters between Layers<a class="headerlink" href="#example-1-sharing-parameters-between-layers" title="永久链接至标题">¶</a></h3>
+<p>We use
+the
+<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/issues/1311#issuecomment-279121850">3-branch ranking</a> model
+in this example.  For your convenience, I copy-a-paste the model&#8217;s
+topology as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">A</span> <span class="o">-&gt;</span> <span class="n">f</span> <span class="o">-</span>\
+<span class="n">Q</span> <span class="o">-&gt;</span> <span class="n">f</span> <span class="o">--&gt;</span> <span class="n">cost</span>
+<span class="n">B</span> <span class="o">-&gt;</span> <span class="n">f</span> <span class="o">-/</span>
+</pre></div>
+</div>
+<p>The following program trains the topology including the cost, and then
+use the sub-network in the trained topology in inference:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="ow">in</span><span class="p">):</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">embedding</span><span class="p">(</span><span class="ow">in</span><span class="p">,</span> <span class="n">parameter_name</span><span class="o">=</span><span class="s2">&quot;embedding&quot;</span><span class="p">)</span>
+    <span class="n">o</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">parameter_name</span><span class="o">=</span><span class="s2">&quot;semantic&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">o</span>
+
+<span class="c1"># Create 3 topologies (subnets), they share parameters because all</span>
+<span class="c1"># correspoinding layers have the same parameter names.</span>
+<span class="n">fA</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">data</span><span class="p">(</span><span class="n">input_name</span><span class="o">=</span><span class="s2">&quot;A&quot;</span><span class="p">))</span>
+<span class="n">fB</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">data</span><span class="p">(</span><span class="n">input_name</span><span class="o">=</span><span class="s2">&quot;B&quot;</span><span class="p">))</span>
+<span class="n">fQ</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">data</span><span class="p">(</span><span class="n">input_name</span><span class="o">=</span><span class="s2">&quot;Q&quot;</span><span class="p">))</span>
+
+<span class="n">topology</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">less_than</span><span class="p">(</span>
+               <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">cross_entropy</span><span class="p">(</span><span class="n">fA</span><span class="p">,</span> <span class="n">fQ</span><span class="p">),</span>
+               <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">corss_entropy</span><span class="p">(</span><span class="n">fB</span><span class="p">,</span> <span class="n">fQ</span><span class="p">))</span>
+
+<span class="c1"># Derive parameters required in topology and create them in model.</span>
+<span class="n">parameters</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">topology</span><span class="p">)</span>
+
+<span class="c1"># Estimate parameters used in topology from data.</span>
+<span class="n">paddle</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">topology</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">reader</span><span class="o">=</span><span class="n">read_ranking_model_data</span><span class="p">)</span>
+
+<span class="c1"># Inference using fA (or fB or fC, as they share their parameters).</span>
+<span class="p">[</span><span class="n">testA</span><span class="p">,</span> <span class="n">testB</span><span class="p">,</span> <span class="n">testQ</span><span class="p">]</span> <span class="o">=</span> <span class="n">read_ranking_model_data</span><span class="p">()</span>
+<span class="k">print</span> <span class="s2">&quot;The sematic-vector of testA: &quot;</span><span class="p">,</span> <span class="n">paddle</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">fA</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">testA</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-2-sharing-parameters-between-models">
+<span id="example-2-sharing-parameters-between-models"></span><h3>Example 2. Sharing Parameters between &#8220;Models&#8221;<a class="headerlink" href="#example-2-sharing-parameters-between-models" title="永久链接至标题">¶</a></h3>
+<p>We use <a class="reference external" href="https://github.com/PaddlePaddle/book/tree/develop/gan">GAN</a> in
+this example.  In the following example program, <code class="docutils literal"><span class="pre">d0</span></code> and <code class="docutils literal"><span class="pre">d1</span></code>
+correspond to the two networks in the following figure:</p>
+<p><img src="https://github.com/wangyang59/book/raw/00036f4b0da5225041a6824587c1a01cf20159b1/gan/image/gan_ig.png" width=400 /></p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">G</span><span class="p">(</span><span class="ow">in</span><span class="p">):</span>
+    <span class="c1"># over-simplified example as G has only one layers:</span>
+    <span class="k">return</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">fc</span><span class="p">(</span><span class="ow">in</span><span class="p">,</span> <span class="n">parameter_name</span><span class="o">=</span><span class="s2">&quot;G&quot;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">D</span><span class="p">(</span><span class="ow">in</span><span class="p">);</span>
+    <span class="c1"># again, over-simplified:</span>
+    <span class="k">return</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">fc</span><span class="p">(</span><span class="ow">in</span><span class="p">,</span> <span class="n">parameter_name</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">)</span>
+
+<span class="c1"># Construct the first topology, which contains both D and G.</span>
+<span class="c1"># By learning this topology, we update parameters of G.</span>
+<span class="n">d0</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">should_be_false</span><span class="p">(</span><span class="n">D</span><span class="p">(</span><span class="n">G</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">data</span><span class="p">())))</span>
+
+<span class="c1"># Construct a second topology d1, which contains only D. By</span>
+<span class="c1"># training this topology, we update parameters of D.  Note</span>
+<span class="c1"># that d1 share parameters with d0.</span>
+<span class="n">d1</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">should_be_true</span><span class="p">(</span><span class="n">D</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">data</span><span class="p">()))</span>
+
+<span class="c1"># Create parameters from a list of multiple topologies (models) for</span>
+<span class="c1"># the chance to share parameters between these topologies.</span>
+<span class="n">parameters</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">create</span><span class="p">([</span><span class="n">d0</span><span class="p">,</span> <span class="n">d1</span><span class="p">])</span>
+
+<span class="c1"># Iterative training of GAN.</span>
+<span class="k">for</span> <span class="o">...</span><span class="p">:</span>
+    <span class="n">train</span><span class="p">(</span><span class="n">d0</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">reader</span><span class="o">=</span><span class="n">read_from_rng</span><span class="p">,</span> <span class="n">immutable_parameters</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;D&quot;</span><span class="p">})</span>
+    <span class="n">train</span><span class="p">(</span><span class="n">d1</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">reader</span><span class="o">=</span><span class="n">read_from_realistic_images</span><span class="p">)</span>
+
+<span class="c1"># Use d1 for inference:</span>
+<span class="k">print</span> <span class="s2">&quot;D thinks a batch of images are realistic &quot;</span><span class="p">,</span> <span class="n">infer</span><span class="p">(</span><span class="n">d1</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">read_mnist_images</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="summarization">
+<span id="summarization"></span><h3>Summarization<a class="headerlink" href="#summarization" title="永久链接至标题">¶</a></h3>
+<p>Above two programs reveal some important design concerns:</p>
+<ol class="simple">
+<li>Users describe a topology as an expression of layers.  Every layer
+has a <em>parameter name</em>.  If the users don&#8217;t specify it explicitly, it&#8217;s automatically generated as a unique name.  By
+specifying the parameter name, users can specify the sharing of
+parameters between layers and even between topologies.</li>
+<li><code class="docutils literal"><span class="pre">paddle.parameters.create</span></code> figures out parameters required by one
+or more topologies from parameter names of layers.  It creates these
+parameters and returns a <code class="docutils literal"><span class="pre">ParameterSet</span></code> object, which is in essence
+a map from <em>parameter names</em> to <em>parameters</em>.</li>
+<li>At training and inference time, <code class="docutils literal"><span class="pre">paddle.train</span></code> and <code class="docutils literal"><span class="pre">paddle.infer</span></code>
+requires both a topology and the parameter set that holds the parameters of that topology.  There are some reasons:<ol>
+<li>This prevents users from forgetting to call
+<code class="docutils literal"><span class="pre">paddle.parameters.create</span></code>.</li>
+<li><code class="docutils literal"><span class="pre">paddle.train</span></code> needs to know which parameter set to update.</li>
+<li>Users could load another (pre-trained) parameter set and use it
+with a topology in <code class="docutils literal"><span class="pre">train.infer</span></code>.</li>
+</ol>
+</li>
+<li>By specifying the <code class="docutils literal"><span class="pre">immutable_parameters</span></code> parameter of
+<code class="docutils literal"><span class="pre">paddle.train</span></code>, we can forbid the update of these parameters.</li>
+</ol>
+</div>
+</div>
+<div class="section" id="reader">
+<span id="reader"></span><h2>Reader<a class="headerlink" href="#reader" title="永久链接至标题">¶</a></h2>
+<p>Not all programming frameworks allow users to define I/O functions.
+An example is Google MapReduce, which can only read from text,
+SSTable, and RecordIO files.  Hadoop MapReduce allows users to define
+readers and writers by deriving from base classes <code class="docutils literal"><span class="pre">Reader</span></code> and
+<code class="docutils literal"><span class="pre">Writer</span></code>.  The former is less flexible but also less error-prone.  We
+decide to provide the flexibility to users to define their readers.</p>
+<p>There are some open questions here:</p>
+<ol class="simple">
+<li><strong>Should a reader return a Python dictionary?</strong></li>
+<li><strong>How to map multiple outputs from a reader to multiple data layers?</strong></li>
+<li><strong>How to easily compose some existing readers to read more data and
+feed a topology with more data layers?</strong></li>
+</ol>
+</div>
+<div class="section" id="training">
+<span id="training"></span><h2>Training<a class="headerlink" href="#training" title="永久链接至标题">¶</a></h2>
+<p>The recommended way to training a model is to call <code class="docutils literal"><span class="pre">paddle.train</span></code>,
+which simply calls <code class="docutils literal"><span class="pre">paddle.trainer.Default</span></code>, a global variable of
+type <code class="docutils literal"><span class="pre">paddle.trainer.SGD</span></code>.  Equivalently, we can do</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">opt</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">paddle</span><span class="o">.</span><span class="n">updater</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="o">...</span><span class="p">))</span>
+<span class="n">opt</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">topology</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">reader</span><span class="o">=</span><span class="n">read</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="section" id="updater">
+<span id="updater"></span><h3>Updater<a class="headerlink" href="#updater" title="永久链接至标题">¶</a></h3>
+<p>Please be aware that a trainer can accept an updater as its data
+member, where an updater is a class derived from
+<code class="docutils literal"><span class="pre">paddle.trainer.Updater</span></code>.  This is to make it easier to customize
+trainers, as discussed
+<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/issues/1319">here</a>.</p>
+</div>
+<div class="section" id="event-handler">
+<span id="event-handler"></span><h3>Event Handler<a class="headerlink" href="#event-handler" title="永久链接至标题">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">paddle.train</span></code> and <code class="docutils literal"><span class="pre">paddle.trainer.XXX.train</span></code> take an optional
+parameter <code class="docutils literal"><span class="pre">event_handler</span></code>, which should be either <code class="docutils literal"><span class="pre">None</span></code> or a function
+that handle some events:</p>
+<ol class="simple">
+<li>BeginTraining</li>
+<li>EndTraining</li>
+<li>BeginIteration</li>
+<li>EndIteration</li>
+<li>BeginPass</li>
+<li>EndPass</li>
+</ol>
+<p>where EndPass is sent if and only if the reader yields
+<code class="docutils literal"><span class="pre">end_pass=True</span></code>.</p>
+<p>An example as follows:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">event_handler</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">ininstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">paddle</span><span class="o">.</span><span class="n">event</span><span class="o">.</span><span class="n">EndIteration</span><span class="p">):</span>
+        <span class="k">print</span> <span class="n">paddle</span><span class="o">.</span><span class="n">test</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+
+<span class="n">paddle</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">topology</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="n">event_handler</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If we are writing a PaddlePaddle program in and for iPython/Jypyter,
+we can use metaplotlib in the event handler to plot a curve of
+cost/error versus iterations, as shown
+<a class="reference external" href="https://blog.dominodatalab.com/interactive-dashboards-in-jupyter/">here</a>.</p>
+</div>
+<div class="section" id="distributed-training">
+<span id="distributed-training"></span><h3>Distributed Training<a class="headerlink" href="#distributed-training" title="永久链接至标题">¶</a></h3>
+<p>If users want to do distributed training on a cluster, s/he should
+call <code class="docutils literal"><span class="pre">paddle.dist_train</span></code> and provides access tokens to the cluster as
+a parameter.</p>
+<p>For example, if the user has a TLS certificate that allows him to
+access a Kubernetes cluster, s/he should be able to call</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">paddle</span><span class="o">.</span><span class="n">dist_train</span><span class="p">(</span><span class="n">model</span><span class="p">,</span>
+                  <span class="n">trainer</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="o">...</span><span class="p">,</span>
+                                             <span class="n">paddle</span><span class="o">.</span><span class="n">updater</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="o">...</span><span class="p">)),</span>
+                  <span class="n">reader</span><span class="o">=</span><span class="n">read</span><span class="p">,</span>
+                  <span class="n">k8s_user</span><span class="o">=</span><span class="s2">&quot;yi&quot;</span><span class="p">,</span>
+                  <span class="n">k8s_token</span><span class="o">=</span><span class="s2">&quot;kube_cluster_tls.pem&quot;</span><span class="p">,</span>
+                  <span class="n">k8s_job</span><span class="o">=</span><span class="s2">&quot;hello&quot;</span><span class="p">,</span>
+                  <span class="n">num_parameter_servers</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The pseudo code if <code class="docutils literal"><span class="pre">paddle.dist_train</span></code> is as follows:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">dist_train</span><span class="p">(</span><span class="n">topology</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;KUBERNETES_SERVICE_HOST&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">image_name</span> <span class="o">=</span> <span class="n">k8s_user</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">k8s_job</span>
+        <span class="n">docker_build</span><span class="p">(</span><span class="n">image_name</span><span class="p">)</span>
+        <span class="n">docker_push</span><span class="p">()</span>
+        <span class="n">kube_ctrl_start_job</span><span class="p">(</span><span class="n">image_name</span><span class="p">,</span> <span class="n">k8s_user</span><span class="p">,</span> <span class="n">k8s_token</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">rank</span> <span class="o">=</span> <span class="n">kube_list_containers_in_job_and_return_current_containers_rank</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">master</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">rank</span> <span class="o">&lt;</span> <span class="mi">15</span><span class="p">:</span>
+            <span class="n">parameter_server</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">reader</span><span class="o">=</span><span class="n">read</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Please be aware that if a process is running on the Kubernetes
+cluster, it will have some environment variables pre-defined.</p>
+<p>If <code class="docutils literal"><span class="pre">dist_train</span></code> doesn&#8217;t see these environment variables, it knows
+that it&#8217;s running on users&#8217; personal computer, and it should work as a
+<em>launcher</em>.  Otherwise, it knows that it&#8217;s running on the cluster and
+need to figure out its role as either the master, or a trainer, or a
+parameter server.</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

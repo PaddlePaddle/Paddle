@@ -1,0 +1,439 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>如何贡献代码 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/>
+        <link rel="up" title="进阶指南" href="../index_cn.html"/>
+        <link rel="next" title="RNN相关模型" href="../deep_model/rnn/index_cn.html"/>
+        <link rel="prev" title="如何贡献/修改文档" href="write_docs_cn.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index_cn.html">进阶指南</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../index_cn.html">进阶指南</a> > </li>
+      
+    <li>如何贡献代码</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="">
+<span id="id1"></span><h1>如何贡献代码<a class="headerlink" href="#" title="永久链接至标题">¶</a></h1>
+<p>我们真诚地感谢您的贡献，欢迎通过 GitHub 的 fork 和 pull request 流程来提交代码。</p>
+<div class="section" id="">
+<span id="id2"></span><h2>代码要求<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li>代码注释请遵守 <a class="reference external" href="http://www.stack.nl/~dimitri/doxygen/">Doxygen</a> 的样式。</li>
+<li>确保编译器选项 <code class="docutils literal"><span class="pre">WITH_STYLE_CHECK</span></code> 已打开，并且编译能通过代码样式检查。</li>
+<li>所有代码必须具有单元测试。</li>
+<li>通过所有单元测试。</li>
+</ul>
+<p>以下教程将指导您提交代码。</p>
+</div>
+<div class="section" id="fork">
+<span id="fork"></span><h2><a class="reference external" href="https://help.github.com/articles/fork-a-repo/">Fork</a><a class="headerlink" href="#fork" title="永久链接至标题">¶</a></h2>
+<p>跳转到<a class="reference external" href="https://github.com/PaddlePaddle/Paddle">PaddlePaddle</a> GitHub首页，然后单击 <code class="docutils literal"><span class="pre">Fork</span></code> 按钮，生成自己目录下的仓库，比如 <a class="reference external" href="https://github.com/USERNAME/Paddle">https://github.com/USERNAME/Paddle</a>。</p>
+</div>
+<div class="section" id="clone">
+<span id="clone"></span><h2>克隆（Clone）<a class="headerlink" href="#clone" title="永久链接至标题">¶</a></h2>
+<p>将远程仓库 clone 到本地：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git clone https://github.com/USERNAME/Paddle
+➜  <span class="nb">cd</span> Paddle
+</pre></div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h2>创建本地分支<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>Paddle 目前使用<a class="reference external" href="http://nvie.com/posts/a-successful-git-branching-model/">Git流分支模型</a>进行开发，测试，发行和维护，具体请参考 <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/releasing_process.md#paddle-分支规范">Paddle 分支规范</a>。</p>
+<p>所有的 feature 和 bug fix 的开发工作都应该在一个新的分支上完成，一般从 <code class="docutils literal"><span class="pre">develop</span></code> 分支上创建新分支。</p>
+<p>使用 <code class="docutils literal"><span class="pre">git</span> <span class="pre">checkout</span> <span class="pre">-b</span></code> 创建并切换到新分支。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git checkout -b my-cool-stuff
+</pre></div>
+</div>
+<p>值得注意的是，在 checkout 之前，需要保持当前分支目录 clean，否则会把 untracked 的文件也带到新分支上，这可以通过 <code class="docutils literal"><span class="pre">git</span> <span class="pre">status</span></code> 查看。</p>
+</div>
+<div class="section" id="pre-commit">
+<span id="pre-commit"></span><h2>使用 <code class="docutils literal"><span class="pre">pre-commit</span></code> 钩子<a class="headerlink" href="#pre-commit" title="永久链接至标题">¶</a></h2>
+<p>Paddle 开发人员使用 <a class="reference external" href="http://pre-commit.com/">pre-commit</a> 工具来管理 Git 预提交钩子。 它可以帮助我们格式化源代码（C++，Python），在提交（commit）前自动检查一些基本事宜（如每个文件只有一个 EOL，Git 中不要添加大文件等）。</p>
+<p><code class="docutils literal"><span class="pre">pre-commit</span></code>测试是 Travis-CI 中单元测试的一部分，不满足钩子的 PR 不能被提交到 Paddle，首先安装并在当前目录运行它：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  pip install pre-commit
+➜  pre-commit install
+</pre></div>
+</div>
+<p>Paddle 使用 <code class="docutils literal"><span class="pre">clang-format</span></code> 来调整 C/C++ 源代码格式，请确保 <code class="docutils literal"><span class="pre">clang-format</span></code> 版本在 3.8 以上。</p>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h2>开始开发<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>在本例中，我删除了 README.md 中的一行，并创建了一个新文件。</p>
+<p>通过 <code class="docutils literal"><span class="pre">git</span> <span class="pre">status</span></code> 查看当前状态，这会提示当前目录的一些变化，同时也可以通过 <code class="docutils literal"><span class="pre">git</span> <span class="pre">diff</span></code> 查看文件具体被修改的内容。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git status
+On branch <span class="nb">test</span>
+Changes not staged <span class="k">for</span> commit:
+  <span class="o">(</span>use <span class="s2">&quot;git add &lt;file&gt;...&quot;</span> to update what will be committed<span class="o">)</span>
+  <span class="o">(</span>use <span class="s2">&quot;git checkout -- &lt;file&gt;...&quot;</span> to discard changes in working directory<span class="o">)</span>
+
+    modified:   README.md
+
+Untracked files:
+  <span class="o">(</span>use <span class="s2">&quot;git add &lt;file&gt;...&quot;</span> to include in what will be committed<span class="o">)</span>
+
+    <span class="nb">test</span>
+
+no changes added to commit <span class="o">(</span>use <span class="s2">&quot;git add&quot;</span> and/or <span class="s2">&quot;git commit -a&quot;</span><span class="o">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h2>构建和测试<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>编译 PaddlePaddle 的源码以及生成文档需要多种开发工具。为了方便大家，我们的标准开发流程是把这些工具都装进一个Docker image，称为<em>开发镜像</em>，通常名字是 <code class="docutils literal"><span class="pre">paddle:dev</span></code>。然后所有用 <code class="docutils literal"><span class="pre">cmake</span> <span class="pre">&amp;&amp;</span> <span class="pre">make</span></code> 的地方（比如IDE配置里）都用 <code class="docutils literal"><span class="pre">docker</span> <span class="pre">run</span> <span class="pre">paddle:dev</span></code>来代替。</p>
+<p>如要build这个开发镜像，在源码目录树的根目录中运行：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker build -t paddle:dev .
+</pre></div>
+</div>
+<p>随后可以用这个开发镜像开build PaddlePaddle的源码。比如如果要build一个不依赖GPU，但是支持AVX指令集，并且包括unit tests的PaddlePaddle，可以：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker run -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/paddle -e <span class="s2">&quot;WITH_GPU=OFF&quot;</span> -e <span class="s2">&quot;WITH_AVX=ON&quot;</span> -e <span class="s2">&quot;WITH_TEST=ON&quot;</span> paddle:dev
+</pre></div>
+</div>
+<p>这个过程除了编译PaddlePaddle为 <code class="docutils literal"><span class="pre">./build/libpaddle.so</span></code>，并且输出一个 <code class="docutils literal"><span class="pre">./build/paddle.deb</span></code>文件之外，还会输出一个 <code class="docutils literal"><span class="pre">build/Dockerfile</span></code>。我们只需要运行下面命令把编译好的PaddlePaddle打包成一个<em>生产镜像</em>（<code class="docutils literal"><span class="pre">paddle:prod</span></code>）：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker build -t paddle:prod -f build/Dockerfile .
+</pre></div>
+</div>
+<p>如果要运行所有的单元测试，可以用如下命令：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker run -it -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/paddle paddle:dev bash -c <span class="s2">&quot;cd /paddle/build &amp;&amp; ctest&quot;</span>
+</pre></div>
+</div>
+<p>关于构建和测试的更多信息，请参见<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_cn.rst">这篇文档</a>。</p>
+</div>
+<div class="section" id="commit">
+<span id="commit"></span><h2>提交（commit）<a class="headerlink" href="#commit" title="永久链接至标题">¶</a></h2>
+<p>接下来我们取消对 README.md 文件的改变，然后提交新添加的 test 文件。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git checkout -- README.md
+➜  git status
+On branch <span class="nb">test</span>
+Untracked files:
+  <span class="o">(</span>use <span class="s2">&quot;git add &lt;file&gt;...&quot;</span> to include in what will be committed<span class="o">)</span>
+
+    <span class="nb">test</span>
+
+nothing added to commit but untracked files present <span class="o">(</span>use <span class="s2">&quot;git add&quot;</span> to track<span class="o">)</span>
+➜  git add <span class="nb">test</span>
+</pre></div>
+</div>
+<p>Git 每次提交代码，都需要写提交说明，这可以让其他人知道这次提交做了哪些改变，这可以通过<code class="docutils literal"><span class="pre">git</span> <span class="pre">commit</span></code> 完成。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git commit
+CRLF end-lines remover...............................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+yapf.................................................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+Check <span class="k">for</span> added large files..............................................Passed
+Check <span class="k">for</span> merge conflicts................................................Passed
+Check <span class="k">for</span> broken symlinks................................................Passed
+Detect Private Key...................................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+Fix End of Files.....................................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+clang-formater.......................................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+<span class="o">[</span>my-cool-stuff c703c041<span class="o">]</span> add <span class="nb">test</span> file
+ <span class="m">1</span> file changed, <span class="m">0</span> insertions<span class="o">(</span>+<span class="o">)</span>, <span class="m">0</span> deletions<span class="o">(</span>-<span class="o">)</span>
+ create mode <span class="m">100644</span> <span class="m">233</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id6"></span><h2>保持本地仓库最新<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>在准备发起 Pull Request 之前，需要同步原仓库（<a class="reference external" href="https://github.com/PaddlePaddle/Paddle">https://github.com/PaddlePaddle/Paddle</a>）最新的代码。</p>
+<p>首先通过 <code class="docutils literal"><span class="pre">git</span> <span class="pre">remote</span></code> 查看当前远程仓库的名字。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git remote
+origin
+➜  git remote -v
+origin  https://github.com/USERNAME/Paddle <span class="o">(</span>fetch<span class="o">)</span>
+origin  https://github.com/USERNAME/Paddle <span class="o">(</span>push<span class="o">)</span>
+</pre></div>
+</div>
+<p>这里 origin 是我们 clone 的远程仓库的名字，也就是自己用户名下的 Paddle，接下来我们创建一个原始 Paddle 仓库的远程主机，命名为 upstream。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git remote add upstream https://github.com/PaddlePaddle/Paddle
+➜  git remote
+origin
+upstream
+</pre></div>
+</div>
+<p>获取 upstream 的最新代码并更新当前分支。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git fetch upstream
+➜  git pull upstream develop
+</pre></div>
+</div>
+</div>
+<div class="section" id="push">
+<span id="push"></span><h2>Push 到远程仓库<a class="headerlink" href="#push" title="永久链接至标题">¶</a></h2>
+<p>将本地的修改推送到 GitHub 上，也就是 https://github.com/USERNAME/Paddle。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># 推送到远程仓库 origin 的 my-cool-stuff 分支上</span>
+➜  git push origin my-cool-stuff
+</pre></div>
+</div>
+</div>
+<div class="section" id="issue-pull-request">
+<span id="issue-pull-request"></span><h2>建立 Issue 并完成 Pull Request<a class="headerlink" href="#issue-pull-request" title="永久链接至标题">¶</a></h2>
+<p>建立一个 Issue 描述问题，并记录它的编号。</p>
+<p>切换到所建分支，然后点击 <code class="docutils literal"><span class="pre">New</span> <span class="pre">pull</span> <span class="pre">request</span></code>。</p>
+<p><img width="295" alt="screen shot 2017-04-26 at 9 09 28 pm" src="https://cloud.githubusercontent.com/assets/11692045/25436054/a6d98c66-2ac4-11e7-9cb1-18dd13150230.png"></p>
+<p>选择目标分支：</p>
+<p><img width="750" alt="screen shot 2017-04-26 at 9 11 52 pm" src="https://cloud.githubusercontent.com/assets/11692045/25436139/f83b1e6c-2ac4-11e7-8c0e-add499023c46.png"></p>
+<p>在 PR 的描述说明中，填写 <code class="docutils literal"><span class="pre">resolve</span> <span class="pre">#Issue编号</span></code> 可以在这个 PR 被 merge 后，自动关闭对应的 Issue，具体请见 <a class="reference external" href="https://help.github.com/articles/closing-issues-via-commit-messages/">https://help.github.com/articles/closing-issues-via-commit-messages/</a>。</p>
+<p>接下来等待 review，如果有需要修改的地方，参照上述步骤更新 origin 中的对应分支即可。</p>
+</div>
+<div class="section" id="">
+<span id="id7"></span><h2>删除远程分支<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>在 PR 被 merge 进主仓库后，我们可以在 PR 的页面删除远程仓库的分支。</p>
+<p><img width="775" alt="screen shot 2017-04-26 at 9 18 24 pm" src="https://cloud.githubusercontent.com/assets/11692045/25436457/e4cdd472-2ac5-11e7-9272-badc76c4a23e.png"></p>
+<p>也可以使用 <code class="docutils literal"><span class="pre">git</span> <span class="pre">push</span> <span class="pre">origin</span> <span class="pre">:分支名</span></code> 删除远程分支，如：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git push origin :my-cool-stuff
+</pre></div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id8"></span><h2>删除本地分支<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>最后，删除本地分支。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># 切换到 develop 分支</span>
+➜  git checkout develop 
+
+<span class="c1"># 删除 my-cool-stuff 分支</span>
+➜  git branch -D my-cool-stuff
+</pre></div>
+</div>
+<p>至此，我们就完成了一次代码贡献的过程。</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../deep_model/rnn/index_cn.html" class="btn btn-neutral float-right" title="RNN相关模型" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="write_docs_cn.html" class="btn btn-neutral" title="如何贡献/修改文档" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

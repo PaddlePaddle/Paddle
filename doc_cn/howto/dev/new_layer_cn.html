@@ -1,0 +1,615 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>实现新的网络层 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>实现新的网络层</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="id1">
+<h1>实现新的网络层<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h1>
+<p>这份教程展示了如何在PaddlePaddle中实现一个自定义的网络层。在这里我们使用全连接层作为例子来展示实现新网络层所需要的四个步骤。</p>
+<ol class="arabic simple">
+<li>推导该层前向和后向传递的方程。</li>
+<li>实现该层的C++类。</li>
+<li>增加梯度检测的单元测试，以保证梯度的正确计算。</li>
+<li>封装该层的Python接口。</li>
+</ol>
+<div class="section" id="id2">
+<h2>推导方程<a class="headerlink" href="#id2" title="永久链接至标题">¶</a></h2>
+<p>首先我们需要推导该网络层的*前向传播*和*后向传播*的方程。前向传播给定输入，计算输出。后向传播给定输出的梯度，计算输入和参数的梯度。</p>
+<p>下图是一个全连接层的示意图。在全连接层中，每个输出节点都连接到所有的输入节点上。</p>
+<a class="reference internal image-reference" href="../../_images/FullyConnected.jpg"><img alt="../../_images/FullyConnected.jpg" class="align-center" src="../../_images/FullyConnected.jpg" style="width: 391.2px; height: 175.2px;" /></a>
+<p>一个网络层的前向传播部分把输入转化为相应的输出。
+全连接层以一个维度为 <span class="math">\(D_i\)</span> 的稠密向量作为输入，使用一个尺度为 <span class="math">\(D_i \times D_o\)</span> 的变换矩阵 <span class="math">\(W\)</span> 把 <span class="math">\(x\)</span> 映射到一个维度为 <span class="math">\(D_o\)</span> 的向量，并在乘积结果上再加上维度为 <span class="math">\(D_o\)</span> 的偏置向量 <span class="math">\(b\)</span> 。</p>
+<div class="math">
+\[y = f(W^T x + b)\]</div>
+<p>其中 <span class="math">\(f(.)\)</span> 是一个非线性的*激活方程*，例如sigmoid， tanh，以及Relu。</p>
+<p>变换矩阵 <span class="math">\(W\)</span> 和偏置向量 <span class="math">\(b\)</span>  是该网络层的*参数*。一个网络层的参数是在*反向传播*时被训练的。反向传播根据输出的梯度，分别计算每个参数的梯度，以及输入的梯度。优化器则用链式法则来对每个参数计算损失函数的梯度。</p>
+<p>假设损失函数是 <span class="math">\(c(y)\)</span> ，那么</p>
+<div class="math">
+\[\frac{\partial c(y)}{\partial x} = \frac{\partial c(y)}{\partial y} \frac{\partial y}{\partial x}\]</div>
+<p>假设 <span class="math">\(z = f(W^T x + b)\)</span> ，那么</p>
+<div class="math">
+\[\frac{\partial y}{\partial z} = \frac{\partial f(z)}{\partial z}\]</div>
+<p>PaddlePaddle的base layer类可以自动计算上面的导数。</p>
+<p>因此，对全连接层来说，我们需要计算：</p>
+<div class="math">
+\[\frac{\partial z}{\partial x} = W, \frac{\partial z_j}{\partial W_{ij}} = x_i, \frac{\partial z}{\partial b} = \mathbf 1\]</div>
+<p>其中 <span class="math">\(\mathbf 1\)</span> 是一个全1的向量， <span class="math">\(W_{ij}\)</span> 是矩阵 <span class="math">\(W\)</span> 第i行第j列的数值， <span class="math">\(z_j\)</span> 是向量 <span class="math">\(z\)</span> 的第j个值， <span class="math">\(x_i\)</span> 是向量 <span class="math">\(x\)</span> 的第i个值。</p>
+<p>最后我们使用链式法则计算 <span class="math">\(\frac{\partial z}{\partial x}\)</span> 以及 <span class="math">\(\frac{\partial z}{\partial W}\)</span> 。计算的细节将在下面的小节给出。</p>
+</div>
+<div class="section" id="c">
+<h2>实现C++类<a class="headerlink" href="#c" title="永久链接至标题">¶</a></h2>
+<p>一个网络层的C++类需要实现初始化，前向和后向。全连接层的实现位于:code:<cite>paddle/gserver/layers/FullyConnectedLayer.h`及:code:`paddle/gserver/layers/FullyConnectedLayer.cpp</cite>。这里我们展示一份简化过的代码。</p>
+<p>这个类需要继承 <code class="code docutils literal"><span class="pre">paddle::Layer</span></code> 这个基类，并且需要重写基类中的以下几个虚函数：</p>
+<ul class="simple">
+<li>类的构造函数和析构函数。</li>
+<li><code class="code docutils literal"><span class="pre">init</span></code> 函数。用于初始化参数和设置。</li>
+<li><code class="code docutils literal"><span class="pre">forward</span></code> 。实现网络层的前向传播。</li>
+<li><code class="code docutils literal"><span class="pre">backward</span></code> 。实现网络层的后向传播。</li>
+<li><code class="code docutils literal"><span class="pre">prefetch</span></code> 。用来从参数服务器预取参数矩阵相应的行。如果网络层不需要远程稀疏更新，则不需要重写该函数。（大多数网络层不需要支持远程稀疏更新）</li>
+</ul>
+<p>头文件如下：</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="k">namespace</span> <span class="n">paddle</span> <span class="p">{</span>
+<span class="cm">/**</span>
+<span class="cm"> * 全连接层的每个输出都连接到上一层的所有的神经元上。</span>
+<span class="cm"> * 它的输入与经过学习的参数做内积并加上偏置（可选）。</span>
+<span class="cm"> *</span>
+<span class="cm"> * 配置文件接口是fc_layer。</span>
+<span class="cm"> */</span>
+
+<span class="k">class</span> <span class="nc">FullyConnectedLayer</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Layer</span> <span class="p">{</span>
+<span class="k">protected</span><span class="o">:</span>
+  <span class="n">WeightList</span> <span class="n">weights_</span><span class="p">;</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Weight</span><span class="o">&gt;</span> <span class="n">biases_</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+  <span class="k">explicit</span> <span class="n">FullyConnectedLayer</span><span class="p">(</span><span class="k">const</span> <span class="n">LayerConfig</span><span class="o">&amp;</span> <span class="n">config</span><span class="p">)</span>
+      <span class="o">:</span> <span class="n">Layer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span> <span class="p">{}</span>
+  <span class="o">~</span><span class="n">FullyConnectedLayer</span><span class="p">()</span> <span class="p">{}</span>
+
+  <span class="kt">bool</span> <span class="n">init</span><span class="p">(</span><span class="k">const</span> <span class="n">LayerMap</span><span class="o">&amp;</span> <span class="n">layerMap</span><span class="p">,</span> <span class="k">const</span> <span class="n">ParameterMap</span><span class="o">&amp;</span> <span class="n">parameterMap</span><span class="p">);</span>
+
+  <span class="n">Weight</span><span class="o">&amp;</span> <span class="n">getWeight</span><span class="p">(</span><span class="kt">int</span> <span class="n">idx</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="o">*</span><span class="n">weights_</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span> <span class="p">}</span>
+
+  <span class="kt">void</span> <span class="n">prefetch</span><span class="p">();</span>
+  <span class="kt">void</span> <span class="nf">forward</span><span class="p">(</span><span class="n">PassType</span> <span class="n">passType</span><span class="p">);</span>
+  <span class="kt">void</span> <span class="nf">backward</span><span class="p">(</span><span class="k">const</span> <span class="n">UpdateCallback</span><span class="o">&amp;</span> <span class="n">callback</span> <span class="o">=</span> <span class="k">nullptr</span><span class="p">);</span>
+<span class="p">};</span>
+<span class="p">}</span>  <span class="c1">// namespace paddle</span>
+</pre></div>
+</div>
+<p>头文件中把参数定义为类的成员变量。我们使用 <code class="code docutils literal"><span class="pre">Weight</span></code> 类作为参数的抽象，它支持多线程更新。该类的实现细节在“实现细节”中详细介绍。</p>
+<ul class="simple">
+<li><code class="code docutils literal"><span class="pre">weights_</span></code> 是存有一系列变换矩阵的权重。在当前的实现方式下，网络层可以有多个输入。因此，它可能有不止一个权重。每个权重对应一个输入。</li>
+<li><code class="code docutils literal"><span class="pre">biases_</span></code> 是存有偏置向量的权重。</li>
+</ul>
+<p>全连接层没有网络层配置的超参数。如果一个网络层需要配置的话，通常的做法是将配置存于 <code class="code docutils literal"><span class="pre">LayerConfig&amp;</span> <span class="pre">config</span></code> 中，并在类构建函数中把它放入一个类成员变量里。</p>
+<p>下面的代码片段实现了 <code class="code docutils literal"><span class="pre">init</span></code> 函数。</p>
+<ul class="simple">
+<li>首先，所有的 <code class="code docutils literal"><span class="pre">init</span></code> 函数必须先调用基类中的函数 <code class="code docutils literal"><span class="pre">Layer::init(layerMap,</span> <span class="pre">parameterMap);</span></code> 。该语句会为每个层初始化其所需要的变量和连接。</li>
+<li>之后初始化所有的权重矩阵 <span class="math">\(W\)</span> 。当前的实现方式下，网络层可以有多个输入。因此，它可能有不止一个权重。</li>
+<li>最后，初始化偏置向量。</li>
+</ul>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="kt">bool</span> <span class="n">FullyConnectedLayer</span><span class="o">::</span><span class="n">init</span><span class="p">(</span><span class="k">const</span> <span class="n">LayerMap</span><span class="o">&amp;</span> <span class="n">layerMap</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="n">ParameterMap</span><span class="o">&amp;</span> <span class="n">parameterMap</span><span class="p">)</span> <span class="p">{</span>
+  <span class="cm">/* 初始化父类 */</span>
+  <span class="n">Layer</span><span class="o">::</span><span class="n">init</span><span class="p">(</span><span class="n">layerMap</span><span class="p">,</span> <span class="n">parameterMap</span><span class="p">);</span>
+
+  <span class="cm">/* 初始化权重表 */</span>
+  <span class="n">CHECK</span><span class="p">(</span><span class="n">inputLayers_</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">==</span> <span class="n">parameters_</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">inputLayers_</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 获得参数尺寸</span>
+    <span class="kt">size_t</span> <span class="n">height</span> <span class="o">=</span> <span class="n">inputLayers_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getSize</span><span class="p">();</span>
+    <span class="kt">size_t</span> <span class="n">width</span> <span class="o">=</span> <span class="n">getSize</span><span class="p">();</span>
+
+    <span class="c1">// 新建一个权重</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">parameters_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">isSparse</span><span class="p">())</span> <span class="p">{</span>
+      <span class="n">CHECK_LE</span><span class="p">(</span><span class="n">parameters_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getSize</span><span class="p">(),</span> <span class="n">width</span> <span class="o">*</span> <span class="n">height</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="n">CHECK_EQ</span><span class="p">(</span><span class="n">parameters_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getSize</span><span class="p">(),</span> <span class="n">width</span> <span class="o">*</span> <span class="n">height</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">Weight</span><span class="o">*</span> <span class="n">w</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Weight</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">parameters_</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+
+    <span class="c1">// 将新建的权重加入权重表</span>
+    <span class="n">weights_</span><span class="p">.</span><span class="n">emplace_back</span><span class="p">(</span><span class="n">w</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="cm">/* 初始化biases_ */</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">biasParameter_</span><span class="p">.</span><span class="n">get</span><span class="p">()</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">biases_</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Weight</span><span class="o">&gt;</span><span class="p">(</span><span class="k">new</span> <span class="n">Weight</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">getSize</span><span class="p">(),</span> <span class="n">biasParameter_</span><span class="p">));</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>实现前向传播的部分有下面几个步骤。</p>
+<ul class="simple">
+<li>每个层在其 <code class="code docutils literal"><span class="pre">forward</span></code> 函数的开头必须调用 <code class="code docutils literal"><span class="pre">Layer::forward(passType);</span></code> 。</li>
+<li>之后使用 <code class="code docutils literal"><span class="pre">reserveOutput(batchSize,</span> <span class="pre">size);</span></code> 为输出分配内存。由于我们支持训练数据有不同的批次大小，所以这一步是必要的。 <code class="code docutils literal"><span class="pre">reserveOutput</span></code>  会相应地改变输出的尺寸。为了保证效率，如果需要扩大矩阵，我们会重新分配内存；如果需要缩减矩阵，我们会继续使用现有的内存块。</li>
+<li>之后使用矩阵运算函数来计算 <span class="math">\(\sum_i W_i x + b\)</span>。<code class="code docutils literal"><span class="pre">getInput(i).value</span></code> 返回第i个输入矩阵。每个输入都是一个 <span class="math">\(batchSize \times dim\)</span> 的矩阵，每行表示一个批次中的单个输入。对于我们支持的全部矩阵操作，请参考 <code class="code docutils literal"><span class="pre">paddle/math/Matrix.h`和:code:`paddle/math/BaseMatrix.h</span></code> 。</li>
+<li>最终，使用 <code class="code docutils literal"><span class="pre">forwardActivation();</span></code> 进行激活操作。这会自动进行网络配置中声明的激活操作。</li>
+</ul>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="n">FullyConnectedLayer</span><span class="o">::</span><span class="n">forward</span><span class="p">(</span><span class="n">PassType</span> <span class="n">passType</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">Layer</span><span class="o">::</span><span class="n">forward</span><span class="p">(</span><span class="n">passType</span><span class="p">);</span>
+
+  <span class="cm">/* 若有必要，为output_申请内存 */</span>
+  <span class="kt">int</span> <span class="n">batchSize</span> <span class="o">=</span> <span class="n">getInput</span><span class="p">(</span><span class="mi">0</span><span class="p">).</span><span class="n">getBatchSize</span><span class="p">();</span>
+  <span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="n">getSize</span><span class="p">();</span>
+
+  <span class="p">{</span>
+    <span class="c1">// 设置输出的尺寸</span>
+    <span class="n">reserveOutput</span><span class="p">(</span><span class="n">batchSize</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">MatrixPtr</span> <span class="n">outV</span> <span class="o">=</span> <span class="n">getOutputValue</span><span class="p">();</span>
+
+  <span class="c1">// 对每个输入乘上变换矩阵</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">inputLayers_</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">input</span> <span class="o">=</span> <span class="n">getInput</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+    <span class="n">CHECK</span><span class="p">(</span><span class="n">input</span><span class="p">.</span><span class="n">value</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;The input of &#39;fc&#39; layer must be matrix&quot;</span><span class="p">;</span>
+    <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">?</span> <span class="n">outV</span><span class="o">-&gt;</span><span class="n">mul</span><span class="p">(</span><span class="n">input</span><span class="p">.</span><span class="n">value</span><span class="p">,</span> <span class="n">weights_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getW</span><span class="p">(),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+           <span class="o">:</span> <span class="n">outV</span><span class="o">-&gt;</span><span class="n">mul</span><span class="p">(</span><span class="n">input</span><span class="p">.</span><span class="n">value</span><span class="p">,</span> <span class="n">weights_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getW</span><span class="p">(),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="cm">/* 加上偏置向量 */</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">biases_</span><span class="p">.</span><span class="n">get</span><span class="p">()</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">outV</span><span class="o">-&gt;</span><span class="n">addBias</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">biases_</span><span class="o">-&gt;</span><span class="n">getW</span><span class="p">()),</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="cm">/* 激活 */</span> <span class="p">{</span>
+    <span class="n">forwardActivation</span><span class="p">();</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>实现后向传播的部分有下面几个步骤。</p>
+<ul class="simple">
+<li><code class="code docutils literal"><span class="pre">backwardActivation()</span></code> 计算激活函数的梯度。通过 <code class="code docutils literal"><span class="pre">getOutputGrad()</span></code> 来获得输出的梯度，调用该函数后，梯度会就地（不使用额外空间）乘上输出的梯度。</li>
+<li>计算偏置的梯度。注意，我们使用 <code class="code docutils literal"><span class="pre">biases_-&gt;getWGrad()</span></code> 来得到某个特定参数的梯度矩阵。在一个参数的梯度被更新后，<a href="#id3"><span class="problematic" id="id4">**</span></a>必须**要调用 <code class="code docutils literal"><span class="pre">getParameterPtr()-&gt;incUpdate(callback);</span></code> 。这用于在多线程和多机上更新参数。</li>
+<li>最后，计算转换矩阵和输入的梯度，并对相应的参数调用 <code class="code docutils literal"><span class="pre">incUpdate</span></code> 。PaddlePaddle可以通过该机制判断是否已经收集齐所有的梯度，从而可以做一些与计算重叠的工作（例如，网络通信）。</li>
+</ul>
+<div class="highlight-c++"><div class="highlight"><pre><span></span>   void FullyConnectedLayer::backward(const UpdateCallback&amp; callback) {
+     /* 对激活求导 */ {
+       backwardActivation();
+     }
+
+     if (biases_ &amp;&amp; biases_-&gt;getWGrad()) {
+       biases_-&gt;getWGrad()-&gt;collectBias(*getOutputGrad(), 1);
+
+       biases_-&gt;getParameterPtr()-&gt;incUpdate(callback);
+     }
+
+     bool syncFlag = hl_get_sync_flag();
+
+     for (size_t i = 0; i != inputLayers_.size(); ++i) {
+       /* 计算当前层权重的梯度 */
+       if (weights_[i]-&gt;getWGrad()) {
+         MatrixPtr input_T = getInputValue(i)-&gt;getTranspose();
+         MatrixPtr oGrad = getOutputGrad();
+         {
+           weights_[i]-&gt;getWGrad()-&gt;mul(input_T, oGrad, 1, 1);
+         }
+       }
+
+
+       /* 计算输入层的偏差 */
+       MatrixPtr preGrad = getInputGrad(i);
+       if (NULL != preGrad) {
+         MatrixPtr weights_T = weights_[i]-&gt;getW()-&gt;getTranspose();
+         preGrad-&gt;mul(getOutputGrad(), weights_T, 1, 1);
+       }
+
+       {
+         weights_[i]-&gt;getParameterPtr()-&gt;incUpdate(callback);
+       }
+     }
+   }
+
+:code:`prefetch` 函数指出了在训练时需要从参数服务器取出的行。仅在远程稀疏训练时有效。使用远程稀疏方式训练时，完整的参数矩阵被分布在不同的参数服务器上。当网络层用一个批次做训练时，该批次的输入中仅有一个子集是非零的。因此，该层仅需要这些非零样本位置所对应的变换矩阵的那些行。 :code:`prefetch` 表明了这些行的标号。
+</pre></div>
+</div>
+<p>大多数层不需要远程稀疏训练函数。这种情况下不需要重写该函数。</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="n">FullyConnectedLayer</span><span class="o">::</span><span class="n">prefetch</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">inputLayers_</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span><span class="o">*</span> <span class="n">sparseParam</span> <span class="o">=</span>
+        <span class="k">dynamic_cast</span><span class="o">&lt;</span><span class="n">SparsePrefetchRowCpuMatrix</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">weights_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getW</span><span class="p">().</span><span class="n">get</span><span class="p">());</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sparseParam</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">MatrixPtr</span> <span class="n">input</span> <span class="o">=</span> <span class="n">getInputValue</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+      <span class="n">sparseParam</span><span class="o">-&gt;</span><span class="n">addRows</span><span class="p">(</span><span class="n">input</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>最后，使用 <code class="code docutils literal"><span class="pre">REGISTER_LAYER(fc,</span> <span class="pre">FullyConnectedLayer);</span></code> 来注册该层。 <code class="code docutils literal"><span class="pre">fc</span></code> 是该层的标识符， <code class="code docutils literal"><span class="pre">FullyConnectedLayer</span></code> 是该层的类名。</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="k">namespace</span> <span class="n">paddle</span> <span class="p">{</span>
+<span class="n">REGISTER_LAYER</span><span class="p">(</span><span class="n">fc</span><span class="p">,</span> <span class="n">FullyConnectedLayer</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>若 <code class="code docutils literal"><span class="pre">cpp</span></code> 被放在 <code class="code docutils literal"><span class="pre">paddle/gserver/layers</span></code> 目录下，其会自动被加入编译列表。</p>
+</div>
+<div class="section" id="id5">
+<h2>写梯度检查单元测试<a class="headerlink" href="#id5" title="永久链接至标题">¶</a></h2>
+<p>写梯度检查单元测试是一个验证新实现的层是否正确的相对简单的办法。梯度检查单元测试通过有限差分法来验证一个层的梯度。首先对输入做一个小的扰动 <span class="math">\(\Delta x\)</span> ，然后观察到输出的变化为 <span class="math">\(\Delta y\)</span> ，那么，梯度就可以通过这个方程计算得到 <span class="math">\(\frac{\Delta y}{\Delta x }\)</span> 。之后，再用这个梯度去和 <code class="code docutils literal"><span class="pre">backward</span></code> 函数得到的梯度去对比，以保证梯度计算的正确性。需要注意的是梯度检查仅仅验证了梯度的计算，并不保证 <code class="code docutils literal"><span class="pre">forward</span></code> 和 <code class="code docutils literal"><span class="pre">backward</span></code> 函数的实现是正确的。你需要一些更复杂的单元测试来保证你实现的网络层是正确的。</p>
+<p>所有网络层的梯度检查单测都位于 <code class="code docutils literal"><span class="pre">paddle/gserver/tests/test_LayerGrad.cpp</span></code> 。我们建议你在写新网络层时把测试代码放入新的文件中。下面列出了全连接层的梯度检查单元测试。它包含以下几步：</p>
+<ul class="simple">
+<li><dl class="first docutils">
+<dt>生成网络层配置。网络层配置包含以下几项：</dt>
+<dd><ul class="first last">
+<li>偏置参数的大小。（例子中是4096）</li>
+<li>层的类型。（例子中是fc）</li>
+<li>层的大小。（例子中是4096）</li>
+<li>激活的类型。（例子中是softmax）</li>
+<li>dropout的比例。（例子中是0.1）</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>配置网络层的输入。在这个例子里，我们仅有一个输入。</dt>
+<dd><ul class="first last">
+<li><dl class="first docutils">
+<dt>输入的类型（ <code class="code docutils literal"><span class="pre">INPUT_DATA</span></code> ），可以是以下几种：</dt>
+<dd><ul class="first last">
+<li><code class="code docutils literal"><span class="pre">INPUT_DATA</span></code> ：稠密向量。</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_LABEL</span></code> ：整数。</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_DATA_TARGET</span></code> ：稠密向量，但不用于计算梯度。</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_SEQUENCE_DATA</span></code> ：含有序列信息的稠密向量。</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_HASSUB_SEQUENCE_DATA</span></code> ：含有序列信息和子序列信息的稠密向量。</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_SEQUENCE_LABEL</span></code> ：含有序列信息的整数。</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_SPARSE_NON_VALUE_DATA</span></code> ：0-1稀疏数据。</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_SPARSE_FLOAT_VALUE_DATA</span></code> ：浮点稀疏数据。</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li>输入的名字。（例子中是 <code class="code docutils literal"><span class="pre">layer_0</span></code> ）</li>
+<li>输入的大小。（例子中是8192）</li>
+<li>非零数字的个数，仅对稀疏数据有效。</li>
+<li>稀疏数据的格式，仅对稀疏数据有效。</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li>对每个输入，都需要调用一次 <code class="code docutils literal"><span class="pre">config.layerConfig.add_inputs();</span></code> 。</li>
+<li><dl class="first docutils">
+<dt>调用 <code class="code docutils literal"><span class="pre">testLayerGrad</span></code> 来做梯度检查。它包含以下参数。</dt>
+<dd><ul class="first last">
+<li>层和输入的配置。（例子中是 <code class="code docutils literal"><span class="pre">config</span></code> ）</li>
+<li>网络层的类型。（例子中是 <code class="code docutils literal"><span class="pre">fc</span></code> ）</li>
+<li>梯度检查的输入数据的批次大小。（例子中是100）</li>
+<li>输入是否是转置的。大多数层需要设置为 <code class="code docutils literal"><span class="pre">false</span></code> 。（例子中是 <code class="code docutils literal"><span class="pre">false</span></code> ）</li>
+<li>是否使用权重。有些层或者激活需要做归一化以保证它们的输出的和是一个常数。例如，softmax激活的输出的和总是1。在这种情况下，我们不能通过常规的梯度检查的方式来计算梯度。因此我们采用输出的加权和（非常数）来计算梯度。（例子中是 <code class="code docutils literal"><span class="pre">true</span></code> ，因为全连接层的激活可以是softmax）</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">testFcLayer</span><span class="p">(</span><span class="n">string</span> <span class="n">format</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nnz</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// Create layer configuration.</span>
+  <span class="n">TestConfig</span> <span class="n">config</span><span class="p">;</span>
+  <span class="n">config</span><span class="p">.</span><span class="n">biasSize</span> <span class="o">=</span> <span class="mi">4096</span><span class="p">;</span>
+  <span class="n">config</span><span class="p">.</span><span class="n">layerConfig</span><span class="p">.</span><span class="n">set_type</span><span class="p">(</span><span class="s">&quot;fc&quot;</span><span class="p">);</span>
+  <span class="n">config</span><span class="p">.</span><span class="n">layerConfig</span><span class="p">.</span><span class="n">set_size</span><span class="p">(</span><span class="mi">4096</span><span class="p">);</span>
+  <span class="n">config</span><span class="p">.</span><span class="n">layerConfig</span><span class="p">.</span><span class="n">set_active_type</span><span class="p">(</span><span class="s">&quot;softmax&quot;</span><span class="p">);</span>
+  <span class="n">config</span><span class="p">.</span><span class="n">layerConfig</span><span class="p">.</span><span class="n">set_drop_rate</span><span class="p">(</span><span class="mf">0.1</span><span class="p">);</span>
+  <span class="c1">// Setup inputs.</span>
+  <span class="n">config</span><span class="p">.</span><span class="n">inputDefs</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span>
+      <span class="p">{</span><span class="n">INPUT_DATA</span><span class="p">,</span> <span class="s">&quot;layer_0&quot;</span><span class="p">,</span> <span class="mi">8192</span><span class="p">,</span> <span class="n">nnz</span><span class="p">,</span> <span class="n">ParaSparse</span><span class="p">(</span><span class="n">format</span><span class="p">)});</span>
+    <span class="n">config</span><span class="p">.</span><span class="n">layerConfig</span><span class="p">.</span><span class="n">add_inputs</span><span class="p">();</span>
+  <span class="n">LOG</span><span class="p">(</span><span class="n">INFO</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">config</span><span class="p">.</span><span class="n">inputDefs</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">sparse</span><span class="p">.</span><span class="n">sparse</span> <span class="o">&lt;&lt;</span> <span class="s">&quot; &quot;</span>
+            <span class="o">&lt;&lt;</span> <span class="n">config</span><span class="p">.</span><span class="n">inputDefs</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">sparse</span><span class="p">.</span><span class="n">format</span><span class="p">;</span>
+  <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">useGpu</span> <span class="p">:</span> <span class="p">{</span><span class="nb">false</span><span class="p">,</span> <span class="nb">true</span><span class="p">})</span> <span class="p">{</span>
+    <span class="n">testLayerGrad</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s">&quot;fc&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="cm">/* trans */</span> <span class="nb">false</span><span class="p">,</span> <span class="n">useGpu</span><span class="p">,</span>
+                  <span class="cm">/* weight */</span> <span class="nb">true</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>如果你要为了测试而增加新的文件，例如 <code class="code docutils literal"><span class="pre">paddle/gserver/tests/testFCGrad.cpp</span></code> ，你需要把该文件加入 <code class="code docutils literal"><span class="pre">paddle/gserver/tests/CMakeLists.txt</span></code> 中。下面给出了一个例子。当你执行命令 <code class="code docutils literal"><span class="pre">make</span> <span class="pre">tests</span></code> 时，所有的单测都会被执行一次。注意，有些层可能需要高精度来保证梯度检查单测正确执行。你需要在配置cmake时将 <code class="code docutils literal"><span class="pre">WITH_DOUBLE</span></code> 设置为 <cite>ON</cite> 。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>add_unittest_without_exec<span class="o">(</span>test_FCGrad
+    test_FCGrad.cpp
+    LayerGradUtil.cpp
+    TestUtil.cpp<span class="o">)</span>
+
+add_test<span class="o">(</span>NAME test_FCGrad
+    COMMAND test_FCGrad<span class="o">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="python">
+<h2>实现python封装<a class="headerlink" href="#python" title="永久链接至标题">¶</a></h2>
+<p>python封装的实现使得我们可以在配置文件中使用新实现的网络层。所有的python封装都在 <code class="code docutils literal"><span class="pre">python/paddle/trainer/config_parser.py</span></code> 中。全连接层python封装的例子中包含下面几步：</p>
+<ul class="simple">
+<li>所有的Python封装都使用 <code class="code docutils literal"><span class="pre">&#64;config_layer('fc')</span></code> 这样的装饰器。网络层的标识符为 <code class="code docutils literal"><span class="pre">fc</span></code> 。</li>
+<li><dl class="first docutils">
+<dt>实现构造函数 <code class="code docutils literal"><span class="pre">__init__</span></code> 。</dt>
+<dd><ul class="first last">
+<li>它首先调用基构造函数 <code class="code docutils literal"><span class="pre">super(FCLayer,</span> <span class="pre">self).__init__(name,</span> <span class="pre">'fc',</span> <span class="pre">size,</span> <span class="pre">inputs=inputs,</span> <span class="pre">**xargs)</span></code> 。 <code class="code docutils literal"><span class="pre">FCLayer</span></code> 是Python封装的类名。 <code class="code docutils literal"><span class="pre">fc</span></code> 是网络层的标识符。为了封装能够正确工作，这些名字必须要写对。</li>
+<li>之后，计算变换矩阵的大小和格式（是否稀疏）。</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nd">@config_layer</span><span class="p">(</span><span class="s1">&#39;fc&#39;</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">FCLayer</span><span class="p">(</span><span class="n">LayerBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">name</span><span class="p">,</span>
+            <span class="n">size</span><span class="p">,</span>
+            <span class="n">inputs</span><span class="p">,</span>
+            <span class="n">bias</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">xargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">FCLayer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;fc&#39;</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span> <span class="o">**</span><span class="n">xargs</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">input_index</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">)):</span>
+            <span class="n">input_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input_layer</span><span class="p">(</span><span class="n">input_index</span><span class="p">)</span>
+            <span class="n">psize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">size</span> <span class="o">*</span> <span class="n">input_layer</span><span class="o">.</span><span class="n">size</span>
+            <span class="n">dims</span> <span class="o">=</span> <span class="p">[</span><span class="n">input_layer</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">size</span><span class="p">]</span>
+            <span class="n">format</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="n">input_index</span><span class="p">]</span><span class="o">.</span><span class="n">format</span>
+            <span class="n">sparse</span> <span class="o">=</span> <span class="n">format</span> <span class="o">==</span> <span class="s2">&quot;csr&quot;</span> <span class="ow">or</span> <span class="n">format</span> <span class="o">==</span> <span class="s2">&quot;csc&quot;</span>
+            <span class="k">if</span> <span class="n">sparse</span><span class="p">:</span>
+                <span class="n">psize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="n">input_index</span><span class="p">]</span><span class="o">.</span><span class="n">nnz</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">create_input_parameter</span><span class="p">(</span><span class="n">input_index</span><span class="p">,</span> <span class="n">psize</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="n">sparse</span><span class="p">,</span> <span class="n">format</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">create_bias_parameter</span><span class="p">(</span><span class="n">bias</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>在网络配置中，网络层的细节可以通过下面这些代码片段来指定。这个类的参数包括：</p>
+<ul class="simple">
+<li><code class="code docutils literal"><span class="pre">name</span></code> 是网络层实例的名字标识符。</li>
+<li><code class="code docutils literal"><span class="pre">type</span></code> 是网络层的类型，通过网络层的标识符来指定。</li>
+<li><code class="code docutils literal"><span class="pre">size</span></code> 是网络层输出的大小。</li>
+<li><code class="code docutils literal"><span class="pre">bias</span></code> 表明这个层的一个实例是否需要偏置。</li>
+<li><code class="code docutils literal"><span class="pre">inputs</span></code> 说明这个层的输入，输入是由一个list中的网络层实例的名字组成的。</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">Layer</span><span class="p">(</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;fc1&quot;</span><span class="p">,</span>
+    <span class="nb">type</span> <span class="o">=</span> <span class="s2">&quot;fc&quot;</span><span class="p">,</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span>
+    <span class="n">bias</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">Input</span><span class="p">(</span><span class="s2">&quot;pool3&quot;</span><span class="p">)]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>我们建议你为你的Python封装实现一个“助手”，使得搭模型时更方便。具体可以参考 <code class="code docutils literal"><span class="pre">python/paddle/trainer_config_helpers/layers.py</span></code> 。</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

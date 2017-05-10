@@ -1,0 +1,364 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Parameter Attribute &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../../index.html"/>
+        <link rel="up" title="Model Configuration" href="../model_configs.html"/>
+        <link rel="next" title="Data Reader Interface and DataSets" href="../data.html"/>
+        <link rel="prev" title="Networks" href="networks.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">API</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../model_configs.html">模型配置</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="networks.html">Networks</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../../index_cn.html">API</a> > </li>
+      
+        <li><a href="../model_configs.html">Model Configuration</a> > </li>
+      
+    <li>Parameter Attribute</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="parameter-attribute">
+<h1>Parameter Attribute<a class="headerlink" href="#parameter-attribute" title="永久链接至标题">¶</a></h1>
+<dl class="attribute">
+<dt>
+<code class="descclassname">paddle.v2.attr.</code><code class="descname">Param</code></dt>
+<dd><p><code class="xref py py-class docutils literal"><span class="pre">ParameterAttribute</span></code> 的别名</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<code class="descclassname">paddle.v2.attr.</code><code class="descname">Extra</code></dt>
+<dd><p><code class="xref py py-class docutils literal"><span class="pre">ExtraLayerAttribute</span></code> 的别名</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<code class="descclassname">paddle.v2.attr.</code><code class="descname">ParamAttr</code></dt>
+<dd><p><code class="xref py py-class docutils literal"><span class="pre">ParameterAttribute</span></code> 的别名</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<code class="descclassname">paddle.v2.attr.</code><code class="descname">ExtraAttr</code></dt>
+<dd><p><code class="xref py py-class docutils literal"><span class="pre">ExtraLayerAttribute</span></code> 的别名</p>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.attr.</code><code class="descname">ParameterAttribute</code><span class="sig-paren">(</span><em>name=None</em>, <em>is_static=False</em>, <em>initial_std=None</em>, <em>initial_mean=None</em>, <em>initial_max=None</em>, <em>initial_min=None</em>, <em>l1_rate=None</em>, <em>l2_rate=None</em>, <em>learning_rate=None</em>, <em>momentum=None</em>, <em>gradient_clipping_threshold=None</em>, <em>sparse_update=False</em><span class="sig-paren">)</span></dt>
+<dd><p>Parameter Attributes object. To fine-tuning network training process, user
+can set attribute to control training details, such as l1,l2 rate / learning
+rate / how to init param.</p>
+<p>NOTE: IT IS A HIGH LEVEL USER INTERFACE.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first last simple">
+<li><strong>is_static</strong> (<em>bool</em>) &#8211; True if this parameter will be fixed while training.</li>
+<li><strong>initial_std</strong> (<em>float</em><em> or </em><em>None</em>) &#8211; Gauss Random initialization standard deviation.
+None if not using Gauss Random initialize parameter.</li>
+<li><strong>initial_mean</strong> (<em>float</em><em> or </em><em>None</em>) &#8211; Gauss Random initialization mean.
+None if not using Gauss Random initialize parameter.</li>
+<li><strong>initial_max</strong> (<em>float</em><em> or </em><em>None</em>) &#8211; Uniform initialization max value.</li>
+<li><strong>initial_min</strong> (<em>float</em><em> or </em><em>None</em>) &#8211; Uniform initialization min value.</li>
+<li><strong>l1_rate</strong> (<em>float</em><em> or </em><em>None</em>) &#8211; the l1 regularization factor</li>
+<li><strong>l2_rate</strong> (<em>float</em><em> or </em><em>None</em>) &#8211; the l2 regularization factor</li>
+<li><strong>learning_rate</strong> (<em>float</em><em> or </em><em>None</em>) &#8211; The parameter learning rate. None means 1.
+The learning rate when optimize is LEARNING_RATE =
+GLOBAL_LEARNING_RATE * PARAMETER_LEARNING_RATE
+* SCHEDULER_FACTOR.</li>
+<li><strong>momentum</strong> (<em>float</em><em> or </em><em>None</em>) &#8211; The parameter momentum. None means use global value.</li>
+<li><strong>gradient_clipping_threshold</strong> (<em>float</em>) &#8211; gradient clipping threshold. If gradient
+value larger than some value, will be
+clipped.</li>
+<li><strong>sparse_update</strong> (<em>bool</em>) &#8211; Enable sparse update for this parameter. It will
+enable both local and remote sparse update.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt>
+<code class="descname">set_default_parameter_name</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span></dt>
+<dd><p>Set default parameter name. If parameter not set, then will use default
+parameter name.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><strong>name</strong> (<em>basestring</em>) &#8211; default parameter name.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.attr.</code><code class="descname">ExtraLayerAttribute</code><span class="sig-paren">(</span><em>error_clipping_threshold=None</em>, <em>drop_rate=None</em>, <em>device=None</em><span class="sig-paren">)</span></dt>
+<dd><p>Some high level layer attributes config. You can set all attributes here,
+but some layer doesn&#8217;t support all attributes. If you set an attribute to a
+layer that not support this attribute, paddle will print an error and core.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first last simple">
+<li><strong>error_clipping_threshold</strong> (<em>float</em>) &#8211; Error clipping threshold.</li>
+<li><strong>drop_rate</strong> (<em>float</em>) &#8211; Dropout rate. Dropout will create a mask on layer output.
+The dropout rate is the zero rate of this mask. The
+details of what dropout is please refer to <a class="reference external" href="https://www.cs.toronto.edu/~hinton/absps/JMLRdropout.pdf">here</a>.</li>
+<li><strong>device</strong> (<em>int</em>) &#8211; <p>device ID of layer. device=-1, use CPU. device&gt;0, use GPU.
+The details allocation in parallel_nn please refer to <a class="reference external" href="http://www.paddlepaddle.org/doc/ui/cmd_argument/use_case.html#case-2-specify-layers-in-different-devices">here</a>.</p>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../data.html" class="btn btn-neutral float-right" title="Data Reader Interface and DataSets" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="networks.html" class="btn btn-neutral" title="Networks" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

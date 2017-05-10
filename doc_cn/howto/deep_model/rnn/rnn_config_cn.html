@@ -1,0 +1,486 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>RNN配置 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>RNN配置</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="rnn">
+<h1>RNN配置<a class="headerlink" href="#rnn" title="永久链接至标题">¶</a></h1>
+<p>本教程将指导你如何在 PaddlePaddle
+中配置循环神经网络（RNN）。PaddlePaddle
+高度支持灵活和高效的循环神经网络配置。 在本教程中，您将了解如何：</p>
+<ul class="simple">
+<li>准备用来学习循环神经网络的序列数据。</li>
+<li>配置循环神经网络架构。</li>
+<li>使用学习完成的循环神经网络模型生成序列。</li>
+</ul>
+<p>我们将使用 vanilla 循环神经网络和 sequence to sequence
+模型来指导你完成这些步骤。sequence to sequence
+模型的代码可以在<code class="docutils literal"><span class="pre">demo</span> <span class="pre">/</span> <span class="pre">seqToseq</span></code>找到。</p>
+<div class="section" id="id1">
+<h2>准备序列数据<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h2>
+<p>PaddlePaddle
+不需要对序列数据进行任何预处理，例如填充。唯一需要做的是将相应类型设置为输入。例如，以下代码段定义了三个输入。
+它们都是序列，它们的大小是<code class="docutils literal"><span class="pre">src_dict</span></code>，<code class="docutils literal"><span class="pre">trg_dict</span></code>和<code class="docutils literal"><span class="pre">trg_dict</span></code>：</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="n">settings</span><span class="o">.</span><span class="n">input_types</span> <span class="o">=</span> <span class="p">[</span>
+  <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">src_dict</span><span class="p">)),</span>
+  <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">trg_dict</span><span class="p">)),</span>
+  <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">trg_dict</span><span class="p">))]</span>
+</pre></div>
+</div>
+<p>在<code class="docutils literal"><span class="pre">process</span></code>函数中，每个<code class="docutils literal"><span class="pre">yield</span></code>函数将返回三个整数列表。每个整数列表被视为一个整数序列：</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">yield</span> <span class="n">src_ids</span><span class="p">,</span> <span class="n">trg_ids</span><span class="p">,</span> <span class="n">trg_ids_next</span>
+</pre></div>
+</div>
+<p>有关如何编写数据提供程序的更多细节描述，请参考 <a class="reference internal" href="../../../api/v1/data_provider/pydataprovider2_cn.html#api-pydataprovider2"><span class="std std-ref">PyDataProvider2的使用</span></a> 。完整的数据提供文件在
+<code class="docutils literal"><span class="pre">demo/seqToseq/dataprovider.py</span></code>。</p>
+</div>
+<div class="section" id="id2">
+<h2>配置循环神经网络架构<a class="headerlink" href="#id2" title="永久链接至标题">¶</a></h2>
+<div class="section" id="gated-recurrent-neural-network">
+<h3>简单门控循环神经网络(Gated Recurrent Neural Network)<a class="headerlink" href="#gated-recurrent-neural-network" title="永久链接至标题">¶</a></h3>
+<p>循环神经网络在每个时间步骤顺序地处理序列。下面列出了 LSTM 的架构的示例。</p>
+<img alt="../../../_images/bi_lstm.jpg" class="align-center" src="../../../_images/bi_lstm.jpg" />
+<p>一般来说，循环网络从 <span class="math">\(t=1\)</span> 到 <span class="math">\(t=T\)</span> 或者反向地从 <span class="math">\(t=T\)</span> 到 <span class="math">\(t=1\)</span> 执行以下操作。</p>
+<div class="math">
+\[x_{t+1} = f_x(x_t), y_t = f_y(x_t)\]</div>
+<p>其中 <span class="math">\(f_x(.)\)</span> 称为<strong>单步函数</strong>（即单时间步执行的函数，step
+function），而 <span class="math">\(f_y(.)\)</span> 称为<strong>输出函数</strong>。在 vanilla
+循环神经网络中，单步函数和输出函数都非常简单。然而，PaddlePaddle
+可以通过修改这两个函数来实现复杂的网络配置。我们将使用 sequence to
+sequence
+模型演示如何配置复杂的循环神经网络模型。在本节中，我们将使用简单的
+vanilla
+循环神经网络作为使用<code class="docutils literal"><span class="pre">recurrent_group</span></code>配置简单循环神经网络的例子。
+注意，如果你只需要使用简单的RNN，GRU或LSTM，那么推荐使用<code class="docutils literal"><span class="pre">grumemory</span></code>和<code class="docutils literal"><span class="pre">lstmemory</span></code>，因为它们的计算效率比<code class="docutils literal"><span class="pre">recurrent_group</span></code>更高。</p>
+<p>对于 vanilla RNN，在每个时间步长，<strong>单步函数</strong>为：</p>
+<div class="math">
+\[x_{t+1} = W_x x_t + W_i I_t + b\]</div>
+<p>其中 <span class="math">\(x_t\)</span> 是RNN状态，并且 <span class="math">\(I_t\)</span> 是输入，<span class="math">\(W_x\)</span> 和
+<span class="math">\(W_i\)</span> 分别是RNN状态和输入的变换矩阵。<span class="math">\(b\)</span> 是偏差。它的<strong>输出函数</strong>只需要 <span class="math">\(x_t\)</span> 作为输出。</p>
+<p><code class="docutils literal"><span class="pre">recurrent_group</span></code>是构建循环神经网络的最重要的工具。
+它定义了<strong>单步函数</strong>，<strong>输出函数</strong>和循环神经网络的输入。注意，这个函数的<code class="docutils literal"><span class="pre">step</span></code>参数需要实现<code class="docutils literal"><span class="pre">step</span> <span class="pre">function</span></code>（单步函数）和<code class="docutils literal"><span class="pre">output</span> <span class="pre">function</span></code>（输出函数）：</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">simple_rnn</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span>
+               <span class="n">size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+               <span class="n">rnn_bias_attr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">act</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">rnn_layer_attr</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__rnn_step__</span><span class="p">(</span><span class="n">ipt</span><span class="p">):</span>
+       <span class="n">out_mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+       <span class="n">rnn_out</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">ipt</span><span class="p">),</span>
+                                      <span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">out_mem</span><span class="p">)],</span>
+                             <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="p">,</span>
+                             <span class="n">bias_attr</span> <span class="o">=</span> <span class="n">rnn_bias_attr</span><span class="p">,</span>
+                             <span class="n">act</span> <span class="o">=</span> <span class="n">act</span><span class="p">,</span>
+                             <span class="n">layer_attr</span> <span class="o">=</span> <span class="n">rnn_layer_attr</span><span class="p">,</span>
+                             <span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">)</span>
+       <span class="k">return</span> <span class="n">rnn_out</span>
+    <span class="k">return</span> <span class="n">recurrent_group</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_recurrent_group&#39;</span> <span class="o">%</span> <span class="n">name</span><span class="p">,</span>
+                           <span class="n">step</span><span class="o">=</span><span class="n">__rnn_step__</span><span class="p">,</span>
+                           <span class="n">reverse</span><span class="o">=</span><span class="n">reverse</span><span class="p">,</span>
+                           <span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>PaddlePaddle
+使用“Memory”（记忆模块）实现单步函数。<strong>Memory</strong>是在PaddlePaddle中构造循环神经网络时最重要的概念。
+Memory是在单步函数中循环使用的状态，例如 <span class="math">\(x_{t+1} = f_x(x_t)\)</span> 。
+一个Memory包含<strong>输出</strong>和<strong>输入</strong>。当前时间步处的Memory的输出作为下一时间步Memory的输入。Memory也可以具有<strong>boot
+layer(引导层)</strong>，其输出被用作Memory的初始值。
+在我们的例子中，门控循环单元的输出被用作输出Memory。请注意，<code class="docutils literal"><span class="pre">rnn_out</span></code>层的名称与<code class="docutils literal"><span class="pre">out_mem</span></code>的名称相同。这意味着<code class="docutils literal"><span class="pre">rnn_out</span></code>
+(<em>x</em><em>t</em> + 1)的输出被用作<code class="docutils literal"><span class="pre">out_mem</span></code>Memory的<strong>输出</strong>。</p>
+<p>Memory也可以是序列。在这种情况下，在每个时间步中，我们有一个序列作为循环神经网络的状态。这在构造非常复杂的循环神经网络时是有用的。
+其他高级功能包括定义多个Memory，以及使用子序列来定义分级循环神经网络架构。</p>
+<p>我们在函数的结尾返回<code class="docutils literal"><span class="pre">rnn_out</span></code>。 这意味着 <code class="docutils literal"><span class="pre">rnn_out</span></code>
+层的输出被用作门控循环神经网络的<strong>输出</strong>函数。</p>
+</div>
+<div class="section" id="sequence-to-sequence-model-with-attention">
+<h3>Sequence to Sequence Model with Attention<a class="headerlink" href="#sequence-to-sequence-model-with-attention" title="永久链接至标题">¶</a></h3>
+<p>我们将使用 sequence to sequence model with attention
+作为例子演示如何配置复杂的循环神经网络模型。该模型的说明如下图所示。</p>
+<img alt="../../../_images/encoder-decoder-attention-model.png" class="align-center" src="../../../_images/encoder-decoder-attention-model.png" />
+<p>在这个模型中，源序列 <span class="math">\(S = \{s_1, \dots, s_T\}\)</span>
+用双向门控循环神经网络编码。双向门控循环神经网络的隐藏状态
+<span class="math">\(H_S = \{H_1, \dots, H_T\}\)</span> 被称为
+<em>编码向量</em>。解码器是门控循环神经网络。当解读每一个 <span class="math">\(y_t\)</span> 时,
+这个门控循环神经网络生成一系列权重  <span class="math">\(W_S^t = \{W_1^t, \dots, W_T^t\}\)</span> ,
+用于计算编码向量的加权和。加权和用来生成 <span class="math">\(y_t\)</span> 。</p>
+<p>模型的编码器部分如下所示。它叫做<code class="docutils literal"><span class="pre">grumemory</span></code>来表示门控循环神经网络。如果网络架构简单，那么推荐使用循环神经网络的方法，因为它比
+<code class="docutils literal"><span class="pre">recurrent_group</span></code>
+更快。我们已经实现了大多数常用的循环神经网络架构，可以参考 <a class="reference internal" href="../../../api/v1/trainer_config_helpers/layers.html#api-trainer-config-helpers-layers"><span class="std std-ref">Layers</span></a> 了解更多细节。</p>
+<p>我们还将编码向量投射到 <code class="docutils literal"><span class="pre">decoder_size</span></code>
+维空间。这通过获得反向循环网络的第一个实例，并将其投射到
+<code class="docutils literal"><span class="pre">decoder_size</span></code> 维空间完成：</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="c1"># 定义源语句的数据层</span>
+<span class="n">src_word_id</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;source_language_word&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">source_dict_dim</span><span class="p">)</span>
+<span class="c1"># 计算每个词的词向量</span>
+<span class="n">src_embedding</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span>
+    <span class="nb">input</span><span class="o">=</span><span class="n">src_word_id</span><span class="p">,</span>
+    <span class="n">size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">,</span>
+    <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;_source_language_embedding&#39;</span><span class="p">))</span>
+<span class="c1"># 应用前向循环神经网络</span>
+<span class="n">src_forward</span> <span class="o">=</span> <span class="n">grumemory</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">src_embedding</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">encoder_size</span><span class="p">)</span>
+<span class="c1"># 应用反向递归神经网络（reverse=True表示反向循环神经网络）</span>
+<span class="n">src_backward</span> <span class="o">=</span> <span class="n">grumemory</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">src_embedding</span><span class="p">,</span>
+                          <span class="n">size</span><span class="o">=</span><span class="n">encoder_size</span><span class="p">,</span>
+                          <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="c1"># 将循环神经网络的前向和反向部分混合在一起</span>
+<span class="n">encoded_vector</span> <span class="o">=</span> <span class="n">concat_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">src_forward</span><span class="p">,</span> <span class="n">src_backward</span><span class="p">])</span>
+
+<span class="c1"># 投射编码向量到 decoder_size</span>
+<span class="n">encoder_proj</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">encoded_vector</span><span class="p">)],</span>
+                           <span class="n">size</span> <span class="o">=</span> <span class="n">decoder_size</span><span class="p">)</span>
+
+<span class="c1"># 计算反向RNN的第一个实例</span>
+<span class="n">backward_first</span> <span class="o">=</span> <span class="n">first_seq</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">src_backward</span><span class="p">)</span>
+
+<span class="c1"># 投射反向RNN的第一个实例到 decoder size</span>
+<span class="n">decoder_boot</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">backward_first</span><span class="p">)],</span> <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>解码器使用 <code class="docutils literal"><span class="pre">recurrent_group</span></code> 来定义循环神经网络。单步函数和输出函数在
+<code class="docutils literal"><span class="pre">gru_decoder_with_attention</span></code> 中定义：</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="n">group_inputs</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_vector</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+              <span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_proj</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+<span class="n">trg_embedding</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span>
+    <span class="nb">input</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;target_language_word&#39;</span><span class="p">,</span>
+                     <span class="n">size</span><span class="o">=</span><span class="n">target_dict_dim</span><span class="p">),</span>
+    <span class="n">size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">,</span>
+    <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;_target_language_embedding&#39;</span><span class="p">))</span>
+<span class="n">group_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trg_embedding</span><span class="p">)</span>
+
+<span class="c1"># 对于配备有注意力机制的解码器，在训练中，</span>
+<span class="c1"># 目标向量（groudtruth）是数据输入，</span>
+<span class="c1"># 而源序列的编码向量可以被无边界的memory访问</span>
+<span class="c1"># StaticInput 意味着不同时间步的输入都是相同的值，</span>
+<span class="c1"># 否则它以一个序列输入，不同时间步的输入是不同的。</span>
+<span class="c1"># 所有输入序列应该有相同的长度。</span>
+<span class="n">decoder</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">decoder_group_name</span><span class="p">,</span>
+                          <span class="n">step</span><span class="o">=</span><span class="n">gru_decoder_with_attention</span><span class="p">,</span>
+                          <span class="nb">input</span><span class="o">=</span><span class="n">group_inputs</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>单步函数的实现如下所示。首先，它定义解码网络的<strong>Memory</strong>。然后定义
+attention，门控循环单元单步函数和输出函数：</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">gru_decoder_with_attention</span><span class="p">(</span><span class="n">enc_vec</span><span class="p">,</span> <span class="n">enc_proj</span><span class="p">,</span> <span class="n">current_word</span><span class="p">):</span>
+    <span class="c1"># 定义解码器的Memory</span>
+    <span class="c1"># Memory的输出定义在 gru_step 内</span>
+    <span class="c1"># 注意 gru_step 应该与它的Memory名字相同</span>
+    <span class="n">decoder_mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;gru_decoder&#39;</span><span class="p">,</span>
+                         <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span><span class="p">,</span>
+                         <span class="n">boot_layer</span><span class="o">=</span><span class="n">decoder_boot</span><span class="p">)</span>
+    <span class="c1"># 计算 attention 加权编码向量</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="n">simple_attention</span><span class="p">(</span><span class="n">encoded_sequence</span><span class="o">=</span><span class="n">enc_vec</span><span class="p">,</span>
+                               <span class="n">encoded_proj</span><span class="o">=</span><span class="n">enc_proj</span><span class="p">,</span>
+                               <span class="n">decoder_state</span><span class="o">=</span><span class="n">decoder_mem</span><span class="p">)</span>
+    <span class="c1"># 混合当前词向量和attention加权编码向量</span>
+    <span class="n">decoder_inputs</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">context</span><span class="p">),</span>
+                                           <span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">current_word</span><span class="p">)],</span>
+                                 <span class="n">size</span> <span class="o">=</span> <span class="n">decoder_size</span> <span class="o">*</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="c1"># 定义门控循环单元循环神经网络单步函数</span>
+    <span class="n">gru_step</span> <span class="o">=</span> <span class="n">gru_step_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;gru_decoder&#39;</span><span class="p">,</span>
+                              <span class="nb">input</span><span class="o">=</span><span class="n">decoder_inputs</span><span class="p">,</span>
+                              <span class="n">output_mem</span><span class="o">=</span><span class="n">decoder_mem</span><span class="p">,</span>
+                              <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span><span class="p">)</span>
+    <span class="c1"># 定义输出函数</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">gru_step</span><span class="p">)],</span>
+                      <span class="n">size</span><span class="o">=</span><span class="n">target_dict_dim</span><span class="p">,</span>
+                      <span class="n">bias_attr</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                      <span class="n">act</span><span class="o">=</span><span class="n">SoftmaxActivation</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">out</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="id3">
+<h2>生成序列<a class="headerlink" href="#id3" title="永久链接至标题">¶</a></h2>
+<p>训练模型后，我们可以使用它来生成序列。通常的做法是使用<strong>beam search</strong>
+生成序列。以下代码片段定义 beam search 算法。注意，<code class="docutils literal"><span class="pre">beam_search</span></code>
+函数假设 <code class="docutils literal"><span class="pre">step</span></code> 的输出函数返回的是下一个时刻输出词的 softmax
+归一化概率向量。我们对模型进行了以下更改。</p>
+<ul class="simple">
+<li>使用 <code class="docutils literal"><span class="pre">GeneratedInput</span></code> 来表示 trg_embedding。 <code class="docutils literal"><span class="pre">GeneratedInput</span></code>
+将上一时间步所生成的词的向量来作为当前时间步的输入。</li>
+<li>使用 <code class="docutils literal"><span class="pre">beam_search</span></code> 函数。这个函数需要设置：<ul>
+<li><code class="docutils literal"><span class="pre">bos_id</span></code>: 开始标记。每个句子都以开始标记开头。</li>
+<li><code class="docutils literal"><span class="pre">eos_id</span></code>: 结束标记。每个句子都以结束标记结尾。</li>
+<li><code class="docutils literal"><span class="pre">beam_size</span></code>: beam search 算法中的beam大小。</li>
+<li><code class="docutils literal"><span class="pre">max_length</span></code>: 生成序列的最大长度。</li>
+</ul>
+</li>
+<li>使用 <code class="docutils literal"><span class="pre">seqtext_printer_evaluator</span></code>
+根据索引矩阵和字典打印文本。这个函数需要设置：<ul>
+<li><code class="docutils literal"><span class="pre">id_input</span></code>: 数据的整数ID，用于标识生成的文件中的相应输出。</li>
+<li><code class="docutils literal"><span class="pre">dict_file</span></code>: 用于将词ID转换为词的字典文件。</li>
+<li><code class="docutils literal"><span class="pre">result_file</span></code>: 生成结果文件的路径。</li>
+</ul>
+</li>
+</ul>
+<p>代码如下：</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="n">group_inputs</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_vector</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+              <span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_proj</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+<span class="c1"># 在生成时，解码器基于编码源序列和最后生成的目标词预测下一目标词。</span>
+<span class="c1"># 编码源序列（编码器输出）必须由只读Memory的 StaticInput 指定。</span>
+<span class="c1"># 这里， GeneratedInputs 自动获取上一个生成的词，并在最开始初始化为起始词，如 &lt;s&gt;。</span>
+<span class="n">trg_embedding</span> <span class="o">=</span> <span class="n">GeneratedInput</span><span class="p">(</span>
+    <span class="n">size</span><span class="o">=</span><span class="n">target_dict_dim</span><span class="p">,</span>
+    <span class="n">embedding_name</span><span class="o">=</span><span class="s1">&#39;_target_language_embedding&#39;</span><span class="p">,</span>
+    <span class="n">embedding_size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">)</span>
+<span class="n">group_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trg_embedding</span><span class="p">)</span>
+<span class="n">beam_gen</span> <span class="o">=</span> <span class="n">beam_search</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">decoder_group_name</span><span class="p">,</span>
+                       <span class="n">step</span><span class="o">=</span><span class="n">gru_decoder_with_attention</span><span class="p">,</span>
+                       <span class="nb">input</span><span class="o">=</span><span class="n">group_inputs</span><span class="p">,</span>
+                       <span class="n">bos_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># Beginnning token.</span>
+                       <span class="n">eos_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="c1"># End of sentence token.</span>
+                       <span class="n">beam_size</span><span class="o">=</span><span class="n">beam_size</span><span class="p">,</span>
+                       <span class="n">max_length</span><span class="o">=</span><span class="n">max_length</span><span class="p">)</span>
+
+<span class="n">seqtext_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">beam_gen</span><span class="p">,</span>
+                          <span class="n">id_input</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;sent_id&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                          <span class="n">dict_file</span><span class="o">=</span><span class="n">trg_dict_path</span><span class="p">,</span>
+                          <span class="n">result_file</span><span class="o">=</span><span class="n">gen_trans_file</span><span class="p">)</span>
+<span class="n">outputs</span><span class="p">(</span><span class="n">beam_gen</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>注意，这种生成技术只用于类似解码器的生成过程。如果你正在处理序列标记任务，请参阅 <span class="xref std std-ref">semantic_role_labeling</span> 了解更多详细信息。</p>
+<p>完整的配置文件在<code class="docutils literal"><span class="pre">demo/seqToseq/seqToseq_net.py</span></code>。</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>
