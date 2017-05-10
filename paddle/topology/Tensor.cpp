@@ -35,5 +35,7 @@ SequenceType Tensor::sequenceType() const {
   return getAttr<SequenceType>("sequence_type");
 }
 
+DataType Tensor::dataType() const { return getAttr<DataType>("data_type"); }
+
 }  // namespace topology
 }  // namespace paddle

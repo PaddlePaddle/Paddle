@@ -11,23 +11,24 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "FunctionMetaHelper.h"
+#include "Register.h"
 #include "paddle/topology/meta/Validator.h"
+
 namespace paddle {
 namespace function {
 
-class MetaKernelType {
+class RegistedFunction {
 private:
-  static Function getKernel(topology::Function& topo,
+  static Function getKernel(topology::Function* topo,
                             const std::string& metaName) {
-    auto meta = topology::meta::FunctionMeta::get(topo.type);
+    auto meta = topology::meta::FunctionMeta::get(topo->type);
     const Function* kernel = nullptr;
     auto err = meta->getMeta<Function>(metaName, &kernel);
     if (err.isOK()) return *kernel;
-    const KernelTypeWithAttrs* kernelEx = nullptr;
-    meta->getMeta<KernelTypeWithAttrs>(metaName, &kernelEx).check();
-    return [&topo, kernelEx](const BufferArgs& in, const BufferArgs& out) {
-      return (*kernelEx)(in, out, topo.attributes);
+    const FunctionWithAttrs* kernelEx = nullptr;
+    meta->getMeta<FunctionWithAttrs>(metaName, &kernelEx).check();
+    return [topo, kernelEx](const BufferArgs& in, const BufferArgs& out) {
+      return (*kernelEx)(in, out, topo->attributes);
     };
   }
 
@@ -52,13 +53,56 @@ private:
       default:
         return Error("Not supportted buffer type");
     }
+
+    return Error();
+  }
+
+  Error checkSame(topology::TensorPtr& tensor, const BufferArg& arg) {
+    switch (arg.bufferType()) {
+      case TENSOR_NORMAL:
+        if (tensor->dataType() == paddle::topology::DataType::DENSE &&
+            tensor->sequenceType() ==
+                paddle::topology::SequenceType::NO_SEQUENCE)
+          break;
+      // fall through
+      case TENSOR_SEQUENCE_ID:
+        if (tensor->dataType() == paddle::topology::DataType::INTEGER &&
+            tensor->sequenceType() == paddle::topology::SequenceType::SEQUENCE)
+          break;
+      case TENSOR_SEQUENCE_DATA:
+        if (tensor->dataType() == paddle::topology::DataType::DENSE &&
+            tensor->sequenceType() == paddle::topology::SequenceType::SEQUENCE)
+          break;
+      case TENSOR_SPARSE:
+        if (tensor->dataType() == paddle::topology::DataType::SPARSE &&
+            tensor->sequenceType() ==
+                paddle::topology::SequenceType::NO_SEQUENCE)
+          break;
+      default:
+        return Error("The Type mismatched");
+    }
+    // Check Shape
+    auto& tensorShape = tensor->shape();
+    auto& argShape = arg.shape();
+    if (argShape.ndims() != tensorShape.size())
+      return Error("Tensor dimension mismatch");
+    for (size_t i = 0; i < tensorShape.size(); ++i) {
+      if (tensorShape[i] !=
+          std::remove_reference<decltype(tensorShape[i])>::type(argShape[i])) {
+        return Error("Tensor shape mismatch");
+      }
+    }
     return Error();
   }
 
 public:
-  explicit MetaKernelType(const topology::Function& topo) : funcTopo_(topo) {
-    kernel_ = getKernel(funcTopo_, topo.useGPU() ? "GPUKernel" : "CPUKernel");
+  explicit RegistedFunction(const topology::Function& topo) : funcTopo_(topo) {
+    kernel_ = getKernel(&funcTopo_, topo.useGPU() ? "GPUKernel" : "CPUKernel");
   }
+
+  RegistedFunction(const RegistedFunction& o) = delete;  // DISABLE COPY
+  RegistedFunction& operator=(const RegistedFunction& o) =
+      delete;  // DISABLE COPY
 
   Error operator()(const BufferArgs& in, const BufferArgs& out) {
     if (funcTopo_.inputs.size() == 0) {
@@ -66,7 +110,7 @@ public:
       for (size_t i = 0; i < in.size(); ++i) {
         funcTopo_.inputs.emplace_back(new topology::Tensor());
         auto err = setBufferType(funcTopo_.inputs.back(), in[i].bufferType());
-        if (!err.isOK()) return err;
+        if (!err.isOK()) return Error("InputTensor %d Error :%s", i, err.msg());
       }
       funcTopo_.outputs.reserve(out.size());
       for (size_t i = 0; i < out.size(); ++i) {
@@ -85,7 +129,12 @@ public:
 
     //! Only check when first invoke.
     auto err = topology::meta::validate(funcTopo_);
-    if (!err.isOK()) return err;
+    if (!err.isOK()) return Error("Topology error: %s", err.msg());
+
+    for (size_t i = 0; i < out.size(); ++i) {
+      err = checkSame(funcTopo_.outputs[i], out[i]);
+      if (!err.isOK()) return Error("Output error: %s", err.msg());
+    }
 
     return kernel_(in, out);
   }
@@ -95,8 +144,11 @@ private:
   Function kernel_;
 };
 
-Function createKernel(const topology::Function& conf) {
-  return MetaKernelType(conf);
+Function createFunction(const topology::Function& conf) {
+  auto ptr = std::make_shared<RegistedFunction>(conf);
+  return [ptr](const BufferArgs& in, const BufferArgs& out) {
+    return (*ptr)(in, out);
+  };
 }
 
 }  // namespace function

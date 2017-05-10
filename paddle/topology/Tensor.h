@@ -25,6 +25,7 @@ public:
   Tensor& setShape(const std::vector<int>& shape);
   std::vector<int>& shape();
   SequenceType sequenceType() const;
+  DataType dataType() const;
 };
 
 typedef std::shared_ptr<Tensor> TensorPtr;

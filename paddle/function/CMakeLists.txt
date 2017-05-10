@@ -1,13 +1,13 @@
 file(GLOB h_files . *Op.h)
 file(GLOB cpp_files . *Op.cpp)
 
-list(APPEND h_files Function.h)
+list(APPEND h_fFunctionRegisteriles Function.h)
 list(APPEND cpp_files Function.cpp)
 list(APPEND h_files FunctionList.h FuncConfig.h BufferArgs.h)
 list(APPEND cpp_files FunctionList.cpp)
 list(APPEND cpp_files BufferArg.cpp)
-list(APPEND h_files FunctionMetaHelper.h)
-list(APPEND cpp_files FunctionMetaHelper.cpp)
+list(APPEND h_files Register.h details/Register.h)
+list(APPEND cpp_files Register.cpp)
 
 if(WITH_GPU)
     file(GLOB cu_files . *OpGpu.cu)

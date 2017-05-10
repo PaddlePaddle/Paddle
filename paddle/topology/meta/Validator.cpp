@@ -27,7 +27,7 @@ Error AttributeValidator::validate(
     }
     auto err = metaIt->second->check(&it->second, true /*setted*/);
     if (!err.isOK()) {
-      return err;
+      return Error("Meta Error(%s)", err.msg());
     }
   }
 
@@ -51,7 +51,7 @@ Error validate(Function& func, bool validOutput) {
   }
   auto err = validate(*meta, func);
   if (!err.isOK()) {
-    return err;
+    return Error("AttrErr(%s)", err.msg());
   }
   auto& inMetas = meta->inputs();
   auto& outMetas = meta->outputs();
@@ -64,7 +64,7 @@ Error validate(Function& func, bool validOutput) {
   }
   for (size_t i = 0; i < inMetas.size(); ++i) {
     err = validate(*inMetas[i], *func.inputs[i]);
-    if (!err.isOK()) return err;
+    if (!err.isOK()) return Error("Input %d error %s", i, err.msg());
   }
   if (validOutput) {
     for (size_t i = 0; i < outMetas.size(); ++i) {
@@ -76,7 +76,7 @@ Error validate(Function& func, bool validOutput) {
   if (!err.isOK()) return err;
   for (size_t i = 0; i < outMetas.size(); ++i) {
     err = validate(*outMetas[i], *func.outputs[i]);
-    if (!err.isOK()) return err;
+    if (!err.isOK()) return Error("Output %d error %s", i, err.msg());
   }
   return Error();
 }

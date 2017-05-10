@@ -25,6 +25,12 @@ namespace function {
 typedef std::function<Error(const BufferArgs& inputs,
                             const BufferArgs& outputs)>
     Function;
+
+typedef std::function<Error(const BufferArgs& ins,
+                            const BufferArgs& outs,
+                            const std::unordered_map<std::string, any>& attrs)>
+    FunctionWithAttrs;
+
 class FunctionList : public std::vector<Function> {
 public:
   void add(const std::string& name,

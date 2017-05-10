@@ -57,7 +57,8 @@ Error AttributeMeta::check(any* attr, bool setted) const {
   CHECK_HELPER(DataType);
   CHECK_HELPER(SequenceType);
   CHECK_HELPER(std::vector<int>);
-  return paddle::Error("Unsupported attribute type");
+  CHECK_HELPER(bool);
+  return paddle::Error("Unsupported attribute type %s", attr->type().name());
 }
 
 }  // namespace meta

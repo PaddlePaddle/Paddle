@@ -52,7 +52,10 @@ macro(add_style_check_target TARGET_NAME)
             endforeach()
             if(LINT MATCHES ON)
                 get_filename_component(base_filename ${filename} NAME)
-                set(CUR_GEN ${CMAKE_CURRENT_BINARY_DIR}/${base_filename}.cpplint)
+                get_filename_component(dirname ${filename} DIRECTORY)
+                set(CUR_GEN ${dirname}_${base_filename}.cpplint)
+                string(REGEX REPLACE "paddle/([^p][^a][^d].*)" "\\1" CUR_GEN ${CUR_GEN})
+                set(CUR_GEN ${CMAKE_CURRENT_BINARY_DIR}/${CUR_GEN})
                 add_custom_command(OUTPUT ${CUR_GEN}
                     PRE_BUILD
                     COMMAND env ${py_env} "${PYTHON_EXECUTABLE}" "${PROJ_ROOT}/paddle/scripts/cpplint.py"

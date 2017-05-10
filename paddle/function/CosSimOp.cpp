@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "CosSimOp.h"
-#include "FunctionMetaHelper.h"
+#include "Register.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/Vector.h"
 
@@ -115,27 +115,27 @@ Error cosineForward(const BufferArgs& inputs,
   return Error();
 }
 
-BEGIN_REGISTER_FUNCTION_META(cosFwd, cosineForward)
-meta->addAttribute<double>("scale", "The scale of cosine operator")
+BEGIN_REGISTER_FUNCTION(cosFwd, cosineForward)
+func->addAttribute<double>("scale", "The scale of cosine operator")
     .defaultValue(1.0)
     .largerThan(0.0);
 
-meta->addInput()                                // first input
+func->addInput()                                // first input
     ->addDataType({topology::DataType::DENSE})  // only support dense as input
     .addSequenceType()                          // could be any sequence type
     .addShape(2);                               // dimension is 2
 
-meta->addInput()                                // second input
+func->addInput()                                // second input
     ->addDataType({topology::DataType::DENSE})  // only support dense as input
     .addSequenceType()                          // could be any sequence type
     .addShape(2);                               // dimension is 2
 
-meta->addOutput()
+func->addOutput()
     ->addDataType({topology::DataType::DENSE})
     .addSequenceType()
     .addShape(2);
 
-meta->setShapeInferer([](std::vector<topology::TensorPtr>& ins,
+func->setShapeInferer([](std::vector<topology::TensorPtr>& ins,
                          std::vector<topology::TensorPtr>& outs) {
   if (ins[0]->shape() != ins[1]->shape())
     return Error("Input shape should be same");
@@ -143,10 +143,11 @@ meta->setShapeInferer([](std::vector<topology::TensorPtr>& ins,
     return Error("Input sequence type should be same");
   outs[0]->setShape({ins[0]->shape()[0], 1});
   outs[0]->setSequenceType(ins[0]->sequenceType());
+  outs[0]->setDataType(ins[0]->dataType());
   return Error();
 });
 
-END_REGISTER_FUNCTION_META()
+END_REGISTER_FUNCTION()
 
 /**
  * Cosine Similarity Derivative for CpuMatrix
