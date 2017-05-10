@@ -32,11 +32,12 @@ import networks
 import py_paddle.swig_paddle as api
 import minibatch
 import plot
+import image
 
 __all__ = [
     'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
     'event', 'data_type', 'attr', 'pooling', 'data_feeder', 'dataset', 'reader',
-    'topology', 'networks', 'infer', 'plot', 'evaluator'
+    'topology', 'networks', 'infer', 'plot', 'evaluator', 'image'
 ]
 
 
