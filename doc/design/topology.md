@@ -3,7 +3,7 @@ Topology is a concept in Paddle for representing neural networks.  A neural netw
 
 The topology is not only an API level concept but also how we organize the computation codes for each `Layer` or `Function` in Paddle. The Paddle should maintain a dictionary from `Layer Type` to Layer implementation, e.g.  from string `mul` to function `void tensor_multiply(Tensor& ins, Tensor& outs)'. The mechanism about how to manipulate topology by users, how Paddle maps user topology to implementations of `Layer` and `Function` is a fundamental problem for refactoring Paddle.
 
-## User Stories and examples
+## User Stories and Examples
 
 ### Kernel Developers
 
@@ -34,7 +34,7 @@ func.setShapeInferer([](std::vector<Dims>& ins, std::vector<Dims>& outs){
 END_REGISTER_FUNCTION()
 ```
 
-### QA developer
+### QA Developers
 
 Bob is a QA developer of Paddle.  He wants to tests all Paddle supported `Function` and `Layer`.  However, each layer has different configuration attributes, e.g. `scale` in `cosine` function. Each configuration attribute has different value range, data type. Bob should easily test all boundary conditions of one Layer or Functions by using new mechanism about topology.
 
@@ -51,7 +51,7 @@ for each_attribute in cos.attributes:
 test(cos);
 ```
 
-### Language Binding developer
+### Language Binding Developers
 
 Carol is a language binding developer of Paddle. She wants to develop a language binding of Paddle. She is not familiar with Paddle C++ core and does not want to go so deep in Paddle. She just wants a clear list of what Layer Paddle supports, the configuration parameters of each Layer.
 
