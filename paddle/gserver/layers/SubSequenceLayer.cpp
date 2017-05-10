@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/Vector.h"
+#include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -36,12 +35,11 @@ protected:
 public:
   explicit SubSequenceLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~SubSequenceLayer() {}
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(subseq, SubSequenceLayer);
@@ -75,18 +73,15 @@ void SubSequenceLayer::forward(PassType passType) {
 
   const Argument& input = getInput(0);
   size_t numSequences1 = input.getNumSequences();
-  auto startPositions1 =
-      input.sequenceStartPositions->getVector(false);
+  auto startPositions1 = input.sequenceStartPositions->getVector(false);
 
   const Argument& offsetSeq = getInput(1);
   size_t numSequences2 = offsetSeq.getNumSequences();
-  auto startPositions2 =
-      offsetSeq.sequenceStartPositions->getVector(false);
+  auto startPositions2 = offsetSeq.sequenceStartPositions->getVector(false);
 
   const Argument& sizeSeq = getInput(2);
   size_t numSequences3 = sizeSeq.getNumSequences();
-  auto startPositions3 =
-      sizeSeq.sequenceStartPositions->getVector(false);
+  auto startPositions3 = sizeSeq.sequenceStartPositions->getVector(false);
 
   CHECK_EQ(dim, input.value->getWidth());
 
@@ -143,8 +138,8 @@ void SubSequenceLayer::forward(PassType passType) {
     }
 
     // modify the sequenceStartPositions
-    ICpuGpuVector::resizeOrCreate(output_.sequenceStartPositions,
-                                   numSequences1 + 1, false);
+    ICpuGpuVector::resizeOrCreate(
+        output_.sequenceStartPositions, numSequences1 + 1, false);
 
     int* tgtBuf = output_.sequenceStartPositions->getMutableData(false);
     int offset = 0;
@@ -177,8 +172,7 @@ void SubSequenceLayer::backward(const UpdateCallback& callback) {
 
   MatrixPtr inputGrad1 = getInputGrad(0);
   MatrixPtr outputGrad = getOutputGrad();
-  auto startPositions1 =
-      getInput(0).sequenceStartPositions->getVector(false);
+  auto startPositions1 = getInput(0).sequenceStartPositions->getVector(false);
   size_t numSequences1 = startPositions1->getSize() - 1;
   const int* starts1 = startPositions1->getData();
 

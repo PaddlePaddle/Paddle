@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,19 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <vector>
 #include <paddle/utils/Version.h>
+#include <vector>
+#include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/gserver/layers/Layer.h"
-#include "ModelConfig.pb.h"
 
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
-P_DECLARE_bool(use_gpu);
-P_DECLARE_bool(rnn_use_batch);
-P_DECLARE_int32(fixed_seq_length);
+DECLARE_bool(use_gpu);
+DECLARE_bool(rnn_use_batch);
+DECLARE_int32(fixed_seq_length);
 
 void checkError(const Matrix& matrix1, const Matrix& matrix2) {
   CHECK(matrix1.getHeight() == matrix2.getHeight());
@@ -71,7 +71,9 @@ void checkError(const CpuVector& vector1, const CpuVector& vector2) {
   EXPECT_EQ(count, 0) << "There are " << count << " different element.";
 }
 
-LayerPtr creatDataLayer(string name, size_t batchSize, int layerSize,
+LayerPtr creatDataLayer(string name,
+                        size_t batchSize,
+                        int layerSize,
                         bool useGpu) {
   LayerConfig dataConfig;
   dataConfig.set_name(name);
@@ -96,7 +98,9 @@ LayerPtr creatDataLayer(string name, size_t batchSize, int layerSize,
   return layer;
 }
 
-ParameterPtr creatParameter(string name, int pid, size_t paraSize,
+ParameterPtr creatParameter(string name,
+                            int pid,
+                            size_t paraSize,
                             bool useGpu) {
   ParameterConfig paraConfig;
   paraConfig.set_name(name);
@@ -112,7 +116,9 @@ ParameterPtr creatParameter(string name, int pid, size_t paraSize,
   return parameter;
 }
 
-ParameterPtr creatParameterBias(string name, int pid, size_t paraSize,
+ParameterPtr creatParameterBias(string name,
+                                int pid,
+                                size_t paraSize,
                                 bool useGpu) {
   ParameterConfig paraConfig;
   paraConfig.set_name(name);
@@ -127,8 +133,10 @@ ParameterPtr creatParameterBias(string name, int pid, size_t paraSize,
   return parameter;
 }
 
-LayerPtr initRecurrentLayer(LayerConfig layerConfig, size_t batchSize,
-                            int layerSize, bool useGpu) {
+LayerPtr initRecurrentLayer(LayerConfig layerConfig,
+                            size_t batchSize,
+                            int layerSize,
+                            bool useGpu) {
   FLAGS_use_gpu = useGpu;
   LayerMap layerMap;
   ParameterMap parameterMap;
@@ -212,9 +220,9 @@ TEST(Layer, RecurrentLayer) {
 }
 
 #define protected public
-#include "paddle/gserver/layers/LstmLayer.h"
 #include "paddle/gserver/layers/GatedRecurrentLayer.h"
-template<class T>
+#include "paddle/gserver/layers/LstmLayer.h"
+template <class T>
 class TestRecurrentLayer {
 public:
   LayerConfig config_;
@@ -227,25 +235,34 @@ public:
   LayerMap layerMap_;
   ParameterMap parameterMap_;
   TestRecurrentLayer(const LayerConfig& config,
-    bool useGpu, bool useBatch = false)
-    : config_(config), useGpu_(useGpu), useBatch_(useBatch) {}
+                     bool useGpu,
+                     bool useBatch = false)
+      : config_(config), useGpu_(useGpu), useBatch_(useBatch) {}
   void init(size_t batchSize) {
     FLAGS_use_gpu = useGpu_;
     testLayer_ = Layer::create(config_);
     if (typeid(T) == typeid(GatedRecurrentLayer)) {
       dataLayer_ = creatDataLayer(config_.mutable_inputs(0)->input_layer_name(),
-                                  batchSize, config_.size() * 3, useGpu_);
+                                  batchSize,
+                                  config_.size() * 3,
+                                  useGpu_);
       para_ = creatParameter(config_.mutable_inputs(0)->input_parameter_name(),
-                             0, config_.size() * config_.size() * 3, useGpu_);
-      bias_ = creatParameterBias(config_.bias_parameter_name(),
-                                 1, config_.size() * 3, useGpu_);
+                             0,
+                             config_.size() * config_.size() * 3,
+                             useGpu_);
+      bias_ = creatParameterBias(
+          config_.bias_parameter_name(), 1, config_.size() * 3, useGpu_);
     } else if (typeid(T) == typeid(LstmLayer)) {
       dataLayer_ = creatDataLayer(config_.mutable_inputs(0)->input_layer_name(),
-                                  batchSize, config_.size() * 4, useGpu_);
+                                  batchSize,
+                                  config_.size() * 4,
+                                  useGpu_);
       para_ = creatParameter(config_.mutable_inputs(0)->input_parameter_name(),
-                             0, config_.size() * config_.size() * 4, useGpu_);
-      bias_ = creatParameterBias(config_.bias_parameter_name(),
-                                 1, config_.size() * 7, useGpu_);
+                             0,
+                             config_.size() * config_.size() * 4,
+                             useGpu_);
+      bias_ = creatParameterBias(
+          config_.bias_parameter_name(), 1, config_.size() * 7, useGpu_);
     }
     layerMap_[dataLayer_->getName()] = dataLayer_;
     parameterMap_[para_->getName()] = para_;
@@ -266,15 +283,17 @@ public:
   }
 };
 
-template<class T>
-void checkRecurrentLayer(LayerConfig layerConfig, size_t batchSize,
-                         bool cpuBatch, bool gpuBatch) {
+template <class T>
+void checkRecurrentLayer(LayerConfig layerConfig,
+                         size_t batchSize,
+                         bool cpuBatch,
+                         bool gpuBatch) {
   TestRecurrentLayer<T> testCpu(layerConfig, false, cpuBatch);
   TestRecurrentLayer<T> testGpu(layerConfig, true, gpuBatch);
   testCpu.init(batchSize);
   testGpu.init(batchSize);
-  auto checkError = [](MatrixPtr cpu, MatrixPtr gpu,
-                       int numSequences, const char* str) {
+  auto checkError = [](
+      MatrixPtr cpu, MatrixPtr gpu, int numSequences, const char* str) {
     CpuMatrix check(gpu->getHeight(), gpu->getWidth());
     check.copyFrom(*gpu);
     int height = cpu->getHeight();
@@ -290,8 +309,8 @@ void checkRecurrentLayer(LayerConfig layerConfig, size_t batchSize,
         }
       }
     }
-    EXPECT_EQ(count, 0) << "[" << str << "]" <<
-      "There are " << count << " different element.";
+    EXPECT_EQ(count, 0) << "[" << str << "]"
+                        << "There are " << count << " different element.";
   };
   T* cpuLayer = dynamic_cast<T*>(testCpu.testLayer_.get());
   T* gpuLayer = dynamic_cast<T*>(testGpu.testLayer_.get());
@@ -312,8 +331,8 @@ void checkRecurrentLayer(LayerConfig layerConfig, size_t batchSize,
   testCpu.forward();
   testGpu.forward();
 
-  checkError(cpuLayer->getOutputValue(),
-             gpuLayer->getOutputValue(), 1, "outputValue");
+  checkError(
+      cpuLayer->getOutputValue(), gpuLayer->getOutputValue(), 1, "outputValue");
 
   /* check backward */
   cpuLayer->getOutputGrad()->randomizeUniform();
@@ -327,11 +346,15 @@ void checkRecurrentLayer(LayerConfig layerConfig, size_t batchSize,
   checkError(cpuInput.grad, gpuInput.grad, 1, "inputGrad");
   // check weight grad
   int numSequences = cpuInput.getNumSequences();
-  checkError(cpuLayer->weight_->getWGrad(), gpuLayer->weight_->getWGrad(),
-             numSequences, "weightGrad");
+  checkError(cpuLayer->weight_->getWGrad(),
+             gpuLayer->weight_->getWGrad(),
+             numSequences,
+             "weightGrad");
   // check bias grad
-  checkError(cpuLayer->bias_->getWGrad(), gpuLayer->bias_->getWGrad(),
-             numSequences, "biasGrad");
+  checkError(cpuLayer->bias_->getWGrad(),
+             gpuLayer->bias_->getWGrad(),
+             numSequences,
+             "biasGrad");
 }
 
 TEST(Layer, GatedRecurrentLayer) {
@@ -357,7 +380,7 @@ TEST(Layer, GatedRecurrentLayer) {
             layerConfig.set_size(frameSize);
             layerConfig.set_reversed(reversed);
             checkRecurrentLayer<GatedRecurrentLayer>(
-              layerConfig, batchSize, cpuBatch, gpuBatch);
+                layerConfig, batchSize, cpuBatch, gpuBatch);
           }
         }
       }
@@ -388,8 +411,8 @@ TEST(Layer, LstmLayer) {
                       << " cpuBatch=" << cpuBatch << " gpuBatch=" << gpuBatch;
             layerConfig.set_size(frameSize);
             layerConfig.set_reversed(reversed);
-            checkRecurrentLayer<LstmLayer>
-              (layerConfig, batchSize, cpuBatch, gpuBatch);
+            checkRecurrentLayer<LstmLayer>(
+                layerConfig, batchSize, cpuBatch, gpuBatch);
           }
         }
       }

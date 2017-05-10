@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ class TestArguments(unittest.TestCase):
         m = swig_paddle.Matrix.createDense([4, 2, 4, 3, 9, 5], 2, 3)
         args = swig_paddle.Arguments.createArguments(1)
         args.setSlotValue(0, m)
+
+        self.assertAlmostEqual(27.0, args.sum())
 
         mat = args.getSlotValue(0)
         assert isinstance(mat, swig_paddle.Matrix)

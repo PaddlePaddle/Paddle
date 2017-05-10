@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #include "FullMatrixProjection.h"
 
@@ -29,7 +28,7 @@ FullMatrixProjection::FullMatrixProjection(const ProjectionConfig& config,
 
 void FullMatrixProjection::forward() {
   REGISTER_TIMER_INFO("FwMulTimer", getName().c_str());
-  out_->value->mul(in_->value, weight_->getW(), 1, 1);
+  out_->value->mul(*(in_->value), *(weight_->getW()), 1, 1);
 }
 
 void FullMatrixProjection::backward(const UpdateCallback& callback) {
@@ -38,7 +37,8 @@ void FullMatrixProjection::backward(const UpdateCallback& callback) {
   /* Calculate the W-gradient for the current layer */
   if (weight_->getWGrad()) {
     REGISTER_TIMER_INFO("GradMulTimer", getName().c_str());
-    weight_->getWGrad()->mul(in_->value->getTranspose(), out_->grad, 1, 1);
+    weight_->getWGrad()->mul(
+        *(in_->value->getTranspose()), *(out_->grad), 1, 1);
   }
 
   // If callback does not change value, backward propagation error
@@ -48,7 +48,7 @@ void FullMatrixProjection::backward(const UpdateCallback& callback) {
   /* Calculate the input layers error */
   if (in_->grad) {
     REGISTER_TIMER_INFO("BpMulTimer", getName().c_str());
-    in_->grad->mul(out_->grad, weight_->getW()->getTranspose(), 1, 1);
+    in_->grad->mul(*(out_->grad), *(weight_->getW()->getTranspose()), 1, 1);
   }
 
   hl_set_sync_flag(syncFlag);

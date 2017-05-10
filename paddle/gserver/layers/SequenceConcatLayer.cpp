@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,19 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
 
 /**
  * A layer for concatenating the first sequence with the second sequence
- * following the first
- * Input: two sequences each containing some instances
+ * Input: two sequences each containing the same number of instances
+ *        seq1 = [a1, a2, ..., an]
+ *        seq2 = [b1, b2, ..., bn]
  * Output: a concatenated sequence of the two input sequences
+ *        out = [a1, b1, a2, b2, ..., an, bn]
  */
 
 class SequenceConcatLayer : public Layer {
@@ -36,10 +37,11 @@ public:
 
   ~SequenceConcatLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(seqconcat, SequenceConcatLayer);
@@ -68,13 +70,11 @@ void SequenceConcatLayer::forward(PassType passType) {
 
   const Argument& input1 = getInput(0);
   size_t numSequences1 = input1.getNumSequences();
-  auto startPositions1 =
-      input1.sequenceStartPositions->getVector(false);
+  auto startPositions1 = input1.sequenceStartPositions->getVector(false);
 
   const Argument& input2 = getInput(1);
   size_t numSequences2 = input2.getNumSequences();
-  auto startPositions2 =
-      input2.sequenceStartPositions->getVector(false);
+  auto startPositions2 = input2.sequenceStartPositions->getVector(false);
 
   CHECK_EQ(dim, input1.value->getWidth());
   CHECK_EQ(startPositions1->getData()[numSequences1], input1.getBatchSize());
@@ -117,8 +117,8 @@ void SequenceConcatLayer::forward(PassType passType) {
     }
 
     // modify the sequenceStartPositions
-    ICpuGpuVector::resizeOrCreate(output_.sequenceStartPositions,
-                                   numSequences1 + 1, false);
+    ICpuGpuVector::resizeOrCreate(
+        output_.sequenceStartPositions, numSequences1 + 1, false);
 
     int* tgtBuf = output_.sequenceStartPositions->getMutableData(false);
 
@@ -150,10 +150,8 @@ void SequenceConcatLayer::backward(const UpdateCallback& callback) {
   MatrixPtr inputGrad1 = getInputGrad(0);
   MatrixPtr inputGrad2 = getInputGrad(1);
   MatrixPtr outputGrad = getOutputGrad();
-  auto startPositions1 =
-      getInput(0).sequenceStartPositions->getVector(false);
-  auto startPositions2 =
-      getInput(1).sequenceStartPositions->getVector(false);
+  auto startPositions1 = getInput(0).sequenceStartPositions->getVector(false);
+  auto startPositions2 = getInput(1).sequenceStartPositions->getVector(false);
 
   size_t numSequences1 = startPositions1->getSize() - 1;
   size_t numSequences2 = startPositions2->getSize() - 1;
@@ -172,13 +170,17 @@ void SequenceConcatLayer::backward(const UpdateCallback& callback) {
     size_t rightNumIns = 0;
     for (size_t seqId = 0; seqId < numSequences1; ++seqId) {
       leftNumIns = starts1[seqId + 1] - starts1[seqId];
-      inputGrad1->subMatrix(starts1[seqId], leftNumIns)
-          ->add(*(outputGrad->subMatrix(offset, leftNumIns)));
+      if (inputGrad1) {
+        inputGrad1->subMatrix(starts1[seqId], leftNumIns)
+            ->add(*(outputGrad->subMatrix(offset, leftNumIns)));
+      }
       offset += leftNumIns;
 
       rightNumIns = starts2[seqId + 1] - starts2[seqId];
-      inputGrad2->subMatrix(starts2[seqId], rightNumIns)
-          ->add(*(outputGrad->subMatrix(offset, rightNumIns)));
+      if (inputGrad2) {
+        inputGrad2->subMatrix(starts2[seqId], rightNumIns)
+            ->add(*(outputGrad->subMatrix(offset, rightNumIns)));
+      }
       offset += rightNumIns;
     }
   }

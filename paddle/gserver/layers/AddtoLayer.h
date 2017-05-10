@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "Layer.h"
@@ -21,15 +20,16 @@ limitations under the License. */
 
 namespace paddle {
 
-/** 
- * This layer just simply add all input layers together, then activate 
- * the sum inputs. Each input of this layer should be the same size, 
+/**
+ * This layer just simply add all input layers together, then activate
+ * the sum inputs. Each input of this layer should be the same size,
  * which is also the output size of this layer.
  * \f[
  *   y=f(\sum_{i}x_i + b)
  * \f]
- * where \f$y\f$ is output, \f$x\f$ is input, \f$b\f$ is bias, and \f$f\f$ is activation function.
- * 
+ * where \f$y\f$ is output, \f$x\f$ is input, \f$b\f$ is bias, and \f$f\f$ is
+ * activation function.
+ *
  * The config file api is addto_layer.
  */
 class AddtoLayer : public Layer {
@@ -41,22 +41,23 @@ public:
 
   ~AddtoLayer() {}
 
-  /** 
-   * Intialization of AddtoLayer. 
+  /**
+   * Intialization of AddtoLayer.
    */
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  /** 
+  /**
    * Forward propagation.
-   * @note There is no weight matrix for each input, 
+   * @note There is no weight matrix for each input,
    *       because it just a simple add operation.
    */
-  void forward(PassType passType);
+  void forward(PassType passType) override;
 
-  /** 
-   * Backward propagation. 
+  /**
+   * Backward propagation.
    */
-  void backward(const UpdateCallback& callback = nullptr);
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 }  // namespace paddle

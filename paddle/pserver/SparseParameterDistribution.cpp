@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <unistd.h>
 
 #include "paddle/utils/Logging.h"
@@ -21,21 +20,26 @@ limitations under the License. */
 
 #include "SparseParameterDistribution.h"
 
-P_DEFINE_bool(check_sparse_distribution_in_pserver, false,
-              "check whether sparse parameter exhibts balanced distribution at "
-              "all pservers");
-P_DEFINE_bool(show_check_sparse_distribution_log, false,
-              "show logs details for sparse parameter distribution in pserver");
-P_DEFINE_int32(check_sparse_distribution_batches, 100,
-               "run sparse parameter distribution check for N batches");
-P_DEFINE_double(
-    check_sparse_distribution_ratio, 0.6,
+DEFINE_bool(check_sparse_distribution_in_pserver,
+            false,
+            "check whether sparse parameter exhibts balanced distribution at "
+            "all pservers");
+DEFINE_bool(show_check_sparse_distribution_log,
+            false,
+            "show logs details for sparse parameter distribution in pserver");
+DEFINE_int32(check_sparse_distribution_batches,
+             100,
+             "run sparse parameter distribution check for N batches");
+DEFINE_double(
+    check_sparse_distribution_ratio,
+    0.6,
     "if parameters dispatched to different pservers exhibit unbalanced "
     " distribution for check_sparse_distribution_ratio * "
     " check_sparse_distribution_batches times, crash program");
-P_DEFINE_double(check_sparse_distribution_unbalance_degree, 2.0,
-                "the ratio of maximum data size and minimun data size for "
-                "different pserver");
+DEFINE_double(check_sparse_distribution_unbalance_degree,
+              2.0,
+              "the ratio of maximum data size and minimun data size for "
+              "different pserver");
 
 namespace paddle {
 

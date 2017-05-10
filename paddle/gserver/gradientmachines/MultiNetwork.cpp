@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,10 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
+#include <algorithm>
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
-#include <algorithm>
 
 #include "MultiNetwork.h"
 
@@ -24,7 +23,8 @@ limitations under the License. */
 
 namespace paddle {
 
-void MultiNetwork::init(const ModelConfig& config, ParamInitCallback callback,
+void MultiNetwork::init(const ModelConfig& config,
+                        ParamInitCallback callback,
                         const std::vector<ParameterType>& parameterTypes,
                         bool useGpu) {
   CHECK_GT(config.sub_models_size(), 1) << "sub_models_size should GT 1";
@@ -40,10 +40,10 @@ void MultiNetwork::init(const ModelConfig& config, ParamInitCallback callback,
     std::string subModelName = config.sub_models(i).name();
     if (FLAGS_parallel_nn) {
       subNetworks_[i - 1] = std::unique_ptr<ParallelNeuralNetwork>(
-                           new ParallelNeuralNetwork(subModelName, this));
+          new ParallelNeuralNetwork(subModelName, this));
     } else {
       subNetworks_[i - 1] = std::unique_ptr<NeuralNetwork>(
-                           NeuralNetwork::newNeuralNetwork(subModelName, this));
+          NeuralNetwork::newNeuralNetwork(subModelName, this));
     }
     subNetworks_[i - 1]->init(config);
   }
@@ -64,7 +64,8 @@ void MultiNetwork::prefetch(const std::vector<Argument>& inArgs) {
 }
 
 void MultiNetwork::forward(const std::vector<Argument>& inArgs,
-                           std::vector<Argument>* outArgs, PassType passType) {
+                           std::vector<Argument>* outArgs,
+                           PassType passType) {
   // split inArgs to several vectors
   std::vector<std::vector<Argument>> argumentGroups;
   Argument::splitByDataId(inArgs, &argumentGroups);
@@ -108,10 +109,9 @@ void MultiNetwork::onPassEnd() {
   }
 }
 
-void MultiNetwork::start(const TrainerConfig& config,
-                         DataProviderPtr dataProvider) {
+void MultiNetwork::start() {
   for (auto& subNetwork : subNetworks_) {
-    subNetwork->start(config, dataProvider);
+    subNetwork->start();
   }
 }
 
@@ -154,7 +154,7 @@ public:
     return -1;
   }
 
-  virtual void printStats(std::ostream& os) {
+  virtual void printStats(std::ostream& os) const {
     for (auto& evaluator : evaluators_) {
       evaluator->printStats(os);
       os << ' ';
@@ -171,7 +171,7 @@ protected:
   std::vector<std::unique_ptr<Evaluator>> evaluators_;
 };
 
-Evaluator* MultiNetwork::makeEvaluator() {
+Evaluator* MultiNetwork::makeEvaluator() const {
   MultiCombinedEvaluator* multiCombinedEvaluator = new MultiCombinedEvaluator();
   for (size_t i = 0; i < subNetworks_.size(); i++) {
     std::unique_ptr<Evaluator> evaluator(subNetworks_[i]->makeEvaluator());
@@ -180,6 +180,6 @@ Evaluator* MultiNetwork::makeEvaluator() {
   return multiCombinedEvaluator;
 }
 
-void MultiNetwork::eval(Evaluator* evaluator) { evaluator->eval(*this); }
+void MultiNetwork::eval(Evaluator* evaluator) const { evaluator->eval(*this); }
 
 }  // namespace paddle

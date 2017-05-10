@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,17 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include <vector>
-#include <algorithm>
 #include "SequenceToBatch.h"
-#include <iostream>
 #include <string.h>
+#include <algorithm>
+#include <iostream>
+#include <vector>
 
 namespace paddle {
 
-void SequenceToBatch::resizeOrCreateBatch(int batchSize, size_t numSequences,
-                                          const int *seqStarts, bool reversed,
+void SequenceToBatch::resizeOrCreateBatch(int batchSize,
+                                          size_t numSequences,
+                                          const int *seqStarts,
+                                          bool reversed,
                                           bool prevBatchState) {
   CHECK_EQ(seqStarts[numSequences], batchSize);
   IVector::resizeOrCreate(seq2BatchIdx_, batchSize, useGpu_);
@@ -50,7 +51,8 @@ void SequenceToBatch::resizeOrCreateBatch(int batchSize, size_t numSequences,
     int length = seqStarts[seqId + 1] - seqStarts[seqId];
     seqStartAndLength.emplace_back(seqStarts[seqId], length, seqId);
   }
-  std::sort(seqStartAndLength.begin(), seqStartAndLength.end(),
+  std::sort(seqStartAndLength.begin(),
+            seqStartAndLength.end(),
             [](SeqStartAndLength a, SeqStartAndLength b) {
               return a.length_ > b.length_;
             });
@@ -122,15 +124,19 @@ void SequenceToBatch::resizeOrCreateBatch(int batchSize, size_t numSequences,
 }
 
 void SequenceToBatch::resizeOrCreate(Matrix &seqValue) {
-  Matrix::resizeOrCreate(batchValue_, seqValue.getHeight(), seqValue.getWidth(),
-                         /* trans= */ false, useGpu_);
+  Matrix::resizeOrCreate(batchValue_,
+                         seqValue.getHeight(),
+                         seqValue.getWidth(),
+                         /* trans= */ false,
+                         useGpu_);
 }
 
 MatrixPtr SequenceToBatch::getBatchValue(int batchId, int numRows) {
   return getBatchValue(*batchValue_, batchId, numRows);
 }
 
-MatrixPtr SequenceToBatch::getBatchValue(Matrix &batchValue, int batchId,
+MatrixPtr SequenceToBatch::getBatchValue(Matrix &batchValue,
+                                         int batchId,
                                          int numRows) {
   int *batchStartPositions = batchStartPositions_->getData();
   int start = batchStartPositions[batchId];
@@ -151,7 +157,8 @@ void SequenceToBatch::getSeqOutputFromBatch(Matrix &sequence, Matrix &batch) {
   sequence2BatchCopy(sequence, batch, *seqEndIdxInBatch_, true);
 }
 
-void SequenceToBatch::sequence2BatchCopy(Matrix &batch, Matrix &sequence,
+void SequenceToBatch::sequence2BatchCopy(Matrix &batch,
+                                         Matrix &sequence,
                                          IVector &seq2BatchIdx,
                                          bool seq2batch) {
   int seqWidth = sequence.getWidth();
@@ -161,23 +168,27 @@ void SequenceToBatch::sequence2BatchCopy(Matrix &batch, Matrix &sequence,
   int *idxData = seq2BatchIdx.getData();
 
   if (useGpu_) {
-    hl_sequence2batch_copy(batchData, seqData, idxData, seqWidth,
-                           batchCount, seq2batch);
+    hl_sequence2batch_copy(
+        batchData, seqData, idxData, seqWidth, batchCount, seq2batch);
   } else {
     for (int i = 0; i < batchCount; ++i) {
       if (seq2batch) {
-        memcpy(batch.rowBuf(i), sequence.rowBuf(idxData[i]),
+        memcpy(batch.rowBuf(i),
+               sequence.rowBuf(idxData[i]),
                seqWidth * sizeof(real));
       } else {
-        memcpy(sequence.rowBuf(idxData[i]), batch.rowBuf(i),
+        memcpy(sequence.rowBuf(idxData[i]),
+               batch.rowBuf(i),
                seqWidth * sizeof(real));
       }
     }
   }
 }
 
-void SequenceToBatch::sequence2BatchAdd(Matrix &batch, Matrix &sequence,
-                                        IVector &seq2BatchIdx, bool seq2batch) {
+void SequenceToBatch::sequence2BatchAdd(Matrix &batch,
+                                        Matrix &sequence,
+                                        IVector &seq2BatchIdx,
+                                        bool seq2batch) {
   int seqWidth = sequence.getWidth();
   int batchCount = batch.getHeight();
   real *batchData = batch.getData();
@@ -185,8 +196,8 @@ void SequenceToBatch::sequence2BatchAdd(Matrix &batch, Matrix &sequence,
   int *idxData = seq2BatchIdx.getData();
 
   if (useGpu_) {
-    hl_sequence2batch_add(batchData, seqData, idxData, seqWidth,
-                          batchCount, seq2batch);
+    hl_sequence2batch_add(
+        batchData, seqData, idxData, seqWidth, batchCount, seq2batch);
   } else {
     for (int i = 0; i < batchCount; ++i) {
       if (seq2batch) {
@@ -199,8 +210,11 @@ void SequenceToBatch::sequence2BatchAdd(Matrix &batch, Matrix &sequence,
 }
 
 void SequenceToBatch::copyFromSeq(Matrix &seqValue) {
-  Matrix::resizeOrCreate(batchValue_, seqValue.getHeight(), seqValue.getWidth(),
-                         /* trans= */ false, useGpu_);
+  Matrix::resizeOrCreate(batchValue_,
+                         seqValue.getHeight(),
+                         seqValue.getWidth(),
+                         /* trans= */ false,
+                         useGpu_);
   sequence2BatchCopy(*batchValue_, seqValue, *seq2BatchIdx_, true);
 }
 
@@ -208,12 +222,14 @@ void SequenceToBatch::copyBackSeq(Matrix &seqValue) {
   sequence2BatchCopy(*batchValue_, seqValue, *seq2BatchIdx_, false);
 }
 
-void SequenceToBatch::copy(Matrix &seqValue, Matrix &batchValue,
+void SequenceToBatch::copy(Matrix &seqValue,
+                           Matrix &batchValue,
                            bool seq2batch) {
   sequence2BatchCopy(batchValue, seqValue, *seq2BatchIdx_, seq2batch);
 }
 
-void SequenceToBatch::add(Matrix &seqValue, Matrix &batchValue,
+void SequenceToBatch::add(Matrix &seqValue,
+                          Matrix &batchValue,
                           bool seq2batch) {
   sequence2BatchAdd(batchValue, seqValue, *seq2BatchIdx_, seq2batch);
 }

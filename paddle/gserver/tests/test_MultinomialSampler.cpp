@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <random>
 
 #include <gtest/gtest.h>
@@ -21,8 +20,8 @@ limitations under the License. */
 #undef PADDLE_DISABLE_TIMER
 #include "paddle/utils/Stat.h"
 
-#include "paddle/utils/Util.h"
 #include "paddle/gserver/layers/MultinomialSampler.h"
+#include "paddle/utils/Util.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -43,7 +42,7 @@ TEST(MultinomialSampler, gen) {
   int size = 1024 * 4;
   default_random_engine reng;
 
-  for (size_t iter=0; iter < 256; ++iter) {
+  for (size_t iter = 0; iter < 256; ++iter) {
     uniform_int_distribution<int> rand(1, numGrids / size * 1.8);
     vector<real> prob;
     int sum = 0;
@@ -137,7 +136,6 @@ void benchmarkRandom() {
   }
   LOG(INFO) << "sum1=" << sum1;
 }
-
 
 int main(int argc, char** argv) {
   initMain(argc, argv);

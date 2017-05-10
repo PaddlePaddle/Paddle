@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ settings(
     learning_method=MomentumOptimizer(),
     batch_size=batch_size,
     regularization=L2Regularization(batch_size * 1e-4),
-    average_window=0.5,
+    model_average=ModelAverage(0.5),
     learning_rate=1e-1,
     learning_rate_decay_a=1e-5,
     learning_rate_decay_b=0.25, )
@@ -74,7 +74,8 @@ sum_evaluator(
 
 chunk_evaluator(
     name="chunk_f1",
-    input=[crf_decoding, chunk],
+    input=crf_decoding,
+    label=chunk,
     chunk_scheme="IOB",
     num_chunk_types=11, )
 

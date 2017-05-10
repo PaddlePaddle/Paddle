@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #include "BlockExpandLayer.h"
 
@@ -52,7 +51,7 @@ size_t BlockExpandLayer::getBlockNum() {
   if (imgSizeW_ == 0) {
     imgSizeW_ = blockConf.img_size_x();
   }
-  size_t tmpH  = 2 * paddingH_ + imgSizeH_ - blockH_;
+  size_t tmpH = 2 * paddingH_ + imgSizeH_ - blockH_;
   outputH_ = (int)tmpH < 0 ? 1 : 1 + (tmpH + strideH_ - 1) / strideH_;
   size_t tmpW = 2 * paddingW_ + imgSizeW_ - blockW_;
   outputW_ = (int)tmpW < 0 ? 1 : 1 + (tmpW + strideW_ - 1) / strideW_;
@@ -73,8 +72,8 @@ void BlockExpandLayer::forward(PassType passType) {
 
   MatrixPtr input = getPrev(0)->getOutputValue();
   Matrix::resizeOrCreate(outVTrans_, blockSize, blockNum, false, useGpu_);
-  ICpuGpuVector::resizeOrCreate(out.sequenceStartPositions,
-                                batchSize + 1, false);
+  ICpuGpuVector::resizeOrCreate(
+      out.sequenceStartPositions, batchSize + 1, false);
   IVector::resizeOrCreate(out.cpuSequenceDims, 2 * batchSize, false);
   int* start = out.sequenceStartPositions->getMutableData(false);
   int* dims = out.cpuSequenceDims->getData();
@@ -82,14 +81,29 @@ void BlockExpandLayer::forward(PassType passType) {
     outVTrans_->zeroMem();
     /* expand each block as one row */
     MatrixPtr inputTmp =
-        Matrix::create(input->getData() + i * input->getWidth(), 1,
-                       input->getWidth(), false, useGpu_);
-    outVTrans_->convExpand(*inputTmp, imgSizeH_, imgSizeW_, channels_, blockH_,
-                          blockW_, strideH_, strideW_, paddingH_, paddingW_,
-                          outputH_, outputW_);
+        Matrix::create(input->getData() + i * input->getWidth(),
+                       1,
+                       input->getWidth(),
+                       false,
+                       useGpu_);
+    outVTrans_->convExpand(*inputTmp,
+                           imgSizeH_,
+                           imgSizeW_,
+                           channels_,
+                           blockH_,
+                           blockW_,
+                           strideH_,
+                           strideW_,
+                           paddingH_,
+                           paddingW_,
+                           outputH_,
+                           outputW_);
     MatrixPtr outVTmp =
-        Matrix::create(outV->getData() + i * blockNum * blockSize, blockNum,
-                       blockSize, false, useGpu_);
+        Matrix::create(outV->getData() + i * blockNum * blockSize,
+                       blockNum,
+                       blockSize,
+                       false,
+                       useGpu_);
     outVTrans_->transpose(outVTmp, false);
     start[i] = i * blockNum;
     dims[2 * i] = outputH_;
@@ -115,15 +129,32 @@ void BlockExpandLayer::backward(const UpdateCallback& callback) {
 
   for (size_t i = 0; i < batchSize; i++) {
     MatrixPtr gradTmp =
-        Matrix::create(grad->getData() + i * blockNum * blockSize, blockNum,
-                       blockSize, false, useGpu_);
+        Matrix::create(grad->getData() + i * blockNum * blockSize,
+                       blockNum,
+                       blockSize,
+                       false,
+                       useGpu_);
     gradTmp->transpose(gradTrans, false);
     MatrixPtr preGradTmp =
-        Matrix::create(preGrad->getData() + i * preGrad->getWidth(), 1,
-                       preGrad->getWidth(), false, useGpu_);
-    preGradTmp->convShrink(*gradTrans, imgSizeH_, imgSizeW_, channels_, blockH_,
-                           blockW_, strideH_, strideW_, paddingH_, paddingW_,
-                           outputH_, outputW_, 1.0, 1.0);
+        Matrix::create(preGrad->getData() + i * preGrad->getWidth(),
+                       1,
+                       preGrad->getWidth(),
+                       false,
+                       useGpu_);
+    preGradTmp->convShrink(*gradTrans,
+                           imgSizeH_,
+                           imgSizeW_,
+                           channels_,
+                           blockH_,
+                           blockW_,
+                           strideH_,
+                           strideW_,
+                           paddingH_,
+                           paddingW_,
+                           outputH_,
+                           outputW_,
+                           1.0,
+                           1.0);
   }
 }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,30 +12,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <atomic>
 #include <mutex>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
-#include "paddle/utils/Locks.h"
 #include "paddle/math/Matrix.h"
-#include "paddle/parameter/Parameter.h"
-#include "paddle/utils/Queue.h"
-#include "paddle/utils/TypeDefs.h"
-#include "paddle/utils/Util.h"
 #include "paddle/math/Vector.h"
-#include "paddle/utils/Flags.h"
+#include "paddle/parameter/Parameter.h"
 #include "paddle/pserver/BaseClient.h"
+#include "paddle/utils/Common.h"
+#include "paddle/utils/Flags.h"
+#include "paddle/utils/Locks.h"
+#include "paddle/utils/Queue.h"
+#include "paddle/utils/Util.h"
 
 #include "ParameterService.pb.h"
 
-#include "SparseParameterDistribution.h"
 #include "ProtoServer.h"
+#include "SparseParameterDistribution.h"
 
-P_DECLARE_int32(parallel_thread_num);
+DECLARE_int32(parallel_thread_num);
 
 namespace paddle {
 
@@ -190,8 +189,8 @@ protected:
 };
 
 struct ParameterSegments {
-  std::string name;               // name of the parameter
-  size_t id;                      // id of the parameter
+  std::string name;  // name of the parameter
+  size_t id;         // id of the parameter
 };
 
 /**
@@ -225,7 +224,8 @@ public:
    *                 connections the parameter client maintains.
    */
   ParameterClient2(bool separate = false,
-                   int port = FLAGS_port, int numPorts = FLAGS_ports_num);
+                   int port = FLAGS_port,
+                   int numPorts = FLAGS_ports_num);
 
   ~ParameterClient2();
 
@@ -255,14 +255,14 @@ public:
    *            client[recvParameterType]
    * @note Only parameterType will be sent.
    */
-  void sendAndReceiveParameter(
-      ParameterUpdateMode updateMode,
-      ParameterType parameterType,
-      const std::vector<ParameterSegments>& segments,
-      int64_t numSamples,
-      real cost, bool sendBackParameter,
-      ParameterType sendBackParameterType,
-      ParameterType recvParameterType);
+  void sendAndReceiveParameter(ParameterUpdateMode updateMode,
+                               ParameterType parameterType,
+                               const std::vector<ParameterSegments>& segments,
+                               int64_t numSamples,
+                               real cost,
+                               bool sendBackParameter,
+                               ParameterType sendBackParameterType,
+                               ParameterType recvParameterType);
 
   /**
    * @brief Sends all parameters to parameter servers, and receives the response
@@ -276,8 +276,13 @@ public:
       bool sendBackParameter,
       ParameterType sendBackParameterType = PARAMETER_VALUE,
       ParameterType recvParameterType = PARAMETER_VALUE) {
-    sendAndReceiveParameter(updateMode, parameterType, allSegments_, numSamples,
-                            cost, sendBackParameter, sendBackParameterType,
+    sendAndReceiveParameter(updateMode,
+                            parameterType,
+                            allSegments_,
+                            numSamples,
+                            cost,
+                            sendBackParameter,
+                            sendBackParameterType,
                             recvParameterType);
   }
 
@@ -302,29 +307,41 @@ public:
   void sendParameter(ParameterUpdateMode updateMode,
                      ParameterType parameterType,
                      const std::vector<ParameterSegments>& segments,
-                     int64_t numSamples, real cost, bool sendBackParameter,
+                     int64_t numSamples,
+                     real cost,
+                     bool sendBackParameter,
                      BatchStatus batchStatus);
 
   void recvParameter();
 
   /**
-   * Sends all parameters to parameter servers, recvParameter() have to be invoked
+   * Sends all parameters to parameter servers, recvParameter() have to be
+   * invoked
    * afterwards.
    *
    * @note This function is non-blocking. This means that if parameter should
    *       not changes between this call and recvParameter()
    */
   void sendParameter(ParameterUpdateMode updateMode,
-                     ParameterType parameterType, int64_t numSamples, real cost,
-                     bool sendBackParameter, BatchStatus batchStatus) {
-    sendParameter(updateMode, parameterType, allSegments_, numSamples, cost,
-                  sendBackParameter, batchStatus);
+                     ParameterType parameterType,
+                     int64_t numSamples,
+                     real cost,
+                     bool sendBackParameter,
+                     BatchStatus batchStatus) {
+    sendParameter(updateMode,
+                  parameterType,
+                  allSegments_,
+                  numSamples,
+                  cost,
+                  sendBackParameter,
+                  batchStatus);
   }
 
   /// Get all parameters from parameter servers
   void getParameter(ParameterType recvParameterType = PARAMETER_VALUE,
                     ParameterType sendBackParameterType = PARAMETER_VALUE) {
-    sendAndReceiveParameter(PSERVER_UPDATE_MODE_GET_PARAM, PARAMETER_VALUE,
+    sendAndReceiveParameter(PSERVER_UPDATE_MODE_GET_PARAM,
+                            PARAMETER_VALUE,
                             0,     // numSamples = 0
                             0,     // cost = 0
                             true,  // sendBackParameter = true
@@ -341,12 +358,14 @@ public:
                             0,     // numSamples = 0
                             0,     // cost = 0
                             true,  // sendBackParameter = true
-                            sendBackParameterType, recvParameterType);
+                            sendBackParameterType,
+                            recvParameterType);
   }
 
   /// Set all parameters on parameter servers using the local parameters
   void setParameter() {
-    sendAndReceiveParameter(PSERVER_UPDATE_MODE_SET_PARAM, PARAMETER_VALUE,
+    sendAndReceiveParameter(PSERVER_UPDATE_MODE_SET_PARAM,
+                            PARAMETER_VALUE,
                             0,       // numSamples = 0
                             0,       // cost = 0
                             false);  // sendBackParameter = false
@@ -356,7 +375,8 @@ public:
    * means do not sending local parameters
    */
   void setParameterZero() {
-    sendAndReceiveParameter(PSERVER_UPDATE_MODE_SET_PARAM_ZERO, PARAMETER_VALUE,
+    sendAndReceiveParameter(PSERVER_UPDATE_MODE_SET_PARAM_ZERO,
+                            PARAMETER_VALUE,
                             0,       // numSamples = 0
                             0,       // cost = 0
                             false);  // sendBackParameter = false
@@ -401,15 +421,18 @@ public:
    * @param[in] If true, and if all clients call waitPassFinish, signal all
    *            clients finish the pass.
    */
-  void doOperation(PreparedOperations& ops, bool waitForGradient,
-                   bool sendBackParameter, bool releasePass = true);
+  void doOperation(PreparedOperations& ops,
+                   bool waitForGradient,
+                   bool sendBackParameter,
+                   bool releasePass = true);
 
   /**
    * Set the configuration of pserver, including parameter config and
    * optimization config
    */
   void setConfig(const OptimizationConfig& optConfig,
-                 const std::string& saveDir = "", bool isSparseServer = false);
+                 const std::string& saveDir = "",
+                 bool isSparseServer = false);
 
   /// Return true if all pservers are in the given status
   bool inStatus(PServerStatus status);
@@ -454,7 +477,9 @@ public:
   void vectorAddMult(PServerVector u, PServerVector v, real a);
 
   /// u = v + w * a
-  void vectorAddMultInto(PServerVector u, PServerVector v, PServerVector w,
+  void vectorAddMultInto(PServerVector u,
+                         PServerVector v,
+                         PServerVector w,
                          real a);
   /// u = v * a
   void vectorScaleInto(PServerVector u, PServerVector v, real a);
@@ -491,7 +516,8 @@ public:
 
 protected:
   template <typename ProtoIn, typename ProtoOut>
-  void multiCall(const char* funcName, const ProtoIn& request,
+  void multiCall(const char* funcName,
+                 const ProtoIn& request,
                  std::vector<ProtoOut>* responses) {
     responses->resize(clients_.size());
     size_t numClients = clients_.size();
@@ -511,10 +537,12 @@ private:
    *        to all pservers. it is called under one SyncThreadPool. it
    *        supports to use N thread to control M connections. the receiving
    *        actions can be started until all sending action to all connections
-   *        owned by current thread are finished. Different connections controlled
+   *        owned by current thread are finished. Different connections
+   * controlled
    *        by different threads can transfer data asynchronously.
    */
-  void sendParallel(int tid, size_t numThreads,
+  void sendParallel(int tid,
+                    size_t numThreads,
                     ParameterType recvParameterType);
   /// sending thread routine for asynchronously send data
   void send(int threadId);
@@ -535,9 +563,12 @@ private:
       ParameterUpdateMode updateMode,
       ParameterType parameterType,  // client send type
       const std::vector<ParameterSegments>& parameterSegments,
-      int64_t numSamples, real cost, bool sendBackParameter,
+      int64_t numSamples,
+      real cost,
+      bool sendBackParameter,
       ParameterType sendBackParameterType,  // send back type in pserver
-      BatchStatus batchStatus, SendJob* sendJob);
+      BatchStatus batchStatus,
+      SendJob* sendJob);
 
   /// start necessary threads for threadPool
   void initThreads();

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,8 +30,8 @@ private:
 public:
   explicit MaxIdLayer(const LayerConfig& config) : Layer(config) {}
 
-  virtual bool init(const LayerMap& layerMap,
-                    const ParameterMap& parameterMap) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
     bool ret = Layer::init(layerMap, parameterMap);
     CHECK_EQ(1UL, inputLayers_.size());
 
@@ -40,18 +40,21 @@ public:
     return ret;
   }
 
-  virtual void forward(PassType passType) {
+  void forward(PassType passType) override {
     Layer::forward(passType);
     const Argument& input = getInput(0);
     size_t batchSize = input.getBatchSize();
     IVector::resizeOrCreate(output_.ids, batchSize * beamSize_, useGpu_);
-    Matrix::resizeOrCreate(output_.in, batchSize, beamSize_, false,
+    Matrix::resizeOrCreate(output_.in,
+                           batchSize,
+                           beamSize_,
+                           false,
                            /* useGpu */ useGpu_);
     output_.value = nullptr;
     input.value->rowMax(*output_.ids, *output_.in);
   }
 
-  virtual void backward(const UpdateCallback& callback) {}
+  void backward(const UpdateCallback& callback) override {}
 };
 
 REGISTER_LAYER(maxid, MaxIdLayer);

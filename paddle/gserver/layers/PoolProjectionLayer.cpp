@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "PoolProjectionLayer.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
-#include "PoolProjectionLayer.h"
 
 namespace paddle {
-
 
 size_t PoolProjectionLayer::getSize() {
   CHECK_EQ(inputLayers_.size(), 1UL);
@@ -31,9 +30,15 @@ size_t PoolProjectionLayer::getSize() {
     imgSizeW_ = imgSize_;
   }
 
-  outputH_ = outputSize(imgSizeH_, sizeY_, confPaddingY_, strideY_,
+  outputH_ = outputSize(imgSizeH_,
+                        sizeY_,
+                        confPaddingY_,
+                        strideY_,
                         /* caffeMode */ false);
-  outputW_ = outputSize(imgSizeW_, sizeX_, confPadding_, stride_,
+  outputW_ = outputSize(imgSizeW_,
+                        sizeX_,
+                        confPadding_,
+                        stride_,
                         /* caffeMode */ false);
 
   layerSize = outputH_ * outputW_ * channels_;

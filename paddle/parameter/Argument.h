@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,21 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "hl_gpu.h"
 
 #include "paddle/math/Matrix.h"
 #include "paddle/math/Vector.h"
+#include "paddle/parameter/Parameter.h"
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/Util.h"
-#include "paddle/parameter/Parameter.h"
 
 namespace paddle {
 
-// vector of user defined pointers
-typedef std::shared_ptr<std::vector<void*>> UserDefinedVectorPtr;
 typedef std::shared_ptr<std::vector<std::string>> SVectorPtr;
 
 struct Argument {
@@ -41,7 +38,6 @@ struct Argument {
         sequenceStartPositions(nullptr),
         subSequenceStartPositions(nullptr),
         cpuSequenceDims(nullptr),
-        udp(nullptr),
         deviceId(-1),
         allCount(0),
         valueCount(0),
@@ -64,7 +60,6 @@ struct Argument {
     sequenceStartPositions = argument.sequenceStartPositions;
     subSequenceStartPositions = argument.subSequenceStartPositions;
     cpuSequenceDims = argument.cpuSequenceDims;
-    udp = argument.udp;
     deviceId = argument.deviceId;
     allCount = argument.allCount;
     frameHeight = argument.frameHeight;
@@ -96,8 +91,6 @@ struct Argument {
 
   // dimension of sequence, stored only in CPU
   IVectorPtr cpuSequenceDims;
-
-  UserDefinedVectorPtr udp;  // user defined pointer
 
   int deviceId;            // the GPU device id which the argument in
   int allCount;            // the number of output layers using this argument
@@ -138,7 +131,6 @@ struct Argument {
     if (ids) return ids->getSize();
     if (grad) return grad->getHeight();
     if (in) return in->getHeight();
-    if (udp) return udp->size();
     if (strs) return strs->size();
     return 0;
   }
@@ -153,9 +145,8 @@ struct Argument {
   }
 
   int64_t getNumSubSequences() const {
-    return subSequenceStartPositions
-               ? subSequenceStartPositions->getSize() - 1
-               : getBatchSize();
+    return subSequenceStartPositions ? subSequenceStartPositions->getSize() - 1
+                                     : getBatchSize();
   }
 
   bool hasSubseq() const { return subSequenceStartPositions != nullptr; }
@@ -165,7 +156,7 @@ struct Argument {
                        : sequenceStartPositions->getData(false);
   }
 
-  static inline real sumCosts(const std::vector<Argument>& arguments) {
+  static inline real sum(const std::vector<Argument>& arguments) {
     real cost = 0;
     for (auto& arg : arguments) {
       if (arg.value) {
@@ -190,9 +181,14 @@ struct Argument {
    * @param seqStart[in]    offset of input.sequenceStartPositions
    * @param seqSize[in]     lenght of output.sequenceStartPositions
    */
-  void subArgFrom(const Argument& input, size_t offset, size_t height,
-                  size_t width, bool useGpu, bool trans = false,
-                  bool seqFlag = false, size_t seqStart = 0,
+  void subArgFrom(const Argument& input,
+                  size_t offset,
+                  size_t height,
+                  size_t width,
+                  bool useGpu,
+                  bool trans = false,
+                  bool seqFlag = false,
+                  size_t seqStart = 0,
                   size_t seqSize = 0);
   /*
    * for sequence input:
@@ -206,16 +202,21 @@ struct Argument {
    * Note that when specifying the stream explicitly in this case,
    * synchronize should also be called somewhere after this function
    */
-  int32_t resizeAndCopyFrom(const Argument& src, int32_t startSeq,
-                            int32_t copySize, bool useGpu, hl_stream_t stream);
+  int32_t resizeAndCopyFrom(const Argument& src,
+                            int32_t startSeq,
+                            int32_t copySize,
+                            bool useGpu,
+                            hl_stream_t stream);
 
   /*
    * same with the above function, except that the stream is
    * HPPL_STREAM_DEFAULT and synchronize is automatically called
    * inside it
    */
-  int32_t resizeAndCopyFrom(const Argument& src, int32_t startSeq,
-                            int32_t copySize, bool useGpu = FLAGS_use_gpu);
+  int32_t resizeAndCopyFrom(const Argument& src,
+                            int32_t startSeq,
+                            int32_t copySize,
+                            bool useGpu = FLAGS_use_gpu);
 
   void resizeAndCopyFrom(const Argument& src, bool useGpu, hl_stream_t stream);
 
@@ -237,13 +238,16 @@ struct Argument {
    */
   void concat(const std::vector<Argument>& args,
               const std::vector<int>& selectRows,
-              const std::vector<int>& seqStartPos, bool useGpu,
-              hl_stream_t stream, PassType passType);
+              const std::vector<int>& seqStartPos,
+              bool useGpu,
+              hl_stream_t stream,
+              PassType passType);
 
   /*
     Concatenate several args into one and put the result into this.
    */
-  void concat(const std::vector<Argument>& src, bool useGpu = FLAGS_use_gpu,
+  void concat(const std::vector<Argument>& src,
+              bool useGpu = FLAGS_use_gpu,
               hl_stream_t stream = HPPL_STREAM_DEFAULT,
               PassType passType = PASS_TEST);
 
@@ -285,7 +289,33 @@ struct Argument {
   /*
    sequence has sub-sequence degrades to a sequence.
    */
-  void degradeSequence(const Argument& input, bool useGpu);
+  void degradeSequence(const Argument& input);
+
+  /*
+   After pooling with stride n (n is smaller than sequence length),
+   a long sequence will be shorten.
+   This function is invalid for sequence having sub-sequence.
+   */
+  void poolSequenceWithStride(const Argument& input,
+                              size_t stride,
+                              IVectorPtr* stridePositions,
+                              bool reversed = false);
+  /**
+   * @brief getValueString will return the argument's output in string. There
+   * are several kinds of output. The keys of output dictionary are 'value',
+   * 'id', 'sequence pos', 'sub-sequence pos'.
+   * @param out [out]: the return values.
+   */
+  void getValueString(std::unordered_map<std::string, std::string>* out) const;
+
+  /**
+   * @brief printValueString will print the argument's output in order of
+   * 'value', 'id', 'sequence pos', 'sub-sequence pos'.
+   * @param stream: Output stream
+   * @param prefix: line prefix for printing.
+   */
+  void printValueString(std::ostream& stream,
+                        const std::string& prefix = "") const;
 };
 
 }  // namespace paddle

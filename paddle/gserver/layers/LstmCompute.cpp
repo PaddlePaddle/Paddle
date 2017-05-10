@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,10 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include "paddle/utils/Util.h"
-#include "hl_recurrent_apply.cuh"
 #include "LstmCompute.h"
+#include "hl_recurrent_apply.cuh"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 
@@ -27,22 +26,31 @@ void LstmCompute::init(LayerConfig &config) {
 
 template <>
 void LstmCompute::forwardOneSequence<0>(hl_lstm_value value, int frameSize) {
-  hl_cpu_lstm_forward(hppl::forward::lstm(), value,
-                      frameSize, activeNode_, activeGate_,
+  hl_cpu_lstm_forward(hppl::forward::lstm(),
+                      value,
+                      frameSize,
+                      activeNode_,
+                      activeGate_,
                       activeState_);
 }
 
 template <>
-void LstmCompute::backwardOneSequence<0>(hl_lstm_value value, hl_lstm_grad grad,
-                                        int frameSize) {
-  hl_cpu_lstm_backward(hppl::backward::lstm(), value, grad,
-                       frameSize, activeNode_, activeGate_,
+void LstmCompute::backwardOneSequence<0>(hl_lstm_value value,
+                                         hl_lstm_grad grad,
+                                         int frameSize) {
+  hl_cpu_lstm_backward(hppl::backward::lstm(),
+                       value,
+                       grad,
+                       frameSize,
+                       activeNode_,
+                       activeGate_,
                        activeState_);
 }
 
 template <>
-void LstmCompute::forwardBatch<0>(hl_lstm_value value, int frameSize,
-                                 int batchSize) {
+void LstmCompute::forwardBatch<0>(hl_lstm_value value,
+                                  int frameSize,
+                                  int batchSize) {
   for (int b = 0; b < batchSize; b++) {
     forwardOneSequence<0>(value, frameSize);
 
@@ -57,8 +65,10 @@ void LstmCompute::forwardBatch<0>(hl_lstm_value value, int frameSize,
 }
 
 template <>
-void LstmCompute::backwardBatch<0>(hl_lstm_value value, hl_lstm_grad grad,
-                                  int frameSize, int batchSize) {
+void LstmCompute::backwardBatch<0>(hl_lstm_value value,
+                                   hl_lstm_grad grad,
+                                   int frameSize,
+                                   int batchSize) {
   for (int b = 0; b < batchSize; b++) {
     backwardOneSequence<0>(value, grad, frameSize);
 

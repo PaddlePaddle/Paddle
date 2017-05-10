@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/utils/Util.h"
@@ -25,12 +24,12 @@ limitations under the License. */
 
 #include "TrainerConfig.pb.h"
 
-#include "ParameterUpdater.h"
+#include <stdlib.h>
+#include <fstream>
 #include "ParamUtil.h"
+#include "ParameterUpdater.h"
 #include "TesterConfig.h"
 #include "TrainerInternalConfig.h"
-#include <fstream>
-#include <stdlib.h>
 
 namespace paddle {
 
@@ -49,10 +48,10 @@ public:
    *                         for getting parameter from parameter-server.
    * @param testDataProvider Test data provider.
    */
-  Tester(const std::shared_ptr<TrainerConfigHelper> &config,
-         std::unique_ptr<TesterConfig> &&intconfig,
-         const GradientMachinePtr &gradientMachine,
-         const std::shared_ptr<ParameterUpdater> &parameterUpdater,
+  Tester(const std::shared_ptr<TrainerConfigHelper>& config,
+         std::unique_ptr<TesterConfig>&& intconfig,
+         const GradientMachinePtr& gradientMachine,
+         const std::shared_ptr<ParameterUpdater>& parameterUpdater,
          std::shared_ptr<DataProvider> testDataProvider);
 
   /**
@@ -83,12 +82,10 @@ public:
                        Evaluator* evaluator,
                        std::vector<Argument>* outArgs);
 
-
   /**
    * performance the full pass of test given test data provider
    */
   void test();
-
 
 protected:
   std::shared_ptr<ParameterClient2> testParameterClient_;

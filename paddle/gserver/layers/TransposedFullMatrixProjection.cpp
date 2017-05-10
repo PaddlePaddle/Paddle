@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,9 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include "paddle/utils/Stat.h"
 #include "Projection.h"
+#include "paddle/utils/Stat.h"
 
 namespace paddle {
 
@@ -27,7 +26,8 @@ namespace paddle {
 class TransposedFullMatrixProjection : public Projection {
 public:
   TransposedFullMatrixProjection(const ProjectionConfig& config,
-                                 ParameterPtr parameter, bool useGPu);
+                                 ParameterPtr parameter,
+                                 bool useGPu);
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 
@@ -46,7 +46,7 @@ TransposedFullMatrixProjection::TransposedFullMatrixProjection(
 
 void TransposedFullMatrixProjection::forward() {
   REGISTER_TIMER_INFO("FwMulTimer", getName().c_str());
-  out_->value->mul(in_->value, weight_->getW()->getTranspose(), 1, 1);
+  out_->value->mul(*(in_->value), *(weight_->getW()->getTranspose()), 1, 1);
 }
 
 void TransposedFullMatrixProjection::backward(const UpdateCallback& callback) {
@@ -55,7 +55,8 @@ void TransposedFullMatrixProjection::backward(const UpdateCallback& callback) {
   /* Calculate the W-gradient for the current layer */
   if (weight_->getWGrad()) {
     REGISTER_TIMER_INFO("GradMulTimer", getName().c_str());
-    weight_->getWGrad()->mul(out_->grad->getTranspose(), in_->value, 1, 1);
+    weight_->getWGrad()->mul(
+        *(out_->grad->getTranspose()), *(in_->value), 1, 1);
   }
 
   // If callback does not change value, backprop error asynchronously so that
@@ -69,7 +70,7 @@ void TransposedFullMatrixProjection::backward(const UpdateCallback& callback) {
   /* Calculate the input layers error */
   if (in_->grad) {
     REGISTER_TIMER_INFO("BpMulTimer", getName().c_str());
-    in_->grad->mul(out_->grad, weight_->getW(), 1, 1);
+    in_->grad->mul(*(out_->grad), *(weight_->getW()), 1, 1);
   }
 
   hl_set_sync_flag(syncFlag);

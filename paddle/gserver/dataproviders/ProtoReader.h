@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,15 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <memory>
 
-#include <google/protobuf/message_lite.h>
 #include <google/protobuf/io/coded_stream.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/io/gzip_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/message_lite.h>
 
 namespace paddle {
 
@@ -138,7 +137,8 @@ protected:
    *
    * @note this code depends on protobuf 2.4.0. There is nothing like
    * CodedInputStream::CurrentPosition() in protobuf 2.5.0 to tell us how many
-   * bytes has the object readed so far. Therefore, we calculated bytes ourselves.
+   * bytes has the object readed so far. Therefore, we calculated bytes
+   * ourselves.
    */
   int approximateReadedBytes_;
 };

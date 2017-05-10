@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,22 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <stdint.h>
-#include <string>
 #include <sys/time.h>
-#include <memory>
 #include <iostream>
-#include <mutex>
-#include <unordered_map>
 #include <list>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
-#include "Logging.h"
 #include "Locks.h"
+#include "Logging.h"
 #include "ThreadLocal.h"
-#include "Stat.h"
 
 namespace paddle {
 
@@ -218,11 +216,12 @@ public:
   }
 
 protected:
-  virtual void showAbstract(std::ostream &output) {}
-  friend std::ostream &operator<<(std::ostream &output, BarrierStatBase &stat);
+  virtual void showAbstract(std::ostream &output) const {}
+  friend std::ostream &operator<<(std::ostream &output,
+                                  const BarrierStatBase &stat);
 
 protected:
-  std::mutex lock_;
+  mutable std::mutex lock_;
   std::mutex abstractLock_;  // see note on updaterStat
   // each freqency for each barrier trainer
   std::vector<struct Abstract> abstract_;
@@ -262,7 +261,7 @@ protected:
    * log_barrier_abstract, log_barrier_lowest_nodes, log_barrier_threshold
    * control details.
    */
-  virtual void showAbstract(std::ostream &output);
+  virtual void showAbstract(std::ostream &output) const;
 
 private:
   std::unique_ptr<TimeVectorEnd> timeVector_;
@@ -286,7 +285,7 @@ public:
   virtual bool checkPassBarrier() { return timeVector_->empty(); }
 
 protected:
-  virtual void showAbstract(std::ostream &outPut);
+  virtual void showAbstract(std::ostream &outPut) const;
 
 private:
   // store delta time in uint64_t, eg BP time of all trainers
@@ -304,44 +303,44 @@ private:
 // nodes.
 
 // end barrier
-#define __REGISTER_BARRIER_TIMER_SERVER(set, statName, numConnThreads, \
-                                        trainerId, ...)                \
-  do {                                                                 \
-    if (numConnThreads > 2) {                                          \
-      std::string internalName =                                       \
-          std::string(statName) + std::string(__VA_ARGS__);            \
-      BarrierStatPtr __stat =                                          \
-          (set).getStat(numConnThreads, internalName, BARRIER_END);    \
-      struct timeval cur;                                              \
-      gettimeofday(&cur, nullptr);                                     \
-      __stat->updateStat(cur, trainerId);                              \
-    }                                                                  \
+#define __REGISTER_BARRIER_TIMER_SERVER(                            \
+    set, statName, numConnThreads, trainerId, ...)                  \
+  do {                                                              \
+    if (numConnThreads > 2) {                                       \
+      std::string internalName =                                    \
+          std::string(statName) + std::string(__VA_ARGS__);         \
+      BarrierStatPtr __stat =                                       \
+          (set).getStat(numConnThreads, internalName, BARRIER_END); \
+      struct timeval cur;                                           \
+      gettimeofday(&cur, nullptr);                                  \
+      __stat->updateStat(cur, trainerId);                           \
+    }                                                               \
   } while (0);
 
 // end barrier with user-defined timer
-#define __REGISTER_BARRIER_TIMER_SERVER_SET(set, statName, numConnThreads, \
-                                            trainerId, cur, ...)           \
-  do {                                                                     \
-    if (numConnThreads > 2) {                                              \
-      std::string internalName =                                           \
-          std::string(statName) + std::string(__VA_ARGS__);                \
-      BarrierStatPtr __stat =                                              \
-          (set).getStat(numConnThreads, internalName, BARRIER_END);        \
-      __stat->updateStat(cur, trainerId);                                  \
-    }                                                                      \
+#define __REGISTER_BARRIER_TIMER_SERVER_SET(                        \
+    set, statName, numConnThreads, trainerId, cur, ...)             \
+  do {                                                              \
+    if (numConnThreads > 2) {                                       \
+      std::string internalName =                                    \
+          std::string(statName) + std::string(__VA_ARGS__);         \
+      BarrierStatPtr __stat =                                       \
+          (set).getStat(numConnThreads, internalName, BARRIER_END); \
+      __stat->updateStat(cur, trainerId);                           \
+    }                                                               \
   } while (0);
 
 // delta barrier
-#define __REGISTER_BARRIER_DELTA_SERVER_SET(set, statName, numConnThreads, \
-                                            trainerId, delta, ...)         \
-  do {                                                                     \
-    if (numConnThreads > 2) {                                              \
-      std::string internalName =                                           \
-          std::string(statName) + std::string(__VA_ARGS__);                \
-      BarrierStatPtr __stat =                                              \
-          (set).getStat(numConnThreads, internalName, BARRIER_DELTA);      \
-      __stat->updateStat(delta, trainerId);                                \
-    }                                                                      \
+#define __REGISTER_BARRIER_DELTA_SERVER_SET(                          \
+    set, statName, numConnThreads, trainerId, delta, ...)             \
+  do {                                                                \
+    if (numConnThreads > 2) {                                         \
+      std::string internalName =                                      \
+          std::string(statName) + std::string(__VA_ARGS__);           \
+      BarrierStatPtr __stat =                                         \
+          (set).getStat(numConnThreads, internalName, BARRIER_DELTA); \
+      __stat->updateStat(delta, trainerId);                           \
+    }                                                                 \
   } while (0);
 
 // check end barrier
@@ -373,10 +372,10 @@ private:
  */
 
 // try to capture which trainer is slowest node in sync-sgd at pserver.
-#define REGISTER_SLOW_NODES_PROBE(set, statName, numConnThreads, trainerId,   \
-                                  ...)                                        \
-  __REGISTER_BARRIER_TIMER_SERVER((set), statName, numConnThreads, trainerId, \
-                                  __VA_ARGS__)
+#define REGISTER_SLOW_NODES_PROBE(                 \
+    set, statName, numConnThreads, trainerId, ...) \
+  __REGISTER_BARRIER_TIMER_SERVER(                 \
+      (set), statName, numConnThreads, trainerId, __VA_ARGS__)
 // try to check if all threads or trainers have passed barriers for data
 // accuracy.
 #define CHECK_BARRIER_TIMER(set, statName, numConnThreads, ...) \
@@ -384,12 +383,12 @@ private:
 
 #ifdef PADDLE_DISABLE_TIMER
 
-#define REGISTER_BARRIER_TIMER_SERVER(set, statName, numConnThreads, \
-                                      trainerId, ...)
-#define REGISTER_BARRIER_TIMER_SERVER_SET(set, statName, numConnThreads, \
-                                          trainerId, cur, ...)
-#define REGISTER_BARRIER_DELTA_SERVER_SET(set, statName, numConnThreads, \
-                                          trainerId, cur, ...)
+#define REGISTER_BARRIER_TIMER_SERVER( \
+    set, statName, numConnThreads, trainerId, ...)
+#define REGISTER_BARRIER_TIMER_SERVER_SET( \
+    set, statName, numConnThreads, trainerId, cur, ...)
+#define REGISTER_BARRIER_DELTA_SERVER_SET( \
+    set, statName, numConnThreads, trainerId, cur, ...)
 
 #else
 
@@ -397,10 +396,10 @@ private:
  * sensing barrier time distribution for all parallelization threads.
  * it provides low API for slow node check(REGISTER_SLOW_NODES_PROBE)
  */
-#define REGISTER_BARRIER_TIMER_SERVER(set, statName, numConnThreads,          \
-                                      trainerId, ...)                         \
-  __REGISTER_BARRIER_TIMER_SERVER((set), statName, numConnThreads, trainerId, \
-                                  __VA_ARGS__)
+#define REGISTER_BARRIER_TIMER_SERVER(             \
+    set, statName, numConnThreads, trainerId, ...) \
+  __REGISTER_BARRIER_TIMER_SERVER(                 \
+      (set), statName, numConnThreads, trainerId, __VA_ARGS__)
 
 /*
  * sensing barrier time distribution for all parallelization threads.
@@ -409,18 +408,18 @@ private:
  * time distribution
  * for receiving data.
  */
-#define REGISTER_BARRIER_TIMER_SERVER_SET(set, statName, numConnThreads, \
-                                          trainerId, cur, ...)           \
-  __REGISTER_BARRIER_TIMER_SERVER_SET((set), statName, numConnThreads,   \
-                                      trainerId, cur, __VA_ARGS__)
+#define REGISTER_BARRIER_TIMER_SERVER_SET(              \
+    set, statName, numConnThreads, trainerId, cur, ...) \
+  __REGISTER_BARRIER_TIMER_SERVER_SET(                  \
+      (set), statName, numConnThreads, trainerId, cur, __VA_ARGS__)
 
 // try to capture time delta from all trainers, such as forwardBackward time
 // which implies
 // computation fluctuation
-#define REGISTER_BARRIER_DELTA_SERVER_SET(set, statName, numConnThreads, \
-                                          trainerId, delta, ...)         \
-  __REGISTER_BARRIER_DELTA_SERVER_SET((set), statName, numConnThreads,     \
-                                      trainerId, delta, __VA_ARGS__)
+#define REGISTER_BARRIER_DELTA_SERVER_SET(                \
+    set, statName, numConnThreads, trainerId, delta, ...) \
+  __REGISTER_BARRIER_DELTA_SERVER_SET(                    \
+      (set), statName, numConnThreads, trainerId, delta, __VA_ARGS__)
 
 #endif  // DISABLE_TIMER
 }  // namespace paddle

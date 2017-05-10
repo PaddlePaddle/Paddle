@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,10 +23,10 @@ public:
   virtual ~IGradientMachineMode() {}
 
 public:  // interfaces
-  /**
-   * @brief create current mode's gradient machine by model config.
-   * @param config model config
-   */
+         /**
+          * @brief create current mode's gradient machine by model config.
+          * @param config model config
+          */
   virtual GradientMachine* create(const ModelConfig& config) = 0;
 
   /**
@@ -37,11 +37,10 @@ public:  // interfaces
    * @param isGpu is using gpu.
    * @return true if mode should be this mode.
    */
-  virtual bool shouldBeMe(
-      const std::string& algo,
-      size_t trainerCount,
-      bool isLocal,
-      bool isGpu) const = 0;
+  virtual bool shouldBeMe(const std::string& algo,
+                          size_t trainerCount,
+                          bool isLocal,
+                          bool isGpu) const = 0;
 
   /**
    * @brief Is data must be in cpu even if using gpu mode.
@@ -57,13 +56,13 @@ public:  // interfaces
   virtual bool needTrainWholeDataInOneBatch() const = 0;
 
 public:  // static methods.
-  /**
-   * @brief register a custom gradient machine mode.
-   * @note For user to register a custom gradient machine mode, id should >=
-   * kCustom.
-   * @param mode mode id.
-   * @param ptr mode description object.
-   */
+         /**
+          * @brief register a custom gradient machine mode.
+          * @note For user to register a custom gradient machine mode, id should >=
+          * kCustom.
+          * @param mode mode id.
+          * @param ptr mode description object.
+          */
   static void regGradientMachineMode(
       int32_t mode, std::unique_ptr<IGradientMachineMode>&& ptr) {
     modes_.insert(std::make_pair(mode, std::move(ptr)));
@@ -102,9 +101,11 @@ public:  // static methods.
    * @param [in] isGpu using gpu or not.
    * @return true if there is a custom mode fit these conditions.
    */
-  static bool tryGetMode(int* mode, const std::string& algo,
+  static bool tryGetMode(int* mode,
+                         const std::string& algo,
                          int32_t trainerCount,
-                         bool isLocal, bool isGpu) {
+                         bool isLocal,
+                         bool isGpu) {
     for (auto it = modes_.begin(); it != modes_.end(); ++it) {
       if (it->second->shouldBeMe(algo, trainerCount, isLocal, isGpu)) {
         *mode = it->first;
@@ -130,8 +131,8 @@ public:  // static methods.
    * @brief try to create gradient machine by mode & config.
    * @return nullptr if we cannot create a gradient machine by such mode.
    */
-  static GradientMachine* tryCreateGradientMachine(
-      int32_t mode, const ModelConfig& config) {
+  static GradientMachine* tryCreateGradientMachine(int32_t mode,
+                                                   const ModelConfig& config) {
     auto m = IGradientMachineMode::mode(mode);
     if (m) {
       return m->create(config);
@@ -142,7 +143,7 @@ public:  // static methods.
 
 private:
   static std::unordered_map<int32_t, std::unique_ptr<IGradientMachineMode>>
-    modes_;
+      modes_;
 };
 
 }  // namespace paddle

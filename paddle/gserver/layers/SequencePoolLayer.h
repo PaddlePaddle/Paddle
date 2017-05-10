@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,6 +26,10 @@ namespace paddle {
  *    Output: output size is the number of input sequences (NOT input instances)
  *    output[i] = seqlastin/average/max_{for each instance in this
  * sequence}{input[i]}
+ *    If stride_ > 0:
+ *        Check input sequence must not have sub-sequence
+ *        Output: a shorten sequence, pooling is performed upon a small local
+ *                area
  * If SequenceLevel = kSeq:
  *    Check input sequence must has sub-sequence
  *    Output: output size is the number of input sub-sequences
@@ -42,16 +46,20 @@ protected:
   enum SequenceLevel { kNonSeq = 0, kSeq = 1 };
   size_t newBatchSize_;
   ICpuGpuVectorPtr startPositions_;
+  int stride_;
+  // Store the start position of each window.
+  IVectorPtr stridePositions_;
+  // Whether the input sequence is reversed or not.
+  bool reversed_ = false;
 
 public:
   explicit SequencePoolLayer(const LayerConfig& config) : Layer(config) {}
 
-  virtual ~SequencePoolLayer() {}
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 }  // namespace paddle

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,34 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include <stdlib.h>
 #include <paddle/utils/Util.h>
+#include <stdlib.h>
 
 #include <gtest/gtest.h>
-#include <paddle/utils/Flags.h>
 #include <paddle/parameter/ParameterUpdateFunctions.h>
+#include <paddle/utils/Flags.h>
 #include <paddle/utils/Stat.h>
 #include <paddle/utils/Thread.h>
 
 using namespace paddle;  // NOLINT
-
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-
-  int ret = RUN_ALL_TESTS();
-
-  return ret;
-}
 
 class CommonTest : public ::testing::Test {
 protected:
   CommonTest() : testStat_("test") {}
   virtual ~CommonTest() {}
   virtual void SetUp() {
-    const size_t buffSize[] = {100,  128,   500,    1024,
-                               4096, 10240, 102400, 1000000};
+    const size_t buffSize[] = {
+        100, 128, 500, 1024, 4096, 10240, 102400, 1000000};
     sizeVec_.resize(8);
     memcpy(&sizeVec_[0], &buffSize[0], 8 * sizeof(size_t));
     valueUint_.resize(4);
@@ -54,8 +44,10 @@ protected:
     learningRate_ = 1.0;
   }
 
-  void test_sgdUpadate(real* gradientBuffer, real* valueBuffer,
-                       real* momentumBuffer, size_t size);
+  void test_sgdUpadate(real* gradientBuffer,
+                       real* valueBuffer,
+                       real* momentumBuffer,
+                       size_t size);
 
   virtual void TreaDown() { LOG(INFO) << "All Test Finished."; }
 
@@ -66,8 +58,10 @@ protected:
   StatSet testStat_;
 };
 
-void CommonTest::test_sgdUpadate(real* gradientBuffer, real* valueBuffer,
-                                 real* momentumBuffer, size_t size) {
+void CommonTest::test_sgdUpadate(real* gradientBuffer,
+                                 real* valueBuffer,
+                                 real* momentumBuffer,
+                                 size_t size) {
 // sgdUpdateAvx has no double version yet
 #if defined(__AVX__) && !defined(PADDLE_TYPE_DOUBLE)
   real valueSum1 = 0, valueSum2 = 0, momSum1 = 0, momSum2 = 0;
@@ -85,8 +79,13 @@ void CommonTest::test_sgdUpadate(real* gradientBuffer, real* valueBuffer,
         gettimeofday(&t, NULL);
       }
       REGISTER_TIMER("avxTimer", 0);
-      sgdUpdateAvx(learningRate_, arg.first, arg.second, size, valueBuffer,
-                   gradientBuffer, momentumBuffer);
+      sgdUpdateAvx(learningRate_,
+                   arg.first,
+                   arg.second,
+                   size,
+                   valueBuffer,
+                   gradientBuffer,
+                   momentumBuffer);
     }
     for (size_t i = 0; i < size; i++) {
       valueSum1 += valueBuffer[i];
@@ -98,8 +97,13 @@ void CommonTest::test_sgdUpadate(real* gradientBuffer, real* valueBuffer,
     }
     {
       REGISTER_TIMER("cpuTimer", 0);
-      sgdUpdateCpu(learningRate_, arg.first, arg.second, size, valueTmp,
-                   gradTmp, momentumTmp);
+      sgdUpdateCpu(learningRate_,
+                   arg.first,
+                   arg.second,
+                   size,
+                   valueTmp,
+                   gradTmp,
+                   momentumTmp);
     }
     for (size_t i = 0; i < size; i++) {
       valueSum2 += valueTmp[i];
@@ -126,10 +130,10 @@ TEST_F(CommonTest, sgdUpdate) {
   for (auto& size : sizeVec_) {
     real *gradientBuffer, *valueBuffer, *momentumBuffer;
     CHECK_EQ(posix_memalign((void**)&gradientBuffer, 32, sizeof(real) * size),
-        0);
+             0);
     CHECK_EQ(posix_memalign((void**)&valueBuffer, 32, sizeof(real) * size), 0);
     CHECK_EQ(posix_memalign((void**)&momentumBuffer, 32, sizeof(real) * size),
-        0);
+             0);
 
     for (size_t i = 0; i < size; i++) {
       gradientBuffer[i] = 1.0;
@@ -141,7 +145,8 @@ TEST_F(CommonTest, sgdUpdate) {
                 << "-------------------------";
       test_sgdUpadate(&gradientBuffer[alignHeader[i]],
                       &valueBuffer[alignHeader[i]],
-                      &momentumBuffer[alignHeader[i]], size - alignHeader[i]);
+                      &momentumBuffer[alignHeader[i]],
+                      size - alignHeader[i]);
     }
     free(gradientBuffer);
     free(valueBuffer);
@@ -173,16 +178,16 @@ TEST_F(CommonTest, barrierStat) {
 
   SyncThreadPool pool(threadNum);
 
-#define TEST_BARRIER_RANDOM(statName, numConnThreads, ...)               \
-  pool.exec([&](int tid, size_t numThreads) {                            \
-    struct timeval time;                                                 \
-    gettimeofday(&time, nullptr);                                        \
-    uint64_t usec = timeToMicroSecond(time);                             \
-    std::srand(usec);                                                    \
-    auto value = std::rand() % 100000;                                   \
-    usleep(value);                                                       \
-    REGISTER_SLOW_NODES_PROBE(globalStat, statName, numConnThreads, tid, \
-                              __VA_ARGS__);                              \
+#define TEST_BARRIER_RANDOM(statName, numConnThreads, ...)       \
+  pool.exec([&](int tid, size_t numThreads) {                    \
+    struct timeval time;                                         \
+    gettimeofday(&time, nullptr);                                \
+    uint64_t usec = timeToMicroSecond(time);                     \
+    std::srand(usec);                                            \
+    auto value = std::rand() % 100000;                           \
+    usleep(value);                                               \
+    REGISTER_SLOW_NODES_PROBE(                                   \
+        globalStat, statName, numConnThreads, tid, __VA_ARGS__); \
   });
 
   for (auto i = 0; i < 10; i++) {
@@ -202,11 +207,11 @@ TEST_F(CommonTest, barrierStat) {
   globalStat.reset();
 
 // use it to test accurate barrier gap
-#define TEST_BARRIER(statName, numConnThreads, ...)                      \
-  pool.exec([&](int tid, size_t numThreads) {                            \
-    usleep(tid * 10000);                                                 \
-    REGISTER_SLOW_NODES_PROBE(globalStat, statName, numConnThreads, tid, \
-                              __VA_ARGS__);                              \
+#define TEST_BARRIER(statName, numConnThreads, ...)              \
+  pool.exec([&](int tid, size_t numThreads) {                    \
+    usleep(tid * 10000);                                         \
+    REGISTER_SLOW_NODES_PROBE(                                   \
+        globalStat, statName, numConnThreads, tid, __VA_ARGS__); \
   });
 
   for (auto i = 0; i < 10; i++) {

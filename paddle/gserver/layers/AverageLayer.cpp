@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,8 +26,6 @@ bool AverageLayer::init(const LayerMap& layerMap,
                         const ParameterMap& parameterMap) {
   SequencePoolLayer::init(layerMap, parameterMap);
 
-  dataMtx_ = Matrix::create(nullptr, 1, 1, false, useGpu_);
-  outMtx_ = Matrix::create(nullptr, 1, getSize(), false, useGpu_);
   // average strategy
   if (config_.average_strategy() == "average") {
     mode_ = kAverage;
@@ -60,43 +58,9 @@ void AverageLayer::forward(PassType passType) {
 void AverageLayer::backward(const UpdateCallback& callback) {
   SequencePoolLayer::backward(callback);
 
-  const int* starts = startPositions_->getData(false);
-  MatrixPtr grad = getInputGrad(0);
-
-  if (grad) {
-    size_t dim = getSize();
-    real* gradientData = getInputGrad(0)->getData();
-    real* gradient = getOutputGrad()->getData();
-    size_t numSequences = startPositions_->getSize() - 1;
-    for (size_t sequenceId = 0; sequenceId < numSequences; ++sequenceId) {
-      // TODO(Dangqingqing) optimization for GPU
-      int sequenceLength = starts[sequenceId + 1] - starts[sequenceId];
-      if (0 == sequenceLength) {
-        // empty sequence
-        continue;
-      }
-      dataMtx_->setData(gradientData + starts[sequenceId] * dim, sequenceLength,
-                        dim);
-      outMtx_->setData(gradient + sequenceId * dim);
-      switch (mode_) {
-        case kAverage: {
-          // plain average
-          dataMtx_->addBias(*outMtx_, 1.0f / sequenceLength);
-          break;
-        }
-        case kSum: {
-          // sum instead of average
-          dataMtx_->addBias(*outMtx_, 1.0f);
-          break;
-        }
-        case kAverageSquareRootN: {
-          // divide by square root of sequenceLength
-          dataMtx_->addBias(*outMtx_, 1.0f / sqrt(sequenceLength));
-          break;
-        }
-        default: { LOG(FATAL) << "should not reach here"; }
-      }
-    }
+  if (getInputGrad(0)) {
+    getInputGrad(0)->sequenceAvgBackward(
+        *getOutputGrad(), *startPositions_->getVector(useGpu_), mode_);
   }
 }
 

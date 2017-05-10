@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #pragma once
 
@@ -35,27 +34,29 @@ enum TaskType {
 class ParallelNeuralNetwork : public NeuralNetwork {
 public:
   ParallelNeuralNetwork(std::string subModelName = "",
-      NeuralNetwork* rootNetwork = nullptr)
-    : NeuralNetwork(subModelName, rootNetwork) {}
+                        NeuralNetwork *rootNetwork = nullptr)
+      : NeuralNetwork(subModelName, rootNetwork) {}
 
-  virtual void init(
-      const ModelConfig &config, ParamInitCallback callback = nullptr,
-      const std::vector<ParameterType> &
-          parameterTypes = std::vector<ParameterType>{PARAMETER_VALUE,
-                                                      PARAMETER_GRADIENT,
-                                                      PARAMETER_MOMENTUM},
-      bool useGpu = FLAGS_use_gpu);
+  virtual void init(const ModelConfig &config,
+                    ParamInitCallback callback = nullptr,
+                    const std::vector<ParameterType> &parameterTypes =
+                        std::vector<ParameterType>{PARAMETER_VALUE,
+                                                   PARAMETER_GRADIENT,
+                                                   PARAMETER_MOMENTUM},
+                    bool useGpu = FLAGS_use_gpu);
 
   virtual void forward(const std::vector<Argument> &inArgs,
-                       std::vector<Argument> *outArgs, PassType passType);
+                       std::vector<Argument> *outArgs,
+                       PassType passType);
 
   virtual void backward(const UpdateCallback &callback = nullptr);
 
   void forwardBackward(const std::vector<Argument> &inArgs,
-                       std::vector<Argument> *outArgs, PassType passType,
+                       std::vector<Argument> *outArgs,
+                       PassType passType,
                        const UpdateCallback &callback = NULL);
 
-  virtual void start(const TrainerConfig &config, DataProviderPtr dataProvider);
+  virtual void start();
 
   void addComputeThread(int deviceId);
 

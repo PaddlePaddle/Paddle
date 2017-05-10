@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,19 +15,19 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
-#include <string>
 #include <sys/time.h>
-#include <memory>
 #include <iostream>
-#include <mutex>
-#include <unordered_map>
 #include <list>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
-#include "Logging.h"
 #include "BarrierStat.h"
 #include "Locks.h"
+#include "Logging.h"
 #include "ThreadLocal.h"
-#include "BarrierStat.h"
+#include "hl_gpu.h"
 
 namespace paddle {
 
@@ -93,7 +93,8 @@ public:
     return ret.first->second;
   }
 
-  BarrierStatPtr getStat(uint16_t numConnThreads, const std::string& name,
+  BarrierStatPtr getStat(uint16_t numConnThreads,
+                         const std::string& name,
                          BarrierStatType bType);
 
   void deleteStat(const std::string& name);
@@ -204,8 +205,10 @@ protected:
 
 class TimerOnce {
 public:
-  TimerOnce(Stat* stat, const char* info = "",
-            uint64_t threshold = -1, bool autoStart = true,
+  TimerOnce(Stat* stat,
+            const char* info = "",
+            uint64_t threshold = -1,
+            bool autoStart = true,
             uint64_t startStamp = 0)
       : stat_(stat), info_(info), timer_(autoStart), threshold_(threshold) {
     if (!autoStart) {
@@ -255,29 +258,62 @@ inline StatSet& registerTimerArg2(uint64_t threshold = -1,
 // The default arguments are shown in the following line:
 // REGISTER_TIMER(statName, threshold = -1, statSet = globalStat)
 // TODO(yuyang18,wangyanfei01): if UNIQUE_NAME is needed
-#define REGISTER_TIMER(statName, ...)                                       \
-  static StatPtr __stat = registerTimerArg2(__VA_ARGS__).getStat(statName); \
-  TimerOnce __timerOnce(__stat.get(), "", registerTimerArg1(__VA_ARGS__));
+#define REGISTER_TIMER(statName, ...)                             \
+  static ::paddle::StatPtr __stat =                               \
+      ::paddle::registerTimerArg2(__VA_ARGS__).getStat(statName); \
+  ::paddle::TimerOnce __timerOnce(                                \
+      __stat.get(), "", ::paddle::registerTimerArg1(__VA_ARGS__));
 
 #define REGISTER_TIMER_SET(statName, start, ...)                            \
-  static StatPtr __stat = registerTimerArg2(__VA_ARGS__).getStat(statName); \
-  TimerOnce __timerOnce(__stat.get(), "", registerTimerArg1(__VA_ARGS__),   \
-                        false, start);
+  static ::paddle::StatPtr __stat =                                         \
+      ::paddle::registerTimerArg2(__VA_ARGS__).getStat(statName);           \
+  ::paddle::TimerOnce __timerOnce(__stat.get(),                             \
+                                  "",                                       \
+                                  ::paddle::registerTimerArg1(__VA_ARGS__), \
+                                  false,                                    \
+                                  start);
 
 // dynmaic timer, support to discriminate runtime entity, used in pserver
-#define REGISTER_TIMER_DYNAMIC(statName, ...)                               \
-  StatPtr __stat = registerTimerArg2(__VA_ARGS__).getStat(statName);        \
-  TimerOnce __timerOnce(__stat.get(), "", registerTimerArg1(__VA_ARGS__));
+#define REGISTER_TIMER_DYNAMIC(statName, ...)                     \
+  ::paddle::StatPtr __stat =                                      \
+      ::paddle::registerTimerArg2(__VA_ARGS__).getStat(statName); \
+  ::paddle::TimerOnce __timerOnce(                                \
+      __stat.get(), "", ::paddle::registerTimerArg1(__VA_ARGS__));
 
 #define REGISTER_TIMER_DYNAMIC_SET(statName, start, ...)                    \
-  StatPtr __stat = registerTimerArg2(__VA_ARGS__).getStat(statName);        \
-  TimerOnce __timerOnce(__stat.get(), "", registerTimerArg1(__VA_ARGS__),   \
-                        false, start);
+  ::paddle::StatPtr __stat =                                                \
+      ::paddle::registerTimerArg2(__VA_ARGS__).getStat(statName);           \
+  ::paddle::TimerOnce __timerOnce(__stat.get(),                             \
+                                  "",                                       \
+                                  ::paddle::registerTimerArg1(__VA_ARGS__), \
+                                  false,                                    \
+                                  start);
 
 #define REGISTER_TIMER_INFO(statName, info)                                 \
-  static StatPtr __stat = globalStat.getStat(statName);                     \
-  TimerOnce __timerOnce(__stat.get(), info, 10 * 1000000LU /*threshold*/);
+  static ::paddle::StatPtr __stat = ::paddle::globalStat.getStat(statName); \
+  ::paddle::TimerOnce __timerOnce(                                          \
+      __stat.get(), info, 10 * 1000000LU /*threshold*/);
 
 #endif  // DISABLE_TIMER
+
+class GpuProfiler final {
+public:
+  GpuProfiler(std::string statName, std::string info);
+  ~GpuProfiler();
+
+private:
+  std::lock_guard<std::recursive_mutex> guard_;
+};
+
+#ifdef PADDLE_DISABLE_PROFILER
+
+#define REGISTER_GPU_PROFILER(statName, ...)
+
+#else
+
+#define REGISTER_GPU_PROFILER(statName, ...) \
+  GpuProfiler __gpuProfiler(statName, #__VA_ARGS__);
+
+#endif  // DISABLE_PROFILER
 
 }  // namespace paddle

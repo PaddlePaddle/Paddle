@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ def read_sentences(words_file):
         for line in fin:
             line = line.strip()
             if line == '':
-                sentences.append(s.lower())
+                sentences.append(s)
                 s = ''
             else:
                 s += line + ' '
@@ -64,6 +64,11 @@ def transform_labels(sentences, labels):
         if len(labels[i]) == 1:
             continue
         else:
+            verb_list = []
+            for x in labels[i][0]:
+                if x != '-':
+                    verb_list.append(x)
+
             for j in xrange(1, len(labels[i])):
                 label_list = labels[i][j]
                 current_tag = 'O'
@@ -88,8 +93,7 @@ def transform_labels(sentences, labels):
                         is_in_bracket = True
                     else:
                         print 'error:', ll
-
-                sen_lab_pair.append((sentences[i], label_seq))
+                sen_lab_pair.append((sentences[i], verb_list[j - 1], label_seq))
     return sen_lab_pair
 
 
@@ -97,9 +101,9 @@ def write_file(sen_lab_pair, output_file):
     with open(output_file, 'w') as fout:
         for x in sen_lab_pair:
             sentence = x[0]
-            label_seq = ' '.join(x[1])
-            assert len(sentence.split()) == len(x[1])
-            fout.write(sentence + '\t' + label_seq + '\n')
+            label_seq = ' '.join(x[2])
+            assert len(sentence.split()) == len(x[2])
+            fout.write(sentence + '\t' + x[1] + '\t' + label_seq + '\n')
 
 
 if __name__ == '__main__':

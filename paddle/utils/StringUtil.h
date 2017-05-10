@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
+#include <sstream>
 #include <string>
 #include <vector>
-#include <sstream>
 #include "Logging.h"
 
 namespace paddle {
@@ -55,6 +54,25 @@ inline T toWithStatus(const std::string& s, bool* ok = nullptr) {
   return v;
 }
 
+/**
+ * Cast type T to string with status.
+ *
+ * @param [in] v input value of type T.
+ * @param [out] ok status, return true if there is no error in casting. Set
+ *              nullptr if user don't care error at all.
+ * @return result of casting. If error occurred, a empty string will be
+ *              returned.
+ */
+template <class T>
+inline std::string toWithStatus(const T v, bool* ok = nullptr) {
+  std::ostringstream sout;
+  sout << v;
+  if (ok) {
+    *ok = !sout.fail();
+  }
+  return sout.str();
+}
+
 /// Convert string to type T. It makes sure all the characters in s are used.
 /// Otherwise it will abort.
 ///
@@ -68,7 +86,17 @@ inline T to(const std::string& s) {
   return v;
 }
 
-
+/// Convert type T to string.
+///
+/// @tparam T type of input value
+/// @param v input value of type T
+template <class T>
+std::string to_string(T v) {
+  bool ok;
+  std::string s = toWithStatus<T>(v, &ok);
+  CHECK(ok) << "Cannot convert v(" << v << ") to type std::string";
+  return s;
+}
 
 }  // namespace str
 

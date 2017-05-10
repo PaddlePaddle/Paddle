@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <fstream>
 
-#include <paddle/utils/PythonUtil.h>
 #include <paddle/trainer/Trainer.h>
+#include <paddle/utils/PythonUtil.h>
 
 #include <gtest/gtest.h>
 
@@ -30,7 +30,7 @@ static string modelDir = "trainer/tests/rnn_gen_test_model_dir/t1";  // NOLINT
 static string expectFile =                                           // NOLINT
     "trainer/tests/rnn_gen_test_model_dir/r1.test";                  // NOLINT
 
-P_DECLARE_string(config_args);
+DECLARE_string(config_args);
 
 vector<float> readRetFile(const string& fname) {
   ifstream inFile(fname);
@@ -51,8 +51,10 @@ void checkOutput(const string& expRetFile) {
   }
 }
 
-void prepareInArgs(vector<Argument>& inArgs, const size_t batchSize,
-                   bool useGpu, bool hasSubseq) {
+void prepareInArgs(vector<Argument>& inArgs,
+                   const size_t batchSize,
+                   bool useGpu,
+                   bool hasSubseq) {
   inArgs.clear();
   // sentence id
   Argument sentId;
@@ -87,7 +89,9 @@ void prepareInArgs(vector<Argument>& inArgs, const size_t batchSize,
   inArgs.emplace_back(dummyInput);
 }
 
-void testGeneration(const string& configFile, bool useGpu, bool hasSubseq,
+void testGeneration(const string& configFile,
+                    bool useGpu,
+                    bool hasSubseq,
                     const string& expRetFile) {
   FLAGS_use_gpu = useGpu;
   auto config = std::make_shared<TrainerConfigHelper>(configFile);
@@ -114,8 +118,10 @@ TEST(RecurrentGradientMachine, test_generation) {
 #else
   const auto useGpuConfs = {true, false};
 #endif
-  auto testGen = [&](const string& configFile, bool hasSubseq,
-                     const string& expRetFile, bool beam_search) {
+  auto testGen = [&](const string& configFile,
+                     bool hasSubseq,
+                     const string& expRetFile,
+                     bool beam_search) {
     FLAGS_config_args = beam_search ? "beam_search=1" : "beam_search=0";
     for (auto useGpu : useGpuConfs) {
       testGeneration(configFile, useGpu, hasSubseq, expRetFile);
@@ -126,7 +132,9 @@ TEST(RecurrentGradientMachine, test_generation) {
   // In hierarchical RNN, beam search and one way search are only in inner-RNN,
   // outer-RNN will concat the generated inner-results (first for beam search)
   // from inner-RNN. Thus, they have the same outer-results.
-  testGen(NEST_CONFIG_FILE, true, expectFile + ".nest",
+  testGen(NEST_CONFIG_FILE,
+          true,
+          expectFile + ".nest",
           false);  // no beam search
   testGen(NEST_CONFIG_FILE, true, expectFile + ".nest", true);  // beam search
 }

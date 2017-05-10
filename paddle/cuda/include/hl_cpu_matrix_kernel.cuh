@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,11 @@ limitations under the License. */
 
 #include <stdio.h>
 #include "hl_base.h"
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
+#include "hl_neon_matrix_kernel.cuh"
+#else
 #include "hl_sse_matrix_kernel.cuh"
+#endif
 
 /**
  * @brief   cpu element wise unary operator.

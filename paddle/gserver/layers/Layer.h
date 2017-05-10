@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,21 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
-#include <memory>
-#include <functional>
 #include <paddle/parameter/Argument.h>
-#include "paddle/utils/ClassRegistrar.h"
+#include <functional>
+#include <memory>
+#include "ModelConfig.pb.h"
+#include "paddle/function/Function.h"
 #include "paddle/math/CpuSparseMatrix.h"
 #include "paddle/parameter/Parameter.h"
+#include "paddle/utils/ClassRegistrar.h"
 #include "paddle/utils/Util.h"
-#include "ModelConfig.pb.h"
 
-#include "paddle/gserver/activations/ActivationFunction.h"
 #include <paddle/parameter/ParallelParameter.h>
 #include <paddle/parameter/Weight.h>
+#include "paddle/gserver/activations/ActivationFunction.h"
 
 /// Macro for registering a layer type.
 /// Example: REGISTER_LAYER(crf_error, CRFDecodingErrorLayer);
@@ -101,6 +101,11 @@ protected:
   /// Mark input grad in(true) or out(false) of backward function.
   std::vector<bool> markInBackward_;
 
+  /// Layer forward function
+  std::vector<std::shared_ptr<FunctionBase>> forward_;
+  /// Layer backward function
+  std::vector<std::shared_ptr<FunctionBase>> backward_;
+
 public:
   /**
     * Wait until all input value ready.
@@ -109,7 +114,7 @@ public:
   virtual void waitInputValue();
 
   /**
-   * Copy layer's output_ to other device. 
+   * Copy layer's output_ to other device.
    * If output layer is in other device, called after Layer::forward() function.
    */
   virtual void copyOutputToOtherDevice();
@@ -127,6 +132,26 @@ public:
   virtual void markAllInputGrad();
 
 protected:
+  /**
+   * Create layer function. Function is called in forward or backward.
+   * \param function, Layer::forward_ or Layer::backward_
+   * \param name, function name
+   * \param config, initialization configuration for the function
+   */
+  void createFunction(std::vector<std::shared_ptr<FunctionBase>>& function,
+                      const std::string& name,
+                      const FuncConfig& config) {
+    if (useGpu_) {
+      function.emplace_back(
+          FunctionBase::funcRegistrar_.createByType(name + "-GPU"));
+    } else {
+      function.emplace_back(
+          FunctionBase::funcRegistrar_.createByType(name + "-CPU"));
+    }
+    auto& func = function.back();
+    func->init(config);
+  }
+
   /**
    * Notify specified layer the output grad ready.
    * Called in the backward function.
@@ -189,8 +214,11 @@ protected:
    * Reset to value zero if isValueClean = true,
    * Reset to grad zero if isGradClean = true.
    */
-  void resetSpecifyOutput(Argument& output, size_t height, size_t width,
-                          bool isValueClean, bool isGradClean);
+  void resetSpecifyOutput(Argument& output,
+                          size_t height,
+                          size_t width,
+                          bool isValueClean,
+                          bool isGradClean);
 
   /**
    * Add output argument to other devices.
@@ -204,48 +232,48 @@ public:
   /// Register a Layer
   static ClassRegistrar<Layer, LayerConfig> registrar_;
 
-  /** 
+  /**
    * Get the flag whether layer need to compute gradient.
    */
   bool needGradient() const { return needGradient_; }
 
-  /** 
+  /**
    * Set the flag whether layer need to compute gradient.
    */
   void setNeedGradient(bool need) { needGradient_ = need; }
 
-  /** 
+  /**
    * Set the flag whether layer need to re-compute sequence information,
    * which includes sequenceStartPositions or subSequenceStartPositions.
    */
   void setNeedSequenceInfo(bool need) { needSequenceInfo_ = need; }
 
-  /** 
+  /**
    * Get layer's name.
    */
   const std::string& getName() const { return config_.name(); }
 
-  /** 
+  /**
    * Get layer's type.
    */
   const std::string& getType() const { return config_.type(); }
 
-  /** 
+  /**
    * Get layer's size.
    */
   size_t getSize() const { return config_.size(); }
 
-  /** 
+  /**
    * Get layer's deviceId.
    */
   int getDeviceId() const { return deviceId_; }
 
-  /** 
+  /**
    * Add the inputLayer.
    */
   void addPrev(LayerPtr l) { inputLayers_.push_back(l); }
 
-  /** 
+  /**
    * Get the size of inputLayer[i].
    */
   const LayerPtr& getPrev(size_t i) { return inputLayers_[i]; }
@@ -265,7 +293,7 @@ public:
    */
   const MatrixPtr& getOutputGrad() { return output_.grad; }
   /**
-   * If layer has multi-output, set output into outputMap_. 
+   * If layer has multi-output, set output into outputMap_.
    */
   void setOutput(const std::string& name, Argument* output) {
     outputMap_[name] = output;
@@ -283,6 +311,7 @@ public:
         return *output->second;
       } else {
         LOG(FATAL) << "No specific output " << str;
+        return *((Argument*)nullptr);
       }
     }
   }
@@ -351,8 +380,8 @@ public:
   /**
    * Intialization for sub network if there has sub network.
    * @param rootNetwork root network
-   * @param config model config 
-   * @param parameterTypes parameter's type 
+   * @param config model config
+   * @param parameterTypes parameter's type
    * @param useGpu whether to use gpu or not
    */
   virtual void initSubNetwork(NeuralNetwork* rootNetwork,
@@ -391,7 +420,8 @@ public:
   /**
    * Reset the internal state variables.
    * Allocate them if they have not been allocated.
-   * This function need to called before Layer::forward() for generating sequence.
+   * This function need to called before Layer::forward() for generating
+   * sequence.
    *
    * This is used for sequence generation. When generating sequence, the
    * calculation at current timestamp depends on the state from previous
@@ -407,7 +437,7 @@ public:
   virtual void setState(LayerStatePtr state) {}
 
   /**
-   * Get layer state. 
+   * Get layer state.
    * @return A copy of internal state.
    */
   virtual LayerStatePtr getState() { return nullptr; }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "OptimizerWithRegularizer.h"
 
 namespace paddle {
@@ -24,7 +23,8 @@ OptimizerWithRegularizerEveryNumBatches::needSpecialTraversal(
 
   if (isRegularizationBatch(config)) {
     callbacks.emplace_back(
-        [this](const VectorPtr vecs[], const ParameterConfig& config,
+        [this](const VectorPtr vecs[],
+               const ParameterConfig& config,
                size_t sparseId) { this->doTraversal(vecs, config); });
   }
 
@@ -39,8 +39,8 @@ void OptimizerWithRegularizerEveryNumBatches::doTraversal(
     const VectorPtr vecs[], const ParameterConfig& config) const {
   int32_t base =
       std::max(baseTimer_, (timer_ + 1 - config.num_batches_regularization()));
-  regularizer_->update(vecs, config, optimizer_->getLearningRate(), base,
-                       timer_ + 1);
+  regularizer_->update(
+      vecs, config, optimizer_->getLearningRate(), base, timer_ + 1);
 }
 
 ParameterOptimizer::TraverseCallback
@@ -53,7 +53,8 @@ OptimizerWithRegularizerEveryNumBatches::startCatchUpWith() const {
 
   if (baseTimer_ < timer_) {
     callbacks.emplace_back(
-        [this](const VectorPtr vecs[], const ParameterConfig& config,
+        [this](const VectorPtr vecs[],
+               const ParameterConfig& config,
                size_t sparseId) { this->catchUpWith(vecs, config, sparseId); });
   }
 
@@ -61,11 +62,15 @@ OptimizerWithRegularizerEveryNumBatches::startCatchUpWith() const {
 }
 
 void OptimizerWithRegularizerEveryNumBatches::catchUpWith(
-    const VectorPtr vecs[], const ParameterConfig& config,
+    const VectorPtr vecs[],
+    const ParameterConfig& config,
     size_t sparseId) const {
   int32_t base = timer_ - timer_ % config.num_batches_regularization();
-  regularizer_->update(vecs, config, optimizer_->getLearningRate(),
-                       std::max(base, baseTimer_), timer_);
+  regularizer_->update(vecs,
+                       config,
+                       optimizer_->getLearningRate(),
+                       std::max(base, baseTimer_),
+                       timer_);
 }
 
 void OptimizerWithRegularizerSparse::init(size_t numRows,
@@ -83,8 +88,11 @@ void OptimizerWithRegularizerSparse::update(const VectorPtr vecs[],
   optimizer_->update(vecs, config, sparseId);
   // para W(t0) -> W(t+1)
   CHECK_LT(sparseId, t0Vec_.size());
-  regularizer_->update(vecs, config, optimizer_->getLearningRate(),
-                       t0Vec_[sparseId], timer_ + 1);
+  regularizer_->update(vecs,
+                       config,
+                       optimizer_->getLearningRate(),
+                       t0Vec_[sparseId],
+                       timer_ + 1);
   t0Vec_[sparseId] = timer_ + 1;
 }
 
@@ -98,7 +106,8 @@ OptimizerWithRegularizerSparse::startCatchUpWith() const {
 
   if (timer_ > 0) {
     callbacks.emplace_back(
-        [this](const VectorPtr vecs[], const ParameterConfig& config,
+        [this](const VectorPtr vecs[],
+               const ParameterConfig& config,
                size_t sparseId) { this->catchUpWith(vecs, config, sparseId); });
   }
 
@@ -110,18 +119,20 @@ void OptimizerWithRegularizerSparse::catchUpWith(const VectorPtr vecs[],
                                                  size_t sparseId) const {
   // para W(t0) -> W(t+1)
   CHECK_LT(sparseId, t0Vec_.size());
-  regularizer_->update(vecs, config, optimizer_->getLearningRate(),
-                       t0Vec_[sparseId], timer_);
+  regularizer_->update(
+      vecs, config, optimizer_->getLearningRate(), t0Vec_[sparseId], timer_);
 }
 
 // factory method to create instance of OptimizerWithRegularizer
 ParameterOptimizer* OptimizerWithRegularizer::create(
-    const OptimizationConfig& optConfig, const ParameterConfig& paraConfig,
-    bool isParameterSparse, bool inPserver) {
+    const OptimizationConfig& optConfig,
+    const ParameterConfig& paraConfig,
+    bool isParameterSparse,
+    bool inPserver) {
   ParameterOptimizer* optimizer =
       ParameterOptimizer::create(optConfig, inPserver);
   if (paraConfig.gradient_clipping_threshold() > 0.0f &&
-     !dynamic_cast<AddOptimizer*>(optimizer)) {
+      !dynamic_cast<AddOptimizer*>(optimizer)) {
     optimizer = new OptimizerWithGradientClipping(optConfig, optimizer);
   }
   Regularizer* regularizer =
@@ -157,23 +168,23 @@ ParameterOptimizer* OptimizerWithRegularizer::create(
     }
     // normal
     optimizer->setNoDecay();
-    return new OptimizerWithRegularizerEveryNumBatches(optConfig, optimizer,
-                                                       regularizer);
+    return new OptimizerWithRegularizerEveryNumBatches(
+        optConfig, optimizer, regularizer);
   }
   if (isParameterSparse) {
-      CHECK(paraConfig.momentum() == 0.0f)
-          << "Parameter cannot support momentum if it's sparse.";
+    CHECK(paraConfig.momentum() == 0.0f)
+        << "Parameter cannot support momentum if it's sparse.";
     optimizer->setNoDecay();
-    return new OptimizerWithRegularizerSparse(optConfig, optimizer,
-                                              regularizer);
+    return new OptimizerWithRegularizerSparse(
+        optConfig, optimizer, regularizer);
   }
   // dense
   if (paraConfig.decay_rate_l1() == 0.0f ||
-    dynamic_cast<AddOptimizer*>(optimizer)) {
+      dynamic_cast<AddOptimizer*>(optimizer)) {
     return optimizer;
   }
   CHECK(paraConfig.momentum() == 0.0f)
-    << "Parameter cannot support momentum if it use L1 decay.";
+      << "Parameter cannot support momentum if it use L1 decay.";
   optimizer->setNoDecay();
   return new OptimizerWithRegularizer(optConfig, optimizer, regularizer);
 }

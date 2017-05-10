@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,14 @@
 
 from paddle.trainer.PyDataProvider2 import *
 import common_utils  # parse
+
+
+def __list_to_map__(lst):
+    ret_val = dict()
+    for each in lst:
+        k, v = each
+        ret_val[k] = v
+    return ret_val
 
 
 def hook(settings, meta, **kwargs):
@@ -34,12 +42,16 @@ def hook(settings, meta, **kwargs):
     #    second part is user features.
     #    final part is rating score.
     # header is a list of [USE_SEQ_OR_NOT?, SlotType]
-    headers = list(common_utils.meta_to_header(meta, 'movie'))
-    headers.extend(list(common_utils.meta_to_header(meta, 'user')))
-    headers.append(dense_vector(1))  # Score
+    movie_headers = list(common_utils.meta_to_header(meta, 'movie'))
+    settings.movie_names = [h[0] for h in movie_headers]
+    headers = movie_headers
+    user_headers = list(common_utils.meta_to_header(meta, 'user'))
+    settings.user_names = [h[0] for h in user_headers]
+    headers.extend(user_headers)
+    headers.append(("rating", dense_vector(1)))  # Score
 
     # slot types.
-    settings.input_types = headers
+    settings.input_types = __list_to_map__(headers)
     settings.meta = meta
 
 
@@ -57,20 +69,20 @@ def process(settings, filename):
             movie_meta = settings.meta['movie'][movie_id]
             user_meta = settings.meta['user'][user_id]
 
-            outputs = [movie_id - 1]
+            outputs = [('movie_id', movie_id - 1)]
 
             # Then add movie features
-            for each_meta in movie_meta:
-                outputs.append(each_meta)
+            for i, each_meta in enumerate(movie_meta):
+                outputs.append((settings.movie_names[i + 1], each_meta))
 
             # Then add user id.
-            outputs.append(user_id - 1)
+            outputs.append(('user_id', user_id - 1))
 
             # Then add user features.
-            for each_meta in user_meta:
-                outputs.append(each_meta)
+            for i, each_meta in enumerate(user_meta):
+                outputs.append((settings.user_names[i + 1], each_meta))
 
             # Finally, add score
-            outputs.append([score])
+            outputs.append(('rating', [score]))
             # Return data to paddle
-            yield outputs
+            yield __list_to_map__(outputs)

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
 
@@ -24,14 +23,16 @@ limitations under the License. */
 namespace paddle {
 
 void ParallelNeuralNetwork::init(
-    const ModelConfig& config, ParamInitCallback callback,
-    const std::vector<ParameterType>& parameterTypes, bool useGpu) {
+    const ModelConfig& config,
+    ParamInitCallback callback,
+    const std::vector<ParameterType>& parameterTypes,
+    bool useGpu) {
   NeuralNetwork::init(config, callback, parameterTypes, useGpu);
 
   if (config.type() == "recurrent_nn") {
     LOG(FATAL)
-      << "You can not add `--parallel_nn=true` on the command line, "
-      << "parallel_nn training mode does not support the recurrent_nn model.";
+        << "You can not add `--parallel_nn=true` on the command line, "
+        << "parallel_nn training mode does not support the recurrent_nn model.";
   }
 
   useGpu_ = useGpu;
@@ -54,8 +55,8 @@ void ParallelNeuralNetwork::addComputeThread(int deviceId) {
     }
   }
 
-  threads_.emplace_back(new ParallelThread(threads_.size(), deviceId,
-                                           deviceId >= 0 ? useGpu_ : false));
+  threads_.emplace_back(new ParallelThread(
+      threads_.size(), deviceId, deviceId >= 0 ? useGpu_ : false));
 }
 
 void ParallelNeuralNetwork::waitAllThread() {
@@ -68,7 +69,8 @@ void ParallelNeuralNetwork::waitAllThread() {
   }
 }
 
-void ParallelNeuralNetwork::dispatchByDeviceId(int deviceId, LayerPtr layer,
+void ParallelNeuralNetwork::dispatchByDeviceId(int deviceId,
+                                               LayerPtr layer,
                                                TaskType task) {
   for (auto& thread : threads_) {
     if (thread->getDeviceId() == deviceId) {
@@ -129,11 +131,7 @@ void ParallelNeuralNetwork::forwardBackward(const std::vector<Argument>& inArgs,
   backward(callback);
 }
 
-void ParallelNeuralNetwork::start(const TrainerConfig& config,
-                                  DataProviderPtr dataProvider) {
-  (void)config;
-  (void)dataProvider;
-
+void ParallelNeuralNetwork::start() {
   for (auto& thread : threads_) {
     thread->start();
   }

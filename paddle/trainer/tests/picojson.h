@@ -30,10 +30,10 @@
 #define picojson_h
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <cstddef>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -409,7 +409,8 @@ inline std::string value::to_str() const {
     case number_type: {
       char buf[256];
       double tmp;
-      SNPRINTF(buf, sizeof(buf),
+      SNPRINTF(buf,
+               sizeof(buf),
                fabs(u_.number_) < (1ULL << 53) && modf(u_.number_, &tmp) == 0
                    ? "%.f"
                    : "%.17g",
@@ -532,7 +533,8 @@ void value::_serialize(Iter oi, int indent) const {
         ++indent;
       }
       for (object::const_iterator i = u_.object_->begin();
-           i != u_.object_->end(); ++i) {
+           i != u_.object_->end();
+           ++i) {
         if (i != u_.object_->begin()) {
           *oi++ = ',';
         }
@@ -983,7 +985,9 @@ inline std::string parse(value& out, Iter& pos, const Iter& last) {
 }
 
 template <typename Context, typename Iter>
-inline Iter _parse(Context& ctx, const Iter& first, const Iter& last,
+inline Iter _parse(Context& ctx,
+                   const Iter& first,
+                   const Iter& last,
                    std::string* err) {
   input<Iter> in(first, last);
   if (!_parse(ctx, in) && err != NULL) {
@@ -1003,7 +1007,9 @@ inline Iter _parse(Context& ctx, const Iter& first, const Iter& last,
 }
 
 template <typename Iter>
-inline Iter parse(value& out, const Iter& first, const Iter& last,
+inline Iter parse(value& out,
+                  const Iter& first,
+                  const Iter& last,
                   std::string* err) {
   default_parse_context ctx(&out);
   return _parse(ctx, first, last, err);
@@ -1017,8 +1023,10 @@ inline std::string parse(value& out, const std::string& s) {
 
 inline std::string parse(value& out, std::istream& is) {
   std::string err;
-  parse(out, std::istreambuf_iterator<char>(is.rdbuf()),
-        std::istreambuf_iterator<char>(), &err);
+  parse(out,
+        std::istreambuf_iterator<char>(is.rdbuf()),
+        std::istreambuf_iterator<char>(),
+        &err);
   return err;
 }
 

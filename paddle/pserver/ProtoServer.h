@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "LightNetwork.h"
@@ -23,17 +22,17 @@ limitations under the License. */
 
 namespace paddle {
 
-  /**
-   *
-   * It implements the rpc framework, which launchs one thread for each
-   * connection. Here define one parameter server as single TCP server
-   * binding on single port. All connections share single tcp ProtoServer
-   * object, each connection handles all requests from specified trainer
-   * within single worker thread.
-   * to accelerate bandwidth efficiency and harness multicore for pserver
-   * optimization to reduce pserver latency, you could launch more port
-   * for single NIC hardward with --port=N(N>1) for small cluster job.
-   */
+/**
+ *
+ * It implements the rpc framework, which launchs one thread for each
+ * connection. Here define one parameter server as single TCP server
+ * binding on single port. All connections share single tcp ProtoServer
+ * object, each connection handles all requests from specified trainer
+ * within single worker thread.
+ * to accelerate bandwidth efficiency and harness multicore for pserver
+ * optimization to reduce pserver latency, you could launch more port
+ * for single NIC hardward with --port=N(N>1) for small cluster job.
+ */
 class ProtoServer : public SocketServer {
 public:
   /// rdmaCpu controls the cpu affinity of RDMA server daemon,
@@ -84,7 +83,8 @@ public:
   template <class ProtoIn>
   void registerServiceFunctionEx(
       const std::string& funcName,
-      std::function<void(const ProtoIn&, std::unique_ptr<MsgReader> msgReader,
+      std::function<void(const ProtoIn&,
+                         std::unique_ptr<MsgReader> msgReader,
                          ProtoResponseCallbackEx callback)> func);
 
 protected:
@@ -100,7 +100,8 @@ protected:
                              ResponseCallback callback);
 
   typedef std::function<void(std::unique_ptr<MsgReader> msgReader,
-                             ResponseCallback callback)> ServiceFunction;
+                             ResponseCallback callback)>
+      ServiceFunction;
 
   /**
    * @brief register one RPC function in function mapping
@@ -120,7 +121,8 @@ protected:
 
 class ProtoClient : public SocketClient {
 public:
-  ProtoClient(const std::string& serverAddr, int serverPort,
+  ProtoClient(const std::string& serverAddr,
+              int serverPort,
               enum ChannelType channelType = F_TCP)
       : SocketClient(serverAddr, serverPort, channelType) {}
 
@@ -133,7 +135,8 @@ public:
    * @note  iov provides additional blocks which need to be written to the
    *        communication channel
    */
-  void send(const char* funcName, const google::protobuf::MessageLite& proto,
+  void send(const char* funcName,
+            const google::protobuf::MessageLite& proto,
             const std::vector<iovec>& iov = std::vector<iovec>());
 
   /**
@@ -148,7 +151,8 @@ public:
 
   /// combines send() and recv()
   std::unique_ptr<MsgReader> sendAndRecv(
-      const char* funcName, const google::protobuf::MessageLite& protoIn,
+      const char* funcName,
+      const google::protobuf::MessageLite& protoIn,
       google::protobuf::MessageLite* protoOut) {
     send(funcName, protoIn);
     return recv(protoOut);
@@ -156,8 +160,10 @@ public:
 
   /// combines send() and recv()
   std::unique_ptr<MsgReader> sendAndRecv(
-      const char* funcName, const google::protobuf::MessageLite& protoIn,
-      const std::vector<iovec>& iov, google::protobuf::MessageLite* protoOut) {
+      const char* funcName,
+      const google::protobuf::MessageLite& protoIn,
+      const std::vector<iovec>& iov,
+      google::protobuf::MessageLite* protoOut) {
     send(funcName, protoIn, iov);
     return recv(protoOut);
   }
@@ -172,52 +178,62 @@ struct service_arg_type<R (C::*)(const Arg1&, Arg2)> {
 };
 
 template <class R, class C, class Arg1, class Arg2>
-struct service_arg_type<R (C::*)(const Arg1&, std::unique_ptr<MsgReader>,
-                                 Arg2)> {
+struct service_arg_type<R (C::*)(  // NOLINT
+    const Arg1&,
+    std::unique_ptr<MsgReader>,
+    Arg2)> {
   typedef Arg1 _1;
 };
 
 /// register a service function to the ProtoServer
 /// This should only be used within a member function of className
-#define REGISTER_SERVICE_FUNCTION(className, funcName)                        \
-  registerServiceFunction<                                                    \
-      service_arg_type<decltype(&className::funcName)>::_1>(                  \
-      #funcName, std::bind(&className::funcName, this, std::placeholders::_1, \
-                           std::placeholders::_2))
+#define REGISTER_SERVICE_FUNCTION(className, funcName)       \
+  registerServiceFunction<                                   \
+      service_arg_type<decltype(&className::funcName)>::_1>( \
+      #funcName,                                             \
+      std::bind(&className::funcName,                        \
+                this,                                        \
+                std::placeholders::_1,                       \
+                std::placeholders::_2))
 
 /// register a service function to the ProtoServer
 /// This should only be used within a member function of className
-#define REGISTER_SERVICE_FUNCTION_EX(className, funcName)                     \
-  registerServiceFunctionEx<                                                  \
-      service_arg_type<decltype(&className::funcName)>::_1>(                  \
-      #funcName, std::bind(&className::funcName, this, std::placeholders::_1, \
-                           std::placeholders::_2, std::placeholders::_3))
+#define REGISTER_SERVICE_FUNCTION_EX(className, funcName)    \
+  registerServiceFunctionEx<                                 \
+      service_arg_type<decltype(&className::funcName)>::_1>( \
+      #funcName,                                             \
+      std::bind(&className::funcName,                        \
+                this,                                        \
+                std::placeholders::_1,                       \
+                std::placeholders::_2,                       \
+                std::placeholders::_3))
 
 /// create wrapper function for parameter server high level function and
 /// register the wrapper function into function mapping.
 template <class ProtoIn>
 void ProtoServer::registerServiceFunctionEx(
     const std::string& funcName,
-    std::function<void(const ProtoIn&, std::unique_ptr<MsgReader> msgReader,
+    std::function<void(const ProtoIn&,
+                       std::unique_ptr<MsgReader> msgReader,
                        ProtoResponseCallbackEx callback)> func) {
-  auto f =
-      [func](std::unique_ptr<MsgReader> msgReader, ResponseCallback callback) {
-        ProtoIn request;
-        std::string str(msgReader->getNextBlockLength(), 0);
-        msgReader->readNextBlock(&str[0]);
-        CHECK(request.ParseFromString(str));
-        auto pcob = [callback](const google::protobuf::MessageLite& response,
-                               const std::vector<iovec>& outputIovs) {
-          std::string out;
-          CHECK(response.SerializeToString(&out));
-          std::vector<iovec> iovs;
-          iovs.push_back({&out[0], out.size()});
-          iovs.insert(iovs.end(), outputIovs.begin(), outputIovs.end());
-          callback(iovs);
-        };
+  auto f = [func](std::unique_ptr<MsgReader> msgReader,
+                  ResponseCallback callback) {
+    ProtoIn request;
+    std::string str(msgReader->getNextBlockLength(), 0);
+    msgReader->readNextBlock(&str[0]);
+    CHECK(request.ParseFromString(str));
+    auto pcob = [callback](const google::protobuf::MessageLite& response,
+                           const std::vector<iovec>& outputIovs) {
+      std::string out;
+      CHECK(response.SerializeToString(&out));
+      std::vector<iovec> iovs;
+      iovs.push_back({&out[0], out.size()});
+      iovs.insert(iovs.end(), outputIovs.begin(), outputIovs.end());
+      callback(iovs);
+    };
 
-        func(request, std::move(msgReader), pcob);
-      };
+    func(request, std::move(msgReader), pcob);
+  };
 
   registerServiceFunctionImp(funcName, f);
 }
@@ -226,24 +242,24 @@ template <class ProtoIn>
 void ProtoServer::registerServiceFunction(
     const std::string& funcName,
     std::function<void(const ProtoIn&, ProtoResponseCallback callback)> func) {
-  auto f =
-      [func](std::unique_ptr<MsgReader> msgReader, ResponseCallback callback) {
-        ProtoIn request;
-        std::string str(msgReader->getNextBlockLength(), 0);
-        msgReader->readNextBlock(&str[0]);
-        CHECK(request.ParseFromString(str));
-        msgReader.reset();
+  auto f = [func](std::unique_ptr<MsgReader> msgReader,
+                  ResponseCallback callback) {
+    ProtoIn request;
+    std::string str(msgReader->getNextBlockLength(), 0);
+    msgReader->readNextBlock(&str[0]);
+    CHECK(request.ParseFromString(str));
+    msgReader.reset();
 
-        auto pcob = [callback](const google::protobuf::MessageLite& response) {
-          std::string out;
-          CHECK(response.SerializeToString(&out));
-          std::vector<iovec> iovs;
-          iovs.push_back({&out[0], out.size()});
-          callback(iovs);
-        };
+    auto pcob = [callback](const google::protobuf::MessageLite& response) {
+      std::string out;
+      CHECK(response.SerializeToString(&out));
+      std::vector<iovec> iovs;
+      iovs.push_back({&out[0], out.size()});
+      callback(iovs);
+    };
 
-        func(request, pcob);
-      };
+    func(request, pcob);
+  };
 
   registerServiceFunctionImp(funcName, f);
 }

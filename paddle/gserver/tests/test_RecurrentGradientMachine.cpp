@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <paddle/utils/Util.h>
-#include <paddle/utils/Version.h>
-#include <paddle/utils/PythonUtil.h>
+#include <paddle/gserver/gradientmachines/GradientMachine.h>
 #include <paddle/trainer/Trainer.h>
 #include <paddle/trainer/TrainerInternal.h>
-#include <paddle/gserver/gradientmachines/GradientMachine.h>
+#include <paddle/utils/PythonUtil.h>
+#include <paddle/utils/Util.h>
+#include <paddle/utils/Version.h>
 
-P_DECLARE_int32(seed);
+DECLARE_int32(seed);
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -28,7 +28,7 @@ class TrainerForTest : public paddle::Trainer {
 public:
   void startTrain() {
     GradientMachine& gm = *this->trainerInternal_.getGradientMachine();
-    gm.start(this->getConfig(), dataProvider_);
+    gm.start();
   }
 
   void finishTrain() {
@@ -45,12 +45,15 @@ public:
     auto p = const_cast<TrainerForTest*>(this);
     auto& params = p->getGradientMachine()->getParameters();
     return std::accumulate(
-        params.begin(), params.end(), 0UL,
-        [](size_t a, const ParameterPtr& p) { return a + p->getSize(); });
+        params.begin(), params.end(), 0UL, [](size_t a, const ParameterPtr& p) {
+          return a + p->getSize();
+        });
   }
 };
 
-void CalCost(const string& conf, const string& dir, real* cost,
+void CalCost(const string& conf,
+             const string& dir,
+             real* cost,
              int num_passes) {
   auto config = std::make_shared<TrainerConfigHelper>(conf);
   TrainerForTest trainer;
@@ -82,8 +85,8 @@ void CalCost(const string& conf, const string& dir, real* cost,
       int num = dataProvider->getNextBatch(batchSize, &dataBatch);
       if (num == 0) break;
       totalCost += trainer.calcGradient(dataBatch, vecW, vecGradient);
-      sgdUpdate(learningRate, momentum, decayRate, &vecW, &vecGradient,
-                &vecMomentum);
+      sgdUpdate(
+          learningRate, momentum, decayRate, &vecW, &vecGradient, &vecMomentum);
     }
     cost[i] = totalCost;
   }
@@ -119,7 +122,8 @@ TEST(RecurrentGradientMachine, HasSubSequence) {
   for (bool useGpu : {false, true}) {
     test("gserver/tests/sequence_layer_group.conf",
          "gserver/tests/sequence_nest_layer_group.conf",
-         1e-5, useGpu);
+         1e-5,
+         useGpu);
   }
 }
 
@@ -127,7 +131,8 @@ TEST(RecurrentGradientMachine, rnn) {
   for (bool useGpu : {false, true}) {
     test("gserver/tests/sequence_rnn.conf",
          "gserver/tests/sequence_nest_rnn.conf",
-         1e-6, useGpu);
+         1e-6,
+         useGpu);
   }
 }
 
@@ -135,26 +140,29 @@ TEST(RecurrentGradientMachine, rnn_multi_input) {
   for (bool useGpu : {false, true}) {
     test("gserver/tests/sequence_rnn_multi_input.conf",
          "gserver/tests/sequence_nest_rnn_multi_input.conf",
-         1e-6, useGpu);
+         1e-6,
+         useGpu);
   }
 }
 
 TEST(RecurrentGradientMachine, rnn_multi_unequalength_input) {
-    for (bool useGpu : {false, true}) {
-        test("gserver/tests/sequence_rnn_multi_unequalength_inputs.conf",
-        "gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.conf",
-             1e-6, useGpu);
-    }
+  for (bool useGpu : {false, true}) {
+    test("gserver/tests/sequence_rnn_multi_unequalength_inputs.py",
+         "gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py",
+         1e-6,
+         useGpu);
+  }
 }
 
 int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+
   if (paddle::version::isWithPyDataProvider()) {
     if (!paddle::version::isWithGpu()) {
       FLAGS_use_gpu = false;
     }
     initMain(argc, argv);
     initPython(argc, argv);
-    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
   } else {
     return 0;

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,5 +27,6 @@ paddle train \
 --num_passes=100 \
 --save_dir=$output \
 2>&1 | tee $log
+paddle usage -l $log -e $? -n "mnist_train" >/dev/null 2>&1
 
 python -m paddle.utils.plotcurve -i $log > plot.png

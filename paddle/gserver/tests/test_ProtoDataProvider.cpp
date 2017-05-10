@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,16 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <memory>
 #include <string>
 
 #include <gtest/gtest.h>
 
-#include "paddle/utils/Util.h"
 #include "paddle/gserver/dataproviders/ProtoDataProvider.h"
+#include "paddle/utils/Util.h"
 
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 
 using namespace std;  // NOLINT
 
@@ -41,7 +40,9 @@ const int kSpraseMatrixDim = 1024;
 
 using namespace paddle;  // NOLINT
 
-void prepareData(DataBatch* batch, const int* numPerSlotType, bool iid,
+void prepareData(DataBatch* batch,
+                 const int* numPerSlotType,
+                 bool iid,
                  bool useGpu) {
   batch->clear();
   int64_t size = uniformRandom(100) + 10;
@@ -137,7 +138,7 @@ inline int getSlotDim(const Argument& arg) {
 
 inline SlotDef::SlotType getSlotType(const Argument& arg) {
   if (arg.value) {
-    auto & m = *arg.value;
+    auto& m = *arg.value;
     auto& type = typeid(m);
     if (type == typeid(CpuMatrix) || type == typeid(GpuMatrix)) {
       return SlotDef::VECTOR_DENSE;
@@ -169,8 +170,12 @@ inline SlotDef::SlotType getSlotType(const Argument& arg) {
   return SlotDef::VECTOR_DENSE;
 }
 
-void getColRow(const Argument& arg, int64_t pos, bool useGpu, int* colNum,
-               const int** rowCols, const real** rowValues) {
+void getColRow(const Argument& arg,
+               int64_t pos,
+               bool useGpu,
+               int* colNum,
+               const int** rowCols,
+               const real** rowValues) {
   SlotDef::SlotType type = getSlotType(arg);
   GpuSparseMatrixPtr matGpu;
   CpuSparseMatrixPtr matCpu;
@@ -190,8 +195,11 @@ void getColRow(const Argument& arg, int64_t pos, bool useGpu, int* colNum,
   }
 }
 
-void makeSample(const vector<Argument>& arguments, int64_t pos,
-                bool isBeginning, DataSample* sample, bool useGpu) {
+void makeSample(const vector<Argument>& arguments,
+                int64_t pos,
+                bool isBeginning,
+                DataSample* sample,
+                bool useGpu) {
   sample->set_is_beginning(isBeginning);
   int slotid = 0;
   for (auto& arg : arguments) {
@@ -272,8 +280,7 @@ void writeData(const DataBatch& batch, bool useGpu, bool dataCompression) {
 
   int64_t totalSeqs = batch.getNumSequences();
   int64_t seq = 0;
-  ICpuGpuVectorPtr sequenceStartPositions =
-      arguments[0].sequenceStartPositions;
+  ICpuGpuVectorPtr sequenceStartPositions = arguments[0].sequenceStartPositions;
   int64_t numWritten = 0;
   vector<string> curProtoFiles =
       dataCompression ? protoFilesCompressed : protoFiles;
@@ -306,8 +313,11 @@ void writeData(const DataBatch& batch, bool useGpu, bool dataCompression) {
 }
 
 // check that the sample at pos1 in args1 is same as the sample at pos2 in args2
-void checkSample(const vector<Argument>& args1, int64_t pos1,
-                 const vector<Argument>& args2, int64_t pos2, bool useGpu) {
+void checkSample(const vector<Argument>& args1,
+                 int64_t pos1,
+                 const vector<Argument>& args2,
+                 int64_t pos2,
+                 bool useGpu) {
   EXPECT_EQ(args1.size(), args2.size());
   VLOG(1) << " pos1=" << pos1 << " pos2=" << pos2;
 
@@ -361,8 +371,11 @@ void checkSample(const vector<Argument>& args1, int64_t pos1,
   }
 }
 
-void testProtoDataProvider(int* numPerSlotType, bool iid, bool async,
-                           bool useGpu, bool dataCompression,
+void testProtoDataProvider(int* numPerSlotType,
+                           bool iid,
+                           bool async,
+                           bool useGpu,
+                           bool dataCompression,
                            int numConstantSlots = 0) {
   mkDir(kTestDir);
   DataBatch data;
@@ -377,7 +390,9 @@ void testProtoDataProvider(int* numPerSlotType, bool iid, bool async,
 
   for (int i = 0; i < numConstantSlots; ++i) {
     config.add_constant_slots(i + 11);
-    MatrixPtr w = Matrix::create(data.getSize(), 1, /* trans= */ false,
+    MatrixPtr w = Matrix::create(data.getSize(),
+                                 1,
+                                 /* trans= */ false,
                                  /* useGpu= */ false);
     w->assign(config.constant_slots(i));
     data.appendData(w);
@@ -393,16 +408,14 @@ void testProtoDataProvider(int* numPerSlotType, bool iid, bool async,
 
   size_t seq1 = 0;
   vector<Argument>& args1 = data.getStreams();
-  ICpuGpuVectorPtr sequenceStartPositions1 =
-      args1[0].sequenceStartPositions;
+  ICpuGpuVectorPtr sequenceStartPositions1 = args1[0].sequenceStartPositions;
 
   dataProvider->reset();
 
   while (dataProvider->getNextBatch(batchSize, &batch) > 0) {
     CHECK_EQ(data.getNumStreams(), batch.getNumStreams());
     vector<Argument>& args2 = batch.getStreams();
-    ICpuGpuVectorPtr sequenceStartPositions2 =
-        args2[0].sequenceStartPositions;
+    ICpuGpuVectorPtr sequenceStartPositions2 = args2[0].sequenceStartPositions;
     for (auto& arg : args2) {
       EXPECT_EQ(iid, !arg.sequenceStartPositions);
     }
@@ -494,8 +507,8 @@ TEST(ProtoDataProvider, test) {
                 numSparseValueVectorSlots;
             numPerSlotType[SlotDef::INDEX] = numIdSlots;
             numPerSlotType[SlotDef::STRING] = numStrSlots;
-            testProtoDataProvider(numPerSlotType, iid, async, useGpu,
-                                  dataCompression);
+            testProtoDataProvider(
+                numPerSlotType, iid, async, useGpu, dataCompression);
           }  // end for (int dataCompression : numTwoArray)
         }    // end for (int useGpu : numTwoArray)
       }      // end for (int async : numTwoArray)
@@ -531,7 +544,9 @@ TEST(ProtoDataProvider, constant_slots) {
             numPerSlotType[SlotDef::INDEX] = 1;
             testProtoDataProvider(numPerSlotType,
                                   /* iid= */ true,
-                                  /* async= */ false, useGpu, dataCompression,
+                                  /* async= */ false,
+                                  useGpu,
+                                  dataCompression,
                                   numConstantSlots);
           }  // end for (int dataCompression : numTwoArray)
         }    // end for (int useGpu : numTwoArray)
@@ -541,16 +556,17 @@ TEST(ProtoDataProvider, constant_slots) {
 }
 
 void checkSampleSequence(const vector<Argument>& args1,
-                         const vector<Argument>& args2, int64_t offset,
-                         int64_t numSeqs, bool useGpu) {
+                         const vector<Argument>& args2,
+                         int64_t offset,
+                         int64_t numSeqs,
+                         bool useGpu) {
   // check slot num are equal
   EXPECT_EQ(args1.size(), args2.size());
   for (size_t i = 0; i < args1.size(); i++) {
     auto type = getSlotType(args1[i]);
     // check for args2: sequenceStartPositions vs numSeqs
     // (1) size
-    EXPECT_EQ(args2[i].sequenceStartPositions->getSize(),
-              (size_t)numSeqs + 1);
+    EXPECT_EQ(args2[i].sequenceStartPositions->getSize(), (size_t)numSeqs + 1);
     // (2) content
     auto checkArgContent = [&](const Argument& args, int numSeqs) {
       for (int j = 0; j <= numSeqs; j++) {
@@ -579,8 +595,8 @@ void checkSampleSequence(const vector<Argument>& args1,
         const real* rowValues1;  // nullptr
         int totalLength = 0;
         for (int j = 0; j < numSeqs; j++) {
-          getColRow(args1[i], offset + j, useGpu, &colNum1, &rowCols1,
-                    &rowValues1);
+          getColRow(
+              args1[i], offset + j, useGpu, &colNum1, &rowCols1, &rowValues1);
           // (1) lengths
           EXPECT_EQ(totalLength,
                     args2[i].sequenceStartPositions->getElement(j));
@@ -626,13 +642,16 @@ void checkSampleSequence(const vector<Argument>& args1,
   }
 }
 
-void testProtoSequenceDataProvider(int* numPerSlotType, bool async,
+void testProtoSequenceDataProvider(int* numPerSlotType,
+                                   bool async,
                                    bool useGpu) {
   mkDir(kTestDir);
   DataBatch data;
 
-  prepareData(&data, numPerSlotType,
-              /* iid */ true, useGpu);
+  prepareData(&data,
+              numPerSlotType,
+              /* iid */ true,
+              useGpu);
   writeData(data, useGpu, /* dataCompression */ false);
 
   DataConfig config;
@@ -649,8 +668,7 @@ void testProtoSequenceDataProvider(int* numPerSlotType, bool async,
   DataBatch batch;
 
   vector<Argument>& args1 = data.getStreams();
-  ICpuGpuVectorPtr sequenceStartPositions1 =
-      args1[0].sequenceStartPositions;
+  ICpuGpuVectorPtr sequenceStartPositions1 = args1[0].sequenceStartPositions;
 
   dataProvider->reset();
 
@@ -658,8 +676,7 @@ void testProtoSequenceDataProvider(int* numPerSlotType, bool async,
   while (dataProvider->getNextBatch(batchSize, &batch) > 0) {
     CHECK_EQ(data.getNumStreams(), batch.getNumStreams());
     vector<Argument>& args2 = batch.getStreams();
-    ICpuGpuVectorPtr sequenceStartPositions2 =
-        args2[0].sequenceStartPositions;
+    ICpuGpuVectorPtr sequenceStartPositions2 = args2[0].sequenceStartPositions;
     for (auto& arg : args1) {
       // args1 should not has sequence
       EXPECT_EQ(true, !arg.sequenceStartPositions);
@@ -712,10 +729,4 @@ TEST(ProtoSequenceDataProvider, test) {
       }      // end for (int numDenseVecSlots : numSlotsArray)
     }        // end for (int numIdSlots : numSlotsArray)
   }          // end for (int numSparseNonValueVecSlots : numSlotsArray)
-}
-
-int main(int argc, char** argv) {
-  initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

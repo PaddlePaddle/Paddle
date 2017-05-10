@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #pragma once
 
@@ -32,8 +31,8 @@ namespace paddle {
  */
 class ParameterOptimizer {
 public:
-  typedef std::function<void(const VectorPtr vecs[],
-                             const ParameterConfig& config, size_t sparseId)>
+  typedef std::function<void(
+      const VectorPtr vecs[], const ParameterConfig& config, size_t sparseId)>
       TraverseCallback;
 
 public:
@@ -69,35 +68,35 @@ public:
     (void)numSamplesProcessed;
   }
 
- /**
-  * following hooks useful for sparse update,
-  * because the traversal in block costs.
-  * called by Trainer after update and before finishBatch
-  * e.g. Trainer call like this:
-  *
-  * @code
-  * startBatch();
-  * if (dense) {
-  *   update(blockVec);
-  * } else {//sparse
-  *   for (row : rows_in_block) {update(rowVec)}
-  * }
-  * auto callback = needSpecialTraversal();
-  * if (callback) {
-  *   // do traverse, maybe multi-thread
-  *   if (dense) {
-  *     callback();
-  *   } else {//sparse
-  *     for (row : all_rows_in_block) {callback();}
-  *   }
-  * }
-  * finishBatch();
-  * @endcode
-  *
-  * @return callback if need traverse,
-  *         else return nullptr.
-  *         It should be no state change.
-  */
+  /**
+   * following hooks useful for sparse update,
+   * because the traversal in block costs.
+   * called by Trainer after update and before finishBatch
+   * e.g. Trainer call like this:
+   *
+   * @code
+   * startBatch();
+   * if (dense) {
+   *   update(blockVec);
+   * } else {//sparse
+   *   for (row : rows_in_block) {update(rowVec)}
+   * }
+   * auto callback = needSpecialTraversal();
+   * if (callback) {
+   *   // do traverse, maybe multi-thread
+   *   if (dense) {
+   *     callback();
+   *   } else {//sparse
+   *     for (row : all_rows_in_block) {callback();}
+   *   }
+   * }
+   * finishBatch();
+   * @endcode
+   *
+   * @return callback if need traverse,
+   *         else return nullptr.
+   *         It should be no state change.
+   */
   virtual TraverseCallback needSpecialTraversal(
       const ParameterConfig& config) const {
     return nullptr;
@@ -112,47 +111,48 @@ public:
    * with its gradient in PARAMETER_GRADIENT. sparseId is row id,
    * when sparseId set, update is sparse, each time one row.
    */
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& config,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& config,
                       size_t sparseId = -1LU) const = 0;
 
- /**
-  * following hooks catch up with current time for sparse update,
-  * In the beginning, call startCatchUpWith() and check return.
-  * In the end, call finishCatchUpWith() to finish state.
-  * callback do the actual works, can call many times for sparse data.
-  * e.g. Trainer call like this:
-  *
-  * @code
-  * auto callback = startCatchUpWith();
-  * if (callback) {
-  *   // do catch up with, maybe multi-thread
-  *   if (dense) {
-  *     callback();
-  *   } else {//sparse
-  *     for (row : rows_in_block) {callback();}
-  *   }
-  *   // finish catch up with, main thread
-  *   finishCatchUpWith();
-  * }
-  * @endcode
-  *
-  * @return callback if need catch up with,
-  *         else return nullptr.
-  *         It should be no state change.
-  */
+  /**
+   * following hooks catch up with current time for sparse update,
+   * In the beginning, call startCatchUpWith() and check return.
+   * In the end, call finishCatchUpWith() to finish state.
+   * callback do the actual works, can call many times for sparse data.
+   * e.g. Trainer call like this:
+   *
+   * @code
+   * auto callback = startCatchUpWith();
+   * if (callback) {
+   *   // do catch up with, maybe multi-thread
+   *   if (dense) {
+   *     callback();
+   *   } else {//sparse
+   *     for (row : rows_in_block) {callback();}
+   *   }
+   *   // finish catch up with, main thread
+   *   finishCatchUpWith();
+   * }
+   * @endcode
+   *
+   * @return callback if need catch up with,
+   *         else return nullptr.
+   *         It should be no state change.
+   */
   virtual TraverseCallback startCatchUpWith() const { return nullptr; }
   virtual void finishCatchUpWith() {}
 
- /**
-  * following two hooks used by averager,
-  * apply to final parameter value (PARAMETER_VALUE or PARAMETER_APPLY).
-  *
-  * restore() will restore orginal value if it apply to PARAMETER_VALUE.
-  * Caller must ensure it's catched up with current time before apply.
-  *
-  * Use returned callback same way as callback returned by
-  * ParameterOptimizer::needSpecialTraversal()
-  */
+  /**
+   * following two hooks used by averager,
+   * apply to final parameter value (PARAMETER_VALUE or PARAMETER_APPLY).
+   *
+   * restore() will restore orginal value if it apply to PARAMETER_VALUE.
+   * Caller must ensure it's catched up with current time before apply.
+   *
+   * Use returned callback same way as callback returned by
+   * ParameterOptimizer::needSpecialTraversal()
+   */
   virtual TraverseCallback apply() { return nullptr; }
   virtual TraverseCallback restore() { return nullptr; }
 
@@ -180,7 +180,8 @@ protected:
   static TraverseCallback composeCallbacks(
       const TraverseCallbackVec& callbacks) {
     if (callbacks.size() > 1LU) {
-      return [callbacks](const VectorPtr vecs[], const ParameterConfig& config,
+      return [callbacks](const VectorPtr vecs[],
+                         const ParameterConfig& config,
                          size_t sparseId) {
         for (auto callback : callbacks) {
           callback(vecs, config, sparseId);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <set>
 #include <vector>
 
 #include "paddle/math/Vector.h"
@@ -72,6 +73,7 @@ class ChunkEvaluator : public Evaluator {
 
   std::vector<Segment> labelSegments_;
   std::vector<Segment> outputSegments_;
+  std::set<int> excludedChunkTypes_;
 
 public:
   virtual void init(const EvaluatorConfig& config) {
@@ -105,6 +107,10 @@ public:
     }
     CHECK(config.has_num_chunk_types()) << "Missing num_chunk_types in config";
     otherChunkType_ = numChunkTypes_ = config.num_chunk_types();
+
+    // the chunks of types in excludedChunkTypes_ will not be counted
+    auto& tmp = config.excluded_chunk_types();
+    excludedChunkTypes_.insert(tmp.begin(), tmp.end());
   }
 
   virtual void start() {
@@ -114,7 +120,7 @@ public:
     numCorrect_ = 0;
   }
 
-  virtual void printStats(std::ostream& os) {
+  virtual void printStats(std::ostream& os) const {
     double precision = (double)numCorrect_ / numOutputSegments_;
     double recall = (double)numCorrect_ / numLabelSegments_;
     double f1 =
@@ -144,7 +150,8 @@ public:
     size_t numSequences = sequenceStartPositions->getSize() - 1;
     const int* starts = sequenceStartPositions->getData();
     for (size_t i = 0; i < numSequences; ++i) {
-      eval1(output->getData() + starts[i], label->getData() + starts[i],
+      eval1(output->getData() + starts[i],
+            label->getData() + starts[i],
             starts[i + 1] - starts[i]);
     }
     return 0;
@@ -155,7 +162,8 @@ public:
     getSegments(label, length, labelSegments_);
     size_t i = 0, j = 0;
     while (i < outputSegments_.size() && j < labelSegments_.size()) {
-      if (outputSegments_[i] == labelSegments_[j]) {
+      if (outputSegments_[i] == labelSegments_[j] &&
+          excludedChunkTypes_.count(outputSegments_[i].type) != 1) {
         ++numCorrect_;
       }
       if (outputSegments_[i].end < labelSegments_[j].end) {
@@ -167,8 +175,12 @@ public:
         ++j;
       }
     }
-    numLabelSegments_ += labelSegments_.size();
-    numOutputSegments_ += outputSegments_.size();
+    for (auto& segment : labelSegments_) {
+      if (excludedChunkTypes_.count(segment.type) != 1) ++numLabelSegments_;
+    }
+    for (auto& segment : outputSegments_) {
+      if (excludedChunkTypes_.count(segment.type) != 1) ++numOutputSegments_;
+    }
   }
 
   void getSegments(int* label, int length, std::vector<Segment>& segments) {

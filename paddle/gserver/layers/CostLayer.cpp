@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include <memory>
-#include <algorithm>
-#include "paddle/utils/Logging.h"
-#include <cmath>
 #include "CostLayer.h"
+#include <algorithm>
+#include <cmath>
+#include <memory>
+#include "paddle/utils/Logging.h"
 
 #include "paddle/math/SparseMatrix.h"
 
@@ -88,13 +87,15 @@ bool MultiClassCrossEntropy::init(const LayerMap& layerMap,
   return CostLayer::init(layerMap, parameterMap);
 }
 
-void MultiClassCrossEntropy::forwardImp(Matrix& output, Argument& label,
+void MultiClassCrossEntropy::forwardImp(Matrix& output,
+                                        Argument& label,
                                         Matrix& target) {
   target.oneHotCrossEntropy(output, *label.ids);
 }
 
-void MultiClassCrossEntropy::backwardImp(
-    Matrix& output, Argument& label, Matrix& outputG) {
+void MultiClassCrossEntropy::backwardImp(Matrix& output,
+                                         Argument& label,
+                                         Matrix& outputG) {
   outputG.oneHotCrossEntropyBp(output, *label.ids);
 }
 
@@ -114,12 +115,12 @@ void MultiClassCrossEntropyWithSelfNorm::forwardImp(Matrix& output,
                                                     Matrix& target) {
   Matrix::resizeOrCreate(sftMaxSum_, output.getHeight(), 1, false, useGpu_);
   output.rowSum(*sftMaxSum_);
-  sftMaxSum_->log();
+  sftMaxSum_->log2();
 
   target.oneHotCrossEntropy(output, *label.ids);
   target.add(*sftMaxSum_);
 
-  sftMaxSum_->square();
+  sftMaxSum_->square2();
   target.add(*sftMaxSum_, config_.softmax_selfnorm_alpha());
 }
 
@@ -130,12 +131,12 @@ void MultiClassCrossEntropyWithSelfNorm::backwardImp(Matrix& output,
   output.rowSum(*sftMaxSum_);
 
   Matrix::resizeOrCreate(sumInv_, output.getHeight(), 1, false, useGpu_);
-  sftMaxSum_->reciprocal(*sumInv_);
+  sftMaxSum_->reciprocal2(*sumInv_);
 
   outputG.oneHotCrossEntropyBp(output, *label.ids);
   outputG.addColumnVector(*sumInv_);
 
-  sftMaxSum_->log();
+  sftMaxSum_->log2();
   sumInv_->dotMul(*sumInv_, *sftMaxSum_);
   sumInv_->mulScalar(2 * config_.softmax_selfnorm_alpha());
 
@@ -152,17 +153,19 @@ bool SoftBinaryClassCrossEntropy::init(const LayerMap& layerMap,
   return CostLayer::init(layerMap, parameterMap);
 }
 
-void SoftBinaryClassCrossEntropy::forwardImp(Matrix& output, Argument& label,
+void SoftBinaryClassCrossEntropy::forwardImp(Matrix& output,
+                                             Argument& label,
                                              Matrix& target) {
-  Matrix::resizeOrCreate(targetPerDim_, output.getHeight(), output.getWidth(),
-                         false, useGpu_);
+  Matrix::resizeOrCreate(
+      targetPerDim_, output.getHeight(), output.getWidth(), false, useGpu_);
 
   targetPerDim_->softCrossEntropy(output, *label.value);
   targetPerDim_->rowSum(target);
 }
 
-void SoftBinaryClassCrossEntropy::backwardImp(
-    Matrix& output, Argument& label, Matrix& outputG) {
+void SoftBinaryClassCrossEntropy::backwardImp(Matrix& output,
+                                              Argument& label,
+                                              Matrix& outputG) {
   outputG.softCrossEntropyBp(output, *label.value);
 }
 
@@ -177,14 +180,69 @@ bool SumOfSquaresCostLayer::init(const LayerMap& layerMap,
   return CostLayer::init(layerMap, parameterMap);
 }
 
-void SumOfSquaresCostLayer::forwardImp(Matrix& output, Argument& label,
+void SumOfSquaresCostLayer::forwardImp(Matrix& output,
+                                       Argument& label,
                                        Matrix& target) {
   target.sumOfSquares(output, *label.value);
 }
 
-void SumOfSquaresCostLayer::backwardImp(
-    Matrix& output, Argument& label, Matrix& outputG) {
+void SumOfSquaresCostLayer::backwardImp(Matrix& output,
+                                        Argument& label,
+                                        Matrix& outputG) {
   outputG.sumOfSquaresBp(output, *label.value);
+}
+
+//
+// class SmoothL1CostLayer
+//
+
+REGISTER_LAYER(smooth_l1, SmoothL1CostLayer);
+
+bool SmoothL1CostLayer::init(const LayerMap& layerMap,
+                             const ParameterMap& parameterMap) {
+  return CostLayer::init(layerMap, parameterMap);
+}
+
+void SmoothL1CostLayer::forwardImp(Matrix& output,
+                                   Argument& label,
+                                   Matrix& target) {
+  MatrixPtr targetCpu, outputCpu, labelCpu;
+  if (useGpu_) {
+    targetCpu =
+        Matrix::create(target.getHeight(), target.getWidth(), false, false);
+    outputCpu =
+        Matrix::create(output.getHeight(), output.getWidth(), false, false);
+    labelCpu = Matrix::create(
+        label.value->getHeight(), label.value->getWidth(), false, false);
+    targetCpu->copyFrom(target);
+    outputCpu->copyFrom(output);
+    labelCpu->copyFrom(*label.value);
+    targetCpu->smoothL1(*outputCpu, *(labelCpu));
+    target.copyFrom(*targetCpu);
+  } else {
+    target.smoothL1(output, *label.value);
+  }
+}
+
+void SmoothL1CostLayer::backwardImp(Matrix& output,
+                                    Argument& label,
+                                    Matrix& outputG) {
+  MatrixPtr outputGCpu, outputCpu, labelCpu;
+  if (useGpu_) {
+    outputGCpu =
+        Matrix::create(outputG.getHeight(), outputG.getWidth(), false, false);
+    outputCpu =
+        Matrix::create(output.getHeight(), output.getWidth(), false, false);
+    labelCpu = Matrix::create(
+        label.value->getHeight(), label.value->getWidth(), false, false);
+    outputGCpu->copyFrom(outputG);
+    outputCpu->copyFrom(output);
+    labelCpu->copyFrom(*label.value);
+    outputGCpu->smoothL1Bp(*outputCpu, *labelCpu);
+    outputG.copyFrom(*outputGCpu);
+  } else {
+    outputG.smoothL1Bp(output, *label.value);
+  }
 }
 
 //
@@ -219,8 +277,8 @@ void RankingCost::forward(PassType passType) {
     IVectorPtr idLabel = getInput(*getLabelLayer()).ids;
     CHECK(idLabel) << "label layer has neither value nor ids";
     CHECK_EQ((size_t)batchSize, idLabel->getSize());
-    Matrix::resizeOrCreate(labelBuf_, batchSize, /*width*/ 1, /*trans*/ false,
-                           useGpu_);
+    Matrix::resizeOrCreate(
+        labelBuf_, batchSize, /*width*/ 1, /*trans*/ false, useGpu_);
     labelBuf_->copyFrom(*idLabel);
     label = labelBuf_;
   }
@@ -261,8 +319,8 @@ void RankingCost::backward(const UpdateCallback& callback) {
     label = labelBuf_;
   }
 
-  Matrix::resizeOrCreate(marginGrad_, label->getHeight(), 1, /* trans= */ false,
-                         useGpu_);
+  Matrix::resizeOrCreate(
+      marginGrad_, label->getHeight(), 1, /* trans= */ false, useGpu_);
   marginGrad_->zeroMem();
   marginGrad_->logisticRegressionLossBp(*margin_, *label);
   if (weightLayer_) {
@@ -317,15 +375,14 @@ void LambdaCost::forward(PassType passType) {
   real* outputData = output->getData();
   real* targetData = target->getData();
 
-  auto startPos =
-      getInput(*getOutputLayer()).sequenceStartPositions;
+  auto startPos = getInput(*getOutputLayer()).sequenceStartPositions;
   const int* startPosData = startPos->getData(false);
   size_t batchNum = startPos->getSize() - 1;
   for (size_t i = 0; i < batchNum; ++i) {
     int beginPos = startPosData[i];
     int endPos = startPosData[i + 1];
-    real NDCG = calcNDCG(outputData + beginPos, scoreData + beginPos,
-                         endPos - beginPos);
+    real NDCG = calcNDCG(
+        outputData + beginPos, scoreData + beginPos, endPos - beginPos);
     for (int j = beginPos; j < endPos; ++j) {
       targetData[j] = NDCG;
     }
@@ -336,33 +393,37 @@ void LambdaCost::backward(const UpdateCallback& callback) {
   (void)callback;
   MatrixPtr score = getInputValue(*getScoreLayer());
   MatrixPtr output = getInputValue(*getOutputLayer());
-  Matrix::resizeOrCreate(marginGrad_, score->getHeight(), 1,
-                         /* trans= */ false, useGpu_);
+  Matrix::resizeOrCreate(marginGrad_,
+                         score->getHeight(),
+                         1,
+                         /* trans= */ false,
+                         useGpu_);
   marginGrad_->zeroMem();
 
   real* gradData = marginGrad_->getData();
   real* scoreData = score->getData();
   real* outputData = output->getData();
 
-  auto startPos =
-      getInput(*getOutputLayer()).sequenceStartPositions;
+  auto startPos = getInput(*getOutputLayer()).sequenceStartPositions;
   const int* startPosData = startPos->getData(false);
   size_t batchNum = startPos->getSize() - 1;
 
   for (size_t i = 0; i < batchNum; ++i) {
     int beginPos = startPosData[i];
     int endPos = startPosData[i + 1];
-    calcGrad(outputData + beginPos, scoreData + beginPos, gradData + beginPos,
+    calcGrad(outputData + beginPos,
+             scoreData + beginPos,
+             gradData + beginPos,
              endPos - beginPos);
   }
 
   getInputGrad(0)->add(*marginGrad_);
 }
 
-void LambdaCost::onPassEnd() {}
-
-void LambdaCost::calcGrad(const real* outputScore, const real* score,
-                          real* gradData, int size) {
+void LambdaCost::calcGrad(const real* outputScore,
+                          const real* score,
+                          real* gradData,
+                          int size) {
   CHECK_GE(size, truncationSize_)
       << "Invalid: (Sample num in the same list) < (NDCG truncation num) !";
   int sortSize = maxSortSize_ == -1 ? size : std::min(maxSortSize_, size);
@@ -372,13 +433,16 @@ void LambdaCost::calcGrad(const real* outputScore, const real* score,
     scorePair_.push_back(std::make_pair(score[i], i));
   }
   if (size <= sortSize) {
-    std::sort(scorePair_.begin(), scorePair_.end(),
+    std::sort(scorePair_.begin(),
+              scorePair_.end(),
               [](const std::pair<real, int>& a, const std::pair<real, int>& b) {
                 return a.first > b.first;
               });
   } else {
     std::partial_sort(
-        scorePair_.begin(), scorePair_.begin() + sortSize, scorePair_.end(),
+        scorePair_.begin(),
+        scorePair_.begin() + sortSize,
+        scorePair_.end(),
         [](const std::pair<real, int>& a, const std::pair<real, int>& b) {
           return a.first > b.first;
         });
@@ -414,7 +478,8 @@ void LambdaCost::calcGrad(const real* outputScore, const real* score,
   }
 }
 
-real LambdaCost::calcNDCG(const real* outputScore, const real* score,
+real LambdaCost::calcNDCG(const real* outputScore,
+                          const real* score,
                           int size) {
   CHECK_GE(size, truncationSize_)
       << "Invalid: (Sample num in the same list) < (NDCG truncation num) !";
@@ -424,7 +489,8 @@ real LambdaCost::calcNDCG(const real* outputScore, const real* score,
     outputScorePair_.push_back(std::make_pair(outputScore[i], i));
   }
   std::partial_sort(
-      outputScorePair_.begin(), outputScorePair_.begin() + truncationSize_,
+      outputScorePair_.begin(),
+      outputScorePair_.begin() + truncationSize_,
       outputScorePair_.end(),
       [](const std::pair<real, int>& a, const std::pair<real, int>& b) {
         return a.first > b.first;
@@ -439,8 +505,10 @@ real LambdaCost::calcNDCG(const real* outputScore, const real* score,
   scoreVec_.resize(size);
   std::copy(score, score + size, scoreVec_.begin());
   real maxDCG = 0;
-  std::partial_sort(scoreVec_.begin(), scoreVec_.begin() + truncationSize_,
-                    scoreVec_.end(), std::greater<real>());
+  std::partial_sort(scoreVec_.begin(),
+                    scoreVec_.begin() + truncationSize_,
+                    scoreVec_.end(),
+                    std::greater<real>());
   for (int i = 0; i < truncationSize_; ++i) {
     maxDCG += (std::pow(2, scoreVec_[i]) - 1) / std::log(i + 2);
   }
@@ -460,7 +528,8 @@ bool MultiBinaryLabelCrossEntropy::init(const LayerMap& layerMap,
   return CostLayer::init(layerMap, parameterMap);
 }
 
-void MultiBinaryLabelCrossEntropy::forwardImp(Matrix& output, Argument& label,
+void MultiBinaryLabelCrossEntropy::forwardImp(Matrix& output,
+                                              Argument& label,
                                               Matrix& target) {
   MatrixPtr value = nullptr;
   if (label.ids) {
@@ -475,16 +544,17 @@ void MultiBinaryLabelCrossEntropy::forwardImp(Matrix& output, Argument& label,
       dynamic_cast<GpuSparseMatrix*>(value.get())) {
     target.multiBinaryLabelCrossEntropy(output, *value);
   } else {
-    Matrix::resizeOrCreate(targetPerDim_, output.getHeight(), output.getWidth(),
-                           false, useGpu_);
+    Matrix::resizeOrCreate(
+        targetPerDim_, output.getHeight(), output.getWidth(), false, useGpu_);
 
     targetPerDim_->binaryLabelCrossEntropy(output, *value);
     targetPerDim_->rowSum(target);
   }
 }
 
-void MultiBinaryLabelCrossEntropy::backwardImp(
-    Matrix& output, Argument& label, Matrix& outputG) {
+void MultiBinaryLabelCrossEntropy::backwardImp(Matrix& output,
+                                               Argument& label,
+                                               Matrix& outputG) {
   MatrixPtr value = nullptr;
   if (label.ids) {
     CHECK(!value);
@@ -519,8 +589,7 @@ bool HuberTwoClass::init(const LayerMap& layerMap,
   return true;
 }
 
-void HuberTwoClass::forwardImp(Matrix &output, Argument &label,
-                               Matrix &cost) {
+void HuberTwoClass::forwardImp(Matrix& output, Argument& label, Matrix& cost) {
   if (useGpu_) {
     for (size_t i = 0; i < inputLayers_.size(); i++) {
       tmpCpuInput_[i].resizeAndCopyFrom(
@@ -531,7 +600,8 @@ void HuberTwoClass::forwardImp(Matrix &output, Argument &label,
   forwardImpIn(output, label, cost);
 }
 
-void HuberTwoClass::forwardImpIn(Matrix& output, Argument& label,
+void HuberTwoClass::forwardImpIn(Matrix& output,
+                                 Argument& label,
                                  Matrix& target) {
   size_t numSamples = target.getHeight();
   CHECK_EQ((*label.ids).getSize(), numSamples);
@@ -539,7 +609,7 @@ void HuberTwoClass::forwardImpIn(Matrix& output, Argument& label,
   CHECK_EQ(output.getWidth(), (size_t)1);
   CHECK_EQ(target.getWidth(), (size_t)1);
 
-  real* out = useGpu_ ? tmpCpuInput_[0].value->getData(): output.getData();
+  real* out = useGpu_ ? tmpCpuInput_[0].value->getData() : output.getData();
   int* lbl = useGpu_ ? tmpCpuInput_[1].ids->getData() : (*label.ids).getData();
   std::vector<real> cost(numSamples);
   for (size_t i = 0; i < numSamples; ++i) {
@@ -554,19 +624,21 @@ void HuberTwoClass::forwardImpIn(Matrix& output, Argument& label,
   target.copyFrom(cost.data(), numSamples);
 }
 
-void HuberTwoClass::backwardImp(Matrix &outputValue,
-                                Argument &label, Matrix &outputGrad) {
+void HuberTwoClass::backwardImp(Matrix& outputValue,
+                                Argument& label,
+                                Matrix& outputGrad) {
   if (useGpu_) {
-    backwardImpIn(*tmpCpuInput_[0].value, tmpCpuInput_[1],
-                  *tmpCpuInput_[0].grad);
+    backwardImpIn(
+        *tmpCpuInput_[0].value, tmpCpuInput_[1], *tmpCpuInput_[0].grad);
     outputGrad.copyFrom(*tmpCpuInput_[0].grad);
   } else {
     backwardImpIn(outputValue, label, outputGrad);
   }
 }
 
-void HuberTwoClass::backwardImpIn(
-    Matrix& output, Argument& label, Matrix& outputG) {
+void HuberTwoClass::backwardImpIn(Matrix& output,
+                                  Argument& label,
+                                  Matrix& outputG) {
   size_t numSamples = output.getHeight();
   real* out = output.getData();
   real* grad = outputG.getData();
@@ -590,14 +662,15 @@ class SumCostLayer : public Layer {
 public:
   explicit SumCostLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
     bool ret = Layer::init(layerMap, parameterMap);
     if (!ret) return ret;
     CHECK_EQ(inputLayers_.size(), 1UL);
     return true;
   }
 
-  virtual void forward(PassType passType) {
+  void forward(PassType passType) override {
     Layer::forward(passType);
     const MatrixPtr& input = getInputValue(0);
 
@@ -605,10 +678,10 @@ public:
     int batchSize = input->getHeight();
     int size = 1;
     resizeOutput(batchSize, size);
-    output_.value->sumRows(*input, /* scaleSum= */1, /* scaleDest= */0);
+    output_.value->sumRows(*input, /* scaleSum= */ 1, /* scaleDest= */ 0);
   }
 
-  virtual void backward(const UpdateCallback& callback = nullptr) {
+  void backward(const UpdateCallback& callback = nullptr) override {
     getInputGrad(0)->add((real)1);
   }
 };

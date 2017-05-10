@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include "paddle/utils/Util.h"
-#include "paddle/utils/Flags.h"
 #include "Regularizer.h"
+#include "paddle/utils/Flags.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 
 Regularizer* Regularizer::get(const std::vector<ParameterType>& types,
                               const ParameterConfig& paraConfig) {
-  bool useLearningRateVec = std::find(types.begin(), types.end(),
-                                      PARAMETER_LEARNING_RATE) != types.end();
+  bool useLearningRateVec =
+      std::find(types.begin(), types.end(), PARAMETER_LEARNING_RATE) !=
+      types.end();
   if (paraConfig.decay_rate_l1() > 0.0f &&
       paraConfig.decay_rate() > 0.0f) {  // use L1 and L2
     if (useLearningRateVec) {

@@ -1,20 +1,24 @@
 from setuptools import setup
 
-INTERNAL_PACKAGE='${PADDLE_INTERNAL_PACKAGE}'
-
 packages=['paddle',
           'paddle.proto',
           'paddle.trainer',
           'paddle.trainer_config_helpers',
-          'paddle.utils']
-
-if len(INTERNAL_PACKAGE) != 0:
-    packages.append(INTERNAL_PACKAGE)
+          'paddle.utils',
+          'paddle.v2',
+          'paddle.v2.dataset',
+          'paddle.v2.reader',
+          'paddle.v2.plot']
 
 setup(name='paddle',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
       packages=packages,
+      install_requires=[
+          "numpy",
+          "protobuf==${PROTOBUF_VERSION}",
+          "matplotlib",
+      ],
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}'
       }

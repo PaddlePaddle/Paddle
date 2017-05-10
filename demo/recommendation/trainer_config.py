@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -86,10 +86,7 @@ movie_feature = construct_feature("movie")
 user_feature = construct_feature("user")
 similarity = cos_sim(a=movie_feature, b=user_feature)
 if not is_predict:
-    outputs(
-        regression_cost(
-            input=similarity, label=data_layer(
-                'rating', size=1)))
+    outputs(mse_cost(input=similarity, label=data_layer('rating', size=1)))
 
     define_py_data_sources2(
         'data/train.list',

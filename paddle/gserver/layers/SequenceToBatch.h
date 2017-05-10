@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/math/Vector.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/math/Vector.h"
 
 namespace paddle {
 
@@ -43,8 +43,10 @@ public:
   explicit SequenceToBatch(bool useGpu) : useGpu_(useGpu) {}
 
   /* resize and calculate the batchIndex_ */
-  void resizeOrCreateBatch(int batchSize, size_t numSequences,
-                           const int *seqStarts, bool reversed,
+  void resizeOrCreateBatch(int batchSize,
+                           size_t numSequences,
+                           const int *seqStarts,
+                           bool reversed,
                            bool prevBatchState = false);
 
   /* sequence matrix and batch matrix copy:
@@ -81,9 +83,13 @@ public:
   }
 
 protected:
-  void sequence2BatchCopy(Matrix &batch, Matrix &sequence,
-                          IVector &seq2BatchIdx, bool seq2batch);
-  void sequence2BatchAdd(Matrix &batch, Matrix &sequence, IVector &seq2BatchIdx,
+  void sequence2BatchCopy(Matrix &batch,
+                          Matrix &sequence,
+                          IVector &seq2BatchIdx,
+                          bool seq2batch);
+  void sequence2BatchAdd(Matrix &batch,
+                         Matrix &sequence,
+                         IVector &seq2BatchIdx,
                          bool seq2batch);
 
   IVectorPtr batchStartPositions_;

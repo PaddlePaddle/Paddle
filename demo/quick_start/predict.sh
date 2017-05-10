@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,5 +26,7 @@ paddle train \
     --init_model_path=$model \
     --config_args=is_predict=1 \
     --predict_output_dir=. \
+2>&1 | tee 'predict.log'
+paddle usage -l 'predict.log' -e $? -n "quick_start_predict_${cfg}" >/dev/null 2>&1
 
 mv rank-00000 result.txt

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
-#include <mutex>
 #include <stdlib.h>
+#include <mutex>
 #include "hl_gpu.h"
 #include "paddle/utils/Logging.h"
 
@@ -48,10 +47,10 @@ public:
    * @return Pointer to the allocated memory
    */
   virtual void* alloc(size_t size) {
-      void* ptr;
-      CHECK_EQ(posix_memalign(&ptr, 32ul, size), 0);
-      CHECK(ptr) << "Fail to allocate CPU memory: size=" << size;
-      return ptr;
+    void* ptr;
+    CHECK_EQ(posix_memalign(&ptr, 32ul, size), 0);
+    CHECK(ptr) << "Fail to allocate CPU memory: size=" << size;
+    return ptr;
   }
 
   /**
@@ -59,12 +58,12 @@ public:
    * @param ptr  Pointer to be free.
    */
   virtual void free(void* ptr) {
-    if (ptr) { ::free(ptr); }
+    if (ptr) {
+      ::free(ptr);
+    }
   }
 
-  virtual std::string getName() {
-    return "cpu_alloc";
-  }
+  virtual std::string getName() { return "cpu_alloc"; }
 };
 
 /**
@@ -81,7 +80,7 @@ public:
    */
   virtual void* alloc(size_t size) {
     void* ptr = hl_malloc_device(size);
-    CHECK(ptr)<< "Fail to allocate GPU memory " << size << " bytes";
+    CHECK(ptr) << "Fail to allocate GPU memory " << size << " bytes";
     return ptr;
   }
 
@@ -95,9 +94,7 @@ public:
     }
   }
 
-  virtual std::string getName() {
-    return "gpu_alloc";
-  }
+  virtual std::string getName() { return "gpu_alloc"; }
 };
 
 /**
@@ -128,9 +125,7 @@ public:
     }
   }
 
-  virtual std::string getName() {
-    return "cuda_host_alloc";
-  }
+  virtual std::string getName() { return "cuda_host_alloc"; }
 };
 
 }  // namespace paddle

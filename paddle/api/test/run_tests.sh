@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,15 +20,7 @@ popd > /dev/null
 
 cd $SCRIPTPATH
 
-if [ ! -f ../../dist/*.whl ] ; then  # Swig not compiled.
-  exit 0
-fi
-
-rm .test_env -rf
-virtualenv .test_env
-source .test_env/bin/activate
-
-pip --timeout 600  install ../../dist/*.whl
+$1 -m pip install ../../dist/*.whl
 
 test_list="testArguments.py testGradientMachine.py testMatrix.py  testVector.py testTrain.py testTrainer.py"
 
@@ -37,7 +29,7 @@ export PYTHONPATH=$PWD/../../../python/
 for fn in $test_list
 do
   echo "test $fn"
-  python $fn
+  $1 $fn
   if [ $? -ne 0 ]; then
     exit 1
   fi

@@ -8,6 +8,8 @@ data/test.list
 data/test.txt
 data/train.list
 data/train.txt
+data/pred.list
+data/pred.txt
 dataprovider_copy_1.py
 train.log
 output

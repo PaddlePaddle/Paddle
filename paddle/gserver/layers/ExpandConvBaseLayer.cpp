@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,14 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "ExpandConvBaseLayer.h"
 
 #include "paddle/utils/Logging.h"
 namespace paddle {
 
 bool ExpandConvBaseLayer::init(const LayerMap &layerMap,
-                           const ParameterMap &parameterMap) {
+                               const ParameterMap &parameterMap) {
   /* Initialize the basic convolutional parent class */
   ConvBaseLayer::init(layerMap, parameterMap);
 
@@ -30,17 +29,19 @@ bool ExpandConvBaseLayer::init(const LayerMap &layerMap,
    * meaning as in conv, we need to swap channels_ and numFilters here for
    * convTrans, and in other functions too.
    * */
-  int channel;
-  int numFilters;
+
   /* Initialize the projection */
   for (auto &inputConfig : config_.inputs()) {
     const ConvConfig &conf = inputConfig.conv_conf();
-    numFilters = isDeconv_ ? conf.channels() : numFilters_;
+    int numFilters = isDeconv_ ? conf.channels() : numFilters_;
     subM_.push_back(numFilters / conf.groups());
-    subN_.push_back(conf.output_x() * conf.output_x());
-    channel = isDeconv_ ? numFilters_ : conf.channels();
-    subK_.push_back(channel * conf.filter_size() * conf.filter_size() /
-                    conf.groups());
+    subN_.push_back(conf.output_x() *
+                    (conf.has_output_y() ? conf.output_y() : conf.output_x()));
+    int channel = isDeconv_ ? numFilters_ : conf.channels();
+    subK_.push_back(
+        channel * conf.filter_size() *
+        (conf.has_filter_size_y() ? conf.filter_size_y() : conf.filter_size()) /
+        conf.groups());
     /* Consistent caffe mode for multiple input */
     caffeMode_ = conf.caffe_mode();
   }
@@ -76,9 +77,11 @@ void ExpandConvBaseLayer::addSharedBias() {
   transOutValue_->reshape(transOutValue_->getElementCnt() / numFilters_,
                           numFilters_);
 
-  MatrixPtr bias =
-      Matrix::create(biases_->getW()->getData(), 1,
-                     biases_->getW()->getElementCnt(), false, useGpu_);
+  MatrixPtr bias = Matrix::create(biases_->getW()->getData(),
+                                  1,
+                                  biases_->getW()->getElementCnt(),
+                                  false,
+                                  useGpu_);
   transOutValue_->addBias(*bias, 1.0f);
 
   transOutValue_->reshape(mapW, mapH);
@@ -90,32 +93,50 @@ void ExpandConvBaseLayer::addSharedBias() {
 
 void ExpandConvBaseLayer::addUnsharedBias() {
   MatrixPtr outValue = getOutputValue();
-  MatrixPtr bias =
-      Matrix::create(biases_->getW()->getData(), 1,
-                     biases_->getW()->getElementCnt(), false, useGpu_);
+  MatrixPtr bias = Matrix::create(biases_->getW()->getData(),
+                                  1,
+                                  biases_->getW()->getElementCnt(),
+                                  false,
+                                  useGpu_);
   outValue->addBias(*bias, 1.0f);
 }
 
-
-void ExpandConvBaseLayer::expandOneFrame(MatrixPtr image, size_t startIdx,
-                                     int inIdx) {
+void ExpandConvBaseLayer::expandOneFrame(MatrixPtr image,
+                                         size_t startIdx,
+                                         int inIdx) {
   int channel = isDeconv_ ? numFilters_ : channels_[inIdx];
 
   resetExpandInput(subK_[inIdx] * groups_[inIdx], subN_[inIdx]);
+
+  CHECK_EQ(image->getWidth(),
+           static_cast<size_t>(imgSizeH_[inIdx] * imgSizeW_[inIdx] * channel));
+
   real *imgData = image->getData() + startIdx * image->getWidth();
-  MatrixPtr imageTmp = Matrix::create(
-      imgData, 1, imgSizeH_[inIdx] * imgSizeW_[inIdx] * channel, false,
-      useGpu_);
-  expandInput_->convExpand(*imageTmp, imgSizeH_[inIdx], imgSizeW_[inIdx],
-                           channel, filterSize_[inIdx],
-                           filterSize_[inIdx], stride_[inIdx], stride_[inIdx],
-                           padding_[inIdx], padding_[inIdx],
-                           outputH_[inIdx], outputW_[inIdx]);
+  MatrixPtr imageTmp =
+      Matrix::create(imgData,
+                     1,
+                     imgSizeH_[inIdx] * imgSizeW_[inIdx] * channel,
+                     false,
+                     useGpu_);
+  expandInput_->convExpand(*imageTmp,
+                           imgSizeH_[inIdx],
+                           imgSizeW_[inIdx],
+                           channel,
+                           filterSizeY_[inIdx],
+                           filterSize_[inIdx],
+                           strideY_[inIdx],
+                           stride_[inIdx],
+                           paddingY_[inIdx],
+                           padding_[inIdx],
+                           outputH_[inIdx],
+                           outputW_[inIdx]);
   imageTmp->clear();
 }
 
-void ExpandConvBaseLayer::expandFwdOnce(MatrixPtr image, MatrixPtr out,
-                                     int inIdx, int startIdx) {
+void ExpandConvBaseLayer::expandFwdOnce(MatrixPtr image,
+                                        MatrixPtr out,
+                                        int inIdx,
+                                        int startIdx) {
   int subM = subM_[inIdx];
   int subN = subN_[inIdx];
   int subK = subK_[inIdx];
@@ -124,17 +145,16 @@ void ExpandConvBaseLayer::expandFwdOnce(MatrixPtr image, MatrixPtr out,
 
   int numFilters = isDeconv_ ? channels_[inIdx] : numFilters_;
 
-  real *outData =
-      out->getData() + startIdx * subN * numFilters;
+  real *outData = out->getData() + startIdx * subN * numFilters;
 
   real *wgtData = weights_[inIdx]->getW()->getData();
   real *expInData = expandInput_->getData();
   for (int g = 0; g < groups_[inIdx]; ++g) {
     MatrixPtr A =
-        Matrix::create(wgtData, subK, subM, true, useGpu_);  // mark transpose
+        Matrix::create(wgtData, subM, subK, false, useGpu_);  // mark transpose
     MatrixPtr B = Matrix::create(expInData, subK, subN, false, useGpu_);
     MatrixPtr C = Matrix::create(outData, subM, subN, false, useGpu_);
-    C->mul(A, B, 1, 1);
+    C->mul(*A, *B, 1, 1);
 
     A->clear();
     B->clear();
@@ -145,7 +165,8 @@ void ExpandConvBaseLayer::expandFwdOnce(MatrixPtr image, MatrixPtr out,
   }
 }
 
-void ExpandConvBaseLayer::bpropActs(MatrixPtr out, MatrixPtr image,
+void ExpandConvBaseLayer::bpropActs(MatrixPtr out,
+                                    MatrixPtr image,
                                     int inpIdx) {
   int channel = isDeconv_ ? numFilters_ : channels_[inpIdx];
 
@@ -167,8 +188,8 @@ void ExpandConvBaseLayer::bpropActs(MatrixPtr out, MatrixPtr image,
       // create temporary matrix
       MatrixPtr C = Matrix::create(expandInData, subK, subN, false, useGpu_);
       MatrixPtr B = Matrix::create(localGradData, subM, subN, false, useGpu_);
-      MatrixPtr A = Matrix::create(wgtData, subK, subM, false, useGpu_);
-      C->mul(A, B);  // mul
+      MatrixPtr A = Matrix::create(wgtData, subM, subK, true, useGpu_);
+      C->mul(*A, *B);  // mul
 
       // clear the temporary matrix
       A->clear();
@@ -183,15 +204,26 @@ void ExpandConvBaseLayer::bpropActs(MatrixPtr out, MatrixPtr image,
     // shrink one frame outGrad
     MatrixPtr oneGradTmp = Matrix::create(
         expandInput_->getData(), subK * groups_[inpIdx], subN, false, useGpu_);
-    MatrixPtr vTmp = Matrix::create(
-        tgtGradData, 1,
-        imgSizeH_[inpIdx] * imgSizeW_[inpIdx] * channel, false,
-        useGpu_);
-    vTmp->convShrink(*oneGradTmp, imgSizeH_[inpIdx], imgSizeW_[inpIdx],
-                     channel, filterSize_[inpIdx],
-                     filterSize_[inpIdx], stride_[inpIdx], stride_[inpIdx],
-                     padding_[inpIdx], padding_[inpIdx],
-                     outputH_[inpIdx], outputW_[inpIdx], 1.0f, 1.0f);
+    MatrixPtr vTmp =
+        Matrix::create(tgtGradData,
+                       1,
+                       imgSizeH_[inpIdx] * imgSizeW_[inpIdx] * channel,
+                       false,
+                       useGpu_);
+    vTmp->convShrink(*oneGradTmp,
+                     imgSizeH_[inpIdx],
+                     imgSizeW_[inpIdx],
+                     channel,
+                     filterSizeY_[inpIdx],
+                     filterSize_[inpIdx],
+                     strideY_[inpIdx],
+                     stride_[inpIdx],
+                     paddingY_[inpIdx],
+                     padding_[inpIdx],
+                     outputH_[inpIdx],
+                     outputW_[inpIdx],
+                     1.0f,
+                     1.0f);
     vTmp->clear();
     oneGradTmp->clear();
 
@@ -200,8 +232,9 @@ void ExpandConvBaseLayer::bpropActs(MatrixPtr out, MatrixPtr image,
   }
 }
 
-void ExpandConvBaseLayer::bpropWeights(MatrixPtr image, MatrixPtr out,
-                                    int inpIdx) {
+void ExpandConvBaseLayer::bpropWeights(MatrixPtr image,
+                                       MatrixPtr out,
+                                       int inpIdx) {
   MatrixPtr weightGrad = weights_[inpIdx]->getWGrad();
 
   int subM = subM_[inpIdx];
@@ -220,10 +253,10 @@ void ExpandConvBaseLayer::bpropWeights(MatrixPtr image, MatrixPtr out,
 
     // expand-mul one-group by one
     for (int g = 0; g < groups_[inpIdx]; g++) {
-      MatrixPtr A = Matrix::create(expandInData, subK, subN, false, useGpu_);
-      MatrixPtr B = Matrix::create(gradData, subM, subN, true, useGpu_);
-      MatrixPtr C = Matrix::create(wGradData, subK, subM, false, useGpu_);
-      C->mul(A, B, 1, 1);
+      MatrixPtr A = Matrix::create(expandInData, subK, subN, true, useGpu_);
+      MatrixPtr B = Matrix::create(gradData, subM, subN, false, useGpu_);
+      MatrixPtr C = Matrix::create(wGradData, subM, subK, false, useGpu_);
+      C->mul(*B, *A, 1, 1);
 
       A->clear();
       B->clear();
@@ -249,9 +282,11 @@ void ExpandConvBaseLayer::bpropSharedBias(MatrixPtr biases, MatrixPtr v) {
 }
 
 void ExpandConvBaseLayer::bpropBiases(MatrixPtr v) {
-  MatrixPtr biases =
-      Matrix::create(biases_->getWGrad()->getData(), 1,
-                     biases_->getWGrad()->getElementCnt(), false, useGpu_);
+  MatrixPtr biases = Matrix::create(biases_->getWGrad()->getData(),
+                                    1,
+                                    biases_->getWGrad()->getElementCnt(),
+                                    false,
+                                    useGpu_);
   if (sharedBiases_) {
     bpropSharedBias(biases, v);
   } else {

@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ settings(
     batch_size=128,
     learning_rate=2e-3,
     learning_method=AdamOptimizer(),
+    model_average=ModelAverage(0.5),
     regularization=L2Regularization(8e-4),
     gradient_clipping_threshold=25)
 

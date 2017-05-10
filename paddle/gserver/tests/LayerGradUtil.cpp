@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,10 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "LayerGradUtil.h"
 
-P_DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_bool(thread_local_rand_use_global_seed);
 
 namespace paddle {
 real getCostSum(LayerPtr& testLayer, MatrixPtr weights) {
@@ -25,11 +24,16 @@ real getCostSum(LayerPtr& testLayer, MatrixPtr weights) {
   if (weights) {
     outArgs[0].value->dotMul(*outArgs[0].value, *weights);
   }
-  return Argument::sumCosts(outArgs);
+  return Argument::sum(outArgs);
 }
 
-real getDiffAndPrint(real newCost1, real newCost2, real callbackCount,
-                     char fill, string testLayerName, string name, real step,
+real getDiffAndPrint(real newCost1,
+                     real newCost2,
+                     real callbackCount,
+                     char fill,
+                     string testLayerName,
+                     string name,
+                     real step,
                      real delta) {
   EXPECT_FALSE(std::isnan(newCost1));
   EXPECT_FALSE(std::isnan(newCost2));
@@ -49,7 +53,8 @@ real getDiffAndPrint(real newCost1, real newCost2, real callbackCount,
   return diff;
 }
 
-void testState(LayerPtr testLayer, vector<DataLayerPtr>& dataLayers,
+void testState(LayerPtr testLayer,
+               vector<DataLayerPtr>& dataLayers,
                vector<Argument>& datas) {
   auto batchSize = datas[0].getBatchSize();
   Argument data;
@@ -82,8 +87,8 @@ void testState(LayerPtr testLayer, vector<DataLayerPtr>& dataLayers,
         data.value = datas[j].value->subMatrix(batchId, 1);
       }
       if (datas[j].ids) {
-        data.ids = IVector::create(datas[j].ids->getData() + batchId, 1,
-                                   FLAGS_use_gpu);
+        data.ids = IVector::create(
+            datas[j].ids->getData() + batchId, 1, FLAGS_use_gpu);
       }
       dataLayers[j]->setData(data);
       dataLayers[j]->forward(PASS_TEST);
@@ -128,7 +133,8 @@ void testState(LayerPtr testLayer, vector<DataLayerPtr>& dataLayers,
   }
 }
 
-void testBatchState(LayerPtr testLayer, vector<DataLayerPtr>& dataLayers,
+void testBatchState(LayerPtr testLayer,
+                    vector<DataLayerPtr>& dataLayers,
                     vector<Argument>& datas) {
   auto batchSize = datas[0].getBatchSize();
   Argument data;
@@ -192,8 +198,10 @@ void testBatchState(LayerPtr testLayer, vector<DataLayerPtr>& dataLayers,
     splitData.sequenceStartPositions = cpuSeqStartPos;
     for (size_t j = 0; j < datas.size(); ++j) {
       if (datas[j].value) {
-        Matrix::resizeOrCreate(splitData.value, splitBatchSize,
-                               datas[j].value->getWidth(), false,
+        Matrix::resizeOrCreate(splitData.value,
+                               splitBatchSize,
+                               datas[j].value->getWidth(),
+                               false,
                                FLAGS_use_gpu);
         for (size_t seqId = 0; seqId < numSequences; ++seqId) {
           if (seqLens[seqId]) {
@@ -233,7 +241,7 @@ void testBatchState(LayerPtr testLayer, vector<DataLayerPtr>& dataLayers,
 
     std::vector<Argument> args;
     args.push_back(out);
-    EXPECT_EQ(0, Argument::sumCosts(args)) << "testBatchState failed";
+    EXPECT_EQ(0, Argument::sum(args)) << "testBatchState failed";
     for (size_t seqId = 0; seqId < numSequences; ++seqId) {
       start[seqId] += seqLens[seqId];
     }
@@ -268,8 +276,10 @@ void initWeight(MatrixPtr& weights) {
   weights->copyFrom(*tmpMat);
 }
 
-void initBatchState(LayerPtr dataLayer, LayerPtr testLayer,
-                    LayerStatePtr state, bool useGpu) {
+void initBatchState(LayerPtr dataLayer,
+                    LayerPtr testLayer,
+                    LayerStatePtr state,
+                    bool useGpu) {
   int sequenceNum = dataLayer->getOutput().getNumSequences();
   MatrixPtr prevBatchOutput =
       Matrix::create(sequenceNum, testLayer->getSize(), false, useGpu);
@@ -282,20 +292,42 @@ void initBatchState(LayerPtr dataLayer, LayerPtr testLayer,
   state->value.push_back(prevBatchState);
 }
 
-void initDataLayer(TestConfig testConf, std::vector<DataLayerPtr>* dataLayers,
-                   vector<Argument>* datas, LayerMap* layerMap,
-                   string testLayerName, size_t batchSize, bool trans,
+void initDataLayer(TestConfig testConf,
+                   std::vector<DataLayerPtr>* dataLayers,
+                   vector<Argument>* datas,
+                   LayerMap* layerMap,
+                   string testLayerName,
+                   size_t batchSize,
+                   bool trans,
                    bool useGpu) {
   ICpuGpuVectorPtr sequenceStartPositions;
   ICpuGpuVectorPtr subSequenceStartPositions;
   IVectorPtr cpuSequenceDims;
-  for (size_t i = 0; i < testConf.inputDefs.size(); i++) {
+  for (size_t i = 0; i < testConf.inputDefs.size(); ++i) {
+    if (testConf.inputDefs[i].inputType != INPUT_SEQUENCE_LABEL) continue;
+
+    const std::vector<int>& labelSeqStartPositions =
+        testConf.inputDefs[i].labelSeqStartPositions;
+    if (labelSeqStartPositions.size() != 0) {
+      CHECK(!sequenceStartPositions);
+      CHECK_GE(static_cast<int>(labelSeqStartPositions.size()), 2);
+
+      sequenceStartPositions =
+          ICpuGpuVector::create(labelSeqStartPositions.size(), useGpu);
+      sequenceStartPositions->copyFrom(
+          labelSeqStartPositions.data(), labelSeqStartPositions.size(), useGpu);
+    }
+  }
+
+  for (size_t i = 0; i < testConf.inputDefs.size(); ++i) {
     LayerConfig config;
     config.set_name(testConf.inputDefs[i].name);
     config.set_type("data");
     config.set_size(testConf.inputDefs[i].dim);
     LayerPtr layer = LayerPtr(new DataLayer(config));
-    size_t numSequence = batchSize / 10 + 1;
+    size_t numSequence = sequenceStartPositions
+                             ? sequenceStartPositions->getSize() - 1
+                             : batchSize / 10 + 1;
 
     Argument data;
     auto fillData = [&](bool trans, int height, int width) {
@@ -322,19 +354,31 @@ void initDataLayer(TestConfig testConf, std::vector<DataLayerPtr>* dataLayers,
         break;
       case INPUT_LABEL:
       case INPUT_SEQUENCE_LABEL:
-        data.ids = VectorT<int>::create(batchSize, useGpu);
-        // now rand number can be 0 to inputDefs[i].dim
-        data.ids->rand(testConf.inputDefs[i].dim);
+        if (testConf.inputDefs[i].labelInitValue.size() != 0) {
+          const std::vector<int>& labelInitValue =
+              testConf.inputDefs[i].labelInitValue;
+          CHECK_EQ(labelInitValue.size(), batchSize);
+          data.ids = VectorT<int>::create(batchSize, useGpu);
+          data.ids->copyFrom(labelInitValue.data(), batchSize);
+        } else {
+          data.ids = VectorT<int>::create(batchSize, useGpu);
+          // now rand number can be 0 to inputDefs[i].dim
+          data.ids->rand(testConf.inputDefs[i].dim);
+        }
         break;
       case INPUT_SPARSE_NON_VALUE_DATA:
         data.value = makeRandomSparseMatrix(
-            batchSize, layer->getSize(),
-            /* withValue= */ false, useGpu,
+            batchSize,
+            layer->getSize(),
+            /* withValue= */ false,
+            useGpu,
             testConf.inputDefs[i].sparse.equalNnzPerSample);
         break;
       case INPUT_SPARSE_FLOAT_VALUE_DATA:
-        data.value = makeRandomSparseMatrix(batchSize, layer->getSize(),
-                                            /* withValue= */ true, useGpu);
+        data.value = makeRandomSparseMatrix(batchSize,
+                                            layer->getSize(),
+                                            /* withValue= */ true,
+                                            useGpu);
         break;
       case INPUT_DENSE_DIM_DATA:
         fillData(trans, layer->getSize(), numSequence);
@@ -379,16 +423,21 @@ void initDataLayer(TestConfig testConf, std::vector<DataLayerPtr>* dataLayers,
   }
 }
 
-void initTestLayer(TestConfig testConf, LayerMap* layerMap,
-                   std::vector<ParameterPtr>* parameters, LayerPtr* testLayer) {
+void initTestLayer(TestConfig testConf,
+                   LayerMap* layerMap,
+                   std::vector<ParameterPtr>* parameters,
+                   LayerPtr* testLayer) {
   ParameterMap parameterMap;
   size_t index = 0;
   LayerConfig testConfig = testConf.layerConfig;
   CHECK_EQ(testConf.inputDefs.size(),
            size_t(testConf.layerConfig.inputs_size()));
 
-  auto initParameter = [&](string paraName, size_t paraSize, bool isStatic,
-                           bool initialize, ParameterConfig paraConfig) {
+  auto initParameter = [&](string paraName,
+                           size_t paraSize,
+                           bool isStatic,
+                           bool initialize,
+                           ParameterConfig paraConfig) {
     paraConfig.set_name(paraName);
     paraConfig.set_size(paraSize);
     paraConfig.set_initial_std(1);
@@ -431,8 +480,11 @@ void initTestLayer(TestConfig testConf, LayerMap* layerMap,
   if (testConf.biasSize) {
     testConfig.set_bias_parameter_name("bias");
     ParameterConfig paraConfig;
-    initParameter(testConfig.bias_parameter_name(), testConf.biasSize,
-                  testConf.staticBias, true, paraConfig);
+    initParameter(testConfig.bias_parameter_name(),
+                  testConf.biasSize,
+                  testConf.staticBias,
+                  true,
+                  paraConfig);
   }
 
   *testLayer = Layer::create(testConfig);
@@ -441,9 +493,13 @@ void initTestLayer(TestConfig testConf, LayerMap* layerMap,
   (*testLayer)->setNeedGradient(true);
 }
 
-void testPerturbParameter(TestConfig testConf, const MatrixPtr weights,
-                          const LayerStatePtr state, real cost,
-                          real callbackCount, real* maxDiff, LayerPtr testLayer,
+void testPerturbParameter(TestConfig testConf,
+                          const MatrixPtr weights,
+                          const LayerStatePtr state,
+                          real cost,
+                          real callbackCount,
+                          real* maxDiff,
+                          LayerPtr testLayer,
                           std::vector<ParameterPtr>* parameters) {
   char fill = ' ';
   for (auto& parameter : *parameters) {
@@ -481,9 +537,14 @@ void testPerturbParameter(TestConfig testConf, const MatrixPtr weights,
       parameter->setValueUpdated();
       newCost[k] = getCostSum(testLayer, weights);
     }
-    real diff = getDiffAndPrint(newCost[0], newCost[1], callbackCount, fill,
-                                testLayer->getName(), parameter->getName(),
-                                step, delta);
+    real diff = getDiffAndPrint(newCost[0],
+                                newCost[1],
+                                callbackCount,
+                                fill,
+                                testLayer->getName(),
+                                parameter->getName(),
+                                step,
+                                delta);
     *maxDiff = std::max(*maxDiff, abs(diff));
     // restore parameter
     parameter->getBuf(PARAMETER_VALUE)->copyFrom(oldPara);
@@ -492,9 +553,13 @@ void testPerturbParameter(TestConfig testConf, const MatrixPtr weights,
   }
 }
 
-void testPerturbInput(TestConfig testConf, const MatrixPtr weights,
-                      const LayerStatePtr state, real cost, real callbackCount,
-                      real* maxDiff, LayerPtr testLayer,
+void testPerturbInput(TestConfig testConf,
+                      const MatrixPtr weights,
+                      const LayerStatePtr state,
+                      real cost,
+                      real callbackCount,
+                      real* maxDiff,
+                      LayerPtr testLayer,
                       std::vector<DataLayerPtr> dataLayers) {
   char fill = ' ';
   for (size_t index = 0; index < testConf.inputDefs.size(); index++) {
@@ -539,9 +604,14 @@ void testPerturbInput(TestConfig testConf, const MatrixPtr weights,
       newCost[k] = getCostSum(testLayer, weights);
     }
 
-    real diff = getDiffAndPrint(newCost[0], newCost[1], callbackCount, fill,
+    real diff = getDiffAndPrint(newCost[0],
+                                newCost[1],
+                                callbackCount,
+                                fill,
                                 testLayer->getName(),
-                                dataLayers[index]->getName(), step, delta);
+                                dataLayers[index]->getName(),
+                                step,
+                                delta);
     *maxDiff = std::max(*maxDiff, abs(diff));
     // restore parameter
     outV->copyFrom(oldPara);
@@ -549,9 +619,13 @@ void testPerturbInput(TestConfig testConf, const MatrixPtr weights,
   }
 }
 
-void testLayerGradKernel(TestConfig testConf, string testLayerName,
-                         size_t batchSize, bool trans, bool useGpu,
-                         bool useWeight, float epsilon) {
+void testLayerGradKernel(TestConfig testConf,
+                         string testLayerName,
+                         size_t batchSize,
+                         bool trans,
+                         bool useGpu,
+                         bool useWeight,
+                         float epsilon) {
 #ifdef PADDLE_ONLY_CPU
   if (useGpu) return;
 #endif
@@ -566,8 +640,14 @@ void testLayerGradKernel(TestConfig testConf, string testLayerName,
   std::vector<DataLayerPtr> dataLayers;
   LayerMap layerMap;
   vector<Argument> datas;
-  initDataLayer(testConf, &dataLayers, &datas, &layerMap, testLayerName,
-                batchSize, trans, useGpu);
+  initDataLayer(testConf,
+                &dataLayers,
+                &datas,
+                &layerMap,
+                testLayerName,
+                batchSize,
+                trans,
+                useGpu);
   // test layer initialize
   std::vector<ParameterPtr> parameters;
   LayerPtr testLayer;
@@ -592,7 +672,7 @@ void testLayerGradKernel(TestConfig testConf, string testLayerName,
     outArgs[0].value->dotMul(*testLayer->getOutput().value, *weights);
   }
 
-  real cost = Argument::sumCosts(outArgs);
+  real cost = Argument::sum(outArgs);
   LOG(INFO) << " cost " << cost;
   EXPECT_FALSE(std::isnan(cost));
 
@@ -620,17 +700,28 @@ void testLayerGradKernel(TestConfig testConf, string testLayerName,
     ++callbackCount;
   }
   for (size_t i = 0; i < parameters.size(); ++i) {
-    EXPECT_EQ(parameters[i]->isStatic() ? 0 : callbackCount,
-              callbackFlags[i]);
+    EXPECT_EQ(parameters[i]->isStatic() ? 0 : callbackCount, callbackFlags[i]);
   }
 
   // Test whether the layer's forward calculation is stable
   // by adding perturbation to its parameters or its input layers
   real maxDiff = 0;
-  testPerturbParameter(testConf, weights, state, cost, callbackCount, &maxDiff,
-                       testLayer, &parameters);
-  testPerturbInput(testConf, weights, state, cost, callbackCount, &maxDiff,
-                   testLayer, dataLayers);
+  testPerturbParameter(testConf,
+                       weights,
+                       state,
+                       cost,
+                       callbackCount,
+                       &maxDiff,
+                       testLayer,
+                       &parameters);
+  testPerturbInput(testConf,
+                   weights,
+                   state,
+                   cost,
+                   callbackCount,
+                   &maxDiff,
+                   testLayer,
+                   dataLayers);
   EXPECT_LE(fabs(maxDiff), epsilon);
 
   if (testConf.testState) {
@@ -641,10 +732,15 @@ void testLayerGradKernel(TestConfig testConf, string testLayerName,
   }
 }
 
-void testLayerGrad(TestConfig testConf, string testLayerName, size_t batchSize,
-                   bool trans, bool useGpu, bool useWeight, float epsilon) {
-  testLayerGradKernel(testConf, testLayerName, batchSize, trans, useGpu,
-                      useWeight, epsilon);
+void testLayerGrad(TestConfig testConf,
+                   string testLayerName,
+                   size_t batchSize,
+                   bool trans,
+                   bool useGpu,
+                   bool useWeight,
+                   float epsilon) {
+  testLayerGradKernel(
+      testConf, testLayerName, batchSize, trans, useGpu, useWeight, epsilon);
   bool isStaticTest = false;
   LayerConfig testConfig = testConf.layerConfig;
   for (size_t i = 0; i < testConf.inputDefs.size(); i++) {
@@ -662,14 +758,19 @@ void testLayerGrad(TestConfig testConf, string testLayerName, size_t batchSize,
     isStaticTest = true;
   }
   if (isStaticTest) {
-    testLayerGradKernel(testConf, testLayerName, batchSize, trans, useGpu,
-                        useWeight, epsilon);
+    testLayerGradKernel(
+        testConf, testLayerName, batchSize, trans, useGpu, useWeight, epsilon);
   }
 }
 
-void testProjectionGrad(ProjectionConfig conf, InputType inputType,
-                        size_t parameterSize, size_t batchSize, bool useGpu,
-                        bool testState, int biasSize, bool sharedBias) {
+void testProjectionGrad(ProjectionConfig conf,
+                        InputType inputType,
+                        size_t parameterSize,
+                        size_t batchSize,
+                        bool useGpu,
+                        bool testState,
+                        int biasSize,
+                        bool sharedBias) {
   TestConfig config;
   conf.set_name(conf.type());
   config.layerConfig.set_type("mixed");
@@ -677,15 +778,20 @@ void testProjectionGrad(ProjectionConfig conf, InputType inputType,
   config.biasSize = biasSize == 0 ? config.layerConfig.size() : biasSize;
   config.layerConfig.set_bias_size(config.biasSize);
   config.layerConfig.set_shared_biases(sharedBias);
-  config.inputDefs.push_back(
-      {inputType, "layer_0", conf.input_size(), parameterSize});
+  config.inputDefs.push_back({inputType,
+                              "layer_0",
+                              static_cast<size_t>(conf.input_size()),
+                              parameterSize});
   *config.layerConfig.add_inputs()->mutable_proj_conf() = conf;
   config.testState = testState;
   testLayerGrad(config, "mixed", batchSize, false, useGpu);
 }
 
-void testOperatorGrad(TestConfig& config, OperatorConfig& operatorConf,
-                      size_t batchSize, bool useGpu, bool testState) {
+void testOperatorGrad(TestConfig& config,
+                      OperatorConfig& operatorConf,
+                      size_t batchSize,
+                      bool useGpu,
+                      bool testState) {
   config.layerConfig.set_type("mixed");
 
   operatorConf.set_output_size(config.layerConfig.size());

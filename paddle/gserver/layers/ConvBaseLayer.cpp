@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Logging.h"
 #include "ConvBaseLayer.h"
 #include "paddle/math/MathUtils.h"
+#include "paddle/utils/Logging.h"
 namespace paddle {
 
 bool ConvBaseLayer::init(const LayerMap& layerMap,
@@ -22,7 +22,8 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
   isDeconv_ = (config_.type() == "exconv" || config_.type() == "cudnn_conv")
-              ? false : true;
+                  ? false
+                  : true;
 
   /* Initialize the convolutional layer parameter */
   numFilters_ = config_.num_filters();
@@ -37,11 +38,12 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
     filterSizeY_.push_back(conf.filter_size_y());
     filterPixels_.push_back(filterSize_.back() * filterSizeY_.back());
     channels_.push_back(conf.channels());
-    imgSizeH_.push_back(conf.img_size());
+    imgSizeH_.push_back(conf.has_img_size_y() ? conf.img_size_y()
+                                              : conf.img_size());
     imgSizeW_.push_back(conf.img_size());
     groups_.push_back(conf.groups());
     filterChannels_.push_back(conf.filter_channels());
-    outputH_.push_back(conf.output_x());
+    outputH_.push_back(conf.has_output_y() ? conf.output_y() : conf.output_x());
     outputW_.push_back(conf.output_x());
   }
 
@@ -88,33 +90,28 @@ size_t ConvBaseLayer::calOutputSize() {
 
   auto setLayerSize = [&](IntV& inH, IntV& inW, IntV& outH, IntV& outW) {
     for (size_t i = 0; i < inputLayers_.size(); i++) {
-       inH.push_back(inputLayers_[i]->getOutput().getFrameHeight());
-       inW.push_back(inputLayers_[i]->getOutput().getFrameWidth());
-       if (isDeconv_) {
-         if (inH[i] == 0)
-           inH[i] = config_.inputs(i).conv_conf().output_x();
-         if (inW[i] == 0)
-           inW[i] = config_.inputs(i).conv_conf().output_x();
-         outH.push_back(
-             imageSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i],
-                       caffeMode_));
-         outW.push_back(
-             imageSize(inW[i], filterSize_[i], padding_[i], stride_[i],
-                       caffeMode_));
-       } else {
-         if (inH[i] == 0)
-           inH[i] = config_.inputs(i).conv_conf().img_size();
-         if (inW[i] == 0)
-           inW[i] = config_.inputs(i).conv_conf().img_size();
-         outH.push_back(
-             outputSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i],
-                        caffeMode_));
-         outW.push_back(
-             outputSize(inW[i], filterSize_[i], padding_[i], stride_[i],
-                        caffeMode_));
-       }
-       CHECK_EQ(outH[i], outH[0]);
-       CHECK_EQ(outW[i], outW[0]);
+      inH.push_back(inputLayers_[i]->getOutput().getFrameHeight());
+      inW.push_back(inputLayers_[i]->getOutput().getFrameWidth());
+      const ConvConfig& conf = config_.inputs(i).conv_conf();
+      if (isDeconv_) {
+        if (inH[i] == 0)
+          inH[i] = conf.has_output_y() ? conf.output_y() : conf.output_x();
+        if (inW[i] == 0) inW[i] = conf.output_x();
+        outH.push_back(imageSize(
+            inH[i], filterSizeY_[i], paddingY_[i], strideY_[i], caffeMode_));
+        outW.push_back(imageSize(
+            inW[i], filterSize_[i], padding_[i], stride_[i], caffeMode_));
+      } else {
+        if (inH[i] == 0)
+          inH[i] = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
+        if (inW[i] == 0) inW[i] = conf.img_size();
+        outH.push_back(outputSize(
+            inH[i], filterSizeY_[i], paddingY_[i], strideY_[i], caffeMode_));
+        outW.push_back(outputSize(
+            inW[i], filterSize_[i], padding_[i], stride_[i], caffeMode_));
+      }
+      CHECK_EQ(outH[i], outH[0]);
+      CHECK_EQ(outW[i], outW[0]);
     }
     getOutput().setFrameHeight(outH[0]);
     getOutput().setFrameWidth(outW[0]);

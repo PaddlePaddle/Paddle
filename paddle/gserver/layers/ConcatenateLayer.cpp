@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Stat.h"
 #include "Layer.h"
 #include "Projection.h"
+#include "paddle/utils/Stat.h"
 
 namespace paddle {
 
@@ -28,10 +28,11 @@ public:
 
   ~ConcatenateLayer() {}
 
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  virtual void forward(PassType passType);
-  virtual void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(concat, ConcatenateLayer);
@@ -97,15 +98,15 @@ void ConcatenateLayer::backward(const UpdateCallback& callback) {
  */
 class ConcatenateLayer2 : public Layer {
 public:
-  explicit ConcatenateLayer2(const LayerConfig& config) :
-      Layer(config) {}
+  explicit ConcatenateLayer2(const LayerConfig& config) : Layer(config) {}
 
   ~ConcatenateLayer2() {}
 
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  virtual void forward(PassType passType);
-  virtual void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
   std::vector<std::unique_ptr<Projection>> projections_;
@@ -130,8 +131,8 @@ bool ConcatenateLayer2::init(const LayerMap& layerMap,
   size_t startCol = 0;
   size_t endCol = 0;
   for (size_t i = 0; i < inputLayers_.size(); i++) {
-    projections_.emplace_back(Projection::create(config_.inputs(i).proj_conf(),
-                                                 parameters_[i], useGpu_));
+    projections_.emplace_back(Projection::create(
+        config_.inputs(i).proj_conf(), parameters_[i], useGpu_));
 
     endCol += projections_[i]->getOutputSize();
     projCol_.push_back(std::make_pair(startCol, endCol));

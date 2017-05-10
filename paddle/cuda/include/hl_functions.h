@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #ifndef HL_FUNCTIONS_H_
 #define HL_FUNCTIONS_H_
 
@@ -21,30 +20,30 @@ limitations under the License. */
 /**
  * sigmoid threshold maximum
  */
-#define     SIGMOID_THRESHOLD_MIN   -40.0
+#define SIGMOID_THRESHOLD_MIN -40.0
 
 /**
  * sigmoid threshold minimum
  */
-#define     SIGMOID_THRESHOLD_MAX   13.0
+#define SIGMOID_THRESHOLD_MAX 13.0
 
 #ifndef __NVCC__
 namespace hppl {
-  /*
-   * forward activation
-   */
-  real relu(const real a);
-  real sigmoid(const real a);
-  real tanh(const real a);
-  real linear(const real a);
+/*
+ * forward activation
+ */
+real relu(const real a);
+real sigmoid(const real a);
+real tanh(const real a);
+real linear(const real a);
 
-  /*
-   * backward activation
-   */
-  real relu(const real a, const real b);
-  real sigmoid(const real a, const real b);
-  real tanh(const real a, const real b);
-  real linear(const real a, const real b);
+/*
+ * backward activation
+ */
+real relu(const real a, const real b);
+real sigmoid(const real a, const real b);
+real tanh(const real a, const real b);
+real linear(const real a, const real b);
 }  // namespace hppl
 
 #ifdef __AVX__

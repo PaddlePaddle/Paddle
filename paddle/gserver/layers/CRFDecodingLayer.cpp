@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "CRFDecodingLayer.h"
 
 namespace paddle {
@@ -25,7 +24,7 @@ bool CRFDecodingLayer::init(const LayerMap& layerMap,
     return false;
   }
   crf_.reset(new LinearChainCRF(
-      numClasses_, parameter_->getBuf(PARAMETER_VALUE)->getData(), nullptr));
+      numClasses_, parameter_->getBuf(PARAMETER_VALUE)->getData()));
   return true;
 }
 
@@ -46,7 +45,8 @@ void CRFDecodingLayer::forward(PassType passType) {
 
   for (size_t i = 0; i < numSequences; ++i) {
     crf_->decode(output.value->getData() + numClasses_ * starts[i],
-                 output_.ids->getData() + starts[i], starts[i + 1] - starts[i]);
+                 output_.ids->getData() + starts[i],
+                 starts[i + 1] - starts[i]);
   }
 
   if (inputLayers_.size() == 2) {

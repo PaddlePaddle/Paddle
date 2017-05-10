@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #pragma once
 
@@ -31,21 +30,22 @@ public:
   virtual void startBatch(int64_t numSamplesProcessed) {
     learningRate_ = calcLearningRate(numSamplesProcessed, pass_);
   }
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& paraConfig,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& paraConfig,
                       size_t sparseId) const {
     (void)sparseId;
-    real torch_learningRate = optConfig_.learning_method() == "torch_momentum" ?
-                              1.0 - paraConfig.momentum() : 1.0;
+    real torch_learningRate = optConfig_.learning_method() == "torch_momentum"
+                                  ? 1.0 - paraConfig.momentum()
+                                  : 1.0;
     vecs[PARAMETER_VALUE]->sgdUpdate(
-        *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
+        *vecs[PARAMETER_GRADIENT],
+        *vecs[PARAMETER_MOMENTUM],
         learningRate_ * paraConfig.learning_rate() *
-        (firstTime_ ? 1.0 : torch_learningRate),
+            (firstTime_ ? 1.0 : torch_learningRate),
         paraConfig.momentum(),
         applyDecay_ ? paraConfig.decay_rate() : 0);
   }
-  virtual void finishBatch() {
-        firstTime_ = false;
-  }
+  virtual void finishBatch() { firstTime_ = false; }
 };
 
 // SGD optimization with sparse support.
@@ -71,7 +71,8 @@ public:
       const OptimizationConfig& optConfig);
   virtual void init(size_t numRows, const ParameterConfig* config);
   virtual void startBatch(int64_t numSamplesProcessed);
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& paraConfig,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& paraConfig,
                       size_t sparseId) const;
   virtual TraverseCallback needSpecialTraversal(
       const ParameterConfig& config) const;
@@ -111,7 +112,8 @@ public:
     (void)numSamplesProcessed;
     ++numUpdates_;
   }
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& config,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& config,
                       size_t sparseId) const;
   virtual TraverseCallback needSpecialTraversal(
       const ParameterConfig& config) const;
@@ -141,7 +143,8 @@ public:
     learningRate_ = calcLearningRate(numSamplesProcessed, pass_);
   }
 
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& config,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& config,
                       size_t sparseId) const;
 
 protected:
@@ -173,7 +176,8 @@ public:
   }
   virtual void finishBatch() { timer_++; }
 
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& config,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& config,
                       size_t sparseId) const;
 
 protected:
@@ -214,7 +218,8 @@ public:
   }
   virtual void finishBatch() { timer_++; }
 
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& config,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& config,
                       size_t sparseId) const;
 
 protected:
@@ -251,7 +256,8 @@ public:
 
   virtual void finishBatch() { ++step_; }
 
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& config,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& config,
                       size_t sparseId) const;
 
 protected:
@@ -280,7 +286,8 @@ public:
 
   virtual void finishBatch() { ++step_; }
 
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& config,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& config,
                       size_t sparseId) const;
 
 protected:
@@ -301,7 +308,8 @@ public:
     // learningRate required by regularizer
     learningRate_ = calcLearningRate(numSamplesProcessed, pass_);
   }
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& paraConfig,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& paraConfig,
                       size_t sparseId) const {
     vecs[PARAMETER_VALUE]->add(*vecs[PARAMETER_GRADIENT],
                                optConfig_.delta_add_rate());
@@ -314,7 +322,8 @@ public:
   explicit DummyOptimizer(const OptimizationConfig& optConfig)
       : ParameterOptimizer(optConfig) {}
 
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& paraConfig,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& paraConfig,
                       size_t sparseId) const {}
 };
 
@@ -344,7 +353,8 @@ public:
       const ParameterConfig& config) const {
     return optimizer_->needSpecialTraversal(config);
   }
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& config,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& config,
                       size_t sparseId) const;
 
   virtual void setNoDecay() { optimizer_->setNoDecay(); }

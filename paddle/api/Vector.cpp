@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #include "PaddleAPI.h"
 
@@ -39,6 +38,21 @@ IVector* IVector::create(const std::vector<int>& data, bool useGpu) {
   return v;
 }
 
+IVector* IVector::createVectorFromNumpy(int* data,
+                                        int dim,
+                                        bool copy,
+                                        bool useGpu) throw(UnsupportError) {
+  if (useGpu) {
+    /// if use gpu only copy=true is supported
+    if (!copy) {
+      throw UnsupportError("Gpu mode only supports copy=True");
+    }
+    return IVector::createGpuVectorFromNumpy(data, dim);
+  } else {
+    return IVector::createCpuVectorFromNumpy(data, dim, copy);
+  }
+}
+
 IVector* IVector::createCpuVectorFromNumpy(int* data, int dim, bool copy) {
   auto v = new IVector();
   if (copy) {
@@ -50,7 +64,7 @@ IVector* IVector::createCpuVectorFromNumpy(int* data, int dim, bool copy) {
   return v;
 }
 
-IVector* IVector::createGpuVectorFromNumy(int* data, int dim) {
+IVector* IVector::createGpuVectorFromNumpy(int* data, int dim) {
   auto v = new IVector();
   v->m->vec = paddle::IVector::create(dim, true);
   v->m->vec->copyFrom(data, dim);
@@ -124,8 +138,8 @@ void IVector::copyToNumpyArray(int** view_m_data, int* dim1) {
   if (auto cpuVec = dynamic_cast<paddle::CpuIVector*>(m->vec.get())) {
     std::memcpy(*view_m_data, cpuVec->getData(), sizeof(int) * (*dim1));
   } else if (auto gpuVec = dynamic_cast<paddle::GpuIVector*>(m->vec.get())) {
-    hl_memcpy_device2host(*view_m_data, gpuVec->getData(),
-                          sizeof(int) * (*dim1));
+    hl_memcpy_device2host(
+        *view_m_data, gpuVec->getData(), sizeof(int) * (*dim1));
   } else {
     LOG(INFO) << "Unexpected situation";
   }
@@ -188,12 +202,27 @@ Vector* Vector::createByPaddleVectorPtr(void* ptr) {
   }
 }
 
+Vector* Vector::createVectorFromNumpy(float* data,
+                                      int dim,
+                                      bool copy,
+                                      bool useGpu) throw(UnsupportError) {
+  if (useGpu) {
+    /// if use gpu only copy=True is supported
+    if (!copy) {
+      throw UnsupportError("Gpu mode only supports copy=True");
+    }
+    return Vector::createGpuVectorFromNumpy(data, dim);
+  } else {
+    return Vector::createCpuVectorFromNumpy(data, dim, copy);
+  }
+}
+
 Vector* Vector::createCpuVectorFromNumpy(float* data, int dim, bool copy) {
   CHECK_GT(dim, 0);
   auto retVec = new Vector();
   if (copy) {
     retVec->m->vec = paddle::Vector::create((size_t)dim, false);
-    return retVec;
+    retVec->m->vec->copyFrom(data, dim);
   } else {
     retVec->m->vec = paddle::Vector::create(data, (size_t)dim, false);
   }
@@ -224,9 +253,9 @@ void Vector::copyToNumpyArray(float** view_m_data, int* dim1) {
   *view_m_data = new float[*dim1];
   if (auto cpuVec = dynamic_cast<paddle::CpuVector*>(m->vec.get())) {
     std::memcpy(*view_m_data, cpuVec->getData(), sizeof(float) * (*dim1));
-  } else if (auto gpuVec = dynamic_cast<paddle::CpuVector*>(m->vec.get())) {
-    hl_memcpy_device2host(*view_m_data, gpuVec->getData(),
-                          sizeof(float) * (*dim1));
+  } else if (auto gpuVec = dynamic_cast<paddle::GpuVector*>(m->vec.get())) {
+    hl_memcpy_device2host(
+        *view_m_data, gpuVec->getData(), sizeof(float) * (*dim1));
   } else {
     LOG(INFO) << "Unexpected situation";
   }
@@ -235,6 +264,28 @@ void Vector::copyToNumpyArray(float** view_m_data, int* dim1) {
 void Vector::copyFromNumpyArray(float* data, int dim) {
   m->vec->resize(dim);
   m->vec->copyFrom(data, dim);
+}
+
+FloatArray Vector::getData() const {
+  if (this->isGpu()) {
+    float* src = m->vec->getData();
+    size_t len = m->vec->getSize();
+    float* dest = new float[len];
+    hl_memcpy_device2host(dest, src, len * sizeof(float));
+    FloatArray ret_val(dest, len);
+    ret_val.needFree = true;
+    return ret_val;
+  } else {
+    FloatArray ret_val(m->vec->getData(), m->vec->getSize());
+    return ret_val;
+  }
+}
+
+void Vector::copyFrom(Vector* src) throw(RangeError) {
+  if (src->m->vec->getSize() != m->vec->getSize()) {
+    throw RangeError();
+  }
+  m->vec->copyFrom(*src->m->vec);
 }
 
 bool Vector::isGpu() const {

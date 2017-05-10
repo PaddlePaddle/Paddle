@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,15 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <atomic>
-#include <paddle/utils/Thread.h>
 #include <gtest/gtest.h>
+#include <paddle/utils/Thread.h>
+#include <atomic>
 
 using paddle::AsyncThreadPool;  // NOLINT
 
 TEST(AsyncThreadPool, addJob) {
   AsyncThreadPool pool(8);
-  auto a = pool.addJob([]{ return 1; });
+  auto a = pool.addJob([] { return 1; });
   auto b = pool.addJob([] { return true; });
   auto c = pool.addJob([] { return false; });
 
@@ -36,10 +36,7 @@ TEST(AsyncThreadPool, addBatchJob) {
   std::vector<AsyncThreadPool::JobFunc> jobs;
 
   for (int i = 0; i < 10000; i++) {
-    jobs.emplace_back(
-        [&] {
-          counter++;
-        });
+    jobs.emplace_back([&] { counter++; });
   }
 
   pool.addBatchJobs(jobs);
@@ -56,13 +53,12 @@ TEST(AsyncThreadPool, multiThreadAddBatchJob) {
   const int numMonitors = 300;
   const int numSlaves = 300;
   std::vector<AsyncThreadPool::JobFunc> moniterJobs(numMonitors, [&] {
-      std::vector<AsyncThreadPool::JobFunc> slaveJobs(numSlaves,
-          [mut, &counter] {
-            std::lock_guard<std::mutex> lk(*mut);
-            counter++;
-          });
-      levelTwoPool.addBatchJobs(slaveJobs);
-      });
+    std::vector<AsyncThreadPool::JobFunc> slaveJobs(numSlaves, [mut, &counter] {
+      std::lock_guard<std::mutex> lk(*mut);
+      counter++;
+    });
+    levelTwoPool.addBatchJobs(slaveJobs);
+  });
   levelOnePool.addBatchJobs(moniterJobs);
   ASSERT_EQ(counter, numMonitors * numSlaves);
 }
@@ -70,13 +66,10 @@ TEST(AsyncThreadPool, multiThreadAddBatchJob) {
 TEST(AsyncThreadPool, addBatchJobWithResults) {
   AsyncThreadPool pool(100);
 
-  std::vector<std::function<int()> > jobs;
+  std::vector<std::function<int()>> jobs;
   const int numJobs = 100;
   for (int i = 0; i < numJobs; i++) {
-    jobs.emplace_back(
-        [i]{
-          return i;
-        });
+    jobs.emplace_back([i] { return i; });
   }
 
   std::vector<int> res;
@@ -85,9 +78,4 @@ TEST(AsyncThreadPool, addBatchJobWithResults) {
   for (int i = 0; i < numJobs; i++) {
     ASSERT_EQ(res[i], i);
   }
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

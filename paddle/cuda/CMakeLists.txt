@@ -19,15 +19,19 @@ set(CUDA_CXX_WITH_GPU_SOURCES
     src/hl_cuda_cudnn.cc
     src/hl_cuda_device.cc)
 
-set_source_files_properties(${CUDA_CXX_WITH_GPU_SOURCES}
-                            PROPERTIES COMPILE_FLAGS "-D__NVCC__")
+if(WITH_GPU)
+    set(CUDA_CXX_SOURCES
+        src/hl_dso_loader.cc
+        src/hl_warpctc_wrap.cc
+        ${CUDA_CXX_WITH_GPU_SOURCES})
 
-set_source_files_properties(${AVX_SOURCES}
-                            PROPERTIES COMPILE_FLAGS "-mavx")
-
-set(CUDA_DSO_SOURCES
-    src/hl_dso_loader.cc
-    src/hl_cudart_wrap.cc)
+    set_source_files_properties(${CUDA_CXX_SOURCES}
+                                PROPERTIES COMPILE_FLAGS "-D__NVCC__")
+else()
+    set(CUDA_CXX_SOURCES
+        src/hl_dso_loader.cc
+        src/hl_warpctc_wrap.cc)
+endif()
 
 set(CUDA_CU_SOURCES
     src/hl_perturbation_util.cu
@@ -44,6 +48,7 @@ set(CUDA_CU_SOURCES
 set(CUDA_HEADERS
     include/hl_time.h
     include/hl_dso_loader.h
+    include/hl_warpctc_wrap.h
     include/hl_sequence.h
     include/hl_cuda_cublas.h
     include/hl_batch_transpose.h
@@ -75,11 +80,16 @@ if(WITH_GPU)
     cuda_add_library(paddle_cuda
         ${CUDA_SOURCES}
         ${CUDA_CU_SOURCES}
-        ${CUDA_DSO_SOURCES}
-        ${CUDA_CXX_WITH_GPU_SOURCES})
+        ${CUDA_CXX_SOURCES})
 else()
-    add_library(paddle_cuda ${CUDA_SOURCES})
+    add_library(paddle_cuda
+                ${CUDA_SOURCES}
+                ${CUDA_CXX_SOURCES})
 endif()
 
-add_style_check_target(paddle_cuda ${CUDA_SOURCES})
-add_style_check_target(paddle_cuda ${CUDA_HEADERS})
+add_dependencies(paddle_cuda ${external_project_dependencies})
+
+add_style_check_target(paddle_cuda
+                       ${CUDA_SOURCES}
+                       ${CUDA_HEADERS}
+                       ${CUDA_CXX_SOURCES})

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,15 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "AverageOptimizer.h"
 
 namespace paddle {
 
 // factory method to create an instance of AverageOptimizer
 ParameterOptimizer* AverageOptimizer::create(
-    const OptimizationConfig& optConfig, ParameterOptimizer* optimizer,
-    bool isParameterSparse, bool useParameterApply) {
+    const OptimizationConfig& optConfig,
+    ParameterOptimizer* optimizer,
+    bool isParameterSparse,
+    bool useParameterApply) {
   if (optConfig.average_window() <= 0) {
     return optimizer;
   }
@@ -44,8 +45,8 @@ AverageOptimizer::AverageOptimizer(const OptimizationConfig& optConfig,
       prevNumUpdates_(0),
       numAccumulates_(0),
       oldNumAccumulates_(0),
-      minAverageWindow_(std::min<int64_t>(
-        10000L, optConfig_.max_average_window())),
+      minAverageWindow_(
+          std::min<int64_t>(10000L, optConfig_.max_average_window())),
       maxAverageWindow_(optConfig_.max_average_window()) {
   parameterTypes_ = optimizer_->getParameterTypes();
   addParameterType(PARAMETER_SUM1);
@@ -121,17 +122,27 @@ ParameterOptimizer::TraverseCallback AverageOptimizer::apply() {
 
   real scale = 1. / (numAccumulates_ + oldNumAccumulates_);
   if (useApply_) {
-    return [scale](const VectorPtr vecs[], const ParameterConfig& config,
+    return [scale](const VectorPtr vecs[],
+                   const ParameterConfig& config,
                    size_t sparseId) {
-      vecs[PARAMETER_APPLY]->add3(*vecs[PARAMETER_SUM1], *vecs[PARAMETER_SUM2],
-                                  *vecs[PARAMETER_SUM3], scale, scale, scale);
+      vecs[PARAMETER_APPLY]->add3(*vecs[PARAMETER_SUM1],
+                                  *vecs[PARAMETER_SUM2],
+                                  *vecs[PARAMETER_SUM3],
+                                  scale,
+                                  scale,
+                                  scale);
     };
   } else {
-    return [scale](const VectorPtr vecs[], const ParameterConfig& config,
+    return [scale](const VectorPtr vecs[],
+                   const ParameterConfig& config,
                    size_t sparseId) {
       vecs[PARAMETER_GRADIENT]->copyFrom(*vecs[PARAMETER_VALUE]);
-      vecs[PARAMETER_VALUE]->add3(*vecs[PARAMETER_SUM1], *vecs[PARAMETER_SUM2],
-                                  *vecs[PARAMETER_SUM3], scale, scale, scale);
+      vecs[PARAMETER_VALUE]->add3(*vecs[PARAMETER_SUM1],
+                                  *vecs[PARAMETER_SUM2],
+                                  *vecs[PARAMETER_SUM3],
+                                  scale,
+                                  scale,
+                                  scale);
     };
   }
 }
@@ -144,8 +155,8 @@ ParameterOptimizer::TraverseCallback AverageOptimizer::restore() {
     return nullptr;
   }
 
-  return [](const VectorPtr vecs[], const ParameterConfig& config,
-            size_t sparseId) {
+  return [](
+      const VectorPtr vecs[], const ParameterConfig& config, size_t sparseId) {
     vecs[PARAMETER_VALUE]->copyFrom(*vecs[PARAMETER_GRADIENT]);
     vecs[PARAMETER_GRADIENT]->zeroMem();
   };
@@ -174,7 +185,8 @@ ParameterOptimizer::TraverseCallback AverageSparseOptimizer::startCatchUpWith()
 
   if (timer_ > 0) {
     callbacks.emplace_back(
-        [this](const VectorPtr vecs[], const ParameterConfig& config,
+        [this](const VectorPtr vecs[],
+               const ParameterConfig& config,
                size_t sparseId) { this->catchUpWith(vecs, config, sparseId); });
   }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,23 +14,23 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
 #include <stack>
 #include <thread>
 #include <unordered_map>
-#include <functional>
 
 #include "ThreadLocal.h"
 
 namespace paddle {
 
 /**
- * A ThreadLocal stack for tracing train/test process. 
- * (More details of ThreadLocal can be find 
+ * A ThreadLocal stack for tracing train/test process.
+ * (More details of ThreadLocal can be find
  * in the comments of ThreadLocal class.)
- * 
+ *
  * For example.
  * @code{.cpp}
- * 
+ *
  * paddle::CustomStackTrace<std::string> stack;
  * for (auto& layer : layers){
  *   stack.push(layer->getName());
@@ -48,7 +48,7 @@ namespace paddle {
  * @endcode
  */
 template <typename T>
-class CustomStackTrace{
+class CustomStackTrace {
 public:
   /**
    * @brief Pop out an item from the top of the stack if item == top.
@@ -87,7 +87,6 @@ public:
     return true;
   }
 
-
   /**
    * @brief DumpCallback Type. It will be invoked many times by dump method.
    *
@@ -96,8 +95,9 @@ public:
    * The third parameter is the item in stack.
    */
   typedef std::function<void(const std::thread::id& /*threadId*/,
-                              bool* /*isPushing*/,
-                              const T& /*item*/)> DumpCallback;
+                             bool* /*isPushing*/,
+                             const T& /*item*/)>
+      DumpCallback;
 
   /**
    * Dump all thread stack, and all stack will be cleared.
@@ -160,25 +160,23 @@ private:
    * @brief Get thread local stack reference.
    */
   std::stack<T>& stack() {
-    return this->getThreadLocal(this->logStack_,
-                                this->stackBuffers_);
+    return this->getThreadLocal(this->logStack_, this->stackBuffers_);
   }
 
   /**
    * @brief Get thread local pushing flag.
    */
   bool& pushing() {
-    return this->getThreadLocal(this->isPushing_,
-                                this->pushingBuffers_);
+    return this->getThreadLocal(this->isPushing_, this->pushingBuffers_);
   }
 
 private:
   mutable std::mutex mtx_;
 
-  std::unordered_map<std::thread::id, std::stack<T>* > stackBuffers_;
-  std::unordered_map<std::thread::id, bool* > pushingBuffers_;
+  std::unordered_map<std::thread::id, std::stack<T>*> stackBuffers_;
+  std::unordered_map<std::thread::id, bool*> pushingBuffers_;
   ThreadLocal<bool> isPushing_;
-  ThreadLocal<std::stack<T> > logStack_;
+  ThreadLocal<std::stack<T>> logStack_;
 };
 
 extern CustomStackTrace<std::string> gLayerStackTrace;

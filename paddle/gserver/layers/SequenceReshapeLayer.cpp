@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,18 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
 
 /**
- * A layer for reshaping the sequence
- * Input: a sequence
- * Output: a sequence
+ *  A layer for reshaping the sequence. Assume the input sequence has
+ *  T instances, the dimension of each instance is M, and the input
+ *  reshape_dim is N, then the output sequence has T*M/N instances,
+ *  the dimension of each instance is N.
+ *
+ *  Note that T*M/N must be an integer.
  */
 
 class SequenceReshapeLayer : public Layer {
@@ -35,12 +37,11 @@ protected:
 public:
   explicit SequenceReshapeLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~SequenceReshapeLayer() {}
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(seqreshape, SequenceReshapeLayer);
@@ -69,8 +70,7 @@ void SequenceReshapeLayer::forward(PassType passType) {
   size_t outDim = getSize();
 
   size_t numSequences = input.getNumSequences();
-  auto startPositions =
-      input.sequenceStartPositions->getVector(false);
+  auto startPositions = input.sequenceStartPositions->getVector(false);
   const int* starts = startPositions->getData();
 
   CHECK_EQ(starts[numSequences], input.getBatchSize());
@@ -96,9 +96,7 @@ void SequenceReshapeLayer::forward(PassType passType) {
 
     // modify the sequenceStartPositions
     ICpuGpuVector::resizeOrCreate(
-        output_.sequenceStartPositions,
-        numSequences + 1,
-        false);
+        output_.sequenceStartPositions, numSequences + 1, false);
 
     int* tgtBuf = output_.sequenceStartPositions->getMutableData(false);
 
@@ -134,8 +132,11 @@ void SequenceReshapeLayer::backward(const UpdateCallback& callback) {
   REGISTER_TIMER_INFO("SequenceReshapeLayerBackward", getName().c_str());
 
   if (inputGrad) {
-    Matrix::resizeOrCreate(reshapedOutputGrad, inputGrad->getHeight(),
-                           inputGrad->getWidth(), false, useGpu_);
+    Matrix::resizeOrCreate(reshapedOutputGrad,
+                           inputGrad->getHeight(),
+                           inputGrad->getWidth(),
+                           false,
+                           useGpu_);
     reshapedOutputGrad->copyFrom(*outputGrad);
     inputGrad->add(*reshapedOutputGrad);
   }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,120 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-
 #include "SIMDFunctions.h"
+#ifdef __SSE3__
 #include <immintrin.h>
+#endif
 #include <algorithm>
 
-#ifndef __AVX__
-static void addto_sse(float* a, const float* b, size_t len) {
-  int offset = len % 16;
-  __m128 ma0, ma1, ma2, ma3;
-  __m128 mb0, mb1, mb2, mb3;
-
-  for (unsigned int k = 0; k < len / 16; k++, a += 16, b += 16) {
-    ma0 = _mm_load_ps(a);
-    ma1 = _mm_load_ps(a + 4);
-    ma2 = _mm_load_ps(a + 8);
-    ma3 = _mm_load_ps(a + 12);
-
-    mb0 = _mm_load_ps(b);
-    mb1 = _mm_load_ps(b + 4);
-    mb2 = _mm_load_ps(b + 8);
-    mb3 = _mm_load_ps(b + 12);
-
-    ma0 = _mm_add_ps(ma0, mb0);
-    ma1 = _mm_add_ps(ma1, mb1);
-    ma2 = _mm_add_ps(ma2, mb2);
-    ma3 = _mm_add_ps(ma3, mb3);
-
-    _mm_store_ps(a, ma0);
-    _mm_store_ps(a + 4, ma1);
-    _mm_store_ps(a + 8, ma2);
-    _mm_store_ps(a + 12, ma3);
-  }
-
-  for (int i = 0; i < offset; i++) a[i] += b[i];
-}
-
-static void batch_addto_sse(float* a, const float* b[], int batch, size_t len) {
-  int offset = len % 16;
-
-  __m128 ma0, ma1, ma2, ma3;
-  __m128 mb0, mb1, mb2, mb3;
-
-  for (unsigned int k = 0; k < len / 16; k++, a += 16) {
-    ma0 = _mm_load_ps(a);
-    ma1 = _mm_load_ps(a + 4);
-    ma2 = _mm_load_ps(a + 8);
-    ma3 = _mm_load_ps(a + 12);
-
-    for (int i = 0; i < batch; i++) {
-      mb0 = _mm_load_ps(b[i]);
-      mb1 = _mm_load_ps(b[i] + 4);
-      mb2 = _mm_load_ps(b[i] + 8);
-      mb3 = _mm_load_ps(b[i] + 12);
-      ma0 = _mm_add_ps(ma0, mb0);
-      ma1 = _mm_add_ps(ma1, mb1);
-      ma2 = _mm_add_ps(ma2, mb2);
-      ma3 = _mm_add_ps(ma3, mb3);
-      b[i] += 16;
-    }
-
-    _mm_store_ps(a, ma0);
-    _mm_store_ps(a + 4, ma1);
-    _mm_store_ps(a + 8, ma2);
-    _mm_store_ps(a + 12, ma3);
-  }
-
-  for (int i = 0; i < offset; i++) {
-    for (int k = 0; k < batch; k++) a[i] += b[k][i];
-  }
-  return;
-}
-
-static void col_max_sse(float* result, const float* data, int dim,
-                        int numSamples) {
-  // first sample, direct copy
-  for (int d = 0; d < dim; ++d) {
-    result[d] = data[d];
-  }
-  int offset = dim % 16;
-  __m128 ma0, ma1, ma2, ma3;
-  __m128 mb0, mb1, mb2, mb3;
-  // first 16n dims
-  for (int k = 0; k < dim / 16; k++, result += 16, data += 16) {
-    ma0 = _mm_load_ps(result);
-    ma1 = _mm_load_ps(result + 4);
-    ma2 = _mm_load_ps(result + 8);
-    ma3 = _mm_load_ps(result + 12);
-    for (int i = 1; i < numSamples; i++) {
-      mb0 = _mm_load_ps(data + i * dim);
-      mb1 = _mm_load_ps(data + i * dim + 4);
-      mb2 = _mm_load_ps(data + i * dim + 8);
-      mb3 = _mm_load_ps(data + i * dim + 12);
-      ma0 = _mm_max_ps(ma0, mb0);
-      ma1 = _mm_max_ps(ma1, mb1);
-      ma2 = _mm_max_ps(ma2, mb2);
-      ma3 = _mm_max_ps(ma3, mb3);
-    }
-    _mm_store_ps(result, ma0);
-    _mm_store_ps(result + 4, ma1);
-    _mm_store_ps(result + 8, ma2);
-    _mm_store_ps(result + 12, ma3);
-  }
-  // last dims
-  for (int d = 0; d < offset; ++d) {
-    float sm = data[d];
-    for (int i = 1; i < numSamples; ++i) {
-      sm = std::max(sm, data[i * dim + d]);
-    }
-    result[d] = sm;
-  }
-}
-
-#else
+#ifdef __AVX__
 static void addto_avx(float* a, const float* b, size_t len) {
   int offset = len % 32;
 
@@ -195,7 +88,9 @@ static void batch_addto_avx(float* a, const float* b[], int batch, size_t len) {
   return;
 }
 
-static void col_max_avx(float* result, const float* data, int dim,
+static void col_max_avx(float* result,
+                        const float* data,
+                        int dim,
                         int numSamples) {
   // first sample, direct copy
   for (int d = 0; d < dim; ++d) {
@@ -289,8 +184,8 @@ static void decayL1_avx(float* dst, float* src, float lambda, size_t sz) {
   }
 }
 
-static void decayL1_avx(float* dst, float* src, float* lr, float lambda,
-                        size_t sz) {
+static void decayL1_avx(
+    float* dst, float* src, float* lr, float lambda, size_t sz) {
   int64_t i;
   int64_t size = sz;
   float src_val;
@@ -353,17 +248,128 @@ static void decayL1_avx(float* dst, float* src, float* lr, float lambda,
   }
 }
 
+#elif defined(__SSE3__)
+
+static void addto_sse(float* a, const float* b, size_t len) {
+  int offset = len % 16;
+  __m128 ma0, ma1, ma2, ma3;
+  __m128 mb0, mb1, mb2, mb3;
+
+  for (unsigned int k = 0; k < len / 16; k++, a += 16, b += 16) {
+    ma0 = _mm_load_ps(a);
+    ma1 = _mm_load_ps(a + 4);
+    ma2 = _mm_load_ps(a + 8);
+    ma3 = _mm_load_ps(a + 12);
+
+    mb0 = _mm_load_ps(b);
+    mb1 = _mm_load_ps(b + 4);
+    mb2 = _mm_load_ps(b + 8);
+    mb3 = _mm_load_ps(b + 12);
+
+    ma0 = _mm_add_ps(ma0, mb0);
+    ma1 = _mm_add_ps(ma1, mb1);
+    ma2 = _mm_add_ps(ma2, mb2);
+    ma3 = _mm_add_ps(ma3, mb3);
+
+    _mm_store_ps(a, ma0);
+    _mm_store_ps(a + 4, ma1);
+    _mm_store_ps(a + 8, ma2);
+    _mm_store_ps(a + 12, ma3);
+  }
+
+  for (int i = 0; i < offset; i++) a[i] += b[i];
+}
+
+static void batch_addto_sse(float* a, const float* b[], int batch, size_t len) {
+  int offset = len % 16;
+
+  __m128 ma0, ma1, ma2, ma3;
+  __m128 mb0, mb1, mb2, mb3;
+
+  for (unsigned int k = 0; k < len / 16; k++, a += 16) {
+    ma0 = _mm_load_ps(a);
+    ma1 = _mm_load_ps(a + 4);
+    ma2 = _mm_load_ps(a + 8);
+    ma3 = _mm_load_ps(a + 12);
+
+    for (int i = 0; i < batch; i++) {
+      mb0 = _mm_load_ps(b[i]);
+      mb1 = _mm_load_ps(b[i] + 4);
+      mb2 = _mm_load_ps(b[i] + 8);
+      mb3 = _mm_load_ps(b[i] + 12);
+      ma0 = _mm_add_ps(ma0, mb0);
+      ma1 = _mm_add_ps(ma1, mb1);
+      ma2 = _mm_add_ps(ma2, mb2);
+      ma3 = _mm_add_ps(ma3, mb3);
+      b[i] += 16;
+    }
+
+    _mm_store_ps(a, ma0);
+    _mm_store_ps(a + 4, ma1);
+    _mm_store_ps(a + 8, ma2);
+    _mm_store_ps(a + 12, ma3);
+  }
+
+  for (int i = 0; i < offset; i++) {
+    for (int k = 0; k < batch; k++) a[i] += b[k][i];
+  }
+  return;
+}
+
+static void col_max_sse(float* result,
+                        const float* data,
+                        int dim,
+                        int numSamples) {
+  // first sample, direct copy
+  for (int d = 0; d < dim; ++d) {
+    result[d] = data[d];
+  }
+  int offset = dim % 16;
+  __m128 ma0, ma1, ma2, ma3;
+  __m128 mb0, mb1, mb2, mb3;
+  // first 16n dims
+  for (int k = 0; k < dim / 16; k++, result += 16, data += 16) {
+    ma0 = _mm_load_ps(result);
+    ma1 = _mm_load_ps(result + 4);
+    ma2 = _mm_load_ps(result + 8);
+    ma3 = _mm_load_ps(result + 12);
+    for (int i = 1; i < numSamples; i++) {
+      mb0 = _mm_load_ps(data + i * dim);
+      mb1 = _mm_load_ps(data + i * dim + 4);
+      mb2 = _mm_load_ps(data + i * dim + 8);
+      mb3 = _mm_load_ps(data + i * dim + 12);
+      ma0 = _mm_max_ps(ma0, mb0);
+      ma1 = _mm_max_ps(ma1, mb1);
+      ma2 = _mm_max_ps(ma2, mb2);
+      ma3 = _mm_max_ps(ma3, mb3);
+    }
+    _mm_store_ps(result, ma0);
+    _mm_store_ps(result + 4, ma1);
+    _mm_store_ps(result + 8, ma2);
+    _mm_store_ps(result + 12, ma3);
+  }
+  // last dims
+  for (int d = 0; d < offset; ++d) {
+    float sm = data[d];
+    for (int i = 1; i < numSamples; ++i) {
+      sm = std::max(sm, data[i * dim + d]);
+    }
+    result[d] = sm;
+  }
+}
+
 #endif
 
-#ifndef __AVX__
-#define SIMD_INVOKE(func, ...) func##_sse(__VA_ARGS__)
-#else
+#if defined(__AVX__)
 #define SIMD_INVOKE(func, ...) func##_avx(__VA_ARGS__)
+#elif defined(__SSE3__)
+#define SIMD_INVOKE(func, ...) func##_sse(__VA_ARGS__)
 #endif
 
 namespace paddle {
 namespace simd {
 namespace internal {
+#ifdef __SSE3__
 void addToImpl(float* a, const float* b, size_t len) {
   SIMD_INVOKE(addto, a, b, len);
 }
@@ -374,17 +380,18 @@ void batchAddToImpl(float* a, const float* b[], int batch, size_t len) {
 void colMaxImpl(float* result, const float* data, int dim, int numSamples) {
   SIMD_INVOKE(col_max, result, data, dim, numSamples);
 }
+#endif
 
 #ifdef __AVX__
 void decayL1AvxImpl(float* dst, float* src, float lambda, size_t len) {
   decayL1_avx(dst, src, lambda, len);
 }
-void decayL1AvxImpl(float* dst, float* src, float* lr, float lambda,
-                    size_t len) {
+void decayL1AvxImpl(
+    float* dst, float* src, float* lr, float lambda, size_t len) {
   decayL1_avx(dst, src, lr, lambda, len);
 }
-
 #endif
+
 }  // namespace internal
 }  // namespace simd
 }  // namespace paddle

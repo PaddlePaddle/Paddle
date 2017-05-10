@@ -1,5 +1,4 @@
 # The utilities for paddle
-
 file(GLOB UTIL_HEADERS . *.h)
 file(GLOB UTIL_SOURCES . *.cpp)
 create_resources(enable_virtualenv.py enable_virtualenv.c)

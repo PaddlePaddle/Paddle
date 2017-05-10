@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,28 +12,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "ParamUtil.h"
 
 #include <fenv.h>
 #include <stdio.h>
 
-#include <iostream>
 #include <iomanip>
-#include <sstream>
+#include <iostream>
 #include <limits>
+#include <sstream>
 
 #include <google/protobuf/text_format.h>
 #include <paddle/utils/Version.h>
 
+#include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
-#include "paddle/utils/GlobalConstants.h"
 
+#include "TesterConfig.h"
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/gserver/layers/ValidationLayer.h"
-#include "TesterConfig.h"
 
 namespace paddle {
 
@@ -48,8 +47,6 @@ ParameterUtil::ParameterUtil(
   pUpdater_ = parameterUpdater;
 }
 
-
-
 bool ParameterUtil::loadParameters(int passId, bool local, bool remote) {
   constexpr int kBufLen = 100;
   char buf[kBufLen];
@@ -60,8 +57,9 @@ bool ParameterUtil::loadParameters(int passId, bool local, bool remote) {
   return true;
 }
 
-void ParameterUtil::loadParametersWithPath(const std::string& dir,
-                                    bool local, bool remote) {
+void ParameterUtil::loadParametersWithPath(const std::string &dir,
+                                           bool local,
+                                           bool remote) {
   if (local) {
     gserver_->loadParameters(dir);
   }
@@ -98,7 +96,7 @@ void ParameterUtil::saveParameters(int passId, int passInnerId) {
   mkDir(saveDir.c_str());
   if (!intConfig_->load_save_param_pserver_) {
     pUpdater_->getParametersRemote(true /*full parameter*/,
-                                  true /*after apply*/);
+                                   true /*after apply*/);
   }
 
   gserver_->saveParameters(saveDir);
@@ -117,9 +115,13 @@ void ParameterUtil::saveParameters(int passId, int passInnerId) {
 void ParameterUtil::deleteParameters(int passId, int passInnerId) {
   constexpr int kBufLen = 100;
   char buf[kBufLen];
-  const std::string& saveDir = config_->getSaveDir();
+  const std::string &saveDir = config_->getSaveDir();
   if (passInnerId > 0) {
-    snprintf(buf, kBufLen, "%s/pass-%05d-%03d", saveDir.c_str(), passId,
+    snprintf(buf,
+             kBufLen,
+             "%s/pass-%05d-%03d",
+             saveDir.c_str(),
+             passId,
              passInnerId);
   } else {
     snprintf(buf, kBufLen, "%s/pass-%05d", saveDir.c_str(), passId);
@@ -129,8 +131,7 @@ void ParameterUtil::deleteParameters(int passId, int passInnerId) {
   rmDir(buf);
 }
 
-
-void ParameterUtil::saveConfigWithPath(const std::string& path) {
+void ParameterUtil::saveConfigWithPath(const std::string &path) {
   std::string src;
   // save config in some path
   if (!intConfig_->config_.empty()) {

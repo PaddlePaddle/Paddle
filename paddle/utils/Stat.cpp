@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Stat.h"
-#include "Util.h"
-#include <iomanip>
 #include <algorithm>
+#include <iomanip>
+#include "Util.h"
 
 namespace paddle {
 
@@ -65,6 +65,7 @@ std::ostream& operator<<(std::ostream& outPut, const Stat& stat) {
   auto showStat = [&](const StatInfo* info, pid_t tid, bool isFirst = true) {
     uint64_t average = 0;
     if (info->count_ > 0) {
+      outPut << std::setfill(' ') << std::left;
       if (!isFirst) {
         outPut << std::setw(42) << " ";
       }
@@ -136,6 +137,9 @@ void StatSet::printSegTimerStatus() {
 
 void StatSet::printBarrierTimerStatus() {
   ReadLockGuard guard(lock_);
+  if (barrierStatSet_.empty()) {
+    return;
+  }
   // control barrierAbstact in runtime, so enable compliation
   LOG(INFO) << std::setiosflags(std::ios::left) << std::setfill(' ')
             << "======= BarrierStatSet status ======" << std::endl;
@@ -199,6 +203,23 @@ StatInfo::~StatInfo() {
     stat_->destructStat_.total_ += this->total_;
     stat_->destructStat_.count_ += this->count_;
     stat_->threadLocalBuf_.remove({this, getTID()});
+  }
+}
+
+static unsigned g_profileCount = 0;
+static std::recursive_mutex g_profileMutex;
+
+GpuProfiler::GpuProfiler(std::string statName, std::string info)
+    : guard_(g_profileMutex) {
+  if (++g_profileCount == 1) {
+    LOG(INFO) << "Enable GPU Profiler Stat: [" << statName << "] " << info;
+    hl_profiler_start();
+  }
+}
+
+GpuProfiler::~GpuProfiler() {
+  if (--g_profileCount == 0) {
+    hl_profiler_end();
   }
 }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,24 +26,24 @@ size_t BilinearInterpLayer::getSize() {
 
   const BilinearInterpConfig& conf = config_.inputs(0).bilinear_interp_conf();
   if (inImgH_ == 0) {
-    inImgH_ = conf.img_size_y();
+    inImgH_ = conf.image_conf().img_size_y();
   }
   if (inImgW_ == 0) {
-    inImgW_ = conf.img_size_x();
+    inImgW_ = conf.image_conf().img_size();
   }
 
   outImgH_ = conf.out_size_y();
   outImgW_ = conf.out_size_x();
-  numChannels_ = conf.num_channels();
+  numChannels_ = conf.image_conf().channels();
 
   CHECK(outImgH_ > 0 && outImgW_ > 0);
   CHECK(inImgH_ > 0 && inImgW_ > 0);
   CHECK(numChannels_);
 
-  ratioH_ = (outImgH_ > 1) ?
-    static_cast<real>(inImgH_ - 1) / (outImgH_ - 1) : 0.f;
-  ratioW_ = (outImgW_ > 1) ?
-    static_cast<real>(inImgW_ - 1) / (outImgW_ - 1) : 0.f;
+  ratioH_ =
+      (outImgH_ > 1) ? static_cast<real>(inImgH_ - 1) / (outImgH_ - 1) : 0.f;
+  ratioW_ =
+      (outImgW_ > 1) ? static_cast<real>(inImgW_ - 1) / (outImgW_ - 1) : 0.f;
 
   getOutput().setFrameHeight(outImgH_);
   getOutput().setFrameWidth(outImgW_);
@@ -74,21 +74,33 @@ void BilinearInterpLayer::forward(PassType passType) {
   MatrixPtr outV = getOutputValue();
   {
     REGISTER_TIMER_INFO("FwBilinearInterpTimer", getName().c_str());
-    outV->bilinearForward(*inV, inImgH_, inImgW_, outImgH_, outImgW_,
-      numChannels_, ratioH_, ratioW_);
+    outV->bilinearForward(*inV,
+                          inImgH_,
+                          inImgW_,
+                          outImgH_,
+                          outImgW_,
+                          numChannels_,
+                          ratioH_,
+                          ratioW_);
   }
 }
 
 void BilinearInterpLayer::backward(const UpdateCallback& callback) {
-  (void) callback;
+  (void)callback;
 
   MatrixPtr inputG = getInputGrad(0);
   MatrixPtr outG = getOutputGrad();
   {
     REGISTER_TIMER_INFO("BwBilinearInterpTimer", getName().c_str());
     if (inputG) {
-      inputG->bilinearBackward(*outG, outImgH_, outImgW_, inImgH_, inImgW_,
-        numChannels_, ratioH_, ratioW_);
+      inputG->bilinearBackward(*outG,
+                               outImgH_,
+                               outImgW_,
+                               inImgH_,
+                               inImgW_,
+                               numChannels_,
+                               ratioH_,
+                               ratioW_);
     }
   }
 }

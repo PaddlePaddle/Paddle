@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -56,14 +56,14 @@ ProjectionConfig SpatialPyramidPoolLayer::getConfig(size_t imgSizeW,
 size_t SpatialPyramidPoolLayer::getSize() {
   CHECK_EQ(inputLayers_.size(), 1UL);
   size_t layerSize = 0;
-  const SppConfig& sppConf = config_.inputs(0).spp_conf();
+  const ImageConfig& conf = config_.inputs(0).spp_conf().image_conf();
   imgSizeH_ = inputLayers_[0]->getOutput().getFrameHeight();
   imgSizeW_ = inputLayers_[0]->getOutput().getFrameWidth();
   if (imgSizeH_ == 0) {
-    imgSizeH_ = sppConf.has_img_size_y() ? sppConf.img_size_y() : imgSizeW_;
+    imgSizeH_ = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
   }
   if (imgSizeW_ == 0) {
-    imgSizeW_ = sppConf.img_size();
+    imgSizeW_ = conf.img_size();
   }
 
   size_t outputH = 1;
@@ -82,9 +82,10 @@ bool SpatialPyramidPoolLayer::init(const LayerMap& layerMap,
   pyramidHeight_ = sppConf.pyramid_height();
   poolType_ = sppConf.pool_type();
 
-  channels_ = sppConf.channels();
-  imgSizeW_ = sppConf.img_size();
-  imgSizeH_ = sppConf.has_img_size_y() ? sppConf.img_size_y() : imgSizeW_;
+  const ImageConfig& imageConf = sppConf.image_conf();
+  channels_ = imageConf.channels();
+  imgSizeW_ = imageConf.img_size();
+  imgSizeH_ = imageConf.has_img_size_y() ? imageConf.img_size_y() : imgSizeW_;
   poolProjections_.reserve(pyramidHeight_);
   projCol_.reserve(pyramidHeight_);
   projOutput_.resize(pyramidHeight_);
@@ -93,7 +94,8 @@ bool SpatialPyramidPoolLayer::init(const LayerMap& layerMap,
   size_t endCol = 0;
   for (size_t i = 0; i < pyramidHeight_; i++) {
     poolProjections_.emplace_back(PoolProjection::create(
-        getConfig(imgSizeW_, imgSizeH_, channels_, i, poolType_), nullptr,
+        getConfig(imgSizeW_, imgSizeH_, channels_, i, poolType_),
+        nullptr,
         useGpu_));
     endCol += poolProjections_[i]->getOutputSize();
     projCol_.push_back(std::make_pair(startCol, endCol));

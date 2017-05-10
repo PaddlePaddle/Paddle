@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,29 +12,34 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "Util.h"
 
 #include <dirent.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#ifdef __SSE__
 #include <xmmintrin.h>
+#endif
+#ifdef __SSE3__
 #include <pmmintrin.h>
+#endif
 
 #include <fstream>
 #include <mutex>
 
-#include "paddle/utils/Logging.h"
+#include <gflags/gflags.h>
 
-#include "CommandLineParser.h"
+#include "CpuId.h"
 #include "CustomStackTrace.h"
+#include "Logging.h"
+#include "StringUtil.h"
 #include "Thread.h"
 #include "ThreadLocal.h"
 #include "Version.h"
-#include "StringUtil.h"
 
-P_DEFINE_int32(seed, 1, "random number seed. 0 for srand(time)");
+DEFINE_int32(seed, 1, "random number seed. 0 for srand(time)");
 
 #ifdef WITH_GOOGLE_PERFTOOLS
 /*
@@ -53,9 +58,8 @@ P_DEFINE_int32(seed, 1, "random number seed. 0 for srand(time)");
 
 #include <gperftools/profiler.h>
 
-P_DEFINE_int32(profile_signal, 12, "signal for switch google profiler");
-P_DEFINE_string(profile_data_file, "gperf.prof",
-                "file for storing profile data");
+DEFINE_int32(profile_signal, 12, "signal for switch google profiler");
+DEFINE_string(profile_data_file, "gperf.prof", "file for storing profile data");
 
 static void profilerSwitch(int signalNumber) {
   bool static started = false;
@@ -94,18 +98,18 @@ static void installProfilerSwitch() {}
 namespace paddle {
 
 pid_t getTID() {
-  #if defined(__APPLE__) || defined(__OSX__)
-      // syscall is deprecated: first deprecated in macOS 10.12.
-      // syscall is unsupported;
-      // syscall pid_t tid = syscall(SYS_thread_selfid);
-      uint64_t tid;
-      pthread_threadid_np(NULL, &tid);
-  #else
-      #ifndef __NR_gettid
-      #define __NR_gettid 224
-      #endif
-      pid_t tid = syscall(__NR_gettid);
-  #endif
+#if defined(__APPLE__) || defined(__OSX__)
+  // syscall is deprecated: first deprecated in macOS 10.12.
+  // syscall is unsupported;
+  // syscall pid_t tid = syscall(SYS_thread_selfid);
+  uint64_t tid;
+  pthread_threadid_np(NULL, &tid);
+#else
+#ifndef __NR_gettid
+#define __NR_gettid 224
+#endif
+  pid_t tid = syscall(__NR_gettid);
+#endif
   CHECK_NE((int)tid, -1);
   return tid;
 }
@@ -127,9 +131,10 @@ void registerInitFunction(std::function<void()> func, int priority) {
 
 void runInitFunctions() {
   std::call_once(g_onceFlag, []() {
-    LOG(INFO) << "Calling runInitFunctions";
+    VLOG(3) << "Calling runInitFunctions";
     if (g_initFuncs) {
-      std::sort(g_initFuncs->begin(), g_initFuncs->end(),
+      std::sort(g_initFuncs->begin(),
+                g_initFuncs->end(),
                 [](const PriorityFuncPair& x, const PriorityFuncPair& y) {
                   return x.first > y.first;
                 });
@@ -140,26 +145,35 @@ void runInitFunctions() {
       g_initFuncs = nullptr;
     }
     g_initialized = true;
-    LOG(INFO) << "Call runInitFunctions done.";
+    VLOG(3) << "Call runInitFunctions done.";
   });
 }
 
 void initMain(int argc, char** argv) {
-  initializeLogging(argc, argv);
   installLayerStackTracer();
   std::string line;
   for (int i = 0; i < argc; ++i) {
     line += argv[i];
     line += ' ';
   }
+
+#ifndef GFLAGS_GFLAGS_H_
+  namespace gflags = google;
+#endif
+
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  initializeLogging(argc, argv);
   LOG(INFO) << "commandline: " << line;
-  ParseCommandLineFlags(&argc, argv, true);
   CHECK_EQ(argc, 1) << "Unknown commandline argument: " << argv[1];
 
   installProfilerSwitch();
 
+#ifdef __SSE__
   _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+#endif
+#ifdef __SSE3__
   _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+#endif
 
   if (FLAGS_seed == 0) {
     unsigned int t = time(NULL);
@@ -181,6 +195,7 @@ void initMain(int argc, char** argv) {
   }
 
   version::printVersion();
+  checkCPUFeature().check();
   runInitFunctions();
 }
 
@@ -227,7 +242,7 @@ std::string join(const std::string& part1, const std::string& part2) {
 }  // namespace path
 
 void copyFileToPath(const std::string& file, const std::string& dir) {
-  LOG(INFO) << "copy " << file << " to " << dir;
+  VLOG(3) << "copy " << file << " to " << dir;
   std::string fileName = path::basename(file);
   std::string dst = path::join(dir, fileName);
   std::ifstream source(file, std::ios_base::binary);
@@ -282,9 +297,10 @@ void mkDir(const char* filename) {
   }
 }
 
-void mkDirRecursively(const char *dir) {
+void mkDirRecursively(const char* dir) {
   struct stat sb;
 
+  if (*dir == 0) return;  // empty string
   if (!stat(dir, &sb)) return;
 
   mkDirRecursively(path::dirname(dir).c_str());
@@ -302,7 +318,6 @@ void loadFileList(const std::string& fileListFileName,
     fileList.push_back(line);
   }
 }
-
 
 double getMemoryUsage() {
   FILE* fp = fopen("/proc/meminfo", "r");
@@ -363,7 +378,9 @@ size_t calculateServiceNum(const std::string& pservers, int ports_num) {
   return hosts.size() * ports_num;
 }
 
-void memcpyWithCheck(void* dest, const void* src, size_t num,
+void memcpyWithCheck(void* dest,
+                     const void* src,
+                     size_t num,
                      const void* srcEnd) {
   int minus = (char*)srcEnd - (char*)src - num;
   CHECK_LE(0, minus) << "memcpyWithCheck: copy " << num

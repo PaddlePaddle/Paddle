@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "SelectiveFullyConnectedLayer.h"
+#include <algorithm>
+#include <vector>
+#include "paddle/math/SparseMatrix.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
-#include "paddle/math/SparseMatrix.h"
-#include <vector>
-#include <algorithm>
 
 namespace paddle {
 
@@ -49,11 +48,11 @@ bool SelectiveFullyConnectedLayer::init(const LayerMap& layerMap,
 
 void SelectiveFullyConnectedLayer::prefetch() {}
 
-void SelectiveFullyConnectedLayer::reserveOutput(size_t height, size_t width,
+void SelectiveFullyConnectedLayer::reserveOutput(size_t height,
+                                                 size_t width,
                                                  size_t nnz) {
   bool flag = (passType_ == PASS_TEST &&
-               config_.selective_fc_pass_generation() &&
-               !fullOutput_);
+               config_.selective_fc_pass_generation() && !fullOutput_);
   SetDevice device(output_.deviceId);
   if (flag) {
     // output_.value is sparse matrix
@@ -61,8 +60,12 @@ void SelectiveFullyConnectedLayer::reserveOutput(size_t height, size_t width,
         dynamic_cast<GpuMatrix*>(output_.value.get())) {
       output_.value = nullptr;
     }
-    Matrix::resizeOrCreateSparseMatrix(output_.value, height, width, nnz,
-                                       FLOAT_VALUE, SPARSE_CSR,
+    Matrix::resizeOrCreateSparseMatrix(output_.value,
+                                       height,
+                                       width,
+                                       nnz,
+                                       FLOAT_VALUE,
+                                       SPARSE_CSR,
                                        /*trans=*/false,
                                        /*useGpu=*/useGpu_);
     output_.value->copyFrom(*selCols_);
@@ -74,19 +77,31 @@ void SelectiveFullyConnectedLayer::reserveOutput(size_t height, size_t width,
           dynamic_cast<GpuSparseMatrix*>(output_.value.get())) {
         output_.value = nullptr;
       }
-      Matrix::resizeOrCreate(output_.value, height, width,
-                             /*trans=*/false, /*useGpu=*/useGpu_);
+      Matrix::resizeOrCreate(output_.value,
+                             height,
+                             width,
+                             /*trans=*/false,
+                             /*useGpu=*/useGpu_);
       interOutput_ = output_.value;
     } else {
       // output_.value is dense matrix, but width = nnz /height
       CHECK_EQ(nnz % height, 0U);
       CHECK(nnz / height);
-      Matrix::resizeOrCreate(output_.value, height, nnz / height,
-                             /*trans=*/false, /*useGpu=*/useGpu_);
-      interOutput_ = Matrix::createSparseMatrix(
-          output_.value->getData(), selCols_->getRows(), selCols_->getCols(),
-          height, width, nnz, FLOAT_VALUE, SPARSE_CSR,
-          /*trans=*/false, /*useGpu=*/useGpu_);
+      Matrix::resizeOrCreate(output_.value,
+                             height,
+                             nnz / height,
+                             /*trans=*/false,
+                             /*useGpu=*/useGpu_);
+      interOutput_ = Matrix::createSparseMatrix(output_.value->getData(),
+                                                selCols_->getRows(),
+                                                selCols_->getCols(),
+                                                height,
+                                                width,
+                                                nnz,
+                                                FLOAT_VALUE,
+                                                SPARSE_CSR,
+                                                /*trans=*/false,
+                                                /*useGpu=*/useGpu_);
     }
   }
   interOutput_->zeroMem();
@@ -97,8 +112,11 @@ void SelectiveFullyConnectedLayer::reserveOutput(size_t height, size_t width,
     CHECK(nnz / height)
         << "during training, "
            "each sample must have at least one column selected.";
-    Matrix::resizeOrCreate(output_.grad, height, nnz / height,
-                           /*trans=*/false, /*useGpu=*/useGpu_);
+    Matrix::resizeOrCreate(output_.grad,
+                           height,
+                           nnz / height,
+                           /*trans=*/false,
+                           /*useGpu=*/useGpu_);
     output_.grad->zeroMem();
   }
 }
@@ -131,23 +149,26 @@ void SelectiveFullyConnectedLayer::forward(PassType passType) {
     real scaleT = i == 0 ? real(0) : real(1);
 
     flag = nnz < (hsize * wsize) * config_.selective_fc_full_mul_ratio() &&
-                !fullOutput_;
+           !fullOutput_;
     if (flag) {
       // if the indecies are highly sparse,
       // manully compute the multiplication of
       // the input vector and the selected rows.
       REGISTER_TIMER("selective.plain");
-      interOutput_->mul(input, weight->getTranspose(), 1, scaleT);
+      interOutput_->mul(*input, *weight->getTranspose(), 1, scaleT);
     } else {
       // if the indecies is not sparse enough,
       // use full mul instead
       REGISTER_TIMER("selective.mul");
       if (fullOutput_) {
-        interOutput_->mul(input, weight->getTranspose(), 1, scaleT);
+        interOutput_->mul(*input, *weight->getTranspose(), 1, scaleT);
       } else {
-        Matrix::resizeOrCreate(mmat_, hsize, wsize,
-                               /*trans=*/false, /*useGpu=*/useGpu_);
-        mmat_->mul(input, weight->getTranspose());
+        Matrix::resizeOrCreate(mmat_,
+                               hsize,
+                               wsize,
+                               /*trans=*/false,
+                               /*useGpu=*/useGpu_);
+        mmat_->mul(*input, *weight->getTranspose());
         interOutput_->add3(mmat_);
       }
     }
@@ -158,7 +179,7 @@ void SelectiveFullyConnectedLayer::forward(PassType passType) {
   }
 
   flag = (passType_ == PASS_TEST && config_.selective_fc_pass_generation() &&
-         !fullOutput_);
+          !fullOutput_);
   if (flag) {
     // during generation, output of this layer is a sparse csr matrix,
     // which is probably the input of maxid layer
@@ -166,9 +187,13 @@ void SelectiveFullyConnectedLayer::forward(PassType passType) {
     // activiation of this layer should be exponential, not softmax.
 
     Argument arg;
-    arg.value = Matrix::create(interOutput_->getData(), 1, nnz,
-                               /*trans=*/false, /*useGpu=*/useGpu_);
-    activation_->forward(arg);
+    arg.value = Matrix::create(interOutput_->getData(),
+                               1,
+                               nnz,
+                               /*trans=*/false,
+                               /*useGpu=*/useGpu_);
+    //! TODO(yuyang18): Why we cannot invoke forwardActivation here?
+    activation_->forward(arg).check();
   } else /* train and test in train, not generating */ {
     // during training, this layer output value is *Matrix*, which is input of
     // eg. multi-class-cross-entropy
@@ -187,17 +212,22 @@ void SelectiveFullyConnectedLayer::backward(const UpdateCallback& callback) {
   backwardActivation();
   MatrixPtr oGrad = getOutputGrad();
   if (!fullOutput_) {
-    interOutGrad_ = Matrix::createSparseMatrix(
-        oGrad->getData(), interOutput_->getRows(), interOutput_->getCols(),
-        interOutput_->getHeight(), interOutput_->getWidth(),
-        interOutput_->getElementCnt(), FLOAT_VALUE, SPARSE_CSR,
-        /*trans=*/false,
-        /*useGpu=*/useGpu_);
+    interOutGrad_ = Matrix::createSparseMatrix(oGrad->getData(),
+                                               interOutput_->getRows(),
+                                               interOutput_->getCols(),
+                                               interOutput_->getHeight(),
+                                               interOutput_->getWidth(),
+                                               interOutput_->getElementCnt(),
+                                               FLOAT_VALUE,
+                                               SPARSE_CSR,
+                                               /*trans=*/false,
+                                               /*useGpu=*/useGpu_);
   } else {
-    interOutGrad_ =
-        Matrix::create(oGrad->getData(), oGrad->getHeight(), oGrad->getWidth(),
-                       /*trans=*/false,
-                       /*useGpu=*/useGpu_);
+    interOutGrad_ = Matrix::create(oGrad->getData(),
+                                   oGrad->getHeight(),
+                                   oGrad->getWidth(),
+                                   /*trans=*/false,
+                                   /*useGpu=*/useGpu_);
   }
 
   if (biases_ && biases_->getWGrad()) {
@@ -213,14 +243,14 @@ void SelectiveFullyConnectedLayer::backward(const UpdateCallback& callback) {
     MatrixPtr preGrad = getInputGrad(i);
     if (preGrad) {
       REGISTER_TIMER_INFO("BpMulTimer", getName().c_str());
-      preGrad->mul(interOutGrad_, weights_[i]->getW(), 1, 1);
+      preGrad->mul(*interOutGrad_, *weights_[i]->getW(), 1, 1);
     }
 
     MatrixPtr wGrad = weights_[i]->getWGrad();
     if (wGrad) {
       REGISTER_TIMER_INFO("GradMulTimer", getName().c_str());
       MatrixPtr input = getInputValue(i);
-      wGrad->mul(interOutGrad_->getTranspose(), input, 1, 1);
+      wGrad->mul(*interOutGrad_->getTranspose(), *input, 1, 1);
     }
 
     {
@@ -240,13 +270,21 @@ void paddle::SelectiveFullyConnectedLayer::fillSelectiveData(
   size_t sampleNum = candidates->size();
   size_t outputWidth = getSize();
   size_t nnz =
-      std::accumulate(candidates->begin(), candidates->end(), 0UL,
+      std::accumulate(candidates->begin(),
+                      candidates->end(),
+                      0UL,
                       [](size_t a, const std::pair<int*, size_t>& arr) {
                         return a + arr.second;
                       });
 
   Matrix::resizeOrCreateSparseMatrix(this->cpuSelCols_,
-    sampleNum, outputWidth, nnz, NO_VALUE, SPARSE_CSR, false, false);
+                                     sampleNum,
+                                     outputWidth,
+                                     nnz,
+                                     NO_VALUE,
+                                     SPARSE_CSR,
+                                     false,
+                                     false);
   CHECK(this->cpuSelCols_ != nullptr);
   CpuSparseMatrixPtr selCols =
       std::dynamic_pointer_cast<CpuSparseMatrix>(cpuSelCols_);
@@ -272,7 +310,13 @@ void paddle::SelectiveFullyConnectedLayer::fillSelectiveData(
     this->selCols_ = this->cpuSelCols_;
   } else {
     Matrix::resizeOrCreateSparseMatrix(this->selCols_,
-          sampleNum, outputWidth, nnz, NO_VALUE, SPARSE_CSR, false, true);
+                                       sampleNum,
+                                       outputWidth,
+                                       nnz,
+                                       NO_VALUE,
+                                       SPARSE_CSR,
+                                       false,
+                                       true);
     this->selCols_->copyFrom(*cpuSelCols_, HPPL_STREAM_1);
     hl_stream_synchronize(HPPL_STREAM_1);
   }

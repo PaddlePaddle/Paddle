@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #pragma once
 
@@ -33,13 +32,13 @@ public:
     parameterTypes_.push_back(type);
   }
 
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
 
   // called by Trainer when starting a new pass
   virtual void startPass() {}
 
   // called by Trainer then finishing a pass, ruturn true if pass accepted
-  virtual bool finishPass(real cost = 0) { return true; }
+  virtual bool finishPass() { return true; }
 
   // called by Trainer before backward() of a batch
   // Return the type of pass it needs. This pass type will be passed
@@ -56,7 +55,7 @@ public:
   // between startBatch() and finishBatch(), update() will be called
   // by the trainer multiple times, each time for updating one Parameter
   // with its gradient in PARAMETER_GRADIENT
-  virtual void update(Parameter* para) {
+  void update(Parameter* para) {
     SetDevice setDevice(para->getDeviceId());
     para->updateHook();
     this->updateImpl(para);
@@ -106,16 +105,16 @@ public:
   ParameterUpdaterComposite() {}
   virtual ~ParameterUpdaterComposite() {}
 
-  virtual void init(std::vector<ParameterPtr>& parameters) = 0;
+  virtual void init(const std::vector<ParameterPtr>& parameters) = 0;
 
   virtual void startPass() {
     syncThreadPool_->execPlusOwner(
         [&](int tid, size_t numThreads) { updaters_[tid]->startPass(); });
   }
 
-  virtual bool finishPass(real cost = 0) {
+  virtual bool finishPass() {
     syncThreadPool_->execPlusOwner(
-        [&](int tid, size_t numThreads) { updaters_[tid]->finishPass(cost); });
+        [&](int tid, size_t numThreads) { updaters_[tid]->finishPass(); });
     return true;
   }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,22 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdexcept>
 #include <string>
 #include <vector>
+#include "paddle/utils/Common.h"
 #include "paddle/utils/GlobalConstants.h"
-#include "paddle/utils/TypeDefs.h"
 
 /// Import PaddlePaddle's enumeration into global namespace.
 using namespace paddle::enumeration_wrapper;  // NOLINT
-
-#define DISABLE_COPY_AND_ASSIGN(classname) \
-  classname(const classname& other);       \
-  classname& operator=(const classname& other)
 
 /**
  * @brief Initialize paddle.
@@ -42,8 +38,17 @@ using namespace paddle::enumeration_wrapper;  // NOLINT
  */
 void initPaddle(int argc, char** argv);
 
+/// Return FLAGS_use_gpu
+bool isUsingGpu();
+
+/// Set the Flags_use_gpu to the given parameter
+void setUseGpu(bool useGpu);
+
 /// Return true if this py_paddle is compiled in GPU Version
 bool isGpuVersion();
+
+/// Return FLAGS_trainer_count
+int getTrainerCount();
 
 /// The Error of IO Operation. Such as file not found, etc.
 class IOError {};
@@ -52,7 +57,11 @@ class IOError {};
 class RangeError {};
 
 /// Not support Error, such as access GPU memory directly, etc.
-class UnsupportError {};
+class UnsupportError : public std::runtime_error {
+public:
+  UnsupportError() : std::runtime_error(" "){};
+  UnsupportError(const std::string& message) : std::runtime_error(message){};
+};
 
 /// This type will map to python's list of float.
 struct FloatArray {
@@ -92,7 +101,7 @@ const size_t NO_SPARSE_ID = -1UL;
 struct MatrixPrivate;
 class Matrix {
   Matrix();  // User Cannot Create Matrix.
-  DISABLE_COPY_AND_ASSIGN(Matrix);
+  DISABLE_COPY(Matrix);
   static Matrix* createByPaddleMatrixPtr(void* sharedPtr);
 
 public:
@@ -101,7 +110,9 @@ public:
   /**
    * Create A Matrix with height,width, which is filled by zero.
    */
-  static Matrix* createZero(size_t height, size_t width, bool useGpu = false);
+  static Matrix* createZero(size_t height,
+                            size_t width,
+                            bool useGpu = isUsingGpu());
 
   /**
    * Create Sparse Matrix.
@@ -112,9 +123,12 @@ public:
    *
    * @note the default sparse type is SPARSE_CSR.
    */
-  static Matrix* createSparse(size_t height, size_t width, size_t nnz,
-                              bool isNonVal = true, bool trans = false,
-                              bool useGpu = false);
+  static Matrix* createSparse(size_t height,
+                              size_t width,
+                              size_t nnz,
+                              bool isNonVal = true,
+                              bool trans = false,
+                              bool useGpu = isUsingGpu());
 
   /**
    * Create Dense Matrix.
@@ -122,8 +136,17 @@ public:
    * @param data  list of float should be passed in python.
    * @note        the value will be copy into a new matrix.
    */
-  static Matrix* createDense(const std::vector<float>& data, size_t height,
-                             size_t width, bool useGpu = false);
+  static Matrix* createDense(const std::vector<float>& data,
+                             size_t height,
+                             size_t width,
+                             bool useGpu = isUsingGpu());
+
+  static Matrix* createDenseFromNumpy(
+      float* data,
+      int dim1,
+      int dim2,
+      bool copy = true,
+      bool useGpu = isUsingGpu()) throw(UnsupportError);
 
   /**
    *  Create Cpu Dense Matrix from numpy matrix, dtype=float32
@@ -132,10 +155,15 @@ public:
    *  @param dim1  dimension of data.
    *  @param dim2  dimension of data.
    *  @param copy  true if copy into a new matrix, false will create
-   *               matrix inplace.
+   *               matrix inplace. copy = false should be used with extreme
+   *               care because Matrix will share the memory with the given
+   *               numpy array. If the numpy array object is no longer valid,
+   *               the memory space will not be usable.
    */
-  static Matrix* createCpuDenseFromNumpy(float* data, int dim1, int dim2,
-                                         bool copy = false);
+  static Matrix* createCpuDenseFromNumpy(float* data,
+                                         int dim1,
+                                         int dim2,
+                                         bool copy = true);
 
   /// Create Gpu Dense Matrix from numpy matrix, dtype=float32
   static Matrix* createGpuDenseFromNumpy(float* data, int dim1, int dim2);
@@ -154,11 +182,13 @@ public:
    * numpy_mat = m.toNumpyMat()
    * @endcode
    */
-  void toNumpyMatInplace(float** view_data, int* dim1,
+  void toNumpyMatInplace(float** view_data,
+                         int* dim1,
                          int* dim2) throw(UnsupportError);
 
   /// Copy To numpy mat.
-  void copyToNumpyMat(float** view_m_data, int* dim1,
+  void copyToNumpyMat(float** view_m_data,
+                      int* dim1,
                       int* dim2) throw(UnsupportError);
 
   /// Copy From Numpy Mat
@@ -211,7 +241,7 @@ private:
 
 struct VectorPrivate;
 class Vector {
-  DISABLE_COPY_AND_ASSIGN(Vector);
+  DISABLE_COPY(Vector);
   Vector();
   static Vector* createByPaddleVectorPtr(void* ptr);
 
@@ -221,25 +251,39 @@ public:
   ~Vector();
 
   /// Create Vector filled with zero.
-  static Vector* createZero(size_t sz, bool useGpu = false);
+  static Vector* createZero(size_t sz, bool useGpu = isUsingGpu());
 
   /**
    * Create Vector from list of float.
    *
    * It will create a new vector, and copy data into it.
    */
-  static Vector* create(const std::vector<float>& data, bool useGpu = false);
+  static Vector* create(const std::vector<float>& data,
+                        bool useGpu = isUsingGpu());
 
+  static Vector* createVectorFromNumpy(
+      float* data,
+      int dim,
+      bool copy = true,
+      bool useGpu = isUsingGpu()) throw(UnsupportError);
   /**
    * Create Cpu Vector from numpy array, which dtype=float32
    *
    * If copy is false, it will create vector inplace.
    */
-  static Vector* createCpuVectorFromNumpy(float* data, int dim,
-                                          bool copy = false);
+  static Vector* createCpuVectorFromNumpy(float* data,
+                                          int dim,
+                                          bool copy = true);
 
   /// Create Gpu Vector from numpy array, which dtype=float32
   static Vector* createGpuVectorFromNumpy(float* data, int dim);
+
+  /**
+   * copy from another vector
+   * throw(RangeError) if size of src vector is different from size of this
+   * vector
+   */
+  void copyFrom(Vector* src) throw(RangeError);
 
   /// Cast to numpy array inplace.
   void toNumpyArrayInplace(float** view_data, int* dim1) throw(UnsupportError);
@@ -259,6 +303,9 @@ public:
   /// Return is GPU vector or not.
   bool isGpu() const;
 
+  /// Return a list of float, the memory is alloced and copied.
+  FloatArray getData() const;
+
   /// __len__ in python
   size_t getSize() const;
 
@@ -274,30 +321,38 @@ private:
 struct IVectorPrivate;
 class IVector {
   IVector();
-  DISABLE_COPY_AND_ASSIGN(IVector);
+  DISABLE_COPY(IVector);
   static IVector* createByPaddleVectorPtr(void* ptr);
 
 public:
   /// Create IVector filled with zero
-  static IVector* createZero(size_t sz, bool useGpu = false);
+  static IVector* createZero(size_t sz, bool useGpu = isUsingGpu());
 
   /**
    * Create IVector from list of int.
    * It will create a new vector, and copy data into it.
    */
-  static IVector* create(const std::vector<int>& data, bool useGpu = false);
+  static IVector* create(const std::vector<int>& data,
+                         bool useGpu = isUsingGpu());
+
+  static IVector* createVectorFromNumpy(
+      int* data,
+      int dim,
+      bool copy = true,
+      bool useGpu = isUsingGpu()) throw(UnsupportError);
 
   /**
    * Create Cpu IVector from numpy array, which dtype=int32
    *
    * If copy is false, it will create vector inplace
    */
-  static IVector* createCpuVectorFromNumpy(int* data, int dim,
-                                           bool copy = false);
+  static IVector* createCpuVectorFromNumpy(int* data,
+                                           int dim,
+                                           bool copy = true);
   /**
    * Create Gpu IVector from numpy array, which dtype=int32
    */
-  static IVector* createGpuVectorFromNumy(int* data, int dim);
+  static IVector* createGpuVectorFromNumpy(int* data, int dim);
 
   /// Cast to numpy array inplace.
   void toNumpyArrayInplace(int** view_data, int* dim1) throw(UnsupportError);
@@ -346,7 +401,7 @@ struct ArgumentsPrivate;
 class Arguments {
 private:
   Arguments();  // Internal Create.
-  DISABLE_COPY_AND_ASSIGN(Arguments);
+  DISABLE_COPY(Arguments);
 
 public:
   /**
@@ -372,6 +427,7 @@ public:
    * the param idx is the slot id
    */
   Matrix* getSlotValue(size_t idx) const throw(RangeError);
+  Matrix* getSlotGrad(size_t idx) const throw(RangeError);
   IVector* getSlotIds(size_t idx) const throw(RangeError);
   Matrix* getSlotIn(size_t idx) const throw(RangeError);
   IVector* getSlotSequenceStartPositions(size_t idx) const throw(RangeError);
@@ -388,6 +444,7 @@ public:
    * The other param is the input Matrix or vector.
    */
   void setSlotValue(size_t idx, Matrix* mat) throw(RangeError);
+  void setSlotGrad(size_t idx, Matrix* mat) throw(RangeError);
   void setSlotIn(size_t idx, Matrix* mat) throw(RangeError);
   void setSlotIds(size_t idx, IVector* vec) throw(RangeError);
   void setSlotSequenceStartPositions(size_t idx,
@@ -396,8 +453,11 @@ public:
                                         IVector* vec) throw(RangeError);
   void setSlotSequenceDim(size_t idx, IVector* vec) throw(RangeError);
 
+  float sum() const;
+
 private:
   static Arguments* createByPaddleArgumentVector(void* ptr);
+  static Arguments* createByPaddleArgument(const void* ptr);
   void* getInternalArgumentsPtr() const;
 
 private:
@@ -414,7 +474,7 @@ enum GradientMatchineCreateMode {
 
 struct ParameterConfigPrivate;
 class ParameterConfig {
-  DISABLE_COPY_AND_ASSIGN(ParameterConfig);
+  DISABLE_COPY(ParameterConfig);
   ParameterConfig();
 
   /**
@@ -444,7 +504,7 @@ private:
 
 struct OptimizationConfigPrivate;
 class OptimizationConfig {
-  DISABLE_COPY_AND_ASSIGN(OptimizationConfig);
+  DISABLE_COPY(OptimizationConfig);
   OptimizationConfig();
 
 public:
@@ -461,6 +521,7 @@ private:
 
   friend class TrainerConfig;
   friend class ParameterOptimizer;
+  friend class ParameterUpdater;
   friend class Trainer;
 };
 
@@ -468,7 +529,7 @@ struct ParameterPrivate;
 class Parameter {
 private:
   Parameter();
-  DISABLE_COPY_AND_ASSIGN(Parameter);
+  DISABLE_COPY(Parameter);
 
 public:
   virtual ~Parameter();
@@ -489,6 +550,13 @@ public:
   size_t getID() const;
 
   ParameterConfig* getConfig();
+  void setValueUpdated();
+
+  bool save(const std::string& filename) const;
+
+  bool load(const std::string& filename) const;
+
+  size_t getSize() const;
 
 private:
   static Parameter* createFromRawPtr(void* ptr);
@@ -498,6 +566,7 @@ private:
   ParameterPrivate* m;
   friend class UpdateCallbackWrapper;
   friend class GradientMachine;
+  friend class ParameterUpdater;
 };
 
 struct ModelConfigPrivate;
@@ -509,7 +578,7 @@ struct ModelConfigPrivate;
 class ModelConfig {
 private:
   ModelConfig();
-  DISABLE_COPY_AND_ASSIGN(ModelConfig);
+  DISABLE_COPY(ModelConfig);
 
 public:
   virtual ~ModelConfig();
@@ -530,7 +599,7 @@ struct TrainerConfigPrivate;
 class TrainerConfig {
 private:
   TrainerConfig();
-  DISABLE_COPY_AND_ASSIGN(TrainerConfig);
+  DISABLE_COPY(TrainerConfig);
 
 public:
   virtual ~TrainerConfig();
@@ -570,13 +639,14 @@ public:
 
 struct ParameterTraverseCallbackPrivate;
 class ParameterTraverseCallback {
-  DISABLE_COPY_AND_ASSIGN(ParameterTraverseCallback);
+  DISABLE_COPY(ParameterTraverseCallback);
   ParameterTraverseCallback();
 
 public:
   ~ParameterTraverseCallback();
 
-  void apply(const std::vector<Vector*>& vecs, const ParameterConfig& config,
+  void apply(const std::vector<Vector*>& vecs,
+             const ParameterConfig& config,
              size_t sparseId);
 
 private:
@@ -591,7 +661,7 @@ private:
  */
 struct ParameterOptimizerPrivate;
 class ParameterOptimizer {
-  DISABLE_COPY_AND_ASSIGN(ParameterOptimizer);
+  DISABLE_COPY(ParameterOptimizer);
   ParameterOptimizer();
 
 public:
@@ -609,7 +679,8 @@ public:
 
   void finishBatch();
 
-  void update(const std::vector<Vector*>& vecs, const ParameterConfig& conf,
+  void update(const std::vector<Vector*>& vecs,
+              const ParameterConfig& conf,
               size_t sparseId = NO_SPARSE_ID);
 
   std::vector<int> getParameterTypes() const;
@@ -622,12 +693,12 @@ private:
 };
 
 class SequenceGenerator;
-
+class Evaluator;
 struct GradientMachinePrivate;
 class GradientMachine {
 private:
   GradientMachine();
-  DISABLE_COPY_AND_ASSIGN(GradientMachine);
+  DISABLE_COPY(GradientMachine);
 
 public:
   virtual ~GradientMachine();
@@ -649,8 +720,26 @@ public:
    * model config by TrainerConfig
    */
   static GradientMachine* createByModelConfig(
-      ModelConfig* conf, GradientMatchineCreateMode mode = CREATE_MODE_NORMAL,
+      ModelConfig* conf,
+      GradientMatchineCreateMode mode = CREATE_MODE_NORMAL,
       const std::vector<int>& parameterTypes = defaultParamTypes);
+
+  /**
+   * @brief finish
+   */
+  void finish();
+
+  void start();
+
+  /**
+   * Prefetch row ids of sparse parameter.
+   */
+  void prefetch(const Arguments& inArgs);
+
+  /**
+   * Do some thing when train pass ended.
+   */
+  void onPassEnd();
 
   /**
    * The forward stage of GradientMachine.
@@ -672,7 +761,8 @@ public:
   /**
    * Combine forward/backward
    */
-  void forwardBackward(const Arguments& inArgs, Arguments* outArgs,
+  void forwardBackward(const Arguments& inArgs,
+                       Arguments* outArgs,
                        PassType passType,
                        const UpdateCallback& callback = UpdateCallback());
 
@@ -681,9 +771,12 @@ public:
   size_t getParameterSize() const;
   Parameter* getParameter(size_t i) throw(RangeError);
 
+  size_t getNonStaticParameterSize() const;
+  Parameter* getNonStaticParameter(size_t i) throw(RangeError);
+
   void randParameters();
 
-  Matrix* getLayerOutput(const std::string& layerName) const
+  Arguments* getLayerOutput(const std::string& layerName) const
       throw(UnsupportError);
 
   /**
@@ -693,19 +786,135 @@ public:
    */
   SequenceGenerator* asSequenceGenerator(
       const std::vector<std::string>& dict = std::vector<std::string>(),
-      size_t begin_id = 0UL, size_t end_id = 0UL, size_t max_length = 100UL,
+      size_t begin_id = 0UL,
+      size_t end_id = 0UL,
+      size_t max_length = 100UL,
       size_t beam_size = -1UL);
+
+  Evaluator* makeEvaluator();
+
+  void eval(Evaluator* evaluator);
 
 private:
   GradientMachinePrivate* m;
 
   static GradientMachine* createFromPaddleModelPtr(
-      const void* confPtr, GradientMatchineCreateMode mode,
+      const void* confPtr,
+      GradientMatchineCreateMode mode,
       const std::vector<int>& types);
 
   // Not to use c++ 11 init-list, so we use static var as function default arg.
   static std::vector<int> defaultParamTypes;
   friend class Trainer;
+  friend class ParameterUpdater;
+};
+
+struct ParameterUpdaterPrivate;
+class ParameterUpdater {
+private:
+  ParameterUpdater();
+
+public:
+  static ParameterUpdater* createLocalUpdater(OptimizationConfig* config);
+  static ParameterUpdater* createRemoteUpdater(OptimizationConfig* config,
+                                               int passCount);
+  ~ParameterUpdater();
+
+  /**
+   * @brief initialize Parameter Updater by GradientMachine.
+   * @param gm
+   */
+  void init(const GradientMachine& gm);
+
+  /**
+   * @brief begin of a training/testing of one pass.
+   */
+  void startPass();
+
+  /**
+   * @brief end of a traning/testing of one pass.
+   */
+  void finishPass();
+
+  /**
+   * @brief begin of a training/testing of one batch.
+   * @param data batch's size
+   * @return PassType, mostly will be training.
+   */
+  PassType startBatch(size_t batchSize);
+
+  /**
+   * @brief end of a traning/testing of one batch
+   * @param cost current batch cost.
+   */
+  void finishBatch(float cost);
+
+  /**
+   * @brief update a parameter (by local optimizer or by cluster pserver)
+   * @param param
+   */
+  void update(Parameter* param);
+
+  /**
+   * @brief restore the average parameter.
+   * @note It is only used in AverageOptimizer. Restore will get the current
+   * PARAMETER_VALUE back.
+   */
+  void restore();
+
+  /**
+   * @brief apply. Store the average parameter.
+   * @note It is only used in AverageOptimizer. Apply will store the current
+   * PARAMETER_VALUE to buffer, calcaualte current Average Parameter, and save
+   * it to PARAMETER_VALUE.
+   */
+  void apply();
+
+  /**
+   * @brief catchUpWith The Regularization will be delayed in many situations(
+   * pserver, local sparse). Catch Up means catch the regularization up, apply
+   * regularization to all params.
+   */
+  void catchUpWith();
+
+private:
+  ParameterUpdaterPrivate* m;
+};
+
+struct EvaluatorPrivate;
+class Evaluator {
+private:
+  Evaluator();
+  DISABLE_COPY(Evaluator);
+
+public:
+  ~Evaluator();
+
+  /**
+   * @brief begin an evaluate stage.
+   */
+  void start();
+
+  /**
+   * @brief end an evaluate stage.
+   */
+  void finish();
+
+  /**
+   * @brief toString will get a evaluate result.
+   *
+   * __repr__ method in python
+   */
+  std::string toString();
+
+  std::vector<std::string> getNames() const;
+
+  double getValue(const std::string name) const;
+
+private:
+  EvaluatorPrivate* m;
+
+  friend class GradientMachine;
 };
 
 struct TrainerPrivate;
@@ -714,7 +923,7 @@ private:
   TrainerPrivate* m;
   Trainer();
   Trainer(TrainerConfig* optConfig, GradientMachine* gm);
-  DISABLE_COPY_AND_ASSIGN(Trainer);
+  DISABLE_COPY(Trainer);
 
 public:
   virtual ~Trainer();
@@ -722,8 +931,8 @@ public:
   /// Create A Trainer By TrainerConfig. using paddle command line.
   static Trainer* createByCommandLine() throw(IOError);
 
-  static Trainer* create(TrainerConfig* optConfig, GradientMachine* gm)
-      throw(IOError);
+  static Trainer* create(TrainerConfig* optConfig,
+                         GradientMachine* gm) throw(IOError);
 
   /// Start training
   void startTrain();
@@ -754,7 +963,7 @@ public:
 
   Arguments* getForwardOutput();
 
-  Matrix* getLayerOutput(const std::string& layerName);
+  Arguments* getLayerOutput(const std::string& layerName) const;
 };
 
 /// the N-Best results generated from one input sequence.
@@ -780,7 +989,7 @@ public:
 
 struct SequenceGeneratorPrivate;
 class SequenceGenerator {
-  DISABLE_COPY_AND_ASSIGN(SequenceGenerator);
+  DISABLE_COPY(SequenceGenerator);
   SequenceGenerator();
 
 public:

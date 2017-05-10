@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <paddle/utils/PythonUtil.h>
 #include <gtest/gtest.h>
-#include <vector>
+#include <paddle/utils/PythonUtil.h>
 #include <paddle/utils/Util.h>
+#include <vector>
 #include "paddle/math/SparseMatrix.h"
 
 using namespace paddle;  // NOLINT
@@ -23,7 +23,10 @@ using namespace paddle;  // NOLINT
 const int height = 10;
 const int width = 16;
 
-real f(Matrix& mat1, const Matrix& mat2, IVector& vec1, const IVector& vec2,
+real f(Matrix& mat1,
+       const Matrix& mat2,
+       IVector& vec1,
+       const IVector& vec2,
        real scalar) {
   CHECK(!mat1.useGpu());
   CHECK(!mat2.useGpu());
@@ -37,8 +40,11 @@ real f(Matrix& mat1, const Matrix& mat2, IVector& vec1, const IVector& vec2,
 
 class Functor {
 public:
-  real operator()(Matrix& mat1, const Matrix& mat2, IVector& vec1,
-                  const IVector& vec2, real scalar) {
+  real operator()(Matrix& mat1,
+                  const Matrix& mat2,
+                  IVector& vec1,
+                  const IVector& vec2,
+                  real scalar) {
     a_ = f(mat1, mat2, vec1, vec2, scalar);
     return a_;
   }
@@ -93,9 +99,13 @@ TEST(ExecViaCpu, test1) {
   testWrapper(f);
   testWrapper(&f);
 
-  auto lambda =
-      [](Matrix& mat1, const Matrix& mat2, IVector& vec1, const IVector& vec2,
-         real scalar) -> real { return f(mat1, mat2, vec1, vec2, scalar); };
+  auto lambda = [](Matrix& mat1,
+                   const Matrix& mat2,
+                   IVector& vec1,
+                   const IVector& vec2,
+                   real scalar) -> real {
+    return f(mat1, mat2, vec1, vec2, scalar);
+  };
   LOG(INFO) << "lambda is_class=" << std::is_class<decltype(lambda)>::value
             << " is_function=" << std::is_function<decltype(lambda)>::value;
   testWrapper(lambda);
@@ -104,9 +114,3 @@ TEST(ExecViaCpu, test1) {
   testWrapper(functor);
 }
 #endif
-
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

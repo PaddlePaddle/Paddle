@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,8 @@ namespace paddle {
 REGISTER_PROJECTION_CREATE_FUNC(pool, &PoolProjection::create);
 
 PoolProjection::PoolProjection(const ProjectionConfig& config,
-                               ParameterPtr parameter, bool useGpu)
+                               ParameterPtr parameter,
+                               bool useGpu)
     : Projection(config, parameter, useGpu) {
   const PoolConfig& conf = config_.pool_conf();
   poolType_ = conf.pool_type();
@@ -47,9 +48,15 @@ size_t PoolProjection::getSize() {
   if (imgSize_ == 0) {
     imgSize_ = conf.img_size();
   }
-  outputY_ = outputSize(imgSizeY_, sizeY_, confPaddingY_, strideY_,
+  outputY_ = outputSize(imgSizeY_,
+                        sizeY_,
+                        confPaddingY_,
+                        strideY_,
                         /* caffeMode */ false);
-  outputX_ = outputSize(imgSize_, sizeX_, confPadding_, stride_,
+  outputX_ = outputSize(imgSize_,
+                        sizeX_,
+                        confPadding_,
+                        stride_,
                         /* caffeMode */ false);
 
   const_cast<Argument*>(out_)->setFrameHeight(outputY_);
@@ -59,7 +66,8 @@ size_t PoolProjection::getSize() {
 }
 
 PoolProjection* PoolProjection::create(const ProjectionConfig& config,
-                                       ParameterPtr parameter, bool useGpu) {
+                                       ParameterPtr parameter,
+                                       bool useGpu) {
   const std::string& pool = config.pool_conf().pool_type();
   if (pool == "max-projection") {
     return new MaxPoolProjection(config, parameter, useGpu);
@@ -76,8 +84,17 @@ void MaxPoolProjection::forward() {
   CHECK_EQ(width, out_->value->getWidth());
   MatrixPtr inputV = in_->value;
   MatrixPtr outV = out_->value;
-  outV->maxPoolForward(*inputV, imgSizeY_, imgSize_, channels_, sizeX_, sizeY_,
-                       strideY_, stride_, outputY_, outputX_, confPaddingY_,
+  outV->maxPoolForward(*inputV,
+                       imgSizeY_,
+                       imgSize_,
+                       channels_,
+                       sizeX_,
+                       sizeY_,
+                       strideY_,
+                       stride_,
+                       outputY_,
+                       outputX_,
+                       confPaddingY_,
                        confPadding_);
 }
 
@@ -91,9 +108,21 @@ void MaxPoolProjection::backward(const UpdateCallback& callback) {
   if (NULL == inputGrad) {
     return;
   }
-  inputGrad->maxPoolBackward(*inputV, imgSizeY_, imgSize_, *outGrad, *outV,
-                             sizeX_, sizeY_, strideY_, stride_, outputY_,
-                             outputX_, 1, 1, confPaddingY_, confPadding_);
+  inputGrad->maxPoolBackward(*inputV,
+                             imgSizeY_,
+                             imgSize_,
+                             *outGrad,
+                             *outV,
+                             sizeX_,
+                             sizeY_,
+                             strideY_,
+                             stride_,
+                             outputY_,
+                             outputX_,
+                             1,
+                             1,
+                             confPaddingY_,
+                             confPadding_);
 }
 
 void AvgPoolProjection::forward() {
@@ -101,8 +130,17 @@ void AvgPoolProjection::forward() {
   CHECK_EQ(width, out_->value->getWidth());
   MatrixPtr inputV = in_->value;
   MatrixPtr outV = out_->value;
-  outV->avgPoolForward(*inputV, imgSizeY_, imgSize_, channels_, sizeX_, sizeY_,
-                       strideY_, stride_, outputY_, outputX_, confPaddingY_,
+  outV->avgPoolForward(*inputV,
+                       imgSizeY_,
+                       imgSize_,
+                       channels_,
+                       sizeX_,
+                       sizeY_,
+                       strideY_,
+                       stride_,
+                       outputY_,
+                       outputX_,
+                       confPaddingY_,
                        confPadding_);
 }
 
@@ -116,8 +154,18 @@ void AvgPoolProjection::backward(const UpdateCallback& callback) {
     return;
   }
 
-  inputGrad->avgPoolBackward(*outputGrad, imgSizeY_, imgSize_, sizeX_, sizeY_,
-                             strideY_, stride_, outputY_, outputX_, 1, 1,
-                             confPaddingY_, confPadding_);
+  inputGrad->avgPoolBackward(*outputGrad,
+                             imgSizeY_,
+                             imgSize_,
+                             sizeX_,
+                             sizeY_,
+                             strideY_,
+                             stride_,
+                             outputY_,
+                             outputX_,
+                             1,
+                             1,
+                             confPaddingY_,
+                             confPadding_);
 }
 }  // namespace paddle

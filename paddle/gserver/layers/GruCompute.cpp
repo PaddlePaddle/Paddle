@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,22 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include "paddle/utils/Util.h"
 #include "GruCompute.h"
 #include "hl_recurrent_apply.cuh"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 
 void GruCompute::init(LayerConfig &config) {
-    activeNode_ = hlActiveType(config.active_type());
-    activeGate_ = hlActiveType(config.active_gate_type());
+  activeNode_ = hlActiveType(config.active_type());
+  activeGate_ = hlActiveType(config.active_gate_type());
 }
 
 template <>
-void GruCompute::forward<0>(hl_gru_value value,
-                            int frameSize,
-                            int batchSize) {
+void GruCompute::forward<0>(hl_gru_value value, int frameSize, int batchSize) {
   hl_cpu_gru_forward(hppl::forward::gru_resetOutput(),
                      hppl::forward::gru_finalOutput(),
                      value,
@@ -39,17 +36,17 @@ void GruCompute::forward<0>(hl_gru_value value,
 
 template <>
 void GruCompute::backward<0>(hl_gru_value value,
-                            hl_gru_grad  grad,
-                            int frameSize,
-                            int batchSize) {
-hl_cpu_gru_backward(hppl::backward::gru_stateGrad(),
-                    hppl::backward::gru_resetGrad(),
-                    value,
-                    grad,
-                    frameSize,
-                    batchSize,
-                    activeNode_,
-                    activeGate_);
+                             hl_gru_grad grad,
+                             int frameSize,
+                             int batchSize) {
+  hl_cpu_gru_backward(hppl::backward::gru_stateGrad(),
+                      hppl::backward::gru_resetGrad(),
+                      value,
+                      grad,
+                      frameSize,
+                      batchSize,
+                      activeNode_,
+                      activeGate_);
 }
 
 }  // namespace paddle

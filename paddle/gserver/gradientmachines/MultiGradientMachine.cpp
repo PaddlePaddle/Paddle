@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "MultiGradientMachine.h"
 
 #include "paddle/utils/Logging.h"
@@ -22,34 +21,28 @@ limitations under the License. */
 #include "NeuralNetwork.h"
 #include "ParallelNeuralNetwork.h"
 
-P_DEFINE_bool(allow_only_one_model_on_one_gpu, true,
-              "If true, do not allow multiple models on one GPU device");
-#ifdef PADDLE_METRIC_LEARNING
-P_DECLARE_bool(external);
-#endif
+DEFINE_bool(allow_only_one_model_on_one_gpu,
+            true,
+            "If true, do not allow multiple models on one GPU device");
 
 namespace paddle {
 
 // get types of the parameters which need to be merged after backward()
 static void fillMergeTypes(PassType passType,
-    std::vector<ParameterType>* mergeTypes) {
+                           std::vector<ParameterType>* mergeTypes) {
   mergeTypes->clear();
   if (passType != PASS_TEST) {
     mergeTypes->push_back(PARAMETER_GRADIENT);
   }
 }
 
-MultiGradientMachine::MultiGradientMachine(
-    const ModelConfig& config, bool useGpu)
+MultiGradientMachine::MultiGradientMachine(const ModelConfig& config,
+                                           bool useGpu)
     : useGpu_(useGpu),
       trainerBarrier_(FLAGS_trainer_count),
       allBarrier_(FLAGS_trainer_count + 1),
       inArgsCopied_(false) {
-#ifdef PADDLE_METRIC_LEARNING
-  isPassGrad_ = FLAGS_external;
-#else
   isPassGrad_ = false;
-#endif
   numThreads_ = FLAGS_trainer_count;
   if (useGpu) {
     //! TODO(yuyang18): When useGpu=false && paddle is not compiled with gpu,
@@ -65,13 +58,11 @@ MultiGradientMachine::MultiGradientMachine(
     if (para->useGpu()) return;
 
     if (para->isSparseRemoteUpdate()) {
-      para->enableType(
-        PARAMETER_VALUE,
-        FLAGS_loadsave_parameters_in_pserver
-          ? Parameter::MAT_SPARSE_ROW_PREFETCH
-          : Parameter::MAT_SPARSE_ROW_PREFETCH_FULL_SIZE);
-      para->enableType(
-        PARAMETER_GRADIENT, Parameter::MAT_SPARSE_ROW);
+      para->enableType(PARAMETER_VALUE,
+                       FLAGS_loadsave_parameters_in_pserver
+                           ? Parameter::MAT_SPARSE_ROW_PREFETCH
+                           : Parameter::MAT_SPARSE_ROW_PREFETCH_FULL_SIZE);
+      para->enableType(PARAMETER_GRADIENT, Parameter::MAT_SPARSE_ROW);
     } else if (para->isGradSparseUpdate()) {
       para->enableType(PARAMETER_VALUE);
       para->enableType(PARAMETER_GRADIENT, Parameter::MAT_SPARSE_ROW_IDS);
@@ -100,17 +91,16 @@ MultiGradientMachine::MultiGradientMachine(
   if (useGpu_) {
     numLogicalDevices_ = 1;
 
-    for (size_t pid = 0; pid  < parameters_.size(); pid++) {
+    for (size_t pid = 0; pid < parameters_.size(); pid++) {
       if (parameters_[pid]->getConfig().device() + 1 > numLogicalDevices_) {
         numLogicalDevices_ = parameters_[pid]->getConfig().device() + 1;
       }
     }
     LOG(INFO) << "numLogicalDevices=" << numLogicalDevices_
-              << " numThreads=" << numThreads_
-              << " numDevices=" << numDevices_;
+              << " numThreads=" << numThreads_ << " numDevices=" << numDevices_;
 
-    if (numLogicalDevices_ * numThreads_ > numDevices_
-        && FLAGS_allow_only_one_model_on_one_gpu) {
+    if (numLogicalDevices_ * numThreads_ > numDevices_ &&
+        FLAGS_allow_only_one_model_on_one_gpu) {
       LOG(FATAL) << "trainer_count * num_devices_in_model "
                  << "(" << numThreads_ << "*" << numLogicalDevices_ << ")"
                  << "=" << numThreads_ * numLogicalDevices_
@@ -130,11 +120,7 @@ MultiGradientMachine::MultiGradientMachine(
   }
 
   for (int i = 0; i < numThreads_; ++i) {
-    threads_.emplace_back(
-        new TrainerThread(
-            config,
-            i,
-            this));
+    threads_.emplace_back(new TrainerThread(config, i, this));
   }
 
   bufferSizes_.resize(numLogicalDevices_, 0);
@@ -162,7 +148,7 @@ MultiGradientMachine::MultiGradientMachine(
 
   // combination of all trainers mainPara into GradientMachine parameters
   hasNonstaticCpuParamters_ = false;
-  for (size_t pid = 0; pid  < parameters_.size(); pid++) {
+  for (size_t pid = 0; pid < parameters_.size(); pid++) {
     if (parameters_[pid]->useGpu()) {
       parameters_[pid] = threads_[paraMainThread_[pid]]->getParameters()[pid];
     } else if (!parameters_[pid]->isStatic()) {
@@ -209,7 +195,7 @@ void MultiGradientMachine::allocGradBufs() {
       SetDevice device(logicalDeviceId2RealDeviceId(d, i));
       for (size_t j = 0; j < mergeTypes_.size(); j++) {
         gradBufs_[i][d].bufs.push_back(
-          Vector::create(bufferSizes_[d], /* useGpu= */true));
+            Vector::create(bufferSizes_[d], /* useGpu= */ true));
       }
     }
   }
@@ -249,18 +235,16 @@ void MultiGradientMachine::prefetch(const std::vector<Argument>& inArgs) {
   }
 }
 
-void MultiGradientMachine::forward(
-    const std::vector<Argument>& inArgs,
-    std::vector<Argument>* outArgs,
-    PassType passType) {
+void MultiGradientMachine::forward(const std::vector<Argument>& inArgs,
+                                   std::vector<Argument>* outArgs,
+                                   PassType passType) {
   forwardImp(inArgs, outArgs, passType, TASK_FORWARD);
 }
 
-void MultiGradientMachine::forwardImp(
-    const std::vector<Argument>& inArgs,
-    std::vector<Argument>* outArgs,
-    PassType passType,
-    TaskType taskType) {
+void MultiGradientMachine::forwardImp(const std::vector<Argument>& inArgs,
+                                      std::vector<Argument>* outArgs,
+                                      PassType passType,
+                                      TaskType taskType) {
   updateThreadParameters();
   passType_ = passType;
 
@@ -282,18 +266,28 @@ void MultiGradientMachine::backward(const UpdateCallback& callback) {
   backwardImp(callback);
 }
 
-void MultiGradientMachine::forwardBackward(
-    const std::vector<Argument>& inArgs,
-    std::vector<Argument>* outArgs,
-    PassType passType,
-    const UpdateCallback& callback) {
+void MultiGradientMachine::forwardBackward(const std::vector<Argument>& inArgs,
+                                           std::vector<Argument>* outArgs,
+                                           PassType passType,
+                                           const UpdateCallback& callback) {
   backwardCallback_ = callback;
   forwardImp(inArgs, outArgs, passType, TASK_FORWARD_BACKWARD);
   backwardImp(callback);
 }
 
-void MultiGradientMachine::backwardImp(
-    const UpdateCallback& callback) {
+Argument MultiGradientMachine::getLayerOutput(const std::string& layerName) {
+  std::vector<Argument> args;
+  args.reserve(threads_.size());
+
+  for (auto& thread : threads_) {
+    args.push_back(thread->getGradientMachine()->getLayerOutput(layerName));
+  }
+  outLayerArgs_.concat(args, false /* use_gpu */, outArgStream_, passType_);
+
+  return outLayerArgs_;
+}
+
+void MultiGradientMachine::backwardImp(const UpdateCallback& callback) {
   for (size_t i = 0; i < parameters_.size(); i++) {
     if (!parameters_[i]->useGpu() || parameters_[i]->isStatic()) continue;
     REGISTER_TIMER("controller_dequeue");
@@ -338,32 +332,38 @@ void MultiGradientMachine::finish() {
   }
 }
 
-Evaluator* MultiGradientMachine::makeEvaluator() {
+Evaluator* MultiGradientMachine::makeEvaluator() const {
   return threads_[0]->getGradientMachine()->makeEvaluator();
 }
 
-void MultiGradientMachine::eval(Evaluator* evaluator) {
+void MultiGradientMachine::eval(Evaluator* evaluator) const {
   for (auto& thread : threads_) {
     SetDevice device(thread->getDeviceId());
-    thread->getGradientMachine()->eval(evaluator);
+    if (thread->hasInputData()) {
+      thread->getGradientMachine()->eval(evaluator);
+    }
   }
 }
 
-void MultiGradientMachine::getOutArgs(
-    std::vector<Argument>* outArgs,
-    PassType passType) {
+void MultiGradientMachine::getOutArgs(std::vector<Argument>* outArgs,
+                                      PassType passType) {
   for (auto& thread : threads_) {
     REGISTER_TIMER("waitOutArgs");
     thread->waitOutArgsReady();
   }
-  outArgs_.resize(threads_[0]->getOutArgs().size());
+
+  outArgs_.resize(threads_[threads_.size() - 1]->getOutArgs().size());
 
   REGISTER_TIMER("copyOutArgs");
   for (size_t i = 0; i < outArgs_.size(); ++i) {
     std::vector<Argument> args;
     args.reserve(threads_.size());
     for (auto& thread : threads_) {
-      args.push_back(thread->getOutArgs()[i]);
+      // If the thread input is empty, then the output is empty.
+      auto tmp = thread->getOutArgs();
+      if (tmp.size() > 0) {
+        args.push_back(tmp[i]);
+      }
     }
     outArgs_[i].concat(args, useGpu_, outArgStream_, passType);
   }
@@ -374,7 +374,6 @@ void MultiGradientMachine::getOutArgs(
 
   *outArgs = outArgs_;
 }
-
 
 void MultiGradientMachine::setOutputGrad(const std::vector<Argument>& args) {
   CHECK_EQ(args.size(), outArgs_.size());
@@ -390,10 +389,9 @@ void MultiGradientMachine::startTask(TaskType taskType) {
   }
 }
 
-TrainerThread::TrainerThread(
-    const ModelConfig& config,
-    int threadId,
-    MultiGradientMachine* multiMachine)
+TrainerThread::TrainerThread(const ModelConfig& config,
+                             int threadId,
+                             MultiGradientMachine* multiMachine)
     : multiMachine_(multiMachine),
       config_(config),
       threadId_(threadId),
@@ -407,8 +405,9 @@ TrainerThread::TrainerThread(
 
   partnerId_ = mod(threadId_ - 1, numThreads);
 
-  deviceId_ = !multiMachine_->useGpu() ? -1
-      : multiMachine_->logicalDeviceId2RealDeviceId(0, threadId_);
+  deviceId_ = !multiMachine_->useGpu()
+                  ? -1
+                  : multiMachine_->logicalDeviceId2RealDeviceId(0, threadId_);
   SetDevice gpuDevice(deviceId_);
 
   NeuralNetwork* nn = nullptr;
@@ -418,22 +417,20 @@ TrainerThread::TrainerThread(
     nn = new ParallelNeuralNetwork();
     for (auto& paraConfig : *config_.mutable_parameters()) {
       if (paraConfig.device() != -1) {
-        paraConfig.set_device(
-          multiMachine_->logicalDeviceId2RealDeviceId(
+        paraConfig.set_device(multiMachine_->logicalDeviceId2RealDeviceId(
             paraConfig.device(), threadId_));
       }
     }
     for (auto& layerConfig : *config_.mutable_layers()) {
       if (layerConfig.device() != -1) {
-        layerConfig.set_device(
-          multiMachine_->logicalDeviceId2RealDeviceId(
+        layerConfig.set_device(multiMachine_->logicalDeviceId2RealDeviceId(
             layerConfig.device(), threadId_));
       }
     }
   }
   // Only GPU do not share parameter values with main paramters.
-  ParamInitCallback slaveParamInitCb = std::bind(parameterInitNN, _1, _2,
-                                                 &mainParas);
+  ParamInitCallback slaveParamInitCb =
+      std::bind(parameterInitNN, _1, _2, &mainParas);
   nn->init(config_, slaveParamInitCb);
   gradientMachine_.reset(nn);
   parameters_ = gradientMachine_->getParameters();
@@ -443,9 +440,8 @@ TrainerThread::TrainerThread(
     }
   }
 
-  backwardCallback_ = std::bind(
-      &TrainerThread::backwardCallback,
-      this, std::placeholders::_1);
+  backwardCallback_ =
+      std::bind(&TrainerThread::backwardCallback, this, std::placeholders::_1);
 
   gradStream_ = HPPL_STREAM_2;
   valueStream_ = HPPL_STREAM_3;
@@ -454,25 +450,21 @@ TrainerThread::TrainerThread(
   parameterUpdated_ = false;
 }
 
-TrainerThread::~TrainerThread() {
-  stop();
-}
+TrainerThread::~TrainerThread() { stop(); }
 
 void TrainerThread::start() {
-  gradientMachine_->start(*(TrainerConfig*)nullptr, (DataProviderPtr)nullptr);
+  gradientMachine_->start();
 
-  computeThread_.reset(new std::thread(
-      [this](){ computeThread(); }));
+  computeThread_.reset(new std::thread([this]() { computeThread(); }));
 
   if (multiMachine_->useGpu()) {
-    gradCollectThread_.reset(new std::thread(
-      [this](){ gradCollectThread(); }));
+    gradCollectThread_.reset(
+        new std::thread([this]() { gradCollectThread(); }));
 
-    valueDispatchThread_.reset(new std::thread(
-      [this](){ valueDispatchThread(); }));
+    valueDispatchThread_.reset(
+        new std::thread([this]() { valueDispatchThread(); }));
 
-    copyThread_.reset(new std::thread(
-      [this](){ copyGradToBufferThread(); }));
+    copyThread_.reset(new std::thread([this]() { copyGradToBufferThread(); }));
   }
 }
 
@@ -542,7 +534,7 @@ void TrainerThread::prefetch() {
 void TrainerThread::forward() {
   if (!inArgsCopied_) {
     REGISTER_TIMER("copyInArgs");
-    copyInArgs();
+    batchSize_ = copyInArgs();
   } else {
     inArgsCopied_ = false;
   }
@@ -565,20 +557,19 @@ void TrainerThread::forward() {
 
   {
     REGISTER_TIMER("wait_value");
-    valueReadyCond_.wait(
-        [this]() {
-          return !parameterUpdated_;
-        });
+    valueReadyCond_.wait([this]() { return !parameterUpdated_; });
   }
 
-  {
-    fillMergeTypes(multiMachine_->getPassType(), &mergeTypes_);
-  }
+  { fillMergeTypes(multiMachine_->getPassType(), &mergeTypes_); }
 
   {
     REGISTER_TIMER("thread_forward");
-    gradientMachine_->forward(
-        inArgs_, &outArgs_, multiMachine_->getPassType());
+    if (batchSize_ > 0) {
+      gradientMachine_->forward(
+          inArgs_, &outArgs_, multiMachine_->getPassType());
+    } else {
+      outArgs_.clear();
+    }
   }
   outArgsReadySem_.post();
 }
@@ -588,7 +579,13 @@ void TrainerThread::backward() {
   if (multiMachine_->isPassGrad()) {
     copyOutputGrad();
   }
-  gradientMachine_->backward(backwardCallback_);
+  if (batchSize_ > 0) {
+    gradientMachine_->backward(backwardCallback_);
+  } else {
+    for (size_t i = parameters_.size(); i > 0; i--) {
+      backwardCallback(parameters_[i - 1].get());
+    }
+  }
   if (multiMachine_->hasNonstaticCpuParamters()) {
     mergeCpuGradients();
   }
@@ -602,9 +599,8 @@ void TrainerThread::backwardCallback(Parameter* para) {
   if (multiMachine_->getNumThreads() == 1) {
     // no need to do merge if there is only one thread
     doCallback(paramId);
-  } else if (threadId_ ==
-             mod(multiMachine_->paraMainThread(paramId) - 1,
-                 multiMachine_->getNumThreads())) {
+  } else if (threadId_ == mod(multiMachine_->paraMainThread(paramId) - 1,
+                              multiMachine_->getNumThreads())) {
     notifyCopyGradToBuffer(paramId);
   } else {
     notifyGradientCollect(paramId);
@@ -625,7 +621,7 @@ void TrainerThread::copyGradToBufferThread() {
     if (stopping_) break;
 
     int pdeviceId = multiMachine_->realDeviceId2LogicalDeviceId(
-      parameters_[pid]->getDeviceId(), threadId_);
+        parameters_[pid]->getDeviceId(), threadId_);
 
     auto& gradBuf = gradBufs[pdeviceId];
 
@@ -639,9 +635,9 @@ void TrainerThread::copyGradToBufferThread() {
       SetDevice setDevice(parameters_[pid]->getDeviceId());
       for (size_t i = 0; i < mergeTypes_.size(); ++i) {
         gradBuf.bufs[i]->resize(
-          parameters_[pid]->getBuf(mergeTypes_[i])->getSize());
-        gradBuf.bufs[i]->copyFrom(
-            *parameters_[pid]->getBuf(mergeTypes_[i]), gradStream_);
+            parameters_[pid]->getBuf(mergeTypes_[i])->getSize());
+        gradBuf.bufs[i]->copyFrom(*parameters_[pid]->getBuf(mergeTypes_[i]),
+                                  gradStream_);
       }
       hl_stream_synchronize(gradStream_);
     }
@@ -667,7 +663,7 @@ void TrainerThread::gradCollectThread() {
     if (++gradReadyCount[pid] < 2) continue;
     gradReadyCount[pid] = 0;
     int pdeviceId = multiMachine_->realDeviceId2LogicalDeviceId(
-      parameters_[pid]->getDeviceId(), threadId_);
+        parameters_[pid]->getDeviceId(), threadId_);
 
     auto& gradBuf = gradBufs[pdeviceId];
 
@@ -741,16 +737,15 @@ void TrainerThread::valueDispatchThread() {
 
 void TrainerThread::notifyValueReady(int paramId) {
   if (--updateCounter_ == 0) {
-    valueReadyCond_.notify_all(
-        [this] { parameterUpdated_ = false; });
+    valueReadyCond_.notify_all([this] { parameterUpdated_ = false; });
   }
 
   notifyValueDispatch(paramId);
 }
 
-void TrainerThread::copyInArgs() {
+int TrainerThread::copyInArgs() {
   const std::vector<Argument>& fullInArgs = multiMachine_->getInArgs();
-  int     numThreads = multiMachine_->getAllThreads().size();
+  int numThreads = multiMachine_->getAllThreads().size();
   int32_t numSequences = fullInArgs[0].getNumSequences();
   int32_t startSeq = numSequences * threadId_ / numThreads;
   int32_t endSeq = numSequences * (threadId_ + 1) / numThreads;
@@ -764,14 +759,17 @@ void TrainerThread::copyInArgs() {
   }
 
   if (copySize == 0) {
-    return;
+    return 0;
   }
 
-  for (size_t i=0; i < fullInArgs.size(); i++) {
+  for (size_t i = 0; i < fullInArgs.size(); i++) {
     inArgs_[i].resizeAndCopyFrom(
-        fullInArgs[i], startSeq, copySize,
+        fullInArgs[i],
+        startSeq,
+        copySize,
         FLAGS_parallel_nn ? false : multiMachine_->useGpu());
   }
+  return copySize;
 }
 
 void TrainerThread::mergeCpuGradients() {
@@ -814,10 +812,8 @@ void TrainerThread::mergeGradSparse(
   std::vector<uint32_t>& ids = mainMat->getIds(threadId_);
 
   for (auto slaveParams : slaveParameters) {
-    SparseRowCpuMatrix* mat =
-        dynamic_cast<SparseRowCpuMatrix*>((*slaveParams)[pid]
-                                              ->getMat(PARAMETER_GRADIENT)
-                                              .get());
+    SparseRowCpuMatrix* mat = dynamic_cast<SparseRowCpuMatrix*>(
+        (*slaveParams)[pid]->getMat(PARAMETER_GRADIENT).get());
     mat->addTo(*mainMat, ids, threadId_, multiMachine_->getNumThreads());
     // we use a sample hash method(%) instead of range partition,
     // because range partition has balance issue sometimes,
@@ -847,9 +843,10 @@ void TrainerThread::mergeGradDense(
     Parameter* para,
     std::vector<const std::vector<ParameterPtr>*>& slaveParameters) {
   size_t pid = para->getID();
-  auto interval =
-      calcSplitArrayInterval(para->getSize(), (size_t)threadId_,
-                             multiMachine_->getNumThreads(), 8LU /*for avx*/);
+  auto interval = calcSplitArrayInterval(para->getSize(),
+                                         (size_t)threadId_,
+                                         multiMachine_->getNumThreads(),
+                                         8LU /*for avx*/);
   size_t startSeq = interval.first;
   size_t copySize = interval.second - interval.first;
 
@@ -861,8 +858,7 @@ void TrainerThread::mergeGradDense(
   CpuVector slaveGradSub(0, nullptr);
   for (auto slaveParams : slaveParameters) {
     slaveGradSub.subVecFrom(
-      *(*slaveParams)[pid]->getBuf(PARAMETER_GRADIENT),
-      startSeq, copySize);
+        *(*slaveParams)[pid]->getBuf(PARAMETER_GRADIENT), startSeq, copySize);
     destGrad.add(slaveGradSub);
   }
 }
@@ -876,7 +872,9 @@ void TrainerThread::copyOutputGrad() {
   int32_t copySize = endSeq - startSeq;
   outArgs_.resize(outputGradArgs.size());
   for (size_t i = 0; i < outputGradArgs.size(); i++) {
-    outArgs_[i].resizeAndCopyFrom(outputGradArgs[i], startSeq, copySize,
+    outArgs_[i].resizeAndCopyFrom(outputGradArgs[i],
+                                  startSeq,
+                                  copySize,
                                   multiMachine_->useGpu(),
                                   HPPL_STREAM_DEFAULT);
   }

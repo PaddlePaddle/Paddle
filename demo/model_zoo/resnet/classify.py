@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -156,7 +156,7 @@ class ImageClassifier():
             # For oversampling, average predictions across crops.
             # If not, the shape of output[name]: (1, class_number),
             # the mean is also applicable.
-            res[name] = output[name].mean(0)
+            res[name] = output[name]['value'].mean(0)
 
         return res
 

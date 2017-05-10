@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,22 +23,23 @@ using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
 static const string& configFile1 =
-              "trainer/tests/sample_trainer_config_qb_rnn.conf";
+    "trainer/tests/sample_trainer_config_qb_rnn.conf";
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_string(config);
-P_DECLARE_int32(gpu_id);
-P_DECLARE_int32(seed);
-P_DECLARE_int32(num_passes);
-P_DECLARE_int32(saving_period);
+DECLARE_bool(use_gpu);
+DECLARE_string(config);
+DECLARE_int32(gpu_id);
+DECLARE_int32(seed);
+DECLARE_int32(num_passes);
+DECLARE_int32(saving_period);
 
-P_DECLARE_int32(num_gradient_servers);
-P_DECLARE_int32(port);
-P_DECLARE_bool(local);
-P_DECLARE_bool(use_old_updater);
-P_DECLARE_bool(parallel_nn);
-P_DECLARE_string(config_args);
-P_DEFINE_double(max_diff_ratio, 0.0f,
+DECLARE_int32(num_gradient_servers);
+DECLARE_int32(port);
+DECLARE_bool(local);
+DECLARE_bool(use_old_updater);
+DECLARE_bool(parallel_nn);
+DECLARE_string(config_args);
+DEFINE_double(max_diff_ratio,
+              0.0f,
               "max diff ratio allowed for parameters value");
 
 int gNumDevices = 0;
@@ -53,8 +54,7 @@ std::vector<ParameterPtr> trainerOnePassTest(const string& configFile,
   FLAGS_config_args = sparseUpdate ? "sparse_update=1" : "sparse_update=0";
 
   LOG(INFO) << " useGpu=" << useGpu << " trainerCount=" << trainerCount
-            << " configFile=" << configFile
-            << " sparseUpdate=" << sparseUpdate;
+            << " configFile=" << configFile << " sparseUpdate=" << sparseUpdate;
   srand(FLAGS_seed);
   *ThreadLocalRand::getSeed() = FLAGS_seed;
   ThreadLocalRandomEngine::get().seed(FLAGS_seed);
@@ -91,8 +91,12 @@ std::vector<ParameterPtr>& getDenseParameters() {
   return denseParameters;
 }
 
-void checkBuffer(real* A, const char* desA, real* B, const char* desB,
-                 size_t len, double maxDiffRatio) {
+void checkBuffer(real* A,
+                 const char* desA,
+                 real* B,
+                 const char* desB,
+                 size_t len,
+                 double maxDiffRatio) {
   double maxDiff = 0;
   double maxValue = 0;
   for (size_t i = 0; i < len; ++i) {
@@ -101,10 +105,8 @@ void checkBuffer(real* A, const char* desA, real* B, const char* desB,
     maxDiff = std::max(maxDiff, diff);
   }
   EXPECT_LE(maxDiff / maxValue, maxDiffRatio);
-  LOG(INFO) << " maxDiff=" << maxDiff
-            << " maxValue=" << maxValue
-            << " maxDiff/maxValue=" << maxDiff / maxValue
-            << "\n\n";
+  LOG(INFO) << " maxDiff=" << maxDiff << " maxValue=" << maxValue
+            << " maxDiff/maxValue=" << maxDiff / maxValue << "\n\n";
 }
 
 void compareValue(const vector<ParameterPtr>& parametersA,
@@ -125,8 +127,12 @@ void compareValue(const vector<ParameterPtr>& parametersA,
 
     LOG(INFO) << "\n\n----------- PARAMETER_VALUE:  " << parameterA->getName()
               << " ; size : " << paraA.getSize() << " ------------";
-    checkBuffer(paraA.getData(), "para_A", paraB.getData(), "para_B",
-                paraA.getSize(), maxDiffRatio);
+    checkBuffer(paraA.getData(),
+                "para_A",
+                paraB.getData(),
+                "para_B",
+                paraA.getSize(),
+                maxDiffRatio);
   }
 }
 
@@ -172,8 +178,7 @@ TEST(compareSparse, multiGradientMachine) {
       if (useGpu) continue;
 #endif
       FLAGS_parallel_nn = useGpu;
-      LOG(INFO) << " local=" << local
-                << " useGpu=" << useGpu;
+      LOG(INFO) << " local=" << local << " useGpu=" << useGpu;
       int trainerCount = useGpu ? numGpu : 2;
       std::vector<ParameterPtr> parameters =
           trainerOnePassTest(configFile1, true, trainerCount, useGpu);
@@ -197,8 +202,7 @@ TEST(compareSparse, NeuralNetwork) {
       if (useGpu) continue;
 #endif
       FLAGS_parallel_nn = useGpu;
-      LOG(INFO) << " local=" << local
-                << " useGpu=" << useGpu;
+      LOG(INFO) << " local=" << local << " useGpu=" << useGpu;
       int trainerCount = 1;
       std::vector<ParameterPtr> parameters =
           trainerOnePassTest(configFile1, true, trainerCount, useGpu);

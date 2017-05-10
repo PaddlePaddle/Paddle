@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "FirstOrderOptimizer.h"
@@ -24,7 +23,8 @@ class OptimizerWithRegularizer : public ParameterOptimizer {
 public:
   static ParameterOptimizer* create(const OptimizationConfig& optConfig,
                                     const ParameterConfig& paraConfig,
-                                    bool isParameterSparse, bool inPserver);
+                                    bool isParameterSparse,
+                                    bool inPserver);
 
   OptimizerWithRegularizer(const OptimizationConfig& optConfig,
                            ParameterOptimizer* optimizer,
@@ -60,7 +60,8 @@ public:
     return optimizer_->needSpecialTraversal(config);
   }
 
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& config,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& config,
                       size_t sparseId) const {
     optimizer_->update(vecs, config, sparseId);
     regularizer_->update(vecs, config, optimizer_->getLearningRate(), 0, 1);
@@ -94,7 +95,8 @@ public:
     baseTimer_ = 0;
   }
 
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& config,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& config,
                       size_t sparseId) const {
     optimizer_->update(vecs, config, sparseId);
   }
@@ -103,7 +105,8 @@ public:
       const ParameterConfig& config) const;
   void doTraversal(const VectorPtr vecs[], const ParameterConfig& config) const;
 
-  void catchUpWith(const VectorPtr vecs[], const ParameterConfig& config,
+  void catchUpWith(const VectorPtr vecs[],
+                   const ParameterConfig& config,
                    size_t sparseId) const;
 
   virtual TraverseCallback startCatchUpWith() const;
@@ -130,9 +133,11 @@ public:
 
   virtual void init(size_t numRows, const ParameterConfig* config);
 
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& config,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& config,
                       size_t sparseId) const;
-  void catchUpWith(const VectorPtr vecs[], const ParameterConfig& config,
+  void catchUpWith(const VectorPtr vecs[],
+                   const ParameterConfig& config,
                    size_t sparseId) const;
   virtual TraverseCallback startCatchUpWith() const;
   virtual void finishCatchUpWith() {

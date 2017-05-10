@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #include "TensorLayer.h"
 
@@ -72,11 +71,13 @@ void TensorLayer::forward(PassType passType) {
     MatrixPtr input1 = getInputValue(0);
     MatrixPtr input2 = getInputValue(1);
     MatrixPtr tmpMat = Matrix::create(input2->getHeight(),
-      input2->getWidth(), /* trans= */ false, input2->useGpu());
+                                      input2->getWidth(),
+                                      /* trans= */ false,
+                                      input2->useGpu());
     REGISTER_TIMER_INFO("TensorFwMulTimer", getName().c_str());
     for (size_t i = 0; i < getSize(); ++i) {
       MatrixPtr weights = weights_[i]->getW();
-      tmpMat->mul(input1, weights, 1, 0);
+      tmpMat->mul(*input1, *weights, 1, 0);
       outV->rowDotMul(i, *tmpMat, *input2);
     }
   }
@@ -101,7 +102,9 @@ void TensorLayer::backward(const UpdateCallback& callback) {
   MatrixPtr input2 = getInputValue(1);
   MatrixPtr oGrad = getOutputGrad();
   MatrixPtr tmpMat = Matrix::create(input1->getHeight(),
-    input1->getWidth(), /* trans= */ false, input1->useGpu());
+                                    input1->getWidth(),
+                                    /* trans= */ false,
+                                    input1->useGpu());
 
   /* trans(grad * e1) * e2 */ {
     REGISTER_TIMER_INFO("TensorGradMulTimer", getName().c_str());
@@ -109,7 +112,7 @@ void TensorLayer::backward(const UpdateCallback& callback) {
       if (weights_[i]->getWGrad()) {
         tmpMat->rowScale(i, *input1, *oGrad);
         MatrixPtr input1_T = tmpMat->getTranspose();
-        weights_[i]->getWGrad()->mul(input1_T, input2, 1, 1);
+        weights_[i]->getWGrad()->mul(*input1_T, *input2, 1, 1);
       }
     }
   }
@@ -127,11 +130,11 @@ void TensorLayer::backward(const UpdateCallback& callback) {
       if (NULL != preGrad1) { /* (grad * e2) * trans(W) */
         tmpMat->rowScale(i, *input2, *oGrad);
         MatrixPtr weights_T = weights->getTranspose();
-        preGrad1->mul(tmpMat, weights_T, 1, 1);
+        preGrad1->mul(*tmpMat, *weights_T, 1, 1);
       }
       if (NULL != preGrad2) { /* (grad * e1) * W */
         tmpMat->rowScale(i, *input1, *oGrad);
-        preGrad2->mul(tmpMat, weights, 1, 1);
+        preGrad2->mul(*tmpMat, *weights, 1, 1);
       }
     }
   }

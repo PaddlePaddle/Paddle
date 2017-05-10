@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,22 +13,22 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #undef PADDLE_DISABLE_TIMER
-#include <paddle/utils/PythonUtil.h>
-#include <cstdlib>
-#include <algorithm>
 #include <gtest/gtest.h>
+#include <paddle/utils/PythonUtil.h>
+#include <algorithm>
+#include <cstdlib>
 
+#include "paddle/testing/TestUtil.h"
 #include "paddle/trainer/Trainer.h"
 #include "paddle/utils/Stat.h"
-#include "TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_int32(gpu_id);
-P_DECLARE_double(checkgrad_eps);
-P_DEFINE_bool(use_label, true, "input label or sequence label");
-P_DEFINE_bool(static_para, false, "static parameter");
+DECLARE_int32(gpu_id);
+DECLARE_double(checkgrad_eps);
+DEFINE_bool(use_label, true, "input label or sequence label");
+DEFINE_bool(static_para, false, "static parameter");
 
 struct DataIn {
   std::vector<Argument> inArgs;
@@ -41,7 +41,8 @@ struct DataOut {
   std::vector<VectorPtr> paraGrads;
 };
 
-void initArgument(DataIn& data, const std::string& configPath,
+void initArgument(DataIn& data,
+                  const std::string& configPath,
                   bool useGpu = FLAGS_use_gpu) {
   TrainerConfigHelper config(configPath);
   size_t batchSize = config.getOptConfig().batch_size();
@@ -113,7 +114,7 @@ void calcGradient(DataIn& in, DataOut& out, const std::string& configPath) {
       parameters[i]->getBuf(PARAMETER_VALUE)->copyFrom(*in.paraValues[i]);
     }
   }
-  gradientMachine->start(trainer.getConfig(), nullptr);
+  gradientMachine->start();
   gradientMachine->forward(in.inArgs, &outArgs, PASS_TRAIN);
   for (size_t i = 0; i < in.outGrads.size(); i++) {
     // If the all the layers in the config have no parameters, also
@@ -122,9 +123,10 @@ void calcGradient(DataIn& in, DataOut& out, const std::string& configPath) {
   }
   gradientMachine->backward();
   for (size_t i = 0; i < in.outGrads.size(); i++) {
-    MatrixPtr value =
-        Matrix::create(outArgs[i].value->getHeight(),
-                       outArgs[i].value->getWidth(), false, false);
+    MatrixPtr value = Matrix::create(outArgs[i].value->getHeight(),
+                                     outArgs[i].value->getWidth(),
+                                     false,
+                                     false);
     value->copyFrom(*outArgs[i].value);
     out.outValues.push_back(value);
   }
@@ -147,8 +149,12 @@ void calcGradient(DataIn& in, DataOut& out, const std::string& configPath) {
   gradientMachine->finish();
 }
 
-void checkBuffer(real* A, const char* desA, real* B, const char* desB,
-                 size_t len, size_t width = 1) {
+void checkBuffer(real* A,
+                 const char* desA,
+                 real* B,
+                 const char* desB,
+                 size_t len,
+                 size_t width = 1) {
   int nNum = 0;
   for (size_t i = 0; i < len; ++i) {
     real diff = fabs(A[i] - B[i]);
@@ -168,8 +174,10 @@ void compareGradient(DataOut& outA, DataOut& outB) {
             << "------------------------------";
   for (size_t i = 0; i < outA.outValues.size(); ++i) {
     LOG(INFO) << "OUTPUT VALUE: " << i;
-    checkBuffer(outA.outValues[i]->getData(), "network A output",
-                outB.outValues[i]->getData(), "network B output",
+    checkBuffer(outA.outValues[i]->getData(),
+                "network A output",
+                outB.outValues[i]->getData(),
+                "network B output",
                 outA.outValues[i]->getElementCnt(),
                 outA.outValues[i]->getWidth());
   }
@@ -180,8 +188,10 @@ void compareGradient(DataOut& outA, DataOut& outB) {
               << "------------------------------";
     for (size_t i = 0; i < outA.paraGrads.size(); ++i) {
       LOG(INFO) << "PARAMETER GRADIENT: " << i;
-      checkBuffer(outA.paraGrads[i]->getData(), "Network A",
-                  outB.paraGrads[i]->getData(), "Network B",
+      checkBuffer(outA.paraGrads[i]->getData(),
+                  "Network A",
+                  outB.paraGrads[i]->getData(),
+                  "Network B",
                   outA.paraGrads[i]->getSize());
     }
   }
@@ -245,11 +255,20 @@ TEST(Compare, img_conv) {
   compareNetwork(config_file_a, config_file_b);
   FLAGS_use_gpu = useGpu;
 }
+
+// Test cudnn_conv and exconv give the same result
+TEST(Compare, img_conv2) {
+  std::string config_file_a = "./gserver/tests/img_conv_a.conf";
+  std::string config_file_b = "./gserver/tests/img_conv_c.conf";
+  bool useGpu = FLAGS_use_gpu;
+  FLAGS_use_gpu = true;
+  compareNetwork(config_file_a, config_file_b);
+  FLAGS_use_gpu = useGpu;
+}
 #endif
 
-
-P_DEFINE_string(config_file_a, "", "config of one network to compare");
-P_DEFINE_string(config_file_b, "", "config of another network to compare");
+DEFINE_string(config_file_a, "", "config of one network to compare");
+DEFINE_string(config_file_b, "", "config of another network to compare");
 TEST(Compare, network) {
   if (FLAGS_config_file_a != "" && FLAGS_config_file_b != "") {
     compareNetwork(FLAGS_config_file_a, FLAGS_config_file_b);

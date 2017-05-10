@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,15 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
-#include <thread>
 #include <functional>
-#include "paddle/pserver/ParameterClient2.h"
+#include <thread>
 #include "ParameterUpdater.h"
-#include "paddle/utils/Util.h"
+#include "paddle/pserver/ParameterClient2.h"
 #include "paddle/utils/Queue.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 
@@ -56,7 +55,8 @@ namespace paddle {
 class RemoteParameterUpdater : public ParameterUpdater {
 public:
   RemoteParameterUpdater(
-      const OptimizationConfig& config, int expectedPpassCount,
+      const OptimizationConfig& config,
+      int expectedPassCount,
       std::unique_ptr<ParameterUpdater>&& localUpdater = nullptr);
   ~RemoteParameterUpdater() {
     if (controllerThread_) {
@@ -67,7 +67,7 @@ public:
   /**
    * initialize the internal parameter client and itself.
    */
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
   /**
    * @brief start batch
    *
@@ -90,7 +90,7 @@ public:
    */
   virtual void finishBatch(real cost);
   virtual void startPass();
-  virtual bool finishPass(real cost);
+  virtual bool finishPass();
 
 #ifndef PADDLE_DISABLE_TIMER
   virtual void setForwardbackwardTime(uint64_t delta) {
@@ -146,7 +146,7 @@ protected:
   BatchStatus batchStatus_;
   /// controller thread for sync-sgd
   std::unique_ptr<std::thread> controllerThread_;
-  /// passed alread finished
+  /// passed already finished
   int64_t passCount_;
   /// expected passes to finished
   int64_t expectedPassCount_;
@@ -180,7 +180,8 @@ protected:
 class ConcurrentRemoteParameterUpdater : public RemoteParameterUpdater {
 public:
   ConcurrentRemoteParameterUpdater(
-      OptimizationConfig config, int expectedPassCount,
+      OptimizationConfig config,
+      int expectedPassCount,
       std::unique_ptr<ParameterUpdater>&& localUpdater);
   ~ConcurrentRemoteParameterUpdater();
 
@@ -264,7 +265,8 @@ private:
 class SparseRemoteParameterUpdater : public ParameterUpdater {
 public:
   SparseRemoteParameterUpdater(const OptimizationConfig& config,
-                               int expectedPassCount, bool testing);
+                               int expectedPassCount,
+                               bool testing);
   ~SparseRemoteParameterUpdater() {
     if (controllerThread_) {
       controllerThread_->join();
@@ -272,14 +274,14 @@ public:
   }
 
   /// initialization
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
 
   /// stateful batch control
   virtual PassType startBatch(int64_t batchSize);
   /// send all sparse related parameters to all pservers
   virtual void finishBatch(real cost);
   virtual void startPass();
-  virtual bool finishPass(real cost);
+  virtual bool finishPass();
 
   virtual void apply();
   virtual void restore();
@@ -345,7 +347,9 @@ public:
    * @note  use syncThreadPool to synchronize these two updaters
    */
   SparseRemoteParameterUpdaterComposite(
-      const OptimizationConfig& config, int expectedPassCount, bool testing,
+      const OptimizationConfig& config,
+      int expectedPassCount,
+      bool testing,
       std::unique_ptr<ParameterUpdater>&& normalUpdater) {
     updaters_.resize(NUMBER_UPDATERS);
     updaters_[UPDATER_SPARSE_REMOTE].reset(
@@ -356,7 +360,7 @@ public:
   }
 
   /// initialization of dense and sparse updaters
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
 };
 
 class ParameterUpdaterCreators {
@@ -373,11 +377,11 @@ public:
    */
   static void addCreator(
       const std::function<ParameterUpdater*(
-          const std::string&,  // algo
+          const std::string&,         // algo
           const OptimizationConfig&,  // optConfig
-          bool,  // isLocal
-          size_t  // numPasses
-        )>& creator) {    // NOLINT  explicit move closing ) in this line
+          bool,                       // isLocal
+          size_t                      // numPasses
+          )>& creator) {  // NOLINT  explicit move closing ) in this line
                           // for readability
     constructors_.push_back(creator);
   }
@@ -395,7 +399,7 @@ public:
                                             const OptimizationConfig& optConfig,
                                             bool isLocal,
                                             size_t numPasses) {
-    for (auto & c : constructors_) {
+    for (auto& c : constructors_) {
       if (auto updater = c(algo, optConfig, isLocal, numPasses)) {
         return updater;
       }
@@ -406,7 +410,7 @@ public:
 private:
   static std::vector<std::function<ParameterUpdater*(
       const std::string&, const OptimizationConfig&, bool, size_t)>>
-  constructors_;
+      constructors_;
 };
 
 }  // namespace paddle

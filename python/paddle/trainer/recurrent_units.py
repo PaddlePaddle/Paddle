@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,10 +15,13 @@
 # recurrent_units.py
 # Version 2.0
 #
-# Some recurrent units can be used in recurrent layer group, 
+# Some recurrent units can be used in recurrent layer group,
 #   to use these units, import this module in your config_file:
-#     import trainer.recurrent_units 
-# 
+#     import trainer.recurrent_units
+#
+# The modules in this file are DEPRECATED.
+# If you would like to use lstm/gru
+# please use the functions defined in paddle.trainer_config_helpers.
 
 from paddle.trainer.config_parser import *
 
@@ -26,7 +29,7 @@ from paddle.trainer.config_parser import *
 # long short term memory, can be used in recurrent machine
 # *inputs* must be a list of Projections, for example:
 #   inputs = [FullMatrixProjection("input_layer_name")],
-# *para_prefix* defines parameter names, if the *para_prefix* of 
+# *para_prefix* defines parameter names, if the *para_prefix* of
 #   two LstmRecurrentUnit is same, they share same parameters
 # *out_memory* can be defined outside if it's used outside
 def LstmRecurrentUnit(name,
@@ -194,7 +197,7 @@ def LstmRecurrentLayerGroup(name,
 # gated recurrent unit, can be used in recurrent machine
 # *inputs* should be a list of Projections, for example:
 #   inputs = [FullMatrixProjection("input_layer_name")],
-# *para_prefix* defines parameter names, if the *para_prefix* of 
+# *para_prefix* defines parameter names, if the *para_prefix* of
 #   two GatedRecurrentUnit is same, they share same parameters
 # *out_memory* can be defined outside if it's used outside
 

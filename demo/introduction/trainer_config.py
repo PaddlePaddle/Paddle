@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +15,8 @@
 from paddle.trainer_config_helpers import *
 
 # 1. read data. Suppose you saved above python code as dataprovider.py
-data_file = 'empty.list'
-with open(data_file, 'w') as f:
-    f.writelines(' ')
 define_py_data_sources2(
-    train_list=data_file,
+    train_list=['no_matter.txt'],
     test_list=None,
     module='dataprovider',
     obj='process',
@@ -37,5 +34,5 @@ y_predict = fc_layer(
     size=1,
     act=LinearActivation(),
     bias_attr=ParamAttr(name='b'))
-cost = regression_cost(input=y_predict, label=y)
+cost = mse_cost(input=y_predict, label=y)
 outputs(cost)

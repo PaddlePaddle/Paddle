@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,21 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <iostream>
 #include <vector>
 
+#include "ModelConfig.pb.h"
+#include "TrainerConfig.pb.h"
+#include "paddle/gserver/dataproviders/DataProvider.h"
+#include "paddle/gserver/evaluators/Evaluator.h"
+#include "paddle/gserver/layers/Layer.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/parameter/ParameterUpdaterBase.h"
 #include "paddle/utils/Thread.h"
-#include "TrainerConfig.pb.h"
-#include "ModelConfig.pb.h"
-#include "paddle/gserver/dataproviders/DataProvider.h"
-#include "paddle/gserver/evaluators/Evaluator.h"
-#include "paddle/gserver/layers/Layer.h"
 
 namespace paddle {
 /**
@@ -84,43 +83,11 @@ public:
    * Parameter will have parameterTypes
    */
   static GradientMachine* create(
-      const ModelConfig& config, int mode = kNormal,
+      const ModelConfig& config,
+      int mode = kNormal,
       const std::vector<ParameterType>& parameterTypes =
-          std::vector<ParameterType>{PARAMETER_VALUE, PARAMETER_GRADIENT,
-                                     PARAMETER_MOMENTUM});
-
-  /**
-   * Create a gradient machine from the merged model file.
-   * The merged model file can be generated using tools/merge_model
-   * If dataConfig is not null, it will be filled with the DataConfig
-   * from the TrainerConfig
-   */
-  static GradientMachine* create(const std::string& modelFile,
-                                 DataConfig* dataConfig);
-
-  /**
-   * Create a gradient machine from a stream which contains the merged
-   * model file. The merged model file can be generated using tools/merge_model
-   * If dataConfig is not null, it will be filled with the DataConfig
-   * from the TrainerConfig
-   */
-  static GradientMachine* create(std::istream& is, DataConfig* dataConfig);
-
-  /**
-   * Create a gradient machine from the merged model file.
-   * The merged model file can be generated using tools/merge_model
-   * If trainerConfig is not null, it will be filled with the TrainerConfig
-   */
-  static GradientMachine* create(const std::string& modelFile,
-                                 TrainerConfig* trainerConfig);
-
-  /**
-   * Create a gradient machine from a stream which contains the merged
-   * model file. The merged model file can be generated using tools/merge_model
-   * If trainerConfig is not null, it will be filled with the TrainerConfig
-   */
-  static GradientMachine* create(std::istream& is,
-                                 TrainerConfig* trainerConfig);
+          std::vector<ParameterType>{
+              PARAMETER_VALUE, PARAMETER_GRADIENT, PARAMETER_MOMENTUM});
 
   virtual ~GradientMachine() {}
 
@@ -137,7 +104,8 @@ public:
    * @note: if passType==PASS_TEST, then backward() should not be called
    */
   virtual void forward(const std::vector<Argument>& inArgs,
-                       std::vector<Argument>* outArgs, PassType passType) = 0;
+                       std::vector<Argument>* outArgs,
+                       PassType passType) = 0;
 
   /**
    * @brief Backward propagation.
@@ -166,6 +134,8 @@ public:
     backward(callback);
   }
 
+  virtual Argument getLayerOutput(const std::string& layerName) = 0;
+
   // see comment in Layer.h for the function with the same name
   virtual void resetState() {}
 
@@ -180,12 +150,12 @@ public:
   /**
    * Create an evaluator which can be used for eval()
    */
-  virtual Evaluator* makeEvaluator() = 0;
+  virtual Evaluator* makeEvaluator() const = 0;
 
   /**
    * evaluate using the given evaluator
    */
-  virtual void eval(Evaluator* evaluator) = 0;
+  virtual void eval(Evaluator* evaluator) const = 0;
 
   std::vector<ParameterPtr>& getParameters() { return parameters_; }
 
@@ -211,11 +181,7 @@ public:
    * @note    This function will only been implemented and used in a
    *          multithreaded environment.
    */
- virtual void start(const TrainerConfig& config,
-                     DataProviderPtr dataProvider) {
-    (void)config;
-    (void)dataProvider;
-  }
+  virtual void start() {}
 
   /**
    * @brief   check  each work-thread whether is failed/error/finish,
@@ -245,7 +211,6 @@ public:
    *          multithreaded environment.
    */
   virtual void restart() {}
-
 
   /// Set the gradient of the output from outside.
   virtual void setOutputGrad(const std::vector<Argument>& args) {

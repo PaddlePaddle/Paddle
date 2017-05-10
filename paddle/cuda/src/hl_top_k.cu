@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -384,3 +384,81 @@ void hl_sparse_matrix_top_k(real* topVal, int ldv,
   CHECK_SYNC("hl_sparse_matrix_top_k failed");
 }
 
+/**
+ * Each block compute one sample.
+ * In a block:
+ * 1. every thread get top maxLength value;
+ * 2. merge to shTopK, block reduce and get max value;
+ * 3. go to the second setp, until one thread's topK value is null;
+ * 4. go to the first setp, until get the topK value.
+ */
+template<int maxLength, int blockSize>
+__global__ void KeMatrixTopKClassificationError(real* topVal, int ldv,
+                                                int * topIds,
+                                                real* src, int lds,
+                                                int dim,
+                                                int beamSize,
+                                                int* label,
+                                                real* recResult) {
+  __shared__ Pair shTopK[blockSize];
+  __shared__ int maxId[blockSize / 2];
+  const int tid = threadIdx.x;
+  const int warp = threadIdx.x / 32;
+  src += blockIdx.x * lds;
+  topVal += blockIdx.x * ldv;
+  topIds += blockIdx.x * beamSize;
+
+  Pair topK[maxLength]; // NOLINT
+  int beam = maxLength;
+  Pair max;
+  bool isEmpty = false;
+  bool firstStep = true;
+  int topkSize = beamSize;
+
+  for (int k = 0; k < maxLength; k++) {
+    topK[k].set(-HL_FLOAT_MAX, -1);
+  }
+
+  while (beamSize) {
+    threadGetTopK<maxLength, blockSize>
+      (topK, beam, beamSize, src, firstStep, isEmpty, max, dim, tid);
+
+    shTopK[tid] = topK[0];
+    blockReduce<maxLength, blockSize>
+      (shTopK, maxId, topK, &topVal, &topIds, beam, beamSize, tid, warp);
+  }
+
+  __syncthreads();
+  if (tid == 0) {
+    for (int i = 0; i < topkSize; i++) {
+        if (*--topIds == label[blockIdx.x]) {
+            recResult[blockIdx.x] = 0;
+            break;
+        }
+        recResult[blockIdx.x] = 1.0f;
+    }
+  }
+}
+
+void hl_matrix_classification_error(real* topVal, int ldv,
+                                   int* topIds,
+                                   real* src, int lds,
+                                   int dim,
+                                   int topkSize,
+                                   int numSamples,
+                                   int* label,
+                                   real* recResult) {
+  CHECK_NOTNULL(topVal);
+  CHECK_NOTNULL(topIds);
+  CHECK_NOTNULL(src);
+
+  if (topkSize > dim) topkSize = dim;
+
+  dim3 threads(256, 1);
+  dim3 grid(numSamples, 1);
+  KeMatrixTopKClassificationError<5, 256>
+  <<< grid, threads, 0, STREAM_DEFAULT >>>
+  (topVal, ldv, topIds, src, lds, dim, topkSize, label, recResult);
+
+  CHECK_SYNC("hl_matrix_top_k classification error failed");
+}

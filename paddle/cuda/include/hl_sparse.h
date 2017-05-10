@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #ifndef HL_SPARSE_H_
 #define HL_SPARSE_H_
@@ -31,7 +30,7 @@ limitations under the License. */
  */
 extern void hl_malloc_sparse_matrix(hl_sparse_matrix_s *A_d,
                                     hl_matrix_format_t format,
-                                    hl_matrix_value_t  value_type,
+                                    hl_matrix_value_t value_type,
                                     int dimM,
                                     int dimN,
                                     int nnz);
@@ -60,10 +59,10 @@ extern void hl_free_sparse_matrix(hl_sparse_matrix_s A_d);
  *
  */
 extern void hl_construct_sparse_matrix(hl_sparse_matrix_s *A_d,
-                                       void * dest_d,
+                                       void *dest_d,
                                        size_t size,
                                        hl_matrix_format_t format,
-                                       hl_matrix_value_t  value_type,
+                                       hl_matrix_value_t value_type,
                                        int dimM,
                                        int dimN,
                                        int nnz);
@@ -94,11 +93,11 @@ extern void hl_construct_sparse_matrix(hl_sparse_matrix_s *A_d,
  *
  */
 extern void hl_construct_sparse_matrix(hl_sparse_matrix_s *A_d,
-                                       real* value_d,
-                                       int* rows_d,
-                                       int* cols_d,
+                                       real *value_d,
+                                       int *rows_d,
+                                       int *cols_d,
                                        hl_matrix_format_t format,
-                                       hl_matrix_value_t  value_type,
+                                       hl_matrix_value_t value_type,
                                        int dimM,
                                        int dimN,
                                        int nnz);
@@ -259,10 +258,14 @@ extern void hl_matrix_csr_mul_dense(hl_sparse_matrix_s A_d,
  */
 extern void hl_matrix_csc_mul_dense(hl_sparse_matrix_s A_d,
                                     hl_trans_op_t transa,
-                                    real *B_d, hl_trans_op_t transb,
+                                    real *B_d,
+                                    hl_trans_op_t transb,
                                     real *C_d,
-                                    int dimM, int dimN, int dimK,
-                                    real alpha, real beta);
+                                    int dimM,
+                                    int dimN,
+                                    int dimK,
+                                    real alpha,
+                                    real beta);
 
 /**
  * @brief   C_d = alpha*(op(A_d) * op(B_d)) + beta*C_d.
@@ -311,11 +314,16 @@ extern void hl_matrix_dense_mul_csc(real *A_d,
  * @note    transb is not support HPPL_OP_T.
  *
  */
-extern void hl_sparse_matrix_mul(real* A_d, hl_trans_op_t transa,
-                                 real *B_d, hl_trans_op_t transb,
+extern void hl_sparse_matrix_mul(real *A_d,
+                                 hl_trans_op_t transa,
+                                 real *B_d,
+                                 hl_trans_op_t transb,
                                  hl_sparse_matrix_s C_d,
-                                 int dimM, int dimN, int dimK,
-                                 real alpha, real beta);
+                                 int dimM,
+                                 int dimN,
+                                 int dimK,
+                                 real alpha,
+                                 real beta);
 
 /**
  * @brief   C_d = alpha*(op(A_d) * op(B_d)) + beta*C_d
@@ -336,12 +344,16 @@ extern void hl_sparse_matrix_mul(real* A_d, hl_trans_op_t transa,
  * @note    transa is not support HPPL_OP_T.
  *
  */
-extern void hl_matrix_dense_mul_csr(real *A_d, hl_trans_op_t transa,
+extern void hl_matrix_dense_mul_csr(real *A_d,
+                                    hl_trans_op_t transa,
                                     hl_sparse_matrix_s B_d,
                                     hl_trans_op_t transb,
                                     real *C_d,
-                                    int dimM, int dimN, int dimK,
-                                    real alpha, real beta);
+                                    int dimM,
+                                    int dimN,
+                                    int dimK,
+                                    real alpha,
+                                    real beta);
 
 /**
  * @brief   Memcpy csc_matrix to host.
@@ -412,7 +424,6 @@ extern void hl_memcpy_from_csr_matrix(real *csr_val,
                                       hl_sparse_matrix_s csr_matrix,
                                       hl_stream_t stream);
 
-
 /**
  * @brief   A_d[j] += B_d[i,j] for i in range(height)
  *
@@ -423,19 +434,13 @@ extern void hl_memcpy_from_csr_matrix(real *csr_val,
  * @param[in]       scale  scale of B_d
  *
  */
-extern void hl_sparse_matrix_column_sum(real* A_d,
-                                        hl_sparse_matrix_s B_d,
-                                        int dimM,
-                                        int dimN,
-                                        real scale);
+extern void hl_sparse_matrix_column_sum(
+    real *A_d, hl_sparse_matrix_s B_d, int dimM, int dimN, real scale);
 /**
  * @brief implementation of csr sparse matrix in hl_sparse_matirx_column_sum
  */
-extern void hl_matrix_csr_column_sum(real* A_d,
-                                     hl_sparse_matrix_s B_d,
-                                     int dimM,
-                                     int dimN,
-                                     real scale);
+extern void hl_matrix_csr_column_sum(
+    real *A_d, hl_sparse_matrix_s B_d, int dimM, int dimN, real scale);
 
 /**
  * @brief   A_d[i,j] += B_d[j]
@@ -446,13 +451,13 @@ extern void hl_matrix_csr_column_sum(real* A_d,
  *
  */
 extern void hl_sparse_matrix_add_bias(hl_sparse_matrix_s A_d,
-                                      real* B_d,
+                                      real *B_d,
                                       real scale);
 /**
  * @brief implementation of csr sparse matrix in hl_sparse_matrix_add_bias
  */
 extern void hl_matrix_csr_add_bias(hl_sparse_matrix_s A_d,
-                                   real* B_d,
+                                   real *B_d,
                                    real scale);
 
 /**
@@ -470,7 +475,7 @@ extern void hl_matrix_csr_add_bias(hl_sparse_matrix_s A_d,
  *
  */
 extern void hl_sparse_matrix_add_dense(hl_sparse_matrix_s A_d,
-                                       real* B_d,
+                                       real *B_d,
                                        int dimM,
                                        int dimN,
                                        real alpha,
@@ -479,7 +484,7 @@ extern void hl_sparse_matrix_add_dense(hl_sparse_matrix_s A_d,
  * @brief implementation of csr sparse matrix in hl_sparse_matrix_add_dense
  */
 extern void hl_matrix_csr_add_dense(hl_sparse_matrix_s A_d,
-                                    real* B_d,
+                                    real *B_d,
                                     int dimM,
                                     int dimN,
                                     real alpha,
@@ -493,7 +498,7 @@ extern void hl_matrix_csr_add_dense(hl_sparse_matrix_s A_d,
  * @return   return rows pointer, which is gpu address
  *
  */
-extern int* hl_sparse_matrix_get_rows(hl_sparse_matrix_s sMat);
+extern int *hl_sparse_matrix_get_rows(hl_sparse_matrix_s sMat);
 
 /**
  * @brief get cols pionter of GpuSparseMatrix
@@ -503,7 +508,7 @@ extern int* hl_sparse_matrix_get_rows(hl_sparse_matrix_s sMat);
  * @return   return cols pointer, which is gpu address
  *
  */
-extern int* hl_sparse_matrix_get_cols(hl_sparse_matrix_s sMat);
+extern int *hl_sparse_matrix_get_cols(hl_sparse_matrix_s sMat);
 
 /**
  * @brief get value pionter of GpuSparseMatrix
@@ -513,7 +518,6 @@ extern int* hl_sparse_matrix_get_cols(hl_sparse_matrix_s sMat);
  * @return   return value pointer, which is gpu address
  *
  */
-extern real* hl_sparse_matrix_get_value(hl_sparse_matrix_s sMat);
-
+extern real *hl_sparse_matrix_get_value(hl_sparse_matrix_s sMat);
 
 #endif /* HL_SPARSE_H_ */

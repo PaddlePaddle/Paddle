@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,20 +16,20 @@ limitations under the License. */
 #include "PaddleAPIPrivate.h"
 
 #include <stdlib.h>
-#include <memory>
 #include <atomic>
+#include <memory>
 
+#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/trainer/ParamUtil.h"
 #include "paddle/trainer/Trainer.h"
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/trainer/TrainerInternal.h"
 #include "paddle/utils/Flags.h"
 
 using paddle::real;
 
-P_DECLARE_string(config);
-P_DECLARE_string(init_model_path);
-P_DECLARE_int32(start_pass);
+DECLARE_string(config);
+DECLARE_string(init_model_path);
+DECLARE_int32(start_pass);
 
 struct TrainerPrivate : public paddle::Trainer {
   bool _trainOneBatch(size_t batchSize);
@@ -64,12 +64,11 @@ Trainer* Trainer::createByCommandLine() throw(IOError) {
 
 Trainer::Trainer(TrainerConfig* config, GradientMachine* gm)
     : m(new TrainerPrivate()) {
-  m->init(config->m->conf, /* testing= */false, gm ? gm->m->machine : nullptr);
+  m->init(config->m->conf, /* testing= */ false, gm ? gm->m->machine : nullptr);
 }
 
-Trainer* Trainer::create(TrainerConfig* config, GradientMachine* gm)
-    throw(IOError)
-{
+Trainer* Trainer::create(TrainerConfig* config,
+                         GradientMachine* gm) throw(IOError) {
   auto retv = new Trainer(config, gm);
   if (retv->m->getConfig().IsInitialized()) {
     return retv;
@@ -132,17 +131,18 @@ void Trainer::testOneDataBatch(size_t batchSize, const Arguments& args) {
 void TrainerPrivate::finishTestPeriod() { tester_->finishTestPeriod(); }
 void Trainer::finishTestPeriod() { m->finishTestPeriod(); }
 
-Matrix* Trainer::getLayerOutput(const std::string& layerName) {
-  auto nn = std::dynamic_pointer_cast<paddle::NeuralNetwork>(
-          this->m->getGradientMachine());
+Arguments* Trainer::getLayerOutput(const std::string& layerName) const {
+  auto nn = this->m->getGradientMachine();
   CHECK(nn) << "trainerInternal_.getGradientMachine() is not NeuralNetwork";
-  auto m = nn->getLayerOutput(layerName);
-  return Matrix::createByPaddleMatrixPtr(&m);
+  auto arg = nn->getLayerOutput(layerName);
+  return Arguments::createByPaddleArgument(&arg);
 }
 
-void Trainer::forwardOneBatch(size_t batchSize) { m->forwardOneBatch(batchSize); }
+void Trainer::forwardOneBatch(size_t batchSize) {
+  m->forwardOneBatch(batchSize);
+}
 
-bool TrainerPrivate::forwardOneBatch(size_t batchSize)  {
+bool TrainerPrivate::forwardOneBatch(size_t batchSize) {
   CHECK(dataProvider_) << "data_provider is not specified";
   paddle::DataBatch dataBatch;
   int num = dataProvider_->getNextBatch(batchSize, &dataBatch);
@@ -156,7 +156,6 @@ bool TrainerPrivate::forwardOneBatch(size_t batchSize)  {
 
 void TrainerPrivate::forwardOneDataBatch(
     const std::vector<paddle::Argument>& inArgs) {
-
   std::vector<paddle::Argument>& outArgs = forwardOutput_;
 
   if (config_->getOptConfig().use_sparse_remote_updater()) {

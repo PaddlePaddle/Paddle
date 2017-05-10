@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,21 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "PoolAllocator.h"
 
 namespace paddle {
 
 PoolAllocator::PoolAllocator(Allocator* allocator,
-  size_t sizeLimit, const std::string& name)
+                             size_t sizeLimit,
+                             const std::string& name)
     : allocator_(allocator),
       sizeLimit_(sizeLimit),
       poolMemorySize_(0),
       name_(name) {}
 
-PoolAllocator::~PoolAllocator() {
-  freeAll();
-}
+PoolAllocator::~PoolAllocator() { freeAll(); }
 
 void* PoolAllocator::alloc(size_t size) {
   if (sizeLimit_ > 0) {

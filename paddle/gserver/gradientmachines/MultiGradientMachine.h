@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,16 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <atomic>
 
 #include "GradientMachine.h"
 
-#include "paddle/utils/Queue.h"
-#include "paddle/utils/Locks.h"
 #include "hl_gpu.h"
+#include "paddle/utils/Locks.h"
+#include "paddle/utils/Queue.h"
 
 namespace paddle {
 
@@ -52,7 +51,8 @@ struct GradBuffer {
  *
  *  It handles GPU and Cpu parameters differently.  In GPU, one computing thread
  *  generally corresponds to one GPU device. Thus, each thread keeps a separate
- *  copy of the parameter in its own device's memory. In CPU, we only need to keep
+ *  copy of the parameter in its own device's memory. In CPU, we only need to
+ keep
  *  one copy of the parameters in the main memory. After, each computing thread
  *  computes its own parameter gradient, the update process needs to accumulate
  *  the parameter gradients from all the computing threads, and update the
@@ -66,16 +66,21 @@ struct GradBuffer {
  *  computing thread so that the parameters in all the computing threads are
  *  synchronized. The scatter and gather process are implemented by ring-style
  *  communication. Assume we have N computing threads, its thread ids will be
- *  0, 1, ..., N-1. For each parameter, the id of the main thread is specified in
- *  paraMainThread_[pid], where pid is the id of the parameter. Each thread i only
+ *  0, 1, ..., N-1. For each parameter, the id of the main thread is specified
+ in
+ *  paraMainThread_[pid], where pid is the id of the parameter. Each thread i
+ only
  *  sends data to its partner thread (i - 1) % N. For example, for a parameter
  *  gradient that is computed in thread 4, and its main thread is 2. Its
- *  traveling process would be 4, 5,..., N-1, 0, 1, 2. In each step, the gradient
+ *  traveling process would be 4, 5,..., N-1, 0, 1, 2. In each step, the
+ gradient
  *  buffer is added to the local gradient, and the local gradient is then copied
  *  to the gradient buffer of the next thread. At last, its main thread 2 will
  *  get the accumulated parameter gradient. For the same parameter, after its
- *  value is updated, the value's traveling process would be 2, 1, 0, N-1, ... 3.
- *  At the end, all the computing threads would have the updated parameter value.
+ *  value is updated, the value's traveling process would be 2, 1, 0, N-1, ...
+ 3.
+ *  At the end, all the computing threads would have the updated parameter
+ value.
  *
  *  A computing thread (TrainerThread) uses 4 threads to do different jobs:
  *
@@ -94,8 +99,10 @@ struct GradBuffer {
  *  * Handling of sparse update
  *  Currently, sparse update is only supported for CPU parameters.
 
- *  Sparse updates refers to gradient caculation where the gradient is sparse. For
- *  example, if the input argument to a 'fc' layer is sparse, the gradient of the
+ *  Sparse updates refers to gradient caculation where the gradient is sparse.
+ For
+ *  example, if the input argument to a 'fc' layer is sparse, the gradient of
+ the
  *  weight matrix of this layer will be sparse. It is usually more efficient to
  *  treat the gradient explicitly as sparse vector during the parameter update.
 
@@ -104,7 +111,8 @@ struct GradBuffer {
 
  *  For both types of sparse updates, there is one copy of parameter value and
  *  gradient called main parameter value and gradient, and there is a copy of
- *  parameter value and gradient for each computing thread called slave parameter
+ *  parameter value and gradient for each computing thread called slave
+ parameter
  *  value and gradient. The slave parameter values are always shared with the
  *  corresponding main parameter value. The slave parameter grad is a sparse row
  *  matrix. The sparse pattern for slave parameter grads are different, because
@@ -124,7 +132,8 @@ struct GradBuffer {
  *     (SparseAutoGrowRowCpuMatrix). It is a sparse row matrix.
  *
  *     During backward() of each TrainerThread, SparseAutoGrowRowCpuMatrix will
- *     gather all the non-zero gradient. And After backward(), they will be merged
+ *     gather all the non-zero gradient. And After backward(), they will be
+ merged
  *     into main parameter grad (SparseRowIdsCpuMatrix), with indices indicating
  *     which rows have nonzero gradient.
  *
@@ -136,9 +145,11 @@ struct GradBuffer {
  *     parameter values that are prefetched is up-to-date.
  *
  *     Main parameter grad type is MAT_SPARSE_ROW (SparseRowCpuMatrix).
- *     And it shares sparse pattern with value by sharing indexDictHandle_, which
+ *     And it shares sparse pattern with value by sharing indexDictHandle_,
+ which
  *     is an internal data structure used by SparseRowCpuMatrixto specify the
- *     sparsity pattern of Slave parameter value shares with main parameter value.
+ *     sparsity pattern of Slave parameter value shares with main parameter
+ value.
  *
  *     Slave parameter grad type is MAT_SPARSE_ROW_AUTO_GROW
  *     (SparsePrefetchRowCpuMatrix). It is a sparse row matrix
@@ -148,8 +159,10 @@ struct GradBuffer {
  *     parameter server.
  *
  *     During backward() of each TrainerThread, SparseAutoGrowRowCpuMatrix will
- *     gather all the non-zero gradient. And After backward(), they will be merged
- *     into main parameter grad (SparseRowCpuMatrix). And the framework will send
+ *     gather all the non-zero gradient. And After backward(), they will be
+ merged
+ *     into main parameter grad (SparseRowCpuMatrix). And the framework will
+ send
  *     the merged gradient to parameter server.
  */
 class MultiGradientMachine : public GradientMachine {
@@ -165,30 +178,28 @@ public:
 
   virtual void prefetch(const std::vector<Argument>& inArgs);
 
-  virtual void forward(
-      const std::vector<Argument>& inArgs,
-      std::vector<Argument>* outArgs,
-      PassType passType);
+  virtual void forward(const std::vector<Argument>& inArgs,
+                       std::vector<Argument>* outArgs,
+                       PassType passType);
 
   virtual void backward(const UpdateCallback& callback = nullptr);
 
-  void forwardBackward(
-    const std::vector<Argument>& inArgs,
-    std::vector<Argument>* outArgs,
-    PassType passType,
-    const UpdateCallback& callback);
+  void forwardBackward(const std::vector<Argument>& inArgs,
+                       std::vector<Argument>* outArgs,
+                       PassType passType,
+                       const UpdateCallback& callback);
+
+  virtual Argument getLayerOutput(const std::string& layerName);
 
   virtual void onPassEnd();
 
   virtual void finish();
 
-  virtual Evaluator* makeEvaluator();
+  virtual Evaluator* makeEvaluator() const;
 
-  virtual void eval(Evaluator* evaluator);
+  virtual void eval(Evaluator* evaluator) const;
 
-  bool useGpu() const {
-    return useGpu_;
-  }
+  bool useGpu() const { return useGpu_; }
 
   /// @return whether to pass the gradients in outArgs_ to each threads.
   bool isPassGrad() { return isPassGrad_; }
@@ -203,9 +214,7 @@ public:
 protected:
   friend class TrainerThread;
 
-  std::vector<TrainerThreadPtr>& getAllThreads() {
-    return threads_;
-  }
+  std::vector<TrainerThreadPtr>& getAllThreads() { return threads_; }
   /// Calculate the real device id based on the logical device id and the
   /// thread id.
   int logicalDeviceId2RealDeviceId(int logicalId, int threadId = 0) const {
@@ -229,9 +238,7 @@ protected:
 
   std::vector<const std::vector<ParameterPtr>*> getSlaveParameters();
 
-  bool hasNonstaticCpuParamters() const {
-    return hasNonstaticCpuParamters_;
-  }
+  bool hasNonstaticCpuParamters() const { return hasNonstaticCpuParamters_; }
 
   /// Called TrainerThread to wait before merging CPU parameter gradients.
   void waitBeforeMerge() { trainerBarrier_.wait(); }
@@ -244,59 +251,41 @@ protected:
   /// finishing
   void waitForCopyInArgs() { allBarrier_.wait(); }
 
-  TrainerThreadPtr& getThread(int threadId) {
-    return threads_[threadId];
-  }
+  TrainerThreadPtr& getThread(int threadId) { return threads_[threadId]; }
 
   std::vector<GradBuffer>& getGradBuf(int threadId) {
     return gradBufs_[threadId];
   }
 
-  PassType getPassType() const {
-    return passType_;
-  }
+  PassType getPassType() const { return passType_; }
 
   /// Called by TrainerThread to notify MultiGradientMachine that the gradient
   /// for paramId is ready
   void notifyGradientTransfer(int paramId);
 
-  const std::vector<Argument>& getInArgs() {
-    return inArgs_;
-  }
+  const std::vector<Argument>& getInArgs() { return inArgs_; }
 
-  TaskType getTaskType() const {
-    return taskType_;
-  }
+  TaskType getTaskType() const { return taskType_; }
 
   const UpdateCallback& getBackwardCallback() const {
     return backwardCallback_;
   }
 
-  int getNumDevices() const {
-    return numDevices_;
-  }
+  int getNumDevices() const { return numDevices_; }
 
-  int getNumLogicalDevices() const {
-    return numLogicalDevices_;
-  }
+  int getNumLogicalDevices() const { return numLogicalDevices_; }
 
-  int getNumThreads() const {
-    return numThreads_;
-  }
+  int getNumThreads() const { return numThreads_; }
 
-  int paraMainThread(int pid) const {
-    return paraMainThread_[pid];
-  }
+  int paraMainThread(int pid) const { return paraMainThread_[pid]; }
 
 protected:
-  virtual void forwardImp(
-      const std::vector<Argument>& inArgs,
-      std::vector<Argument>* outArgs,
-      PassType passType,
-      TaskType taskType);
+  virtual void forwardImp(const std::vector<Argument>& inArgs,
+                          std::vector<Argument>* outArgs,
+                          PassType passType,
+                          TaskType taskType);
 
-  virtual void backwardImp(
-      const UpdateCallback& callback = NULL);
+  virtual void backwardImp(const UpdateCallback& callback = NULL);
 
   /// update all parameters
   void updateThreadParameters();
@@ -327,11 +316,13 @@ protected:
   std::vector<Argument> outArgs_;
   hl_stream_t outArgStream_;
 
+  Argument outLayerArgs_;
+
   /// ParameterType which needs to be merged from each GPU
   std::vector<ParameterType> mergeTypes_;
-  int numDevices_;  /* number of gpu devices */
+  int numDevices_;         /* number of gpu devices */
   int numLogicalDevices_;  // number of GPU used by one NN
-  int numThreads_;  /* number of train threads */
+  int numThreads_;         /* number of train threads */
 
   UpdateCallback backwardCallback_;
 
@@ -350,38 +341,25 @@ protected:
 
 class TrainerThread {
 public:
-  TrainerThread(
-      const ModelConfig& config,
-      int threadId,
-      MultiGradientMachine* multiMachine);
+  TrainerThread(const ModelConfig& config,
+                int threadId,
+                MultiGradientMachine* multiMachine);
 
   ~TrainerThread();
 
   void start();
 
-  void onPassEnd() {
-    gradientMachine_->onPassEnd();
-  }
+  void onPassEnd() { gradientMachine_->onPassEnd(); }
 
-  void waitOutArgsReady() {
-    outArgsReadySem_.wait();
-  }
+  void waitOutArgsReady() { outArgsReadySem_.wait(); }
 
-  void notifyTaskReady() {
-    taskReadySem_.post();
-  }
+  void notifyTaskReady() { taskReadySem_.post(); }
 
-  int getDeviceId() const {
-    return deviceId_;
-  }
+  int getDeviceId() const { return deviceId_; }
 
-  GradientMachine* getGradientMachine() {
-    return gradientMachine_.get();
-  }
+  GradientMachine* getGradientMachine() { return gradientMachine_.get(); }
 
-  const std::vector<ParameterPtr>& getParameters() {
-    return parameters_;
-  }
+  const std::vector<ParameterPtr>& getParameters() { return parameters_; }
 
   void stop();
 
@@ -391,53 +369,48 @@ public:
     return parameters_[paramId]->getBuf(PARAMETER_VALUE);
   }
 
-  const std::vector<Argument>& getOutArgs() {
-    return outArgs_;
-  }
+  const std::vector<Argument>& getOutArgs() { return outArgs_; }
 
   void incUpdateCounter(int n = 1) {
     updateCounter_ += n;
     parameterUpdated_ = true;
   }
 
-  void notifyGradientCollect(int paramId) {
-    gradQueue_.enqueue(paramId);
-  }
+  void notifyGradientCollect(int paramId) { gradQueue_.enqueue(paramId); }
 
-  void notifyCopyGradToBuffer(int paramId) {
-    gradBufQueue_.enqueue(paramId);
-  }
+  void notifyCopyGradToBuffer(int paramId) { gradBufQueue_.enqueue(paramId); }
 
-  void notifyValueDispatch(int paramId) {
-    valueReadyQueue_.enqueue(paramId);
-  }
+  void notifyValueDispatch(int paramId) { valueReadyQueue_.enqueue(paramId); }
 
   void prefetch();
 
   /// copy the output gradient from the main GradientMachine.
   void copyOutputGrad();
 
+  /// Whether the thread has input data.
+  bool hasInputData() { return batchSize_ != 0; }
+
 protected:
   void mergeCpuGradients();
 
   void mergeGradSparse(
-    Parameter* para,
-    std::vector<const std::vector<ParameterPtr>*>& slaveParameters);
+      Parameter* para,
+      std::vector<const std::vector<ParameterPtr>*>& slaveParameters);
 
   void mergeGradSparseRemote(
-    Parameter* para,
-    std::vector<const std::vector<ParameterPtr>*>& slaveParameters);
+      Parameter* para,
+      std::vector<const std::vector<ParameterPtr>*>& slaveParameters);
 
   void mergeGradDense(
-    Parameter* para,
-    std::vector<const std::vector<ParameterPtr>*>& slaveParameters);
+      Parameter* para,
+      std::vector<const std::vector<ParameterPtr>*>& slaveParameters);
 
   void computeThread();
   void valueDispatchThread();
   void copyGradToBufferThread();
   void gradCollectThread();
 
-  void copyInArgs();
+  int copyInArgs();
   void forward();
   void backward();
   void backwardCallback(Parameter* para);
@@ -497,7 +470,7 @@ protected:
 
   /// indicate whether inArgs is copied before forward()
   bool inArgsCopied_;
+  int batchSize_;
 };
-
 
 }  // namespace paddle

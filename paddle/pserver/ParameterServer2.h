@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,34 +12,33 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <atomic>
+#include <limits>
 #include <mutex>
 #include <string>
-#include <vector>
-#include <unordered_map>
 #include <type_traits>
-#include <limits>
+#include <unordered_map>
+#include <vector>
 
 #include <stddef.h>
 #include <stdlib.h>
 
-#include "paddle/utils/Locks.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/math/Vector.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/parameter/ParameterOptimizer.h"
-#include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/TypeDefs.h"
-#include "paddle/math/Vector.h"
+#include "paddle/utils/Common.h"
+#include "paddle/utils/Locks.h"
 #include "paddle/utils/Stat.h"
+#include "paddle/utils/ThreadLocal.h"
 
 #include "ParameterService.pb.h"
 
 #include "ProtoServer.h"
 
-P_DECLARE_int32(port);
+DECLARE_int32(port);
 
 namespace paddle {
 
@@ -54,7 +53,6 @@ namespace paddle {
 // gpus per node and if the model size is so large enough that limited cpu
 // computation causes big optmization latency, the GPU may be required by
 // pserver.
-
 
 /**
  * Client interface for the parameter server
@@ -189,9 +187,10 @@ protected:
      */
     constexpr static size_t AlignElementCount = AlignBytes / sizeof(T);
 
-    static_assert(
-        AlignElementCount == (AlignElementCount & -AlignElementCount)
-          || AlignBytes > sizeof(T), "AlignElementCount should be exp of 2");
+    static_assert(AlignElementCount ==
+                          (AlignElementCount & -AlignElementCount) ||
+                      AlignBytes > sizeof(T),
+                  "AlignElementCount should be exp of 2");
 
     /**
      * @brief Resize Buffer, with block count that will be allocated. Each block
@@ -205,7 +204,7 @@ protected:
       } else {
         //! at most, we need such elements in buffer to make sure each block is
         //! aligned.
-        this->resize(size + alignBlockCount* (AlignElementCount - 1));
+        this->resize(size + alignBlockCount * (AlignElementCount - 1));
       }
     }
 
@@ -224,8 +223,8 @@ protected:
       curOffset_ += blockSize;
 
       if (!IsTLargerThanAlign) {
-        curOffset_ = (curOffset_ + AlignElementCount - 1) &
-            ~(AlignElementCount -1);
+        curOffset_ =
+            (curOffset_ + AlignElementCount - 1) & ~(AlignElementCount - 1);
       }
       return r;
     }
@@ -369,7 +368,8 @@ public:
   /**
    * @brief send config to pserver
    *
-   * @note  it can help pserver to understand the configuration for optimization,
+   * @note  it can help pserver to understand the configuration for
+   * optimization,
    *        logging control, duplicated initialization, etc.
    */
   void setConfig(const SetConfigRequest& request,
@@ -545,17 +545,17 @@ protected:
                      std::vector<ParameterServer2::Buffer>* buffers);
 
   const ParameterConfig& getParameterConfig(const ParameterBlock& block) {
-    CHECK_LT(block.para_id(), -1UL)
-        << "invalid parameter id:" << block.para_id();
+    CHECK_LT(block.para_id(), -1UL) << "invalid parameter id:"
+                                    << block.para_id();
     const auto it = configMap_.find(block.para_id());
-    CHECK(it != configMap_.end())
-        << "can not find parameter id: " << block.para_id();
+    CHECK(it != configMap_.end()) << "can not find parameter id: "
+                                  << block.para_id();
     return it->second;
   }
 
   /// it implictly check blockOffsetMap_ while retrieving blockId
   const ParameterConfig& getParameterConfig(int64_t blockId) const {
-    CHECK(blockId >= 0 && blockId < (int64_t) blockInfos_.size())
+    CHECK(blockId >= 0 && blockId < (int64_t)blockInfos_.size())
         << "block idx out of range, id: " << blockId
         << " info size: " << blockInfos_.size();
     return *(blockInfos_[blockId].config);
@@ -614,7 +614,8 @@ protected:
    *        vectors_[parameterType] directly
    *        for dense with sync-sgd
    */
-  void sendBackParameter(const ParameterBlock& block, int parameterType,
+  void sendBackParameter(const ParameterBlock& block,
+                         int parameterType,
                          SendParameterResponse* response,
                          std::vector<Buffer>* outputBuffers);
 
@@ -627,16 +628,20 @@ protected:
    *        to buffer->base.
    *        for dense with async-sgd
    */
-  void sendBackParameter(const ParameterBlock& block, int parameterType,
-                         SendParameterResponse* response, Buffer* buffer,
+  void sendBackParameter(const ParameterBlock& block,
+                         int parameterType,
+                         SendParameterResponse* response,
+                         Buffer* buffer,
                          std::vector<Buffer>* outputBuffers);
   /**
    * @brief prepare data for sending back
    *
    * @note  specified for sparse
    */
-  void sendBackParameterSparse(const ParameterBlock& block, int parameterType,
-                               SendParameterResponse* response, Buffer* buffer,
+  void sendBackParameterSparse(const ParameterBlock& block,
+                               int parameterType,
+                               SendParameterResponse* response,
+                               Buffer* buffer,
                                size_t width,
                                std::vector<Buffer>* outputBuffers);
 
@@ -648,8 +653,11 @@ protected:
    */
   typedef std::function<void(int64_t blockId, const VectorPtr vecs[])> ExecFunc;
   void parallelExecForEachBlock(ExecFunc func);
-  void blockTraverse(BlockInfo& info, const ParameterConfig& config,
-                     int64_t offset, size_t size, const VectorPtr vecs[],
+  void blockTraverse(BlockInfo& info,
+                     const ParameterConfig& config,
+                     int64_t offset,
+                     size_t size,
+                     const VectorPtr vecs[],
                      const ParameterOptimizer::TraverseCallback& callback);
 
 public:

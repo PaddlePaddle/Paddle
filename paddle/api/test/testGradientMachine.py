@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,6 +45,7 @@ class TestGradientMachine(unittest.TestCase):
             assert isinstance(val, swig_paddle.Vector)
             arr = numpy.full((len(val), ), 0.1, dtype="float32")
             val.copyFromNumpyArray(arr)
+            self.assertTrue(param.save(param.getName()))
             param_config = param.getConfig().toProto()
             assert isinstance(param_config,
                               paddle.proto.ParameterConfig_pb2.ParameterConfig)
@@ -91,6 +92,9 @@ class TestGradientMachine(unittest.TestCase):
             opt.finishPass()
 
         self.assertTrue(self.isCalled)
+
+        for param in machine.getParameters():
+            self.assertTrue(param.load(param.getName()))
 
     def test_train_one_pass(self):
         conf_file_path = './testTrainConfig.py'

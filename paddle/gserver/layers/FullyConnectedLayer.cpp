@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "FullyConnectedLayer.h"
+#include <algorithm>
+#include <vector>
+#include "paddle/math/SparseMatrix.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
-#include "paddle/math/SparseMatrix.h"
-#include <vector>
-#include <algorithm>
 
 namespace paddle {
 
@@ -85,8 +84,8 @@ void FullyConnectedLayer::forward(PassType passType) {
     auto input = getInput(i);
     CHECK(input.value) << "The input of 'fc' layer must be matrix";
     REGISTER_TIMER_INFO("FwMulTimer", getName().c_str());
-    i == 0 ? outV->mul(input.value, weights_[i]->getW(), 1, 0)
-           : outV->mul(input.value, weights_[i]->getW(), 1, 1);
+    i == 0 ? outV->mul(*input.value, *weights_[i]->getW(), 1, 0)
+           : outV->mul(*input.value, *weights_[i]->getW(), 1, 1);
   }
 
   /* add the bias-vector */
@@ -124,7 +123,7 @@ void FullyConnectedLayer::backward(const UpdateCallback& callback) {
       MatrixPtr oGrad = getOutputGrad();
       {
         REGISTER_TIMER_INFO("GradMulTimer", getName().c_str());
-        weights_[i]->getWGrad()->mul(input_T, oGrad, 1, 1);
+        weights_[i]->getWGrad()->mul(*input_T, *oGrad, 1, 1);
       }
     }
 
@@ -137,7 +136,7 @@ void FullyConnectedLayer::backward(const UpdateCallback& callback) {
     if (NULL != preGrad) {
       MatrixPtr weights_T = weights_[i]->getW()->getTranspose();
       REGISTER_TIMER_INFO("BpMulTimer", getName().c_str());
-      preGrad->mul(getOutputGrad(), weights_T, 1, 1);
+      preGrad->mul(*getOutputGrad(), *weights_T, 1, 1);
     }
 
     hl_set_sync_flag(syncFlag);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #ifndef HL_MATRIX_H_
 #define HL_MATRIX_H_
@@ -30,13 +29,8 @@ limitations under the License. */
  * @param[in]   beta    scalar used for addition.
  *
  */
-extern void hl_matrix_add(real* A_d,
-                          real* B_d,
-                          real* C_d,
-                          int dimM,
-                          int dimN,
-                          real alpha,
-                          real beta);
+extern void hl_matrix_add(
+    real* A_d, real* B_d, real* C_d, int dimM, int dimN, real alpha, real beta);
 /**
  * @brief   Matrix Softmax.
  *
@@ -46,7 +40,7 @@ extern void hl_matrix_add(real* A_d,
  * @param[in]   dimN    matrix width.
  *
  */
-extern void hl_matrix_softmax(real *A_d, real *C_d, int dimM, int dimN);
+extern void hl_matrix_softmax(real* A_d, real* C_d, int dimM, int dimN);
 
 /**
  * @brief   Matrix softmax derivative.
@@ -58,11 +52,8 @@ extern void hl_matrix_softmax(real *A_d, real *C_d, int dimM, int dimN);
  * @param[in]   dimN         matrix width.
  *
  */
-extern void hl_matrix_softmax_derivative(real* grad_d,
-                                         real* output_d,
-                                         real* sftmaxSum_d,
-                                         int dimM,
-                                         int dimN);
+extern void hl_matrix_softmax_derivative(
+    real* grad_d, real* output_d, real* sftmaxSum_d, int dimM, int dimN);
 
 /**
  * @brief   Sequence softmax.
@@ -73,26 +64,10 @@ extern void hl_matrix_softmax_derivative(real* grad_d,
  * @param[in]   numSequence sequence number.
  *
  */
-extern void hl_sequence_softmax_forward(real *A_d,
-                                        real *C_d,
+extern void hl_sequence_softmax_forward(real* A_d,
+                                        real* C_d,
                                         const int* index,
                                         int numSequence);
-
-/**
- * @brief   Matrix classification error.
- *
- * @param[in]   A_d     input matrix (M x N).
- * @param[in]   B_d     input vector (M x 1).
- * @param[out]  C_d     output vector (M x 1).
- * @param[in]   dimM    matrix height.
- * @param[in]   dimN    matrix width.
- *
- */
-extern void hl_matrix_classification_error(real* A_d,
-                                           int* B_d,
-                                           real* C_d,
-                                           int dimM,
-                                           int dimN);
 
 /**
  * @brief   Matrix cross entropy.
@@ -104,11 +79,8 @@ extern void hl_matrix_classification_error(real* A_d,
  * @param[in]   dimN    matrix width.
  *
  */
-extern void hl_matrix_cross_entropy(real* A_d,
-                                    real* C_d,
-                                    int* label_d,
-                                    int dimM,
-                                    int dimN);
+extern void hl_matrix_cross_entropy(
+    real* A_d, real* C_d, int* label_d, int dimM, int dimN);
 
 /**
  * @brief   Matrix cross entropy back propagation.
@@ -120,11 +92,8 @@ extern void hl_matrix_cross_entropy(real* A_d,
  * @param[in]   dimN        matrix width.
  *
  */
-extern void hl_matrix_cross_entropy_bp(real* grad_d,
-                                       real* output_d,
-                                       int* label_d,
-                                       int dimM,
-                                       int dimN);
+extern void hl_matrix_cross_entropy_bp(
+    real* grad_d, real* output_d, int* label_d, int dimM, int dimN);
 
 /**
  * @brief  Matrix multi-binary label cross entropy
@@ -135,11 +104,8 @@ extern void hl_matrix_cross_entropy_bp(real* grad_d,
  * @param[in]   dimM      matrix height.
  * @param[in]   dimN      matrix width.
  */
-extern void hl_matrix_multi_binary_cross_entropy(real* output,
-                                                 real* entropy,
-                                                 hl_sparse_matrix_s mat,
-                                                 int dimM,
-                                                 int dimN);
+extern void hl_matrix_multi_binary_cross_entropy(
+    real* output, real* entropy, hl_sparse_matrix_s mat, int dimM, int dimN);
 
 /**
  * @brief  Matrix multi-binary label cross entropy backprop
@@ -150,11 +116,8 @@ extern void hl_matrix_multi_binary_cross_entropy(real* output,
  * @param[in]   dimM      matrix height.
  * @param[in]   dimN      matrix width.
  */
-extern void hl_matrix_multi_binary_cross_entropy_bp(real* output,
-                                                    real* grad,
-                                                    hl_sparse_matrix_s mat,
-                                                    int dimM,
-                                                    int dimN);
+extern void hl_matrix_multi_binary_cross_entropy_bp(
+    real* output, real* grad, hl_sparse_matrix_s mat, int dimM, int dimN);
 
 /**
  * @brief  Matrix zero memory.
@@ -176,12 +139,8 @@ extern void hl_matrix_zero_mem(real* data, int num);
  * @param[in]  partial_sum
  */
 
-extern void hl_param_relu_forward(real* output,
-                                  real* input,
-                                  real* w,
-                                  int width,
-                                  int height,
-                                  int partial_sum);
+extern void hl_param_relu_forward(
+    real* output, real* input, real* w, int width, int height, int partial_sum);
 /**
  * @brief parameter relu backward w
  *
@@ -216,48 +175,6 @@ extern void hl_param_relu_backward_diff(real* grad_o,
                                         int width,
                                         int height,
                                         int partial_sum);
-/**
- * @brief cos sim forward
- *
- * @param[out]    output         output data
- * @param[in]     input1         input1 data(matrix)
- * @param[in]     input2         input2 data(matrix or vector)
- * @param[in]     width          matrix width
- * @param[in]     input1_height  input1_height
- * @param[in]     input2_height  input2_height
- * @param[in]     scale          scale factor
- */
-extern void hl_cossim(real* output,
-                      real* input1,
-                      real* input2,
-                      int width,
-                      int input1_height,
-                      int input2_height,
-                      real scale);
-/**
- * @brief cos sim derivate
- *
- * @param[in]     grad             output grad
- * @param[in]     output           output data
- * @param[in]     prevOutX         input1 data
- * @param[in]     prevOutY         input2 data
- * @param[out]    prevGradX        input1 grad
- * @param[out]    prevGradY        input2 grad
- * @param[in]     width            matrix width
- * @param[in]     input1_height    input1 height
- * @param[in]     input2_height    input2 height
- * @param[in]     scale            scale factor
- */
-extern void hl_cossim_derivative(real* grad,
-                                 real* output,
-                                 real* prevOutX,
-                                 real* prevOutY,
-                                 real* prevGradX,
-                                 real* prevGradY,
-                                 int width,
-                                 int input1_height,
-                                 int input2_height,
-                                 real scale);
 
 /**
  * @brief   Matrix addition: A_d[i][j] += scale * B_d[j/channel].
@@ -294,5 +211,17 @@ extern void hl_matrix_collect_shared_bias(real* B_d,
                                           const int dimM,
                                           const int dimN,
                                           real scale);
+
+/**
+ * @brief  Matrix rotation in 90 degrees
+ *
+ * @param[in]   mat       input matrix (M x N).
+ * @param[out]  matRot    output matrix (N x M).
+ * @param[in]   dimM      input matrix height.
+ * @param[in]   dimN      input matrix width.
+ * @param[in]   clockWise rotation direction
+ */
+extern void hl_matrix_rotate(
+    real* mat, real* matRot, int dimM, int dimN, bool clockWise);
 
 #endif /* HL_MATRIX_H_ */

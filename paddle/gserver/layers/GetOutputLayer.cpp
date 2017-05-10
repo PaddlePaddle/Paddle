@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "Layer.h"
 
 namespace paddle {
@@ -23,17 +22,18 @@ public:
 
   ~GetOutputLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
     if (!Layer::init(layerMap, parameterMap)) return false;
     CHECK_EQ(1U, inputLayers_.size());
     CHECK_NE(inputArgument_[0], "");
     return true;
   }
 
-  void forward(PassType passType) {
+  void forward(PassType passType) override {
     output_ = getPrev(0)->getOutput(inputArgument_[0]);
   }
-  void backward(const UpdateCallback& callback = nullptr) {}
+  void backward(const UpdateCallback& callback = nullptr) override {}
 };
 
 REGISTER_LAYER(get_output, GetOutputLayer);

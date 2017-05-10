@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
-#include "paddle/utils/TypeDefs.h"
 #include "ModelConfig.pb.h"
 #include "hl_gpu.h"
+#include "paddle/utils/Common.h"
 
 namespace paddle {
 
@@ -29,7 +28,9 @@ public:
   void forward(hl_gru_value value, int frameSize, int batchSize = 1);
 
   template <bool useGpu>
-  void backward(hl_gru_value value, hl_gru_grad grad, int frameSize,
+  void backward(hl_gru_value value,
+                hl_gru_grad grad,
+                int frameSize,
                 int batchSize = 1);
 
 public:

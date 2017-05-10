@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,23 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
-#include "paddle/utils/Stat.h"
 #include "Layer.h"
+#include "paddle/utils/Stat.h"
 
 namespace paddle {
 
 /**
- * @brief Batch normalization layer use to normalizes the input to across the batch.
+ * @brief Batch normalization layer use to normalizes the input to across the
+ * batch.
  *
  * By default, calculating global mean and variance statistics via a running
  * average in the training peroid. Then the pre-calculated global mean and
  * variance are used for testing.
  *
  * Moving mean and variance are located in Parameter object when constructing
- * and the calculation will change them. Now we only save global mean and 
+ * and the calculation will change them. Now we only save global mean and
  * variance of one thread in first node for GPU.
  * But the calculation in CPU is different, because parameters are shared by
  * multiple threads. Here using ShareCpuMatrix with lock to calculate. We
@@ -41,8 +41,7 @@ namespace paddle {
 
 class BatchNormBaseLayer : public Layer {
 public:
-  explicit BatchNormBaseLayer(const LayerConfig& config)
-      : Layer(config) {}
+  explicit BatchNormBaseLayer(const LayerConfig& config) : Layer(config) {}
 
   ~BatchNormBaseLayer() {}
 
@@ -53,10 +52,11 @@ public:
    */
   static Layer* create(const LayerConfig& config);
 
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  /** 
-   * @brief Calculate feature map size. Some input uses frameHeight and 
+  /**
+   * @brief Calculate feature map size. Some input uses frameHeight and
    * frameWidth to store feature size
    */
   void calFeatureMapSize();
@@ -78,9 +78,8 @@ protected:
   MatrixPtr savedMean_;
   MatrixPtr savedInvVar_;
 
-  /// Height or width of input image feature, now height is equal to width.
-  /// imgSize is 1 if the input is fully-connected layer.
-  int imgSize_;
+  /// Height or width of input image feature.
+  /// Both of them are 1 if the input is fully-connected layer.
   int imageH_;
   int imageW_;
   /// Height * Width.

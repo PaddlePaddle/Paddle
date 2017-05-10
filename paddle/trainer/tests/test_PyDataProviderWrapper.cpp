@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,18 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #ifndef PADDLE_NO_PYTHON
-#include <gtest/gtest.h>
-#include <paddle/utils/PythonUtil.h>
-#include <paddle/gserver/dataproviders/DataProvider.h>
 #include <DataConfig.pb.h>
+#include <gtest/gtest.h>
+#include <paddle/gserver/dataproviders/DataProvider.h>
 #include <paddle/math/Matrix.h>
 #include <paddle/parameter/Argument.h>
+#include <paddle/utils/PythonUtil.h>
+#include <fstream>
+#include <typeinfo>
 #include <unordered_map>
 #include <unordered_set>
-#include <typeinfo>
-#include <fstream>
 #include "picojson.h"
 
 void checkEqual(const paddle::Argument& expect, const paddle::Argument& actual);

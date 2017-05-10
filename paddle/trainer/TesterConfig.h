@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/utils/Util.h"
@@ -24,9 +23,9 @@ limitations under the License. */
 
 #include "TrainerConfig.pb.h"
 
-#include "ParameterUpdater.h"
-#include <fstream>
 #include <stdlib.h>
+#include <fstream>
+#include "ParameterUpdater.h"
 
 namespace paddle {
 
@@ -39,11 +38,6 @@ struct TesterConfig {
    * indicate test period
    */
   int testPeriod;
-
-  /**
-   * indicate whether testing data in one period
-   */
-  bool testAllDataInOnePeriod;
 
   /**
    * indicate whether to save previous batch state

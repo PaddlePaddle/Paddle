@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
 #include "GradientMachine.h"
 #include "NeuralNetwork.h"
-#include <functional>
 
 #include "paddle/utils/Locks.h"
 
@@ -44,23 +44,26 @@ public:
     this->removeBeamSearchControlCallbacks();
   }
 
-  virtual void init(const ModelConfig& config, ParamInitCallback callback,
+  virtual void init(const ModelConfig& config,
+                    ParamInitCallback callback,
                     const std::vector<ParameterType>& parameterTypes,
                     bool useGpu);
 
   virtual void prefetch(const std::vector<Argument>& inArgs);
 
   virtual void forward(const std::vector<Argument>& inArgs,
-                       std::vector<Argument>* outArgs, PassType passType);
+                       std::vector<Argument>* outArgs,
+                       PassType passType);
 
   virtual void backward(const UpdateCallback& callback = nullptr);
 
   void forwardBackward(const std::vector<Argument>& inArgs,
-                       std::vector<Argument>* outArgs, PassType passType,
+                       std::vector<Argument>* outArgs,
+                       PassType passType,
                        const UpdateCallback& callback);
 
   virtual void resetState() {}
-  virtual void eval(Evaluator* evaluator);
+  virtual void eval(Evaluator* evaluator) const;
 
   const std::vector<int>& getParameterIds() { return parameterIds_; }
 
@@ -81,8 +84,8 @@ public:
    * beam search, so that user can customize different operations in different
    * beam search iterations.
    */
-  typedef std::function<void(const std::vector<std::vector<int>*>&,
-                             NeuralNetwork*, const int)>
+  typedef std::function<void(
+      const std::vector<std::vector<int>*>&, NeuralNetwork*, const int)>
       BeamSearchCandidatesAdjustCallback;
 
   /**
@@ -99,8 +102,9 @@ public:
    *
    * Return true if this prefix or candidate is expected to be dropped.
    */
-  typedef std::function<bool(int seqId, const std::vector<int>&,
-                             const std::vector<real>&)> DropCallback;
+  typedef std::function<bool(
+      int seqId, const std::vector<int>&, const std::vector<real>&)>
+      DropCallback;
 
   /**
     * @brief NormOrDropNodeCallback
@@ -115,8 +119,9 @@ public:
     *
     * The fourth parameter is the probability of the whole path.
     */
-  typedef std::function<void(int seqId, const std::vector<int>&,
-                             std::vector<real>&, real*)> NormOrDropNodeCallback;
+  typedef std::function<void(
+      int seqId, const std::vector<int>&, std::vector<real>&, real*)>
+      NormOrDropNodeCallback;
 
   /**
    * @brief Register beam search control callbacks. Used for prediction.
@@ -346,7 +351,8 @@ protected:
   *  If hasSubseq, will also create scattered sequenceStartPositions infomation
   *  for all realLayer of inFrameLines one time.
   */
-  void createInFrameInfo(int inlinks_id, const Argument& input,
+  void createInFrameInfo(int inlinks_id,
+                         const Argument& input,
                          PassType passType);
 
   void createMemoryFrameInfo(MemoryFrameLine* memoryFrameLine,
@@ -354,8 +360,10 @@ protected:
 
   void copyScattedId(std::vector<int>& srcIds, IVectorPtr* dstIds, int size);
 
-  void selectRowsOneTime(LayerPtr layer, const IVectorPtr& allIds,
-                         Argument* arg, PassType passType);
+  void selectRowsOneTime(LayerPtr layer,
+                         const IVectorPtr& allIds,
+                         Argument* arg,
+                         PassType passType);
 
   void createSeqPos(const std::vector<int>& sequenceStartPosition,
                     ICpuGpuVectorPtr* sequenceStartPositions);
@@ -459,7 +467,8 @@ private:
    * @param totalExpandCount : number of already shrinked paths in newPaths
    * @return size of retained paths at the end of a beam search iteration
    */
-  size_t beamShrink(std::vector<Path>& newPaths, size_t seqId,
+  size_t beamShrink(std::vector<Path>& newPaths,
+                    size_t seqId,
                     size_t totalExpandCount);
 
   /*
@@ -469,8 +478,10 @@ private:
    * @param curPathId : index of curPath in member newPaths
    * @param expandWidth : number of paths to be expanded
    */
-  void singlePathExpand(Path& curPath, size_t curPathId,
-                        std::vector<Path>& newPaths, size_t expandWidth);
+  void singlePathExpand(Path& curPath,
+                        size_t curPathId,
+                        std::vector<Path>& newPaths,
+                        size_t expandWidth);
 
   /*
    * @brief A new beam search iteration. Each half-generated paths in previous

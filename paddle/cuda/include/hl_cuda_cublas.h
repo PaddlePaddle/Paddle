@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #ifndef HL_CUDA_CUBLAS_H_
 #define HL_CUDA_CUBLAS_H_
@@ -29,12 +28,8 @@ limitations under the License. */
  * @param[in]   ldc     the first dimension of C_d.
  *
  */
-extern void hl_matrix_transpose(real *A_d,
-                                real *C_d,
-                                int dimM,
-                                int dimN,
-                                int lda,
-                                int ldc);
+extern void hl_matrix_transpose(
+    real *A_d, real *C_d, int dimM, int dimN, int lda, int ldc);
 
 /*
  * @brief Matrix transpose, while lda = dimN, ldc = dimM.
@@ -45,10 +40,7 @@ extern void hl_matrix_transpose(real *A_d,
  * @param[in]   dimN    matrix width.
  *
  */
-extern void hl_matrix_transpose(real *A_d,
-                                real *C_d,
-                                int dimM,
-                                int dimN);
+extern void hl_matrix_transpose(real *A_d, real *C_d, int dimM, int dimN);
 
 /*
  * @brief Matrix inverse
@@ -60,11 +52,7 @@ extern void hl_matrix_transpose(real *A_d,
  * @param[in]   ldc    the first dimension of C_d
  *
  */
-extern void hl_matrix_inverse(real *A_d,
-                              real *C_d,
-                              int dimN,
-                              int lda,
-                              int ldc);
+extern void hl_matrix_inverse(real *A_d, real *C_d, int dimN, int lda, int ldc);
 
 /**
  * @brief   C_d = alpha*(op(A_d) * op(B_d)) + beta*C_d
@@ -84,12 +72,19 @@ extern void hl_matrix_inverse(real *A_d,
  * @param[in]   ldc     the first dimension of C_d.
  *
  */
-extern void hl_matrix_mul(real *A_d, hl_trans_op_t transa,
-                          real *B_d, hl_trans_op_t transb,
+extern void hl_matrix_mul(real *A_d,
+                          hl_trans_op_t transa,
+                          real *B_d,
+                          hl_trans_op_t transb,
                           real *C_d,
-                          int dimM, int dimN, int dimK,
-                          real alpha, real beta,
-                          int lda, int ldb, int ldc);
+                          int dimM,
+                          int dimN,
+                          int dimK,
+                          real alpha,
+                          real beta,
+                          int lda,
+                          int ldb,
+                          int ldc);
 
 /**
  * @brief   C_d = alpha*(op(A_d) * op(B_d)) + beta*C_d
@@ -106,11 +101,16 @@ extern void hl_matrix_mul(real *A_d, hl_trans_op_t transa,
  * @param[in]   beta    scalar used for multiplication.
  *
  */
-extern void hl_matrix_mul(real *A_d, hl_trans_op_t transa,
-                          real *B_d, hl_trans_op_t transb,
+extern void hl_matrix_mul(real *A_d,
+                          hl_trans_op_t transa,
+                          real *B_d,
+                          hl_trans_op_t transb,
                           real *C_d,
-                          int dimM, int dimN, int dimK,
-                          real alpha, real beta);
+                          int dimM,
+                          int dimN,
+                          int dimK,
+                          real alpha,
+                          real beta);
 
 /**
  * @brief   This function performs the matrix-vector multiplication.
@@ -132,11 +132,17 @@ extern void hl_matrix_mul(real *A_d, hl_trans_op_t transa,
  *
  */
 
-extern void hl_matrix_mul_vector(real *A_d, hl_trans_op_t trans,
-                                 real *B_d, real *C_d,
-                                 int dimM, int dimN,
-                                 real alpha, real beta,
-                                 int lda, int incb, int incc);
+extern void hl_matrix_mul_vector(real *A_d,
+                                 hl_trans_op_t trans,
+                                 real *B_d,
+                                 real *C_d,
+                                 int dimM,
+                                 int dimN,
+                                 real alpha,
+                                 real beta,
+                                 int lda,
+                                 int incb,
+                                 int incc);
 
 /**
  * @brief   This function performs the matrix-vector multiplication.
@@ -154,9 +160,13 @@ extern void hl_matrix_mul_vector(real *A_d, hl_trans_op_t trans,
  * @param[in]     beta   scalar used for multiplication.
  *
  */
-extern void hl_matrix_mul_vector(real *A_d, hl_trans_op_t trans,
-                                 real *B_d, real *C_d,
-                                 int dimM, int dimN,
-                                 real alpha, real beta);
+extern void hl_matrix_mul_vector(real *A_d,
+                                 hl_trans_op_t trans,
+                                 real *B_d,
+                                 real *C_d,
+                                 int dimM,
+                                 int dimN,
+                                 real alpha,
+                                 real beta);
 
 #endif /* HL_CUDA_CUBLAS_H_ */

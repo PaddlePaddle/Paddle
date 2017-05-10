@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,9 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include "Layer.h"
 #include "GruCompute.h"
+#include "Layer.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -32,7 +31,8 @@ namespace paddle {
  * \f[
  * update \ gate: z_t = actGate(xz_t + U_z * prev_out + bias_z) \\
  * reset \ gate: r_t = actGate(xr_t + U_r * prev_out + bias_r)  \\
- * output \ candidate: {h}_t = actNode(xi_t + U * dot(r_t, prev_out) + bias_o) \\
+ * output \ candidate: {h}_t = actNode(xi_t + U * dot(r_t, prev_out) + bias_o)
+ * \\
  * output: h_t = dot((1-z_t), prev_out) + dot(z_t, prev_out)
  * \f]
  *
@@ -55,10 +55,11 @@ public:
 
   ~GruStepLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(gru_step, GruStepLayer);
@@ -91,10 +92,16 @@ void GruStepLayer::forward(PassType passType) {
 
   int batchSize = input.getBatchSize();
   resetOutput(batchSize, getSize());
-  resetSpecifyOutput(gate_, batchSize, getSize() * 3,
-                     /* isValueClean */ false, /* isGradClean */ false);
-  resetSpecifyOutput(resetOutput_, batchSize, getSize(),
-                     /* isValueClean */ false, /* isGradClean */ false);
+  resetSpecifyOutput(gate_,
+                     batchSize,
+                     getSize() * 3,
+                     /* isValueClean */ false,
+                     /* isGradClean */ false);
+  resetSpecifyOutput(resetOutput_,
+                     batchSize,
+                     getSize(),
+                     /* isValueClean */ false,
+                     /* isGradClean */ false);
   gate_.value->assign(*input.value);
   if (bias_) {
     gate_.value->addBias(*(bias_->getW()), 1);
@@ -103,7 +110,7 @@ void GruStepLayer::forward(PassType passType) {
   hl_gru_value gruValue;
   gruValue.gateWeight = weight_->getW()->getData();
   gruValue.stateWeight = weight_->getW()->getData() + getSize() * getSize() * 2;
-  gruValue.gateValue = gate_.value->getData();;
+  gruValue.gateValue = gate_.value->getData();
   gruValue.resetOutputValue = resetOutput_.value->getData();
   gruValue.outputValue = output_.value->getData();
   gruValue.prevOutValue = prevOutput.value->getData();
@@ -125,17 +132,18 @@ void GruStepLayer::backward(const UpdateCallback& callback) {
   hl_gru_value gruValue;
   gruValue.gateWeight = weight_->getW()->getData();
   gruValue.stateWeight = weight_->getW()->getData() + getSize() * getSize() * 2;
-  gruValue.gateValue = gate_.value->getData();;
+  gruValue.gateValue = gate_.value->getData();
   gruValue.resetOutputValue = resetOutput_.value->getData();
   gruValue.outputValue = output_.value->getData();
   gruValue.prevOutValue = prevOutput.value->getData();
 
-  hl_gru_grad  gruGrad;
+  hl_gru_grad gruGrad;
   gruGrad.gateWeightGrad =
-    (weight_->getWGrad() ? weight_->getWGrad()->getData() : nullptr);
+      (weight_->getWGrad() ? weight_->getWGrad()->getData() : nullptr);
   gruGrad.stateWeightGrad =
-    (weight_->getWGrad() ?
-     weight_->getWGrad()->getData() + getSize() * getSize() * 2 : nullptr);
+      (weight_->getWGrad()
+           ? weight_->getWGrad()->getData() + getSize() * getSize() * 2
+           : nullptr);
 
   gruGrad.gateGrad = gate_.grad->getData();
   gruGrad.resetOutputGrad = resetOutput_.grad->getData();

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include "PaddleAPI.h"
 #include "paddle/math/Matrix.h"
-#include "paddle/math/SparseMatrix.h"
-#include "paddle/math/CpuSparseMatrix.h"
-#include <iostream>
 #include <cstring>
+#include <iostream>
+#include "PaddleAPI.h"
+#include "paddle/math/CpuSparseMatrix.h"
+#include "paddle/math/SparseMatrix.h"
 
 struct MatrixPrivate {
   std::shared_ptr<paddle::Matrix> mat;
@@ -44,15 +43,35 @@ Matrix* Matrix::createZero(size_t height, size_t width, bool useGpu) {
   return m;
 }
 
-Matrix* Matrix::createDense(const std::vector<float>& data, size_t height,
-                            size_t width, bool useGpu) {
+Matrix* Matrix::createDense(const std::vector<float>& data,
+                            size_t height,
+                            size_t width,
+                            bool useGpu) {
   auto m = new Matrix();
   m->m->mat = paddle::Matrix::create(height, width, useGpu);
   m->m->mat->copyFrom(data.data(), data.size());
   return m;
 }
 
-Matrix* Matrix::createCpuDenseFromNumpy(float* data, int dim1, int dim2,
+Matrix* Matrix::createDenseFromNumpy(float* data,
+                                     int dim1,
+                                     int dim2,
+                                     bool copy,
+                                     bool useGpu) throw(UnsupportError) {
+  if (useGpu) {
+    /// Gpu mode only supports copy=True
+    if (!copy) {
+      throw UnsupportError("Gpu mode only supports copy=True");
+    }
+    return Matrix::createGpuDenseFromNumpy(data, dim1, dim2);
+  } else {
+    return Matrix::createCpuDenseFromNumpy(data, dim1, dim2, copy);
+  }
+}
+
+Matrix* Matrix::createCpuDenseFromNumpy(float* data,
+                                        int dim1,
+                                        int dim2,
                                         bool copy) {
   auto m = new Matrix();
   if (copy) {
@@ -71,12 +90,20 @@ Matrix* Matrix::createGpuDenseFromNumpy(float* data, int dim1, int dim2) {
   return m;
 }
 
-Matrix* Matrix::createSparse(size_t height, size_t width, size_t nnz,
-                             bool isNonVal, bool isTrans, bool useGpu) {
+Matrix* Matrix::createSparse(size_t height,
+                             size_t width,
+                             size_t nnz,
+                             bool isNonVal,
+                             bool isTrans,
+                             bool useGpu) {
   auto m = new Matrix();
   m->m->mat = paddle::Matrix::createSparseMatrix(
-      height, width, nnz, isNonVal ? paddle::NO_VALUE : paddle::FLOAT_VALUE,
-      isTrans, useGpu);
+      height,
+      width,
+      nnz,
+      isNonVal ? paddle::NO_VALUE : paddle::FLOAT_VALUE,
+      isTrans,
+      useGpu);
   return m;
 }
 
@@ -207,7 +234,8 @@ FloatArray Matrix::getData() const {
 }
 
 void Matrix::sparseCopyFrom(
-    const std::vector<int>& rows, const std::vector<int>& cols,
+    const std::vector<int>& rows,
+    const std::vector<int>& cols,
     const std::vector<float>& vals) throw(UnsupportError) {
   auto cpuSparseMat =
       std::dynamic_pointer_cast<paddle::CpuSparseMatrix>(m->mat);
@@ -226,7 +254,8 @@ void Matrix::sparseCopyFrom(
 
 void* Matrix::getSharedPtr() const { return &m->mat; }
 
-void Matrix::toNumpyMatInplace(float** view_data, int* dim1,
+void Matrix::toNumpyMatInplace(float** view_data,
+                               int* dim1,
                                int* dim2) throw(UnsupportError) {
   auto cpuMat = std::dynamic_pointer_cast<paddle::CpuMatrix>(m->mat);
   if (cpuMat) {
@@ -237,7 +266,8 @@ void Matrix::toNumpyMatInplace(float** view_data, int* dim1,
     throw UnsupportError();
   }
 }
-void Matrix::copyToNumpyMat(float** view_m_data, int* dim1,
+void Matrix::copyToNumpyMat(float** view_m_data,
+                            int* dim1,
                             int* dim2) throw(UnsupportError) {
   static_assert(sizeof(paddle::real) == sizeof(float),
                 "Currently PaddleAPI only support for single "
@@ -255,8 +285,8 @@ void Matrix::copyToNumpyMat(float** view_m_data, int* dim1,
     } else if (auto gpuMat = dynamic_cast<paddle::GpuMatrix*>(m->mat.get())) {
       auto src = gpuMat->getData();
       auto dest = *view_m_data;
-      hl_memcpy_device2host(dest, src,
-                            sizeof(paddle::real) * (*dim1) * (*dim2));
+      hl_memcpy_device2host(
+          dest, src, sizeof(paddle::real) * (*dim1) * (*dim2));
     } else {
       LOG(WARNING) << "Unexpected Situation";
       throw UnsupportError();
@@ -264,7 +294,8 @@ void Matrix::copyToNumpyMat(float** view_m_data, int* dim1,
   }
 }
 
-void Matrix::copyFromNumpyMat(float* data, int dim1,
+void Matrix::copyFromNumpyMat(float* data,
+                              int dim1,
                               int dim2) throw(UnsupportError, RangeError) {
   if (isSparse()) {
     throw UnsupportError();

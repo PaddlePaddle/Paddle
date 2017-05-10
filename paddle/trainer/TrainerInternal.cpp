@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,55 +12,55 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "TrainerInternal.h"
 
 #include <fenv.h>
 #include <stdio.h>
 
-#include <iostream>
 #include <iomanip>
-#include <sstream>
+#include <iostream>
 #include <limits>
+#include <sstream>
 
 #include <google/protobuf/text_format.h>
 
+#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
+#include "paddle/gserver/layers/ValidationLayer.h"
+#include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
-#include "paddle/utils/GlobalConstants.h"
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
-#include "paddle/gserver/layers/ValidationLayer.h"
 
-#include "ThreadParameterUpdater.h"
 #include "RemoteParameterUpdater.h"
+#include "ThreadParameterUpdater.h"
 
 namespace paddle {
 
-void TrainerInternal::init(const std::shared_ptr<TrainerConfigHelper> &config,
-                           const GradientMachinePtr &gradientMachine,
-                           std::unique_ptr<TrainerInternalConfig> &&intconfig,
-                           const std::shared_ptr<TrainerStats> &stats,
+void TrainerInternal::init(const std::shared_ptr<TrainerConfigHelper>& config,
+                           const GradientMachinePtr& gradientMachine,
+                           std::unique_ptr<TrainerInternalConfig>&& intconfig,
+                           const std::shared_ptr<TrainerStats>& stats,
                            bool testing) {
-    config_ = config;
-    intconfig_ = std::move(intconfig);
-    stats_ = stats;
+  config_ = config;
+  intconfig_ = std::move(intconfig);
+  stats_ = stats;
 
-    //! in training will use parameter updater definitly.
-    //! But only use parameter in testing mode when some parameter in pserver.
-    if (!testing || (config_->getOptConfig().use_sparse_remote_updater() &&
+  //! in training will use parameter updater definitly.
+  //! But only use parameter in testing mode when some parameter in pserver.
+  if (!testing || (config_->getOptConfig().use_sparse_remote_updater() &&
                    intconfig_->loadsave_parameters_in_pserver)) {
-      createParameterUpdater(testing);
-    }
+    createParameterUpdater(testing);
+  }
 
-    gradientMachine_ = gradientMachine;
-    if (!gradientMachine) {
-      CHECK(config_->getConfig().has_model_config())
-          << "Missing model_config in trainer_config";
-      gradientMachine_.reset(GradientMachine::create(
-        config_->getConfig().model_config(), intconfig_->mode,
-        parameterUpdater_->getParameterTypes()));
-    }
+  gradientMachine_ = gradientMachine;
+  if (!gradientMachine) {
+    CHECK(config_->getConfig().has_model_config())
+        << "Missing model_config in trainer_config";
+    gradientMachine_.reset(
+        GradientMachine::create(config_->getConfig().model_config(),
+                                intconfig_->mode,
+                                parameterUpdater_->getParameterTypes()));
+  }
 }
 
 void TrainerInternal::trainOneBatch(int64_t batchId,
@@ -96,8 +96,8 @@ void TrainerInternal::trainOneBatch(int64_t batchId,
     parameterUpdater_->getParametersRemote();
   }
 
-  UpdateCallback updateCallback =
-      [this, showStats, &paraStats](Parameter* para) {
+  UpdateCallback updateCallback = [this, showStats, &paraStats](
+      Parameter* para) {
     if (showStats) {
       //! @TODO(yuyang18) Show stats is actually a ParameterHook, refactor
       // it
@@ -116,8 +116,8 @@ void TrainerInternal::trainOneBatch(int64_t batchId,
     timer.start();
 #endif
     REGISTER_TIMER("forwardBackward");
-    forwardBackwardBatch(inArgs, *outArgs, passType, updateCallback,
-                         doPipelineUpdate);
+    forwardBackwardBatch(
+        inArgs, *outArgs, passType, updateCallback, doPipelineUpdate);
 #ifndef PADDLE_DISABLE_TIMER
     timer.stop();
     parameterUpdater_->setForwardbackwardTime(timer.get());
@@ -134,7 +134,7 @@ void TrainerInternal::trainOneBatch(int64_t batchId,
   real cost = 0;
   {
     REGISTER_TIMER("sumCost");
-    cost = Argument::sumCosts(*outArgs);
+    cost = Argument::sum(*outArgs);
   }
 
   if (batchId % intconfig_->log_period == 0) {
@@ -147,7 +147,7 @@ void TrainerInternal::trainOneBatch(int64_t batchId,
     gradientMachine_->eval(evaluator_);
   }
 
-  *stats_ += { actualBatchSize, cost };
+  *stats_ += {actualBatchSize, cost};
   {
     REGISTER_TIMER("finishBatch");
     parameterUpdater_->finishBatch(cost);
@@ -162,12 +162,11 @@ void TrainerInternal::trainOneBatch(int64_t batchId,
     if (intconfig_->dot_period > 0) {
       std::cerr << std::endl;
     }
-    LOG(INFO) << " Batch=" << batchId + 1 << " "
-              << *stats_
+    LOG(INFO) << " Batch=" << batchId + 1 << " " << *stats_
               << " Eval: " << *evaluator_
               << " CurrentEval: " << *currentEvaluator_;
   } else if (intconfig_->dot_period > 0 &&
-            (batchId + 1) % intconfig_->dot_period == 0) {
+             (batchId + 1) % intconfig_->dot_period == 0) {
     std::cerr << ".";
   }
 }
@@ -179,13 +178,13 @@ void TrainerInternal::finishTrainPass(int passId, int batchId) {
   gradientMachine_->onPassEnd();
   parameterUpdater_->finishPass();
   evaluator_->finish();
-  LOG(INFO) << " Pass=" << passId << " Batch=" << batchId
-            << " " << stats_->getStats(false /*without current cost*/)
+  LOG(INFO) << " Pass=" << passId << " Batch=" << batchId << " "
+            << stats_->getStats(false /*without current cost*/)
             << " Eval: " << *evaluator_;
 }
 
-void TrainerInternal::showParameterStats(const std::vector<ParaStat>&
-                                        paraStats) {
+void TrainerInternal::showParameterStats(
+    const std::vector<ParaStat>& paraStats) {
   std::vector<ParameterPtr>& parameters = gradientMachine_->getParameters();
   for (auto& parameter : parameters) {
     SetDevice device(parameter->getDeviceId());
@@ -218,18 +217,21 @@ void TrainerInternal::showParameterStats(const std::vector<ParaStat>&
 void TrainerInternal::createParameterUpdater(bool testing) {
   const std::string& alg = config_->getOptConfig().algorithm();
   parameterUpdater_.reset(ParameterUpdaterCreators::tryCreateUpdater(
-                            alg, config_->getOptConfig(), intconfig_->local,
-                            intconfig_->num_passes));
-  if (parameterUpdater_) { return; }
+      alg, config_->getOptConfig(), intconfig_->local, intconfig_->num_passes));
+  if (parameterUpdater_) {
+    return;
+  }
 
   if (!intconfig_->local) {
     if (testing && config_->getOptConfig().use_sparse_remote_updater()) {
       std::unique_ptr<ParameterUpdater> localUpdater;
       localUpdater.reset(
           new SgdLocalUpdater(config_->getOptConfig()));  // do nothing
-      parameterUpdater_.reset(new SparseRemoteParameterUpdaterComposite(
-          config_->getOptConfig(), intconfig_->num_passes, testing,
-          std::move(localUpdater)));
+      parameterUpdater_.reset(
+          new SparseRemoteParameterUpdaterComposite(config_->getOptConfig(),
+                                                    intconfig_->num_passes,
+                                                    testing,
+                                                    std::move(localUpdater)));
     } else {
       if (GradientMachine::kSgdSparseCpuTraining == intconfig_->mode &&
           !intconfig_->use_old_updater) {
@@ -251,21 +253,18 @@ void TrainerInternal::createParameterUpdater(bool testing) {
       }
 
       localUpdater.reset(
-              intconfig_->use_old_updater
+          intconfig_->use_old_updater
               ? new RemoteParameterUpdater(
-                      *config_,
-                      intconfig_->num_passes,
-                      std::move(localUpdater))
+                    *config_, intconfig_->num_passes, std::move(localUpdater))
               : new ConcurrentRemoteParameterUpdater(
-                      *config_,
-                      intconfig_->num_passes,
-                      std::move(localUpdater)));
-
+                    *config_, intconfig_->num_passes, std::move(localUpdater)));
 
       if (config_->getOptConfig().use_sparse_remote_updater()) {
-        localUpdater.reset(new SparseRemoteParameterUpdaterComposite(
-            *config_, intconfig_->num_passes, testing,
-            std::move(localUpdater)));
+        localUpdater.reset(
+            new SparseRemoteParameterUpdaterComposite(*config_,
+                                                      intconfig_->num_passes,
+                                                      testing,
+                                                      std::move(localUpdater)));
       }
 
       this->parameterUpdater_ = std::move(localUpdater);
@@ -282,8 +281,7 @@ void TrainerInternal::createParameterUpdater(bool testing) {
       } else if (intconfig_->use_gpu &&
                  config_->getOptConfig().do_average_in_cpu() &&
                  config_->getOptConfig().average_window() > 0) {
-        parameterUpdater_.reset(
-            new SgdUpdaterWithCpuAverager(*config_));
+        parameterUpdater_.reset(new SgdUpdaterWithCpuAverager(*config_));
       } else {
         parameterUpdater_.reset(new SgdLocalUpdater(*config_));
       }
@@ -294,10 +292,10 @@ void TrainerInternal::createParameterUpdater(bool testing) {
 }
 
 void TrainerInternal::forwardBackwardBatch(const std::vector<Argument>& inArgs,
-                                   std::vector<Argument>& outArgs,
-                                   PassType& passType,
-                                   UpdateCallback updateCallback,
-                                   bool doPipelineUpdate) {
+                                           std::vector<Argument>& outArgs,
+                                           PassType& passType,
+                                           UpdateCallback updateCallback,
+                                           bool doPipelineUpdate) {
   gradientMachine_->forwardBackward(
       inArgs, &outArgs, passType, doPipelineUpdate ? updateCallback : nullptr);
 }

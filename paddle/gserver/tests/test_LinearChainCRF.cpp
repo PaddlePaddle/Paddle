@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #include <gtest/gtest.h>
 #include <vector>
@@ -37,7 +36,7 @@ TEST(LinearChainCRF, decoding) {
   real* a = para.getData();
   real* b = para.getData() + numClasses;
   real* w = para.getData() + 2 * numClasses;
-  LinearChainCRF crf(4, para.getData(), nullptr);
+  LinearChainCRF crf(4, para.getData());
   for (int length : {1, 2, 3, 10}) {
     for (int tries = 0; tries < 10; ++tries) {
       CpuMatrix x(length, numClasses);
@@ -65,10 +64,4 @@ TEST(LinearChainCRF, decoding) {
       }
     }
   }
-}
-
-int main(int argc, char** argv) {
-  initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

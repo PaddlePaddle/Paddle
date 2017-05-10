@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,24 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include "PaddleAPI.h"
 #include "paddle/parameter/Parameter.h"
-
-struct ParameterPrivate {
-  std::shared_ptr<paddle::Parameter> sharedPtr;
-  paddle::Parameter* rawPtr;
-
-  ParameterPrivate() : sharedPtr(nullptr), rawPtr(nullptr) {}
-
-  paddle::Parameter* getPtr() {
-    if (sharedPtr) {
-      return sharedPtr.get();
-    } else {
-      return rawPtr;
-    }
-  }
-};
+#include "PaddleAPI.h"
+#include "PaddleAPIPrivate.h"
 
 Parameter::Parameter() : m(new ParameterPrivate()) {}
 
@@ -69,3 +54,15 @@ ParameterConfig* Parameter::getConfig() {
 }
 
 size_t Parameter::getID() const { return m->getPtr()->getID(); }
+
+void Parameter::setValueUpdated() { m->getPtr()->setValueUpdated(); }
+
+bool Parameter::save(const std::string& filename) const {
+  return m->getPtr()->save(filename);
+}
+
+bool Parameter::load(const std::string& filename) const {
+  return m->getPtr()->load(filename);
+}
+
+size_t Parameter::getSize() const { return m->getPtr()->getSize(); }

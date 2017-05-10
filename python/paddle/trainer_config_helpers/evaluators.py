@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -57,19 +57,22 @@ def evaluator(*attrs):
     return impl
 
 
-def evaluator_base(input,
-                   type,
-                   label=None,
-                   weight=None,
-                   name=None,
-                   chunk_scheme=None,
-                   num_chunk_types=None,
-                   classification_threshold=None,
-                   positive_label=None,
-                   dict_file=None,
-                   result_file=None,
-                   num_results=None,
-                   delimited=None):
+def evaluator_base(
+        input,
+        type,
+        label=None,
+        weight=None,
+        name=None,
+        chunk_scheme=None,
+        num_chunk_types=None,
+        classification_threshold=None,
+        positive_label=None,
+        dict_file=None,
+        result_file=None,
+        num_results=None,
+        delimited=None,
+        top_k=None,
+        excluded_chunk_types=None, ):
     """
     Evaluator will evaluate the network status while training/testing.
 
@@ -102,12 +105,15 @@ def evaluator_base(input,
     :param weight: An input layer which is a weight for each sample.
                    Each evaluator may calculate differently to use this weight.
     :type weight: LayerOutput.
+    :param top_k: number k in top-k error rate
+    :type top_k: int
     """
     # inputs type assertions.
     assert classification_threshold is None or isinstance(
         classification_threshold, float)
     assert positive_label is None or isinstance(positive_label, int)
     assert num_results is None or isinstance(num_results, int)
+    assert top_k is None or isinstance(top_k, int)
 
     if not isinstance(input, list):
         input = [input]
@@ -127,7 +133,10 @@ def evaluator_base(input,
         positive_label=positive_label,
         dict_file=dict_file,
         result_file=result_file,
-        delimited=delimited)
+        delimited=delimited,
+        num_results=num_results,
+        top_k=top_k,
+        excluded_chunk_types=excluded_chunk_types, )
 
 
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
@@ -136,6 +145,7 @@ def classification_error_evaluator(input,
                                    label,
                                    name=None,
                                    weight=None,
+                                   top_k=None,
                                    threshold=None):
     """
     Classification Error Evaluator. It will print error rate for classification.
@@ -164,6 +174,8 @@ def classification_error_evaluator(input,
                   then means not set weight. The larger weight it is, the more
                   important this sample is.
     :type weight: LayerOutput
+    :param top_k: number k in top-k error rate
+    :type top_k: int
     :param threshold: The classification threshold.
     :type threshold: float
     :return: None.
@@ -175,6 +187,7 @@ def classification_error_evaluator(input,
         input=input,
         label=label,
         weight=weight,
+        top_k=top_k,
         classification_threshold=threshold, )
 
 
@@ -327,9 +340,11 @@ def ctc_error_evaluator(
 @wrap_name_default()
 def chunk_evaluator(
         input,
+        label,
+        chunk_scheme,
+        num_chunk_types,
         name=None,
-        chunk_scheme=None,
-        num_chunk_types=None, ):
+        excluded_chunk_types=None, ):
     """
     Chunk evaluator is used to evaluate segment labelling accuracy for a
     sequence. It calculates the chunk detection F1 score.
@@ -363,24 +378,29 @@ def chunk_evaluator(
 
     .. code-block:: python
 
-       eval = chunk_evaluator(input)
+       eval = chunk_evaluator(input, label, chunk_scheme, num_chunk_types)
 
     :param input: The input layers.
     :type input: LayerOutput
-    :param name: The Evaluator name, it is not necessary.
-    :type name: basename|None
+    :param label: An input layer containing the ground truth label.
+    :type label: LayerOutput
     :param chunk_scheme: The labelling schemes support 4 types. It is one of
-                         "IOB", "IOE", "IOBES", "plain".This Evaluator must
-                         contain this chunk_scheme.
+                         "IOB", "IOE", "IOBES", "plain". It is required.
     :type chunk_scheme: basestring
     :param num_chunk_types: number of chunk types other than "other"
+    :param name: The Evaluator name, it is optional.
+    :type name: basename|None
+    :param excluded_chunk_types: chunks of these types are not considered
+    :type excluded_chunk_types: list of integer|None
     """
     evaluator_base(
         name=name,
         type="chunk",
         input=input,
+        label=label,
         chunk_scheme=chunk_scheme,
-        num_chunk_types=num_chunk_types)
+        num_chunk_types=num_chunk_types,
+        excluded_chunk_types=excluded_chunk_types, )
 
 
 @evaluator(EvaluatorAttribute.FOR_UTILS)

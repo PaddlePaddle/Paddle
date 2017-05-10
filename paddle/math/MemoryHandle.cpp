@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cmath>
 #include "MemoryHandle.h"
+#include <cmath>
 #include "Storage.h"
 
 namespace paddle {
@@ -21,8 +21,7 @@ namespace paddle {
 /**
  * Calculate the actual allocation size according to the required size.
  */
-MemoryHandle::MemoryHandle(size_t size)
-    : size_(size), buf_(nullptr) {
+MemoryHandle::MemoryHandle(size_t size) : size_(size), buf_(nullptr) {
   if (size_ <= 256) {
     // Memory allocation in cuda is always aligned to at least 256 bytes.
     // In many cases it is 512 bytes.
@@ -44,9 +43,7 @@ GpuMemoryHandle::GpuMemoryHandle(size_t size) : MemoryHandle(size) {
   buf_ = allocator_->alloc(allocSize_);
 }
 
-GpuMemoryHandle::~GpuMemoryHandle() {
-  allocator_->free(buf_, allocSize_);
-}
+GpuMemoryHandle::~GpuMemoryHandle() { allocator_->free(buf_, allocSize_); }
 
 CpuMemoryHandle::CpuMemoryHandle(size_t size) : MemoryHandle(size) {
   CHECK(size != 0) << " allocate 0 bytes";
@@ -54,8 +51,6 @@ CpuMemoryHandle::CpuMemoryHandle(size_t size) : MemoryHandle(size) {
   buf_ = allocator_->alloc(allocSize_);
 }
 
-CpuMemoryHandle::~CpuMemoryHandle() {
-  allocator_->free(buf_, allocSize_);
-}
+CpuMemoryHandle::~CpuMemoryHandle() { allocator_->free(buf_, allocSize_); }
 
 }  // namespace paddle

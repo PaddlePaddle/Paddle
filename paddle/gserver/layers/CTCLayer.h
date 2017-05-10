@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "Layer.h"
@@ -23,12 +22,14 @@ namespace paddle {
 class CTCLayer : public Layer {
 public:
   explicit CTCLayer(const LayerConfig& config) : Layer(config) {}
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-  virtual void forward(PassType passType);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+  void forward(PassType passType) override;
   void forwardImp(const Argument& softmaxSeqs, const Argument& labelSeqs);
-  virtual void backward(const UpdateCallback& callback);
+  void backward(const UpdateCallback& callback) override;
   void backwardImp(const UpdateCallback& callback,
-                   const Argument& softmaxSeqs, const Argument& labelSeqs);
+                   const Argument& softmaxSeqs,
+                   const Argument& labelSeqs);
 
 protected:
   size_t numClasses_;

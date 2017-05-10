@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ class TestMatrix(unittest.TestCase):
         self.assertEqual(m.getSparseRowCols(2), [])
 
     def test_sparse_value(self):
-        m = swig_paddle.Matrix.createSparse(3, 3, 6, False)
+        m = swig_paddle.Matrix.createSparse(3, 3, 6, False, False, False)
         self.assertIsNotNone(m)
         m.sparseCopyFrom([0, 2, 3, 3], [0, 1, 2], [7.3, 4.2, 3.2])
 
@@ -66,9 +66,9 @@ class TestMatrix(unittest.TestCase):
         self.assertIsNotNone(m)
         self.assertTrue(abs(m.get(1, 1) - 0.5) < 1e-5)
 
-    def test_numpy(self):
+    def test_numpyCpu(self):
         numpy_mat = np.matrix([[1, 2], [3, 4], [5, 6]], dtype="float32")
-        m = swig_paddle.Matrix.createCpuDenseFromNumpy(numpy_mat)
+        m = swig_paddle.Matrix.createCpuDenseFromNumpy(numpy_mat, False)
         self.assertEqual((int(m.getHeight()), int(m.getWidth())),
                          numpy_mat.shape)
 
@@ -101,7 +101,20 @@ class TestMatrix(unittest.TestCase):
             for a, e in zip(gpu_m.getData(), [1.0, 3.23, 3.0, 4.0, 5.0, 6.0]):
                 self.assertAlmostEqual(a, e)
 
+    def test_numpy(self):
+        numpy_mat = np.matrix([[1, 2], [3, 4], [5, 6]], dtype="float32")
+        m = swig_paddle.Matrix.createDenseFromNumpy(numpy_mat)
+        self.assertEqual((int(m.getHeight()), int(m.getWidth())),
+                         numpy_mat.shape)
+        self.assertEqual(m.isGpu(), swig_paddle.isUsingGpu())
+        for a, e in zip(m.getData(), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]):
+            self.assertAlmostEqual(a, e)
+
 
 if __name__ == "__main__":
     swig_paddle.initPaddle("--use_gpu=0")
-    unittest.main()
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestMatrix)
+    unittest.TextTestRunner().run(suite)
+    if swig_paddle.isGpuVersion():
+        swig_paddle.setUseGpu(True)
+        unittest.main()

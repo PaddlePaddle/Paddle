@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #include "Projection.h"
 
@@ -29,7 +28,8 @@ namespace paddle {
 class DotMulProjection : public Projection {
 public:
   DotMulProjection(const ProjectionConfig& config,
-                   const ParameterPtr& parameter, bool useGpu);
+                   const ParameterPtr& parameter,
+                   bool useGpu);
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 
@@ -41,7 +41,8 @@ protected:
 REGISTER_PROJECTION(dot_mul, DotMulProjection);
 
 DotMulProjection::DotMulProjection(const ProjectionConfig& config,
-                                   const ParameterPtr& parameter, bool useGpu)
+                                   const ParameterPtr& parameter,
+                                   bool useGpu)
     : Projection(config, parameter, useGpu) {
   weight_.reset(new Weight(1LU, config.output_size(), parameter));
 }

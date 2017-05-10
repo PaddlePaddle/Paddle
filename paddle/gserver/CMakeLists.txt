@@ -25,18 +25,18 @@ filter_test(GSERVER_HEADER)
 filter_test(GSERVER_SOURCES)
 if(NOT WITH_GPU)
     list(REMOVE_ITEM GSERVER_HEADER
+        layers/CudnnConvBaseLayer.h
         layers/CudnnConvLayer.h
+        layers/CudnnConvTransLayer.h
         layers/CudnnPoolLayer.h
-        layers/CudnnBatchNormLayer.h
-        layers/NormProjectionLayer.h
-        layers/NormLayer.h)
+        layers/CudnnBatchNormLayer.h)
 
     list(REMOVE_ITEM GSERVER_SOURCES
+        layers/CudnnConvBaseLayer.cpp
         layers/CudnnConvLayer.cpp
+        layers/CudnnConvTransLayer.cpp
         layers/CudnnPoolLayer.cpp
-        layers/CudnnBatchNormLayer.cpp
-        layers/NormProjectionLayer.cpp
-        layers/NormLayer.cpp)
+        layers/CudnnBatchNormLayer.cpp)
     compile_cu_as_cpp(layers/LstmCompute.cu)
     compile_cu_as_cpp(layers/GruCompute.cu)
 endif()

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 #include <cstddef>
 #include "Matrix.h"
@@ -21,24 +20,38 @@ namespace paddle {
 
 class CpuSparseMatrix : public Matrix {
 public:
-  CpuSparseMatrix(size_t height, size_t width,
+  CpuSparseMatrix(size_t height,
+                  size_t width,
                   size_t nnz, /* used to allocate space */
                   SparseValueType valueType = FLOAT_VALUE,
-                  SparseFormat format = SPARSE_CSR, bool trans = false);
+                  SparseFormat format = SPARSE_CSR,
+                  bool trans = false);
 
-  CpuSparseMatrix(CpuMemHandlePtr memHandle, size_t height, size_t width,
-                  size_t nnz, SparseValueType valueType, SparseFormat format,
+  CpuSparseMatrix(CpuMemHandlePtr memHandle,
+                  size_t height,
+                  size_t width,
+                  size_t nnz,
+                  SparseValueType valueType,
+                  SparseFormat format,
                   bool trans);
 
-  CpuSparseMatrix(real* data, int* rows, int* cols, size_t height, size_t width,
-                  size_t nnz, SparseValueType valueType, SparseFormat format,
+  CpuSparseMatrix(real* data,
+                  int* rows,
+                  int* cols,
+                  size_t height,
+                  size_t width,
+                  size_t nnz,
+                  SparseValueType valueType,
+                  SparseFormat format,
                   bool trans);
 
   ~CpuSparseMatrix() {}
 
-  void resize(size_t newHeight, size_t newWidth,
+  void resize(size_t newHeight,
+              size_t newWidth,
               size_t newNnz, /* used to allocate space */
-              SparseValueType valueType, SparseFormat format);
+              SparseValueType valueType,
+              SparseFormat format);
   void resize(size_t newHeight, size_t newWidth);
 
   MatrixPtr getTranspose();
@@ -74,8 +87,6 @@ public:
       return 0;
     }
   }
-
-
 
   real* getColumn(size_t i) const {
     if (format_ == SPARSE_CSC) {
@@ -125,7 +136,7 @@ public:
     return sum;
   }
 
-  virtual void square() {
+  virtual void square2() {
     CHECK(isContiguous());
     if (valueType_ == NO_VALUE) {
       return;
@@ -182,7 +193,7 @@ public:
    * getData is convenient to get value
    */
   real* getData() { return getValue(); }
-  const real* getData() const { return getValue();}
+  const real* getData() const { return getValue(); }
 
   /**
    * @brief only set value_ of FLOAT_VALUE sparse matrix to zero
@@ -190,9 +201,9 @@ public:
   void zeroMem();
 
   /// mem MUST be alloced outside (memAlloc=false)
-  void transpose(MatrixPtr matTrans, bool memAlloc);
+  void transpose(MatrixPtr& matTrans, bool memAlloc);
 
-  void mul(MatrixPtr A, MatrixPtr B, real alpha, real beta);
+  void mul(const Matrix& A, const Matrix& B, real alpha, real beta);
 
   /**
    * @brief sparseMatrix += denseMatrix
@@ -220,7 +231,9 @@ public:
 
   void printOneRow(std::ostream& os, size_t idx) const;
 
-  void setRow(size_t row, size_t colNum, const unsigned int* cols,
+  void setRow(size_t row,
+              size_t colNum,
+              const unsigned int* cols,
               const real* values);
 
   void randomizeUniform();
@@ -241,7 +254,8 @@ public:
 
   virtual MatrixPtr subMatrix(size_t startRow, size_t numRows);
 
-  void copyFrom(std::vector<int>& rows, std::vector<int>& cols,
+  void copyFrom(std::vector<int>& rows,
+                std::vector<int>& cols,
                 std::vector<real>& values);
 
   void copyFrom(const CpuMatrix& src);
@@ -285,9 +299,7 @@ protected:
 
   // BaseMatrixT interface
 public:
-  bool isSparse() const {
-    return true;
-  }
+  bool isSparse() const { return true; }
 
 private:
   using Matrix::copyFrom;

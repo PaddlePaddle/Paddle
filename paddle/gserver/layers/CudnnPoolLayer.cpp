@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "CudnnPoolLayer.h"
+#include "paddle/math/Matrix.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
-#include "paddle/math/Matrix.h"
-#include "CudnnPoolLayer.h"
 
 namespace paddle {
 
@@ -61,8 +61,13 @@ bool CudnnPoolLayer::init(const LayerMap &layerMap,
   strideHeight = strideY_;
   strideWidth = stride_;
 
-  hl_create_pooling_descriptor(&poolingDesc_, mode_, windowHeight, windowWidth,
-                               heightPadding, widthPadding, strideHeight,
+  hl_create_pooling_descriptor(&poolingDesc_,
+                               mode_,
+                               windowHeight,
+                               windowWidth,
+                               heightPadding,
+                               widthPadding,
+                               strideHeight,
                                strideWidth);
 
   return true;
@@ -79,7 +84,10 @@ void CudnnPoolLayer::reshape(int batchSize) {
   }
   CHECK_EQ(inputLayers_[0]->getOutput().value->getWidth(),
            channels_ * imageH_ * imageW_);
-  outputH_ = outputSize(imageH_, sizeY_, confPaddingY_, strideY_,
+  outputH_ = outputSize(imageH_,
+                        sizeY_,
+                        confPaddingY_,
+                        strideY_,
                         /* caffeMode */ false);
   outputW_ =
       outputSize(imageW_, sizeX_, confPadding_, stride_, /* caffeMode */ false);
@@ -113,8 +121,13 @@ void CudnnPoolLayer::backward(const UpdateCallback &callback) {
   real *inputGrad = getInputGrad(0)->getData();
   real *outData = getOutputValue()->getData();
   real *outGrad = getOutputGrad()->getData();
-  hl_pooling_backward(inputDesc_, inputData, inputGrad, outputDesc_, outData,
-                      outGrad, poolingDesc_);
+  hl_pooling_backward(inputDesc_,
+                      inputData,
+                      inputGrad,
+                      outputDesc_,
+                      outData,
+                      outGrad,
+                      poolingDesc_);
 }
 
 CudnnPoolLayer::~CudnnPoolLayer() {

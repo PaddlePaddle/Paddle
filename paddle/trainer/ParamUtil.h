@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/utils/Util.h"
@@ -23,11 +22,11 @@ limitations under the License. */
 #include "paddle/gserver/dataproviders/DataProvider.h"
 #include "paddle/gserver/gradientmachines/GradientMachine.h"
 
+#include <stdlib.h>
+#include <fstream>
+#include "ParameterUpdater.h"
 #include "TrainerConfig.pb.h"
 #include "TrainerConfigHelper.h"
-#include "ParameterUpdater.h"
-#include <fstream>
-#include <stdlib.h>
 
 namespace paddle {
 
@@ -37,21 +36,20 @@ namespace paddle {
 struct ParameterUtilConfig {
   DISABLE_COPY(ParameterUtilConfig);
 
-  ParameterUtilConfig(bool save_only_one, int saving_period,
+  ParameterUtilConfig(bool save_only_one,
+                      int saving_period,
                       bool load_save_parameters_in_pserver,
-                      std::string config):
-                      save_only_one_(save_only_one),
-                      saving_period_(saving_period),
-                      load_save_param_pserver_(load_save_parameters_in_pserver),
-                      config_(config) {
-                      }
+                      std::string config)
+      : save_only_one_(save_only_one),
+        saving_period_(saving_period),
+        load_save_param_pserver_(load_save_parameters_in_pserver),
+        config_(config) {}
 
   bool save_only_one_;
   int saving_period_;
   bool load_save_param_pserver_;
   std::string config_;
 };
-
 
 /**
  * ParameterUtil
@@ -80,8 +78,9 @@ public:
   bool loadParameters(int passId, bool local = true, bool remote = false);
 
   /// load parameters given path info
-  void loadParametersWithPath(const std::string& dir, bool local = true,
-                      bool remote = false);
+  void loadParametersWithPath(const std::string &dir,
+                              bool local = true,
+                              bool remote = false);
 
   /// Save parameter to dist for pass passId
   /// passInnerId means saving times in one pass, some users want to
@@ -97,14 +96,14 @@ public:
   void deleteParameters(int passId, int passInnerId = 0);
 
   /// save config given path info
-  void saveConfigWithPath(const std::string& path);
+  void saveConfigWithPath(const std::string &path);
 
   /**
    * Try to load parameter from config.
    * @return true if can load from trainer config.
    */
   inline bool tryLoadParametersFromConfig() {
-    auto& c = config_->getConfig();
+    auto &c = config_->getConfig();
     if (!c.init_model_path().empty()) {
       loadParametersWithPath(c.init_model_path());
       return true;

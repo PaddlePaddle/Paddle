@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,22 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gtest/gtest.h>
 #include <paddle/pserver/ParameterClient2.h>
 #include <paddle/pserver/ParameterServer2.h>
-#include <gtest/gtest.h>
 #include <paddle/utils/Flags.h>
 #include <paddle/utils/Util.h>
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_int32(num_gradient_servers);
-P_DEFINE_string(server_addr, "127.0.0.1", "assign server address");
-P_DEFINE_int32(server_cpu, 0, "assign server cpu");
+DECLARE_int32(num_gradient_servers);
+DEFINE_string(server_addr, "127.0.0.1", "assign server address");
+DEFINE_int32(server_cpu, 0, "assign server cpu");
 
 class ParameterServer2Tester : public ParameterServer2 {
 public:
-  ParameterServer2Tester(std::string serverAddr, int port, int rdmaCpu = -1,
+  ParameterServer2Tester(std::string serverAddr,
+                         int port,
+                         int rdmaCpu = -1,
                          bool sepSendAndRecv = false)
       : ParameterServer2(serverAddr, port, rdmaCpu), client_(sepSendAndRecv) {}
   virtual ~ParameterServer2Tester() {}
@@ -63,7 +65,7 @@ public:
     }
 
     size_t id = 0;
-    for (auto &para : parameters_) {
+    for (auto& para : parameters_) {
       para->setID(id++);
     }
 
@@ -560,8 +562,8 @@ TEST(ParameterServer2, sendData) {
   std::unique_ptr<ParameterServer2Tester> g_server2;
   std::unique_ptr<ParameterServer2Tester> g_server3;
   if (FLAGS_rdma_tcp == "rdma") {
-    g_server1.reset(new ParameterServer2Tester(FLAGS_server_addr, FLAGS_port,
-                                               FLAGS_server_cpu));
+    g_server1.reset(new ParameterServer2Tester(
+        FLAGS_server_addr, FLAGS_port, FLAGS_server_cpu));
     g_server1->start();
     g_server2.reset(new ParameterServer2Tester(
         FLAGS_server_addr, FLAGS_port + 1, FLAGS_server_cpu + 1));
@@ -604,8 +606,8 @@ int main(int argc, char** argv) {
   FLAGS_num_gradient_servers = 2;
 
   if (FLAGS_rdma_tcp == "rdma") {
-    g_server.reset(new ParameterServer2Tester(FLAGS_server_addr, FLAGS_port,
-                                              FLAGS_server_cpu));
+    g_server.reset(new ParameterServer2Tester(
+        FLAGS_server_addr, FLAGS_port, FLAGS_server_cpu));
   } else {
     g_server.reset(new ParameterServer2Tester(FLAGS_server_addr, FLAGS_port));
   }

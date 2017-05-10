@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #ifdef __AVX__
 #include <x86intrin.h>
@@ -23,8 +22,13 @@ limitations under the License. */
 
 namespace paddle {
 
-void sgdUpdateCpu(real learningRate, real momentum, real decayRate, size_t size,
-                  real* value, const real* grad, real* momentumVec) {
+void sgdUpdateCpu(real learningRate,
+                  real momentum,
+                  real decayRate,
+                  size_t size,
+                  real* value,
+                  const real* grad,
+                  real* momentumVec) {
   decayRate *= learningRate;
   for (size_t i = 0; i < size; ++i) {
     momentumVec[i] = momentum * momentumVec[i] - learningRate * grad[i] -
@@ -33,8 +37,12 @@ void sgdUpdateCpu(real learningRate, real momentum, real decayRate, size_t size,
   }
 }
 
-void sgdUpdate(real learningRate, real momentum, real decayRate, Vector* value,
-               Vector* grad, Vector* momentumVec) {
+void sgdUpdate(real learningRate,
+               real momentum,
+               real decayRate,
+               Vector* value,
+               Vector* grad,
+               Vector* momentumVec) {
   size_t size = value->getSize();
   real* val = value->getData();
   real* grd = grad->getData();
@@ -48,8 +56,12 @@ void sgdUpdate(real learningRate, real momentum, real decayRate, Vector* value,
   }
 }
 
-void sgdUpdateAvx(float learningRate, float momentum, float decayRate,
-                  size_t size, float* value, const float* _grad,
+void sgdUpdateAvx(float learningRate,
+                  float momentum,
+                  float decayRate,
+                  size_t size,
+                  float* value,
+                  const float* _grad,
                   float* momentumVec) {
 #ifdef __AVX__
   float* grad = const_cast<float*>(_grad);  // the gradient is not modified
@@ -86,18 +98,36 @@ void sgdUpdateAvx(float learningRate, float momentum, float decayRate,
   std::function<void(void)> loopFun;
 
   learningRate *= -1;
-  lr = _mm256_set_ps(learningRate, learningRate, learningRate, learningRate,
-                     learningRate, learningRate, learningRate, learningRate);
+  lr = _mm256_set_ps(learningRate,
+                     learningRate,
+                     learningRate,
+                     learningRate,
+                     learningRate,
+                     learningRate,
+                     learningRate,
+                     learningRate);
 
   if (0 != momentum) {
-    mom = _mm256_set_ps(momentum, momentum, momentum, momentum, momentum,
-                        momentum, momentum, momentum);
+    mom = _mm256_set_ps(momentum,
+                        momentum,
+                        momentum,
+                        momentum,
+                        momentum,
+                        momentum,
+                        momentum,
+                        momentum);
   }
 
   decayRate *= learningRate;
   if (0 != decayRate) {
-    dr = _mm256_set_ps(decayRate, decayRate, decayRate, decayRate, decayRate,
-                       decayRate, decayRate, decayRate);
+    dr = _mm256_set_ps(decayRate,
+                       decayRate,
+                       decayRate,
+                       decayRate,
+                       decayRate,
+                       decayRate,
+                       decayRate,
+                       decayRate);
   }
 
   auto gradMulFun = [&](void) {

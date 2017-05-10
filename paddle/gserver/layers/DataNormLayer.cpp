@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #include "DataNormLayer.h"
 #include "paddle/utils/Logging.h"
@@ -37,16 +36,28 @@ bool DataNormLayer::init(const LayerMap& layerMap,
       << "The parameter of DataNormLayer must be static";
 
   weight_ = std::unique_ptr<Weight>(new Weight(5, getSize(), parameters_[0]));
-  min_ = Matrix::create(nullptr, /* height= */ 1, getSize(), /* trans= */ false,
-                        useGpu_);
-  rangeReciprocal_ = Matrix::create(nullptr, /* height= */ 1, getSize(),
-                                    /* trans= */ false, useGpu_);
-  mean_ = Matrix::create(nullptr, /* height= */ 1, getSize(),
-                         /* trans= */ false, useGpu_);
-  stdReciprocal_ = Matrix::create(nullptr, /* height= */ 1, getSize(),
-                                  /* trans= */ false, useGpu_);
-  decimalReciprocal_ = Matrix::create(nullptr, /* height= */ 1, getSize(),
-                                      /* trans= */ false, useGpu_);
+  min_ = Matrix::create(
+      nullptr, /* height= */ 1, getSize(), /* trans= */ false, useGpu_);
+  rangeReciprocal_ = Matrix::create(nullptr,
+                                    /* height= */ 1,
+                                    getSize(),
+                                    /* trans= */ false,
+                                    useGpu_);
+  mean_ = Matrix::create(nullptr,
+                         /* height= */ 1,
+                         getSize(),
+                         /* trans= */ false,
+                         useGpu_);
+  stdReciprocal_ = Matrix::create(nullptr,
+                                  /* height= */ 1,
+                                  getSize(),
+                                  /* trans= */ false,
+                                  useGpu_);
+  decimalReciprocal_ = Matrix::create(nullptr,
+                                      /* height= */ 1,
+                                      getSize(),
+                                      /* trans= */ false,
+                                      useGpu_);
 
   min_->setData(weight_->getW()->getData());
   rangeReciprocal_->setData(weight_->getW()->getData() + getSize());

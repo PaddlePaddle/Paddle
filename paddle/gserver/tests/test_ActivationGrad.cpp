@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,20 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <vector>
 #include <string>
-#include "paddle/gserver/layers/DataLayer.h"
+#include <vector>
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/trainer/Trainer.h"
 
-#include "TestUtil.h"
 #include "LayerGradUtil.h"
+#include "paddle/testing/TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_bool(use_gpu);
+DECLARE_bool(thread_local_rand_use_global_seed);
 
 void testActivation(const string& act) {
   LOG(INFO) << "test activation: " << act;
@@ -42,9 +42,9 @@ void testActivation(const string& act) {
     testLayerGrad(config,
                   act + "_activation",
                   100,
-                  /* trans= */false,
+                  /* trans= */ false,
                   useGpu,
-                  /* useWeight */true);
+                  /* useWeight */ true);
   }
 }
 

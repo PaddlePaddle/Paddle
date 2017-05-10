@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,9 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include <math.h>
 #include "LinearChainCTC.h"
+#include <math.h>
 #include <limits>
 
 namespace paddle {
@@ -90,7 +89,9 @@ LinearChainCTC::LinearChainCTC(int numClasses, bool normByTimes)
   Matrix::resizeOrCreate(gradTerms_, 1, numClasses_);
 }
 
-real LinearChainCTC::forward(real* softmaxSeq, int softmaxSeqLen, int* labelSeq,
+real LinearChainCTC::forward(real* softmaxSeq,
+                             int softmaxSeqLen,
+                             int* labelSeq,
                              int labelSeqLen) {
   isInvalid_ = false;
   totalTime_ = softmaxSeqLen;
@@ -215,7 +216,9 @@ real LinearChainCTC::forward(real* softmaxSeq, int softmaxSeqLen, int* labelSeq,
   return -logProb_;
 }
 
-void LinearChainCTC::backward(real* softmaxSeq, real* grad, int* labelSeq,
+void LinearChainCTC::backward(real* softmaxSeq,
+                              real* grad,
+                              int* labelSeq,
                               int labelSeqLen) {
   /* if not meet the conditions of CTC computing, then set the grads to zeros */
   if (isInvalid_) {
@@ -246,9 +249,9 @@ void LinearChainCTC::backward(real* softmaxSeq, real* grad, int* labelSeq,
                        logMul(logProb_, logActsData[i * numClasses_ + j]))) /
             totalTime_;
       } else {
-        grad[i * numClasses_ + j] += -safeExp(logDiv(
-            gradTermsData[j],
-            logMul(logProb_, logActsData[i * numClasses_ + j])));
+        grad[i * numClasses_ + j] += -safeExp(
+            logDiv(gradTermsData[j],
+                   logMul(logProb_, logActsData[i * numClasses_ + j])));
       }
     }
   }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <memory>
@@ -20,7 +19,7 @@ limitations under the License. */
 #include "Layer.h"
 
 namespace paddle {
-/** 
+/**
  * This layer just copy data to output, and has no backward propagation.
  *
  * The config file api is data_layer.
@@ -34,15 +33,13 @@ public:
   /**
    * Prefetch sparse matrix/ids only.
    */
-  void prefetch() {
-    output_ = data_;
-  }
+  void prefetch() override { output_ = data_; }
 
-  /** 
-   * Forward propagation. Copy data_ (value, in, grad, ids, cpuSequenceDims, 
+  /**
+   * Forward propagation. Copy data_ (value, in, grad, ids, cpuSequenceDims,
    * sequenceStartPositions, subSequenceStartPositions, strs) to output_.
    */
-  virtual void forward(PassType passType) {
+  void forward(PassType passType) override {
     Layer::forward(passType);
     copyDataToOutput(output_);
     if (FLAGS_show_layer_stat) {
@@ -53,9 +50,9 @@ public:
   /**
    * Data layer's backward propagation do nothing.
    */
-  virtual void backward(const UpdateCallback& callback) { (void)callback; }
+  void backward(const UpdateCallback& callback) override { (void)callback; }
 
-  virtual void copyOutputToOtherDevice() {
+  void copyOutputToOtherDevice() override {
     for (size_t i = 0; i != outputOtherDevice_.size(); i++) {
       copyDataToOutput(outputOtherDevice_[i]);
     }

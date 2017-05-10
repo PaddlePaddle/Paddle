@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,9 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include "test_matrixUtil.h"
 #include "hl_batch_transpose.h"
+#include "test_matrixUtil.h"
 
 using namespace paddle;  // NOLINT
 
@@ -48,15 +47,9 @@ TEST(MatrixBatchTransTest, test_batch_matrix_transpose) {
             cData[sample_id * nx * ny + j * nx + i];
   // device
   gMat->copyFrom(*cMat, HPPL_STREAM_DEFAULT);
-  batchTranspose(gMat->getData(), gBatchTransMat->getData(), nx, ny,
-                 numSamples);
+  batchTranspose(
+      gMat->getData(), gBatchTransMat->getData(), nx, ny, numSamples);
   cMat_d2h->copyFrom(*gBatchTransMat, HPPL_STREAM_DEFAULT);
   checkMatrixEqual(cBatchTransMat, cMat_d2h);
 }
 #endif
-
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

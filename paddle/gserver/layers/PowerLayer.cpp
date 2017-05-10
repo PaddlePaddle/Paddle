@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,10 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -26,7 +25,7 @@ namespace paddle {
  * \f[
  *   y = x^w
  * \f]
- * where \f$x\f$ is a input vector, \f$w\f$ is scalar weight, 
+ * where \f$x\f$ is a input vector, \f$w\f$ is scalar weight,
  * and output \f$y\f$ is a vector.
  *
  * The config file api is power_layer.
@@ -41,10 +40,11 @@ public:
 
   ~PowerLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(power, PowerLayer);
@@ -100,7 +100,7 @@ void PowerLayer::backward(const UpdateCallback& callback) {
     Matrix::resizeOrCreate(tmpMtx, batchSize, dataDim, false, useGpu_);
 
     if (inG0) {
-      tmpMtx->log(*inV1);
+      tmpMtx->log2(*inV1);
       tmpMtx->dotMul(*tmpMtx, *outV);
 
       // inG0 += outG .* (log(inV1) * outV)

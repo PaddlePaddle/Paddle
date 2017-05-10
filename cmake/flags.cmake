@@ -2,6 +2,32 @@
 include(CheckCXXCompilerFlag)
 include(CheckCCompilerFlag)
 include(CheckCXXSymbolExists)
+include(CheckTypeSize)
+
+function(CheckCompilerCXX11Flag)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.8)
+            message(FATAL_ERROR "Unsupported GCC version. GCC >= 4.8 required.")
+        endif()
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        # cmake >= 3.0 compiler id "AppleClang" on Mac OS X, otherwise "Clang"
+        # Apple Clang is a different compiler than upstream Clang which havs different version numbers.
+        # https://gist.github.com/yamaya/2924292
+        if(APPLE)  # cmake < 3.0 compiler id "Clang" on Mac OS X
+            if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.1)
+                message(FATAL_ERROR "Unsupported AppleClang version. AppleClang >= 5.1 required.")
+            endif()
+        else()
+            if (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.3)
+                message(FATAL_ERROR "Unsupported Clang version. Clang >= 3.3 required.")
+            endif()
+        endif()   
+    endif()
+endfunction()
+
+CheckCompilerCXX11Flag()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
 # safe_set_flag
 #
 # Set a compile flag only if compiler is support
@@ -41,9 +67,7 @@ macro(safe_set_nvflag flag_name)
     CHECK_C_COMPILER_FLAG(${flag_name} C_COMPILER_SUPPORT_FLAG_${safe_name})
     set(safe_name C_COMPILER_SUPPORT_FLAG_${safe_name})
     if(${safe_name})
-        set(CUDA_NVCC_FLAGS
-            --compiler-options;${flag_name}
-            ${CUDA_NVCC_FLAGS})
+        LIST(APPEND CUDA_NVCC_FLAGS -Xcompiler ${flag_name})
     endif()
 endmacro()
 
@@ -60,6 +84,17 @@ if(NOT UINT64_MAX_EXISTS)
   endif()
 endif()
 
+SET(CMAKE_EXTRA_INCLUDE_FILES "pthread.h")
+CHECK_TYPE_SIZE(pthread_spinlock_t SPINLOCK_FOUND)
+CHECK_TYPE_SIZE(pthread_barrier_t BARRIER_FOUND)
+if(SPINLOCK_FOUND)
+  add_definitions(-DPADDLE_USE_PTHREAD_SPINLOCK)
+endif(SPINLOCK_FOUND)
+if(BARRIER_FOUND)
+  add_definitions(-DPADDLE_USE_PTHREAD_BARRIER)
+endif(BARRIER_FOUND)
+SET(CMAKE_EXTRA_INCLUDE_FILES "")
+
 # Common flags. the compiler flag used for C/C++ sources whenever release or debug
 # Do not care if this flag is support for gcc.
 set(COMMON_FLAGS
@@ -73,6 +108,7 @@ set(COMMON_FLAGS
     -Wno-unused-parameter
     -Wno-unused-function
     -Wno-error=literal-suffix
+    -Wno-error=sign-compare
     -Wno-error=unused-local-typedefs)
 
 set(GPU_COMMON_FLAGS
@@ -82,6 +118,7 @@ set(GPU_COMMON_FLAGS
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
     -Wno-unused-function
+    -Wno-error=sign-compare
     -Wno-error=literal-suffix
     -Wno-error=unused-local-typedefs
     -Wno-error=unused-function  # Warnings in Numpy Header.
@@ -109,8 +146,22 @@ foreach(flag ${GPU_COMMON_FLAGS})
 endforeach()
 
 
+set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
+LIST(APPEND CUDA_NVCC_FLAGS -std=c++11)
+LIST(APPEND CUDA_NVCC_FLAGS --use_fast_math)
+
+if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
+    LIST(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_DEBUG})
+elseif(CMAKE_BUILD_TYPE  STREQUAL "Release")
+    LIST(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_RELEASE})
+elseif(CMAKE_BUILD_TYPE  STREQUAL "RelWithDebInfo")
+    LIST(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+elseif(CMAKE_BUILD_TYPE  STREQUAL "MinSizeRel")
+    LIST(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_MINSIZEREL})
+endif()
 
 function(specify_cuda_arch cuda_version cuda_arch)
     if(${cuda_version} VERSION_GREATER "8.0")

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #pragma once
 
@@ -26,7 +25,8 @@ public:
   // if *useParameterApply* set, use PARAMETER_APPLY to store averaged parameter
   // else use PARAMETER_VALUE, and value backup in PARAMETER_GRADIENT
   AverageOptimizer(const OptimizationConfig& optConfig,
-                   ParameterOptimizer* optimizer, bool useParameterApply);
+                   ParameterOptimizer* optimizer,
+                   bool useParameterApply);
 
   static ParameterOptimizer* create(const OptimizationConfig& optConfig,
                                     ParameterOptimizer* optimizer,
@@ -45,7 +45,8 @@ public:
 
   virtual void startBatch(int64_t numSamplesProcessed);
   virtual void finishBatch();
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& paraConfig,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& paraConfig,
                       size_t sparseId) const {
     optimizer_->update(vecs, paraConfig, sparseId);
     vecs[PARAMETER_SUM1]->add(*vecs[PARAMETER_VALUE], 1.0f);
@@ -99,7 +100,8 @@ protected:
 class AverageSparseOptimizer : public AverageOptimizer {
 public:
   AverageSparseOptimizer(const OptimizationConfig& optConfig,
-                         ParameterOptimizer* optimizer, bool useParameterApply)
+                         ParameterOptimizer* optimizer,
+                         bool useParameterApply)
       : AverageOptimizer(optConfig, optimizer, useParameterApply) {}
 
   virtual void init(size_t numRows, const ParameterConfig* config) {
@@ -114,9 +116,11 @@ public:
     AverageOptimizer::finishBatch();
     timer_++;
   }
-  virtual void update(const VectorPtr vecs[], const ParameterConfig& paraConfig,
+  virtual void update(const VectorPtr vecs[],
+                      const ParameterConfig& paraConfig,
                       size_t sparseId) const;
-  void catchUpWith(const VectorPtr vecs[], const ParameterConfig& paraConfig,
+  void catchUpWith(const VectorPtr vecs[],
+                   const ParameterConfig& paraConfig,
                    size_t sparseId) const;
   virtual TraverseCallback startCatchUpWith() const;
   virtual void finishCatchUpWith() {

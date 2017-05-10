@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,19 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "PoolLayer.h"
 
 namespace paddle {
 
- /**
-  * @brief CudnnPoolLayer is subclass of PoolLayer, which is implemented by
-  * cudnn api and only supports GPU.
-  *
-  * The config file api is img_pool_layer.
-  */
+/**
+ * @brief CudnnPoolLayer is subclass of PoolLayer, which is implemented by
+ * cudnn api and only supports GPU.
+ *
+ * The config file api is img_pool_layer.
+ */
 
 class CudnnPoolLayer : public PoolLayer {
 protected:
@@ -46,7 +45,8 @@ public:
                         hl_pooling_mode_t* mode = nullptr);
   explicit CudnnPoolLayer(const LayerConfig& config);
   ~CudnnPoolLayer();
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
   /**
    * Reshape input and output tensor descriptor.
@@ -54,8 +54,8 @@ public:
    * So reshaping is needed.
    */
   void reshape(int batchSize);
-  virtual void forward(PassType passType);
-  virtual void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 }  // namespace paddle

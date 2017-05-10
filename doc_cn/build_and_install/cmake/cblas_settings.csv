@@ -1,4 +1,0 @@
-MKL_ROOT,mkl的路径，在${MKL_ROOT}/include下需要包含mkl.h，在${MKL_ROOT}/lib目录下需要包含 mkl_core，mkl_sequential和mkl_intel_lp64三个库
-ATLAS_ROOT,ATLAS库的路径，在${ATLAS_ROOT}/include下需要包含cblas.h，而在${ATLAS_ROOT}/lib下需要包含cblas和atlas两个库
-OPENBLAS_ROOT,在${OPENBLAS_ROOT}/include下需要包含cblas.h，而在${OPENBLAS_ROOT}/lib下需要包含openblas库
-REFERENCE_CBLAS_ROOT,在${REFERENCE_CBLAS_ROOT}/include下需要包含cblas.h，在${REFERENCE_CBLAS_ROOT}/lib下需要包含cblas库

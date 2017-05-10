@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,14 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "Argument.h"
 #include "paddle/math/SparseMatrix.h"
 
 #include <algorithm>
 
 namespace paddle {
-static void resizeAndCopy(MatrixPtr& dest, const MatrixPtr& src, bool useGpu,
+static void resizeAndCopy(MatrixPtr& dest,
+                          const MatrixPtr& src,
+                          bool useGpu,
                           hl_stream_t stream) {
   if (src) {
     if (!dest) {
@@ -34,7 +35,9 @@ static void resizeAndCopy(MatrixPtr& dest, const MatrixPtr& src, bool useGpu,
   }
 }
 
-static void resizeAndCopy(IVectorPtr& dest, const IVectorPtr& src, bool useGpu,
+static void resizeAndCopy(IVectorPtr& dest,
+                          const IVectorPtr& src,
+                          bool useGpu,
                           hl_stream_t stream) {
   if (src) {
     IVector::resizeOrCreate(dest, src->getSize(), useGpu);
@@ -56,8 +59,11 @@ static void resizeAndCopy(ICpuGpuVectorPtr& dest,
   }
 }
 
-static void resizeAndCopy(MatrixPtr& dest, const MatrixPtr& src,
-                          int32_t startRow, int32_t copySize, bool useGpu,
+static void resizeAndCopy(MatrixPtr& dest,
+                          const MatrixPtr& src,
+                          int32_t startRow,
+                          int32_t copySize,
+                          bool useGpu,
                           hl_stream_t stream = HPPL_STREAM_DEFAULT) {
   if (src) {
     CHECK_LE((size_t)startRow + copySize, src->getHeight());
@@ -84,8 +90,11 @@ static void resizeAndCopy(MatrixPtr& dest, const MatrixPtr& src,
   }
 }
 
-static void resizeAndCopy(IVectorPtr& dest, const IVectorPtr& src,
-                          int32_t startPos, int32_t copySize, bool useGpu,
+static void resizeAndCopy(IVectorPtr& dest,
+                          const IVectorPtr& src,
+                          int32_t startPos,
+                          int32_t copySize,
+                          bool useGpu,
                           hl_stream_t stream = HPPL_STREAM_DEFAULT) {
   if (src) {
     CHECK_LE((size_t)startPos + copySize, src->getSize());
@@ -114,44 +123,9 @@ static void resizeAndCopy(ICpuGpuVectorPtr& dest,
   }
 }
 
-static void resizeAndCopy(UserDefinedVectorPtr& dest,
-                          const UserDefinedVectorPtr& src, bool useGpu,
-                          hl_stream_t stream) {
-  if (src) {
-    CHECK(!useGpu) << "not implemented";
-    size_t height = src->size();
-    if (!dest) {
-      dest = std::make_shared<std::vector<void*>>(height);
-    } else {
-      dest->resize(height);
-    }
-    std::copy_n(src->begin(), height, dest->begin());
-  } else {
-    dest.reset();
-  }
-}
-
-static void resizeAndCopy(UserDefinedVectorPtr& dest,
-                          const UserDefinedVectorPtr& src, int32_t startPos,
-                          int32_t copySize, bool useGpu,
-                          hl_stream_t stream = HPPL_STREAM_DEFAULT) {
-  if (src) {
-    CHECK(!useGpu) << "not implemented";
-    CHECK_LE((size_t)startPos + copySize, src->size());
-
-    size_t height = copySize;
-    if (!dest) {
-      dest = std::make_shared<std::vector<void*>>(height);
-    } else {
-      dest->resize(height);
-    }
-    std::copy_n(src->begin() + startPos, height, dest->begin());
-  } else {
-    dest.reset();
-  }
-}
-
-static void resizeAndCopy(SVectorPtr& dest, const SVectorPtr& src, bool useGpu,
+static void resizeAndCopy(SVectorPtr& dest,
+                          const SVectorPtr& src,
+                          bool useGpu,
                           hl_stream_t stream) {
   if (src) {
     size_t height = src->size();
@@ -166,8 +140,11 @@ static void resizeAndCopy(SVectorPtr& dest, const SVectorPtr& src, bool useGpu,
   }
 }
 
-static void resizeAndCopy(SVectorPtr& dest, const SVectorPtr& src,
-                          int32_t startPos, int32_t copySize, bool useGpu,
+static void resizeAndCopy(SVectorPtr& dest,
+                          const SVectorPtr& src,
+                          int32_t startPos,
+                          int32_t copySize,
+                          bool useGpu,
                           hl_stream_t stream = HPPL_STREAM_DEFAULT) {
   if (src) {
     CHECK_LE((size_t)startPos + copySize, src->size());
@@ -184,39 +161,51 @@ static void resizeAndCopy(SVectorPtr& dest, const SVectorPtr& src,
 }
 
 void Argument::resizeAndCopyFrom(const Argument& src, bool useGpu) {
-   resizeAndCopyFrom(src, useGpu, HPPL_STREAM_DEFAULT);
-   hl_stream_synchronize(HPPL_STREAM_DEFAULT);
+  resizeAndCopyFrom(src, useGpu, HPPL_STREAM_DEFAULT);
+  hl_stream_synchronize(HPPL_STREAM_DEFAULT);
 }
 
-void Argument::resizeAndCopyFrom(const Argument& src, bool useGpu,
+void Argument::resizeAndCopyFrom(const Argument& src,
+                                 bool useGpu,
                                  hl_stream_t stream) {
   dataId = src.dataId;
   resizeAndCopy(value, src.value, useGpu, stream);
   resizeAndCopy(grad, src.grad, useGpu, stream);
   resizeAndCopy(in, src.in, useGpu, stream);
   resizeAndCopy(ids, src.ids, useGpu, stream);
-  resizeAndCopy(sequenceStartPositions, src.sequenceStartPositions,
-                false /* useGpu */, stream);
+  resizeAndCopy(sequenceStartPositions,
+                src.sequenceStartPositions,
+                false /* useGpu */,
+                stream);
   if (src.hasSubseq()) {
     resizeAndCopy(subSequenceStartPositions,
-                  src.subSequenceStartPositions, false /* useGpu */, stream);
+                  src.subSequenceStartPositions,
+                  false /* useGpu */,
+                  stream);
   }
-  resizeAndCopy(udp, src.udp, useGpu, stream);
   resizeAndCopy(strs, src.strs, useGpu, stream);
+  frameWidth = src.frameWidth;
+  frameHeight = src.frameHeight;
 }
 
-int32_t Argument::resizeAndCopyFrom(const Argument& src, int32_t startSeq,
-                                    int32_t copySize, bool useGpu) {
-    int32_t size = resizeAndCopyFrom(src, startSeq, copySize, useGpu,
-                                     HPPL_STREAM_DEFAULT);
-    hl_stream_synchronize(HPPL_STREAM_DEFAULT);
-    return size;
+int32_t Argument::resizeAndCopyFrom(const Argument& src,
+                                    int32_t startSeq,
+                                    int32_t copySize,
+                                    bool useGpu) {
+  int32_t size =
+      resizeAndCopyFrom(src, startSeq, copySize, useGpu, HPPL_STREAM_DEFAULT);
+  hl_stream_synchronize(HPPL_STREAM_DEFAULT);
+  return size;
 }
 
-int32_t Argument::resizeAndCopyFrom(const Argument& src, int32_t startSeq,
-                                    int32_t copySize, bool useGpu,
+int32_t Argument::resizeAndCopyFrom(const Argument& src,
+                                    int32_t startSeq,
+                                    int32_t copySize,
+                                    bool useGpu,
                                     hl_stream_t stream) {
   dataId = src.dataId;
+  frameWidth = src.frameWidth;
+  frameHeight = src.frameHeight;
 
   if (!src.sequenceStartPositions) {
     // non-sequence input, copy samples directly
@@ -225,7 +214,6 @@ int32_t Argument::resizeAndCopyFrom(const Argument& src, int32_t startSeq,
     resizeAndCopy(value, src.value, startRow, copySize, useGpu, stream);
     resizeAndCopy(grad, src.grad, startRow, copySize, useGpu, stream);
     resizeAndCopy(ids, src.ids, startRow, copySize, useGpu, stream);
-    resizeAndCopy(udp, src.udp, startRow, copySize, useGpu, stream);
     resizeAndCopy(strs, src.strs, startRow, copySize, useGpu, stream);
     return copySize;
   } else {
@@ -238,9 +226,12 @@ int32_t Argument::resizeAndCopyFrom(const Argument& src, int32_t startSeq,
     resizeAndCopy(value, src.value, startRow, copyFeatureSize, useGpu, stream);
     resizeAndCopy(grad, src.grad, startRow, copyFeatureSize, useGpu, stream);
     resizeAndCopy(ids, src.ids, startRow, copyFeatureSize, useGpu, stream);
-    resizeAndCopy(udp, src.udp, startRow, copySize, useGpu, stream);
-    resizeAndCopy(sequenceStartPositions, src.sequenceStartPositions,
-                  startSeq, copySize + 1, false, stream);
+    resizeAndCopy(sequenceStartPositions,
+                  src.sequenceStartPositions,
+                  startSeq,
+                  copySize + 1,
+                  false,
+                  stream);
     // modify new sequenceStartPositions
     int* destSequences = sequenceStartPositions->getMutableData(false);
     for (int i = 0; i < copySize + 1; i++) {
@@ -264,8 +255,11 @@ int32_t Argument::resizeAndCopyFrom(const Argument& src, int32_t startSeq,
       }
       int32_t copySubSize = subEndSeq - subStartSeq;
       resizeAndCopy(subSequenceStartPositions,
-                    src.subSequenceStartPositions, subStartSeq,
-                    copySubSize + 1, false, stream);
+                    src.subSequenceStartPositions,
+                    subStartSeq,
+                    copySubSize + 1,
+                    false,
+                    stream);
       // modify new subSequenceStartPositions
       int* destSubSequences = subSequenceStartPositions->getMutableData(false);
       for (int i = 0; i < copySubSize + 1; i++) {
@@ -281,14 +275,19 @@ int32_t Argument::resizeAndCopyFrom(const Argument& src, int32_t startSeq,
 
 void Argument::concat(const std::vector<Argument>& args,
                       const std::vector<int>& selectRows,
-                      const std::vector<int>& seqStartPos, bool useGpu,
-                      hl_stream_t stream, PassType passType) {
+                      const std::vector<int>& seqStartPos,
+                      bool useGpu,
+                      hl_stream_t stream,
+                      PassType passType) {
   CHECK(!subSequenceStartPositions)
-          << "undefined behavior for subsequence positions";
+      << "undefined behavior for subsequence positions";
 
   size_t batchSize = selectRows.size();
-  auto copyArg = [batchSize, stream](MatrixPtr& dst, MatrixPtr src,
-                                     int startRow, int pos, int size,
+  auto copyArg = [batchSize, stream](MatrixPtr& dst,
+                                     MatrixPtr src,
+                                     int startRow,
+                                     int pos,
+                                     int size,
                                      bool useGpu) {
     if (!src) {
       dst.reset();
@@ -305,8 +304,11 @@ void Argument::concat(const std::vector<Argument>& args,
     tmpMatrix->copyFrom(*src->subMatrix(pos, size), stream);
   };
 
-  auto copyIds = [batchSize, stream](IVectorPtr& dst, const IVectorPtr& src,
-                                     int startRow, int pos, int size,
+  auto copyIds = [batchSize, stream](IVectorPtr& dst,
+                                     const IVectorPtr& src,
+                                     int startRow,
+                                     int pos,
+                                     int size,
                                      bool useGpu) {
     if (!src) {
       dst.reset();
@@ -316,8 +318,11 @@ void Argument::concat(const std::vector<Argument>& args,
     dst->subVec(startRow, size)->copyFrom(*src->subVec(pos, size), stream);
   };
 
-  auto copyStrs = [batchSize, stream](SVectorPtr& dst, const SVectorPtr& src,
-                                      int startRow, int pos, int size,
+  auto copyStrs = [batchSize, stream](SVectorPtr& dst,
+                                      const SVectorPtr& src,
+                                      int startRow,
+                                      int pos,
+                                      int size,
                                       bool useGpu) {
     if (!src) {
       dst.reset();
@@ -328,8 +333,8 @@ void Argument::concat(const std::vector<Argument>& args,
     } else {
       dst->resize(batchSize);
     }
-    std::copy(src->begin() + pos, src->begin() + pos + size,
-              dst->begin() + startRow);
+    std::copy(
+        src->begin() + pos, src->begin() + pos + size, dst->begin() + startRow);
   };
 
   dataId = args[0].dataId;
@@ -354,14 +359,16 @@ void Argument::concat(const std::vector<Argument>& args,
       copyStrs(strs, arg.strs, j, rowIdx, copySize, useGpu);
     }
   }
-  ICpuGpuVector::resizeOrCreate(sequenceStartPositions,
-                          seqStartPos.size(), useGpu);
-  sequenceStartPositions->copyFrom(seqStartPos.data(),
-                                   seqStartPos.size(), useGpu);
+  ICpuGpuVector::resizeOrCreate(
+      sequenceStartPositions, seqStartPos.size(), useGpu);
+  sequenceStartPositions->copyFrom(
+      seqStartPos.data(), seqStartPos.size(), useGpu);
 }
 
-void Argument::concat(const std::vector<Argument>& args, bool useGpu,
-                      hl_stream_t stream, PassType passType) {
+void Argument::concat(const std::vector<Argument>& args,
+                      bool useGpu,
+                      hl_stream_t stream,
+                      PassType passType) {
   int32_t batchSize = 0;
   int64_t numSequences = 0;
   int64_t numSubSequences = 0;
@@ -371,8 +378,8 @@ void Argument::concat(const std::vector<Argument>& args, bool useGpu,
     numSubSequences += arg.getNumSubSequences();
   }
 
-  auto copyArg = [batchSize, stream](MatrixPtr& dst, MatrixPtr src,
-                                     int startRow, bool useGpu) {
+  auto copyArg = [batchSize, stream](
+      MatrixPtr& dst, MatrixPtr src, int startRow, bool useGpu) {
     if (!src) {
       dst.reset();
       return;
@@ -388,8 +395,8 @@ void Argument::concat(const std::vector<Argument>& args, bool useGpu,
     tmpMatrix->copyFrom(*src, stream);
   };
 
-  auto copyIds = [batchSize, stream](IVectorPtr& dst, const IVectorPtr& src,
-                                     int startRow, bool useGpu) {
+  auto copyIds = [batchSize, stream](
+      IVectorPtr& dst, const IVectorPtr& src, int startRow, bool useGpu) {
     if (!src) {
       dst.reset();
       return;
@@ -398,8 +405,8 @@ void Argument::concat(const std::vector<Argument>& args, bool useGpu,
     dst->subVec(startRow, src->getSize())->copyFrom(*src, stream);
   };
 
-  auto copyStrs = [batchSize, stream](SVectorPtr& dst, const SVectorPtr& src,
-                                      int startRow, bool useGpu) {
+  auto copyStrs = [batchSize, stream](
+      SVectorPtr& dst, const SVectorPtr& src, int startRow, bool useGpu) {
     if (!src) {
       dst.reset();
       return;
@@ -412,21 +419,23 @@ void Argument::concat(const std::vector<Argument>& args, bool useGpu,
     std::copy(src->begin(), src->end(), dst->begin() + startRow);
   };
 
-  auto copySequencePos = []
-          (ICpuGpuVectorPtr& dstSeq, const ICpuGpuVectorPtr& srcSeq,
-           int dstNumSequences, int srcNumSequences,
-           int& startSequences, int startRow) {
-      if (srcSeq) {
-          ICpuGpuVector::resizeOrCreate(dstSeq, dstNumSequences + 1, false);
-          const int* src = srcSeq->getData(false);
-          int* dest = dstSeq->getMutableData(false);
-          for (int i = 0; i < srcNumSequences + 1; ++i) {
-              dest[i + startSequences] = src[i] + startRow;
-          }
-          startSequences += srcNumSequences;
-      } else {
-          dstSeq.reset();
+  auto copySequencePos = [](ICpuGpuVectorPtr& dstSeq,
+                            const ICpuGpuVectorPtr& srcSeq,
+                            int dstNumSequences,
+                            int srcNumSequences,
+                            int& startSequences,
+                            int startRow) {
+    if (srcSeq) {
+      ICpuGpuVector::resizeOrCreate(dstSeq, dstNumSequences + 1, false);
+      const int* src = srcSeq->getData(false);
+      int* dest = dstSeq->getMutableData(false);
+      for (int i = 0; i < srcNumSequences + 1; ++i) {
+        dest[i + startSequences] = src[i] + startRow;
       }
+      startSequences += srcNumSequences;
+    } else {
+      dstSeq.reset();
+    }
   };
 
   int startRow = 0;
@@ -479,8 +488,8 @@ void Argument::splitByDataId(const std::vector<Argument>& argus,
 
 void Argument::getSeqInfo(std::vector<SeqInfo>* seqInfo) const {
   const int* starts = sequenceStartPositions->getData(false);
-  const int* subStarts = hasSubseq()
-      ? subSequenceStartPositions->getData(false) : nullptr;
+  const int* subStarts =
+      hasSubseq() ? subSequenceStartPositions->getData(false) : nullptr;
   size_t numSequences = getNumSequences();
   seqInfo->reserve(numSequences);
   int subSeqEnd = 0;
@@ -501,10 +510,10 @@ void Argument::getSeqInfo(std::vector<SeqInfo>* seqInfo) const {
     }
     seqInfo->push_back(info);
   }
-  std::sort(seqInfo->begin(), seqInfo->end(),
-            [](const SeqInfo& a, const SeqInfo& b) {
-              return a.topLevelLength > b.topLevelLength;
-            });
+  std::sort(
+      seqInfo->begin(), seqInfo->end(), [](const SeqInfo& a, const SeqInfo& b) {
+        return a.topLevelLength > b.topLevelLength;
+      });
 }
 
 void Argument::checkSubset() const {
@@ -531,13 +540,12 @@ void Argument::checkSubset() const {
   }
 }
 
-void Argument::degradeSequence(const Argument& input, bool useGpu) {
+void Argument::degradeSequence(const Argument& input) {
   CHECK_EQ(input.hasSubseq(), 1UL);
   size_t numSequences = input.getNumSequences();
   size_t numSubSequences = input.getNumSubSequences();
-  ICpuGpuVector::resizeOrCreate(sequenceStartPositions,
-                                 numSequences + 1,
-                                 false);
+  ICpuGpuVector::resizeOrCreate(
+      sequenceStartPositions, numSequences + 1, false);
   int* tgtBuf = sequenceStartPositions->getMutableData(false);
   const int* starts = input.sequenceStartPositions->getData(false);
   const int* subStarts = input.subSequenceStartPositions->getData(false);
@@ -551,24 +559,110 @@ void Argument::degradeSequence(const Argument& input, bool useGpu) {
   tgtBuf[numSequences] = numSubSequences;
 }
 
-void Argument::subArgFrom(const Argument& input, size_t offset, size_t height,
-                          size_t width, bool useGpu, bool trans, bool seqFlag,
-                          size_t seqStart, size_t seqSize) {
+void Argument::poolSequenceWithStride(const Argument& input,
+                                      size_t stride,
+                                      IVectorPtr* stridePostions,
+                                      bool reversed) {
+  // If input.sequenceStartPositions = [0, 9, 14, 17, 30] and stride = 5,
+  // then sequenceStartPositions = [0, 2, 3, 4, 7].
+  // If reversed = false, stridePostions = [0, 5, 9, 14, 17, 22, 27, 30];
+  // else reversed = true, stridePostions = [0, 4, 9, 14, 17, 20, 25, 30]
+
+  CHECK(input.sequenceStartPositions);
+  CHECK_EQ(input.hasSubseq(), 0UL);
+  CHECK_GT(stride, 0) << "stride must larger than 0";
+  size_t numSequences = input.getNumSequences();
+  ICpuGpuVector::resizeOrCreate(
+      sequenceStartPositions, numSequences + 1, false);
+  const int* starts = input.sequenceStartPositions->getData(false);
+  int* tgtBuf = sequenceStartPositions->getMutableData(false);
+  // first index of target sequence and stride positions are both 0
+  tgtBuf[0] = 0;
+  std::vector<int> stridePos;
+  for (size_t seqId = 0; seqId < numSequences; ++seqId) {
+    size_t seqLength = starts[seqId + 1] - starts[seqId];
+    stridePos.emplace_back(starts[seqId]);
+    if (seqLength == 0) {
+      // empty sequence
+      tgtBuf[seqId + 1] = tgtBuf[seqId];
+    } else {
+      int size = ceil((float)seqLength / stride);
+      tgtBuf[seqId + 1] = tgtBuf[seqId] + size;
+      for (int i = 0; i < size - 1; ++i) {
+        int cur = reversed ? starts[seqId + 1] - (size - 1 - i) * stride
+                           : stridePos.back() + stride;
+        stridePos.emplace_back(cur);
+      }
+    }
+  }
+  stridePos.emplace_back(starts[numSequences]);
+  int size = stridePos.size();
+  CHECK_EQ(size - 1, tgtBuf[numSequences]);
+  IVector::resizeOrCreate(*stridePostions, size, false);
+  (*stridePostions)->copyFrom(stridePos.data(), size);
+}
+
+void Argument::getValueString(
+    std::unordered_map<std::string, std::string>* out) const {
+  if (value) {
+    std::ostringstream os;
+    value->print(os);
+    out->insert({"value", os.str()});
+  }
+  if (ids) {
+    std::ostringstream os;
+    ids->print(os, ids->getSize());
+    out->insert({"ids", os.str()});
+  }
+  if (sequenceStartPositions) {
+    std::ostringstream os;
+    sequenceStartPositions->getVector(false)->print(
+        os, sequenceStartPositions->getSize());
+    out->insert({"sequence pos", os.str()});
+  }
+  if (subSequenceStartPositions) {
+    std::ostringstream os;
+    subSequenceStartPositions->getVector(false)->print(
+        os, subSequenceStartPositions->getSize());
+    out->insert({"sub-sequence pos", os.str()});
+  }
+}
+
+void Argument::printValueString(std::ostream& stream,
+                                const std::string& prefix) const {
+  std::unordered_map<std::string, std::string> out;
+  getValueString(&out);
+  for (auto field : {"value", "id", "sequence pos", "sub-sequence pos"}) {
+    auto it = out.find(field);
+    if (it != out.end()) {
+      stream << prefix << field << ":\n" << it->second;
+    }
+  }
+}
+
+void Argument::subArgFrom(const Argument& input,
+                          size_t offset,
+                          size_t height,
+                          size_t width,
+                          bool useGpu,
+                          bool trans,
+                          bool seqFlag,
+                          size_t seqStart,
+                          size_t seqSize) {
   if (input.value) {
-    value = Matrix::create(input.value->getData() + offset * width,
-                           height, width, trans, useGpu);
+    value = Matrix::create(
+        input.value->getData() + offset * width, height, width, trans, useGpu);
   }
   if (input.ids) {
     ids = IVector::create(input.ids->getData() + offset, height, useGpu);
   }
   if (input.grad) {
-    grad = Matrix::create(input.grad->getData() + offset * width,
-                          height, width, trans, useGpu);
+    grad = Matrix::create(
+        input.grad->getData() + offset * width, height, width, trans, useGpu);
   }
   if (seqFlag) {
     sequenceStartPositions = std::make_shared<ICpuGpuVector>(
-        *(input.sequenceStartPositions),
-        seqStart, seqSize);
+        *(input.sequenceStartPositions), seqStart, seqSize);
   }
 }
 

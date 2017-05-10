@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -66,6 +66,8 @@ typedef BaseOp SSESquaredDiff;
 typedef BaseOp SSEFirst;
 typedef BaseOp SSESecond;
 typedef BaseOp SSEClassificationError;
+#elif defined(__ARM__NEON__) || defined(__ARM_NEON)
+#include "hl_matrix_base_neon.cuh"
 #else
 #include "hl_matrix_base_sse.cuh"
 #endif

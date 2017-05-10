@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +30,8 @@ namespace paddle {
 class FullMatrixProjection : public Projection {
 public:
   FullMatrixProjection(const ProjectionConfig& config,
-                       const ParameterPtr& parameter, bool useGpu);
+                       const ParameterPtr& parameter,
+                       bool useGpu);
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 

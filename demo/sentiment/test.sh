@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,3 +37,4 @@ paddle train --config=$net_conf \
              --trainer_count=4 \
              --config_args=is_test=1 \
              2>&1 | tee 'test.log'
+paddle usage -l test.log -e $? -n "sentiment_test" >/dev/null 2>&1

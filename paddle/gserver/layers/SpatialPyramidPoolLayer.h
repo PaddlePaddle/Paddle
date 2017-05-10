@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ namespace paddle {
  * @brief A layer for spatial pyramid pooling on the input image by taking
  * the max, average, etc. within regions, so that the result vector of
  * different sized images are of the same size.
- * 
+ *
  * The config file api is spp_layer.
  */
 
@@ -43,15 +43,17 @@ protected:
 public:
   explicit SpatialPyramidPoolLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~SpatialPyramidPoolLayer() {}
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
-  ProjectionConfig getConfig(size_t sizeX_, size_t sizeY_, size_t channels,
-                             size_t pyamidLevel_, std::string& poolType_);
+  ProjectionConfig getConfig(size_t sizeX_,
+                             size_t sizeY_,
+                             size_t channels,
+                             size_t pyamidLevel_,
+                             std::string& poolType_);
   size_t getSize();
 
-  virtual void forward(PassType passType);
-  virtual void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 }  // namespace paddle

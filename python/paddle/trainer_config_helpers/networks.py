@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -737,12 +737,12 @@ def lstmemory_group(input,
                     lstm_layer_attr=None,
                     get_output_layer_attr=None):
     """
-    lstm_group is a recurrent layer group version Long Short Term Memory. It
+    lstm_group is a recurrent layer group version of Long Short Term Memory. It
     does exactly the same calculation as the lstmemory layer (see lstmemory in
     layers.py for the maths) does. A promising benefit is that LSTM memory
-    cell states, or hidden states in every time step are accessible to for the
+    cell states, or hidden states in every time step are accessible to the
     user. This is especially useful in attention model. If you do not need to
-    access to the internal states of the lstm, but merely use its outputs,
+    access the internal states of the lstm, but merely use its outputs,
     it is recommended to use the lstmemory, which is relatively faster than
     lstmemory_group.
 
@@ -822,9 +822,11 @@ def gru_unit(input,
              size=None,
              name=None,
              gru_bias_attr=None,
+             gru_param_attr=None,
              act=None,
              gate_act=None,
-             gru_layer_attr=None):
+             gru_layer_attr=None,
+             naive=False):
     """
     Define calculations that a gated recurrent unit performs in a single time
     step. This function itself is not a recurrent layer, so that it can not be
@@ -856,12 +858,18 @@ def gru_unit(input,
 
     out_mem = memory(name=name, size=size)
 
-    gru_out = gru_step_layer(
+    if naive:
+        __step__ = gru_step_naive_layer
+    else:
+        __step__ = gru_step_layer
+
+    gru_out = __step__(
         name=name,
         input=input,
         output_mem=out_mem,
         size=size,
         bias_attr=gru_bias_attr,
+        param_attr=gru_param_attr,
         act=act,
         gate_act=gate_act,
         layer_attr=gru_layer_attr)
@@ -874,15 +882,17 @@ def gru_group(input,
               name=None,
               reverse=False,
               gru_bias_attr=None,
+              gru_param_attr=None,
               act=None,
               gate_act=None,
-              gru_layer_attr=None):
+              gru_layer_attr=None,
+              naive=False):
     """
-    gru_group is a recurrent layer group version Gated Recurrent Unit. It
+    gru_group is a recurrent layer group version of Gated Recurrent Unit. It
     does exactly the same calculation as the grumemory layer does. A promising
-    benefit is that gru hidden sates are accessible to for the user. This is
-    especially useful in attention model. If you do not need to access to
-    any internal state, but merely use the outputs of a GRU, it is recommanded
+    benefit is that gru hidden states are accessible to the user. This is
+    especially useful in attention model. If you do not need to access
+    any internal state, but merely use the outputs of a GRU, it is recommended
     to use the grumemory, which is relatively faster.
 
     Please see grumemory in layers.py for more detail about the maths.
@@ -922,9 +932,11 @@ def gru_group(input,
             name=name,
             size=size,
             gru_bias_attr=gru_bias_attr,
+            gru_param_attr=gru_param_attr,
             act=act,
             gate_act=gate_act,
-            gru_layer_attr=gru_layer_attr)
+            gru_layer_attr=gru_layer_attr,
+            naive=naive)
 
     return recurrent_group(
         name='%s_recurrent_group' % name,
@@ -942,9 +954,11 @@ def simple_gru(input,
                mixed_bias_param_attr=None,
                mixed_layer_attr=None,
                gru_bias_attr=None,
+               gru_param_attr=None,
                act=None,
                gate_act=None,
-               gru_layer_attr=None):
+               gru_layer_attr=None,
+               naive=False):
     """
     You maybe see gru_step_layer, grumemory in layers.py, gru_unit, gru_group,
     simple_gru in network.py. The reason why there are so many interfaces is
@@ -952,22 +966,22 @@ def simple_gru(input,
     use one complete layer to implement rnn (including simple rnn, gru and lstm)
     with multiple time steps, such as recurrent_layer, lstmemory, grumemory. But,
     the multiplication operation :math:`W x_t` is not computed in these layers.
-    See details in their interfaces in layers.py. 
+    See details in their interfaces in layers.py.
     The other implementation is to use an recurrent group which can ensemble a
     series of layers to compute rnn step by step. This way is flexible for
     attenion mechanism or other complex connections.
 
     - gru_step_layer: only compute rnn by one step. It needs an memory as input
       and can be used in recurrent group.
-    - gru_unit: a wrapper of gru_step_layer with memory. 
+    - gru_unit: a wrapper of gru_step_layer with memory.
     - gru_group: a GRU cell implemented by a combination of multiple layers in
       recurrent group.
-      But :math:`W x_t` is not done in group.  
+      But :math:`W x_t` is not done in group.
     - gru_memory: a GRU cell implemented by one layer, which does same calculation
-      with gru_group and is faster than gru_group. 
-    - simple_gru: a complete GRU implementation inlcuding :math:`W x_t` and 
+      with gru_group and is faster than gru_group.
+    - simple_gru: a complete GRU implementation inlcuding :math:`W x_t` and
       gru_group. :math:`W` contains :math:`W_r`, :math:`W_z` and :math:`W`, see
-      formula in grumemory. 
+      formula in grumemory.
 
     The computational speed is that, grumemory is relatively better than
     gru_group, and gru_group is relatively better than simple_gru.
@@ -1010,9 +1024,11 @@ def simple_gru(input,
         input=m,
         reverse=reverse,
         gru_bias_attr=gru_bias_attr,
+        gru_param_attr=gru_param_attr,
         act=act,
         gate_act=gate_act,
-        gru_layer_attr=gru_layer_attr)
+        gru_layer_attr=gru_layer_attr,
+        naive=naive)
 
 
 @wrap_name_default('simple_gru2')

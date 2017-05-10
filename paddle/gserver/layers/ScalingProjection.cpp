@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,8 @@ namespace paddle {
 class ScalingProjection : public Projection {
 public:
   ScalingProjection(const ProjectionConfig& config,
-                    const ParameterPtr& parameter, bool useGpu)
+                    const ParameterPtr& parameter,
+                    bool useGpu)
       : Projection(config, parameter, useGpu) {
     CHECK_EQ(parameter->getSize(), 1UL);
     weight_.reset(new Weight(1, 1, parameter));
@@ -33,10 +34,13 @@ public:
   void backward(const UpdateCallback& callback) {
     if (weight_->getWGrad()) {
       auto sum = Matrix::create(in_->value->getHeight(), 1, false, useGpu_);
-      sum->sumOfProducts(*in_->value, *out_->grad,
-                         /* scaleSum= */1, /* scaleDest= */0);
+      sum->sumOfProducts(*in_->value,
+                         *out_->grad,
+                         /* scaleSum= */ 1,
+                         /* scaleDest= */ 0);
       weight_->getWGrad()->sumCols(*sum,
-                                   /* scaleSum= */1, /* scaleDest= */1);
+                                   /* scaleSum= */ 1,
+                                   /* scaleDest= */ 1);
       parameter_->incUpdate(callback);
     }
     if (in_->grad) {

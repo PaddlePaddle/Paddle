@@ -1,15 +1,15 @@
 from paddle.trainer_config_helpers import *
-from paddle.trainer_config_helpers import math
 
 settings(batch_size=1000, learning_rate=1e-5)
 
 x = data_layer(name='data', size=100)
-x = math.exp(x)
-x = math.log(x)
-x = math.abs(x)
-x = math.sigmoid(x)
-x = math.square(x)
-x = math.square(x)
+x = layer_math.exp(x)
+x = layer_math.log(x)
+x = layer_math.abs(x)
+x = layer_math.sigmoid(x)
+x = layer_math.tanh(x)
+x = layer_math.square(x)
+x = layer_math.relu(x)
 y = 1 + x
 y = y + 1
 y = x + y

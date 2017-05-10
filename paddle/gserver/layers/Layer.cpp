@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,18 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Util.h"
 
-#include "paddle/utils/Logging.h"
 #include "paddle/math/SparseMatrix.h"
+#include "paddle/utils/Error.h"
+#include "paddle/utils/Logging.h"
 
 #include "AddtoLayer.h"
+#include "CRFLayer.h"
 #include "CosSimLayer.h"
 #include "CostLayer.h"
-#include "ExpandConvLayer.h"
-#include "CRFLayer.h"
 #include "DataLayer.h"
+#include "ExpandConvLayer.h"
 #include "FullyConnectedLayer.h"
 #include "HierarchicalSigmoidLayer.h"
 #include "MaxLayer.h"
@@ -34,7 +34,7 @@ limitations under the License. */
 #include "TransLayer.h"
 #include "ValidationLayer.h"
 
-P_DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
+DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
 
 namespace paddle {
 
@@ -123,19 +123,22 @@ LayerPtr Layer::create(const LayerConfig& config) {
   return LayerPtr(registrar_.createByType(config.type(), config));
 }
 
-void Layer::resetSpecifyOutput(Argument& output, size_t height, size_t width,
-                               bool isValueClean, bool isGradClean) {
+void Layer::resetSpecifyOutput(Argument& output,
+                               size_t height,
+                               size_t width,
+                               bool isValueClean,
+                               bool isGradClean) {
   SetDevice device(output.deviceId);
 
-  Matrix::resizeOrCreate(output.value, height, width, /* trans */ false,
-                         useGpu(output.deviceId));
+  Matrix::resizeOrCreate(
+      output.value, height, width, /* trans */ false, useGpu(output.deviceId));
   if (isValueClean) {
     output.value->zeroMem();
   }
 
   if (passType_ != PASS_TEST && needGradient()) {
-    Matrix::resizeOrCreate(output.grad, height, width, /* trans */ false,
-                           useGpu(output.deviceId));
+    Matrix::resizeOrCreate(
+        output.grad, height, width, /* trans */ false, useGpu(output.deviceId));
     if (isGradClean) {
       output.grad->zeroMem();
     }
@@ -227,8 +230,10 @@ void Layer::waitAndMergeOutputGrad() {
     if (outputOtherDevice_.size() == 1) return;
   }
 
-  Matrix::resizeOrCreate(tmpGrad_, output_.grad->getHeight(),
-                         output_.grad->getWidth(), /* trans */ false,
+  Matrix::resizeOrCreate(tmpGrad_,
+                         output_.grad->getHeight(),
+                         output_.grad->getWidth(),
+                         /* trans */ false,
                          useGpu(output_.deviceId));
 
   for (; i != outputOtherDevice_.size(); i++) {
@@ -258,8 +263,8 @@ void Layer::zeroGrad() {
 }
 
 void Layer::initNeedFlags() {
-  auto initFlag = [this](bool& flag, bool (Layer::*flagQueryFunc)() const,
-                         ParameterType type) {
+  auto initFlag = [this](
+      bool& flag, bool (Layer::*flagQueryFunc)() const, ParameterType type) {
     flag = false;
     if (biasParameter_ && biasParameter_->hasType(type)) {
       flag = true;
@@ -293,10 +298,12 @@ void Layer::showOutputStats() {
   }
   MatrixPtr outSquare;
   if (dynamic_cast<GpuSparseMatrix*>(out.get())) {
-    GpuSparseMatrix *tmp = dynamic_cast<GpuSparseMatrix*>(out.get());
-    outSquare = std::make_shared<CpuSparseMatrix>(
-      tmp->getHeight(), tmp->getWidth(), tmp->getElementCnt(),
-      tmp->getValueType(), tmp->getFormat());
+    GpuSparseMatrix* tmp = dynamic_cast<GpuSparseMatrix*>(out.get());
+    outSquare = std::make_shared<CpuSparseMatrix>(tmp->getHeight(),
+                                                  tmp->getWidth(),
+                                                  tmp->getElementCnt(),
+                                                  tmp->getValueType(),
+                                                  tmp->getFormat());
   } else {
     outSquare = out->clone();
   }
@@ -310,26 +317,26 @@ void Layer::showOutputStats() {
     auto tmpMat = dynamic_cast<CpuSparseMatrix*>(outSquare.get());
     min = tmpMat->getMin();
     max = tmpMat->getMax();
-    tmpMat->square();
+    tmpMat->square2();
     LOG(INFO) << "show statistics of [none zero values] in sparse matrix";
   } else {
     min = outSquare->getMin();
     max = outSquare->getMax();
-    outSquare->square();
+    outSquare->square2();
   }
   real std = (outSquare->getSum() / outSquare->getElementCnt()) - mean * mean;
   std = std > 0 ? std : 0;
   LOG(INFO) << "The output state of " << config_.name() << ": mean=" << mean
             << ", "
-            << "std=" << std
-            << ", "
+            << "std=" << std << ", "
             << "min=" << min << ", "
             << "max=" << max;
 }
 
 void Layer::forwardActivation() {
   /* activation */
-  activation_->forward(output_);
+  auto status = activation_->forward(output_);
+  status.check();
 
   /* dropout */
   if (config_.drop_rate() > 0) {
@@ -348,8 +355,8 @@ void Layer::backwardActivation() {
   if (config_.error_clipping_threshold() > 0.0f) {
     if (FLAGS_log_error_clipping) {
       CpuVector outGradVec(0, nullptr);
-      outGradVec.subVecFrom(output_.grad->getData(), 0,
-                            output_.grad->getElementCnt());
+      outGradVec.subVecFrom(
+          output_.grad->getData(), 0, output_.grad->getElementCnt());
       real maxAbsGrad = outGradVec.getAbsMax();
       if (maxAbsGrad > config_.error_clipping_threshold()) {
         real avgAbsGrad = outGradVec.getAbsSum() / outGradVec.getSize();
@@ -367,25 +374,28 @@ void Layer::backwardActivation() {
     oGrad->dotMul(*oGrad, *dropOutMask_);
   }
 
-  activation_->backward(output_);
+  auto status = activation_->backward(output_);
+  status.check();
 }
 
 void Layer::forwardDropOut() {
   auto& outV = getOutputValue();
 
-  if (passType_ == PASS_TRAIN || passType_ == PASS_METRIC_TRAIN ||
-      passType_ == PASS_METRIC_TRAIN_WITH_NOERROR) {
+  if (passType_ == PASS_TRAIN) {
     // new dropOutMask_ if dropOutMask_ is null ptr
-    Matrix::resizeOrCreate(dropOutMask_, outV->getHeight(), outV->getWidth(),
-                           false, useGpu(deviceId_));
+    Matrix::resizeOrCreate(dropOutMask_,
+                           outV->getHeight(),
+                           outV->getWidth(),
+                           false,
+                           useGpu(deviceId_));
     dropOutMask_->randomizeUniform();  // generate a uniform random matrix
     dropOutMask_->biggerThanScalar(config_.drop_rate());  // random mask
     outV->dotMul(*outV, *dropOutMask_);                   // dropout
   } else if (passType_ == PASS_GC) {
     // only initialize once
     if (!dropOutMask_) {
-      dropOutMask_ = Matrix::create(outV->getHeight(), outV->getWidth(), false,
-                                    useGpu(deviceId_));
+      dropOutMask_ = Matrix::create(
+          outV->getHeight(), outV->getWidth(), false, useGpu(deviceId_));
       // We use cpu matrix to generate mask so that the mask
       // will be same for both gpu version and cpu version.
       // This will help unittest to make sure they have same result.

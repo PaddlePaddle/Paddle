@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -142,10 +142,7 @@ public:
    */
   bool waitNotEmptyFor(int seconds) {
     std::unique_lock<std::mutex> lock(queueLock_);
-    return queueCV_.wait_for(
-          lock,
-          std::chrono::seconds(seconds),
-          [this] {
+    return queueCV_.wait_for(lock, std::chrono::seconds(seconds), [this] {
       return numElements_ != 0;
     });
   }
@@ -190,7 +187,7 @@ template <typename T>
 class BlockingQueue {
 public:
   /**
-   * @brief Construct Function. 
+   * @brief Construct Function.
    * @param[in] capacity the max numer of elements the queue can have.
    */
   explicit BlockingQueue(size_t capacity) : capacity_(capacity) {}
@@ -198,9 +195,9 @@ public:
   /**
    * @brief enqueue an element into Queue.
    * @param[in] x The enqueue element, pass by reference .
-   * @note This method is thread-safe, and will wake up another thread 
+   * @note This method is thread-safe, and will wake up another thread
    * who was blocked because of the queue is empty.
-   * @note If it's size() >= capacity before enqueue, 
+   * @note If it's size() >= capacity before enqueue,
    * this method will block and wait until size() < capacity.
    */
   void enqueue(const T& x) {
@@ -229,7 +226,7 @@ public:
   /**
    * Return size of queue.
    *
-   * @note This method is thread safe. 
+   * @note This method is thread safe.
    * The size of the queue won't change until the method return.
    */
   size_t size() {

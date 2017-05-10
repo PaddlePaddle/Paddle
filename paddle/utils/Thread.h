@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "Util.h"
-#include "Logging.h"
 #include <thread>
+#include "Logging.h"
+#include "Util.h"
 
 #include "Queue.h"
 #include "ThreadLocal.h"
@@ -57,7 +57,8 @@ public:
   void join() { thread_->join(); }
 
   /**
-   * @brief Define what to be done on this thread through override this function.
+   * @brief Define what to be done on this thread through override this
+   * function.
    */
   virtual void run() = 0;
 
@@ -155,10 +156,9 @@ public:
   /**
    * @brief Construct Function. No thread will be created.
    */
-  SyncThreadPool()
-    : jobStartBarrier_(0),
-    jobFinishBarrier_(0)
-  { LOG(FATAL) << "Not implemented"; }
+  SyncThreadPool() : jobStartBarrier_(0), jobFinishBarrier_(0) {
+    LOG(FATAL) << "Not implemented";
+  }
 
   /**
    * @brief Construct Fucntion. Create numWorkers of threads in the pool.
@@ -191,7 +191,8 @@ public:
   /**
    * @brief Execute a job using all the theads in the pool.
    * @param[in] jobFunc The function to be executed.
-   * @param[in] ownerFunc Owner thread can do something in owerFunc when job executing.
+   * @param[in] ownerFunc Owner thread can do something in owerFunc when job
+   * executing.
    * @note For the ownerFunc, tid=getNumThreads().
    */
   void exec(JobFunc jobFunc, JobFunc ownerFunc = nullptr) {
@@ -316,7 +317,8 @@ protected:
  *
  * Force stop:
  *
- *    Use forceStop() to exit forcibly even though there are remaining jobs in the
+ *    Use forceStop() to exit forcibly even though there are remaining jobs in
+ * the
  * job queue.
  */
 template <class T>
@@ -426,7 +428,8 @@ protected:
   /**
    * @brief Do the jobs in the job queue sequentianlly
    * and enqueue the result into the result queue.
-   * @note A nullptr will be enqueued into the resulte queue, when a worker finished.
+   * @note A nullptr will be enqueued into the resulte queue, when a worker
+   * finished.
    */
   virtual void run() {
     while (true) {
@@ -492,7 +495,9 @@ public:
   }
 
   ~AsyncThreadPool() {
-    if (!stopping_) { stop(); }
+    if (!stopping_) {
+      stop();
+    }
   }
 
   /**
@@ -501,7 +506,7 @@ public:
   void stop() {
     stopping_ = true;
     for (size_t i = 0; i < workers_.size(); i++) {
-      jobs_.enqueue([]{});
+      jobs_.enqueue([] {});
     }
     for (auto& worker : workers_) {
       worker->join();
@@ -526,7 +531,7 @@ public:
    * asynchronously.
    * Call std::future::get() when the execturation result is needed;
    */
-  template<class F, class... Args>
+  template <class F, class... Args>
   auto addJob(F&& f, Args&&... args)
       -> std::future<typename std::result_of<F(Args...)>::type> {
     CHECK(!stopping_) << "AsyncThreadPool is closed";
@@ -535,7 +540,7 @@ public:
     auto task = std::make_shared<std::packaged_task<T()>>(
         std::bind(std::forward<F>(f), std::forward<Args>(args)...));
     auto res = task->get_future();
-    jobs_.enqueue([task]{ (*task)(); });
+    jobs_.enqueue([task] { (*task)(); });
     return res;
   }
 
@@ -551,15 +556,15 @@ public:
    *
    * @note *results* may need to be carefully cleared before *addBatchJobs()*.
    */
-  template<class F>
-  void addBatchJobs(const std::vector<F> &jobs,
-      std::vector<typename std::result_of<F()>::type> &results) {
+  template <class F>
+  void addBatchJobs(const std::vector<F>& jobs,
+                    std::vector<typename std::result_of<F()>::type>& results) {
     typedef typename std::result_of<F()>::type T;
     static_assert(!std::is_same<T, void>::value,
-        "should pass a non-void function as job");
+                  "should pass a non-void function as job");
 
-    std::vector<std::future<T> > resFuts;
-    for (const auto &job : jobs) {
+    std::vector<std::future<T>> resFuts;
+    for (const auto& job : jobs) {
       resFuts.emplace_back(addJob(job));
     }
     for (auto& fut : resFuts) {
@@ -572,13 +577,16 @@ public:
    * @tparam F don't need to have a return value.
    * @param[in] jobs a vector of executable objection.
    */
-  template<class F>
-  void addBatchJobs(const std::vector<F> &jobs) {
+  template <class F>
+  void addBatchJobs(const std::vector<F>& jobs) {
     CHECK(!stopping_) << "AsyncThreadPool is closed";
-    std::vector<std::future<bool> > tmpRes;
+    std::vector<std::future<bool>> tmpRes;
 
     for (const auto& job : jobs) {
-      tmpRes.emplace_back(addJob([&job]{ job(); return true; }));
+      tmpRes.emplace_back(addJob([&job] {
+        job();
+        return true;
+      }));
     }
 
     for (auto& res : tmpRes) {
@@ -604,4 +612,4 @@ private:
   bool stopping_;
 };  // class AsyncThreadPool
 
-}   // namespace paddle
+}  // namespace paddle

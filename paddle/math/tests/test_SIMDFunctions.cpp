@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,17 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-
 #include "paddle/math/SIMDFunctions.h"
 #include "paddle/utils/Util.h"
 
 #include <gtest/gtest.h>
 
-#include <random>
-#include <functional>
 #include <algorithm>
+#include <functional>
 #include <memory>
+#include <random>
 
 #include <stdlib.h>
 #include <time.h>
@@ -128,13 +126,13 @@ TEST(SIMDFunction, decayL1_WithLR) {
   typedef std::function<void(float*, float*, float*, float, size_t)>
       DecayL1MethodType;
 
-  DecayL1MethodType naive = [](float* d, float* s, float* lr, float l,
-                               size_t len) {
+  DecayL1MethodType naive = [](
+      float* d, float* s, float* lr, float l, size_t len) {
     paddle::simd::naive::decayL1<float>(d, s, lr, l, len);
   };
 
-  DecayL1MethodType simd = [](float* d, float* s, float* lr, float l,
-                              size_t len) {
+  DecayL1MethodType simd = [](
+      float* d, float* s, float* lr, float l, size_t len) {
     paddle::simd::decayL1<float>(d, s, lr, l, len);
   };
 
@@ -170,10 +168,4 @@ TEST(SIMDFunction, decayL1_WithoutLR) {
   for (size_t i = 0; i < VECTOR_LEN; ++i) {
     ASSERT_NEAR(dest[i], simd_dest[i], EPSILON);
   }
-}
-
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

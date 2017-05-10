@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <memory>
 #include <string>
 
@@ -21,7 +20,7 @@ limitations under the License. */
 #include "paddle/gserver/dataproviders/PyDataProvider.h"
 #include "paddle/utils/Util.h"
 
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 
 using namespace std;     // NOLINT
 using namespace paddle;  // NOLINT
@@ -114,9 +113,10 @@ void simpleValueCheck(const vector<Argument>& argumentList, bool useGpu) {
   // Dense
   real* data;
   if (useGpu) {
-    MatrixPtr cpuMatrixPtr =
-        Matrix::create(argumentList[0].value->getHeight(),
-                       argumentList[0].value->getWidth(), 0, 0);
+    MatrixPtr cpuMatrixPtr = Matrix::create(argumentList[0].value->getHeight(),
+                                            argumentList[0].value->getWidth(),
+                                            0,
+                                            0);
     cpuMatrixPtr->copyFrom(*argumentList[0].value);
     data = cpuMatrixPtr->getData();
   } else {

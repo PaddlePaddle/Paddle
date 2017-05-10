@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,12 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "Util.h"
 #include "ThreadLocal.h"
-#include "CommandLineParser.h"
 
-P_DEFINE_bool(thread_local_rand_use_global_seed, false,
-              "Whether to use global seed in thread local rand.");
+#include <gflags/gflags.h>
+
+#include "Util.h"
+
+DEFINE_bool(thread_local_rand_use_global_seed,
+            false,
+            "Whether to use global seed in thread local rand.");
 
 namespace paddle {
 
@@ -34,7 +37,7 @@ unsigned int* ThreadLocalRand::getSeed() {
       p = new unsigned int(defaultSeed_ - 1);
     } else {
       p = new unsigned int(defaultSeed_ + getTID());
-      LOG(INFO) << "thread use undeterministic rand seed:" << *p;
+      VLOG(3) << "thread use undeterministic rand seed:" << *p;
     }
     seed_.set(p);
   }

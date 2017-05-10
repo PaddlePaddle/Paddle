@@ -1,24 +1,23 @@
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
-    sha: c25201a00e6b0514370501050cf2a8538ac12270
+    sha: v1.0.1
     hooks:
     -   id: remove-crlf
+        files: (?!.*third_party)^.*$ | (?!.*book)^.*$
 -   repo: https://github.com/reyoung/mirrors-yapf.git
     sha: v0.13.2
     hooks:
     -   id: yapf
+        files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    sha: 4ef03c4223ad322c7adaa6c6c0efb26b57df3b71
+    sha: 5bf6c09bfa1297d3692cadd621ef95f1284e33c0
     hooks:
     -   id: check-added-large-files
     -   id: check-merge-conflict
     -   id: check-symlinks
     -   id: detect-private-key
+        files: (?!.*third_party)^.*$ | (?!.*book)^.*$
     -   id: end-of-file-fixer
-# TODO(yuyang): trailing whitespace has some bugs on markdown 
-# files now, please not add it to pre-commit hook now
-#    -   id: trailing-whitespace
-#
-# TODO(yuyang): debug-statements not fit for Paddle, because
-# not all of our python code is runnable. Some are used for 
-# documenation
-#    -   id: debug-statements
+-   repo: https://github.com/PaddlePaddle/clang-format-pre-commit-hook.git
+    sha: 28c0ea8a67a3e2dbbf4822ef44e85b63a0080a29
+    hooks:
+    -   id: clang-formater

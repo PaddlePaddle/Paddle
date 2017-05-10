@@ -1,5 +1,6 @@
 *.DS_Store
 build/
+build_doc/
 *.user
 
 .vscode
@@ -7,4 +8,11 @@ build/
 .project
 .cproject
 .pydevproject
+.settings/
 Makefile
+.test_env/
+third_party/
+
+*~
+bazel-*
+third_party/

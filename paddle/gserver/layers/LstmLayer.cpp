@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "LstmLayer.h"
-#include "paddle/math/Matrix.h"
 #include "paddle/math/BaseMatrix.h"
+#include "paddle/math/Matrix.h"
 #include "paddle/utils/Stat.h"
 
-P_DECLARE_bool(prev_batch_state);
+DECLARE_bool(prev_batch_state);
 
 namespace paddle {
 
@@ -35,14 +34,26 @@ bool LstmLayer::init(const LayerMap &layerMap,
   if (biasParameter_.get() != NULL) {
     bias_.reset(new Weight(1, getSize() * 7, biasParameter_));
     if (bias_->getW()) {
-      localBias_ = Matrix::create(nullptr, /* height= */ 1, getSize() * 4,
-                                  /* trans= */ false, useGpu_);
-      checkIg_ = Matrix::create(nullptr, /* height= */ 1, getSize(),
-                                /* trans= */ false, useGpu_);
-      checkFg_ = Matrix::create(nullptr, /* height= */ 1, getSize(),
-                                /* trans= */ false, useGpu_);
-      checkOg_ = Matrix::create(nullptr, /* height= */ 1, getSize(),
-                                /* trans= */ false, useGpu_);
+      localBias_ = Matrix::create(nullptr,
+                                  /* height= */ 1,
+                                  getSize() * 4,
+                                  /* trans= */ false,
+                                  useGpu_);
+      checkIg_ = Matrix::create(nullptr,
+                                /* height= */ 1,
+                                getSize(),
+                                /* trans= */ false,
+                                useGpu_);
+      checkFg_ = Matrix::create(nullptr,
+                                /* height= */ 1,
+                                getSize(),
+                                /* trans= */ false,
+                                useGpu_);
+      checkOg_ = Matrix::create(nullptr,
+                                /* height= */ 1,
+                                getSize(),
+                                /* trans= */ false,
+                                useGpu_);
 
       localBias_->setData(bias_->getW()->getData());
       checkIg_->setData(bias_->getW()->getData() + getSize() * 4);
@@ -51,14 +62,26 @@ bool LstmLayer::init(const LayerMap &layerMap,
     }
 
     if (bias_->getWGrad()) {
-      localBiasGrad_ = Matrix::create(nullptr, /* height= */ 1, getSize() * 4,
-                                      /* trans= */ false, useGpu_);
-      checkIgGrad_ = Matrix::create(nullptr, /* height= */ 1, getSize(),
-                                    /* trans= */ false, useGpu_);
-      checkFgGrad_ = Matrix::create(nullptr, /* height= */ 1, getSize(),
-                                    /* trans= */ false, useGpu_);
-      checkOgGrad_ = Matrix::create(nullptr, /* height= */ 1, getSize(),
-                                    /* trans= */ false, useGpu_);
+      localBiasGrad_ = Matrix::create(nullptr,
+                                      /* height= */ 1,
+                                      getSize() * 4,
+                                      /* trans= */ false,
+                                      useGpu_);
+      checkIgGrad_ = Matrix::create(nullptr,
+                                    /* height= */ 1,
+                                    getSize(),
+                                    /* trans= */ false,
+                                    useGpu_);
+      checkFgGrad_ = Matrix::create(nullptr,
+                                    /* height= */ 1,
+                                    getSize(),
+                                    /* trans= */ false,
+                                    useGpu_);
+      checkOgGrad_ = Matrix::create(nullptr,
+                                    /* height= */ 1,
+                                    getSize(),
+                                    /* trans= */ false,
+                                    useGpu_);
       localBiasGrad_->setData(bias_->getWGrad()->getData());
       checkIgGrad_->setData(bias_->getWGrad()->getData() + getSize() * 4);
       checkFgGrad_->setData(bias_->getWGrad()->getData() + getSize() * 5);
@@ -84,8 +107,8 @@ bool LstmLayer::init(const LayerMap &layerMap,
 
 void LstmLayer::resetState() {
   CHECK(!reversed_) << "state is not allowed for reversed lstmemory layer";
-  Matrix::resizeOrCreate(prevOutput_, 1, getSize(), /* trans= */ false,
-                         useGpu_);
+  Matrix::resizeOrCreate(
+      prevOutput_, 1, getSize(), /* trans= */ false, useGpu_);
   Matrix::resizeOrCreate(prevState_, 1, getSize(), /* trans= */ false, useGpu_);
   prevOutput_->resize(0, getSize());
   prevState_->resize(0, getSize());
@@ -138,8 +161,10 @@ void LstmLayer::forward(PassType passType) {
   CHECK_EQ(starts[numSequences], batchSize);
 
   Matrix::resizeOrCreate(gate_.value,
-                         /* height= */ batchSize, getSize() * 4,
-                         /* trans= */ false, useGpu_);
+                         /* height= */ batchSize,
+                         getSize() * 4,
+                         /* trans= */ false,
+                         useGpu_);
   if (prevOutput_) {
     size_t prevNumSeq = useBatch_ ? numSequences : 1;
     if (prevOutput_->getHeight() == 0) {
@@ -151,18 +176,29 @@ void LstmLayer::forward(PassType passType) {
       CHECK_EQ(prevOutput_->getHeight(), prevNumSeq)
           << "the number of sequences must be the same";
     }
-    Matrix::resizeOrCreate(totalState_, prevState_->getHeight() + batchSize,
-                           getSize(), /*trans*/ false, useGpu_);
-    state_.value = Matrix::create(nullptr, /* height= */ batchSize, getSize(),
-                                  /* trans= */ false, useGpu_);
+    Matrix::resizeOrCreate(totalState_,
+                           prevState_->getHeight() + batchSize,
+                           getSize(),
+                           /*trans*/ false,
+                           useGpu_);
+    state_.value = Matrix::create(nullptr,
+                                  /* height= */ batchSize,
+                                  getSize(),
+                                  /* trans= */ false,
+                                  useGpu_);
     state_.value->setData(totalState_->getData() +
                           prevState_->getHeight() * getSize());
   } else {
-    Matrix::resizeOrCreate(state_.value, /* height= */ batchSize, getSize(),
-                           /* trans= */ false, useGpu_);
+    Matrix::resizeOrCreate(state_.value,
+                           /* height= */ batchSize,
+                           getSize(),
+                           /* trans= */ false,
+                           useGpu_);
   }
   Matrix::resizeOrCreate(preOutput_.value,
-                         /* height= */ batchSize, getSize(), /* trans= */ false,
+                         /* height= */ batchSize,
+                         getSize(),
+                         /* trans= */ false,
                          useGpu_);
 
   if (!useBatch_) {
@@ -171,7 +207,7 @@ void LstmLayer::forward(PassType passType) {
     if (!useSeqParallel_) {
       forwardBatch(batchSize, numSequences, starts, input.value);
     } else {
-      const int* starts = input.sequenceStartPositions->getData(useGpu_);
+      const int *starts = input.sequenceStartPositions->getData(useGpu_);
       forwardSeqParallel(batchSize, numSequences, starts, input.value);
     }
   }
@@ -188,13 +224,19 @@ void LstmLayer::backward(const UpdateCallback &callback) {
   size_t numSequences = input.getNumSequences();
 
   Matrix::resizeOrCreate(gate_.grad,
-                         /* height= */ batchSize, getSize() * 4,
-                         /* trans= */ false, useGpu_);
+                         /* height= */ batchSize,
+                         getSize() * 4,
+                         /* trans= */ false,
+                         useGpu_);
   Matrix::resizeOrCreate(state_.grad,
-                         /* height= */ batchSize, getSize(), /* trans= */ false,
+                         /* height= */ batchSize,
+                         getSize(),
+                         /* trans= */ false,
                          useGpu_);
   Matrix::resizeOrCreate(preOutput_.grad,
-                         /* height= */ batchSize, getSize(), /* trans= */ false,
+                         /* height= */ batchSize,
+                         getSize(),
+                         /* trans= */ false,
                          useGpu_);
   state_.grad->zero();
 
@@ -205,7 +247,7 @@ void LstmLayer::backward(const UpdateCallback &callback) {
     if (!useSeqParallel_) {
       backwardBatch(batchSize, numSequences, starts, input.grad);
     } else {
-      const int* starts = input.sequenceStartPositions->getData(useGpu_);
+      const int *starts = input.sequenceStartPositions->getData(useGpu_);
       backwardSeqParallel(batchSize, numSequences, starts, input.grad);
     }
   }
@@ -216,8 +258,10 @@ void LstmLayer::backward(const UpdateCallback &callback) {
   weight_->getParameterPtr()->incUpdate(callback);
 }
 
-void LstmLayer::forwardSequence(int batchSize, size_t numSequences,
-                                const int *starts, MatrixPtr inputValue) {
+void LstmLayer::forwardSequence(int batchSize,
+                                size_t numSequences,
+                                const int *starts,
+                                MatrixPtr inputValue) {
   REGISTER_TIMER_INFO("LstmFwSequenceTime", getName().c_str());
   gate_.value->assign(*inputValue);
   if (bias_) {
@@ -255,10 +299,16 @@ void LstmLayer::forwardSequence(int batchSize, size_t numSequences,
     }
   };
 
-  MatrixPtr frameGate = Matrix::create(nullptr, /* height= */ 1, getSize() * 4,
-                                       /* trans= */ false, useGpu_);
-  MatrixPtr frameOutput = Matrix::create(nullptr, /* height= */ 1, getSize(),
-                                         /* trans= */ false, useGpu_);
+  MatrixPtr frameGate = Matrix::create(nullptr,
+                                       /* height= */ 1,
+                                       getSize() * 4,
+                                       /* trans= */ false,
+                                       useGpu_);
+  MatrixPtr frameOutput = Matrix::create(nullptr,
+                                         /* height= */ 1,
+                                         getSize(),
+                                         /* trans= */ false,
+                                         useGpu_);
 
   if (!reversed_) {
     if (prevState_) {
@@ -266,7 +316,7 @@ void LstmLayer::forwardSequence(int batchSize, size_t numSequences,
     }
     if (prevOutput_) {
       frameGate->setData(lstmValue.gateValue);
-      frameGate->mul(prevOutput_, weight_->getW(), 1, 1);
+      frameGate->mul(*prevOutput_, *weight_->getW(), 1, 1);
     }
   }
   AsyncGpuBlock asyncGpuBlock;
@@ -288,7 +338,7 @@ void LstmLayer::forwardSequence(int batchSize, size_t numSequences,
         frameOutput->setData(lstmValue.outputValue);
         nextFrame(reversed_, getSize());
         frameGate->setData(lstmValue.gateValue);
-        frameGate->mul(frameOutput, weight_->getW(), 1, 1);
+        frameGate->mul(*frameOutput, *weight_->getW(), 1, 1);
       }
     }
     if (n != numSequences - 1) {
@@ -298,7 +348,7 @@ void LstmLayer::forwardSequence(int batchSize, size_t numSequences,
       if (!reversed_) {
         if (!prevState_) lstmValue.prevStateValue = nullptr;
         if (prevOutput_) {
-          frameGate->mul(frameOutput, weight_->getW(), 1, 1);
+          frameGate->mul(*frameOutput, *weight_->getW(), 1, 1);
         }
       } else {
         lstmValue.prevStateValue = nullptr;
@@ -316,8 +366,10 @@ void LstmLayer::forwardSequence(int batchSize, size_t numSequences,
   }
 }
 
-void LstmLayer::backwardSequence(int batchSize, size_t numSequences,
-                                 const int *starts, MatrixPtr inputGrad) {
+void LstmLayer::backwardSequence(int batchSize,
+                                 size_t numSequences,
+                                 const int *starts,
+                                 MatrixPtr inputGrad) {
   REGISTER_TIMER_INFO("LstmBwSequenceTime", getName().c_str());
   MatrixPtr weightT = weight_->getW()->getTranspose();
 
@@ -381,10 +433,16 @@ void LstmLayer::backwardSequence(int batchSize, size_t numSequences,
     }
   };
 
-  MatrixPtr frameGate = Matrix::create(nullptr, /* height= */ 1, getSize() * 4,
-                                       /* trans= */ false, useGpu_);
-  MatrixPtr frameOutput = Matrix::create(nullptr, /* height= */ 1, getSize(),
-                                         /* trans= */ false, useGpu_);
+  MatrixPtr frameGate = Matrix::create(nullptr,
+                                       /* height= */ 1,
+                                       getSize() * 4,
+                                       /* trans= */ false,
+                                       useGpu_);
+  MatrixPtr frameOutput = Matrix::create(nullptr,
+                                         /* height= */ 1,
+                                         getSize(),
+                                         /* trans= */ false,
+                                         useGpu_);
 
   {
     AsyncGpuBlock asyncGpuBlock;
@@ -412,7 +470,7 @@ void LstmLayer::backwardSequence(int batchSize, size_t numSequences,
           frameGate->setData(lstmGrad.gateGrad);
           nextFrame(reversed_, getSize());
           frameOutput->setData(lstmGrad.outputGrad);
-          frameOutput->mul(frameGate, weightT, 1, 1);
+          frameOutput->mul(*frameGate, *weightT, 1, 1);
         } else {
           nextFrame(reversed_, getSize());
         }
@@ -421,12 +479,16 @@ void LstmLayer::backwardSequence(int batchSize, size_t numSequences,
       if (weight_->getWGrad()) {
         if (!reversed_) {
           weight_->getWGrad()->mul(
-              output_.value->subMatrix(start, length - 1)->getTranspose(),
-              gate_.grad->subMatrix(start + 1, length - 1), 1, 1);
+              *output_.value->subMatrix(start, length - 1)->getTranspose(),
+              *gate_.grad->subMatrix(start + 1, length - 1),
+              1,
+              1);
         } else {
           weight_->getWGrad()->mul(
-              output_.value->subMatrix(start + 1, length - 1)->getTranspose(),
-              gate_.grad->subMatrix(start, length - 1), 1, 1);
+              *output_.value->subMatrix(start + 1, length - 1)->getTranspose(),
+              *gate_.grad->subMatrix(start, length - 1),
+              1,
+              1);
         }
       }
     }
@@ -440,8 +502,10 @@ void LstmLayer::backwardSequence(int batchSize, size_t numSequences,
   }
 }
 
-void LstmLayer::forwardBatch(int batchSize, size_t numSequences,
-                             const int *starts, MatrixPtr inputValue) {
+void LstmLayer::forwardBatch(int batchSize,
+                             size_t numSequences,
+                             const int *starts,
+                             MatrixPtr inputValue) {
   REGISTER_TIMER_INFO("LstmFwBatchTime", getName().c_str());
 
   hl_lstm_value lstmValue;
@@ -452,8 +516,8 @@ void LstmLayer::forwardBatch(int batchSize, size_t numSequences,
   if (!batchValue_) {
     batchValue_.reset(new SequenceToBatch(useGpu_));
   }
-  batchValue_->resizeOrCreateBatch(batchSize, numSequences, starts, reversed_,
-                                   prevOutput_ ? true : false);
+  batchValue_->resizeOrCreateBatch(
+      batchSize, numSequences, starts, reversed_, prevOutput_ ? true : false);
 
   batchValue_->resizeOrCreate(*output_.value);
   batchValue_->copy(*inputValue, *gate_.value, /* seq2batch */ true);
@@ -477,12 +541,15 @@ void LstmLayer::forwardBatch(int batchSize, size_t numSequences,
 
       if (n != 0) {
         MatrixPtr batch1 = batchValue_->getBatchValue(n - 1, batchSize);
-        gateValue->mul(batch1, weight_->getW(), 1, 1);
+        gateValue->mul(*batch1, *weight_->getW(), 1, 1);
       } else if (prevOutput_) {
-        Matrix::resizeOrCreate(prevBatchOutput2_, gateValue->getHeight(),
-                               getSize(), false, useGpu_);
+        Matrix::resizeOrCreate(prevBatchOutput2_,
+                               gateValue->getHeight(),
+                               getSize(),
+                               false,
+                               useGpu_);
         batchValue_->prevOutput2Batch(*prevOutput_, *prevBatchOutput2_);
-        gateValue->mul(prevBatchOutput2_, weight_->getW(), 1, 1);
+        gateValue->mul(*prevBatchOutput2_, *weight_->getW(), 1, 1);
 
         batchValue_->prevOutput2Batch(*prevState_,
                                       *totalState_->subMatrix(0, numSequences));
@@ -525,8 +592,10 @@ void LstmLayer::getPrevBatchState(size_t numSequences) {
   batchValue_->getSeqOutputFromBatch(*prevState_, *state_.value);
 }
 
-void LstmLayer::backwardBatch(int batchSize, size_t numSequences,
-                              const int *starts, MatrixPtr inputGrad) {
+void LstmLayer::backwardBatch(int batchSize,
+                              size_t numSequences,
+                              const int *starts,
+                              MatrixPtr inputGrad) {
   REGISTER_TIMER_INFO("LstmBwBatchTime", getName().c_str());
 
   hl_lstm_value lstmValue;
@@ -593,26 +662,26 @@ void LstmLayer::backwardBatch(int batchSize, size_t numSequences,
           }
         }
         if (useGpu_) {
-          LstmCompute::backwardBatch<1>(lstmValue, lstmGrad,
-                                        getSize(), batchSize);
+          LstmCompute::backwardBatch<1>(
+              lstmValue, lstmGrad, getSize(), batchSize);
         } else {
-          LstmCompute::backwardBatch<0>(lstmValue, lstmGrad,
-                                        getSize(), batchSize);
+          LstmCompute::backwardBatch<0>(
+              lstmValue, lstmGrad, getSize(), batchSize);
         }
       }
 
       if (n != 0) {
         MatrixPtr tmp = batchGrad_->getBatchValue(n - 1, batchSize);
-        tmp->mul(gateGrad, weightT, 1, 1);
+        tmp->mul(*gateGrad, *weightT, 1, 1);
       }
 
       if (n != 0 && weight_->getWGrad()) {
         /* backward weight */
         MatrixPtr outputValue = batchValue_->getBatchValue(n - 1, batchSize);
-        weight_->getWGrad()->mul(outputValue->getTranspose(), gateGrad, 1, 1);
+        weight_->getWGrad()->mul(*outputValue->getTranspose(), *gateGrad, 1, 1);
       } else if (prevOutput_ && weight_->getWGrad()) {
-        weight_->getWGrad()->mul(prevBatchOutput2_->getTranspose(), gateGrad, 1,
-                                 1);
+        weight_->getWGrad()->mul(
+            *prevBatchOutput2_->getTranspose(), *gateGrad, 1, 1);
       }
     }
   }
@@ -625,8 +694,10 @@ void LstmLayer::backwardBatch(int batchSize, size_t numSequences,
   }
 }
 
-void LstmLayer::forwardSeqParallel(int batchSize, size_t numSequences,
-                                   const int *starts, MatrixPtr inputValue) {
+void LstmLayer::forwardSeqParallel(int batchSize,
+                                   size_t numSequences,
+                                   const int *starts,
+                                   MatrixPtr inputValue) {
   REGISTER_TIMER_INFO("LstmFwSeqParallelTime", getName().c_str());
   gate_.value->assign(*inputValue);
   if (bias_) {
@@ -641,14 +712,27 @@ void LstmLayer::forwardSeqParallel(int batchSize, size_t numSequences,
   real *checkFg = checkFg_->getData();
   real *checkOg = checkOg_->getData();
   real *weight = weight_->getW()->getData();
-  hl_lstm_parallel_forward(
-      gateValue, stateValue, preOutputValue, outputValue, checkIg, checkFg,
-      checkOg, weight, starts, getSize(), numSequences, reversed_, activeNode_,
-      activeGate_, activeState_);
+  hl_lstm_parallel_forward(gateValue,
+                           stateValue,
+                           preOutputValue,
+                           outputValue,
+                           checkIg,
+                           checkFg,
+                           checkOg,
+                           weight,
+                           starts,
+                           getSize(),
+                           numSequences,
+                           reversed_,
+                           activeNode_,
+                           activeGate_,
+                           activeState_);
 }
 
-void LstmLayer::backwardSeqParallel(int batchSize, size_t numSequences,
-                                    const int *starts, MatrixPtr inputGrad) {
+void LstmLayer::backwardSeqParallel(int batchSize,
+                                    size_t numSequences,
+                                    const int *starts,
+                                    MatrixPtr inputGrad) {
   REGISTER_TIMER_INFO("LstmBwSeqParallelTime", getName().c_str());
   real *gateValue = gate_.value->getData();
   real *gateGrad = gate_.grad->getData();
@@ -675,11 +759,27 @@ void LstmLayer::backwardSeqParallel(int batchSize, size_t numSequences,
     checkOgGrad = nullptr;
   }
 
-  hl_lstm_parallel_backward_data(
-      gateValue, gateGrad, stateValue, stateGrad, preOutputValue, preOutputGrad,
-      outputGrad, checkIg, checkIgGrad, checkFg, checkFgGrad, checkOg,
-      checkOgGrad, weight, starts, getSize(), numSequences, reversed_,
-      activeNode_, activeGate_, activeState_);
+  hl_lstm_parallel_backward_data(gateValue,
+                                 gateGrad,
+                                 stateValue,
+                                 stateGrad,
+                                 preOutputValue,
+                                 preOutputGrad,
+                                 outputGrad,
+                                 checkIg,
+                                 checkIgGrad,
+                                 checkFg,
+                                 checkFgGrad,
+                                 checkOg,
+                                 checkOgGrad,
+                                 weight,
+                                 starts,
+                                 getSize(),
+                                 numSequences,
+                                 reversed_,
+                                 activeNode_,
+                                 activeGate_,
+                                 activeState_);
 
   if (inputGrad) {
     inputGrad->add(*gate_.grad);
@@ -691,9 +791,14 @@ void LstmLayer::backwardSeqParallel(int batchSize, size_t numSequences,
   real *outputValue = output_.value->getData();
   if (weight_->getWGrad()) {
     real *weightGrad = weight_->getWGrad()->getData();
-    hl_lstm_parallel_backward_weight(weightGrad, outputValue, gateGrad,
-                                     starts, getSize(), batchSize,
-                                     numSequences, reversed_);
+    hl_lstm_parallel_backward_weight(weightGrad,
+                                     outputValue,
+                                     gateGrad,
+                                     starts,
+                                     getSize(),
+                                     batchSize,
+                                     numSequences,
+                                     reversed_);
   }
 }
 

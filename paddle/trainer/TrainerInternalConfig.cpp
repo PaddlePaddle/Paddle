@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,16 +14,17 @@ limitations under the License. */
 
 #include "TrainerInternalConfig.h"
 
-P_DEFINE_int32(show_parameter_stats_period, 0,
-               "Whether to show parameter stats during training");
+DEFINE_int32(show_parameter_stats_period,
+             0,
+             "Whether to show parameter stats during training");
 
-P_DEFINE_int32(dot_period, 1, "Print '.' every so many batches");
+DEFINE_int32(dot_period, 1, "Print '.' every so many batches");
 
-P_DEFINE_bool(use_old_updater, false, "Use the old RemoteParameterUpdater");
+DEFINE_bool(use_old_updater, false, "Use the old RemoteParameterUpdater");
 
-P_DECLARE_int32(num_passes);
+DECLARE_int32(num_passes);
 
-P_DECLARE_bool(local);
+DECLARE_bool(local);
 
 namespace paddle {
 

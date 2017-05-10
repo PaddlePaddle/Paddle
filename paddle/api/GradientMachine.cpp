@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "PaddleAPI.h"
 #include "PaddleAPIPrivate.h"
 
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "Internal.h"
+#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 
 std::vector<int> GradientMachine::defaultParamTypes = {
     PARAMETER_VALUE, PARAMETER_GRADIENT, PARAMETER_MOMENTUM};
@@ -27,7 +26,8 @@ GradientMachine::GradientMachine() : m(new GradientMachinePrivate()) {}
 GradientMachine::~GradientMachine() { delete m; }
 
 GradientMachine* GradientMachine::createFromPaddleModelPtr(
-    const void* confPtr, GradientMatchineCreateMode mode,
+    const void* confPtr,
+    GradientMatchineCreateMode mode,
     const std::vector<int>& types) {
   auto& conf = *(const paddle::ModelConfig*)(confPtr);
   std::vector<ParameterType> realTypes;
@@ -44,7 +44,8 @@ GradientMachine* GradientMachine::createFromPaddleModelPtr(
 }
 
 GradientMachine* GradientMachine::createByConfigProtoStr(
-    const std::string& protoStr, GradientMatchineCreateMode mode,
+    const std::string& protoStr,
+    GradientMatchineCreateMode mode,
     const std::vector<int>& types) {
   paddle::ModelConfig conf;
   conf.ParseFromString(protoStr);
@@ -56,13 +57,27 @@ GradientMachine* GradientMachine::createByConfigProtoStr(
 }
 
 GradientMachine* GradientMachine::createByModelConfig(
-    ModelConfig* conf, GradientMatchineCreateMode mode,
+    ModelConfig* conf,
+    GradientMatchineCreateMode mode,
     const std::vector<int>& types) {
   auto confPtr = &conf->m->conf->getModelConfig();
   return GradientMachine::createFromPaddleModelPtr(confPtr, mode, types);
 }
 
-void GradientMachine::forward(const Arguments& inArgs, Arguments* outArgs,
+void GradientMachine::start() { m->machine->start(); }
+
+void GradientMachine::finish() { m->machine->finish(); }
+
+void GradientMachine::onPassEnd() { m->machine->onPassEnd(); }
+
+void GradientMachine::prefetch(const Arguments& inArgs) {
+  auto& in =
+      m->cast<std::vector<paddle::Argument>>(inArgs.getInternalArgumentsPtr());
+  m->machine->prefetch(in);
+}
+
+void GradientMachine::forward(const Arguments& inArgs,
+                              Arguments* outArgs,
                               PassType passType) {
   auto& in =
       m->cast<std::vector<paddle::Argument>>(inArgs.getInternalArgumentsPtr());
@@ -99,7 +114,8 @@ void GradientMachine::backward(const UpdateCallback& callback) {
 }
 
 void GradientMachine::forwardBackward(const Arguments& inArgs,
-                                      Arguments* outArgs, PassType passType,
+                                      Arguments* outArgs,
+                                      PassType passType,
                                       const UpdateCallback& callback) {
   auto& in =
       m->cast<std::vector<paddle::Argument>>(inArgs.getInternalArgumentsPtr());
@@ -126,22 +142,39 @@ Parameter* GradientMachine::getParameter(size_t i) throw(RangeError) {
   }
 }
 
+size_t GradientMachine::getNonStaticParameterSize() const {
+  return m->machine->getNonStaticParameters().size();
+}
+
+Parameter* GradientMachine::getNonStaticParameter(size_t i) throw(RangeError) {
+  auto params = m->machine->getNonStaticParameters();
+  if (i < params.size()) {
+    return Parameter::createFromSharedPtr(
+        &m->machine->getNonStaticParameters()[i]);
+  } else {
+    throw RangeError();
+  }
+}
+
 void GradientMachine::randParameters() { m->machine->randParameters(); }
 
-Matrix* GradientMachine::getLayerOutput(const std::string& layerName) const
-  throw(UnsupportError) {
-  auto nn = std::dynamic_pointer_cast<paddle::NeuralNetwork>(m->machine);
+Arguments* GradientMachine::getLayerOutput(const std::string& layerName) const
+    throw(UnsupportError) {
+  auto nn = m->machine;
   if (nn) {
-    auto mat = nn->getLayerOutput(layerName);
-    return Matrix::createByPaddleMatrixPtr(&mat);
+    auto arg = nn->getLayerOutput(layerName);
+    return Arguments::createByPaddleArgument(&arg);
   } else {
     throw UnsupportError();
   }
 }
 
 SequenceGenerator* GradientMachine::asSequenceGenerator(
-    const std::vector<std::string>& dict, size_t begin_id, size_t end_id,
-    size_t max_length, size_t beam_size) {
+    const std::vector<std::string>& dict,
+    size_t begin_id,
+    size_t end_id,
+    size_t max_length,
+    size_t beam_size) {
   SequenceGenerator* r =
       SequenceGenerator::createByGradientMachineSharedPtr(&m->machine);
   r->setDict(dict);
@@ -150,4 +183,14 @@ SequenceGenerator* GradientMachine::asSequenceGenerator(
   r->setMaxLength(max_length);
   r->setBeamSize(beam_size);
   return r;
+}
+
+Evaluator* GradientMachine::makeEvaluator() {
+  auto ev = new Evaluator();
+  ev->m->rawPtr = m->machine->makeEvaluator();
+  return ev;
+}
+
+void GradientMachine::eval(Evaluator* evaluator) {
+  m->machine->eval(evaluator->m->rawPtr);
 }

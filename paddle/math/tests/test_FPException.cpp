@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,14 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 /**
  * This test is about floating point calculation exception.
  * Paddle catches FE_INVALID, FE DIVBYZERO and FE_OVERFLOW exceptions.
  *
- * Some exceptions occur in the middle of a set of formulas, 
+ * Some exceptions occur in the middle of a set of formulas,
  * that can be circumvented by some tricks.
- * For example, 
+ * For example,
  * calculate tanh
  *   b = 2.0 / (1.0 + exp(-2 * a)) - 1.0
  *
@@ -29,12 +28,12 @@ limitations under the License. */
  * so we can add some tricks to prevent exp calculate an excessive value.
  *
  */
-#include <fenv.h>
+
 #include <gtest/gtest.h>
 #include "paddle/math/Matrix.h"
-#include "paddle/utils/Excepts.h"
+#include "paddle/utils/Common.h"
 
-using namespace paddle;     // NOLINT
+using namespace paddle;  // NOLINT
 
 void SetTensorValue(Matrix& matrix, real value) {
   int height = matrix.getHeight();
@@ -53,7 +52,7 @@ void SetTensorValue(Matrix& matrix, real value) {
   }
 }
 
-template<typename Matrix>
+template <typename Matrix>
 void testTanh(real illegal) {
   MatrixPtr A = std::make_shared<Matrix>(10, 10);
   MatrixPtr B = std::make_shared<Matrix>(10, 10);
@@ -65,7 +64,7 @@ void testTanh(real illegal) {
   A->tanh(*B);
 }
 
-template<typename Matrix>
+template <typename Matrix>
 void testSigmoid(real illegal) {
   MatrixPtr A = std::make_shared<Matrix>(10, 10);
   MatrixPtr B = std::make_shared<Matrix>(10, 10);

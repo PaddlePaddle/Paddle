@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,26 +12,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
+#include <stdint.h>
 #include <memory>
 #include <thread>
-#include <stdint.h>
 
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/ThreadLocal.h"
 
 #include <hl_gpu.h>
 
-#include "MemoryHandle.h"
-#include "paddle/utils/TypeDefs.h"
-#include "Vector.h"
-#include "paddle/utils/ThreadLocal.h"
 #include "BaseMatrix.h"
+#include "MemoryHandle.h"
+#include "Vector.h"
+#include "paddle/utils/Common.h"
+#include "paddle/utils/ThreadLocal.h"
 
 namespace paddle {
 
+/// TODO(tianbing), move to paddle/function/TensorType.h
 enum SparseValueType { NO_VALUE = 0, FLOAT_VALUE = 1 };
 
 /**
@@ -57,6 +57,7 @@ enum SparseValueType { NO_VALUE = 0, FLOAT_VALUE = 1 };
  *            value [1, 1, 2, 2, 5]
  * @endcode
  */
+/// TODO(tianbing), move to paddle/function/TensorType.h
 enum SparseFormat { SPARSE_CSR = 0, SPARSE_CSC = 1 };
 
 class Matrix;
@@ -77,12 +78,19 @@ typedef std::shared_ptr<CpuSparseMatrix> CpuSparseMatrixPtr;
  */
 class Matrix : public BaseMatrix {
 protected:
-  Matrix(MemoryHandlePtr memHandle, size_t height, size_t width, bool trans,
+  Matrix(MemoryHandlePtr memHandle,
+         size_t height,
+         size_t width,
+         bool trans,
          bool use_gpu);
 
   Matrix(real* data, size_t height, size_t width, bool trans, bool use_gpu);
 
-  Matrix(real* data, size_t height, size_t width, size_t stride, bool trans,
+  Matrix(real* data,
+         size_t height,
+         size_t width,
+         size_t stride,
+         bool trans,
          bool use_gpu);
 
   static ThreadLocal<MatrixPtr> tmpMat_;
@@ -94,38 +102,66 @@ public:
 public:
   virtual ~Matrix() {}
 
-  static MatrixPtr create(MemoryHandlePtr memHandle, size_t height,
-                          size_t width, bool trans = false);
-  static MatrixPtr create(size_t height, size_t width, bool trans = false,
+  static MatrixPtr create(MemoryHandlePtr memHandle,
+                          size_t height,
+                          size_t width,
+                          bool trans = false);
+  static MatrixPtr create(size_t height,
+                          size_t width,
+                          bool trans = false,
                           bool useGpu = false);
-  static MatrixPtr create(real* data, size_t height, size_t width,
-                          bool trans = false, bool useGpu = false);
-  static MatrixPtr create(real* data, size_t height, size_t width,
-                          size_t stride, bool trans = false,
+  static MatrixPtr create(real* data,
+                          size_t height,
+                          size_t width,
+                          bool trans = false,
+                          bool useGpu = false);
+  static MatrixPtr create(real* data,
+                          size_t height,
+                          size_t width,
+                          size_t stride,
+                          bool trans = false,
                           bool useGpu = false);
 
-  static MatrixPtr createSparseMatrix(size_t height, size_t width, size_t nnz,
+  static MatrixPtr createSparseMatrix(size_t height,
+                                      size_t width,
+                                      size_t nnz,
                                       SparseValueType valueType = FLOAT_VALUE,
-                                      bool trans = false, bool useGpu = false);
-  static MatrixPtr createSparseMatrix(size_t height, size_t width, size_t nnz,
+                                      bool trans = false,
+                                      bool useGpu = false);
+  static MatrixPtr createSparseMatrix(size_t height,
+                                      size_t width,
+                                      size_t nnz,
                                       SparseValueType valueType = FLOAT_VALUE,
                                       SparseFormat foramt = SPARSE_CSR,
-                                      bool trans = false, bool useGpu = false);
+                                      bool trans = false,
+                                      bool useGpu = false);
 
-  static MatrixPtr createSparseMatrix(real* data, int* row, int* col,
-                                      size_t height, size_t width,
+  static MatrixPtr createSparseMatrix(real* data,
+                                      int* row,
+                                      int* col,
+                                      size_t height,
+                                      size_t width,
                                       size_t nnz, /* used to allocate space */
                                       SparseValueType valueType, /*value type*/
-                                      SparseFormat format, bool trans,
+                                      SparseFormat format,
+                                      bool trans,
                                       bool useGpu);
 
   static void resizeOrCreateSparseMatrix(
-      MatrixPtr& matrix, size_t height, size_t width, size_t nnz,
-      SparseValueType valueType = FLOAT_VALUE, SparseFormat foramt = SPARSE_CSR,
-      bool trans = false, bool useGpu = false);
+      MatrixPtr& matrix,
+      size_t height,
+      size_t width,
+      size_t nnz,
+      SparseValueType valueType = FLOAT_VALUE,
+      SparseFormat foramt = SPARSE_CSR,
+      bool trans = false,
+      bool useGpu = false);
 
-  static void resizeOrCreate(MatrixPtr& a, size_t height, size_t width,
-                             bool trans = false, bool useGpu = false);
+  static void resizeOrCreate(MatrixPtr& a,
+                             size_t height,
+                             size_t width,
+                             bool trans = false,
+                             bool useGpu = false);
 
   /**
    * @brief  set the data buffer used to hold the matrix data.
@@ -163,12 +199,12 @@ public:
   // if refactor sparse matrix
   virtual int* getRows() const {
     LOG(FATAL) << "Not implemented";
-    return nullptr;   //! suppress warning for no return value.
+    return nullptr;  //! suppress warning for no return value.
   }
 
   virtual int* getCols() const {
     LOG(FATAL) << "Not implemented";
-    return nullptr;   //! suppress warning for no return value.
+    return nullptr;  //! suppress warning for no return value.
   }
 
   virtual SparseFormat getFormat() const {
@@ -178,7 +214,7 @@ public:
 
   virtual SparseValueType getValueType() const {
     LOG(FATAL) << "Not implemented";
-    return NO_VALUE;    //! suppress warning for no return value.
+    return NO_VALUE;  //! suppress warning for no return value.
   }
 
   /**
@@ -208,7 +244,9 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  MatrixPtr subMatrix(size_t startRow, size_t endRow, size_t startCol,
+  MatrixPtr subMatrix(size_t startRow,
+                      size_t endRow,
+                      size_t startCol,
                       size_t endCol);
 
   MatrixPtr subRowMatrix(size_t startRow, size_t endRow) {
@@ -221,8 +259,11 @@ public:
 
   virtual MatrixPtr subMatrix(size_t startRow, size_t numRows) {
     CHECK_LE(startRow + numRows, getHeight());
-    return Matrix::create(getData() + startRow * getWidth(), numRows,
-                          getWidth(), trans_, useGpu_);
+    return Matrix::create(getData() + startRow * getWidth(),
+                          numRows,
+                          getWidth(),
+                          trans_,
+                          useGpu_);
   }
   virtual MatrixPtr subMatrix(size_t startRow, size_t numRows, MatrixPtr dest) {
     CHECK_LE(startRow + numRows, getHeight());
@@ -267,7 +308,8 @@ public:
    * as this, otherwise the new matrix will have the specified size.
    *
    */
-  virtual MatrixPtr clone(size_t height = 0, size_t width = 0,
+  virtual MatrixPtr clone(size_t height = 0,
+                          size_t width = 0,
                           bool useGpu = false) {
     LOG(FATAL) << "Not implemented";
     return nullptr;
@@ -305,9 +347,11 @@ public:
   /**
    * @note This should only be used for sparse matrix.
    */
-  virtual void resize(size_t newHeight, size_t newWidth,
+  virtual void resize(size_t newHeight,
+                      size_t newWidth,
                       size_t newNnz, /* total item used to allocate space */
-                      SparseValueType valueType, SparseFormat format) = 0;
+                      SparseValueType valueType,
+                      SparseFormat format) = 0;
 
   /**
    * @brief This should only be used for sparse matrix.
@@ -315,7 +359,9 @@ public:
    * Currently must be called for each row in order.
    * The matrix is not valid until setRow is called for the last row.
    */
-  virtual void setRow(size_t row, size_t colNum, const unsigned int* cols,
+  virtual void setRow(size_t row,
+                      size_t colNum,
+                      const unsigned int* cols,
                       const real* values) = 0;
 
   virtual MatrixPtr getTranspose() = 0;
@@ -326,7 +372,27 @@ public:
    * allocate matTrans' memory outside, then set memAlloc as false;
    * else set as true.
    */
-  virtual void transpose(MatrixPtr matTrans, bool memAlloc) {
+  virtual void transpose(MatrixPtr& matTrans, bool memAlloc) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  /**
+   * @brief  rotate 90 degrees in clock-wise if clockWise=true;
+   *         otherwise rotate in anti clock-wise
+   * clock-wise:
+   * \f[
+   *   y(j,i) = x(M-i-1,j)
+   * \f]
+   * anti clock-wise:
+   * \f[
+   *   y(j,i) = x(i, N-1-j)
+   * \f]
+   * where \f$x\f$ is (M x N) input, and \f$y\f$ is (N x M) output.
+   *
+   * allocate matRot' memory outside, then set memAlloc as false;
+   * else set as true.
+   */
+  virtual void rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -341,7 +407,7 @@ public:
    * if allocate matInv's memory outside, then set memAlloc as false;
    * else set as true.
    */
-  virtual void inverse(MatrixPtr matInv, bool memAlloc) {
+  virtual void inverse(MatrixPtr& matInv, bool memAlloc) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -364,7 +430,7 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  virtual void addBias(Matrix& b, real scale, bool sharedBias) {
+  void addBias(Matrix& b, real scale, bool sharedBias) {
     if (!sharedBias) {
       addBias(b, scale);
     } else {
@@ -381,7 +447,7 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  virtual void collectBias(Matrix& a, real scale, bool sharedBias) {
+  void collectBias(Matrix& a, real scale, bool sharedBias) {
     if (!sharedBias) {
       collectBias(a, scale);
     } else {
@@ -389,8 +455,15 @@ public:
     }
   }
 
-  virtual void sequenceAvgForward(Matrix& a, const IVector& startsPos,
-    int mode) {
+  virtual void sequenceAvgForward(Matrix& a,
+                                  const IVector& startsPos,
+                                  int mode) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void sequenceAvgBackward(Matrix& a,
+                                   const IVector& startsPos,
+                                   int mode) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -399,7 +472,9 @@ public:
    * this = scaleAB*(a*b) + scaleT*this
    * @endcode
    */
-  virtual void mul(const MatrixPtr a, const MatrixPtr b, real scaleAB,
+  virtual void mul(const Matrix& a,
+                   const Matrix& b,
+                   real scaleAB,
                    real scaleT) {
     LOG(FATAL) << "Not implemented";
   }
@@ -416,7 +491,8 @@ public:
    * where index(i, j) = ((codes(i) + numClasses) >> (j + 1)) - 1
    * @endcode
    */
-  virtual void addByBitCode(size_t numClasses, const IVector& codes,
+  virtual void addByBitCode(size_t numClasses,
+                            const IVector& codes,
                             const Matrix& vec) {
     (void)numClasses;
     (void)codes;
@@ -431,7 +507,8 @@ public:
    * where index is same as the index for addByBitCode
    * @endcode
    */
-  virtual void addByBitCodeBackward(size_t numClasses, const IVector& codes,
+  virtual void addByBitCodeBackward(size_t numClasses,
+                                    const IVector& codes,
                                     Matrix& vec) {
     (void)numClasses;
     (void)codes;
@@ -446,8 +523,10 @@ public:
    * where index is same as the index for addByBitCode
    * @endcode
    */
-  virtual void mulByBitCode(size_t numClasses, const IVector& codes,
-                            const Matrix& mat, const Matrix& input) {
+  virtual void mulByBitCode(size_t numClasses,
+                            const IVector& codes,
+                            const Matrix& mat,
+                            const Matrix& input) {
     (void)numClasses;
     (void)codes;
     (void)mat;
@@ -463,7 +542,8 @@ public:
    * @endcode
    */
   virtual void mulByBitCodeBackwardWeight(size_t numClasses,
-                                          const IVector& codes, Matrix& mat,
+                                          const IVector& codes,
+                                          Matrix& mat,
                                           const Matrix& input) {
     (void)numClasses;
     (void)codes;
@@ -481,7 +561,8 @@ public:
    */
   virtual void mulByBitCodeBackwardError(size_t numClasses,
                                          const IVector& codes,
-                                         const Matrix& mat, Matrix& input) {
+                                         const Matrix& mat,
+                                         Matrix& input) {
     (void)numClasses;
     (void)codes;
     (void)mat;
@@ -496,7 +577,9 @@ public:
    * where bit(i, j) = ((codes(i) + numClasses) & 2^j) ? 1 : 0
    * @endcode
    */
-  virtual void sumByBitCode(size_t numClasses, IVector& codes, Matrix& sum,
+  virtual void sumByBitCode(size_t numClasses,
+                            IVector& codes,
+                            Matrix& sum,
                             real scaleSum) {
     (void)numClasses;
     (void)codes;
@@ -550,12 +633,16 @@ public:
     LOG(FATAL) << "not implemented";
   }
 
-  virtual void maxoutForward(Matrix& a, IVector& id, size_t channels,
+  virtual void maxoutForward(Matrix& a,
+                             IVector& id,
+                             size_t channels,
                              size_t groups) {
     LOG(FATAL) << "not implemented";
   }
 
-  virtual void maxoutBackward(Matrix& a, IVector& id, size_t channels,
+  virtual void maxoutBackward(Matrix& a,
+                              IVector& id,
+                              size_t channels,
                               size_t groups) {
     LOG(FATAL) << "not implemented";
   }
@@ -584,7 +671,7 @@ public:
    *  this = a*b
    * @endcode
    */
-  virtual void mul(const MatrixPtr a, const MatrixPtr b) {
+  virtual void mul(const Matrix& a, const Matrix& b) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -634,7 +721,8 @@ public:
   }
 
   /// copy -log(output[label]) to this->data[i].
-  virtual void oneHotCrossEntropyWithSelfNorm(Matrix& output, IVector& label,
+  virtual void oneHotCrossEntropyWithSelfNorm(Matrix& output,
+                                              IVector& label,
                                               real alpha) {
     LOG(FATAL) << "Not implemented";
   }
@@ -660,12 +748,13 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  virtual void circularConvDerivative(Matrix& output, Matrix& prevOut1,
-                                      Matrix& prevOut2, Matrix& prevGrad1,
+  virtual void circularConvDerivative(Matrix& output,
+                                      Matrix& prevOut1,
+                                      Matrix& prevOut2,
+                                      Matrix& prevGrad1,
                                       Matrix& prevGrad2) {
     LOG(FATAL) << "Not implemented";
   }
-
 
   /* output_ij = exp(this_{ij}) / (sum_j exp(this_ij)) */
   virtual void softmax(Matrix& output) {
@@ -700,6 +789,14 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual void smoothL1(Matrix& output, Matrix& label) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void smoothL1Bp(Matrix& outputV, Matrix& label) {
+    LOG(FATAL) << "Not implemented";
+  }
+
   virtual void tanh(Matrix& output) { LOG(FATAL) << "Not implemented"; }
 
   virtual void tanhDerivative(Matrix& output) {
@@ -713,23 +810,6 @@ public:
   }
 
   virtual void scaledTanh(Matrix& output, real p1, real p2) {
-    LOG(FATAL) << "Not implemented";
-  }
-
-  /**
-   * cosine similarity, for each row i,
-   *   this[i] = cos(output1[i], output2[i])
-   *
-   * output2 can only have one row, then for each row i,
-   *   this[i] = cos(output1[i], output2[0])
-   */
-  virtual void cosSim(Matrix& output1, Matrix& output2, real scale = 1.0f) {
-    LOG(FATAL) << "Not implemented";
-  }
-
-  virtual void cosSimDerivative(Matrix& output, Matrix& prevOut1,
-                                Matrix& prevOut2, Matrix& prevGrad1,
-                                Matrix& prevGrad2, real scale = 1.0f) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -770,8 +850,11 @@ public:
    * output[i] = 1 if row i is an error.
    *
    * output[i] = 0 if row i is correct.
+   *
    */
-  virtual void classificationError(MatrixPtr output, IVectorPtr label) {
+  virtual void classificationError(Matrix& output,
+                                   IVector& label,
+                                   size_t topkSize = 1) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -781,10 +864,18 @@ public:
    * It will expand a feature matrix according to the
    * convolution filters
    */
-  virtual void convExpand(Matrix& feature, int feaImgHeight, int feaImgWidth,
-                          int channels, int blockH, int blockW, int strideH,
-                          int strideW, int paddingH, int paddingW,
-                          int outputH, int outputW) {
+  virtual void convExpand(Matrix& feature,
+                          int feaImgHeight,
+                          int feaImgWidth,
+                          int channels,
+                          int blockH,
+                          int blockW,
+                          int strideH,
+                          int strideW,
+                          int paddingH,
+                          int paddingW,
+                          int outputH,
+                          int outputW) {
     LOG(FATAL) << "Not implemeted";
   }
 
@@ -793,11 +884,20 @@ public:
    *
    * Its function is to restore a expanded-matrix into a feature matrix
    */
-  virtual void convShrink(Matrix& expandColMat, int thisImgHeight,
-                          int thisImgWidth, int channels, int blockH,
-                          int blockW, int strideH, int strideW, int paddingH,
-                          int paddingW, int outputH, int outputW,
-                          real alpha = 1.0f, real beta = 0.0f) {
+  virtual void convShrink(Matrix& expandColMat,
+                          int thisImgHeight,
+                          int thisImgWidth,
+                          int channels,
+                          int blockH,
+                          int blockW,
+                          int strideH,
+                          int strideW,
+                          int paddingH,
+                          int paddingW,
+                          int outputH,
+                          int outputW,
+                          real alpha = 1.0f,
+                          real beta = 0.0f) {
     LOG(FATAL) << "Not implemeted";
   }
 
@@ -805,55 +905,69 @@ public:
    * Pooling forward operation, pick out the largest element
    * in the sizeX of value
    */
-  virtual void maxPoolForward(Matrix& inputMat, size_t imgSizeH,
-                              size_t imgSizeW, size_t channels, size_t sizeX,
-                              size_t sizeY, size_t strideH, size_t strideW,
-                              size_t outputH, size_t outputW,
-                              size_t paddingH, size_t paddingW) {
+  virtual void maxPoolForward(Matrix& inputMat,
+                              size_t imgSizeH,
+                              size_t imgSizeW,
+                              size_t channels,
+                              size_t sizeX,
+                              size_t sizeY,
+                              size_t strideH,
+                              size_t strideW,
+                              size_t outputH,
+                              size_t outputW,
+                              size_t paddingH,
+                              size_t paddingW) {
     LOG(FATAL) << "Not implemeted";
   }
 
   /// Pooling backward operation.
-  virtual void maxPoolBackward(Matrix& image, size_t imgSizeH, size_t imgSizeW,
-                               Matrix& outGrad, Matrix& outV, size_t sizeX,
-                               size_t sizeY, size_t strideH, size_t strideW,
-                               size_t outputH, size_t outputW,
-                               real scaleTargets, real scaleOutput,
-                               size_t paddingH, size_t paddingW) {
+  virtual void maxPoolBackward(Matrix& image,
+                               size_t imgSizeH,
+                               size_t imgSizeW,
+                               Matrix& outGrad,
+                               Matrix& outV,
+                               size_t sizeX,
+                               size_t sizeY,
+                               size_t strideH,
+                               size_t strideW,
+                               size_t outputH,
+                               size_t outputW,
+                               real scaleTargets,
+                               real scaleOutput,
+                               size_t paddingH,
+                               size_t paddingW) {
     LOG(FATAL) << "Not implemeted";
   }
 
   /// Pooling forward operation, caculate the average of sizeX elements.
-  virtual void avgPoolForward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                              size_t channels, size_t sizeX, size_t sizeY,
-                              size_t strideH, size_t strideW,
-                              size_t outputH, size_t outputW,
-                              size_t paddingH, size_t paddingW) {
+  virtual void avgPoolForward(Matrix& input,
+                              size_t imgSizeH,
+                              size_t imgSizeW,
+                              size_t channels,
+                              size_t sizeX,
+                              size_t sizeY,
+                              size_t strideH,
+                              size_t strideW,
+                              size_t outputH,
+                              size_t outputW,
+                              size_t paddingH,
+                              size_t paddingW) {
     LOG(FATAL) << "Not implemeted";
   }
 
-  virtual void avgPoolBackward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                               size_t sizeX, size_t sizeY,
-                               size_t strideH, size_t strideW,
-                               size_t outputH, size_t outputW,
-                               real scaleTargets, real scaleOutput,
-                               size_t paddingH, size_t paddingW) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  /// normalize-operation.
-  virtual void crossMapNormalFwd(Matrix& input, size_t imgSizeH,
-                                 size_t imgSizeW, Matrix& denoms,
-                                 size_t channels, size_t sizeX, float scale,
-                                 float pow) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void crossMapNormalBwd(Matrix& localGrad, Matrix& denoms,
-                                 Matrix& preOutV, Matrix& localOutV,
-                                 size_t channels, size_t imgSizeH,
-                                 size_t imgSizeW, size_t size, float scale,
-                                 float pow) {
+  virtual void avgPoolBackward(Matrix& input,
+                               size_t imgSizeH,
+                               size_t imgSizeW,
+                               size_t sizeX,
+                               size_t sizeY,
+                               size_t strideH,
+                               size_t strideW,
+                               size_t outputH,
+                               size_t outputW,
+                               real scaleTargets,
+                               real scaleOutput,
+                               size_t paddingH,
+                               size_t paddingW) {
     LOG(FATAL) << "Not implemeted";
   }
 
@@ -865,45 +979,15 @@ public:
    *
    * output[i] is set to max_input[i].
    */
-  virtual void maxSequenceForward(Matrix& input, const IVector& sequence,
+  virtual void maxSequenceForward(Matrix& input,
+                                  const IVector& sequence,
                                   IVector& index) {
     LOG(FATAL) << "Not implemeted";
   }
 
-  virtual void maxSequenceBackward(Matrix& outputGrad, const IVector& sequence,
+  virtual void maxSequenceBackward(Matrix& outputGrad,
+                                   const IVector& sequence,
                                    IVector& index) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionForward(MatrixPtr input, MatrixPtr weight,
-                                        const IVector& sequence,
-                                        int contextLength,
-                                        int contextStart, size_t beginPad,
-                                        bool isPadding) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionBackward(MatrixPtr inputGrad,
-                                         MatrixPtr weightGrad,
-                                         const IVector& sequence,
-                                         int contextLength,
-                                         int contextStart, size_t beginPad,
-                                         bool isPadding) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionBackwardData(MatrixPtr inputGrad,
-                                             const IVector& sequence,
-                                             int contextLength,
-                                             int contextStart) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionBackwardWeight(MatrixPtr weightGrad,
-                                               const IVector& sequence,
-                                               int contextLength,
-                                               int contextStart, int totalPad,
-                                               size_t beginPad) {
     LOG(FATAL) << "Not implemeted";
   }
 
@@ -981,7 +1065,8 @@ public:
    *            / output->getWidth()
    * @endcode
    */
-  virtual void classificationErrorMulti(Matrix& output, Matrix& label,
+  virtual void classificationErrorMulti(Matrix& output,
+                                        Matrix& label,
                                         real threshold) {
     LOG(FATAL) << "Not implemented";
   }
@@ -995,6 +1080,7 @@ public:
   virtual void paramReluBackwardDiff(Matrix& oGrad, Matrix& data, Matrix& W) {
     LOG(FATAL) << "Not implemented";
   }
+
   virtual void bilinearForward(const Matrix& in,
                                const size_t inImgH,
                                const size_t inImgW,
@@ -1015,6 +1101,19 @@ public:
                                 const real ratioW) {
     LOG(FATAL) << "Not implemented";
   }
+
+  template <typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    if (useGpu_) {
+      TensorGpuApply<real>(*this, expr);
+    } else {
+      TensorCpuApply<real>(*this, expr);
+    }
+  }
+
+  bool isEmpty() const { return data_ == nullptr; }
+
+  explicit operator bool() const { return !isEmpty(); }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Matrix& mat) {
@@ -1029,10 +1128,15 @@ public:
   GpuMatrix(size_t height, size_t width, bool trans = false);
   GpuMatrix(real* data, size_t height, size_t width, bool trans = false)
       : Matrix(data, height, width, trans, true) {}
-  GpuMatrix(real* data, size_t height, size_t width, size_t stride,
+  GpuMatrix(real* data,
+            size_t height,
+            size_t width,
+            size_t stride,
             bool trans = false)
       : Matrix(data, height, width, stride, trans, true) {}
-  GpuMatrix(GpuMemHandlePtr dataHandle, size_t height, size_t width,
+  GpuMatrix(GpuMemHandlePtr dataHandle,
+            size_t height,
+            size_t width,
             bool trans = false)
       : Matrix(dataHandle, height, width, trans, true) {}
   ~GpuMatrix();
@@ -1042,12 +1146,16 @@ public:
   void setDiag(real value);
 
   void resize(size_t newHeight, size_t newWidth);
-  void resize(size_t newHeight, size_t newWidth,
+  void resize(size_t newHeight,
+              size_t newWidth,
               size_t newNnz, /* used to allocate space */
-              SparseValueType valueType, SparseFormat format) {
+              SparseValueType valueType,
+              SparseFormat format) {
     LOG(FATAL) << "Only Support Sparse Matrix";
   }
-  void setRow(size_t row, size_t colNum, const unsigned int* cols,
+  void setRow(size_t row,
+              size_t colNum,
+              const unsigned int* cols,
               const real* values) {
     LOG(FATAL) << "Only Support Sparse Matrix";
   }
@@ -1078,11 +1186,15 @@ public:
   void accumulateColSum(Matrix& src);
   real getAbsSum();
 
+  real getMin();
+  real getMax();
+
   MatrixPtr getTranspose();
-  void transpose(MatrixPtr matTrans, bool memAlloc);
+  void transpose(MatrixPtr& matTrans, bool memAlloc);
+  void rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise);
 
   MatrixPtr getInverse();
-  void inverse(MatrixPtr matInv, bool memAlloc);
+  void inverse(MatrixPtr& matInv, bool memAlloc);
 
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
@@ -1097,6 +1209,7 @@ public:
   void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
+  void sequenceAvgBackward(Matrix& a, const IVector& startsPos, int mode);
 
   /**
    * @code
@@ -1126,21 +1239,25 @@ public:
    * this = scaleAB*(a*b) + scaleT*this
    * @endcode
    */
-  void mul(const MatrixPtr a, const MatrixPtr b, real scaleAB, real scaleT);
+  void mul(const Matrix& a, const Matrix& b, real scaleAB, real scaleT);
 
   /**
    * @code
    * this = a*b
    * @endcode
    */
-  void mul(const MatrixPtr a, const MatrixPtr b);
+  void mul(const Matrix& a, const Matrix& b);
 
   void mul(const GpuMatrix& a, const GpuMatrix& b, real scaleAB, real scaleT);
 
-  void mul(const GpuSparseMatrix& a, const GpuMatrix& b, real scaleAB,
+  void mul(const GpuSparseMatrix& a,
+           const GpuMatrix& b,
+           real scaleAB,
            real scaleT);
 
-  void mul(const GpuMatrix& a, const GpuSparseMatrix& b, real scaleAB,
+  void mul(const GpuMatrix& a,
+           const GpuSparseMatrix& b,
+           real scaleAB,
            real scaleT);
 
   /**
@@ -1182,9 +1299,11 @@ public:
 
   void oneHotCrossEntropy(Matrix& output, IVector& label);
   void oneHotCrossEntropyBp(Matrix& outputV, IVector& label);
-  void oneHotCrossEntropyWithSelfNorm(Matrix& output, IVector& label,
+  void oneHotCrossEntropyWithSelfNorm(Matrix& output,
+                                      IVector& label,
                                       real alpha);
-  void oneHotCrossEntropyWithSelfNormBp(Matrix& outputV, IVector& label,
+  void oneHotCrossEntropyWithSelfNormBp(Matrix& outputV,
+                                        IVector& label,
                                         real alpha);
 
   void softmax(Matrix& output);
@@ -1203,10 +1322,6 @@ public:
   void softreluDerivative(Matrix& output);
   void scaledTanh(Matrix& output, real p1, real p2);
 
-  void cosSim(Matrix& output1, Matrix& output2, real scale);
-  void cosSimDerivative(Matrix& output, Matrix& prevOut1, Matrix& prevOut2,
-                        Matrix& prevGrad1, Matrix& prevGrad2, real scale);
-
   virtual void print(std::ostream& os) const;
   virtual void print(std::ostream& os, size_t height, size_t width) const;
 
@@ -1217,74 +1332,99 @@ public:
   void check(std::ostream& os, Matrix& refMat, bool printDiff = true);
   void randomizeUniform();
 
-  void classificationError(MatrixPtr output, IVectorPtr label);
+  void classificationError(Matrix& output, IVector& label, size_t topkSize = 1);
 
-  void convExpand(Matrix& feature, int feaImgHeight, int feaImgWidth,
-                  int channels, int blockH, int blockW, int strideH,
-                  int strideW, int paddingH, int paddingW,
-                  int outputH, int outputW);
+  void convExpand(Matrix& feature,
+                  int feaImgHeight,
+                  int feaImgWidth,
+                  int channels,
+                  int blockH,
+                  int blockW,
+                  int strideH,
+                  int strideW,
+                  int paddingH,
+                  int paddingW,
+                  int outputH,
+                  int outputW);
 
-  void convShrink(Matrix& expandColMat, int thisImgHeight, int thisImgWidth,
-                  int channels, int blockH, int blochW, int strideH,
-                  int strideW, int paddingH, int paddingWreal,
-                  int outputH, int outputW,
-                  real alpha = 1.0f, real beta = 0.0f);
+  void convShrink(Matrix& expandColMat,
+                  int thisImgHeight,
+                  int thisImgWidth,
+                  int channels,
+                  int blockH,
+                  int blochW,
+                  int strideH,
+                  int strideW,
+                  int paddingH,
+                  int paddingWreal,
+                  int outputH,
+                  int outputW,
+                  real alpha = 1.0f,
+                  real beta = 0.0f);
 
-  void maxPoolForward(Matrix& inputMat, size_t imgSizeH, size_t imgSizeW,
-                      size_t channels, size_t sizeX, size_t sizeY,
-                      size_t strideH, size_t strideW,
-                      size_t outputH, size_t outputW,
-                      size_t paddingH, size_t paddingW);
+  void maxPoolForward(Matrix& inputMat,
+                      size_t imgSizeH,
+                      size_t imgSizeW,
+                      size_t channels,
+                      size_t sizeX,
+                      size_t sizeY,
+                      size_t strideH,
+                      size_t strideW,
+                      size_t outputH,
+                      size_t outputW,
+                      size_t paddingH,
+                      size_t paddingW);
 
-  void maxPoolBackward(Matrix& image, size_t imgSizeH, size_t imgSizeW,
-                       Matrix& outGrad, Matrix& outV, size_t sizeX,
-                       size_t sizeY, size_t strideH, size_t strideW,
-                       size_t outputH, size_t outputW,
-                       real scaleTargets, real scaleOutput,
-                       size_t paddingH, size_t paddingW);
+  void maxPoolBackward(Matrix& image,
+                       size_t imgSizeH,
+                       size_t imgSizeW,
+                       Matrix& outGrad,
+                       Matrix& outV,
+                       size_t sizeX,
+                       size_t sizeY,
+                       size_t strideH,
+                       size_t strideW,
+                       size_t outputH,
+                       size_t outputW,
+                       real scaleTargets,
+                       real scaleOutput,
+                       size_t paddingH,
+                       size_t paddingW);
 
-  void avgPoolForward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                      size_t channels, size_t sizeX, size_t sizeY,
-                      size_t strideH, size_t strideW,
-                      size_t outputH, size_t outputW,
-                      size_t paddingH, size_t paddingW);
+  void avgPoolForward(Matrix& input,
+                      size_t imgSizeH,
+                      size_t imgSizeW,
+                      size_t channels,
+                      size_t sizeX,
+                      size_t sizeY,
+                      size_t strideH,
+                      size_t strideW,
+                      size_t outputH,
+                      size_t outputW,
+                      size_t paddingH,
+                      size_t paddingW);
 
-  void avgPoolBackward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                       size_t sizeX, size_t sizeY,
-                       size_t strideH, size_t strideW,
-                       size_t outputH, size_t outputW,
-                       real scaleTargets, real scaleOutput,
-                       size_t paddingH, size_t paddingW);
+  void avgPoolBackward(Matrix& input,
+                       size_t imgSizeH,
+                       size_t imgSizeW,
+                       size_t sizeX,
+                       size_t sizeY,
+                       size_t strideH,
+                       size_t strideW,
+                       size_t outputH,
+                       size_t outputW,
+                       real scaleTargets,
+                       real scaleOutput,
+                       size_t paddingH,
+                       size_t paddingW);
 
-  void crossMapNormalFwd(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                         Matrix& denoms, size_t channels, size_t sizeX,
-                         float scale, float pow);
-
-  void crossMapNormalBwd(Matrix& localGrad, Matrix& denoms, Matrix& preOutV,
-                         Matrix& localOutV, size_t channels, size_t imgSizeH,
-                         size_t imgSizeW, size_t sizeX,
-                         float scale, float pow);
-
-  void maxSequenceForward(Matrix& input, const IVector& sequence,
+  void maxSequenceForward(Matrix& input,
+                          const IVector& sequence,
                           IVector& index);
 
-  void maxSequenceBackward(Matrix& outputGrad, const IVector& sequence,
+  void maxSequenceBackward(Matrix& outputGrad,
+                           const IVector& sequence,
                            IVector& index);
-
-  void contextProjectionForward(MatrixPtr input, MatrixPtr weight,
-                                const IVector& sequence, int contextLength,
-                                int contextStart, size_t beginPad,
-                                bool isPadding);
-
-  void contextProjectionBackwardData(MatrixPtr inputGrad,
-                                     const IVector& sequence,
-                                     int contextLength, int contextStart);
-
-  void contextProjectionBackwardWeight(MatrixPtr weightGrad,
-                                       const IVector& sequence,
-                                       int contextLength,
-                                       int contextStart, int totalPad,
-                                       size_t beginPad);
 
   void bilinearForward(const Matrix& in,
                        const size_t inImgH,
@@ -1307,6 +1447,11 @@ public:
   void multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label);
 
   void multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label);
+
+  template <typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    TensorGpuApply<real>(*this, expr);
+  }
 };
 
 class CpuMatrix : public Matrix {
@@ -1314,11 +1459,16 @@ public:
   CpuMatrix(size_t height, size_t width, bool trans = false);
   CpuMatrix(real* data, size_t height, size_t width, bool trans = false)
       : Matrix(data, height, width, trans, false) {}
-  CpuMatrix(real* data, size_t height, size_t width, size_t stride,
+  CpuMatrix(real* data,
+            size_t height,
+            size_t width,
+            size_t stride,
             bool trans = false)
       : Matrix(data, height, width, stride, trans, false) {}
 
-  CpuMatrix(CpuMemHandlePtr dataHandle, size_t height, size_t width,
+  CpuMatrix(CpuMemHandlePtr dataHandle,
+            size_t height,
+            size_t width,
             bool trans = false)
       : Matrix(dataHandle, height, width, trans, false) {}
 
@@ -1329,12 +1479,16 @@ public:
   void setDiag(real value);
 
   void resize(size_t newHeight, size_t newWidth);
-  void resize(size_t newHeight, size_t newWidth,
+  void resize(size_t newHeight,
+              size_t newWidth,
               size_t newNnz, /* used to allocate space */
-              SparseValueType valueType, SparseFormat format) {
+              SparseValueType valueType,
+              SparseFormat format) {
     LOG(FATAL) << "Only Support Sparse Matrix";
   }
-  void setRow(size_t row, size_t colNum, const unsigned int* cols,
+  void setRow(size_t row,
+              size_t colNum,
+              const unsigned int* cols,
               const real* values) {
     LOG(FATAL) << "Only Support Sparse Matrix";
   }
@@ -1345,10 +1499,11 @@ public:
   real getAbsSum();
 
   MatrixPtr getTranspose();
-  void transpose(MatrixPtr matTrans, bool memAlloc);
+  void transpose(MatrixPtr& matTrans, bool memAlloc);
+  void rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise);
 
   MatrixPtr getInverse();
-  void inverse(MatrixPtr matInv, bool memAlloc);
+  void inverse(MatrixPtr& matInv, bool memAlloc);
 
   void copyFrom(const Matrix& src);
 
@@ -1366,68 +1521,97 @@ public:
 
   MatrixPtr clone(size_t height, size_t width, bool useGpu = false);
 
-  void convExpand(Matrix& feature, int feaImgHeight, int feaImgWidth,
-                  int channels, int blcokH, int blockW, int strideH,
-                  int strideW, int paddingH, int paddingW,
-                  int outputH, int outputW);
+  void convExpand(Matrix& feature,
+                  int feaImgHeight,
+                  int feaImgWidth,
+                  int channels,
+                  int blcokH,
+                  int blockW,
+                  int strideH,
+                  int strideW,
+                  int paddingH,
+                  int paddingW,
+                  int outputH,
+                  int outputW);
 
-  void convShrink(Matrix& expandFeat, int thisImgHeight, int thisImgWidth,
-                  int channels, int blockH, int blockW, int strideH,
-                  int strideW, int paddingH, int paddingW,
-                  int outputH, int outputW,
-                  real alpha = 1.0f, real beta = 0.0f);
+  void convShrink(Matrix& expandFeat,
+                  int thisImgHeight,
+                  int thisImgWidth,
+                  int channels,
+                  int blockH,
+                  int blockW,
+                  int strideH,
+                  int strideW,
+                  int paddingH,
+                  int paddingW,
+                  int outputH,
+                  int outputW,
+                  real alpha = 1.0f,
+                  real beta = 0.0f);
 
-  void maxPoolForward(Matrix& inputMat, size_t imgSizeH, size_t imgSizeW,
-                      size_t channels, size_t sizeX, size_t sizeY,
-                      size_t strideH, size_t strideW,
-                      size_t outputH, size_t outputW,
-                      size_t paddingH, size_t paddingW);
+  void maxPoolForward(Matrix& inputMat,
+                      size_t imgSizeH,
+                      size_t imgSizeW,
+                      size_t channels,
+                      size_t sizeX,
+                      size_t sizeY,
+                      size_t strideH,
+                      size_t strideW,
+                      size_t outputH,
+                      size_t outputW,
+                      size_t paddingH,
+                      size_t paddingW);
 
-  void maxPoolBackward(Matrix& image, size_t imgSizeH, size_t imgSizeW,
-                       Matrix& outGrad, Matrix& outV,
-                       size_t sizeX, size_t sizeY,
-                       size_t strideH, size_t strideW,
-                       size_t outputH, size_t outputW,
-                       real scaleTargets, real scaleOutput,
-                       size_t paddingH, size_t paddingW);
+  void maxPoolBackward(Matrix& image,
+                       size_t imgSizeH,
+                       size_t imgSizeW,
+                       Matrix& outGrad,
+                       Matrix& outV,
+                       size_t sizeX,
+                       size_t sizeY,
+                       size_t strideH,
+                       size_t strideW,
+                       size_t outputH,
+                       size_t outputW,
+                       real scaleTargets,
+                       real scaleOutput,
+                       size_t paddingH,
+                       size_t paddingW);
 
-  void avgPoolForward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                      size_t channels, size_t sizeX, size_t sizeY,
-                      size_t strideH, size_t strideW,
-                      size_t outputH, size_t outputW,
-                      size_t paddingH, size_t paddingW);
+  void avgPoolForward(Matrix& input,
+                      size_t imgSizeH,
+                      size_t imgSizeW,
+                      size_t channels,
+                      size_t sizeX,
+                      size_t sizeY,
+                      size_t strideH,
+                      size_t strideW,
+                      size_t outputH,
+                      size_t outputW,
+                      size_t paddingH,
+                      size_t paddingW);
 
-  void avgPoolBackward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                       size_t sizeX, size_t sizeY,
-                       size_t strideH, size_t strideW,
-                       size_t outputH, size_t outputW,
-                       real scaleTargets, real scaleOutput,
-                       size_t paddingH, size_t paddingW);
+  void avgPoolBackward(Matrix& input,
+                       size_t imgSizeH,
+                       size_t imgSizeW,
+                       size_t sizeX,
+                       size_t sizeY,
+                       size_t strideH,
+                       size_t strideW,
+                       size_t outputH,
+                       size_t outputW,
+                       real scaleTargets,
+                       real scaleOutput,
+                       size_t paddingH,
+                       size_t paddingW);
 
-  void crossMapNormalFwd(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                         Matrix& denoms, size_t channels, size_t sizeX,
-                         float scale, float pow);
-
-  void crossMapNormalBwd(Matrix& localGrad, Matrix& denoms, Matrix& preOutV,
-                         Matrix& localOutV, size_t channels, size_t imgSizeH,
-                         size_t imgSizeW, size_t sizeX,
-                         float scale, float pow);
-
-  void maxSequenceForward(Matrix& input, const IVector& sequence,
+  void maxSequenceForward(Matrix& input,
+                          const IVector& sequence,
                           IVector& index);
 
-  void maxSequenceBackward(Matrix& outputGrad, const IVector& sequence,
+  void maxSequenceBackward(Matrix& outputGrad,
+                           const IVector& sequence,
                            IVector& index);
-
-  void contextProjectionForward(MatrixPtr input, MatrixPtr weight,
-                                const IVector& sequence, int contextLength,
-                                int contextStart, size_t beginPad,
-                                bool isPadding);
-
-  void contextProjectionBackward(MatrixPtr inputGrad, MatrixPtr weightGrad,
-                                 const IVector& sequence, int contextLength,
-                                 int contextStart, size_t beginPad,
-                                 bool isPadding);
 
   real* getRow(size_t row) { return BaseMatrix::rowBuf(row); }
   virtual real* getRowBuf(size_t row) { return getRow(row); }
@@ -1442,7 +1626,7 @@ public:
   void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
-
+  void sequenceAvgBackward(Matrix& a, const IVector& startsPos, int mode);
 
   /**
    * @code
@@ -1485,12 +1669,15 @@ public:
 
   void addColumnVector(const Matrix& b);
 
-  void mul(const MatrixPtr a, const MatrixPtr b, real scaleAB, real scaleT);
+  void mul(const Matrix& a, const Matrix& b, real scaleAB, real scaleT);
   void mul(CpuMatrix* a, CpuMatrix* b, real scaleAB, real scaleT);
 
   void mul(CpuMatrix* a, CpuSparseMatrix* b, real scaleAB, real scaleT);
 
-  static void mul(CpuMatrix* a, CpuMatrix* b, CpuSparseMatrix* c, real scaleAB,
+  static void mul(CpuMatrix* a,
+                  CpuMatrix* b,
+                  CpuSparseMatrix* c,
+                  real scaleAB,
                   real scaleT);
 
   /**
@@ -1500,12 +1687,12 @@ public:
    * Define B,C as template instead of virtual class for performance sake.
    */
   template <typename MatBType, typename MatCType>
-  static void mul(CpuSparseMatrix* a, MatBType* b, MatCType* c, real scaleAB,
-                  real scaleT);
+  static void mul(
+      CpuSparseMatrix* a, MatBType* b, MatCType* c, real scaleAB, real scaleT);
 
   virtual void mul(CpuSparseMatrix* a, CpuMatrix* b, real scaleAB, real scaleT);
 
-  void mul(const MatrixPtr a, const MatrixPtr b);
+  void mul(const Matrix& a, const Matrix& b);
 
   void rightMul(Matrix& b, real scaleAB, real scaleT);
   void rightMul(Matrix& b);
@@ -1525,14 +1712,18 @@ public:
 
   void oneHotCrossEntropy(Matrix& output, IVector& label);
   void oneHotCrossEntropyBp(Matrix& outputV, IVector& label);
-  void oneHotCrossEntropyWithSelfNorm(Matrix& output, IVector& label,
+  void oneHotCrossEntropyWithSelfNorm(Matrix& output,
+                                      IVector& label,
                                       real alpha);
-  void oneHotCrossEntropyWithSelfNormBp(Matrix& outputV, IVector& label,
+  void oneHotCrossEntropyWithSelfNormBp(Matrix& outputV,
+                                        IVector& label,
                                         real alpha);
 
   void circularConv(Matrix& b, Matrix& c);
-  void circularConvDerivative(Matrix& output, Matrix& prevOut1,
-                              Matrix& prevOut2, Matrix& prevGrad1,
+  void circularConvDerivative(Matrix& output,
+                              Matrix& prevOut1,
+                              Matrix& prevOut2,
+                              Matrix& prevGrad1,
                               Matrix& prevGrad2);
 
   void softmax(Matrix& output);
@@ -1545,16 +1736,15 @@ public:
   /// gradient of sumOfSquares.
   void sumOfSquaresBp(Matrix& outputV, Matrix& label);
 
+  void smoothL1(Matrix& output, Matrix& label);
+  void smoothL1Bp(Matrix& output, Matrix& label);
+
   void tanh(Matrix& output);
   void tanhDerivative(Matrix& output);
 
   void softrelu(Matrix& output);
   void softreluDerivative(Matrix& output);
   void scaledTanh(Matrix& output, real p1, real p2);
-
-  void cosSim(Matrix& output1, Matrix& output2, real scale);
-  void cosSimDerivative(Matrix& output, Matrix& prevOut1, Matrix& prevOut2,
-                        Matrix& prevGrad1, Matrix& prevGrad2, real scale);
 
   void print(std::ostream& os) const;
   void print(std::ostream& os, size_t height, size_t width) const;
@@ -1571,23 +1761,32 @@ public:
 
   void randomizeUniform();
 
-  void classificationError(MatrixPtr output, IVectorPtr label);
+  void classificationError(Matrix& output, IVector& label, size_t topkSize = 1);
 
   void addByBitCode(size_t numClasses, const IVector& codes, const Matrix& vec);
 
-  void addByBitCodeBackward(size_t numClasses, const IVector& codes,
+  void addByBitCodeBackward(size_t numClasses,
+                            const IVector& codes,
                             Matrix& vec);
 
-  void mulByBitCode(size_t numClasses, const IVector& codes, const Matrix& mat,
+  void mulByBitCode(size_t numClasses,
+                    const IVector& codes,
+                    const Matrix& mat,
                     const Matrix& input);
 
-  void mulByBitCodeBackwardWeight(size_t numClasses, const IVector& codes,
-                                  Matrix& mat, const Matrix& input);
+  void mulByBitCodeBackwardWeight(size_t numClasses,
+                                  const IVector& codes,
+                                  Matrix& mat,
+                                  const Matrix& input);
 
-  void mulByBitCodeBackwardError(size_t numClasses, const IVector& codes,
-                                 const Matrix& mat, Matrix& input);
+  void mulByBitCodeBackwardError(size_t numClasses,
+                                 const IVector& codes,
+                                 const Matrix& mat,
+                                 Matrix& input);
 
-  void sumByBitCode(size_t numClasses, IVector& codes, Matrix& sum,
+  void sumByBitCode(size_t numClasses,
+                    IVector& codes,
+                    Matrix& sum,
                     real scaleSum);
 
   void subByBitCode(size_t numClasses_, IVector& codes);
@@ -1613,6 +1812,11 @@ public:
                         const size_t numChannels,
                         const real ratioH,
                         const real ratioW);
+
+  template <typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    TensorCpuApply<real>(*this, expr);
+  }
 };
 
 class SharedCpuMatrix : public CpuMatrix {
@@ -1622,20 +1826,25 @@ public:
       : CpuMatrix(height, width, trans) {
     initShared(blockNum);
   }
-  SharedCpuMatrix(int blockNum, real* data, size_t height, size_t width,
-                  bool trans = false)
+  SharedCpuMatrix(
+      int blockNum, real* data, size_t height, size_t width, bool trans = false)
       : CpuMatrix(data, height, width, trans) {
     initShared(blockNum);
   }
 
-  SharedCpuMatrix(int blockNum, CpuMemHandlePtr dataHandle, size_t height,
-                  size_t width, bool trans = false)
+  SharedCpuMatrix(int blockNum,
+                  CpuMemHandlePtr dataHandle,
+                  size_t height,
+                  size_t width,
+                  bool trans = false)
       : CpuMatrix(dataHandle, height, width, trans) {
     initShared(blockNum);
   }
 
-  SharedCpuMatrix(CpuMemHandlePtr dataHandle, size_t height,
-                  size_t width, bool trans = false)
+  SharedCpuMatrix(CpuMemHandlePtr dataHandle,
+                  size_t height,
+                  size_t width,
+                  bool trans = false)
       : CpuMatrix(dataHandle, height, width, trans) {
     initBlock(1);
   }
@@ -1644,10 +1853,11 @@ public:
 
 public:
   virtual void mul(CpuSparseMatrix* a, CpuMatrix* b, real scaleAB, real scaleT);
-  void add(Matrix& b, real p1, real p2);
-  void add(real p1, real p2);
+  virtual void add(Matrix& b, real p1, real p2);
+  virtual void add(real p1, real p2);
 
 private:
+  using Matrix::mul;
   void initShared(int blockNum);
   void initBlock(int blockNum);
 

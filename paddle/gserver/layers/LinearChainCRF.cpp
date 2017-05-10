@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,23 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include <algorithm>
 #include "LinearChainCRF.h"
+#include <algorithm>
 
 namespace paddle {
 
-LinearChainCRF::LinearChainCRF(int numClasses, real* para, real* grad)
+LinearChainCRF::LinearChainCRF(int numClasses, real* para)
     : numClasses_(numClasses) {
   a_ = Matrix::create(para, 1, numClasses_);
   b_ = Matrix::create(para + numClasses_, 1, numClasses_);
   w_ = Matrix::create(para + 2 * numClasses_, numClasses_, numClasses_);
-
-  if (grad) {
-    da_ = Matrix::create(grad, 1, numClasses_);
-    db_ = Matrix::create(grad + numClasses_, 1, numClasses_);
-    dw_ = Matrix::create(grad + 2 * numClasses_, numClasses_, numClasses_);
-  }
 
   ones_ = Matrix::create(1, numClasses_);
   ones_->one();
@@ -60,8 +53,8 @@ real LinearChainCRF::forward(real* x, int* s, int length) {
   matX->rowMax(*maxX_);
   expX_->assign(*matX);
   // subtract max to avoid overflow or underflow
-  expX_->mul(maxX_, ones_, (real)-1, (real)1);
-  expX_->exp();
+  expX_->mul(*maxX_, *ones_, (real)-1, (real)1);
+  expX_->exp2();
 
   real* a = a_->getData();
   real* b = b_->getData();
@@ -70,7 +63,7 @@ real LinearChainCRF::forward(real* x, int* s, int length) {
   real* expX = expX_->getData();
   real* maxX = maxX_->getData();
 
-  expW_->exp(*w_);
+  expW_->exp2(*w_);
   real* expW = expW_->getData();
 
   for (int i = 0; i < numClasses_; ++i) {
@@ -108,19 +101,24 @@ real LinearChainCRF::forward(real* x, int* s, int length) {
   return -ll;
 }
 
-void LinearChainCRF::backward(real* x, real* dx, int* s, int length) {
+void LinearChainCRF::backward(real* x, int* s, int length, bool needWGrad) {
   MatrixPtr matX = Matrix::create(x, length, numClasses_);
-  MatrixPtr matDX = Matrix::create(dx, length, numClasses_);
-  MatrixPtr matGrad = Matrix::create(length, numClasses_);
+  Matrix::resizeOrCreate(matGrad_, length, numClasses_);
   Matrix::resizeOrCreate(beta_, length, numClasses_);
   real* b = b_->getData();
-  real* dw = dw_ ? dw_->getData() : nullptr;
+  if (needWGrad) {
+    Matrix::resizeOrCreate(matWGrad_, numClasses_ + 2, numClasses_);
+    matWGrad_->zeroMem();
+    da_ = matWGrad_->subRowMatrix(0, 1);
+    db_ = matWGrad_->subRowMatrix(1, 2);
+    dw_ = matWGrad_->subRowMatrix(2, numClasses_ + 2);
+  }
 
   real* alpha = alpha_->getData();
   real* beta = beta_->getData();
   real* expW = expW_->getData();
   real* expX = expX_->getData();
-  real* grad = matGrad->getData();
+  real* grad = matGrad_->getData();
 
   for (int i = 0; i < numClasses_; ++i) {
     beta[(length - 1) * numClasses_ + i] = exp(b[i]);
@@ -141,39 +139,38 @@ void LinearChainCRF::backward(real* x, real* dx, int* s, int length) {
     normalizeL1(beta + k * numClasses_, numClasses_);
   }
 
-  matGrad->dotMul(*alpha_, *beta_);
-  matGrad->rowNormalizeL1(*matGrad);
+  matGrad_->dotMul(*alpha_, *beta_);
+  matGrad_->rowNormalizeL1(*matGrad_);
   for (int k = 0; k < length; ++k) {
     grad[k * numClasses_ + s[k]] -= (real)1;
   }
-  matDX->add(*matGrad);
-  if (da_) {
-    da_->add(*matGrad->subMatrix(/* startRow= */ 0, /* numRows= */ 1));
-  }
-  if (db_) {
-    db_->add(*matGrad->subMatrix(/* startRow= */ length - 1, 1));
-  }
 
-  beta_->dotMul(*beta_, *expX_);
-  beta_->rowNormalizeL1(*beta_);
+  if (needWGrad) {
+    da_->add(*matGrad_->subMatrix(/* startRow= */ 0, /* numRows= */ 1));
+    db_->add(*matGrad_->subMatrix(/* startRow= */ length - 1, 1));
 
-  for (int k = 1; dw && k < length; ++k) {
-    real sum = 0;
-    for (int i = 0; i < numClasses_; ++i) {
-      for (int j = 0; j < numClasses_; ++j) {
-        sum += expW[i * numClasses_ + j] * alpha[(k - 1) * numClasses_ + i] *
-               beta[k * numClasses_ + j];
+    beta_->dotMul(*beta_, *expX_);
+    beta_->rowNormalizeL1(*beta_);
+
+    real* dw = dw_->getData();
+    for (int k = 1; k < length; ++k) {
+      real sum = 0;
+      for (int i = 0; i < numClasses_; ++i) {
+        for (int j = 0; j < numClasses_; ++j) {
+          sum += expW[i * numClasses_ + j] * alpha[(k - 1) * numClasses_ + i] *
+                 beta[k * numClasses_ + j];
+        }
       }
-    }
-    sum = 1 / sum;
-    for (int i = 0; i < numClasses_; ++i) {
-      for (int j = 0; j < numClasses_; ++j) {
-        dw[i * numClasses_ + j] += sum * expW[i * numClasses_ + j] *
-                                   alpha[(k - 1) * numClasses_ + i] *
-                                   beta[k * numClasses_ + j];
+      sum = 1 / sum;
+      for (int i = 0; i < numClasses_; ++i) {
+        for (int j = 0; j < numClasses_; ++j) {
+          dw[i * numClasses_ + j] += sum * expW[i * numClasses_ + j] *
+                                     alpha[(k - 1) * numClasses_ + i] *
+                                     beta[k * numClasses_ + j];
+        }
       }
+      dw[s[k - 1] * numClasses_ + s[k]] -= (real)1;
     }
-    dw[s[k - 1] * numClasses_ + s[k]] -= (real)1;
   }
 }
 

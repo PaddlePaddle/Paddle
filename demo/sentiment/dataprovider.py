@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,4 +32,6 @@ def process(settings, file_name):
             word_slot = [
                 settings.word_dict[w] for w in words if w in settings.word_dict
             ]
+            if not word_slot:
+                continue
             yield word_slot, label

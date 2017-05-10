@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +20,6 @@ from layers import *
 from networks import *
 from optimizers import *
 from attrs import *
-
+from config_parser_utils import *
 # This will enable operator overload for LayerOutput
-import math
+import layer_math

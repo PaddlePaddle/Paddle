@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <stdint.h>
@@ -24,14 +23,14 @@ limitations under the License. */
 #include "ParameterConfig.pb.h"
 #include "TrainerConfig.pb.h"
 
-#include "paddle/utils/Locks.h"
-#include "paddle/utils/TypeDefs.h"
-#include "paddle/math/Vector.h"
-#include "paddle/math/Matrix.h"
-#include "paddle/utils/Util.h"
-#include "paddle/utils/ThreadLocal.h"
 #include "ParameterUpdaterHook.h"
+#include "paddle/math/Matrix.h"
+#include "paddle/math/Vector.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/GlobalConstants.h"
+#include "paddle/utils/Locks.h"
+#include "paddle/utils/ThreadLocal.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 
@@ -51,7 +50,6 @@ struct Segment {
   // buffer.
   int64_t beginPos;  // beginning position in the local value or grad buffer
 };
-
 
 class Parameter;
 typedef std::shared_ptr<Parameter> ParameterPtr;
@@ -129,8 +127,7 @@ public:
     if (config_.dims_size() == 2) {
       if (matType == MAT_NORMAL || matType == MAT_NORMAL_SHARED ||
           matType == MAT_SPARSE_ROW_PREFETCH_FULL_SIZE ||
-          matType == MAT_VALUE_SHARED ||
-          matType == MAT_SPARSE_ROW_IDS) {
+          matType == MAT_VALUE_SHARED || matType == MAT_SPARSE_ROW_IDS) {
         bufs_[type] = Vector::createParallelVector(config_.size(), useGpu_);
         bufs_[type]->zeroMem();
       } else {
@@ -161,7 +158,8 @@ public:
     }
   }
 
-  void enableSharedType(ParameterType type, VectorPtr vec,
+  void enableSharedType(ParameterType type,
+                        VectorPtr vec,
                         MatrixPtr mat = nullptr) {
     if (!bufs_[type] && !mats_[type]) {
       bufs_[type] = vec;
@@ -235,13 +233,17 @@ public:
    *
    * @see SparseRowCpuMatrix::sgdUpdate for more information.
    */
-  void updateWithGradient(real learningRate, MatrixPtr gradMat, IVectorPtr t0,
-                          int currentTime, bool fini = false);
+  void updateWithGradient(real learningRate,
+                          MatrixPtr gradMat,
+                          IVectorPtr t0,
+                          int currentTime,
+                          bool fini = false);
 
   /**
    * This function is used to calculate multiple gpus, but only as a candidate
    */
-  void updateWithGradient(real learningRate, VectorPtr grad,
+  void updateWithGradient(real learningRate,
+                          VectorPtr grad,
                           bool normalUpdate = true);
 
   /**

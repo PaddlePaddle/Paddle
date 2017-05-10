@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,11 +30,13 @@ protected:
   std::string poolType_;
 
 public:
-  PoolProjection(const ProjectionConfig& config, ParameterPtr parameter,
+  PoolProjection(const ProjectionConfig& config,
+                 ParameterPtr parameter,
                  bool useGpu);
 
   static PoolProjection* create(const ProjectionConfig& config,
-                                ParameterPtr parameter, bool useGpu);
+                                ParameterPtr parameter,
+                                bool useGpu);
 
   const std::string& getPoolType() const { return poolType_; }
 
@@ -43,7 +45,8 @@ public:
 
 class MaxPoolProjection : public PoolProjection {
 public:
-  MaxPoolProjection(const ProjectionConfig& config, ParameterPtr parameter,
+  MaxPoolProjection(const ProjectionConfig& config,
+                    ParameterPtr parameter,
                     bool useGpu)
       : PoolProjection(config, parameter, useGpu) {}
 
@@ -53,7 +56,8 @@ public:
 
 class AvgPoolProjection : public PoolProjection {
 public:
-  AvgPoolProjection(const ProjectionConfig& config, ParameterPtr parameter,
+  AvgPoolProjection(const ProjectionConfig& config,
+                    ParameterPtr parameter,
                     bool useGpu)
       : PoolProjection(config, parameter, useGpu) {}
 

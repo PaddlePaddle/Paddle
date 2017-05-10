@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
@@ -47,10 +46,11 @@ public:
 
   ~FeatureMapExpandLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(featmap_expand, FeatureMapExpandLayer);
@@ -79,9 +79,12 @@ void FeatureMapExpandLayer::forward(PassType passType) {
     for (size_t i = 0; i < batchSize; i++) {
       MatrixPtr outVTmp =
           Matrix::create(outputV->getData() + i * imgSize * numFilters_,
-                         numFilters_, imgSize, false, useGpu_);
-      MatrixPtr inVTmp = Matrix::create(inputV->getData() + i * imgSize, 1,
-                                        imgSize, false, useGpu_);
+                         numFilters_,
+                         imgSize,
+                         false,
+                         useGpu_);
+      MatrixPtr inVTmp = Matrix::create(
+          inputV->getData() + i * imgSize, 1, imgSize, false, useGpu_);
       outVTmp->addRowVector(*inVTmp);
     }
   }
@@ -93,6 +96,9 @@ void FeatureMapExpandLayer::forward(PassType passType) {
 
 void FeatureMapExpandLayer::backward(const UpdateCallback& callback) {
   MatrixPtr inGrad = getInputGrad(0);
+  if (NULL == inGrad) {
+    return;
+  }
   MatrixPtr outGrad = getOutputGrad();
   size_t batchSize = getInput(0).getBatchSize();
   int imgSize = inGrad->getWidth();
@@ -101,9 +107,12 @@ void FeatureMapExpandLayer::backward(const UpdateCallback& callback) {
     for (size_t i = 0; i < batchSize; i++) {
       MatrixPtr outGradTmp =
           Matrix::create(outGrad->getData() + i * imgSize * numFilters_,
-                         numFilters_, imgSize, false, useGpu_);
-      MatrixPtr inGradTmp = Matrix::create(inGrad->getData() + i * imgSize, 1,
-                                           imgSize, false, useGpu_);
+                         numFilters_,
+                         imgSize,
+                         false,
+                         useGpu_);
+      MatrixPtr inGradTmp = Matrix::create(
+          inGrad->getData() + i * imgSize, 1, imgSize, false, useGpu_);
       inGradTmp->collectBias(*outGradTmp, 1);
     }
   }

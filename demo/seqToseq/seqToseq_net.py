@@ -1,6 +1,6 @@
 # edit-mode: -*- python -*-
 
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,17 +37,10 @@ def seq_to_seq_data(data_dir,
     """
     src_lang_dict = os.path.join(data_dir, 'src.dict')
     trg_lang_dict = os.path.join(data_dir, 'trg.dict')
-    src_dict = dict()
-    for line_count, line in enumerate(open(src_lang_dict, "r")):
-        src_dict[line.strip()] = line_count
-    trg_dict = dict()
-    for line_count, line in enumerate(open(trg_lang_dict, "r")):
-        trg_dict[line.strip()] = line_count
 
     if is_generating:
         train_list = None
         test_list = os.path.join(data_dir, gen_list)
-        trg_dict = None
     else:
         train_list = os.path.join(data_dir, train_list)
         test_list = os.path.join(data_dir, test_list)
@@ -57,8 +50,11 @@ def seq_to_seq_data(data_dir,
         test_list,
         module="dataprovider",
         obj="process",
-        args={"src_dict": src_dict,
-              "trg_dict": trg_dict})
+        args={
+            "src_dict_path": src_lang_dict,
+            "trg_dict_path": trg_lang_dict,
+            "is_generating": is_generating
+        })
 
     return {
         "src_dict_path": src_lang_dict,
@@ -73,7 +69,8 @@ def gru_encoder_decoder(data_conf,
                         encoder_size=512,
                         decoder_size=512,
                         beam_size=3,
-                        max_length=250):
+                        max_length=250,
+                        error_clipping=50):
     """
     A wrapper for an attention version of GRU Encoder-Decoder network
     is_generating: whether this config is used for generating
@@ -94,9 +91,19 @@ def gru_encoder_decoder(data_conf,
         input=src_word_id,
         size=word_vector_dim,
         param_attr=ParamAttr(name='_source_language_embedding'))
-    src_forward = simple_gru(input=src_embedding, size=encoder_size)
+    src_forward = simple_gru(
+        input=src_embedding,
+        size=encoder_size,
+        naive=True,
+        gru_layer_attr=ExtraLayerAttribute(
+            error_clipping_threshold=error_clipping))
     src_backward = simple_gru(
-        input=src_embedding, size=encoder_size, reverse=True)
+        input=src_embedding,
+        size=encoder_size,
+        reverse=True,
+        naive=True,
+        gru_layer_attr=ExtraLayerAttribute(
+            error_clipping_threshold=error_clipping))
     encoded_vector = concat_layer(input=[src_forward, src_backward])
 
     with mixed_layer(size=decoder_size) as encoded_proj:
@@ -121,11 +128,13 @@ def gru_encoder_decoder(data_conf,
             decoder_inputs += full_matrix_projection(input=context)
             decoder_inputs += full_matrix_projection(input=current_word)
 
-        gru_step = gru_step_layer(
+        gru_step = gru_step_naive_layer(
             name='gru_decoder',
             input=decoder_inputs,
             output_mem=decoder_mem,
-            size=decoder_size)
+            size=decoder_size,
+            layer_attr=ExtraLayerAttribute(
+                error_clipping_threshold=error_clipping))
 
         with mixed_layer(
                 size=target_dict_dim, bias_attr=True,

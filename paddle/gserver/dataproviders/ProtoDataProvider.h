@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <vector>
 
-#include "paddle/utils/Stat.h"
 #include "DataFormat.pb.h"
+#include "paddle/utils/Stat.h"
 
 #include "DataProvider.h"
 #include "ProtoReader.h"
@@ -48,7 +47,8 @@ namespace paddle {
  */
 class ProtoDataProvider : public DataProvider {
 public:
-  ProtoDataProvider(const DataConfig& config, bool useGpu,
+  ProtoDataProvider(const DataConfig& config,
+                    bool useGpu,
                     bool loadDataAll = true);
   virtual void reset();
 
@@ -161,14 +161,16 @@ protected:
 };
 
 /**
- * @brief Special use for Proto data: instances should contain sparse-non-value slots
+ * @brief Special use for Proto data: instances should contain sparse-non-value
+ * slots
  * and label.
  *
  * @note ProtoSequenceDataProvider treats each SPARSE SLOT as a SEQUENCE
  */
 class ProtoSequenceDataProvider : public ProtoDataProvider {
 public:
-  ProtoSequenceDataProvider(const DataConfig& config, bool useGpu,
+  ProtoSequenceDataProvider(const DataConfig& config,
+                            bool useGpu,
                             bool loadDataAll = true);
   ~ProtoSequenceDataProvider() {}
   virtual int64_t getNextBatchInternal(int64_t size, DataBatch* batch);

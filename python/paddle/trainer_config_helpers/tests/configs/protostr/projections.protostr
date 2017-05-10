@@ -155,12 +155,39 @@ layers {
     input_layer_name: "img"
   }
   inputs {
+    input_layer_name: "img"
+    input_parameter_name: "___mixed_6__.w1"
+    proj_conf {
+      type: "conv"
+      name: "___mixed_6__.w1"
+      input_size: 1024
+      output_size: 57600
+      conv_conf {
+        filter_size: 3
+        channels: 1
+        stride: 1
+        padding: 0
+        groups: 1
+        filter_channels: 1
+        output_x: 30
+        img_size: 32
+        caffe_mode: true
+        filter_size_y: 3
+        padding_y: 0
+        stride_y: 1
+        output_y: 30
+        img_size_y: 32
+      }
+      num_filters: 64
+    }
+  }
+  inputs {
     input_layer_name: "filter"
   }
   operator_confs {
     type: "conv"
     input_indices: 0
-    input_indices: 1
+    input_indices: 2
     input_sizes: 1024
     input_sizes: 576
     output_size: 57600
@@ -177,6 +204,8 @@ layers {
       filter_size_y: 3
       padding_y: 0
       stride_y: 1
+      output_y: 30
+      img_size_y: 32
     }
     num_filters: 64
   }
@@ -184,39 +213,114 @@ layers {
 layers {
   name: "__mixed_7__"
   type: "mixed"
+  size: 254016
+  active_type: ""
+  inputs {
+    input_layer_name: "img"
+  }
+  inputs {
+    input_layer_name: "img"
+    input_parameter_name: "___mixed_7__.w1"
+    proj_conf {
+      type: "convt"
+      name: "___mixed_7__.w1"
+      input_size: 1024
+      output_size: 254016
+      conv_conf {
+        filter_size: 3
+        channels: 1
+        stride: 2
+        padding: 1
+        groups: 1
+        filter_channels: 64
+        output_x: 32
+        img_size: 63
+        caffe_mode: true
+        filter_size_y: 3
+        padding_y: 1
+        stride_y: 2
+        output_y: 32
+        img_size_y: 63
+      }
+      num_filters: 64
+    }
+  }
+  inputs {
+    input_layer_name: "filter"
+  }
+  operator_confs {
+    type: "convt"
+    input_indices: 0
+    input_indices: 2
+    input_sizes: 1024
+    input_sizes: 576
+    output_size: 254016
+    conv_conf {
+      filter_size: 3
+      channels: 1
+      stride: 2
+      padding: 1
+      groups: 1
+      filter_channels: 64
+      output_x: 32
+      img_size: 63
+      caffe_mode: true
+      filter_size_y: 3
+      padding_y: 1
+      stride_y: 2
+      output_y: 32
+      img_size_y: 63
+    }
+    num_filters: 64
+  }
+}
+layers {
+  name: "__mixed_8__"
+  type: "mixed"
   size: 100
   active_type: ""
   inputs {
     input_layer_name: "__mixed_4__"
-    input_parameter_name: "___mixed_7__.w0"
+    input_parameter_name: "___mixed_8__.w0"
     proj_conf {
       type: "fc"
-      name: "___mixed_7__.w0"
+      name: "___mixed_8__.w0"
       input_size: 300
       output_size: 100
     }
   }
   inputs {
     input_layer_name: "__mixed_5__"
-    input_parameter_name: "___mixed_7__.w1"
+    input_parameter_name: "___mixed_8__.w1"
     proj_conf {
       type: "trans_fc"
-      name: "___mixed_7__.w1"
+      name: "___mixed_8__.w1"
       input_size: 100
       output_size: 100
     }
   }
   inputs {
     input_layer_name: "__mixed_6__"
-    input_parameter_name: "___mixed_7__.w2"
+    input_parameter_name: "___mixed_8__.w2"
     proj_conf {
       type: "fc"
-      name: "___mixed_7__.w2"
+      name: "___mixed_8__.w2"
       input_size: 57600
       output_size: 100
     }
   }
+  inputs {
+    input_layer_name: "__mixed_7__"
+    input_parameter_name: "___mixed_8__.w3"
+    proj_conf {
+      type: "fc"
+      name: "___mixed_8__.w3"
+      input_size: 254016
+      output_size: 100
+    }
+  }
   drop_rate: 0.5
+  error_clipping_threshold: 40.0
 }
 parameters {
   name: "___embedding_0__.w0"
@@ -279,7 +383,23 @@ parameters {
   initial_smart: true
 }
 parameters {
-  name: "___mixed_7__.w0"
+  name: "___mixed_6__.w1"
+  size: 576
+  initial_mean: 0.0
+  initial_std: 0.471404520791
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "___mixed_7__.w1"
+  size: 576
+  initial_mean: 0.0
+  initial_std: 0.471404520791
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "___mixed_8__.w0"
   size: 30000
   initial_mean: 0.0
   initial_std: 0.057735026919
@@ -289,7 +409,7 @@ parameters {
   initial_smart: true
 }
 parameters {
-  name: "___mixed_7__.w1"
+  name: "___mixed_8__.w1"
   size: 10000
   initial_mean: 0.0
   initial_std: 0.1
@@ -299,7 +419,7 @@ parameters {
   initial_smart: true
 }
 parameters {
-  name: "___mixed_7__.w2"
+  name: "___mixed_8__.w2"
   size: 5760000
   initial_mean: 0.0
   initial_std: 0.00416666666667
@@ -308,10 +428,20 @@ parameters {
   initial_strategy: 0
   initial_smart: true
 }
+parameters {
+  name: "___mixed_8__.w3"
+  size: 25401600
+  initial_mean: 0.0
+  initial_std: 0.00198412698413
+  dims: 254016
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
 input_layer_names: "test"
 input_layer_names: "img"
 input_layer_names: "filter"
-output_layer_names: "__mixed_7__"
+output_layer_names: "__mixed_8__"
 sub_models {
   name: "root"
   layer_names: "test"
@@ -326,10 +456,11 @@ sub_models {
   layer_names: "filter"
   layer_names: "__mixed_6__"
   layer_names: "__mixed_7__"
+  layer_names: "__mixed_8__"
   input_layer_names: "test"
   input_layer_names: "img"
   input_layer_names: "filter"
-  output_layer_names: "__mixed_7__"
+  output_layer_names: "__mixed_8__"
   is_recurrent_layer_group: false
 }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,18 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #ifndef HL_CUDA_H_
 #define HL_CUDA_H_
 
-#include "hl_base.h"
 #include <string>
+#include "hl_base.h"
 
 /**
  * @brief   HPPL event.
  */
-typedef struct _hl_event_st *  hl_event_t;
-
+typedef struct _hl_event_st *hl_event_t;
 
 /**
  * @brief return cuda runtime api version.
@@ -42,7 +40,7 @@ extern void hl_start();
  *                      if device is NULL, will start all GPU.
  * @param[in]   number  number of devices.
  */
-extern void hl_specify_devices_start(int* device, int number);
+extern void hl_specify_devices_start(int *device, int number);
 
 /**
  * @brief   Queries if a device may directly access a peer device's memory.
@@ -126,7 +124,7 @@ extern int hl_get_device();
  *
  * @return      dest_d   pointer to device memory.
  */
-extern void* hl_malloc_device(size_t size);
+extern void *hl_malloc_device(size_t size);
 
 /**
  * @brief   Free device memory.
@@ -143,7 +141,7 @@ extern void hl_free_mem_device(void *dest_d);
  *
  * @return      dest_h   pointer to host memory.
  */
-extern void* hl_malloc_host(size_t size);
+extern void *hl_malloc_host(size_t size);
 
 /**
  * @brief   Free host page-lock memory.
@@ -228,9 +226,9 @@ extern void hl_srand(unsigned int seed);
  * @param[in]   stream  stream id.
  */
 extern void hl_memcpy_async(void *dst,
-                           void *src,
-                           size_t size,
-                           hl_stream_t stream);
+                            void *src,
+                            size_t size,
+                            hl_stream_t stream);
 
 /**
  * @brief   Waits for stream tasks to complete.
@@ -261,8 +259,7 @@ extern void hl_destroy_event(hl_event_t event);
  *
  * @return      time   Time between start and end in ms.
  */
-extern float hl_event_elapsed_time(hl_event_t start,
-                                   hl_event_t end);
+extern float hl_event_elapsed_time(hl_event_t start, hl_event_t end);
 
 /**
  * @brief   Records an event.
@@ -300,7 +297,7 @@ extern void hl_set_device_flags_block();
 /**
  * @brief   Returns the last error string from a cuda runtime call.
  */
-extern const char* hl_get_device_error_string();
+extern const char *hl_get_device_error_string();
 
 /**
  * @brief     Returns the last error string from a cuda runtime call.
@@ -309,7 +306,7 @@ extern const char* hl_get_device_error_string();
  *
  * @see       hl_get_device_last_error()
  */
-extern const char* hl_get_device_error_string(size_t err);
+extern const char *hl_get_device_error_string(size_t err);
 
 /**
  * @brief   Returns the last error number.
@@ -334,5 +331,15 @@ extern bool hl_cuda_event_is_ready(hl_event_t event);
  * @brief   hppl device synchronization.
  */
 extern void hl_device_synchronize();
+
+/**
+ * @brief   gpu profiler start
+ */
+extern void hl_profiler_start();
+
+/**
+ * @brief   gpu profiler stop
+ */
+extern void hl_profiler_end();
 
 #endif  // HL_CUDA_H_

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,13 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "PyDataProvider.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/PythonUtil.h"
-#include <fenv.h>
 #include "paddle/utils/Util.h"
-#include "paddle/utils/Excepts.h"
-
 
 namespace paddle {
 
@@ -26,7 +23,8 @@ namespace paddle {
 REGISTER_DATA_PROVIDER(py, PyDataProvider);
 #endif
 
-PyDataProvider::PyDataProvider(const DataConfig& config, bool useGpu,
+PyDataProvider::PyDataProvider(const DataConfig& config,
+                               bool useGpu,
                                bool loadDataAll)
     : DataProvider(config, useGpu), batchSize_(0) {
   PyGuard guard;
@@ -50,8 +48,8 @@ void PyDataProvider::loadData(const std::vector<std::string>& fileList) {
   classInstance_ =
       createPythonClass(pyModuleName_, pyClassName_, fileList, pyUserArgs_);
   CHECK(classInstance_) << "Create class instance failed.";
-  PyObjectPtr obj(PyObject_CallMethod(classInstance_.get(),
-                                      const_cast<char*>("getHeader"), NULL));
+  PyObjectPtr obj(PyObject_CallMethod(
+      classInstance_.get(), const_cast<char*>("getHeader"), NULL));
   CHECK_PY(obj) << "Call function getHeader failed.";
   std::string headerInfo =
       std::string(PyString_AsString(obj.get()), PyString_Size(obj.get()));
@@ -90,7 +88,8 @@ void PyDataProvider::resetSlots() {
   }
 }
 
-void PyDataProvider::fillDenseSlot(ProtoSlot& slot, char*& data,
+void PyDataProvider::fillDenseSlot(ProtoSlot& slot,
+                                   char*& data,
                                    const char* dataEnd) {
   unsigned int dim = slot.dim;
   slot.sampleNum = readT<unsigned int>(data, dataEnd);
@@ -102,14 +101,17 @@ void PyDataProvider::fillDenseSlot(ProtoSlot& slot, char*& data,
   float* dat = reinterpret_cast<float*>(data);
   std::copy(dat, dat + slot.sampleNum * dim, slot.denseData.begin());
 #else
-  memcpyWithCheck(slot.denseData.data(), data,
-                  sizeof(real) * dim * slot.sampleNum, dataEnd);
+  memcpyWithCheck(slot.denseData.data(),
+                  data,
+                  sizeof(real) * dim * slot.sampleNum,
+                  dataEnd);
 #endif
   // PyDataProvider always provide data in float
   data += sizeof(float) * dim * slot.sampleNum;
 }
 
-void PyDataProvider::fillSparseNonValueSlot(ProtoSlot& slot, char*& data,
+void PyDataProvider::fillSparseNonValueSlot(ProtoSlot& slot,
+                                            char*& data,
                                             const char* dataEnd) {
   slot.sampleNum = readT<unsigned int>(data, dataEnd);
   unsigned int* indexPtr = (unsigned int*)data;
@@ -121,12 +123,15 @@ void PyDataProvider::fillSparseNonValueSlot(ProtoSlot& slot, char*& data,
   length = readT<unsigned int>(data, dataEnd);
   slot.indices.push_back(length);
   slot.sparseNonValueData.resize(length);
-  memcpyWithCheck(slot.sparseNonValueData.data(), data,
-                  sizeof(unsigned int) * length, dataEnd);
+  memcpyWithCheck(slot.sparseNonValueData.data(),
+                  data,
+                  sizeof(unsigned int) * length,
+                  dataEnd);
   data += sizeof(unsigned int) * length;
 }
 
-void PyDataProvider::fillSparseValueSlot(ProtoSlot& slot, char*& data,
+void PyDataProvider::fillSparseValueSlot(ProtoSlot& slot,
+                                         char*& data,
                                          const char* dataEnd) {
   slot.sampleNum = readT<unsigned int>(data, dataEnd);
   unsigned int* indexPtr = (unsigned int*)data;
@@ -153,7 +158,8 @@ void PyDataProvider::fillSparseValueSlot(ProtoSlot& slot, char*& data,
   }
 }
 
-void PyDataProvider::fillIndexSlot(ProtoSlot& slot, char*& data,
+void PyDataProvider::fillIndexSlot(ProtoSlot& slot,
+                                   char*& data,
                                    const char* dataEnd) {
   slot.sampleNum = readT<unsigned int>(data, dataEnd);
   CHECK_LE(data + sizeof(unsigned int) * slot.sampleNum, dataEnd)
@@ -163,7 +169,8 @@ void PyDataProvider::fillIndexSlot(ProtoSlot& slot, char*& data,
   data += sizeof(unsigned int) * slot.sampleNum;
 }
 
-void PyDataProvider::fillStringSlot(ProtoSlot& slot, char*& data,
+void PyDataProvider::fillStringSlot(ProtoSlot& slot,
+                                    char*& data,
                                     const char* dataEnd) {
   slot.sampleNum = readT<unsigned int>(data, dataEnd);
   for (unsigned int i = 0; i < slot.sampleNum; ++i) {
@@ -225,9 +232,8 @@ void PyDataProvider::fillSlotsByStr(const std::string& samples) {
       }
       for (size_t i = 0; i < sequenceNum; ++i) {
         size_t begin = slot.sequenceStartPositions[i];
-        size_t end = (i < sequenceNum - 1)
-                         ? slot.sequenceStartPositions[i + 1]
-                         : slot.sampleNum;
+        size_t end = (i < sequenceNum - 1) ? slot.sequenceStartPositions[i + 1]
+                                           : slot.sampleNum;
         for (size_t ii = begin; ii < end; ++ii) {
           slot.sampleSequenceIdVec.push_back(ii);
         }
@@ -255,8 +261,8 @@ void PyDataProvider::fillSlotsByStr(const std::string& samples) {
 void PyDataProvider::reset() {
   {  // Invoke PyDataProvider Reset
     PyGuard guard;
-    PyObjectPtr obj(PyObject_CallMethod(classInstance_.get(),
-                                        const_cast<char*>("reset"), NULL));
+    PyObjectPtr obj(PyObject_CallMethod(
+        classInstance_.get(), const_cast<char*>("reset"), NULL));
     CHECK_PY(obj) << "Call function reset failed.";
   }
 
@@ -270,15 +276,18 @@ void PyDataProvider::reset() {
 void PyDataProvider::shuffle() {
   // py shuffle
   PyGuard guard;
-  PyObjectPtr obj(PyObject_CallMethod(classInstance_.get(),
-                                      const_cast<char*>("shuffle"), NULL));
+  PyObjectPtr obj(PyObject_CallMethod(
+      classInstance_.get(), const_cast<char*>("shuffle"), NULL));
   CHECK_PY(obj) << "Call function shuffle failed.";
 }
 
-void PyDataProvider::handleDenseSlot(ProtoSlot& slot, size_t slotIndex,
+void PyDataProvider::handleDenseSlot(ProtoSlot& slot,
+                                     size_t slotIndex,
                                      std::vector<Argument>& cpuArguments) {
   unsigned int dim = slot.dim;
-  Matrix::resizeOrCreate(cpuArguments[slotIndex].value, slot.sampleNum, dim,
+  Matrix::resizeOrCreate(cpuArguments[slotIndex].value,
+                         slot.sampleNum,
+                         dim,
                          false,   // trans = false
                          false);  // useGpu = false
   real* buf = cpuArguments[slotIndex].value->getData();
@@ -294,20 +303,28 @@ void PyDataProvider::handleSparseNonValueSlot(
     ProtoSlot& slot, size_t slotIndex, std::vector<Argument>& cpuArguments) {
   unsigned int dim = slot.dim;
   if (!(cpuArguments[slotIndex].value)) {
-    cpuArguments[slotIndex].value = Matrix::createSparseMatrix(
-        slot.sampleNum, dim, slot.sampleNum /*DEFAULT_AVG_WIDTH = 1*/, NO_VALUE,
-        SPARSE_CSR, false, useGpu_);
+    cpuArguments[slotIndex].value =
+        Matrix::createSparseMatrix(slot.sampleNum,
+                                   dim,
+                                   slot.sampleNum /*DEFAULT_AVG_WIDTH = 1*/,
+                                   NO_VALUE,
+                                   SPARSE_CSR,
+                                   false,
+                                   useGpu_);
   }
   auto mat = cpuArguments[slotIndex].value;
   mat->resize(slot.sampleNum, dim, slot.sampleNum, NO_VALUE, SPARSE_CSR);
   if (std::dynamic_pointer_cast<GpuSparseMatrix>(mat)) {
-    std::dynamic_pointer_cast<GpuSparseMatrix>(mat)
-        ->copyFrom(slot.sampleSequenceIdVec.data(), slot.indices.data(),
-                   slot.sparseNonValueData.data(), HPPL_STREAM_1);
+    std::dynamic_pointer_cast<GpuSparseMatrix>(mat)->copyFrom(
+        slot.sampleSequenceIdVec.data(),
+        slot.indices.data(),
+        slot.sparseNonValueData.data(),
+        HPPL_STREAM_1);
   } else if (std::dynamic_pointer_cast<CpuSparseMatrix>(mat)) {
-    std::dynamic_pointer_cast<CpuSparseMatrix>(mat)
-        ->copyFrom(slot.sampleSequenceIdVec.data(), slot.indices.data(),
-                   slot.sparseNonValueData.data());
+    std::dynamic_pointer_cast<CpuSparseMatrix>(mat)->copyFrom(
+        slot.sampleSequenceIdVec.data(),
+        slot.indices.data(),
+        slot.sparseNonValueData.data());
   } else {
     LOG(FATAL) << "Not Supported";
   }
@@ -317,28 +334,38 @@ void PyDataProvider::handleSparseValueSlot(
     ProtoSlot& slot, size_t slotIndex, std::vector<Argument>& cpuArguments) {
   unsigned int dim = slot.dim;
   if (!(cpuArguments[slotIndex].value)) {
-    cpuArguments[slotIndex].value = Matrix::createSparseMatrix(
-        slot.sampleNum, dim, slot.sampleNum /*DEFAULT_AVG_WIDTH = 1*/,
-        FLOAT_VALUE, SPARSE_CSR, false, useGpu_);
+    cpuArguments[slotIndex].value =
+        Matrix::createSparseMatrix(slot.sampleNum,
+                                   dim,
+                                   slot.sampleNum /*DEFAULT_AVG_WIDTH = 1*/,
+                                   FLOAT_VALUE,
+                                   SPARSE_CSR,
+                                   false,
+                                   useGpu_);
   }
   auto mat = cpuArguments[slotIndex].value;
   mat->resize(slot.sampleNum, dim, slot.sampleNum, FLOAT_VALUE, SPARSE_CSR);
   if (std::dynamic_pointer_cast<GpuSparseMatrix>(mat)) {
-    std::dynamic_pointer_cast<GpuSparseMatrix>(mat)
-        ->copyFrom(slot.sampleSequenceIdVec.data(), slot.indices.data(),
-                   slot.sparseFloatValueData.data(), HPPL_STREAM_DEFAULT);
+    std::dynamic_pointer_cast<GpuSparseMatrix>(mat)->copyFrom(
+        slot.sampleSequenceIdVec.data(),
+        slot.indices.data(),
+        slot.sparseFloatValueData.data(),
+        HPPL_STREAM_DEFAULT);
   } else if (std::dynamic_pointer_cast<CpuSparseMatrix>(mat)) {
-    std::dynamic_pointer_cast<CpuSparseMatrix>(mat)
-        ->copyFrom(slot.sampleSequenceIdVec.data(), slot.indices.data(),
-                   slot.sparseFloatValueData.data());
+    std::dynamic_pointer_cast<CpuSparseMatrix>(mat)->copyFrom(
+        slot.sampleSequenceIdVec.data(),
+        slot.indices.data(),
+        slot.sparseFloatValueData.data());
   } else {
     LOG(FATAL) << "Not Supported";
   }
 }
 
-void PyDataProvider::handleIndexSlot(ProtoSlot& slot, size_t slotIndex,
+void PyDataProvider::handleIndexSlot(ProtoSlot& slot,
+                                     size_t slotIndex,
                                      std::vector<Argument>& cpuArguments) {
-  IVector::resizeOrCreate(cpuArguments[slotIndex].ids, slot.sampleNum,
+  IVector::resizeOrCreate(cpuArguments[slotIndex].ids,
+                          slot.sampleNum,
                           /*useGpu_*/ false);
   int* buf = cpuArguments[slotIndex].ids->getData();
   for (size_t i = 0; i < slot.sampleNum; ++i) {
@@ -346,7 +373,8 @@ void PyDataProvider::handleIndexSlot(ProtoSlot& slot, size_t slotIndex,
   }
 }
 
-void PyDataProvider::handleStringSlot(ProtoSlot& slot, size_t slotIndex,
+void PyDataProvider::handleStringSlot(ProtoSlot& slot,
+                                      size_t slotIndex,
                                       std::vector<Argument>& cpuArguments) {
   if (cpuArguments[slotIndex].strs) {
     cpuArguments[slotIndex].strs->resize(slot.sampleNum);
@@ -364,7 +392,8 @@ int64_t PyDataProvider::getNextBatchInternal(int64_t size, DataBatch* batch) {
   PyGuard guard;
   PyObjectPtr obj(PyObject_CallMethod(classInstance_.get(),
                                       const_cast<char*>("getNextBatch"),
-                                      const_cast<char*>("i"), size));
+                                      const_cast<char*>("i"),
+                                      size));
   CHECK_PY(obj) << "Call function getNextBatch failed.";
   const std::string& samples =
       std::string(PyString_AsString(obj.get()), PyString_Size(obj.get()));
@@ -381,23 +410,24 @@ int64_t PyDataProvider::getNextBatchInternal(int64_t size, DataBatch* batch) {
   if (!iidData()) {
     for (size_t j = 0; j < slotNum_; ++j) {
       auto& slot = slots_[j];
-      ICpuGpuVector::resizeOrCreate(
-          cpuArguments[j].sequenceStartPositions,
-          slot.sequenceNum + 1, /* useGpu= */ false);
+      ICpuGpuVector::resizeOrCreate(cpuArguments[j].sequenceStartPositions,
+                                    slot.sequenceNum + 1,
+                                    /* useGpu= */ false);
       int* buf = cpuArguments[j].sequenceStartPositions->getMutableData(false);
       std::copy(slot.sequenceStartPositions.begin(),
-                slot.sequenceStartPositions.end(), buf);
+                slot.sequenceStartPositions.end(),
+                buf);
       buf[slot.sequenceStartPositions.size()] = slot.sampleNum;
 
       if (slot.subSequenceStartPositions.size()) {
-        ICpuGpuVector::resizeOrCreate(
-            cpuArguments[j].subSequenceStartPositions,
-            slot.subSequenceNum + 1,
-            /*  useGpu= */ false);
+        ICpuGpuVector::resizeOrCreate(cpuArguments[j].subSequenceStartPositions,
+                                      slot.subSequenceNum + 1,
+                                      /*  useGpu= */ false);
         int* buf =
-           cpuArguments[j].subSequenceStartPositions->getMutableData(false);
+            cpuArguments[j].subSequenceStartPositions->getMutableData(false);
         std::copy(slot.subSequenceStartPositions.begin(),
-                  slot.subSequenceStartPositions.end(), buf);
+                  slot.subSequenceStartPositions.end(),
+                  buf);
         buf[slot.subSequenceNum] = slot.sampleNum;
         // check subSequenceStartPositions and sequenceStartPositions
         cpuArguments[j].checkSubset();
@@ -452,8 +482,8 @@ int64_t PyDataProvider::getNextBatchInternal(int64_t size, DataBatch* batch) {
               cpuArguments[i].subSequenceStartPositions;
         }
       } else {
-        gpuArguments[i].resizeAndCopyFrom(cpuArguments[i], useGpu_,
-                                          HPPL_STREAM_1);
+        gpuArguments[i].resizeAndCopyFrom(
+            cpuArguments[i], useGpu_, HPPL_STREAM_1);
       }
     }
     hl_stream_synchronize(HPPL_STREAM_1);

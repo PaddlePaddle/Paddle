@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
-#include <memory>
 #include <paddle/utils/Logging.h>
 #include <paddle/utils/Util.h>
+#include <memory>
 
 namespace paddle {
 
@@ -26,7 +25,6 @@ class OptimizationConfig;
 struct TrainerConfigHelperPrivate;
 class ModelConfig;
 class DataConfig;
-
 
 /**
  * @brief TrainerConfig Helper. A class wrap protobuf's TrainerConfig Object,
@@ -46,7 +44,7 @@ public:
    * @brief Ctor, Create a TrainerConfig from config file
    * @param configFilePath Config file path.
    */
-  explicit TrainerConfigHelper(const std::string &configFilePath);
+  explicit TrainerConfigHelper(const std::string& configFilePath);
   explicit TrainerConfigHelper(const TrainerConfig& config);
 
   /**
@@ -106,14 +104,12 @@ public:
    */
   bool hasTestDataConfig() const;
 
-
   /**
    * @brief Update trainer config from command line flags.
    *        Override config's (save_dir, init_model_path, start_pass) if command
    *        flags is existed.
    */
   void updateConfigFromFlags();
-
 
   /**
    * @brief Disable optimization's sparse remote update.
@@ -125,13 +121,10 @@ public:
    */
   void disableRemoteSparseUpdaterForEachParams();
 
-
   /**
    * @brief implicit conversion.
    */
-  inline operator const TrainerConfig&() const {
-    return this->getConfig();
-  }
+  inline operator const TrainerConfig&() const { return this->getConfig(); }
 
   /**
    * @brief implicit conversion.
@@ -143,16 +136,12 @@ public:
   /**
    * @brief implicit conversion.
    */
-  inline operator const DataConfig&() const {
-    return this->getDataConfig();
-  }
+  inline operator const DataConfig&() const { return this->getDataConfig(); }
 
   /**
    * @brief implicit conversion.
    */
-  inline operator const ModelConfig&() const {
-    return this->getModelConfig();
-  }
+  inline operator const ModelConfig&() const { return this->getModelConfig(); }
 
   /**
    * @brief Get mutable optimization config.

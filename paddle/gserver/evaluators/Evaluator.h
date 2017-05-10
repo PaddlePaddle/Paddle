@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
-#include "paddle/pserver/ParameterClient2.h"
-#include "paddle/utils/ClassRegistrar.h"
+#include <fstream>
 #include "ModelConfig.pb.h"
 #include "paddle/parameter/Argument.h"
-#include <fstream>
+#include "paddle/pserver/ParameterClient2.h"
+#include "paddle/utils/ClassRegistrar.h"
+#include "paddle/utils/Error.h"
 
 namespace paddle {
 
@@ -99,29 +99,122 @@ public:
    * @brief print the statistics of evaluate result
    * @note finish() should be called before printStats
    */
-  virtual void printStats(std::ostream& os) {
+  virtual void printStats(std::ostream& os) const {
     os << config_.name() << "="
        << (numSamples_ ? totalScore_ / numSamples_ : 0);
   }
 
   friend std::ostream& operator<<(std::ostream& os,
-                                  Evaluator& evaluator) {
+                                  const Evaluator& evaluator) {
     evaluator.printStats(os);
     return os;
   }
 
-  friend std::ostream&& operator<<(std::ostream&& os,    // NOLINT
-                                   Evaluator& evaluator) {
+  friend std::ostream&& operator<<(std::ostream&& os,  // NOLINT
+                                   const Evaluator& evaluator) {
     evaluator.printStats(os);
     return std::move(os);
   }
 
   static ClassRegistrar<Evaluator> registrar_;
 
+  /**
+   * @brief getNames will return all field names of current evaluator.
+   *
+   * The format of name is `evaluator_name.evaluator_fields`. If the evaluator
+   * has multiple field, the name could be `evaluator_name.field1`. For example
+   * the PrecisionRecallEvaluator contains `precision`, `recall` fields. The get
+   * names will return `precision_recall_evaluator.precision`,
+   * `precision_recall_evaluator.recal`, etc.
+   *
+   * Also, if current Evaluator is a combined evaluator. getNames will return
+   * all names of all evaluators inside the combined evaluator.
+   *
+   * @param names [out]: the field names of current evaluator.
+   * @note Never clear the names parameter inside getNames.
+   */
+  virtual void getNames(std::vector<std::string>* names) {
+    names->push_back(config_.name());
+  }
+
+  /**
+   * @brief getValue will return the current evaluate value of one field.
+   *
+   * @param name: The field name of current evaluator.
+   * @param err [out]: The error state.
+   *
+   * @return The evaluate value(metric).
+   */
+  virtual real getValue(const std::string& name, Error* err) const {
+    if (name != config_.name()) {
+      *err = Error("no such name of evaluator %s", name.c_str());
+      return .0f;
+    }
+    return this->getValueImpl();
+  }
+
+  /**
+   * @brief getType will return the evaluator type by field name.
+   *
+   * Evaluate Type is the current type of evaluator in string. Such as 'auc',
+   * 'precision_recall'. In combined evaluator, different name may get different
+   * evaluate type because it could be evaluated by different evaluator inside.
+   *
+   * @param name: The field name of current Evaluator.
+   * @param err: The error state. nullptr means don't care.
+   * @return the evaluator type string.
+   */
+  virtual std::string getType(const std::string& name, Error* err) const {
+    if (name != config_.name()) {
+      *err = Error("no such name of evaluator %s", name.c_str());
+      return std::string();
+    }
+    return this->getTypeImpl();
+  }
+
+protected:
+  /**
+   * @brief getValueImpl The simplest way to define getValue result. If this
+   * evaluator doesn't contain multiple fields, and do not throw any error, just
+   * implemented this method to get the evaluate result(metric).
+   * @return Evaluate result(metric).
+   */
+  virtual real getValueImpl() const {
+    return numSamples_ != .0 ? totalScore_ / numSamples_ : .0;
+  }
+
+  /**
+   * @brief getTypeImpl The simplest way to define getType result. If this
+   * evaluator doesn't combine many evaluators, the get type should only return
+   * itself type.
+   * @return Evaluator type.
+   */
+  virtual std::string getTypeImpl() const { return "base"; }
+
 protected:
   EvaluatorConfig config_;
   double numSamples_;
   double totalScore_;
+};
+
+/**
+ * @brief The NotGetableEvaluator class is the base class of evaluator that
+ * cannot get value in runtime. The most NotGetableEvaluator is Printer
+ * Evaluator, which is only used to debug network configuration.
+ */
+class NotGetableEvaluator : public Evaluator {
+  // Evaluator interface
+public:
+  void getNames(std::vector<std::string>* names) {}
+
+  real getValue(const std::string& name, Error* err) const {
+    *err = Error("Not implemented");
+    return .0f;
+  }
+  std::string getType(const std::string& name, Error* err) const {
+    *err = Error("Not implemented");
+    return "";
+  }
 };
 
 class DummyEvaluator : public Evaluator {
@@ -135,7 +228,11 @@ public:
     return -1;
   }
   virtual void finish() {}
-  virtual void printStats(std::ostream&) {}
+  virtual void printStats(std::ostream&) const {}
+
+  // Evaluator interface
+protected:
+  std::string getTypeImpl() const;
 };
 /**
  * @brief evaluate AUC using colIdx-th column as prediction.
@@ -165,7 +262,7 @@ public:
 
   virtual real evalImp(std::vector<Argument>& arguments);
 
-  virtual void printStats(std::ostream& os) {
+  virtual void printStats(std::ostream& os) const {
     os << config_.name() << "=" << calcAuc();
   }
 
@@ -184,12 +281,19 @@ private:
 
   AucEvaluator() {}
 
-  inline static double trapezoidArea(double X1, double X2, double Y1,
+  inline static double trapezoidArea(double X1,
+                                     double X2,
+                                     double Y1,
                                      double Y2) {
     return (X1 > X2 ? (X1 - X2) : (X2 - X1)) * (Y1 + Y2) / 2.0;
   }
 
-  double calcAuc();
+  double calcAuc() const;
+
+  // Evaluator interface
+protected:
+  real getValueImpl() const;
+  std::string getTypeImpl() const;
 };
 
 /**
@@ -218,8 +322,14 @@ private:
   MatrixPtr pv_;
   std::vector<std::pair<real, int>> outputPair_;
 
-  double calcRankAuc(real* outputData, real* clickData, real* pvData,
+  double calcRankAuc(real* outputData,
+                     real* clickData,
+                     real* pvData,
                      size_t size);
+
+  // Evaluator interface
+protected:
+  std::string getTypeImpl() const;
 };
 /**
  * @brief precision, recall and f1 score Evaluator
@@ -244,7 +354,7 @@ public:
 
   virtual real evalImp(std::vector<Argument>& arguments);
 
-  virtual void printStats(std::ostream& os);
+  virtual void printStats(std::ostream& os) const;
 
   virtual void distributeEval(ParameterClient2* client);
 
@@ -269,10 +379,26 @@ private:
   IVectorPtr cpuLabel_;
   MatrixPtr cpuWeight_;
 
-  void calcStatsInfo(const MatrixPtr& output, const IVectorPtr& label,
+  struct PrintStatsInfo {
+    double precision;
+    double recall;
+    double f1;
+    double macroAvgPrecision;
+    double macroAvgRecall;
+    double macroAvgF1Score;
+    double microAvgPrecision;
+    double microAvgRecall;
+    double microAvgF1Score;
+  };
+
+  bool getStatsInfo(PrintStatsInfo* info) const;
+
+  void calcStatsInfo(const MatrixPtr& output,
+                     const IVectorPtr& label,
                      const MatrixPtr& weight);
 
-  void calcStatsInfoMulti(const MatrixPtr& output, const MatrixPtr& label,
+  void calcStatsInfoMulti(const MatrixPtr& output,
+                          const MatrixPtr& label,
                           const MatrixPtr& weight);
 
   inline static double calcPrecision(double TP, double FP) {
@@ -298,6 +424,15 @@ private:
       return 0;
     }
   }
+
+  mutable std::unordered_map<std::string, real> values_;
+
+  void storeLocalValues() const;
+  // Evaluator interface
+public:
+  void getNames(std::vector<std::string>* names);
+  real getValue(const std::string& name, Error* err) const;
+  std::string getType(const std::string& name, Error* err) const;
 };
 
 /*
@@ -333,15 +468,18 @@ public:
     }
   }
 
-  void stat(size_t start, size_t end, PredictionResult* answers, double& pos,
-            double& neg, double& spe);
+  void stat(size_t start,
+            size_t end,
+            PredictionResult* answers,
+            double& pos,
+            double& neg,
+            double& spe);
   void calc(std::vector<PredictionResult>& predictArray);
 
   virtual void finish() { calc(predictArray_); }
 
-  virtual void printStats(std::ostream& os) {
-    os << " pos/neg"
-       << "=" << pairArray_[0] / ((pairArray_[1] <= 0) ? 1.0 : pairArray_[1]);
+  virtual void printStats(std::ostream& os) const {
+    os << " pos/neg=" << this->getValueImpl();
   }
 
   virtual void distributeEval(ParameterClient2* client) {
@@ -357,6 +495,13 @@ private:
   IVectorPtr cpuLabel_;
   IVectorPtr cpuInfo_;
   MatrixPtr cpuWeight_;
+
+  // Evaluator interface
+protected:
+  real getValueImpl() const {
+    return pairArray_[0] / ((pairArray_[1] <= 0) ? 1.0 : pairArray_[1]);
+  }
+  std::string getTypeImpl() const;
 };
 
 }  // namespace paddle

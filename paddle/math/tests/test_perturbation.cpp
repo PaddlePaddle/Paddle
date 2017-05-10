@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@ limitations under the License. */
 
 #ifndef PADDLE_ONLY_CPU
 
-#include <cmath>
-#include <gtest/gtest.h>
-#include <vector>
 #include <cuda_runtime.h>
+#include <gtest/gtest.h>
+#include <cmath>
+#include <vector>
 #include "hl_cuda.h"
 #include "hl_perturbation_util.cuh"
 
@@ -37,7 +37,9 @@ protected:
 
   virtual void TearDown() {}
 
-  void allocateMem(real*& gpuAngle, real*& gpuScale, int*& gpuCenterR,
+  void allocateMem(real*& gpuAngle,
+                   real*& gpuScale,
+                   int*& gpuCenterR,
                    int*& gpuCenterC) {
     gpuAngle = (real*)hl_malloc_device(sizeof(real) * NUM_IMAGES);
     gpuScale = (real*)hl_malloc_device(sizeof(real) * NUM_IMAGES);
@@ -48,7 +50,8 @@ protected:
   }
 
   // Generate translation parameters for testing.
-  void generateTranslationParams(int*& gpuCenterR, int*& gpuCenterC,
+  void generateTranslationParams(int*& gpuCenterR,
+                                 int*& gpuCenterC,
                                  int imgSize) {
     int cpuCenterR[NUM_IMAGES * SAMPLING_RATE];
     int cpuCenterC[NUM_IMAGES * SAMPLING_RATE];
@@ -59,13 +62,13 @@ protected:
 
     gpuCenterR =
         (int*)hl_malloc_device(sizeof(int) * NUM_IMAGES * SAMPLING_RATE);
-    hl_memcpy_host2device(gpuCenterR, cpuCenterR,
-                          sizeof(int) * NUM_IMAGES * SAMPLING_RATE);
+    hl_memcpy_host2device(
+        gpuCenterR, cpuCenterR, sizeof(int) * NUM_IMAGES * SAMPLING_RATE);
 
     gpuCenterC =
         (int*)hl_malloc_device(sizeof(int) * NUM_IMAGES * SAMPLING_RATE);
-    hl_memcpy_host2device(gpuCenterC, cpuCenterC,
-                          sizeof(int) * NUM_IMAGES * SAMPLING_RATE);
+    hl_memcpy_host2device(
+        gpuCenterC, cpuCenterC, sizeof(int) * NUM_IMAGES * SAMPLING_RATE);
   }
 
   // Generate rotation parameters for testing.
@@ -84,8 +87,7 @@ protected:
       cpuScale[i] = static_cast<real>(TGT_SIZE - 2) / TGT_SIZE;
     }
     gpuScale = (real*)hl_malloc_device(sizeof(real) * NUM_IMAGES);
-    hl_memcpy_host2device(gpuScale, cpuScale,
-                          sizeof(real) * NUM_IMAGES);
+    hl_memcpy_host2device(gpuScale, cpuScale, sizeof(real) * NUM_IMAGES);
   }
 
   // Generate the test images, only the center regions are set to 1.
@@ -111,8 +113,7 @@ protected:
       }
     }
     gpuImages = (real*)hl_malloc_device(sizeof(real) * IMAGE_MEM_SIZE);
-    hl_memcpy_host2device(gpuImages, cpuImages,
-                          sizeof(real) * IMAGE_MEM_SIZE);
+    hl_memcpy_host2device(gpuImages, cpuImages, sizeof(real) * IMAGE_MEM_SIZE);
   }
 
   real* gpuImages_;
@@ -120,64 +121,99 @@ protected:
 
 // Random perturbation. Only to make sure the code does not break.
 TEST_F(PerturbationTest, random_perturb) {
-  real* gpuAngle, *gpuScaleRatio;
-  int* gpuCenterR, *gpuCenterC;
+  real *gpuAngle, *gpuScaleRatio;
+  int *gpuCenterR, *gpuCenterC;
   allocateMem(gpuAngle, gpuScaleRatio, gpuCenterR, gpuCenterC);
 
   real* targets = NULL;
   const int TARGET_MEM_SIZE =
       NUM_IMAGES * SAMPLING_RATE * TGT_SIZE * TGT_SIZE * CHANNELS;
   targets = (real*)hl_malloc_device(sizeof(real) * TARGET_MEM_SIZE);
-  hl_conv_random_disturb(gpuImages_, IMG_SIZE, TGT_SIZE, CHANNELS,
-                         NUM_IMAGES, 1.0, 1.0, SAMPLING_RATE, gpuAngle,
-                         gpuScaleRatio, gpuCenterR, gpuCenterC, 2, true,
+  hl_conv_random_disturb(gpuImages_,
+                         IMG_SIZE,
+                         TGT_SIZE,
+                         CHANNELS,
+                         NUM_IMAGES,
+                         1.0,
+                         1.0,
+                         SAMPLING_RATE,
+                         gpuAngle,
+                         gpuScaleRatio,
+                         gpuCenterR,
+                         gpuCenterC,
+                         2,
+                         true,
                          targets);
   real cpuTargets[TARGET_MEM_SIZE];
-  hl_memcpy_device2host(cpuTargets, targets,
-                        sizeof(real) * TARGET_MEM_SIZE);
+  hl_memcpy_device2host(cpuTargets, targets, sizeof(real) * TARGET_MEM_SIZE);
 }
 
 TEST_F(PerturbationTest, identity_perturb) {
-  real* gpuAngle, *gpuScaleRatio;
-  int* gpuCenterR, *gpuCenterC;
+  real *gpuAngle, *gpuScaleRatio;
+  int *gpuCenterR, *gpuCenterC;
   allocateMem(gpuAngle, gpuScaleRatio, gpuCenterR, gpuCenterC);
 
   real* targets = NULL;
   const int TARGET_MEM_SIZE =
       NUM_IMAGES * SAMPLING_RATE * TGT_SIZE * TGT_SIZE * CHANNELS;
   targets = (real*)hl_malloc_device(sizeof(real) * TARGET_MEM_SIZE);
-  hl_conv_random_disturb(gpuImages_, IMG_SIZE, TGT_SIZE, CHANNELS,
-                         NUM_IMAGES, 1.0, 1.0, SAMPLING_RATE, gpuAngle,
-                         gpuScaleRatio, gpuCenterR, gpuCenterC, 2, false,
+  hl_conv_random_disturb(gpuImages_,
+                         IMG_SIZE,
+                         TGT_SIZE,
+                         CHANNELS,
+                         NUM_IMAGES,
+                         1.0,
+                         1.0,
+                         SAMPLING_RATE,
+                         gpuAngle,
+                         gpuScaleRatio,
+                         gpuCenterR,
+                         gpuCenterC,
+                         2,
+                         false,
                          targets);
   real cpuTargets[TARGET_MEM_SIZE];
-  hl_memcpy_device2host(cpuTargets, targets,
-                        sizeof(real) * TARGET_MEM_SIZE);
+  hl_memcpy_device2host(cpuTargets, targets, sizeof(real) * TARGET_MEM_SIZE);
   for (int i = 0; i < TARGET_MEM_SIZE; ++i) {
     EXPECT_FLOAT_EQ(1.0, cpuTargets[i]);
   }
 }
 
 TEST_F(PerturbationTest, translation_test) {
-  real* gpuAngle, *gpuScaleRatio;
-  int* gpuCenterR, *gpuCenterC;
+  real *gpuAngle, *gpuScaleRatio;
+  int *gpuCenterR, *gpuCenterC;
   allocateMem(gpuAngle, gpuScaleRatio, gpuCenterR, gpuCenterC);
-  hl_generate_disturb_params(gpuAngle, gpuScaleRatio, gpuCenterR,
-                             gpuCenterC, NUM_IMAGES, IMG_SIZE, 0.0,
-                             0.0, SAMPLING_RATE, false);
+  hl_generate_disturb_params(gpuAngle,
+                             gpuScaleRatio,
+                             gpuCenterR,
+                             gpuCenterC,
+                             NUM_IMAGES,
+                             IMG_SIZE,
+                             0.0,
+                             0.0,
+                             SAMPLING_RATE,
+                             false);
   generateTranslationParams(gpuCenterR, gpuCenterC, IMG_SIZE);
 
   real* targets = NULL;
   const int TARGET_MEM_SIZE =
       NUM_IMAGES * SAMPLING_RATE * TGT_SIZE * TGT_SIZE * CHANNELS;
   targets = (real*)hl_malloc_device(sizeof(real) * TARGET_MEM_SIZE);
-  hl_conv_random_disturb_with_params(
-      gpuImages_, IMG_SIZE, TGT_SIZE, CHANNELS, NUM_IMAGES, SAMPLING_RATE,
-      gpuAngle, gpuScaleRatio, gpuCenterR, gpuCenterC, 2, targets);
+  hl_conv_random_disturb_with_params(gpuImages_,
+                                     IMG_SIZE,
+                                     TGT_SIZE,
+                                     CHANNELS,
+                                     NUM_IMAGES,
+                                     SAMPLING_RATE,
+                                     gpuAngle,
+                                     gpuScaleRatio,
+                                     gpuCenterR,
+                                     gpuCenterC,
+                                     2,
+                                     targets);
 
   real cpuTargets[TARGET_MEM_SIZE];
-  hl_memcpy_device2host(cpuTargets, targets,
-                        sizeof(real) * TARGET_MEM_SIZE);
+  hl_memcpy_device2host(cpuTargets, targets, sizeof(real) * TARGET_MEM_SIZE);
   for (int i = 0; i < SAMPLING_RATE * NUM_IMAGES; ++i) {
     for (int p = 0; p < TGT_SIZE * TGT_SIZE * CHANNELS; ++p) {
       const int offset = i * TGT_SIZE * TGT_SIZE * CHANNELS + p;
@@ -191,50 +227,80 @@ TEST_F(PerturbationTest, translation_test) {
 }
 
 TEST_F(PerturbationTest, rotation_test) {
-  real* gpuAngle, *gpuScaleRatio;
-  int* gpuCenterR, *gpuCenterC;
+  real *gpuAngle, *gpuScaleRatio;
+  int *gpuCenterR, *gpuCenterC;
   allocateMem(gpuAngle, gpuScaleRatio, gpuCenterR, gpuCenterC);
-  hl_generate_disturb_params(gpuAngle, gpuScaleRatio, gpuCenterR,
-                             gpuCenterC, NUM_IMAGES, IMG_SIZE, 0.0,
-                             0.0, SAMPLING_RATE, false);
+  hl_generate_disturb_params(gpuAngle,
+                             gpuScaleRatio,
+                             gpuCenterR,
+                             gpuCenterC,
+                             NUM_IMAGES,
+                             IMG_SIZE,
+                             0.0,
+                             0.0,
+                             SAMPLING_RATE,
+                             false);
   generateRotationParams(gpuAngle);
 
   real* targets = NULL;
   const int TARGET_MEM_SIZE =
       NUM_IMAGES * SAMPLING_RATE * TGT_SIZE * TGT_SIZE * CHANNELS;
   targets = (real*)hl_malloc_device(sizeof(real) * TARGET_MEM_SIZE);
-  hl_conv_random_disturb_with_params(
-      gpuImages_, IMG_SIZE, TGT_SIZE, CHANNELS, NUM_IMAGES, SAMPLING_RATE,
-      gpuAngle, gpuScaleRatio, gpuCenterR, gpuCenterC, 2, targets);
+  hl_conv_random_disturb_with_params(gpuImages_,
+                                     IMG_SIZE,
+                                     TGT_SIZE,
+                                     CHANNELS,
+                                     NUM_IMAGES,
+                                     SAMPLING_RATE,
+                                     gpuAngle,
+                                     gpuScaleRatio,
+                                     gpuCenterR,
+                                     gpuCenterC,
+                                     2,
+                                     targets);
 
   real cpuTargets[TARGET_MEM_SIZE];
-  hl_memcpy_device2host(cpuTargets, targets,
-                        sizeof(real) * TARGET_MEM_SIZE);
+  hl_memcpy_device2host(cpuTargets, targets, sizeof(real) * TARGET_MEM_SIZE);
   for (int i = 0; i < TARGET_MEM_SIZE; ++i) {
     EXPECT_FLOAT_EQ(1.0, cpuTargets[i]);
   }
 }
 
 TEST_F(PerturbationTest, scale_test) {
-  real* gpuAngle, *gpuScaleRatio;
-  int* gpuCenterR, *gpuCenterC;
+  real *gpuAngle, *gpuScaleRatio;
+  int *gpuCenterR, *gpuCenterC;
   allocateMem(gpuAngle, gpuScaleRatio, gpuCenterR, gpuCenterC);
-  hl_generate_disturb_params(gpuAngle, gpuScaleRatio, gpuCenterR,
-                             gpuCenterC, NUM_IMAGES, IMG_SIZE, 0.0,
-                             0.0, SAMPLING_RATE, false);
+  hl_generate_disturb_params(gpuAngle,
+                             gpuScaleRatio,
+                             gpuCenterR,
+                             gpuCenterC,
+                             NUM_IMAGES,
+                             IMG_SIZE,
+                             0.0,
+                             0.0,
+                             SAMPLING_RATE,
+                             false);
   generateScaleParams(gpuScaleRatio);
 
   real* targets = NULL;
   const int TARGET_MEM_SIZE =
       NUM_IMAGES * SAMPLING_RATE * TGT_SIZE * TGT_SIZE * CHANNELS;
   targets = (real*)hl_malloc_device(sizeof(real) * TARGET_MEM_SIZE);
-  hl_conv_random_disturb_with_params(
-      gpuImages_, IMG_SIZE, TGT_SIZE, CHANNELS, NUM_IMAGES, SAMPLING_RATE,
-      gpuAngle, gpuScaleRatio, gpuCenterR, gpuCenterC, 2, targets);
+  hl_conv_random_disturb_with_params(gpuImages_,
+                                     IMG_SIZE,
+                                     TGT_SIZE,
+                                     CHANNELS,
+                                     NUM_IMAGES,
+                                     SAMPLING_RATE,
+                                     gpuAngle,
+                                     gpuScaleRatio,
+                                     gpuCenterR,
+                                     gpuCenterC,
+                                     2,
+                                     targets);
 
   real cpuTargets[TARGET_MEM_SIZE];
-  hl_memcpy_device2host(cpuTargets, targets,
-                        sizeof(real) * TARGET_MEM_SIZE);
+  hl_memcpy_device2host(cpuTargets, targets, sizeof(real) * TARGET_MEM_SIZE);
   for (int i = 0; i < SAMPLING_RATE * NUM_IMAGES; ++i) {
     for (int p = 0; p < TGT_SIZE * TGT_SIZE * CHANNELS; ++p) {
       const int offset = i * TGT_SIZE * TGT_SIZE * CHANNELS + p;

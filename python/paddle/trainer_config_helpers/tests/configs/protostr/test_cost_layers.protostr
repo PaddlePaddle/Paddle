@@ -48,6 +48,20 @@ layers {
   norm_by_times: false
 }
 layers {
+  name: "__warp_ctc_layer_0__"
+  type: "warp_ctc"
+  size: 5001
+  active_type: ""
+  inputs {
+    input_layer_name: "input"
+  }
+  inputs {
+    input_layer_name: "labels"
+  }
+  norm_by_times: false
+  blank: 0
+}
+layers {
   name: "crf_label"
   type: "data"
   size: 4
@@ -225,9 +239,9 @@ parameters {
   name: "___crf_layer_0__.w0"
   size: 24
   initial_mean: 0.0
-  initial_std: 0.5
-  dims: 4
+  initial_std: 0.408248290464
   dims: 6
+  dims: 4
   initial_strategy: 0
   initial_smart: true
 }
@@ -244,6 +258,7 @@ input_layer_names: "xe-label"
 input_layer_names: "huber_probs"
 input_layer_names: "huber_label"
 output_layer_names: "__ctc_layer_0__"
+output_layer_names: "__warp_ctc_layer_0__"
 output_layer_names: "__crf_layer_0__"
 output_layer_names: "__rank_cost_0__"
 output_layer_names: "__lambda_cost_0__"
@@ -260,6 +275,7 @@ sub_models {
   layer_names: "xe-label"
   layer_names: "__fc_layer_0__"
   layer_names: "__ctc_layer_0__"
+  layer_names: "__warp_ctc_layer_0__"
   layer_names: "crf_label"
   layer_names: "__crf_layer_0__"
   layer_names: "left"
@@ -289,6 +305,7 @@ sub_models {
   input_layer_names: "huber_probs"
   input_layer_names: "huber_label"
   output_layer_names: "__ctc_layer_0__"
+  output_layer_names: "__warp_ctc_layer_0__"
   output_layer_names: "__crf_layer_0__"
   output_layer_names: "__rank_cost_0__"
   output_layer_names: "__lambda_cost_0__"

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #include "HierarchicalSigmoidLayer.h"
 #include "paddle/utils/Util.h"
@@ -61,10 +60,16 @@ void HierarchicalSigmoidLayer::forward(PassType passType) {
   int batchSize = getInputValue(0)->getHeight();
   int size = getSize();
   reserveOutput(batchSize, size);
-  Matrix::resizeOrCreate(preOutput_.value, batchSize, codeLength_,
-                         /* trans */ false, useGpu(deviceId_));
-  Matrix::resizeOrCreate(preOutput_.grad, batchSize, codeLength_,
-                         /* trans */ false, useGpu(deviceId_));
+  Matrix::resizeOrCreate(preOutput_.value,
+                         batchSize,
+                         codeLength_,
+                         /* trans */ false,
+                         useGpu(deviceId_));
+  Matrix::resizeOrCreate(preOutput_.grad,
+                         batchSize,
+                         codeLength_,
+                         /* trans */ false,
+                         useGpu(deviceId_));
 
   IVectorPtr label = getInput(*getLabelLayer()).ids;
 
@@ -76,16 +81,18 @@ void HierarchicalSigmoidLayer::forward(PassType passType) {
   }
   for (size_t i = 0; i < inputLayers_.size() - 1; ++i) {
     MatrixPtr input = getInputValue(i);
-    preOutput_.value->mulByBitCode(numClasses_, *label, *weights_[i]->getW(),
-                                   *input);
+    preOutput_.value->mulByBitCode(
+        numClasses_, *label, *weights_[i]->getW(), *input);
   }
   // keep consistent with the clipping in the following softrelu
   preOutput_.value->clip(-40.0, 40.0);
-  preOutput_.value->sumByBitCode(numClasses_, *label, *output_.value,
+  preOutput_.value->sumByBitCode(numClasses_,
+                                 *label,
+                                 *output_.value,
                                  -1);  // scaleSum
   preOutput_.value->softrelu(*preOutput_.value);
-  MatrixPtr sum = Matrix::create(batchSize,
-    1, /* trans= */ false, useGpu(deviceId_));
+  MatrixPtr sum =
+      Matrix::create(batchSize, 1, /* trans= */ false, useGpu(deviceId_));
   preOutput_.value->rowSum(*sum);
   output_.value->add(*sum);
 }
@@ -97,8 +104,8 @@ void HierarchicalSigmoidLayer::backward(const UpdateCallback& callback) {
   preOutput_.grad->subByBitCode(numClasses_, *label);
 
   if (biases_ && biases_->getWGrad()) {
-    preOutput_.grad->addByBitCodeBackward(numClasses_, *label,
-                                          *biases_->getWGrad());
+    preOutput_.grad->addByBitCodeBackward(
+        numClasses_, *label, *biases_->getWGrad());
 
     /* Increasing the number of gradient */
     biases_->getParameterPtr()->incUpdate(callback);

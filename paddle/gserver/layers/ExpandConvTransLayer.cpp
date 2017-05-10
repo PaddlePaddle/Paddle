@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,10 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
+#include "ExpandConvTransLayer.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
-#include "ExpandConvTransLayer.h"
 
 /* The implementation of the convTransLayer is basically a swap of forward and
  * backward of the original convLayer.
@@ -27,7 +26,7 @@ namespace paddle {
 REGISTER_LAYER(exconvt, ExpandConvTransLayer);
 
 bool ExpandConvTransLayer::init(const LayerMap &layerMap,
-                           const ParameterMap &parameterMap) {
+                                const ParameterMap &parameterMap) {
   /* Initialize the basic convolutional parent class */
   ExpandConvBaseLayer::init(layerMap, parameterMap);
 
@@ -87,6 +86,5 @@ void ExpandConvTransLayer::backward(const UpdateCallback &callback) {
     }
   }
 }
-
 
 }  // namespace paddle

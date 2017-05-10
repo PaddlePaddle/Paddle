@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,38 +15,106 @@
 import paddle.trainer.PyDataProvider2 as dp2
 import collections
 import swig_paddle
+import numpy
+import itertools
 
 __all__ = ['DataProviderConverter']
 
 
 class IScanner(object):
+    """
+    The scanner will scan Python object two passes, then convert it to Paddle's
+    argument.
+
+    In the first pass, `pre_scan` will be invoked by every data instance, and
+    then invoke `finish_pre_scan` to arguments. And the second pass do the same
+    thing except the functions changed to `scan`, `finish_scan`.
+
+    During the first pass, a scanner may count the shape of input matrix and
+    allocate memory for this argument. Then fill the data into this  argument
+    in second pass.
+    """
+
     def __init__(self, input_type, pos):
         self.input_type = input_type
-        assert isinstance(self.input_type, dp2.InputType)
+        if not isinstance(self.input_type, dp2.InputType):
+            raise ValueError("input type should be dataprovider2.InputType")
         self.pos = pos
+        # data_in_gpu is used to indicate whether to create argument on GPU
+        # or not in GPU mode. Now if using one thread (trainer_count=1),
+        # trainer uses NeuralNetwork which needs to create argument on GPU
+        # before calling forward function. So, set data_in_gpu to True.
+        # Otherwise, trainer uses MultiGradientMachine which will transfer
+        # data from CPU to GPU in the forward function, set data_in_gpu to
+        # False in this case.
+        self.data_in_gpu = swig_paddle.isUsingGpu(
+        ) and swig_paddle.getTrainerCount() == 1
+
+    def pre_scan(self, dat):
+        """
+        First pass scan method. During this method, the scanner could count the
+        data number, and get the total memory size this batch would use.
+
+        :param dat: The python object.
+        """
+        pass
+
+    def finish_pre_scan(self, argument):
+        """
+        Finish first scan pass. Allocate the memory.
+
+        :param argument: Output arguments object.
+        :type argument: swig_paddle.Arguments
+        :return:
+        """
+        pass
 
     def scan(self, dat):
+        """
+        Second pass scan method. Copy the data to arguments.
+
+        :param dat: The python object.
+        """
         pass
 
     def finish_scan(self, argument):
+        """
+        Finish second pass. Finalize the resources, etc.
+
+        :param argument: Output arguments object.
+        :type argument: swig_paddle.Arguments
+        """
         pass
 
 
 class DenseScanner(IScanner):
+    """
+    :type __mat__: numpy.ndarray
+    """
+
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
-        self.__mat__ = []
+        self.__mat__ = None
+        self.__height__ = 0
+
+    def pre_scan(self, dat):
+        self.__height__ += 1
+
+    def finish_pre_scan(self, argument):
+        self.__mat__ = numpy.ndarray(
+            shape=(self.__height__, self.input_type.dim), dtype=numpy.float32)
         self.__height__ = 0
 
     def scan(self, dat):
-        self.__mat__.extend(dat)
+        self.__mat__[self.__height__] = dat
         self.__height__ += 1
 
     def finish_scan(self, argument):
         assert isinstance(argument, swig_paddle.Arguments)
-        assert isinstance(self.input_type, dp2.InputType)
-        m = swig_paddle.Matrix.createDense(self.__mat__, self.__height__,
-                                           self.input_type.dim, False)
+        if self.__mat__.dtype != numpy.float32:
+            self.__mat__ = self.__mat__.astype(numpy.float32)
+        m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__, True,
+                                                    self.data_in_gpu)
         argument.setSlotValue(self.pos, m)
 
 
@@ -56,7 +124,6 @@ class SparseBinaryScanner(IScanner):
         self.__rows__ = [0]
         self.__cols__ = []
         self.__height__ = 0
-        self.__nnz__ = 0
         self.__value__ = []
 
     def scan(self, dat):
@@ -69,11 +136,13 @@ class SparseBinaryScanner(IScanner):
 
     def finish_scan(self, argument):
         assert isinstance(argument, swig_paddle.Arguments)
-        assert isinstance(self.input_type, dp2.InputType)
-        m = swig_paddle.Matrix.createSparse(self.__height__,
-                                            self.input_type.dim,
-                                            len(self.__cols__),
-                                            len(self.__value__) == 0)
+        m = swig_paddle.Matrix.createSparse(
+            self.__height__,
+            self.input_type.dim,
+            len(self.__cols__),
+            len(self.__value__) == 0,
+            False,  # trans
+            False)  # TODO supoort GPU
         assert isinstance(m, swig_paddle.Matrix)
         m.sparseCopyFrom(self.__rows__, self.__cols__, self.__value__)
         argument.setSlotValue(self.pos, m)
@@ -91,13 +160,22 @@ class SparseFloatScanner(SparseBinaryScanner):
 class IndexScanner(IScanner):
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
-        self.__ids__ = []
+        self.__ids__ = None
+        self.__idx__ = 0
+
+    def pre_scan(self, dat):
+        self.__idx__ += 1
+
+    def finish_pre_scan(self, argument):
+        self.__ids__ = [0] * self.__idx__
+        self.__idx__ = 0
 
     def scan(self, dat):
-        self.__ids__.append(dat)
+        self.__ids__[self.__idx__] = dat
+        self.__idx__ += 1
 
     def finish_scan(self, argument):
-        ids = swig_paddle.IVector.create(self.__ids__)
+        ids = swig_paddle.IVector.create(self.__ids__, self.data_in_gpu)
         assert isinstance(argument, swig_paddle.Arguments)
         argument.setSlotIds(self.pos, ids)
 
@@ -108,6 +186,13 @@ class SequenceScanner(IScanner):
         self.__seq__ = [0]
         self.__inner_scanner__ = inner_scanner
         self.__setter__ = setter
+
+    def pre_scan(self, dat):
+        for each in dat:
+            self.__inner_scanner__.pre_scan(each)
+
+    def finish_pre_scan(self, argument):
+        self.__inner_scanner__.finish_pre_scan(argument)
 
     def scan(self, dat):
         self.__seq__.append(self.__seq__[-1] + self.get_size(dat))
@@ -145,7 +230,14 @@ class DataProviderConverter(object):
         ]
 
         for each_sample in dat:
-            for each_step, scanner in zip(each_sample, scanners):
+            for each_step, scanner in itertools.izip(each_sample, scanners):
+                scanner.pre_scan(each_step)
+
+        for scanner in scanners:
+            scanner.finish_pre_scan(argument)
+
+        for each_sample in dat:
+            for each_step, scanner in itertools.izip(each_sample, scanners):
                 scanner.scan(each_step)
 
         for scanner in scanners:

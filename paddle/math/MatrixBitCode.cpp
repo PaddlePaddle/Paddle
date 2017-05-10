@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/Util.h"
 #include "Matrix.h"
 #include "hl_gpu.h"
+#include "paddle/utils/Logging.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 
@@ -80,8 +79,8 @@ private:
        op(tmat(i, j), vec(0, index(i, j)))
 */
 template <class CodeTable, class Op, class TMat, class Mat>
-static void addByBitCodeT(Op op, CodeTable codeTable, const IVector& codes,
-                          TMat& tmat, Mat& vec) {
+static void addByBitCodeT(
+    Op op, CodeTable codeTable, const IVector& codes, TMat& tmat, Mat& vec) {
   CHECK(!vec.useGpu());
 
   size_t numClasses = codeTable.size();
@@ -109,7 +108,8 @@ static void addByBitCodeT(Op op, CodeTable codeTable, const IVector& codes,
 /* For j < codeLength:
    this(i, j) += vec(0, index(i, j))
 */
-void CpuMatrix::addByBitCode(size_t numClasses, const IVector& codes,
+void CpuMatrix::addByBitCode(size_t numClasses,
+                             const IVector& codes,
                              const Matrix& vec) {
   auto op = [](real& t, real v) { t += v; };
   addByBitCodeT(op, SimpleCodeTable(numClasses), codes, *this, vec);
@@ -118,7 +118,8 @@ void CpuMatrix::addByBitCode(size_t numClasses, const IVector& codes,
 /* For j < codeLength:
    vec(0, index(i, j)) += this(i, j)
 */
-void CpuMatrix::addByBitCodeBackward(size_t numClasses, const IVector& codes,
+void CpuMatrix::addByBitCodeBackward(size_t numClasses,
+                                     const IVector& codes,
                                      Matrix& vec) {
   auto op = [](real t, real& v) { v += t; };
   addByBitCodeT(op, SimpleCodeTable(numClasses), codes, *this, vec);
@@ -129,10 +130,18 @@ void CpuMatrix::addByBitCodeBackward(size_t numClasses, const IVector& codes,
     for j < codeLength:
       op(tmat(i, j), mat.row(index(i, j)), input.row(i))
 */
-template <class Op, class CodeTable, class IVec, class TMat, class WMat,
+template <class Op,
+          class CodeTable,
+          class IVec,
+          class TMat,
+          class WMat,
           class InMat>
-void mulByBitCodeT(Op op, CodeTable codeTable, IVec& codes, TMat& tmat,
-                   WMat& weight, InMat& input) {
+void mulByBitCodeT(Op op,
+                   CodeTable codeTable,
+                   IVec& codes,
+                   TMat& tmat,
+                   WMat& weight,
+                   InMat& input) {
   CHECK(!tmat.useGpu() && !weight.useGpu() && !input.useGpu());
 
   size_t numClasses = codeTable.size();
@@ -161,10 +170,12 @@ void mulByBitCodeT(Op op, CodeTable codeTable, IVec& codes, TMat& tmat,
 /* For j < codeLength:
    this(i, j) += <weight.row(index(i, j)), input.row(i)>
 */
-void CpuMatrix::mulByBitCode(size_t numClasses, const IVector& codes,
-                             const Matrix& weight, const Matrix& input) {
-  auto op = [](real& t, const real* weightRow, const real* inputRow,
-               size_t inputDim) {
+void CpuMatrix::mulByBitCode(size_t numClasses,
+                             const IVector& codes,
+                             const Matrix& weight,
+                             const Matrix& input) {
+  auto op = [](
+      real& t, const real* weightRow, const real* inputRow, size_t inputDim) {
     real sum = 0;
     for (size_t k = 0; k < inputDim; ++k) {
       sum += weightRow[k] * inputRow[k];
@@ -179,14 +190,15 @@ void CpuMatrix::mulByBitCode(size_t numClasses, const IVector& codes,
    weight.row(index(i, j)) += this(i, j) * input.row(i)
 */
 void CpuMatrix::mulByBitCodeBackwardWeight(size_t numClasses,
-                                           const IVector& codes, Matrix& weight,
+                                           const IVector& codes,
+                                           Matrix& weight,
                                            const Matrix& input) {
-  auto op =
-      [](const real t, real* weightRow, const real* inputRow, size_t inputDim) {
-        for (size_t k = 0; k < inputDim; ++k) {
-          weightRow[k] += t * inputRow[k];
-        }
-      };
+  auto op = [](
+      const real t, real* weightRow, const real* inputRow, size_t inputDim) {
+    for (size_t k = 0; k < inputDim; ++k) {
+      weightRow[k] += t * inputRow[k];
+    }
+  };
 
   mulByBitCodeT(op, SimpleCodeTable(numClasses), codes, *this, weight, input);
 }
@@ -196,20 +208,24 @@ void CpuMatrix::mulByBitCodeBackwardWeight(size_t numClasses,
 */
 void CpuMatrix::mulByBitCodeBackwardError(size_t numClasses,
                                           const IVector& codes,
-                                          const Matrix& weight, Matrix& input) {
-  auto op =
-      [](const real t, const real* weightRow, real* inputRow, size_t inputDim) {
-        for (size_t k = 0; k < inputDim; ++k) {
-          inputRow[k] += t * weightRow[k];
-        }
-      };
+                                          const Matrix& weight,
+                                          Matrix& input) {
+  auto op = [](
+      const real t, const real* weightRow, real* inputRow, size_t inputDim) {
+    for (size_t k = 0; k < inputDim; ++k) {
+      inputRow[k] += t * weightRow[k];
+    }
+  };
 
   mulByBitCodeT(op, SimpleCodeTable(numClasses), codes, *this, weight, input);
 }
 
 template <class CodeTable>
-void sumByBitCodeT(CodeTable codeTable, IVector& codes, const CpuMatrix& tmat,
-                   Matrix& sum, real scaleSum) {
+void sumByBitCodeT(CodeTable codeTable,
+                   IVector& codes,
+                   const CpuMatrix& tmat,
+                   Matrix& sum,
+                   real scaleSum) {
   size_t maxCodeLength = codeTable.getMaxCodeLength();
   size_t numSamples = tmat.getHeight();
   size_t oWidth = tmat.getWidth();
@@ -237,7 +253,9 @@ void sumByBitCodeT(CodeTable codeTable, IVector& codes, const CpuMatrix& tmat,
 /* For j < codeLength:
    sum(i, 0) = \sum_j  bit(i, j) * this(i, j)
 */
-void CpuMatrix::sumByBitCode(size_t numClasses, IVector& codes, Matrix& sum,
+void CpuMatrix::sumByBitCode(size_t numClasses,
+                             IVector& codes,
+                             Matrix& sum,
                              real scaleSum) {
   sumByBitCodeT(SimpleCodeTable(numClasses), codes, *this, sum, scaleSum);
 }

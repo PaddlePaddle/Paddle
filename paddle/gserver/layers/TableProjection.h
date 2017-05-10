@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 
 #pragma once
 
@@ -34,7 +33,8 @@ namespace paddle {
  */
 class TableProjection : public Projection {
 public:
-  TableProjection(const ProjectionConfig& config, const ParameterPtr& parameter,
+  TableProjection(const ProjectionConfig& config,
+                  const ParameterPtr& parameter,
                   bool useGpu);
   /**
    * If use sparse row matrix as parameter, prefetch feature ids in input label.

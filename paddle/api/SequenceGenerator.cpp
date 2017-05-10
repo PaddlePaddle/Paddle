@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,15 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
+#include <algorithm>
+#include <iterator>
+#include <sstream>
+#include <vector>
 #include "PaddleAPI.h"
 #include "paddle/gserver/gradientmachines/GradientMachine.h"
 #include "paddle/parameter/Argument.h"
 #include "paddle/utils/Flags.h"
-#include <vector>
-#include <sstream>
-#include <algorithm>
-#include <iterator>
 
 // used to represent partial sequence
 struct Path {
@@ -42,8 +41,10 @@ struct Path {
 // position
 static void findNBest(paddle::GradientMachine* gradMachine,
                       std::vector<paddle::Argument>& inArgs,
-                      std::vector<Path>& finalPaths, size_t bos_id,
-                      size_t eos_id, size_t max_length) {
+                      std::vector<Path>& finalPaths,
+                      size_t bos_id,
+                      size_t eos_id,
+                      size_t max_length) {
   std::vector<Path> paths;
   Path emptyPath;
   paths.push_back(emptyPath);
@@ -166,7 +167,8 @@ public:
     if (id < getSize()) {
       Path& p = (*path_)[id];
       std::ostringstream sout;
-      std::transform(p.ids.begin(), p.ids.end(),
+      std::transform(p.ids.begin(),
+                     p.ids.end(),
                      std::ostream_iterator<std::string>(sout, split ? " " : ""),
                      [&](int id) { return (*dict_)[id]; });
       return sout.str();

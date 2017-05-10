@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/trainer/Trainer.h"
-#include "paddle/gserver/layers/DataLayer.h"
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/DataLayer.h"
+#include "paddle/trainer/Trainer.h"
 
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 using namespace std;  // NOLINT
 
 namespace paddle {
@@ -64,6 +64,9 @@ struct InputDef {
   size_t paraSize;
   ParaSparse sparse;
   bool isStatic;
+  std::vector<int> labelInitValue;
+  std::vector<int> labelSeqStartPositions;
+
   InputDef(InputType type, string nameIn, size_t dimIn, size_t sizeIn) {
     inputType = type;
     name = nameIn;
@@ -72,7 +75,27 @@ struct InputDef {
     sparse = {""};
     isStatic = false;
   }
-  InputDef(InputType type, string nameIn, size_t dimIn, size_t sizeIn,
+
+  InputDef(InputType type,
+           string nameIn,
+           size_t dimIn,
+           size_t sizeIn,
+           const std::vector<int>& labelInitValue,
+           const std::vector<int>& labelSeqStartPositions)
+      : labelInitValue(labelInitValue),
+        labelSeqStartPositions(labelSeqStartPositions) {
+    inputType = type;
+    name = nameIn;
+    dim = dimIn;
+    paraSize = sizeIn;
+    sparse = {""};
+    isStatic = false;
+  }
+
+  InputDef(InputType type,
+           string nameIn,
+           size_t dimIn,
+           size_t sizeIn,
            ParaSparse sparseIn) {
     inputType = type;
     name = nameIn;
@@ -98,11 +121,18 @@ struct TestConfig {
         testBatchState(false) {}
 };
 
-real getCostSum(ParameterPtr& parameter, CpuVector& cpuPara,
-                LayerPtr& testLayer, MatrixPtr weights = nullptr);
+real getCostSum(ParameterPtr& parameter,
+                CpuVector& cpuPara,
+                LayerPtr& testLayer,
+                MatrixPtr weights = nullptr);
 
-real getDiffAndPrint(real newCost1, real newCost2, real callbackCount,
-                     char fill, string testLayerName, string name, real step,
+real getDiffAndPrint(real newCost1,
+                     real newCost2,
+                     real callbackCount,
+                     char fill,
+                     string testLayerName,
+                     string name,
+                     real step,
                      real delta);
 
 /**
@@ -113,7 +143,8 @@ real getDiffAndPrint(real newCost1, real newCost2, real callbackCount,
  * @param dataLayers[in/out]   dataLayers
  * @param datas[in/out]        data of dataLayers
  */
-void testState(LayerPtr testLayer, vector<DataLayerPtr>& dataLayers,
+void testState(LayerPtr testLayer,
+               vector<DataLayerPtr>& dataLayers,
                vector<Argument>& datas);
 
 /**
@@ -124,7 +155,8 @@ void testState(LayerPtr testLayer, vector<DataLayerPtr>& dataLayers,
  * @param dataLayers[in/out]   dataLayers
  * @param datas[in/out]        data of dataLayers
  */
-void testBatchState(LayerPtr testLayer, vector<DataLayerPtr>& dataLayers,
+void testBatchState(LayerPtr testLayer,
+                    vector<DataLayerPtr>& dataLayers,
                     vector<Argument>& datas);
 
 /**
@@ -144,8 +176,10 @@ double genPerturbation(const real* oldGrad, real* newGrad, size_t dim);
 
 void initWeight(MatrixPtr& weights);
 
-void initBatchState(LayerPtr dataLayer, LayerPtr testLayer,
-                    LayerStatePtr state, bool useGpu);
+void initBatchState(LayerPtr dataLayer,
+                    LayerPtr testLayer,
+                    LayerStatePtr state,
+                    bool useGpu);
 
 /**
  * @brief initialize the dataLayer by its inputType
@@ -155,9 +189,13 @@ void initBatchState(LayerPtr dataLayer, LayerPtr testLayer,
  *        datas[out]          initialized data of dataLayers
  *        layerMap[out]       layerMap
  */
-void initDataLayer(TestConfig testConf, std::vector<DataLayerPtr>* dataLayers,
-                   vector<Argument>* datas, LayerMap* layerMap,
-                   string testLayerName, size_t batchSize, bool trans,
+void initDataLayer(TestConfig testConf,
+                   std::vector<DataLayerPtr>* dataLayers,
+                   vector<Argument>* datas,
+                   LayerMap* layerMap,
+                   string testLayerName,
+                   size_t batchSize,
+                   bool trans,
                    bool useGpu);
 
 /**
@@ -168,8 +206,10 @@ void initDataLayer(TestConfig testConf, std::vector<DataLayerPtr>* dataLayers,
  *        parameters[out]     parameters of testLayer
  *        testLayer[out]      testLayer
  */
-void initTestLayer(TestConfig testConf, LayerMap* layerMap,
-                   std::vector<ParameterPtr>* parameters, LayerPtr* testLayer);
+void initTestLayer(TestConfig testConf,
+                   LayerMap* layerMap,
+                   std::vector<ParameterPtr>* parameters,
+                   LayerPtr* testLayer);
 
 /**
  * @brief Test whether the layer's forward calculation is stable by adding
@@ -184,9 +224,13 @@ void initTestLayer(TestConfig testConf, LayerMap* layerMap,
  *        testLayer[in/out]    testLayer
  *        parameters[in/out]   parameters of testLayer
  */
-void testPerturbParameter(TestConfig testConf, const MatrixPtr weights,
-                          const LayerStatePtr state, real cost,
-                          real callbackCount, real* maxDiff, LayerPtr testLayer,
+void testPerturbParameter(TestConfig testConf,
+                          const MatrixPtr weights,
+                          const LayerStatePtr state,
+                          real cost,
+                          real callbackCount,
+                          real* maxDiff,
+                          LayerPtr testLayer,
                           std::vector<ParameterPtr>* parameters);
 
 /**
@@ -202,25 +246,44 @@ void testPerturbParameter(TestConfig testConf, const MatrixPtr weights,
  *        testLayer[in/out]    testLayer
  *        dataLayers[in/out]   dataLayers
  */
-void testPerturbInput(TestConfig testConf, const MatrixPtr weights,
-                      const LayerStatePtr state, real cost, real callbackCount,
-                      real* maxDiff, LayerPtr testLayer,
+void testPerturbInput(TestConfig testConf,
+                      const MatrixPtr weights,
+                      const LayerStatePtr state,
+                      real cost,
+                      real callbackCount,
+                      real* maxDiff,
+                      LayerPtr testLayer,
                       std::vector<DataLayerPtr> dataLayers);
 
-void testLayerGradKernel(TestConfig testConf, string testLayerName,
-                         size_t batchSize, bool trans, bool useGpu,
-                         bool useWeight = false, float epsilon = 0.02);
+void testLayerGradKernel(TestConfig testConf,
+                         string testLayerName,
+                         size_t batchSize,
+                         bool trans,
+                         bool useGpu,
+                         bool useWeight = false,
+                         float epsilon = 0.02);
 
-void testLayerGrad(TestConfig testConf, string testLayerName, size_t batchSize,
-                   bool trans, bool useGpu, bool useWeight = false,
+void testLayerGrad(TestConfig testConf,
+                   string testLayerName,
+                   size_t batchSize,
+                   bool trans,
+                   bool useGpu,
+                   bool useWeight = false,
                    float epsilon = 0.02);
 
-void testProjectionGrad(ProjectionConfig conf, InputType inputType,
-                        size_t parameterSize, size_t batchSize, bool useGpu,
-                        bool testState = false, int biasSize = 0,
+void testProjectionGrad(ProjectionConfig conf,
+                        InputType inputType,
+                        size_t parameterSize,
+                        size_t batchSize,
+                        bool useGpu,
+                        bool testState = false,
+                        int biasSize = 0,
                         bool sharedBias = false);
 
-void testOperatorGrad(TestConfig& config, OperatorConfig& operatorConf,
-                      size_t batchSize, bool useGpu, bool testState = false);
+void testOperatorGrad(TestConfig& config,
+                      OperatorConfig& operatorConf,
+                      size_t batchSize,
+                      bool useGpu,
+                      bool testState = false);
 
 }  //  namespace paddle

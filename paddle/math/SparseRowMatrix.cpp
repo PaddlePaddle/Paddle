@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,30 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "SparseRowMatrix.h"
 #include "CpuSparseMatrix.h"
 
-#include <cmath>
 #include <algorithm>
 
 #include "paddle/utils/Logging.h"
 
 #include "SIMDFunctions.h"
 
-#include "paddle/utils/Util.h"
 #include "paddle/utils/Thread.h"
-
-P_DEFINE_bool(allow_inefficient_sparse_update, false,
-              "Whether to allow inefficient sparse update");
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 
 const unsigned int SparseRowCpuMatrix::kUnusedId_ = -1U;
 
 void SparseRowCpuMatrix::init(size_t height, size_t width) {
-  // @TODO(yuyang18) Just remove this limit
-  CHECK(simd::vec_check(width)) << width;
   height_ = height;
   if (!indexDictHandle_) {
     indexDictHandle_.reset(new IndexDict);
@@ -45,7 +38,9 @@ void SparseRowCpuMatrix::init(size_t height, size_t width) {
   globalIndices_ = indexDictHandle_->globalIndices.data();
 }
 
-void SparseRowCpuMatrix::mul(CpuSparseMatrix* a, CpuMatrix* b, real scaleAB,
+void SparseRowCpuMatrix::mul(CpuSparseMatrix* a,
+                             CpuMatrix* b,
+                             real scaleAB,
                              real scaleT) {
   CpuMatrix::mul<CpuMatrix, SparseRowCpuMatrix>(a, b, this, scaleAB, scaleT);
 }
@@ -55,24 +50,25 @@ void SparseRowCpuMatrix::copyFrom(const real* src, size_t size) {
 }
 
 void SparseRowCpuMatrix::zeroMem() {
-  apply(
-    [](real* buf, size_t len) {
-      memset(buf, 0, sizeof(real) * len);
-    });
+  apply([](real* buf, size_t len) { memset(buf, 0, sizeof(real) * len); });
   clearRows();
 }
 
 void SparseRowCpuMatrix::applyL1Decay(real learningRate, real decayRate) {
   apply([=](real* buf, size_t len) {
-      CpuVector value(0, nullptr);
-      value.subVecFrom(buf, 0, len);
-      value.applyL1(learningRate, decayRate);
-    });
+    CpuVector value(0, nullptr);
+    value.subVecFrom(buf, 0, len);
+    value.applyL1(learningRate, decayRate);
+  });
 }
 
-void SparseRowCpuMatrix::sgdUpdate(BaseMatrix& value, IVector& t0,
-                                   real learningRate, int currentTime,
-                                   real decayRate, bool useL1, bool fini) {
+void SparseRowCpuMatrix::sgdUpdate(BaseMatrix& value,
+                                   IVector& t0,
+                                   real learningRate,
+                                   int currentTime,
+                                   real decayRate,
+                                   bool useL1,
+                                   bool fini) {
   std::vector<unsigned int>& localIndices = indexDictHandle_->localIndices;
 
   // t0 and value are vectors
@@ -124,7 +120,7 @@ void SparseRowCpuMatrix::sgdUpdate(BaseMatrix& value, IVector& t0,
       for (size_t j = 0; j < this->width_; ++j) {
         v[j] -= learningRate * g[j];
       }
-      simd::decayL1(v, v, learningRate*decayRate, this->width_);
+      simd::decayL1(v, v, learningRate * decayRate, this->width_);
 
       // state update to t+1
       t[0] = currentTime + 1;
@@ -173,8 +169,10 @@ void SparseRowCpuMatrix::sgdUpdate(BaseMatrix& value, IVector& t0,
   }
 }
 
-void SparseRowCpuMatrix::addTo(BaseMatrix& dest, std::vector<uint32_t>& ids,
-                               size_t tid, size_t numThreads) {
+void SparseRowCpuMatrix::addTo(BaseMatrix& dest,
+                               std::vector<uint32_t>& ids,
+                               size_t tid,
+                               size_t numThreads) {
   CHECK(!dest.useGpu_);
   CHECK_EQ(dest.height_ * dest.width_, this->height_ * this->width_);
 
@@ -182,14 +180,14 @@ void SparseRowCpuMatrix::addTo(BaseMatrix& dest, std::vector<uint32_t>& ids,
   for (size_t i = 0; i < localIndices.size(); ++i) {
     uint32_t id = localIndices[i];
     if (id % numThreads == tid) {
-      simd::addTo(dest.rowBuf(id), getLocalRow(i),
-                  this->width_);
+      simd::addTo(dest.rowBuf(id), getLocalRow(i), this->width_);
       ids.push_back(id);
     }
   }
 }
 
-void SparseRowCpuMatrix::addTo(SparseRowCpuMatrix& dest, size_t tid,
+void SparseRowCpuMatrix::addTo(SparseRowCpuMatrix& dest,
+                               size_t tid,
                                size_t numThreads) {
   CHECK(!dest.useGpu_);
   CHECK_EQ(dest.height_ * dest.width_, this->height_ * this->width_);
@@ -214,24 +212,28 @@ void SparseRowCpuMatrix::zeroMemThread(size_t tid, size_t numThreads) {
   }
 }
 
-void SparseAutoGrowRowCpuMatrix::mul(CpuSparseMatrix* a, CpuMatrix* b,
-                                     real scaleAB, real scaleT) {
-  CpuMatrix::mul<CpuMatrix, SparseAutoGrowRowCpuMatrix>(a, b, this, scaleAB,
-                                                        scaleT);
+void SparseAutoGrowRowCpuMatrix::mul(CpuSparseMatrix* a,
+                                     CpuMatrix* b,
+                                     real scaleAB,
+                                     real scaleT) {
+  CpuMatrix::mul<CpuMatrix, SparseAutoGrowRowCpuMatrix>(
+      a, b, this, scaleAB, scaleT);
 }
 
-void CacheRowCpuMatrix::mul(CpuSparseMatrix* a, CpuMatrix* b, real scaleAB,
+void CacheRowCpuMatrix::mul(CpuSparseMatrix* a,
+                            CpuMatrix* b,
+                            real scaleAB,
                             real scaleT) {
   CpuMatrix::mul<CpuMatrix, CacheRowCpuMatrix>(a, b, this, scaleAB, scaleT);
 }
 
 void SparsePrefetchRowCpuMatrix::addRows(const unsigned int* ids, size_t len) {
   std::vector<unsigned int>& localIndices = indexDictHandle_->localIndices;
-  for (size_t i = 0; i < len; i ++) {
+  for (size_t i = 0; i < len; i++) {
     CHECK_LT(*(ids + i), this->getHeight())
-      << "id:" << *(ids + i) << "Height:" << this->getHeight()
-      << "sparse id value exceeds the max input dimension, "
-      << "it could be caused invalid input data samples";
+        << "id:" << *(ids + i) << "Height:" << this->getHeight()
+        << "sparse id value exceeds the max input dimension, "
+        << "it could be caused invalid input data samples";
   }
   localIndices.insert(localIndices.end(), ids, ids + len);
 }
@@ -252,9 +254,9 @@ void SparsePrefetchRowCpuMatrix::addRows(IVectorPtr ids) {
 
     unsigned int id = (unsigned int)index[i];
     CHECK_LT(id, this->getHeight())
-      << "id:" << id << "Height:" << this->getHeight()
-      << "sparse id value exceeds the max input dimension, "
-      << "it could be caused invalid input data samples";
+        << "id:" << id << "Height:" << this->getHeight()
+        << "sparse id value exceeds the max input dimension, "
+        << "it could be caused invalid input data samples";
     localIndices.push_back(id);
   }
 }

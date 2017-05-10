@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,19 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "ProtoDataProvider.h"
-#include "paddle/utils/Util.h"
-#include "paddle/utils/StringUtil.h"
 #include <algorithm>
 #include <fstream>
 #include <istream>
+#include "paddle/utils/StringUtil.h"
+#include "paddle/utils/Util.h"
 
-#include "paddle/utils/Logging.h"
 #include "DataProviderGroup.h"
+#include "paddle/utils/Logging.h"
 
-P_DEFINE_double(memory_threshold_on_load_data, 1.0,
-                "stop loading data when memory is not sufficient");
+DEFINE_double(memory_threshold_on_load_data,
+              1.0,
+              "stop loading data when memory is not sufficient");
 
 namespace paddle {
 
@@ -32,7 +32,8 @@ REGISTER_DATA_PROVIDER(proto_group, DataProviderGroup<ProtoDataProvider>);
 REGISTER_DATA_PROVIDER(proto_sequence_group,
                        DataProviderGroup<ProtoSequenceDataProvider>);
 
-ProtoDataProvider::ProtoDataProvider(const DataConfig& config, bool useGpu,
+ProtoDataProvider::ProtoDataProvider(const DataConfig& config,
+                                     bool useGpu,
                                      bool loadDataAll)
     : DataProvider(config, useGpu), sampleNums_(0), currentSequenceIndex_(0) {
   if (loadDataAll) {
@@ -279,7 +280,8 @@ void ProtoDataProvider::fillSlots(const DataSample& sample) {
         }
         slot.sparseNonValueData.resize(slot.indices.back() + slotSize);
         const unsigned int* ids = sample.vector_slots(i).ids().data();
-        memcpy(slot.sparseNonValueData.data() + slot.indices.back(), ids,
+        memcpy(slot.sparseNonValueData.data() + slot.indices.back(),
+               ids,
                sizeof(*ids) * slotSize);
         slot.indices.push_back(slot.indices.back() + slotSize);
         if (subSlotSize) {
@@ -318,10 +320,11 @@ void ProtoDataProvider::fillSlots(const DataSample& sample) {
         slot.varDenseData[oldSize].data.resize(varDim);
         const float* values = sample.vector_slots(i).values().data();
 #ifdef PADDLE_TYPE_DOUBLE
-        std::copy(values, values + varDim,
-                  slot.varDenseData[oldSize].data.data());
+        std::copy(
+            values, values + varDim, slot.varDenseData[oldSize].data.data());
 #else
-        memcpy(slot.varDenseData[oldSize].data.data(), values,
+        memcpy(slot.varDenseData[oldSize].data.data(),
+               values,
                sizeof(real) * varDim);
 #endif
         slot.varDenseData[oldSize].dims.resize(
@@ -374,8 +377,9 @@ void ProtoDataProvider::reset() {
 }
 
 void ProtoDataProvider::shuffle() {
-  std::shuffle(shuffledSequenceIds_.begin(), shuffledSequenceIds_.end(),
-      ThreadLocalRandomEngine::get());
+  std::shuffle(shuffledSequenceIds_.begin(),
+               shuffledSequenceIds_.end(),
+               ThreadLocalRandomEngine::get());
 }
 
 /*
@@ -502,7 +506,8 @@ int64_t ProtoDataProvider::getNextBatchInternal(int64_t size,
 
   if (!iidData()) {
     ICpuGpuVector::resizeOrCreate(cpuArguments[0].sequenceStartPositions,
-                                   numSequences + 1, /* useGpu= */ false);
+                                  numSequences + 1,
+                                  /* useGpu= */ false);
     int* buf = cpuArguments[0].sequenceStartPositions->getMutableData(false);
     int pos = 0;
     int i = 0;
@@ -530,7 +535,9 @@ int64_t ProtoDataProvider::getNextBatchInternal(int64_t size,
 
     switch (slotType) {
       case SlotDef::VECTOR_DENSE: {
-        Matrix::resizeOrCreate(cpuArguments[slot].value, size, dim,
+        Matrix::resizeOrCreate(cpuArguments[slot].value,
+                               size,
+                               dim,
                                false,   // trans = false
                                false);  // useGpu = false
         real* buf = cpuArguments[slot].value->getData();
@@ -543,20 +550,28 @@ int64_t ProtoDataProvider::getNextBatchInternal(int64_t size,
       }
       case SlotDef::VECTOR_SPARSE_NON_VALUE: {
         if (!(cpuArguments[slot].value)) {
-          cpuArguments[slot].value = Matrix::createSparseMatrix(
-              size, dim, size /*DEFAULT_AVG_WIDTH = 1*/, NO_VALUE, SPARSE_CSR,
-              false, useGpu_);
+          cpuArguments[slot].value =
+              Matrix::createSparseMatrix(size,
+                                         dim,
+                                         size /*DEFAULT_AVG_WIDTH = 1*/,
+                                         NO_VALUE,
+                                         SPARSE_CSR,
+                                         false,
+                                         useGpu_);
         }
         auto mat = cpuArguments[slot].value;
         mat->resize(size, dim);
         if (std::dynamic_pointer_cast<GpuSparseMatrix>(mat)) {
-          std::dynamic_pointer_cast<GpuSparseMatrix>(mat)
-              ->copyFrom(dataPos.data(), slots_[slot].indices.data(),
-                         slots_[slot].sparseNonValueData.data(), HPPL_STREAM_1);
+          std::dynamic_pointer_cast<GpuSparseMatrix>(mat)->copyFrom(
+              dataPos.data(),
+              slots_[slot].indices.data(),
+              slots_[slot].sparseNonValueData.data(),
+              HPPL_STREAM_1);
         } else if (std::dynamic_pointer_cast<CpuSparseMatrix>(mat)) {
-          std::dynamic_pointer_cast<CpuSparseMatrix>(mat)
-              ->copyFrom(dataPos.data(), slots_[slot].indices.data(),
-                         slots_[slot].sparseNonValueData.data());
+          std::dynamic_pointer_cast<CpuSparseMatrix>(mat)->copyFrom(
+              dataPos.data(),
+              slots_[slot].indices.data(),
+              slots_[slot].sparseNonValueData.data());
         } else {
           LOG(FATAL) << "Not Supported";
         }
@@ -571,27 +586,36 @@ int64_t ProtoDataProvider::getNextBatchInternal(int64_t size,
       }
       case SlotDef::VECTOR_SPARSE_VALUE: {
         if (!(cpuArguments[slot].value)) {
-          cpuArguments[slot].value = Matrix::createSparseMatrix(
-              size, dim, size /*DEFAULT_AVG_WIDTH = 1*/, FLOAT_VALUE,
-              SPARSE_CSR, false, useGpu_);
+          cpuArguments[slot].value =
+              Matrix::createSparseMatrix(size,
+                                         dim,
+                                         size /*DEFAULT_AVG_WIDTH = 1*/,
+                                         FLOAT_VALUE,
+                                         SPARSE_CSR,
+                                         false,
+                                         useGpu_);
         }
         auto mat = cpuArguments[slot].value;
         mat->resize(size, dim);
         if (std::dynamic_pointer_cast<GpuSparseMatrix>(mat)) {
           std::dynamic_pointer_cast<GpuSparseMatrix>(mat)->copyFrom(
-              dataPos.data(), slots_[slot].indices.data(),
-              slots_[slot].sparseFloatValueData.data(), HPPL_STREAM_1);
+              dataPos.data(),
+              slots_[slot].indices.data(),
+              slots_[slot].sparseFloatValueData.data(),
+              HPPL_STREAM_1);
         } else if (std::dynamic_pointer_cast<CpuSparseMatrix>(mat)) {
-          std::dynamic_pointer_cast<CpuSparseMatrix>(mat)
-              ->copyFrom(dataPos.data(), slots_[slot].indices.data(),
-                         slots_[slot].sparseFloatValueData.data());
+          std::dynamic_pointer_cast<CpuSparseMatrix>(mat)->copyFrom(
+              dataPos.data(),
+              slots_[slot].indices.data(),
+              slots_[slot].sparseFloatValueData.data());
         } else {
           LOG(FATAL) << "Not Supported";
         }
         break;
       }
       case SlotDef::INDEX: {
-        IVector::resizeOrCreate(cpuArguments[slot].ids, size,
+        IVector::resizeOrCreate(cpuArguments[slot].ids,
+                                size,
                                 /*  useGpu= */ false);
         int* buf = cpuArguments[slot].ids->getData();
         for (int i = 0; i < size; ++i) {
@@ -621,7 +645,9 @@ int64_t ProtoDataProvider::getNextBatchInternal(int64_t size,
         if (oldWidth < height) {
           totalDim = width * height * depth;
         }
-        Matrix::resizeOrCreate(cpuArguments[slot].value, size, totalDim,
+        Matrix::resizeOrCreate(cpuArguments[slot].value,
+                               size,
+                               totalDim,
                                false,   // trans = false
                                false);  // useGpu = false
         real* buf = cpuArguments[slot].value->getData();
@@ -637,13 +663,13 @@ int64_t ProtoDataProvider::getNextBatchInternal(int64_t size,
             }
           }
         } else {
-          memcpy(buf, slots_[slot].varDenseData[dataPos[0]].data.data(),
+          memcpy(buf,
+                 slots_[slot].varDenseData[dataPos[0]].data.data(),
                  sizeof(real) * totalDim);
         }
-        ICpuGpuVector::resizeOrCreate(
-            cpuArguments[slot].sequenceStartPositions,
-            size + 1, /* size == 1 currently */
-            /* useGpu= */ false);
+        ICpuGpuVector::resizeOrCreate(cpuArguments[slot].sequenceStartPositions,
+                                      size + 1, /* size == 1 currently */
+                                      /* useGpu= */ false);
         int* bufStarts =
             cpuArguments[slot].sequenceStartPositions->getMutableData(false);
         bufStarts[0] = 0;
@@ -653,16 +679,17 @@ int64_t ProtoDataProvider::getNextBatchInternal(int64_t size,
       case SlotDef::VAR_MDIM_INDEX: {
         CHECK_EQ(size, 1);
         size_t totalDim = slots_[slot].varIndices[dataPos[0]].size();
-        IVector::resizeOrCreate(cpuArguments[slot].ids, totalDim,
+        IVector::resizeOrCreate(cpuArguments[slot].ids,
+                                totalDim,
                                 /*  useGpu= */ false);
         int* buf = cpuArguments[slot].ids->getData();
-        memcpy(buf, slots_[slot].varIndices[dataPos[0]].data(),
+        memcpy(buf,
+               slots_[slot].varIndices[dataPos[0]].data(),
                sizeof(int) * totalDim);
 
-        ICpuGpuVector::resizeOrCreate(
-            cpuArguments[slot].sequenceStartPositions,
-            size + 1, /* size == 1 currently */
-            /* useGpu= */ false);
+        ICpuGpuVector::resizeOrCreate(cpuArguments[slot].sequenceStartPositions,
+                                      size + 1, /* size == 1 currently */
+                                      /* useGpu= */ false);
         int* bufStarts =
             cpuArguments[slot].sequenceStartPositions->getMutableData(false);
         bufStarts[0] = 0;
@@ -700,8 +727,8 @@ int64_t ProtoDataProvider::getNextBatchInternal(int64_t size,
         gpuArguments[i].sequenceStartPositions =
             cpuArguments[i].sequenceStartPositions;
       } else {
-        gpuArguments[i].resizeAndCopyFrom(cpuArguments[i], useGpu_,
-                                          HPPL_STREAM_1);
+        gpuArguments[i].resizeAndCopyFrom(
+            cpuArguments[i], useGpu_, HPPL_STREAM_1);
       }
     }
     hl_stream_synchronize(HPPL_STREAM_1);
@@ -746,10 +773,9 @@ int64_t ProtoSequenceDataProvider::getNextBatchInternal(int64_t size,
     sampleLoop(op, size);
 
     // current slot: sequenceStartPositions
-    ICpuGpuVector::resizeOrCreate(
-        cpuArguments[slot].sequenceStartPositions,
-        size + 1,
-        /* useGpu= */ false);
+    ICpuGpuVector::resizeOrCreate(cpuArguments[slot].sequenceStartPositions,
+                                  size + 1,
+                                  /* useGpu= */ false);
 
     switch (slotType) {
       case SlotDef::VECTOR_SPARSE_VALUE:
@@ -821,10 +847,10 @@ int64_t ProtoSequenceDataProvider::getNextBatchInternal(int64_t size,
           };
           int subSize = subSampleLoop(op, size, slot);
           ICpuGpuVector::resizeOrCreate(
-              cpuArguments[slot].subSequenceStartPositions, subSize + 1,
-              false);
+              cpuArguments[slot].subSequenceStartPositions, subSize + 1, false);
           int* currPosOfArgumentSubSeqStart =
-            cpuArguments[slot].subSequenceStartPositions->getMutableData(false);
+              cpuArguments[slot].subSequenceStartPositions->getMutableData(
+                  false);
           int64_t* subSeqs = dataSubPos.data();
           int64_t* subIndexs = slots_[slot].subIndices.data();
           int allSubSequenceLength = 0;
@@ -849,7 +875,8 @@ int64_t ProtoSequenceDataProvider::getNextBatchInternal(int64_t size,
       }
       case SlotDef::INDEX: {
         // label slot
-        IVector::resizeOrCreate(cpuArguments[slot].ids, size,
+        IVector::resizeOrCreate(cpuArguments[slot].ids,
+                                size,
                                 /* useGpu= */ false);
         // fill labels
         int* buf = cpuArguments[slot].ids->getData();
@@ -863,7 +890,9 @@ int64_t ProtoSequenceDataProvider::getNextBatchInternal(int64_t size,
       case SlotDef::VECTOR_DENSE: {
         // copy values
         size_t dim = header_.slot_defs(slot).dim();
-        Matrix::resizeOrCreate(cpuArguments[slot].value, size, dim,
+        Matrix::resizeOrCreate(cpuArguments[slot].value,
+                               size,
+                               dim,
                                false,   // trans = false
                                false);  // useGpu = false
         real* buf = cpuArguments[slot].value->getData();
@@ -887,8 +916,8 @@ int64_t ProtoSequenceDataProvider::getNextBatchInternal(int64_t size,
     gpuArguments.resize(cpuArguments.size());
     gpuBatch.setSize(size);
     for (size_t i = 0; i < cpuArguments.size(); ++i) {
-      gpuArguments[i].resizeAndCopyFrom(cpuArguments[i], useGpu_,
-                                        HPPL_STREAM_1);
+      gpuArguments[i].resizeAndCopyFrom(
+          cpuArguments[i], useGpu_, HPPL_STREAM_1);
     }
     hl_stream_synchronize(HPPL_STREAM_1);
     *batch = gpuBatch;

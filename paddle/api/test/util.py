@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,9 @@ def doubleEqual(a, b):
 
 def __readFromFile():
     for i in xrange(10002):
-        yield np.random.rand(784), random.randint(0, 9)
+        label = np.random.randint(0, 9)
+        sample = np.random.rand(784) + 0.1 * label
+        yield sample, label
 
 
 def loadMNISTTrainData(batch_size=100):
