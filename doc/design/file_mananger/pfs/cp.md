@@ -19,23 +19,23 @@ cp - copy files and directories
 - The following command copies a single file to pfs
 
 ```
-paddle pfs cp ./text1.txt pfs://mydir/text1.txt
+paddle pfs cp ./text1.txt /pfs/mydir/text1.txt
 ```
 
 Output
 
 ```
-upload ./text1.txt to pfs://mydir/text1.txt
+upload ./text1.txt to /pfs/mydir/text1.txt
 ```
 
 - The following command copies pfs file to a local file
 
 ```
-paddle pfs cp pfs://mydir/text1.txt ./text1.txt
+paddle pfs cp /pfs/mydir/text1.txt ./text1.txt
 ```
 
 Output
 
 ```
-download pfs://mydir/text1.txt to ./text1.txt
+download /pfs/mydir/text1.txt to ./text1.txt
 ```

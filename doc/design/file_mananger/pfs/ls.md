@@ -18,7 +18,7 @@ ls - list directory contents or a file attributes
 - The following command lists a single file
 
 ```
-paddle pfs ls pfs://mydir/text1.txt
+paddle pfs ls /pfs/mydir/text1.txt
 ```
 
 Output
@@ -30,7 +30,7 @@ Output
 - The following command lists directory contents
 
 ```
-paddle pfs ls  pfs://mydir
+paddle pfs ls  /pfs/mydir
 ```
 
 Output

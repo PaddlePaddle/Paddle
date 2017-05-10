@@ -9,11 +9,11 @@ Create the pfs directory(ies), if they do not already exist. And create intermed
 
 # Examples
 ```
-paddle pfs mkdir pfs://mydir1
+paddle pfs mkdir /pfs/mydir1
 ```
 
 Output
 
 ```
-make directory pfs://mydir1
+make directory /pfs/mydir1
 ```

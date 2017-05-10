@@ -1,57 +1,51 @@
 # FileManager设计文档
-## 名词解释
-- PFS：是Paddle cloud File System的简称。与之相对的是Local File System。
-- FileServer：接收用户管理文件命令的服务端
-- FileManger：用户管理自己自己在PFS文件上的系统称为FileManager
-- CephFS：是个POSIX 兼容的文件系统，它使用 Ceph 存储集群来存储数据.
-- Chunk：逻辑划分文件的一个单位，用于文件分块上传或者下载。
-- Ingress：Layer 7 Load Balancer
-
 ## 目标
-在本文档中，我们设计说明了用户上传、下载、管理自己在PaddlePaddle Cloud上的文件所涉及到的模块和流程。架构图如下所示：
+在本文档中，我们设计说明了名为FileManager系统，方便用户管理存放到PaddlePaddle Cloud上的文件。   
+主要功能包括：
 
-<image src=./src/filemanager.png width=8900>
+- 提供常用的命令行文件管理命令管理文件
+	- 支持的命令在[Here]	(./pfs/pfs.md)
+- 支持大文件的断点上传、下载  
 
+## 名词解释
+- PFS：是Paddlepaddle cloud File System的简称，是对用户文件存储空间的抽象，与之相对的是Local File System。目前我们用CephFS来搭建。
+- [CephFS](http://docs.ceph.com/docs/master/cephfs/)：一个POSIX兼容的文件系统。
+- Chunk：逻辑划上文件分块的单位。
+- [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)：提供七层协议的反向代理、基于粘性会话的负载均衡。
+- CA：certificate authority<sup>[tls](#tls)</sup>
+- CRT：CA signed certificate<sup>[tls](#tls)</sup>
+- Key：用户私钥<sup>[tls](#tls)</sup>
 
+## 模块
 
-## PFS Client
-- 提供用户管理Cloud文件的命令
-- 用Golang写，可以跨平台执行
+### 架构图
+<image src=./src/filemanager.png width=900>
 
-命令的详细内容看[Here](./pfs/pfs.md)
+### PFSClient
+- 功能： 详细的内容看[Here](./pfs/pfs.md)
+	- 提供用户管理文件的命令
+	- 用Golang写，可以跨平台执行
 
-
+- 双向验证   
+	PFSClient需要和Ingress之间做双向验证<sup>[tls](#tls)</sup>，所有用户需要首先在`cloud.paddlepaddle.org`上注册一下，申请用户空间，并且把系统生成的Key、CRT、CA下载到本地，然后才能使用PFSClient。
+	
 ### Ingress
-- 在kubernets中运行
-- 做HTTP转发、负载均衡
-	- 注意配置session保持，以便来自一个用户的访问可以定向到一个固定的机器上，减少冲突写的机会。
+- 功能：  
+	提供七层协议的反向代理、基于粘性会话的负载均衡功能。
+	
+- 透传用户身份的办法  
+	Ingress需要把PFSClient的身份头传给FileServer，配置的方法参考[Here](http://www.integralist.co.uk/posts/clientcertauth.html#3)
 
 
-## FileServer
-功能说明:  
-- goRPC写的HTTPServer  
-- 响应外部的REST API的请求  
-- 在kubernetes中运行  
-- [RESTAPI](./RESTAPI.md)接口
+### FileServer
+FileServer是一个用GoRPC写的HTTPServer，提供[RESTful API](./RESTAPI.md)接口，接收处理PFSClient端的文件管理请求，并且把结果返回PFSClient端。
 
-## 文件传输
-### 文件权限
-- 每一个用户在Cloud注册后可以申请分配用户空间，系统默认会在CephFS上分配一个固定大小（比如初始10G）的、有所有权限的volume，对用户而言就是自己的`home`目录。用户彼此之间的数据是隔离的、无法访问的。用户的空间大小第一期也不允许扩大。
-- 公共数据集合放到一个单独的volume下，对所有外部用户只读。由于其被读取的可能比较频繁，需要提高其备份数，防止成为热点文件。
-
-### 用户认证
-身份的认证来自于用户或者程序是否有crt标识身份，以及是否有可信的CA确认这个身份证是否有效。我们这里描述的crt涉及到两个部分，一个是Client端程序访问FileServer的crt，不妨称之为Client crt；另外一个是FileServer访问CephFS的crt，不妨称之为CephFS crt。
-
-- Client和FileServer相互认证的办法   
-`cloud.paddlepaddle.org`需要有自己的CA，FileServer和注册用户也要为其生成各自的私钥(key)、crt。这样用户把CA、自己的key和crt下载到本地后，Client程序可以用之和FileServer可以做相互的认证。
-
-- CephFS验证FileServer的身份的方法  
-	CephFS crt只有一个，也就是admin crt，拥有所有volume的读写权限。  FileServer从Client crt提取Client的身份（username），限制其可以操作的volume。 
+## 大文件传输优化
 
 ### 分块文件上传
-用户文件可能是比较大的，上传到Cloud或者下载到本地的时间可能比较长，而且在传输的过程中也可能出现网络不稳定的情况。为了应对以上的问题，我们提出了chunk的概念，一个chunk由所在的文件偏移、数据、数据长度及校验值组成。文件数据内容的上传和下载都是都过chunk的操作来实现的。由于chunk比较小（默认256K），完成一个传输动作完成的时间也比较短，不容易出错。
+用户文件可能是比较大的，上传到Cloud或者下载到本地的时间可能比较长，而且在传输的过程中也可能出现网络不稳定的情况。为了应对以上的问题，我们提出了Chunk的概念，一个Chunk由所在的文件偏移、数据、数据长度及校验值组成。文件数据内容的上传和下载都是都过Chunk的操作来实现的。由于Chunk比较小（默认256K），完成一个传输动作完成的时间也比较短，不容易出错。PFSClient在传输完毕最后一个Chunk的时候检查desttination文件的MD5值是否和source文件一致。
 
-一个典型的chunk如下所示：
+一个典型的Chunk如下所示：
 
 ```
 type Chunk struct {
@@ -62,22 +56,17 @@ type Chunk struct {
 }
 ```  
 
-### 文件传输的优化
-文件传输的的关键在于需要Client端对比source和destination的文件chunks的checkSum是否保持一致，不一致的由Client Get或者Post chunk完成。藉由上述的方法完成断点的数据传输。 upload文件时，由于一个文件可以是多个FileServer可写的，存在冲突的机会，需要Client端在Post最后一个chunk的时候检查dest文件的MD5值是否和本地文件一致。
+### 生成sparse文件
+当destination文件不存在或者大小和source文件不一致时，可以用[Fallocate](https://golang.org/pkg/syscall/#Fallocate)生成sparse文件，然后就可以并发写入多个Chunk。
 
-- 优化的方法:  
-
-	- dst文件不存在时，可以没有Get的过程，只有Post。
-
-- 小的技巧：
-
-	- 可以用[Fallocate](https://golang.org/pkg/syscall/#Fallocate)生成sparse文件，让dst和src文件保持相同的大小。不同位置的chunk可以同时写入。
+### 覆盖不一致的部分
+文件传输的的关键在于需要PFSClient端对比source和destination的文件Chunks的checksum是否保持一致，不一致的由PFSClient下载或者传输Chunk完成。这样已经传输成功的部分就不用重新传输了。
 
 
 ## 框架生成
 用[swagger-api](https://github.com/swagger-api/swagger-codegen)生成Client和FileServer的框架部分，以便我们可以把更多的精力放到逻辑本身上。
 
 ## 参考文档
-- [TLS complete guide](https://github.com/k8sp/tls/blob/master/README.md)
+- <a name=tls></a>[TLS complete guide](https://github.com/k8sp/tls/blob/master/tls.md)
 - [aws.s3](http://docs.aws.amazon.com/cli/latest/reference/s3/)
 - [linux man document](https://linux.die.net/man/)

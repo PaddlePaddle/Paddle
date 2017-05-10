@@ -28,7 +28,7 @@ paddle [options] pfs <subcommand> [parameters]
 
 ## Path Arguments
 When using a command, we need to specify path arguments. There are two path argument type: `localpath` and `pfspath`.  
-A `pfspath` begin with `pfs://`, eg: `pfs://mydir/text1.txt`.
+A `pfspath` begin with `/pfs`, eg: `/pfs/mydir/text1.txt`.
 
 ## order of Path Arguments
 Commonly, if there are two path arguments. The first is the source, and the second is the destination.

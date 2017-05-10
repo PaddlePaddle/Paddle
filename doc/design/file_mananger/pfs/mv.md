@@ -18,11 +18,11 @@ mv [OPTION]...
 - The following command move a single file to pfs
 
 ```
-paddle pfs mv ./text1.txt pfs://mydirectory/test1.txt
+paddle pfs mv ./text1.txt /pfs/mydirectory/test1.txt
 ```
 
 Output
 
 ```
-move ./text1.txt pfs://mydirectory/test1.txt
+move ./text1.txt /pfs/mydirectory/test1.txt
 ```

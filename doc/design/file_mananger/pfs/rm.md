@@ -20,26 +20,26 @@ rm [OPTION]... <PFSPath>...
 - The following command deletes a single files
 
 ```
-paddle pfs rm pfs://mydirectory/test1.txt
+paddle pfs rm /pfs/mydirectory/test1.txt
 ```
 
 Output
 
 ```
-delete pfs://mydirectory/test1.txt
+delete /pfs/mydirectory/test1.txt
 ```
 
 
 - The following command deletes a  directory recursively.
 
 ```
-paddle pfs rm -r pfs://mydirectory
+paddle pfs rm -r /pfs/mydirectory
 ```
 
 Output
 
 ```
-delete pfs://mydirectory/1.txt
-delete pfs://mydirectory/2.txt
+delete /pfs/mydirectory/1.txt
+delete /pfs/mydirectory/2.txt
 ...
 ```
