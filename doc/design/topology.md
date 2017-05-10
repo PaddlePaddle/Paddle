@@ -1,6 +1,6 @@
 # Topology Overview
 
-Topology is a concept in Paddle for representing Neural Network.  A neural network contains one topology, which describes how layers connected to each other, and many parameters. The other deep learning frameworks may call this concept a computation graph, neural network configurations.
+Topology is a concept in Paddle for representing neural networks.  A neural network contains one topology, which describes how layers connected to each other, and many parameters. The other deep learning frameworks may call this concept a computation graph, neural network configurations.
 
 The topology is not only an API level concept but also how Paddle organizes the computation codes for each `Layer` or `Function`. The Paddle hold a dictionary from `Layer Type` to Layer implementation, e.g.  from string `mul` to function `void tensor_multiply(Tensor& ins, Tensor& outs)'. So the mechanism about how to manipulate topology by Users, how Paddle maps user topology to implementations of `Layer` and `Function` is a fundamental problem for refactoring Paddle.
 
