@@ -12,16 +12,18 @@
 在上图中显示了在一个实际生产环境中的应用（人脸识别）的数据流图。生产环境的日志数据会通过实时流的方式（Kafka）和离线数据的方式（HDFS）存储，并在集群中运行多个分布式数据处理任务，比如流式数据处理（online data process），离线批处理（offline data process）完成数据的预处理，提供给paddle作为训练数据。用于也可以上传labeled data到分布式存储补充训练数据。在paddle之上运行的深度学习训练输出的模型会提供给在线人脸识别的应用使用。
 
 ### 训练数据的存储
+We select CephFS to store our data.
 
-选择CephFS作为训练数据的存储服务。
+From the perspective of user program running in a Pod, it is only I/O with the local filesystem, as 
 
-在Kubernetes上运行的不同的计算框架，可以通过Volume或PersistentVolume挂载存储空间到每个容器中。
+1. the home directory should have been mapped to the Pod-local directory `/home`,  and 
+1. some shared directories, e.g., the pre-downloaded `paddle.v2.dataset` data, should have been mapped to the Pod-local directory `/common`.
 
-在CephFS存储系统中的公开目录，需要保存一些预置的公开数据集（比如MNIST, BOW, ImageNet数据集等），并且可以被提交的job直接使用。
+and from the perspective of our client tool `paddle`, it has to refer to files in the distributed filesystem in a special format, just like `/pfs/$DATACENTER/home/$USER/cifa/...`.
 
 ### 文件预处理
 
-在数据集可以被训练之前，文件需要预先被转换成PaddlePaddle集群内部的存储格式（SSTable）。我们提供两个转换方式：
+在数据集可以被训练之前，文件需要预先被转换成PaddlePaddle集群内部的存储格式[RecordIO](https://github.com/PaddlePaddle/Paddle/issues/1947)。我们提供两个转换方式：
 
 - 提供给用户本地转换的库，用户可以编写程序完成转换。
 - 用户可以上传自己的数据集，在集群运行MapReduce job完成转换。
@@ -92,11 +94,11 @@ random_images-00099-of-00099
 
 #### 进行训练
 
-PaddlePaddle提供专用的[data reader creator](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#python-data-reader-design-doc)，生成给定SSTable文件对应的data reader。**无论在本地还是在云端，reader的使用方式都是一致的**：
+PaddlePaddle提供专用的[data reader creator](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#python-data-reader-design-doc)，生成给定`RecordIO`文件对应的data reader。**无论在本地还是在云端，reader的使用方式都是一致的**：
 
 ```python
 # ...
-reader = paddle.reader.creator.SSTable("/home/random_images-*-of-*")
+reader = paddle.reader.creator.RecordIO("/home/random_images-*-of-*")
 batch_reader = paddle.batch(paddle.dataset.mnist.train(), 128)
 trainer.train(batch_reader, ...)
 ```
@@ -107,13 +109,14 @@ trainer.train(batch_reader, ...)
 
 使用下面命令，可以把本地的数据上传到存储集群中。
 
-```bash
-paddle cp filenames pfs://home/folder/
+```bash  
+paddle pfs cp filenames /pfs/folder/
 ```
 
 比如，把之前示例中转换完毕的random_images数据集上传到云端的`/home/`可以用以下指令：
-```bash
-paddle cp random_images-*-of-* pfs://home/
+
+```bash  
+paddle pfs cp random_images-*-of-* /pfs/folder/
 ```
 ## TODO
 
