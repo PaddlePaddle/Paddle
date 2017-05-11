@@ -74,37 +74,25 @@ func->addAttribute<double>("scale", "The scale of cosine operator")
     .defaultValue(1.0)
     .largerThan(0.0);
 
-func->addInput()                                // first input
-    ->addDataType({topology::DataType::DENSE})  // only support dense as input
-    .addSequenceType()                          // could be any sequence type
-    .addShape(2);                               // dimension is 2
+func->addInput(/*dim = */ 2)
+    .addInput(/*dim = */ 2)
+    .addOutput(/*arg_type*/ ASSIGN_TO,
+               /*shape = */ {topology::meta::kTensorShape_BATCH_SIZE, 1})
+    .setShapeInferer([](std::vector<topology::TensorPtr>& ins,
+                        std::vector<topology::TensorPtr>& outs) {
+      auto& shape0 = ins[0]->shape();
+      auto& shape1 = ins[1]->shape();
 
-func->addInput()                                // second input
-    ->addDataType({topology::DataType::DENSE})  // only support dense as input
-    .addSequenceType()                          // could be any sequence type
-    .addShape(2);                               // dimension is 2
-
-func->addOutput()
-    ->addDataType({topology::DataType::DENSE})
-    .addSequenceType()
-    .addShape(2)
-    .addArgType(ASSIGN_TO);
-
-func->setShapeInferer([](std::vector<topology::TensorPtr>& ins,
-                         std::vector<topology::TensorPtr>& outs) {
-  auto& shape0 = ins[0]->shape();
-  auto& shape1 = ins[1]->shape();
-
-  if (shape0 != shape1 && (shape0[1] != shape1[1] || shape1[0] != 1))
-    return Error(
-        "Input shape should be same, or the second height should be 1");
-  if (ins[0]->sequenceType() != ins[1]->sequenceType())
-    return Error("Input sequence type should be same");
-  outs[0]->setShape({ins[0]->shape()[0], 1});
-  outs[0]->setSequenceType(ins[0]->sequenceType());
-  outs[0]->setDataType(ins[0]->dataType());
-  return Error();
-});
+      if (shape0 != shape1 && (shape0[1] != shape1[1] || shape1[0] != 1))
+        return Error(
+            "Input shape should be same, or the second height should be 1");
+      if (ins[0]->sequenceType() != ins[1]->sequenceType())
+        return Error("Input sequence type should be same");
+      outs[0]->setShape({ins[0]->shape()[0], 1});
+      outs[0]->setSequenceType(ins[0]->sequenceType());
+      outs[0]->setDataType(ins[0]->dataType());
+      return Error();
+    });
 
 END_REGISTER_FUNCTION()
 
@@ -209,65 +197,32 @@ func->addAttribute<double>("scale", "the scale of cosine operator")
     .defaultValue(1.0)
     .largerThan(0.0);
 
-auto widthShouldBeOne = [](std::vector<int>* attr, bool) {
-  if (attr->at(1) != 1) return Error("width should be 1");
-  return Error();
-};
+func->addInput({topology::meta::kTensorShape_BATCH_SIZE, 1})
+    .addInput({topology::meta::kTensorShape_BATCH_SIZE, 1})
+    .addInput(2)
+    .addInput(2)
+    .addOutput(ADD_TO, 2)
+    .addOutput(ADD_TO, 2)
+    .setShapeInferer([](std::vector<topology::TensorPtr>& ins,
+                        std::vector<topology::TensorPtr>& outs) -> Error {
+      if (ins[0]->shape() != ins[1]->shape() ||
+          ins[2]->shape()[1] != ins[3]->shape()[1]) {
+        return Error("Input shape mismatch");
+      }
 
-topology::meta::Constraints<std::vector<int>>* shapeConstraints;
-func->addInput()
-    ->addDataType({topology::DataType::DENSE})
-    .addShape(2, &shapeConstraints)
-    .addSequenceType();
+      if (ins[0]->shape()[0] != ins[2]->shape()[0]) {
+        return Error("Input shape mismatch, height should be same.");
+      }
 
-shapeConstraints->addConstraint(widthShouldBeOne);
+      for (size_t i = 0; i < outs.size(); ++i) {
+        auto& out = outs[i];
+        out->setShape(ins[2 + i]->shape());
+        out->setSequenceType(ins[2 + i]->sequenceType());
+        out->setDataType(ins[2 + i]->dataType());
+      }
 
-func->addInput()
-    ->addDataType({topology::DataType::DENSE})
-    .addShape(2, &shapeConstraints)
-    .addSequenceType();
-shapeConstraints->addConstraint(widthShouldBeOne);
-
-func->addInput()
-    ->addDataType({topology::DataType::DENSE})
-    .addShape(2)
-    .addSequenceType();
-func->addInput()
-    ->addDataType({topology::DataType::DENSE})
-    .addShape(2)
-    .addSequenceType();
-
-func->addOutput()
-    ->addDataType({topology::DataType::DENSE})
-    .addShape(2)
-    .addSequenceType()
-    .addArgType(ADD_TO);
-func->addOutput()
-    ->addDataType({topology::DataType::DENSE})
-    .addShape(2)
-    .addSequenceType()
-    .addArgType(ADD_TO);
-
-func->setShapeInferer([](std::vector<topology::TensorPtr>& ins,
-                         std::vector<topology::TensorPtr>& outs) -> Error {
-  if (ins[0]->shape() != ins[1]->shape() ||
-      ins[2]->shape()[1] != ins[3]->shape()[1]) {
-    return Error("Input shape mismatch");
-  }
-
-  if (ins[0]->shape()[0] != ins[2]->shape()[0]) {
-    return Error("Input shape mismatch, height should be same.");
-  }
-
-  for (size_t i = 0; i < outs.size(); ++i) {
-    auto& out = outs[i];
-    out->setShape(ins[2 + i]->shape());
-    out->setSequenceType(ins[2 + i]->sequenceType());
-    out->setDataType(ins[2 + i]->dataType());
-  }
-
-  return Error();
-});
+      return Error();
+    });
 
 END_REGISTER_FUNCTION()
 }  // namespace paddle

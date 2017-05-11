@@ -14,18 +14,18 @@ TEST(FunctionMeta, cosSimMeta) {
             .largerThan(0.0);
 
         meta->addInput()
-            ->addShape(2)
-            .addDataType({paddle::topology::DataType::DENSE})
-            .addSequenceType();
+            ->setShapeDimension(2)
+            .supportDataTypes({paddle::topology::DataType::DENSE})
+            .supportSequenceTypes();
         meta->addInput()
-            ->addShape(2)
-            .addDataType({paddle::topology::DataType::DENSE})
-            .addSequenceType();
+            ->setShapeDimension(2)
+            .supportDataTypes({paddle::topology::DataType::DENSE})
+            .supportSequenceTypes();
 
         meta->addOutput()
-            ->addShape(2)
-            .addDataType({paddle::topology::DataType::DENSE})
-            .addSequenceType();
+            ->setShapeDimension(2)
+            .supportDataTypes({paddle::topology::DataType::DENSE})
+            .supportSequenceTypes();
 
         meta->setShapeInferer(
             [](std::vector<paddle::topology::TensorPtr>& in,

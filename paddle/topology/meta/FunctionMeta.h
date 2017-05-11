@@ -85,9 +85,71 @@ public:
     return inputs_.back();
   }
 
+  FunctionMeta& addInput(size_t dim,
+                         const std::unordered_set<DataType, std::hash<int>>&
+                             dataTypes = {DataType::DENSE},
+                         const std::unordered_set<SequenceType, std::hash<int>>&
+                             seqTypes = {SequenceType::NO_SEQUENCE,
+                                         SequenceType::SEQUENCE,
+                                         SequenceType::NESTED_SEQUENCE}) {
+    addInput()
+        ->supportDataTypes(dataTypes)
+        .supportSequenceTypes(seqTypes)
+        .setShapeDimension(dim);
+    return *this;
+  }
+
+  FunctionMeta& addInput(const std::vector<int>& shape,
+                         const std::unordered_set<DataType, std::hash<int>>&
+                             dataTypes = {DataType::DENSE},
+                         const std::unordered_set<SequenceType, std::hash<int>>&
+                             seqTypes = {SequenceType::NO_SEQUENCE,
+                                         SequenceType::SEQUENCE,
+                                         SequenceType::NESTED_SEQUENCE}) {
+    addInput()
+        ->supportDataTypes(dataTypes)
+        .supportSequenceTypes(seqTypes)
+        .setShapeWithConstraints(shape);
+    return *this;
+  }
+
   TensorMetaPtr& addOutput() {
     outputs_.emplace_back(new TensorMeta());
     return outputs_.back();
+  }
+
+  FunctionMeta& addOutput(
+      int argType,
+      size_t dim,
+      const std::unordered_set<DataType, std::hash<int>>& dataTypes =
+          {DataType::DENSE},
+      const std::unordered_set<SequenceType, std::hash<int>>& seqTypes =
+          {SequenceType::NO_SEQUENCE,
+           SequenceType::SEQUENCE,
+           SequenceType::NESTED_SEQUENCE}) {
+    addOutput()
+        ->supportDataTypes(dataTypes)
+        .supportSequenceTypes(seqTypes)
+        .setShapeDimension(dim)
+        .supportArgType(argType);
+    return *this;
+  }
+
+  FunctionMeta& addOutput(
+      int argType,
+      const std::vector<int>& shape,
+      const std::unordered_set<DataType, std::hash<int>>& dataTypes =
+          {DataType::DENSE},
+      const std::unordered_set<SequenceType, std::hash<int>>& seqTypes =
+          {SequenceType::NO_SEQUENCE,
+           SequenceType::SEQUENCE,
+           SequenceType::NESTED_SEQUENCE}) {
+    addOutput()
+        ->supportDataTypes(dataTypes)
+        .supportSequenceTypes(seqTypes)
+        .setShapeWithConstraints(shape)
+        .supportArgType(argType);
+    return *this;
   }
 
   void setShapeInferer(TenserShapeInferer inferer) {

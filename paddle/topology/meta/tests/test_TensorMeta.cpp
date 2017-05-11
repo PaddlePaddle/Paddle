@@ -4,9 +4,9 @@
 #include <paddle/topology/meta/Validator.h>
 TEST(TensorMeta, check) {
   paddle::topology::meta::TensorMeta meta;
-  meta.addDataType({paddle::topology::DataType::DENSE});
-  meta.addSequenceType({paddle::topology::SequenceType::NO_SEQUENCE});
-  meta.addShape(2);
+  meta.supportDataTypes({paddle::topology::DataType::DENSE});
+  meta.supportSequenceTypes({paddle::topology::SequenceType::NO_SEQUENCE});
+  meta.setShapeDimension(2);
 
   paddle::topology::Tensor tensor;
   tensor.setDataType(paddle::topology::DataType::DENSE);

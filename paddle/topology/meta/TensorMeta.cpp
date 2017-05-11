@@ -17,8 +17,8 @@ namespace paddle {
 namespace topology {
 namespace meta {
 
-TensorMeta &TensorMeta::addShape(size_t dims,
-                                 Constraints<std::vector<int>> **constraints) {
+TensorMeta &TensorMeta::setShapeDimension(
+    size_t dims, Constraints<std::vector<int>> **constraints) {
   auto &cons = addAttribute<std::vector<int>>("shape", "The shape of tensor")
                    .mustSet()
                    .dimsEq(dims);
@@ -26,7 +26,26 @@ TensorMeta &TensorMeta::addShape(size_t dims,
   return *this;
 }
 
-TensorMeta &TensorMeta::addSequenceType(
+TensorMeta &TensorMeta::setShapeWithConstraints(const std::vector<int> &shape) {
+  Constraints<std::vector<int>> *ptr;
+  this->setShapeDimension(shape.size(), &ptr);
+  ptr->addConstraint([shape](std::vector<int> *attr, bool) {
+    for (size_t i = 0; i < shape.size(); ++i) {
+      if (shape[i] != kTensorShape_BATCH_SIZE) {
+        if (shape[i] != attr->at(i)) {
+          return Error("Shape mismatch %d, expect %d, actual %d",
+                       i,
+                       shape[i],
+                       attr->at(i));
+        }
+      }
+    }
+    return Error();
+  });
+  return *this;
+}
+
+TensorMeta &TensorMeta::supportSequenceTypes(
     const std::unordered_set<SequenceType, std::hash<int>> &supportedTypes,
     Constraints<SequenceType> **constraints) {
   auto &cons = addAttribute<SequenceType>("sequence_type",
@@ -39,7 +58,7 @@ TensorMeta &TensorMeta::addSequenceType(
   return *this;
 }
 
-TensorMeta &TensorMeta::addDataType(
+TensorMeta &TensorMeta::supportDataTypes(
     const std::unordered_set<DataType, std::hash<int>> &supportedTypes) {
   addAttribute<DataType>("data_type", "The data types of tensor")
       .mustSet()
@@ -47,7 +66,7 @@ TensorMeta &TensorMeta::addDataType(
   return *this;
 }
 
-TensorMeta &TensorMeta::addArgType(
+TensorMeta &TensorMeta::supportArgType(
     int defaultArgType, const std::unordered_set<int> &supportedTypes) {
   std::unordered_set<int> tmp;
   const std::unordered_set<int> *ptr = &supportedTypes;

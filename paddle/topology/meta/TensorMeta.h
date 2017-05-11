@@ -22,23 +22,27 @@ namespace meta {
 enum DataType { DENSE = 0, SPARSE_INTEGER, SPARSE, INTEGER };
 enum SequenceType { NO_SEQUENCE = 0, SEQUENCE, NESTED_SEQUENCE };
 
+const int kTensorShape_BATCH_SIZE = -1;
+
 class TensorMeta : public WithAttributeMeta {
 public:
   TensorMeta() : WithAttributeMeta("Tensor") {}
 
-  TensorMeta& addShape(size_t dims,
-                       Constraints<std::vector<int>>** constraints = nullptr);
+  TensorMeta& setShapeDimension(
+      size_t dims, Constraints<std::vector<int>>** constraints = nullptr);
 
-  TensorMeta& addSequenceType(
+  TensorMeta& setShapeWithConstraints(const std::vector<int>& shape);
+
+  TensorMeta& supportSequenceTypes(
       const std::unordered_set<SequenceType, std::hash<int>>& supportedTypes =
           {NO_SEQUENCE, SEQUENCE, NESTED_SEQUENCE},
       Constraints<SequenceType>** constraints = nullptr);
 
-  TensorMeta& addDataType(
+  TensorMeta& supportDataTypes(
       const std::unordered_set<DataType, std::hash<int>>& supportedTypes);
 
-  TensorMeta& addArgType(int defaultArgType,
-                         const std::unordered_set<int>& supportedTypes = {});
+  TensorMeta& supportArgType(
+      int defaultArgType, const std::unordered_set<int>& supportedTypes = {});
 };
 
 typedef std::shared_ptr<TensorMeta> TensorMetaPtr;
