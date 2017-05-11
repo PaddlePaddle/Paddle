@@ -5,7 +5,7 @@
 In this week, we discussed several potential weaknesses of PaddlePaddle caused by rapid iteration and development to promote new business products on the line in recent four years. For instance, current Matrix/Vector implementation in PaddlePaddle are long and tedious to read, which interfered seriously with the contribution of both fresh and professional engineers. More seriously for this issue, it will also become too challenging to maintain over time.
 
 
-## Learn from Majel
+## Learn from Majel
 
 Consequently, we decide to refactor PaddlePaddle step-by-step. First, refactor and replace Matrix/Vector to Tensor, a modern terminology in the deep learning system. Fortunately, we can learn from Majel how to define a Tensor.
 
