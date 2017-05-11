@@ -9,7 +9,7 @@ In this week, we discussed several potential weaknesses of PaddlePaddle caused b
 
 Consequently, we decide to refactor PaddlePaddle step-by-step. First, refactor and replace Matrix/Vector to Tensor, a modern terminology in the deep learning system. Fortunately, we can learn from Majel how to define a Tensor.
 
-To simplify heterogeneous resource allocation in any dimensions (1-9) and types (double, float, float16), Majel consists of several primitives such as `Dim`, `Place` and `Array`, all of them are standard C++ classes.
+To simplify heterogeneous resource allocation in any dimensions (1-9) and types (double, float, float16), Majel consists of several primitives such as `Dim`, `Place` and `Array`, all of them are standard C++ class templates.
 
 1. `Place`: memory location [i.e. CPU/GPU].
 2. `Allocation`: heterogeneous resource allocator [i.e. 20MB in GPU].
