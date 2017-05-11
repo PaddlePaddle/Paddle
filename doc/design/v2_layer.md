@@ -23,7 +23,7 @@ We use `cost` to represent the entire topology of the neural network.  We use th
 
 ## Thinking how to resolve these problems
 
-In our old configuration way, there is a configuration file for each neural network topology. The topology is generated line by line when the configuration function is invoked, no matter whether the output of this function is passed to another method or not.
+There is a configuration file for each neural network topology when we use Paddle as an executable program. The topology is generated line by line when the configuration function is invoked, no matter whether the output of this function is passed to another method or not.
 
 In another hand, we want a variable hold all topology in paddle.v2. It is impossible to traverse all layers in this topology without any extra information because some layers are not attached to others explicitly.
 
@@ -31,13 +31,13 @@ We also want to use any output variable as a topology. For example, we use `cost
 
 In conclusion,
 
-1. We need to add a layer to topology when the layer is created, not by whether the layer is referenced by others.
-1. We need to get topology ends with any output variable.
-1. We need an extra data structure to hold the information of what layers are created before some variable.
+1. We need to add a layer to the topology when invoking layer function, not by whether other layer references this layer or not.
+1. We need able to use any output variable to get topology.
+1. We need an extra data structure to hold the information of layers before the output layer.
 
 ## Implementation
 
-We introduce a concept named `Tape` to hold the order of layer creation. The tape is just an array of layer creation method with arguments. When creating a layer in Paddle, the layer creation method will be stored into the global tape object and the return an index of tape. Each return value of v2 layer method is a simple integer. If we only want to get a part of the topology, we only need to start `playing the tape from the beginning to the desired location`, i.e. just call the stored creation methods one by one until desired end.
+We introduce a concept named `Tape` to hold the information and order of layers. The tape is just an array of layer creation information(such as the creation method with arguments). When creating a layer in Paddle, the layer function(such as `fc_layer(input=xxx, ...)`) stores the layer creation information into the global tape object and return the index of tape. Each return value of v2 layer function is a simple integer. If we only want to get a part of the topology, we only need to start `playing the tape from the beginning to the desired location`, i.e. just call the stored creation methods one by one until the wanted end index.
 
 The demostration code is here:
 
@@ -72,7 +72,7 @@ def fc_layer_v2(*args, **kwargs):
 
 The advantages of this implementation are:
 
-1. It make configuration parsing easily to implement and understand. It also fit Paddle's configuration structure and no need to handle some special situation we listed before.
+1. It makes configuration parsing easily to implement and understand. It also fit Paddle's configuration structure and no need to handle some special situation we listed before.
 1. It makes error message clear. The call stack of this implementation is not so deep. As a comparison, the depth first search algorithm generates a very deep call stack.
 
 The disadvantages of this implementation are:
