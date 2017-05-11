@@ -84,9 +84,9 @@ Use a global variable `gTape`. However, the use of this global variable can grea
 It cannot handle topology with branches. For example
 
 ```text
-                   /---> d --> e
+             /---> d --> e
 a --> b --> c
-                  \ ---> f --> g
+             \ ---> f --> g
 ```
 
 Because the tape is linear, it cannot handle the branch like this. However, there are some solutions for this situation:
