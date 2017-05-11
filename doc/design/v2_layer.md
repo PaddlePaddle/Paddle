@@ -1,3 +1,5 @@
+# Using tape to refactor current paddle.v2 configuration parsing
+
 ## What are the problems
 
 Paddle V2 API give a flexible way to configure neural network topology. The user can create a neural network topology layer by layer. We use the final layer to represent the neural network topology.
