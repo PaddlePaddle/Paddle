@@ -20,7 +20,7 @@
 # 概述
 本文将介绍如何使用PaddlePaddle在不同的集群框架下完成分布式训练。分布式训练架构如下图所示：
 
-<img src="../../../design/cluster_train/src/trainer.png" width="500"/>
+<img src="src/trainer.png" width="500"/>
 
 - Data shard（数据分片）: 用于训练神经网络的数据，被切分成多个部分，每个部分分别给每个trainer使用
 - Trainer（计算节点）: 每个trainer启动后读取切分好的一部分数据，并开始神经网络的“前馈”和“后馈”计算，并和parameter server通信。在完成一定量数据的训练后，上传计算得出的梯度（gradients）然后下载优化更新后的神经网络参数（parameters）。
@@ -118,7 +118,7 @@ paddle.init(
 
 ## 准备数据集
 
-参考样例数据准备脚本[prepare.py](../../../../demo/word2vec/prepare.py)，准备训练数据和验证数据集，我们使用`paddle dataset`中下载公开的`imikolov`数据集，并根据分布式训练并发数（trainer节点个数），指定`SPLIT_COUNT`将数据切分成多份。
+参考样例数据准备脚本"prepare.py"（位于`demo/word2vec/prepare.py`），准备训练数据和验证数据集，我们使用`paddle dataset`中下载公开的`imikolov`数据集，并根据分布式训练并发数（trainer节点个数），指定`SPLIT_COUNT`将数据切分成多份。
 
 在线上系统中，通常会使用`MapReduce`任务的输出结果作为训练结果，这样训练文件的个数会比较多，而且个数并不确定。在trainer中可以使用下面取模的方法为每个trainer分配训练数据文件：
 
@@ -170,7 +170,7 @@ test.txt-00002
 
 - `mylib.py`：会被`train.py`调用的一些库函数
 - `word_dict.pickle`：在`train.py`中会使用到的字典数据文件
-- `train.py`：训练程序，代码参考[api_train_v2_cluster.py](../../../../demo/word2vec/api_train_v2_cluster.py)
+- `train.py`：训练程序，代码参考"api_train_v2_cluster.py"（位于`demo/word2vec/api_train_v2_cluster.py`）
   - ***注意：***对于本样例代码，在使用不同的分布式计算平台时，您可能需要修改`train.py`开头的部分（如下），以便获得训练数据的位置和获取环境变量配置：
   ```python
   cluster_train_file = "./train_data_dir/train/train.txt"

@@ -20,7 +20,7 @@
 
 In this article, we'll explain how to do distributed training jobs with PaddlePaddle on different types of clusters. The diagram below shows the mail architecture of a distributed trainning job:
 
-<img src="../../../design/cluster_train/src/trainer.png" width="500"/>
+<img src="src/trainer.png" width="500"/>
 
 - Data shard: training data will be split into multiple parts, trainers use some parts of the whole dataset to do the training job.
 - Trainer: each trainer reads the data shard, and do Neural Network training algorithms like "forward" and "backward". Then the trainer will upload calculated "gradients" to parameter servers, and wait for parameters to be optimized on the parameter server side. When that finishes, the trainer download optimized parameters and continues its training.
@@ -121,7 +121,7 @@ paddle.init(
 
 ## Prepare Training Dataset
 
-Here's some example code [prepare.py](../../../../demo/word2vec/prepare.py), it will download public `imikolov` dataset and split it into multiple files according to job parallelism(trainers count). Modify `SPLIT_COUNT` to change the count of output files.
+Here's some example code “prepare.py”(located in `demo/word2vec/prepare.py`), it will download public `imikolov` dataset and split it into multiple files according to job parallelism(trainers count). Modify `SPLIT_COUNT` to change the count of output files.
 
 In the real world, we often use `MapReduce` job's output as training data, so there will be lots of files. You can use `mod` to assign training file to trainers:
 
@@ -175,7 +175,7 @@ Your workspace may looks like:
 
 - `mylib.py`: some library functions. This is optional.
 - `word_dict.pickle`: dict file for training word embeding.
-- `train.py`: training program. [Sample code here](../../../../demo/word2vec/api_train_v2_cluster.py).
+- `train.py`: training program. Sample code: "api_train_v2_cluster.py"(located in `demo/word2vec/api_train_v2_cluster.py`).
   - ***NOTE:*** You may need to modify the head part of `train.py` when using different cluster platform to retrive configuration environment variables:
   ```python
   cluster_train_file = "./train_data_dir/train/train.txt"
