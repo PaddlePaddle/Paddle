@@ -106,7 +106,7 @@ Because the tape is linear, it cannot handle the branch like this. However, ther
     paddle.train(g, skip=[d, e])
     ```
 
-2. We could let user clear the tape. User can define two topology seperately. 
+2. We could let user clear the tape. User can define two topologies seperately. 
     ```python
     def topology(up_branch=True):
        a = layer(..)
