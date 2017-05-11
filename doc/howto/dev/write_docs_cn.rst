@@ -2,13 +2,14 @@
 如何贡献/修改文档
 ##################
 
-PaddlePaddle的文档文件都在 :code:`doc` 这个子目录里。源文件是 `RST <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_ 格式的。 在编译PaddlePaddle源码的时候，可以选择让 `cmake<https://cmake.org/>`_ 调用 `sphinx <http://www.sphinx-doc.org/en/1.4.8/>`_ 从 RST 文件生成 HTML 格式的文档。
+PaddlePaddle的文档包括英文文档 ``doc`` 和中文文档 ``doc_cn`` 两个部分。文档都是通过 `cmake`_ 驱动 `sphinx`_ 编译生成，生成后的文档分别存储在编译目录的 ``doc`` 和 ``doc_cn`` 两个子目录下。
 
 
 如何构建PaddlePaddle的文档
 ==========================
 
-为了简化大家安装文档构建工具的过程，我们提供一个Docker image。
+PaddlePaddle的文档构建有直接构建和基于Docker构建两种方式，我们提供了一个构建脚本build_docs.sh来进行构建。
+PaddlePaddle文档需要准备的环境相对较复杂，所以我们推荐使用基于Docker来构建PaddlePaddle的文档。
 
 
 使用Docker构建PaddlePaddle的文档
@@ -73,5 +74,5 @@ PaddlePaddle文档使用 `sphinx`_ 自动生成，用户可以参考sphinx教程
 
 
 
-..  _cmake:
-..  _sphinx:
+..  _cmake: https://cmake.org/
+..  _sphinx: http://www.sphinx-doc.org/en/1.4.8/
