@@ -1024,14 +1024,14 @@ sequence and label in [0, 1].</p>
 into paddle reader creators.</p>
 <dl class="function">
 <dt>
-<code class="descclassname">paddle.v2.dataset.imikolov.</code><code class="descname">build_dict</code><span class="sig-paren">(</span><em>typo_freq=50</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.dataset.imikolov.</code><code class="descname">build_dict</code><span class="sig-paren">(</span><em>min_word_freq=50</em><span class="sig-paren">)</span></dt>
 <dd><p>Build a word dictionary from the corpus,  Keys of the dictionary are words,
 and values are zero-based IDs of these words.</p>
 </dd></dl>
 
 <dl class="function">
 <dt>
-<code class="descclassname">paddle.v2.dataset.imikolov.</code><code class="descname">train</code><span class="sig-paren">(</span><em>word_idx</em>, <em>n</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.dataset.imikolov.</code><code class="descname">train</code><span class="sig-paren">(</span><em>word_idx</em>, <em>n</em>, <em>data_type=1</em><span class="sig-paren">)</span></dt>
 <dd><p>imikolov training set creator.</p>
 <p>It returns a reader creator, each sample in the reader is a word ID
 tuple.</p>
@@ -1041,7 +1041,8 @@ tuple.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
 <li><strong>word_idx</strong> (<em>dict</em>) &#8211; word dictionary</li>
-<li><strong>n</strong> (<em>int</em>) &#8211; sliding window size</li>
+<li><strong>n</strong> (<em>int</em>) &#8211; sliding window size if type is ngram, otherwise max length of sequence</li>
+<li><strong>data_type</strong> (<em>member variable of DataType</em><em> (</em><em>NGRAM</em><em> or </em><em>SEQ</em><em>)</em><em></em>) &#8211; data type (ngram or sequence)</li>
 </ul>
 </td>
 </tr>
@@ -1057,7 +1058,7 @@ tuple.</p>
 
 <dl class="function">
 <dt>
-<code class="descclassname">paddle.v2.dataset.imikolov.</code><code class="descname">test</code><span class="sig-paren">(</span><em>word_idx</em>, <em>n</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.dataset.imikolov.</code><code class="descname">test</code><span class="sig-paren">(</span><em>word_idx</em>, <em>n</em>, <em>data_type=1</em><span class="sig-paren">)</span></dt>
 <dd><p>imikolov test set creator.</p>
 <p>It returns a reader creator, each sample in the reader is a word ID
 tuple.</p>
@@ -1067,7 +1068,8 @@ tuple.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
 <li><strong>word_idx</strong> (<em>dict</em>) &#8211; word dictionary</li>
-<li><strong>n</strong> (<em>int</em>) &#8211; sliding window size</li>
+<li><strong>n</strong> (<em>int</em>) &#8211; sliding window size if type is ngram, otherwise max length of sequence</li>
+<li><strong>data_type</strong> (<em>member variable of DataType</em><em> (</em><em>NGRAM</em><em> or </em><em>SEQ</em><em>)</em><em></em>) &#8211; data type (ngram or sequence)</li>
 </ul>
 </td>
 </tr>
