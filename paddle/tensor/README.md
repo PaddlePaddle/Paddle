@@ -101,18 +101,19 @@ To assign subtasks to our colleagues, we have to discuss how to divide it to ind
 
 - [ ] 1. First, we need to consider the third-party dependencies in Majel.
 
-Majel heavily use `boost.variant`, but we don't want to integrate `boost` into PaddlePaddle. It's better to replace boost using the lightweight implementation. https://github.com/mapbox/variant Mapbox variant has the same speedy performance of `boost::variant `but is faster to compile, results in smaller binaries, and has no dependencies.
+    Majel heavily use `boost.variant`, but we don't want to integrate `boost` into PaddlePaddle. It's better to replace boost using the lightweight implementation. https://github.com/mapbox/variant Mapbox variant has the same speedy performance of `boost::variant `but is faster to compile, results in smaller binaries, and has no dependencies.
 
 > @gangliao
 
 - [ ] 2. Re-implement `Place` and `Allocation/Memory`
 
-I found @wangkuiyi submitted a pull request includes `Place`. @gangliao and @qijun could re-implement `Allocation', because we have the GPU development experience before joining Paddle team.
+    I found @wangkuiyi submitted a pull request includes `Place`. @gangliao and @qijun could re-implement `Allocation`, because we have the GPU development experience before joining Paddle team.
 
 > @wangkuiyi @gangliao @qijun
 
 - [ ] 3. Re-implement `Dim`.
-`Dim` is an excellent implementation in Majel. 
+
+    `Dim` is an excellent implementation in Majel. 
 
 > ???
 
