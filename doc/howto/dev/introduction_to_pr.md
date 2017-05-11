@@ -56,7 +56,7 @@
   例如这个 [Here](https://github.com/PaddlePaddle/Paddle/pull/1964#discussion_r114414822)
   
 - 提交的代码要经过验证  
-  提交的代码都不能通过编译是几个意思？
+  提交的代码都没有验证过是几个意思？
   
 - 参考资料要设置超链，链接到对方  
   不设置的话俗称Copy。可以用`<sup>[name](#name)</sup>`设置MarkDown文件中的引用。一如此文中很多地方出现的那样。
