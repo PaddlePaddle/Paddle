@@ -20,8 +20,8 @@ using meta::DataType;
 using meta::SequenceType;
 class Tensor {
 public:
-  Tensor& setDataType(DataType type);
-  Tensor& setSequenceType(SequenceType type);
+  Tensor& setDataType(int type);
+  Tensor& setSequenceType(int type);
   Tensor& setShape(const std::vector<int>& shape);
   std::vector<int>& shape();
   SequenceType sequenceType() const;

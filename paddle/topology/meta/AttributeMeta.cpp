@@ -52,10 +52,7 @@ Error AttributeMeta::check(any* attr, bool setted) const {
                  attr->type().name());
   }
   CHECK_HELPER(int);
-  CHECK_HELPER(float);
   CHECK_HELPER(double);
-  CHECK_HELPER(DataType);
-  CHECK_HELPER(SequenceType);
   CHECK_HELPER(std::vector<int>);
   CHECK_HELPER(bool);
   return paddle::Error("Unsupported attribute type %s", attr->type().name());

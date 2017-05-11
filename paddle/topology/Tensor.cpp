@@ -15,12 +15,12 @@ limitations under the License. */
 namespace paddle {
 namespace topology {
 
-Tensor &Tensor::setDataType(DataType type) {
+Tensor &Tensor::setDataType(int type) {
   attributes["data_type"] = type;
   return *this;
 }
 
-Tensor &Tensor::setSequenceType(SequenceType type) {
+Tensor &Tensor::setSequenceType(int type) {
   attributes["sequence_type"] = type;
   return *this;
 }
@@ -34,11 +34,11 @@ std::vector<int> &Tensor::shape() {
   return attributes.get<std::vector<int>>("shape");
 }
 SequenceType Tensor::sequenceType() const {
-  return attributes.get<SequenceType>("sequence_type");
+  return (SequenceType)attributes.get<int>("sequence_type");
 }
 
 DataType Tensor::dataType() const {
-  return attributes.get<DataType>("data_type");
+  return (DataType)attributes.get<int>("data_type");
 }
 
 }  // namespace topology

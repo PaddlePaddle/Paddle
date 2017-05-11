@@ -25,13 +25,17 @@ public:
   template <typename T>
   const T& get(const std::string& name) const {
     auto attrPtr = &at(name);
-    return *any_cast<T>(attrPtr);
+    auto* ptr = any_cast<T>(attrPtr);
+    if (ptr == nullptr) throw bad_any_cast();
+    return *ptr;
   }
 
   template <typename T>
   T& get(const std::string& name) {
     auto attrPtr = &at(name);
-    return *any_cast<T>(attrPtr);
+    auto* ptr = any_cast<T>(attrPtr);
+    if (ptr == nullptr) throw bad_any_cast();
+    return *ptr;
   }
 };
 
