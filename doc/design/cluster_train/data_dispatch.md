@@ -14,7 +14,7 @@
 ### 训练数据的存储
 We select CephFS to store our data.
 
-From the perspective of user program running in a Pod, it is only I/O with the local filesystem, as 
+From the perspective of user program running in a Pod, it is mounted locally, as 
 
 1. the home directory should have been mapped to the Pod-local directory `/home`,  and 
 1. some shared directories, e.g., the pre-downloaded `paddle.v2.dataset` data, should have been mapped to the Pod-local directory `/common`.
@@ -98,7 +98,7 @@ PaddlePaddle提供专用的[data reader creator](https://github.com/PaddlePaddle
 
 ```python
 # ...
-reader = paddle.reader.creator.RecordIO("/home/random_images-*-of-*")
+reader = paddle.reader.creator.RecordIO("/home/user_name/random_images-*-of-*")
 batch_reader = paddle.batch(paddle.dataset.mnist.train(), 128)
 trainer.train(batch_reader, ...)
 ```
@@ -110,13 +110,13 @@ trainer.train(batch_reader, ...)
 使用下面命令，可以把本地的数据上传到存储集群中。
 
 ```bash  
-paddle pfs cp filenames /pfs/folder/
+paddle pfs cp filenames /pfs/$DATACENTER/home/$USER/folder/
 ```
 
 比如，把之前示例中转换完毕的random_images数据集上传到云端的`/home/`可以用以下指令：
 
 ```bash  
-paddle pfs cp random_images-*-of-* /pfs/folder/
+paddle pfs cp random_images-*-of-* /pfs/$DATACENTER/home/$USER/folder/
 ```
 ## TODO
 
