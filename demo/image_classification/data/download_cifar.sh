@@ -18,4 +18,4 @@ tar zxf cifar-10-python.tar.gz
 rm cifar-10-python.tar.gz
 rm -rf cifar-out/*
 echo Converting CIFAR data to images.....
-python process_cifar.py ./cifar-10-batches-py ./cifar-out
+python data/process_cifar.py ./cifar-10-batches-py ./cifar-out
