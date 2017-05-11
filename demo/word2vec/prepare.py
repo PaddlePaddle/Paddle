@@ -3,13 +3,15 @@ import tarfile
 import os
 import pickle
 
-SPLIT_COUNT = 2
+SPLIT_COUNT = 3
 N = 5
+
 
 def file_len(fd):
     for i, l in enumerate(fd):
         pass
     return i + 1
+
 
 def split_from_reader_by_line(filename, reader, split_count):
     fn = open(filename, "w")
@@ -26,13 +28,14 @@ def split_from_reader_by_line(filename, reader, split_count):
     cmd = "split -d -a 5 -l %d %s %s-" % (per_file_lines, filename, filename)
     os.system(cmd)
 
+
 word_dict = paddle.dataset.imikolov.build_dict()
 with open("word_dict.pickle", "w") as dict_f:
     pickle.dump(word_dict, dict_f)
 
 split_from_reader_by_line("train.txt",
-    paddle.dataset.imikolov.train(word_dict, N),
-    SPLIT_COUNT)
+                          paddle.dataset.imikolov.train(word_dict, N),
+                          SPLIT_COUNT)
 split_from_reader_by_line("test.txt",
-    paddle.dataset.imikolov.test(word_dict, N),
-    SPLIT_COUNT)
+                          paddle.dataset.imikolov.test(word_dict, N),
+                          SPLIT_COUNT)

@@ -34,6 +34,6 @@ PADDLE_PORTS_NUM = 1
 #pserver sparse ports num
 PADDLE_PORTS_NUM_FOR_SPARSE = 1
 #trainer whether use gpu
-PADDLE_USE_GPU="False"
+PADDLE_USE_GPU = "False"
 #environments setting for all processes in cluster job
 LD_LIBRARY_PATH = "/usr/local/cuda/lib64:/usr/lib64"

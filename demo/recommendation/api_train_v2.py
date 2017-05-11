@@ -68,10 +68,10 @@ def main():
 
     parameters = paddle.parameters.create(cost)
 
-    trainer = paddle.trainer.SGD(cost=cost,
-                                 parameters=parameters,
-                                 update_equation=paddle.optimizer.Adam(
-                                     learning_rate=1e-4))
+    trainer = paddle.trainer.SGD(
+        cost=cost,
+        parameters=parameters,
+        update_equation=paddle.optimizer.Adam(learning_rate=1e-4))
     feeding = {
         'user_id': 0,
         'gender_id': 1,

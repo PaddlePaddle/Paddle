@@ -12,6 +12,7 @@ node_id = os.getenv("OMPI_COMM_WORLD_RANK")
 if not node_id:
     raise EnvironmentError("must provied OMPI_COMM_WORLD_RANK")
 
+
 def wordemb(inlayer):
     wordemb = paddle.layer.embedding(
         input=inlayer,
@@ -24,32 +25,39 @@ def wordemb(inlayer):
             sparse_update=True))
     return wordemb
 
+
 def cluster_reader_cluster(filename, node_id):
     def cluster_reader():
-        with open("-".join([filename, "%05d"%int(node_id)]), "r") as f:
+        with open("-".join([filename, "%05d" % int(node_id)]), "r") as f:
             for l in f:
                 csv_data = [int(cell) for cell in l.split(",")]
                 yield tuple(csv_data)
+
     return cluster_reader
+
 
 def main():
     # get arguments from env
 
     # for local training
     TRUTH = ["true", "True", "TRUE", "1", "yes", "Yes", "YES"]
-    cluster_train = os.getenv('PADDLE_INIT_CLUSTER_TRAIN', "False") in TRUTH
+    cluster_train = os.getenv('PADDLE_CLUSTER_TRAIN', "False") in TRUTH
     use_gpu = os.getenv('PADDLE_INIT_USE_GPU', "False")
 
     if not cluster_train:
-        paddle.init(use_gpu=use_gpu, trainer_count=int(os.getenv("PADDLE_INIT_TRAINER_COUNT", "1")))
+        paddle.init(
+            use_gpu=use_gpu,
+            trainer_count=int(os.getenv("PADDLE_INIT_TRAINER_COUNT", "1")))
     else:
         paddle.init(
             use_gpu=use_gpu,
             trainer_count=int(os.getenv("PADDLE_INIT_TRAINER_COUNT", "1")),
             port=int(os.getenv("PADDLE_INIT_PORT", "7164")),
             ports_num=int(os.getenv("PADDLE_INIT_PORTS_NUM", "1")),
-            ports_num_for_sparse=int(os.getenv("PADDLE_INIT_PORTS_NUM_FOR_SPARSE", "1")),
-            num_gradient_servers=int(os.getenv("PADDLE_INIT_NUM_GRADIENT_SERVERS", "1")),
+            ports_num_for_sparse=int(
+                os.getenv("PADDLE_INIT_PORTS_NUM_FOR_SPARSE", "1")),
+            num_gradient_servers=int(
+                os.getenv("PADDLE_INIT_NUM_GRADIENT_SERVERS", "1")),
             trainer_id=int(os.getenv("PADDLE_INIT_TRAINER_ID", "0")),
             pservers=os.getenv("PADDLE_INIT_PSERVERS", "127.0.0.1"))
     #word_dict = paddle.dataset.imikolov.build_dict()
