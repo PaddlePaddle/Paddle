@@ -106,7 +106,8 @@ extern void adamApply(BaseMatrix& value,
                       real beta1_power,
                       real beta2_power,
                       real epsilon,
-                      real learningRate);
+                      real learningRate,
+                      real decayRate);
 
 /**
  * \brief AdaMax optimizer.
@@ -118,5 +119,6 @@ extern void adamaxApply(BaseMatrix& value,
                         real beta1,
                         real beta2,
                         int64_t step,
-                        real alpha);
+                        real alpha,
+                        real decayRate);
 }  // namespace paddle

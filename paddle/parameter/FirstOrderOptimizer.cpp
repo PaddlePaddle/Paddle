@@ -274,6 +274,8 @@ void AdamParameterOptimizer::update(const VectorPtr vecs[],
   BaseMatrix& mom = *vecs[PARAMETER_MOMENTUM];
   BaseMatrix& v = *vecs[PARAMETER_SECOND_MOMENTUM];
 
+  real dacayRate = (real)config.decay_rate();
+
   adamApply(value,
             grad,
             mom,
@@ -283,7 +285,8 @@ void AdamParameterOptimizer::update(const VectorPtr vecs[],
             beta1_power,
             beta2_power,
             epsilon_,
-            learningRate);
+            learningRate,
+            dacayRate);
 }
 
 void AdamaxParameterOptimizer::update(const VectorPtr vecs[],
@@ -297,7 +300,15 @@ void AdamaxParameterOptimizer::update(const VectorPtr vecs[],
   BaseMatrix& mom = *vecs[PARAMETER_MOMENTUM];
   BaseMatrix& u = *vecs[PARAMETER_WEIGHTED_INFINITY_NORM];
 
-  adamaxApply(value, grad, mom, u, beta1_, beta2_, step_, learningRate);
+  adamaxApply(value,
+              grad,
+              mom,
+              u,
+              beta1_,
+              beta2_,
+              step_,
+              learningRate,
+              (real)config.decay_rate());
 }
 
 void OptimizerWithGradientClipping::update(const VectorPtr vecs[],

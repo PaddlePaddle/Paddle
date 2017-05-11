@@ -152,14 +152,15 @@ void adamApply(BaseMatrix& value,
                real beta1_power,
                real beta2_power,
                real epsilon,
-               real learningRate) {
+               real learningRate,
+               real dacayRate) {
   real alpha = learningRate *
       std::sqrt((real)1 - beta2_power) / ((real)1 - beta1_power);
 
   auto expr1 = mom.lazyAssign(beta1 * mom + ((real)1 - beta1) * grad);
   auto expr2 = v.lazyAssign(beta2 * v + ((real)1 - beta2) * grad.square());
   auto expr3 = value.lazyAssign(
-    value - (mom * alpha) / (v.sqrt() + epsilon));
+    value - ((mom + dacayRate * value) * alpha) / (v.sqrt() + epsilon));
 
   AssignEvaluate(expr1, expr2, expr3);
 }
@@ -171,12 +172,13 @@ void adamaxApply(BaseMatrix& value,
                  real beta1,
                  real beta2,
                  int64_t step,
-                 real alpha) {
+                 real alpha,
+                 real decayRate) {
   auto expr1 = mom.lazyAssign(beta1 * mom + ((real)1 - beta1) * grad);
   auto expr2 = u.lazyAssign(
     (beta2 * u > grad.abs()).condition(beta2 * u, grad.abs()));
   auto expr3 = value.lazyAssign(
-    value - (alpha / ((real)1 - (real)std::pow(beta1, step))) * (mom / u));
+    value - (alpha / ((real)1 - (real)std::pow(beta1, step))) * ((mom + decayRate * value) / u));
 
   AssignEvaluate(expr1, expr2, expr3);
 }
@@ -321,7 +323,8 @@ void adamApply(BaseMatrix& value,
                real beta1_power,
                real beta2_power,
                real epsilon,
-               real learningRate) {
+               real learningRate,
+               real decayRate) {
   real alpha = learningRate *
       std::sqrt((real)1 - beta2_power) / ((real)1 - beta1_power);
 
@@ -331,7 +334,7 @@ void adamApply(BaseMatrix& value,
   // v_t = \beta_2 * v_{t-1} + (1-\beta_2)* g_{t-1}^2
   v = beta2 * v + ((real)1 - beta2) * grad.square();
 
-  value -=  (mom * alpha) / (v.sqrt() + epsilon);
+  value -=  ((mom+decayRate*value) * alpha) / (v.sqrt() + epsilon);
 }
 
 void adamaxApply(BaseMatrix& value,
@@ -341,7 +344,8 @@ void adamaxApply(BaseMatrix& value,
                  real beta1,
                  real beta2,
                  int64_t step,
-                 real alpha) {
+                 real alpha,
+                 real decayRate) {
   // m_t = \beta_1 * m_{t-1} + (1-\beta_1)* g_t;
   mom = beta1 * mom + ((real)1 - beta1) * grad;
 
@@ -349,7 +353,7 @@ void adamaxApply(BaseMatrix& value,
   u = (beta2 * u > grad.abs()).condition(beta2 * u, grad.abs());
 
   // \theta_t = \theta_{t-1} - (\alpha/(1-\beta_1^t))*m_t/u_t
-  value -= (alpha / ((real)1 - (real)std::pow(beta1, step))) * (mom / u);
+  value -= (alpha / ((real)1 - (real)std::pow(beta1, step))) * ((mom+decayRate*value) / u);
 }
 
 }  // namespace paddle
