@@ -92,5 +92,33 @@ a --> b --> c
 Because the tape is linear, it cannot handle the branch like this. However, there are some solutions for this situation:
 
 1. We could let user decide which node should be skipped when generating topology. It just like playing the tape from begin, but skip some section. The example code shows below:
+    ```python
+    a = layer(...)
+    b = layer(input=a)
+    c = layer(input=b)
+    d = layer(input=c)
+    e = layer(input=d)
+    f = layer(input=c)
+    g = layer(input=f)
+    
+    paddle.train(g, skip=[d, e])
+    ```
 
 2. We could let user clear the tape. User can define two topology seperately. 
+    ```python
+    def topology(up_branch=True):
+       a = layer(..)
+       b = layer(input=a)
+       c = layer(input=b)
+       if up_branch:
+         d = layer(input=c)
+         e = layer(input=d)
+         return e
+       else:
+         f = layer(input=c)
+         g = layer(input=f)
+         return g
+  
+    with Tape():
+        paddle.train(topology(False))
+    ```
