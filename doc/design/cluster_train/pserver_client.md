@@ -7,6 +7,7 @@ For an overview of trainer's role, please refer to [distributed training design 
 The parameters on parameter servers need to be initialized. To provide maximum flexibility, we need to allow trainer initialized the parameters. Only one trainer will do the initialization, the other trainers will wait for the completion of initialization and get the parameters from the parameter servers.
 
 To select the trainer for initialization, every trainer will try to get a distributed lock, whoever owns the lock will do the initialization. As illustrated below:
+
 <img src="./src/init_lock.png">
 
 The select process is encapsulated in the C API function:
@@ -14,6 +15,7 @@ The select process is encapsulated in the C API function:
 int paddle_begin_init_params(paddle_pserver_client* client, const char* config_proto);
 ```
 The selected trainer's call to `paddle_begin_init_params` will return with 1, and the other trainers' call to `paddle_begin_init_params` will block until initialization is done, and return 0. As illustrated below:
+
 <img src="./src/pserver_init.png">
 
 ## C Interface
