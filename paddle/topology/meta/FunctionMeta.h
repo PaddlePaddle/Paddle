@@ -32,9 +32,12 @@ public:
       TenserShapeInferer;
 
 private:
+  const static Set<int> defaultSeqTypes;
+
+private:
   std::string name;
-  static std::unordered_map<std::string, FunctionMetaPtr> gFuncMetas;
-  std::unordered_map<std::string, any> metaInfos;
+  static Map<std::string, FunctionMetaPtr> gFuncMetas;
+  Map<std::string, any> metaInfos;
 
   TensorMetas inputs_;
   TensorMetas outputs_;
@@ -86,12 +89,8 @@ public:
   }
 
   FunctionMeta& addInput(size_t dim,
-                         const std::unordered_set<DataType, std::hash<int>>&
-                             dataTypes = {DataType::DENSE},
-                         const std::unordered_set<SequenceType, std::hash<int>>&
-                             seqTypes = {SequenceType::NO_SEQUENCE,
-                                         SequenceType::SEQUENCE,
-                                         SequenceType::NESTED_SEQUENCE}) {
+                         const Set<int>& dataTypes = {DataType::DENSE},
+                         const Set<int>& seqTypes = defaultSeqTypes) {
     addInput()
         ->supportDataTypes(dataTypes)
         .supportSequenceTypes(seqTypes)
@@ -100,12 +99,8 @@ public:
   }
 
   FunctionMeta& addInput(const std::vector<int>& shape,
-                         const std::unordered_set<DataType, std::hash<int>>&
-                             dataTypes = {DataType::DENSE},
-                         const std::unordered_set<SequenceType, std::hash<int>>&
-                             seqTypes = {SequenceType::NO_SEQUENCE,
-                                         SequenceType::SEQUENCE,
-                                         SequenceType::NESTED_SEQUENCE}) {
+                         const Set<int>& dataTypes = {DataType::DENSE},
+                         const Set<int>& seqTypes = defaultSeqTypes) {
     addInput()
         ->supportDataTypes(dataTypes)
         .supportSequenceTypes(seqTypes)
@@ -118,15 +113,10 @@ public:
     return outputs_.back();
   }
 
-  FunctionMeta& addOutput(
-      int argType,
-      size_t dim,
-      const std::unordered_set<DataType, std::hash<int>>& dataTypes =
-          {DataType::DENSE},
-      const std::unordered_set<SequenceType, std::hash<int>>& seqTypes =
-          {SequenceType::NO_SEQUENCE,
-           SequenceType::SEQUENCE,
-           SequenceType::NESTED_SEQUENCE}) {
+  FunctionMeta& addOutput(int argType,
+                          size_t dim,
+                          const Set<int>& dataTypes = {DataType::DENSE},
+                          const Set<int>& seqTypes = defaultSeqTypes) {
     addOutput()
         ->supportDataTypes(dataTypes)
         .supportSequenceTypes(seqTypes)
@@ -135,15 +125,10 @@ public:
     return *this;
   }
 
-  FunctionMeta& addOutput(
-      int argType,
-      const std::vector<int>& shape,
-      const std::unordered_set<DataType, std::hash<int>>& dataTypes =
-          {DataType::DENSE},
-      const std::unordered_set<SequenceType, std::hash<int>>& seqTypes =
-          {SequenceType::NO_SEQUENCE,
-           SequenceType::SEQUENCE,
-           SequenceType::NESTED_SEQUENCE}) {
+  FunctionMeta& addOutput(int argType,
+                          const std::vector<int>& shape,
+                          const Set<int>& dataTypes = {DataType::DENSE},
+                          const Set<int>& seqTypes = defaultSeqTypes) {
     addOutput()
         ->supportDataTypes(dataTypes)
         .supportSequenceTypes(seqTypes)

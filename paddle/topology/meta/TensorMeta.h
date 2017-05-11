@@ -34,15 +34,13 @@ public:
   TensorMeta& setShapeWithConstraints(const std::vector<int>& shape);
 
   TensorMeta& supportSequenceTypes(
-      const std::unordered_set<SequenceType, std::hash<int>>& supportedTypes =
-          {NO_SEQUENCE, SEQUENCE, NESTED_SEQUENCE},
-      Constraints<SequenceType>** constraints = nullptr);
+      const Set<int>& supportedTypes = {NO_SEQUENCE, SEQUENCE, NESTED_SEQUENCE},
+      Constraints<int>** constraints = nullptr);
 
-  TensorMeta& supportDataTypes(
-      const std::unordered_set<DataType, std::hash<int>>& supportedTypes);
+  TensorMeta& supportDataTypes(const Set<int>& supportedTypes);
 
-  TensorMeta& supportArgType(
-      int defaultArgType, const std::unordered_set<int>& supportedTypes = {});
+  TensorMeta& supportArgType(int defaultArgType,
+                             const Set<int>& supportedTypes = {});
 };
 
 typedef std::shared_ptr<TensorMeta> TensorMetaPtr;

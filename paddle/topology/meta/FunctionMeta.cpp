@@ -16,7 +16,11 @@ limitations under the License. */
 namespace paddle {
 namespace topology {
 namespace meta {
-std::unordered_map<std::string, FunctionMetaPtr> FunctionMeta::gFuncMetas;
+Map<std::string, FunctionMetaPtr> FunctionMeta::gFuncMetas;
+
+const Set<int> FunctionMeta::defaultSeqTypes = {SequenceType::NO_SEQUENCE,
+                                                SequenceType::SEQUENCE,
+                                                SequenceType::NESTED_SEQUENCE};
 
 Error FunctionMeta::registerFuncMeta(
     const std::string &name, std::function<Error(FunctionMetaPtr &)> func) {

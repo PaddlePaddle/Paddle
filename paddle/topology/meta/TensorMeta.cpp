@@ -45,31 +45,29 @@ TensorMeta &TensorMeta::setShapeWithConstraints(const std::vector<int> &shape) {
   return *this;
 }
 
-TensorMeta &TensorMeta::supportSequenceTypes(
-    const std::unordered_set<SequenceType, std::hash<int>> &supportedTypes,
-    Constraints<SequenceType> **constraints) {
-  auto &cons = addAttribute<SequenceType>("sequence_type",
-                                          "The sequence types of tensor")
-                   .mustSet()
-                   .in(supportedTypes);
+TensorMeta &TensorMeta::supportSequenceTypes(const Set<int> &supportedTypes,
+                                             Constraints<int> **constraints) {
+  auto &cons =
+      addAttribute<int>("sequence_type", "The sequence types of tensor")
+          .mustSet()
+          .in(supportedTypes);
   if (constraints != nullptr) {
     *constraints = &cons;
   }
   return *this;
 }
 
-TensorMeta &TensorMeta::supportDataTypes(
-    const std::unordered_set<DataType, std::hash<int>> &supportedTypes) {
-  addAttribute<DataType>("data_type", "The data types of tensor")
+TensorMeta &TensorMeta::supportDataTypes(const Set<int> &supportedTypes) {
+  addAttribute<int>("data_type", "The data types of tensor")
       .mustSet()
       .in(supportedTypes);
   return *this;
 }
 
-TensorMeta &TensorMeta::supportArgType(
-    int defaultArgType, const std::unordered_set<int> &supportedTypes) {
+TensorMeta &TensorMeta::supportArgType(int defaultArgType,
+                                       const Set<int> &supportedTypes) {
   std::unordered_set<int> tmp;
-  const std::unordered_set<int> *ptr = &supportedTypes;
+  const Set<int> *ptr = &supportedTypes;
   if (supportedTypes.empty()) {
     tmp = {defaultArgType};
     ptr = &tmp;

@@ -24,14 +24,13 @@ namespace meta {
 
 class AttributeValidator {
 public:
-  AttributeValidator(
-      const std::unordered_map<std::string, AttributeMetaPtr>& attributeMetas)
+  AttributeValidator(const Map<std::string, AttributeMetaPtr>& attributeMetas)
       : metas_(attributeMetas) {}
 
-  paddle::Error validate(std::unordered_map<std::string, any>* attrs) const;
+  paddle::Error validate(Map<std::string, any>* attrs) const;
 
 private:
-  const std::unordered_map<std::string, AttributeMetaPtr>& metas_;
+  const Map<std::string, AttributeMetaPtr>& metas_;
 };
 
 paddle::Error validateAndInferShape(paddle::topology::Function& func,

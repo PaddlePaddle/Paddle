@@ -21,11 +21,16 @@ limitations under the License. */
 #include <type_traits>
 #include <typeinfo>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace paddle {
 namespace topology {
 namespace meta {
+template <typename T>
+using Set = std::unordered_set<T>;
+template <typename T1, typename T2>
+using Map = std::unordered_map<T1, T2>;
 
 template <typename T>
 class Constraints {
@@ -183,14 +188,13 @@ typedef std::shared_ptr<AttributeMeta> AttributeMetaPtr;
 
 class WithAttributeMeta {
 private:
-  std::unordered_map<std::string, AttributeMetaPtr> attributes_;
+  Map<std::string, AttributeMetaPtr> attributes_;
   std::string errTag_;
 
 public:
   WithAttributeMeta(const std::string& errTag) : errTag_(errTag) {}
 
-  const std::unordered_map<std::string, AttributeMetaPtr>& getAttributes()
-      const {
+  const Map<std::string, AttributeMetaPtr>& getAttributes() const {
     return attributes_;
   }
 

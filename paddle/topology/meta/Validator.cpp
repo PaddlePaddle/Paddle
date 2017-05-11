@@ -18,8 +18,7 @@ namespace paddle {
 namespace topology {
 namespace meta {
 
-Error AttributeValidator::validate(
-    std::unordered_map<std::string, any>* attrs) const {
+Error AttributeValidator::validate(Map<std::string, any>* attrs) const {
   for (auto it = attrs->begin(); it != attrs->end(); ++it) {
     auto metaIt = this->metas_.find(it->first);
     if (metaIt == this->metas_.end()) {
