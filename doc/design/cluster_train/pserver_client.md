@@ -46,10 +46,10 @@ int paddle_begin_init_params(paddle_pserver_client* client, const char* config_p
  * servers.
  *
  * @param param the parameter to initialize.
- * @return 0 if successful, otherwise -1. On failure, the trainer need
- * to restart the entire initialization process (starting
- * from @paddle_begin_init_param). Or simply exit the program and wait
- * for cluster management system to restart trainer.
+ * @return 0 if successful, otherwise -1. On failure, the trainer
+ * needs to restart the entire initialization process (starting from
+ * @paddle_begin_init_param). Or simply exit the program and wait for
+ * the cluster management system to restart the trainer.
  */
 int paddle_init_param(paddle_pserver_client* client, paddle_parameter params);
 
@@ -57,10 +57,10 @@ int paddle_init_param(paddle_pserver_client* client, paddle_parameter params);
  * @brief paddle_finish_init_params tells parameter servers client has
  * sent all parameters to parameter servers as initialization.
  *
- * @return 0 if successful, otherwise -1. On failure, the trainer need
- * to restart the entire initialization process (starting
- * from @paddle_begin_init_param). Or simply exit the program and wait
- * for cluster management system to restart trainer.
+ * @return 0 if successful, otherwise -1. On failure, the trainer
+ * needs to restart the entire initialization process (starting from
+ * @paddle_begin_init_param). Or simply exit the program and wait for
+ * the cluster management system to restart the trainer.
  */
 int paddle_finish_init_params(paddle_pserver_client* client);
 
@@ -79,7 +79,8 @@ int paddle_send_grads(paddle_pserver_client* client, const paddle_gradient* grad
  * @brief paddle_set_params sets parameters to parameter servers.
  *
  * @param params the array of parameters to set to parameter servers.
- * @param total number of parameters inside the parameter array.
+ * @param total the total number of parameters inside the parameter
+ * array.
  * @return 0 if successful, otherwise -1.
  */
 int paddle_set_params(paddle_pserver_client* client, const paddle_parameter* params, int total);
