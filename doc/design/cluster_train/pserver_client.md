@@ -12,6 +12,13 @@ For an overview of trainer's role, please refer to [distributed training design 
 #define PADDLE_ELEMENT_TYPE_FLOAT32 4
 #define PADDLE_ELEMENT_TYPE_FLOAT64 5
 
+typedef struct {
+  char* name;
+  int   element_type;
+  void* content;
+  int   content_len;
+} paddle_parameter, paddle_gradient;
+
 typedef struct paddle_pserver_client paddle_pserver_client;
 
 /**
@@ -27,33 +34,36 @@ paddle_pserver_client* paddle_new_pserver_client();
 void paddle_pserver_client_release(paddle_pserver_client* client);
 
 /**
- * @brief paddle_begin_init_param begins to initialize parameters
+ * @brief paddle_begin_init_params begins to initialize parameters
  * on parameter servers.
  *
- * paddle_begin_init_param will be called from multiple trainers, only
+ * paddle_begin_init_params will be called from multiple trainers, only
  * one trainer will be selected to initialize the parameters on
  * parameter servers. Other trainers will be blocked until the
  * initialization is done, and they need to get the initialized
- * parameters from parameter servers using @paddle_get_param.
+ * parameters from parameter servers using @paddle_get_params.
  *
- * @return 1 if trainer is selected to initialize parameter
- * servers, otherwise 0.
+ * @param config_proto serialized parameter server configuration
+ * protobuffer.
+ * @return 1 if trainer is selected to initialize parameter servers,
+ * otherwise 0.
  */
-int paddle_begin_init_param(paddle_pserver_client* client);
+int paddle_begin_init_params(paddle_pserver_client* client, const char* config_proto);
 
 /**
  * @brief paddle_init_param initializes the parameter on parameter
  * servers.
  *
+ * @param param the parameter to initialize.
  * @return 0 if successful, otherwise -1. On failure the trainer need
  * to restart the entire initialization process starting from
  * paddle_begin_init_param. Or simply exit the program and wait for
  * cluster management system to restart trainer.
  */
-int paddle_init_param(paddle_pserver_client* client, const char* name, int element_type, const void* content);
+int paddle_init_param(paddle_pserver_client* client, paddle_parameter params);
 
 /**
- * @brief paddle_finish_init_param tells parameter servers client has
+ * @brief paddle_finish_init_params tells parameter servers client has
  * sent all parameters to parameter servers as initialization.
  *
  * @return 0 if successful, otherwise -1. On failure the trainer need
@@ -61,34 +71,43 @@ int paddle_init_param(paddle_pserver_client* client, const char* name, int eleme
  * paddle_begin_init_param. Or simply exit the program and wait for
  * cluster management system to restart trainer.
  */
-int paddle_finish_init_param(paddle_pserver_client* client);
+int paddle_finish_init_params(paddle_pserver_client* client);
 
 /**
- * @brief paddle_send_grad sends gradients to parameter servers for
+ * @brief paddle_send_grads sends gradients to parameter servers for
  * updating parameters.
  *
+ * @param grads the array of gradients to send.
+ * @param total the total number of gradient inside the gradient array.
+ * @param learning_rate the learning rate for the gradients.
  * @return 0 if successful, otherwise -1.
  */
-int paddle_send_grad(paddle_pserver_client* client, const char* name, int element_type, const void* content);
+int paddle_send_grads(paddle_pserver_client* client, const paddle_gradient* grads, int total, double learning_rate);
 
 /**
- * @brief paddle_set_param sets a parameter on parameter servers.
+ * @brief paddle_set_params sets parameters to parameter servers.
  *
+ * @param params the array of parameters to set to parameter servers.
+ * @param total number of parameters inside the parameter array.
  * @return 0 if successful, otherwise -1.
  */
-int paddle_set_param(paddle_pserver_client* client, const char* name, int element_type, const void* content);
+int paddle_set_params(paddle_pserver_client* client, const paddle_parameter* params, int total);
 
 /**
- * @brief paddle_get_param gets the parameter from parameter servers.
+ * @brief paddle_get_params gets parameters from parameter servers.
  *
+ * @param names the array of names of the parameters to get.
+ * @param dst the destination array of parameters to save to.
+ * @param total the total number of parameters to get.
  * @return 0 if successful, otherwise -1.
  */
-int paddle_get_param(paddle_pserver_client* client, const char* name, void** dst, int* dstLen);
+int paddle_get_params(paddle_pserver_client* client, const char** names, paddle_parameter* dst, int total);
 
 /**
  * @brief paddle_save_model indicates parameters to save the parameter
  * to the given path
  *
+ * @param path the path to save parameters.
  * @return 0 if successful, otherwise -1.
  */
 int paddle_save_model(paddle_pserver_client* client, const char* path);
