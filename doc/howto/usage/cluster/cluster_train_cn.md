@@ -33,7 +33,7 @@
 # 环境准备
 
 1. 准备您的计算集群。计算集群通常由一组（几台到几千台规模）的Linux服务器组成。服务器之间可以通过局域网（LAN）联通，每台服务器具有集群中唯一的IP地址（或者可被DNS解析的主机名）。集群中的每台计算机通常被成为一个“节点”。使用不同的集群管理平台时，会要求集群节点是否是同样硬件配置。
-1. 我们需要在集群的所有节点上安装 PaddlePaddle。 如果要启用GPU，还需要在节点上安装对应的GPU驱动以及CUDA。PaddlePaddle的安装可以参考[这里](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/getstarted/build_and_install)的多种安装方式。我们推荐使用[Docker安装方式](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_cn.rst)来快速安装PaddlePaddle。
+1. 我们需要在集群的所有节点上安装 PaddlePaddle。 如果要启用GPU，还需要在节点上安装对应的GPU驱动以及CUDA。PaddlePaddle的安装可以参考[build_and_install](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/getstarted/build_and_install)的多种安装方式。我们推荐使用[Docker](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_cn.rst)安装方式来快速安装PaddlePaddle。
 
 安装完成之后，执行下面的命令可以查看已经安装的版本（docker安装方式可以进入docker容器执行：`docker run -it paddlepaddle/paddle:0.10.0rc3 /bin/bash`）：
 ```bash
@@ -74,7 +74,7 @@ $ stdbuf -oL /usr/bin/nohup paddle pserver --port=7164 --ports_num=1 --ports_num
 $ python train.py
 ```
 
-trainer需要和pserver保持网络联通以完成训练。trainer启动需要传入端口、pserver地址等参数使trainer可以正确连接到pserver。这些参数可以通过[环境变量](https://zh.wikipedia.org/wiki/环境变量)或编写程序时`paddle.init()`中传入参数。如果同时使用`paddle.init()`参数和环境变量，将会优先使用`paddle.init()`中传入的参数。
+trainer需要和pserver保持网络联通以完成训练。trainer启动需要传入端口、pserver地址等参数使trainer可以正确连接到pserver。这些参数可以通过环境变量(https://zh.wikipedia.org/wiki/环境变量)或编写程序时`paddle.init()`中传入参数。如果同时使用`paddle.init()`参数和环境变量，将会优先使用`paddle.init()`中传入的参数。
 
 使用环境变量：
 
@@ -170,7 +170,7 @@ test.txt-00002
 
 - `mylib.py`：会被`train.py`调用的一些库函数
 - `word_dict.pickle`：在`train.py`中会使用到的字典数据文件
-- `train.py`：训练程序，代码参考[这里](../../../../demo/word2vec/api_train_v2_cluster.py)
+- `train.py`：训练程序，代码参考[api_train_v2_cluster.py](../../../../demo/word2vec/api_train_v2_cluster.py)
   - ***注意：***对于本样例代码，在使用不同的分布式计算平台时，您可能需要修改`train.py`开头的部分（如下），以便获得训练数据的位置和获取环境变量配置：
   ```python
   cluster_train_file = "./train_data_dir/train/train.txt"
@@ -190,7 +190,7 @@ PaddlePaddle可以使用多种分布式计算平台构建分布式计算任务�
 - [OpenMPI](https://www.open-mpi.org)
 - [Fabric](http://www.fabfile.org) 集群管理工具。可以使用`Fabric`编写集群任务提交和管理脚本。
 
-对于不同的集群平台，会分别介绍集群作业的启动和停止方法。这些例子都可以在[这个路径下](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/scripts/cluster_train_v2)找到。
+对于不同的集群平台，会分别介绍集群作业的启动和停止方法。这些例子都可以在[cluster_train_v2](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/scripts/cluster_train_v2)找到。
 
 在使用分布式计算平台进行训练时，任务被平台调度在集群中时会使用计算平台提供的API或环境变量获取启动的参数。
 
@@ -281,4 +281,4 @@ mpirun -hostfile machines -n 3  /home/tutorial/start_mpi_train.sh
 
 ## 在Kubernetes集群中提交训练作业
 
-此部分的使用方法可以参考[这里](../k8s/k8s_cn.md)
+此部分的使用方法可以参考[k8s_cn.md](../k8s/k8s_cn.md)
