@@ -118,6 +118,23 @@ paddle pfs cp filenames /pfs/$DATACENTER/home/$USER/folder/
 ```bash  
 paddle pfs cp random_images-*-of-* /pfs/$DATACENTER/home/$USER/folder/
 ```
+
+需要`$DATACENTER`的配置写到配置文件中，例如
+
+```
+# config file
+[datacenter_1]
+username=wuyi
+usercert=wuyi.pem
+userkey=wuyi-key.pem
+endpoint=datacenter1.paddlepaddle.org
+
+[datacenter_2]
+username=wuyi
+usercert=wuyi.pem
+userkey=wuyi-key.pem
+endpoint=datacenter2.paddlepaddle.org
+```
 ## TODO
 
 ### 支持用户自定义的数据预处理job
