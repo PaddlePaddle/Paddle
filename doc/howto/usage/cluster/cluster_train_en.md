@@ -1,3 +1,21 @@
+* [Introduction](#introduction)
+* [Preparations](#preparations)
+* [Command-line arguments](#command-line-arguments)
+   * [Starting parameter server](#starting-parameter-server)
+   * [Starting trainer](#starting-trainer)
+   * [Prepare Training Dataset](#prepare-training-dataset)
+   * [Prepare Training program](#prepare-training-program)
+* [Use cluster platforms or cluster management tools](#use-cluster-platforms-or-cluster-management-tools)
+   * [Cluster Training Using Fabric](#cluster-training-using-fabric)
+      * [Prepare a demo cluster using kubernetes(optional)](#prepare-a-demo-cluster-using-kubernetesoptional)
+      * [Launching Cluster Job](#launching-cluster-job)
+      * [Kill Cluster Job](#kill-cluster-job)
+      * [Check Cluster Training Result](#check-cluster-training-result)
+      * [Check Model Output](#check-model-output)
+   * [Cluster Training Using OpenMPI](#cluster-training-using-openmpi)
+      * [Prepare a demo OpenMPI cluster using kubernetes(optional)](#prepare-a-demo-openmpi-cluster-using-kubernetesoptional)
+      * [Launching Cluster Job](#launching-cluster-job-1)
+   * [Cluster Training Using Kubernetes](#cluster-training-using-kubernetes)
 # Introduction
 
 In this article, we'll explain how to do distributed training jobs with PaddlePaddle on different types of clusters. The diagram below shows the mail architecture of a distributed trainning job:
