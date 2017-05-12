@@ -91,16 +91,7 @@ pserver_cpu|int| CPU count for each Parameter Server process
 pserver_mem|str| memory allocated for each Parameter Server process, a plain integer using one of these suffixes: E, P, T, G, M, K
 trainer_cpu|int| CPU count for each Trainer process
 trainer_mem|str| memory allocated for each Trainer process, a plain integer using one of these suffixes: E, P, T, G, M, K
-
-### Specify Resource for a Distributed Training Job
-- Specify Trainer and Parameter Server Resource
-  - you *must* specify `trainers`, Trainer count for the job.
-  - you *must* specify `pservers`, Parameter Server count for the job.
-  - you *must* specify `trainer_cpu`, CPU count for each Trainer process.
-  - you *must* specify `trainer_mem`, memory allocated for each Trainer process.
-  - you *must* specify `pserver_cpu`, CPU count for each Parameter Server process.
-  - you *must* specify `pserver_mem`, memory allocated for each Parameter Server process.
-  - you *may* specify `trainer_gpu`, GPU count for each Trainer process.
+trainer_gpu|int| GPU count for each Trainer process, if you only want CPU, do not set this parameter
 
 ### Deploy Parameter Server, Trainer and Master Process
   - Deploy PaddlePaddle Parameter Server processes, it's a Kubernetes ReplicaSet.
