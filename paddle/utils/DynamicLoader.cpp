@@ -115,9 +115,7 @@ static inline void GetDsoHandleFromSearchPath(const std::string& search_root,
                                 << "Note: After Mac OS 10.11, using the "
                                    "DYLD_LIBRARY_PATH is impossible "
                                 << "unless System Integrity Protection (SIP) "
-                                   "is disabled. However, "
-                                   "method 1 "
-                                << "always work well.";
+                                   "is disabled.";
 }
 
 void GetCublasDsoHandle(void** dso_handle) {
