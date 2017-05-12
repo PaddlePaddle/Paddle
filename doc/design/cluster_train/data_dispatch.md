@@ -101,7 +101,7 @@ PaddlePaddle提供专用的[data reader creator](https://github.com/PaddlePaddle
 
 ```python
 # ...
-reader = paddle.reader.creator.RecordIO("/home/user_name/random_images-*-of-*")
+reader = paddle.reader.creator.RecordIO("/pfs/datacenter_name/home/user_name/random_images-*-of-*")
 batch_reader = paddle.batch(paddle.dataset.mnist.train(), 128)
 trainer.train(batch_reader, ...)
 ```
@@ -150,7 +150,7 @@ endpoint=datacenter2.paddlepaddle.org
 不用mount的方式来访问数据，而是直接用API的接口远程访问
 
 ```
-f = open('/pfs/datacenter/home/user/test1.dat')
+f = open('/pfs/datacenter_name/home/user_name/test1.dat')
 ```
 
 
