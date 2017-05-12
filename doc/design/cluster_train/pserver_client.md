@@ -23,25 +23,25 @@ name:sparse-n-1
 
 The library is unaware of the partition, and treat each parameter independently. Only when saving parameters, the parameter servers will merge the sparse parameters according to the naming convention.
 
-## Model Optimization Using Gradient
+## Model Optimization Using Gradients
 
 There are two ways to perform model optimization using gradients:
 
 - On Client
 
-  The client does forward and backward update multiple steps. In each step, the gradients are calculated each step and a new model is generated. After some steps, the client will calculate the difference between the newest model and the old model at step 0. The difference will be updated to parameter servers. Parameter servers will just update parameters using the difference without any optimization using gradients (such as Adam and L1 regularization).
+  The client does multiple steps of forward and backward update. In each step, the gradients are calculated and a new model is generated. After some steps, the client will calculate the difference between the newest model and the old model at step 0. The difference will be updated to parameter servers. Parameter servers will just update parameters using the difference without any optimization using gradients (such as Adam and L1 regularization).
 
 - On Parameter Server
 
-  The client will send gradients to parameter servers, the parameter server will do the optimization using gradients.
+  The client will send accumulated gradients to parameter servers, the parameter server will do the optimization using gradients.
 
 ## L1 and L2 Regularization
 
-PaddlePaddle allows L1 or L2 regularizations to be specified per parameter, so when the trainer initializes the parameter. When the parameter server is doing the optimization, the trainer needs to pass a parameter configuration to parameter servers to indicate the Regularization.
+PaddlePaddle allows L1 or L2 regularizations to be specified per parameter, so when the trainer initializes the parameter it needs include a parameter configuration when L1 or L2 regularization is necessary.
 
 ## Parameter Initialization
 
-The parameters on parameter servers need to be initialized. To provide maximum flexibility, we need to allow trainer initialized the parameters. Only one trainer will do the initialization, the other trainers will wait for the completion of initialization and get the parameters from the parameter servers.
+The parameters on parameter servers need to be initialized. To provide maximum flexibility, the trainer will initialize the parameters. Only one trainer will do the initialization, the other trainers will wait for the completion of initialization and get the parameters from the parameter servers.
 
 ### Trainer Selection
 
@@ -49,9 +49,9 @@ To select the trainer for initialization, every trainer will try to get a distri
 
 <img src="./src/init_lock.png">
 
-### Selection Process
+### Trainer Selection Process
 
-The select process is encapsulated in the C API function:
+The trainer select process is encapsulated in the C API function:
 ```c
 int paddle_begin_init_params(paddle_pserver_client* client, const char* config_proto);
 ```
