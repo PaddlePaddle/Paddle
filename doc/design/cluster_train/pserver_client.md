@@ -58,18 +58,20 @@ The selected trainer's call to `paddle_begin_init_params` will return with 1, an
 ## C Interface
 
 ```c
-#define PADDLE_ELEMENT_TYPE_INT32   0
-#define PADDLE_ELEMENT_TYPE_UINT32  1
-#define PADDLE_ELEMENT_TYPE_INT64   2
-#define PADDLE_ELEMENT_TYPE_UINT64  3
-#define PADDLE_ELEMENT_TYPE_FLOAT32 4
-#define PADDLE_ELEMENT_TYPE_FLOAT64 5
+typedef enum {
+  PADDLE_ELEMENT_TYPE_INT32   = 0,
+  PADDLE_ELEMENT_TYPE_UINT32  = 1,
+  PADDLE_ELEMENT_TYPE_INT64   = 2,
+  PADDLE_ELEMENT_TYPE_UINT64  = 3,
+  PADDLE_ELEMENT_TYPE_FLOAT32 = 4,
+  PADDLE_ELEMENT_TYPE_FLOAT64 = 5,
+} paddle_element_type;
 
 typedef struct {
-  char* name;
-  int   element_type;
-  void* content;
-  int   content_len;
+  char*               name;
+  paddle_element_type element_type;
+  void*               content;
+  int                 content_len;
 } paddle_parameter, paddle_gradient;
 
 typedef struct paddle_pserver_client paddle_pserver_client;
