@@ -131,8 +131,6 @@ cat > /paddle/build/Dockerfile <<EOF
 FROM ${BASE_IMAGE}
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 ENV HOME /root
-ENV LANG en_US.UTF-8
-# Use Fix locales to en_US.UTF-8
 EOF
 
 if [[ -n ${APT_MIRROR} ]]; then
@@ -146,13 +144,18 @@ cat >> /paddle/build/Dockerfile <<EOF
 ADD *.deb /
 # run paddle version to install python packages first
 RUN apt-get update &&\
-    apt-get install -y python-pip && pip install -U pip && \
+    apt-get install -y python-pip locales && \
+    pip install -U pip && \
     dpkg -i /*.deb ; apt-get install -f -y && \
     apt-get clean -y && \
-    rm -f /*.deb && \
-    paddle version
+    rm -f /*.deb
+
+# Fix locales to en_US.UTF-8
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
+
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]
 EOF
