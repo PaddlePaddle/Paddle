@@ -8,11 +8,11 @@ For a distributed training job, there is two Docker image called *runtime Docker
 
 ### Base Docker Image
 
-  Usually, the base Docker image is PaddlePaddle product Docker image including paddle binary files and python package. And of course, users can specify any image name hosted on any docker registry which users have the access right.
+Usually, the base Docker image is PaddlePaddle product Docker image including paddle binary files and python package. And of course, users can specify any image name hosted on any docker registry which users have the access right.
 
 ### Runtime Docker Image
 
-  The trainer package which user upload and some Python dependencies are packaged into a runtime Docker image based on base Docker image.
+The trainer package which user upload and some Python dependencies are packaged into a runtime Docker image based on base Docker image.
 
 - Handle Python Dependencies
 
@@ -36,34 +36,37 @@ For a distributed training job, there is two Docker image called *runtime Docker
 
 - `paddle.job.dist_train()` will call the Job Server API `/v1/packages` to upload the trainer package and save them on CephFS, and then call `/v1/trainer/job` to submit the PaddlePaddle distributed job.
 - `/v1/trainer/job` will start a building job for preparing the runtime Docker image. When the building job is finished, Job Server will submit the PaddlePaddle distributed job to Kubernetes.
-- *NOTE*: For the first version, we will not prepare the runtime Docker image on JobServer, instead, we will build the runtime Docker image on our host. If the code is running on PaddleCloud, we will mount the trainer package in a temporary folder into the base Docker image. We will not support custom Python dependencies in the first version as well.
+- *NOTE*: For the first version, we will not prepare the runtime Docker image, instead, the package is uploaded to Paddle Cloud, and Paddle Cloud will mount the package in a temporary folder into the base Docker image. We will not support custom Python dependencies in the first version as well.
 
 You can call `paddle.job.dist_train` and provide distributed training configuration as the parameters:
 ```python
 paddle.job.dist_train(
-    trainer=paddle.trainer.SGD(...,
-                              paddle.updater.Adam(...)),
-    reader=reader,
-    paddle_job=PaddleJob(
-      runtime_image = "yancey1989/paddle-job",
-      job_name="paddle-job",
-      namespace="paddle-cloud",
-      cpu_nums=3,
-      memory="1G"
-      trainer_package="/example/word2vec",
-      entry_point="python %s" % __file__))
+  trainer=dist_trainer(),
+  paddle_job=PaddleJob(
+    job_name = "paddle-cloud",
+    entry_point = "python %s"%__file__,
+    trainer_package = "/example/word2vec",
+    base_image = "yancey1989/paddle-job",
+    trainers = 10,
+    pservers = 3,
+    trainer_cpu = 1,
+    trainer_gpu = 1,
+    trainer_mem = "10G",
+    pserver_cpu = 1,
+    pserver_mem = "2G"
+  ))
 ```
 
 The pseudo code of `paddle.job.dist_train` is as follows:
 ```python
-  def dist_train(trainer, reader, num_passes=1, event_handler=None, feeding=None, paddle_job=None):
-    # if the code is running on cloud, set PADDLE_ON_CLOUD=YES
-    if os.getenv("PADDLE_ON_CLOUD", "NO") == "NO":
-      #submit the paddle job
-      paddle_job.submit()
-    else:
-      #start the training
-      trainer.train(reader, num_passes, event_handler, feeding)
+def dist_train(trainer, paddle_job):
+  # if the code is running on cloud, set PADDLE_ON_CLOUD=YES
+  if os.getenv("RUNNING_ON_CLOUD", "NO") == "NO":
+    #submit the paddle job
+    paddle_job.submit()
+  else:
+    #start the training
+    trainer()
 ```
 ### PaddleJob Parameters
 parameter | type | explanation
@@ -73,9 +76,6 @@ entry_point | str | entry point for startup trainer process
 trainer_package | str | trainer package file path which user have the access right
 base_image|str|the [base image](#base-docker-image) for building the [runtime image](#runtime-docker-image)
 runtime_image|str| [runtime image](#runtime-docker-image)
-memory|str| memory allocated for the job, a plain integer using one of these suffixes: E, P, T, G, M, K
-cpu_nums|int| CPU count for the job
-gpu_nums|int| GPU count for the job
 pservers|int| Parameter Server process count
 trainers|int| Trainer process count
 pserver_cpu|int| CPU count for each Parameter Server process
@@ -84,23 +84,6 @@ trainer_cpu|int| CPU count for each Trainer process
 trainer_mem|str| memory allocated for each Trainer process, a plain integer using one of these suffixes: E, P, T, G, M, K
 
 ### Specify Resource for a Distributed Training Job
-- Specify Job Resource
-  You can specify the resource for a job totally used, and the trainer count and pserver count will be calculated according to the job resources and Kubernetes physical architecture.
-  - you *may* specify `gpu_nums`, GPU count for the job totally used.
-  - you *must* specify `cpu_nums`, CPU count for the job totally used.
-  - you *must* specify `memory`, memory allocated for the job.
-  Example:
-  ```python
-  paddle_job = PaddleJob(
-    job_name = "paddle-cloud",
-    entry_point = "python train.py",
-    trainer_package = "/example/word2vec",
-    runtime_image = "yancey1989/paddle-job",
-    memory = "10G",
-    cpu_nums = 3,
-    gpu_nums = 3
-  )
-  ```
 - Specify Trainer and Parameter Server Resource
   - you *must* specify `trainers`, Trainer count for the job.
   - you *must* specify `pservers`, Parameter Server count for the job.
@@ -109,22 +92,6 @@ trainer_mem|str| memory allocated for each Trainer process, a plain integer usin
   - you *must* specify `pserver_cpu`, CPU count for each Parameter Server process.
   - you *must* specify `pserver_mem`, memory allocated for each Parameter Server process.
   - you *may* specify `trainer_gpu`, GPU count for each Trainer process.
-  Example:
-  ```python
-  paddle_job = PaddleJob(
-    job_name = "paddle-cloud",
-    entry_point = "python train.py",
-    trainer_package = "/example/word2vec",
-    runtime_image = "yancey1989/paddle-job",
-    trainers = 10,
-    pservers = 3,
-    trainer_cpu = 1,
-    trainer_gpu = 1,
-    trainer_mem = "10G",
-    pserver_cpu = 1,
-    pserver_mem = "2G"
-  )
-  ```
 
 ### Deploy Parameter Server, Trainer and Master Process
   - Deploy PaddlePaddle Parameter Server processes, it's a Kubernetes ReplicaSet.
