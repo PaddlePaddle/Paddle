@@ -8,7 +8,7 @@ Each parameter will be partitioned into parameter chunks to make the parameters 
 
 ### Sparse Parameter
 
-The sparse parameter is a parameter that is updated sparsely. The name is somewhat misleading, it does not have a sparse representation, it is conceptually a dense vector.
+The sparse parameter is a parameter that is updated sparsely. The name is somewhat misleading, it does not have a sparse representation, it has the same representation as a dense vector.
 
 Because a sparse parameter is updated sparsely, the trainer will have to partition the sparse parameter. Because the parameter server will merge all sparse parameter shard into the same file when saving the parameter. It needs special naming convention:
 
@@ -21,14 +21,18 @@ name:sparse-1
 name:sparse-n-1
 ```
 
-## Gradient Optimization
+The library is unaware of the partition, and treat each parameter independently. Only when saving parameters, the parameter servers will merge the sparse parameters according to the naming convention.
 
-There are two ways to perform model optimization according to gradients:
+## Model Optimization Using Gradient
+
+There are two ways to perform model optimization using gradients:
 
 - On Client
-  The client does forward and backward update multiple steps. In each step, the gradients are calculated each step and a new model is generated. After some steps, the client will calculate the difference between the newest model and the old model at step 0. The difference will be updated to parameter servers. Parameter servers will just update parameters according to the difference without any optimization using gradients (such as Adam and L1 regularization).
+
+  The client does forward and backward update multiple steps. In each step, the gradients are calculated each step and a new model is generated. After some steps, the client will calculate the difference between the newest model and the old model at step 0. The difference will be updated to parameter servers. Parameter servers will just update parameters using the difference without any optimization using gradients (such as Adam and L1 regularization).
 
 - On Parameter Server
+
   The client will send gradients to parameter servers, the parameter server will do the optimization using gradients.
 
 ## L1 and L2 Regularization
