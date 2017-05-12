@@ -3,7 +3,7 @@
 
 ```
 GET /file: Get attribue of files
-POST /file: Touch a file 
+POST /file: Create a file 
 DELETE /file: Delete a File
 ```
 
@@ -18,6 +18,6 @@ POST /file/chunk: Update a chunk
 
 ```
 GET /dir: List all files in a directory
-POST /dir: Touch a directory
+POST /dir: Create a directory
 DELETE /dir: Delete a directory
 ```
