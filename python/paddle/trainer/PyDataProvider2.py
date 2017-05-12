@@ -270,7 +270,7 @@ class CheckWrapper(object):
             assert isinstance(each, collections.Sequence)
             for d in each:
                 assert isinstance(d, float)
-            assert len(each, input_type.dim)
+            assert len(each) == input_type.dim
         elif input_type.type == DataType.Index:
             assert isinstance(each, int)
             assert each < input_type.dim
@@ -304,7 +304,7 @@ class CheckInputTypeWrapper(object):
     def __call__(self, obj, filename):
         for items in self.generator(obj, filename):
             try:
-                # dict type is required for input_types when item is dict type 
+                # dict type is required for input_types when item is dict type
                 assert (isinstance(items, dict) and \
                         not isinstance(self.input_types, dict))==False
                 yield items
