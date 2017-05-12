@@ -4,7 +4,7 @@ For an overview of trainer's role, please refer to [distributed training design 
 
 ## Parameter Partition
 
-Each parameter will be partitioned into parameter chunks to make the parameters evenly distributed on parameter servers. The partition is done automatically by the client library. The *sparse parameter* require a little different treatment:
+Each parameter will be partitioned into parameter blocks to make the parameters evenly distributed on parameter servers. The partition is done automatically by the client library. The *sparse parameter* require a little different treatment:
 
 ### Sparse Parameter
 
