@@ -4797,6 +4797,7 @@ def crf_layer(input,
               size=None,
               weight=None,
               param_attr=None,
+              coeff=1.0,
               name=None,
               layer_attr=None):
     """
@@ -4822,6 +4823,8 @@ def crf_layer(input,
     :type weight: LayerOutput
     :param param_attr: Parameter attribute. None means default attribute
     :type param_attr: ParameterAttribute
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
     :param layer_attr: Extra Layer config.
@@ -4848,6 +4851,7 @@ def crf_layer(input,
         type=LayerType.CRF_LAYER,
         size=size,
         inputs=ipts,
+        coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     parents = [input, label]
     if weight is not None:
