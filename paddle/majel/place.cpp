@@ -1,4 +1,4 @@
-#include "majel/place.h"
+#include <majel/place.h>
 
 namespace majel {
 
