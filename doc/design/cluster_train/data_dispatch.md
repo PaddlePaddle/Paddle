@@ -114,7 +114,7 @@ trainer.train(batch_reader, ...)
 使用下面命令，可以把本地的数据上传到存储集群中。
 
 ```bash  
-paddle pfs cp filenames /pfs/$DATACENTER/home/$USER/folder/
+paddle pfs cp filename /pfs/$DATACENTER/home/$USER/folder/
 ```
 
 比如，把之前示例中转换完毕的random_images数据集上传到云端的`/home/`可以用以下指令：
@@ -141,7 +141,8 @@ endpoint=datacenter2.paddlepaddle.org
 ```
 ## TODO
 ### 文件访问的权限
-控制用户权限
+控制用户权限  
+
 - 用户可以把自己的数据分享给别人
 
 ### 文件访问方式
