@@ -16,9 +16,9 @@ MQ2007 dataset
 
 MQ2007 is a query set from Million Query track of TREC 2007. There are about 1700 queries in it with labeled documents. In MQ2007, the 5-fold cross
 validation strategy is adopted and the 5-fold partitions are included in the package. In each fold, there are three subsets for learning: training set,
-validation set and testing set. 
+validation set and testing set.
 
-MQ2007 dataset from 
+MQ2007 dataset from website
 http://research.microsoft.com/en-us/um/beijing/projects/letor/LETOR4.0/Data/MQ2007.rar and parse training set and test set into paddle reader creators
 
 """
