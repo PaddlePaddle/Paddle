@@ -57,6 +57,15 @@ paddle.job.dist_train(
   ))
 ```
 
+The parameter `trainer` of `paddle.job.dist_train` is a function and you can implement it as follows:
+```python
+def dist_trainer():
+  def trainer_creator():
+    trainer = paddle.v2.trainer.SGD(...)
+    trainer.train(...)
+  return trainer_creator
+```
+
 The pseudo code of `paddle.job.dist_train` is as follows:
 ```python
 def dist_train(trainer, paddle_job):
