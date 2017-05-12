@@ -29,6 +29,6 @@ if(CUDA_FOUND)
 else()
     add_library(majel ${MAJEL_CXX_FILES})
 endif()
-########################### Build Majel #############################
+#####################################################################
 
 add_subdirectory(test)
