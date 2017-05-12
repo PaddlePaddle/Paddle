@@ -46,7 +46,7 @@ paddle.job.dist_train(
     job_name = "paddle-cloud",
     entry_point = "python %s"%__file__,
     trainer_package = "/example/word2vec",
-    base_image = "yancey1989/paddle-job",
+    image = "yancey1989/paddle-job",
     trainers = 10,
     pservers = 3,
     trainer_cpu = 1,
@@ -83,8 +83,7 @@ parameter | type | explanation
 job_name | str | the unique name for the training job
 entry_point | str | entry point for startup trainer process
 trainer_package | str | trainer package file path which user have the access right
-base_image|str|the [base image](#base-docker-image) for building the [runtime image](#runtime-docker-image)
-runtime_image|str| [runtime image](#runtime-docker-image)
+image|str|the [base image](#base-docker-image) for building the [runtime image](#runtime-docker-image)
 pservers|int| Parameter Server process count
 trainers|int| Trainer process count
 pserver_cpu|int| CPU count for each Parameter Server process
