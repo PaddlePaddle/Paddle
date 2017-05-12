@@ -20,7 +20,7 @@
 
 In this article, we'll explain how to do distributed training jobs with PaddlePaddle on different types of clusters. The diagram below shows the mail architecture of a distributed trainning job:
 
-<img src="src/trainer.png" width="500"/>
+![cluster train](src/trainer.png)
 
 - Data shard: training data will be split into multiple parts, trainers use some parts of the whole dataset to do the training job.
 - Trainer: each trainer reads the data shard, and do Neural Network training algorithms like "forward" and "backward". Then the trainer will upload calculated "gradients" to parameter servers, and wait for parameters to be optimized on the parameter server side. When that finishes, the trainer download optimized parameters and continues its training.
