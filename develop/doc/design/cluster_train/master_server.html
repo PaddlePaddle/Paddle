@@ -1,0 +1,325 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Design Doc: Master Server &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/evaluators.html">Evaluators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Design Doc: Master Server</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="design-doc-master-server">
+<span id="design-doc-master-server"></span><h1>Design Doc: Master Server<a class="headerlink" href="#design-doc-master-server" title="Permalink to this headline">¶</a></h1>
+<p>For an overview of master server&#8217;s role, please refer to <a class="reference internal" href="README.html"><span class="doc">distributed training design doc</span></a>. In this design doc we will discuss the master server in more details. The master will be implemented in <a class="reference external" href="https://golang.org/">Go</a>.</p>
+<div class="section" id="dataset">
+<span id="dataset"></span><h2>Dataset<a class="headerlink" href="#dataset" title="Permalink to this headline">¶</a></h2>
+<p><img src="src/dataset.png"/></p>
+<p>A dataset is a list of files in <em>RecordIO</em> format. A RecordIO file consists of chunks, whereas each chunk consists some records.</p>
+</div>
+<div class="section" id="task-queue">
+<span id="task-queue"></span><h2>Task Queue<a class="headerlink" href="#task-queue" title="Permalink to this headline">¶</a></h2>
+<p>As mentioned in <a class="reference internal" href="README.html"><span class="doc">distributed training design doc</span></a>, a <em>task</em> is a data shard that the master server assigns to the trainer process to train on. A task consists of one or multiple <em>blocks</em> from one or multiple files. The master server maintains <em>task queues</em> to track the training progress.</p>
+<div class="section" id="task-queue-creation">
+<span id="task-queue-creation"></span><h3>Task Queue Creation<a class="headerlink" href="#task-queue-creation" title="Permalink to this headline">¶</a></h3>
+<ol>
+<li><p class="first">Each trainer will make an RPC call (using Go&#8217;s <a class="reference external" href="https://golang.org/pkg/net/rpc/">rpc</a> package) to the master server, telling it the RecordIO files representing the dataset specified by the user. Since every trainer will tell the master server the same dataset, only the first RPC call will be honored.</p>
+<p>The RPC interface is:</p>
+<div class="highlight-go"><div class="highlight"><pre><span></span><span class="kd">func</span> <span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">RPCServer</span><span class="p">)</span> <span class="nx">ReportDataset</span><span class="p">(</span><span class="nx">Paths</span> <span class="p">[]</span><span class="kt">string</span><span class="p">,</span> <span class="nx">dummy</span> <span class="o">*</span><span class="kt">int</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">The master server will scan through each RecordIO file to generate the <em>block index</em> and know how many blocks does each file have. A block can be referenced by the file path and the index of the block within the file. The block index is in memory data structure that enables fast access to each block, and the index of the block with the file is an integer start from 0, representing the n-th block within the file.</p>
+<p>The definition of the block is:</p>
+<div class="highlight-go"><div class="highlight"><pre><span></span><span class="kd">type</span> <span class="nx">Block</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Idx</span>   <span class="kt">int</span> <span class="c1">// index of the block within the file</span>
+    <span class="nx">Path</span>  <span class="kt">string</span>
+    <span class="nx">Index</span> <span class="nx">recordio</span><span class="p">.</span><span class="nx">Index</span> <span class="c1">// block index</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Blocks are grouped into tasks, and tasks are filled into the todo queue. The pending queue and the done queue are initialized with no element.</p>
+<p>The definition of the task is:</p>
+<div class="highlight-go"><div class="highlight"><pre><span></span><span class="kd">type</span> <span class="nx">Task</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Index</span>  <span class="kt">int</span>
+    <span class="nx">Blocks</span> <span class="p">[]</span><span class="nx">Block</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The elements in the tasks queues is of type <code class="docutils literal"><span class="pre">TaskEntry</span></code>, containing a timeout counter (described in <a class="reference external" href="#task-retry-logic">task retry logic</a>), and a task:</p>
+<div class="highlight-go"><div class="highlight"><pre><span></span><span class="kd">type</span> <span class="nx">TaskEntry</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">NumTimeout</span> <span class="kt">int</span>
+    <span class="nx">Task</span>       <span class="nx">Task</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The definition of task queues is:</p>
+<div class="highlight-go"><div class="highlight"><pre><span></span><span class="kd">type</span> <span class="nx">TaskQueues</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Todo</span>    <span class="p">[]</span><span class="nx">TaskEntry</span>
+    <span class="nx">Pending</span> <span class="kd">map</span><span class="p">[</span><span class="kt">int</span><span class="p">]</span><span class="nx">TaskEntry</span> <span class="c1">// map from task index to task entry</span>
+    <span class="nx">Done</span>    <span class="p">[]</span><span class="nx">TaskEntry</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="task-queue-persistence">
+<span id="task-queue-persistence"></span><h3>Task Queue Persistence<a class="headerlink" href="#task-queue-persistence" title="Permalink to this headline">¶</a></h3>
+<p>The task queues need to be persisted on <a class="reference external" href="https://github.com/coreos/etcd">etcd</a> for fault recovery. Since the task queues only change once a task is completed or timed out, which is not very frequent, we can afford to synchronize with etcd every time the task queues change.</p>
+<p>We will serialize the task queues data structure with <a class="reference external" href="https://golang.org/pkg/encoding/gob/">gob encoding</a>, compress with gzip, and save into etcd synchronously under key <code class="docutils literal"><span class="pre">/task_queues</span></code>.</p>
+</div>
+<div class="section" id="task-dispatch">
+<span id="task-dispatch"></span><h3>Task Dispatch<a class="headerlink" href="#task-dispatch" title="Permalink to this headline">¶</a></h3>
+<p>The trainer will make an RPC call to master to get a new task when:</p>
+<ul class="simple">
+<li>the trainer first started, or</li>
+<li>the trainer finishes a task.</li>
+</ul>
+<p>The RPC interface is:</p>
+<div class="highlight-go"><div class="highlight"><pre><span></span><span class="kd">func</span> <span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">RPCServer</span><span class="p">)</span> <span class="nx">GetTask</span><span class="p">(</span><span class="nx">finished</span> <span class="o">*</span><span class="nx">Task</span><span class="p">,</span> <span class="nx">result</span> <span class="o">*</span><span class="nx">Task</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Argument <code class="docutils literal"><span class="pre">finished</span></code> will be <code class="docutils literal"><span class="pre">nil</span></code> when the trainer is just started.</p>
+<p>During the RPC call the master will do the following:</p>
+<ul class="simple">
+<li>Make a copy of the task queues, and update the copy reflecting the finished tasks and the new pending tasks.</li>
+<li>Synchronize the copy of task queues with etcd using a transaction conditioned on holding the master lock.</li>
+<li>Replace the task queues with the copy and report to the trainer with the new tasks if succeeded, or discard the copy and report the error to the trainer if failed.</li>
+</ul>
+</div>
+<div class="section" id="task-retry-logic">
+<span id="task-retry-logic"></span><h3>Task Retry Logic<a class="headerlink" href="#task-retry-logic" title="Permalink to this headline">¶</a></h3>
+<p>When a task is dispatched to the trainer, the master will schedule a function for execution after the timeout duration (based on the moving average of task completion time). If the task entry in still in the pending queue, its timeout counter will increase by one, and the task will be moved to todo queue. If the timeout counter is above the threshold, the master will log the error and discard the task.</p>
+<p>Please note that since a timed out task could be completed after it has been dispatched for retry, so it is possible for a task to be processed multiple times. We do not try to prevent it from happening since it&#8217;s fine to train on the same task multiple times due to the stochastic nature of the stochastic gradient decent algorithm.</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

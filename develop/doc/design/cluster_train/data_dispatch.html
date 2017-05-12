@@ -197,11 +197,11 @@
 </div>
 <div class="section" id="">
 <span id="id4"></span><h2>文件预处理<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
-<p>在数据集可以被训练之前，文件需要预先被转换成PaddlePaddle集群内部的存储格式（SSTable）。我们提供两个转换方式：</p>
-<ul class="simple">
-<li>提供给用户本地转换的库，用户可以编写程序完成转换。</li>
-<li>用户可以上传自己的数据集，在集群运行MapReduce job完成转换。</li>
-</ul>
+<p>在数据集可以被训练之前，文件需要预先被转换成PaddlePaddle集群内部的存储格式（RecordIO）。我们提供两个转换方式：</p>
+<ol class="simple">
+<li>用户在本地转换好再上传</li>
+<li>用户上传数据后，在机群上运行转换程序</li>
+</ol>
 <p>转换生成的文件名会是以下格式：</p>
 <div class="highlight-text"><div class="highlight"><pre><span></span>name_prefix-aaaaa-of-bbbbb
 </pre></div>
@@ -261,9 +261,9 @@ random_images-00099-of-00099
 </div>
 <div class="section" id="">
 <span id="id8"></span><h3>进行训练<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
-<p>PaddlePaddle提供专用的<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#python-data-reader-design-doc">data reader creator</a>，生成给定SSTable文件对应的data reader。<strong>无论在本地还是在云端，reader的使用方式都是一致的</strong>：</p>
+<p>PaddlePaddle提供专用的<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#python-data-reader-design-doc">data reader creator</a>，生成给定RecordIO文件对应的data reader。<strong>无论在本地还是在云端，reader的使用方式都是一致的</strong>：</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># ...</span>
-<span class="n">reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">creator</span><span class="o">.</span><span class="n">SSTable</span><span class="p">(</span><span class="s2">&quot;/home/random_images-*-of-*&quot;</span><span class="p">)</span>
+<span class="n">reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">creator</span><span class="o">.</span><span class="n">RecordIO</span><span class="p">(</span><span class="s2">&quot;/home/random_images-*-of-*&quot;</span><span class="p">)</span>
 <span class="n">batch_reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">mnist</span><span class="o">.</span><span class="n">train</span><span class="p">(),</span> <span class="mi">128</span><span class="p">)</span>
 <span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">batch_reader</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
 </pre></div>

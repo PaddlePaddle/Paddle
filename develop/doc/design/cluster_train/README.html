@@ -192,7 +192,7 @@
 <span id="training-job"></span><h2>Training Job<a class="headerlink" href="#training-job" title="Permalink to this headline">¶</a></h2>
 <p>A training job will be created once user asks Paddle cloud to train a model. The training job is made up of different processes that collaboratively consume data and produce a trained model. There are three kinds of processes:</p>
 <ol class="simple">
-<li>the <em>master process</em>, which dispatches tasks to</li>
+<li>the <em>master server process</em>, which dispatches tasks to</li>
 <li>one or more <em>trainer processes</em>, which run distributed training and synchronize gradients/models via</li>
 <li>one or more <em>parameter server processes</em>, where each holds a shard of the global model, and receive the uploaded gradients from every <em>trainer process</em>, so they can run the optimize functions to update their parameters.</li>
 </ol>
@@ -200,9 +200,9 @@
 <p><img src="src/paddle-model-sharding.png"/></p>
 <p>By coordinating these processes, PaddlePaddle supports use both Synchronize Stochastic Gradient Descent (sync SGD) and Asynchronous Stochastic Gradient Descent (async SGD) to train user-defined neural network topologies.</p>
 <p>When training with sync SGD, parameter servers wait for all trainers to finish gradients update and then send the updated parameters to trainers, training can not proceed until the trainer received the updated parameters. This creates a synchronization point between trainers. When training with async SGD, each trainer upload gradient and download new parameters individually, without the synchronization with other trainers. Using asyc SGD will be faster in terms of time per pass, but have more noise in gradient since trainers are likely to have a stale model.</p>
-<div class="section" id="master-process">
-<span id="master-process"></span><h3>Master Process<a class="headerlink" href="#master-process" title="Permalink to this headline">¶</a></h3>
-<p>The master process will:</p>
+<div class="section" id="master-server-process">
+<span id="master-server-process"></span><h3>Master Server Process<a class="headerlink" href="#master-server-process" title="Permalink to this headline">¶</a></h3>
+<p>The master server process will:</p>
 <ul class="simple">
 <li>Partition a dataset into <a class="reference external" href="#task">tasks</a> and dispatch tasks to trainers.</li>
 <li>Keep track of training progress on the dataset with <a class="reference external" href="#task-queue">task queue</a>. A training job will iterate on the dataset for a full pass until it goes into next pass.</li>
@@ -213,10 +213,10 @@
 </div>
 <div class="section" id="task-queue">
 <span id="task-queue"></span><h4>Task Queue<a class="headerlink" href="#task-queue" title="Permalink to this headline">¶</a></h4>
-<p>The master process has three task queues to track training progress. As illustrated in the graph below, Job A and Job B both have one master process. Each master process has three task queues.</p>
+<p>The master server has three task queues to track training progress. As illustrated in the graph below, Job A and Job B both have one master server. Each master server process has three task queues.</p>
 <p><img src="src/paddle-task-queues.png"/></p>
 <ul class="simple">
-<li>The todo queue holds tasks to be dispatched. When a job starts, the master process fills in the todo queue with all tasks.</li>
+<li>The todo queue holds tasks to be dispatched. When a job starts, the master server fills in the todo queue with all tasks.</li>
 <li>The pending queue holds tasks that are currently training by trainers.</li>
 <li>the done queue holds tasks that are already trained.</li>
 </ul>
@@ -224,10 +224,10 @@
 <p><img src="src/paddle-task-states.png"/></p>
 <ol class="simple">
 <li>When a new pass of training starts, all tasks will be placed in the todo queue.</li>
-<li>The master process will dispatch few tasks to each trainer at a time, puts them in the pending queue and waits for completion.</li>
-<li>The trainer will work on its tasks and tell the master process once a task is completed. The master process will dispatch a new task to that trainer.</li>
-<li>If a task timeout. the master process will move it back to the todo queue. The timeout count will increase by one. If the timeout count is above a threshold, the task is likely to cause a trainer to crash, so it will be discarded.</li>
-<li>The master process will move completed task to the done queue. When the todo queue is empty, the master process will start a new pass by moving all tasks in the done queue to todo queue and reset the timeout counter of all tasks to zero.</li>
+<li>The master server will dispatch few tasks to each trainer at a time, puts them in the pending queue and waits for completion.</li>
+<li>The trainer will work on its tasks and tell the master server once a task is completed. The master server will dispatch a new task to that trainer.</li>
+<li>If a task timeout. the master server will move it back to the todo queue. The timeout count will increase by one. If the timeout count is above a threshold, the task is likely to cause a trainer to crash, so it will be discarded.</li>
+<li>The master server will move completed task to the done queue. When the todo queue is empty, the master server will start a new pass by moving all tasks in the done queue to todo queue and reset the timeout counter of all tasks to zero.</li>
 </ol>
 </div>
 </div>
@@ -268,7 +268,7 @@
 </div>
 <div class="section" id="fault-tolerant">
 <span id="fault-tolerant"></span><h2>Fault Tolerant<a class="headerlink" href="#fault-tolerant" title="Permalink to this headline">¶</a></h2>
-<p>The training job will pause if the master processes is dead, or any of the parameter server process is dead. They will be started by <a class="reference external" href="https://kubernetes.io/">Kubernetes</a> and recover in few minutes. Please refer to <a class="reference external" href="#fault-recovery">fault recovery</a>.</p>
+<p>The training job will pause if the master server processes is dead, or any of the parameter server process is dead. They will be started by <a class="reference external" href="https://kubernetes.io/">Kubernetes</a> and recover in few minutes. Please refer to <a class="reference external" href="#fault-recovery">fault recovery</a>.</p>
 <p>The training job will continue to make progress if there is at least one training process running. The strategy depends on the type of optimization algorithm:</p>
 <ul>
 <li><p class="first">sync-SGD</p>
@@ -284,8 +284,8 @@
 <p>PaddlePaddle uses <a class="reference external" href="https://github.com/coreos/etcd">etcd</a> to keep track of the states of processes. Because etcd is a distributed reliable key-value store, the restarted process can recover its states from etcd. The model parameters are periodically saved into distributed file system, so a restarted parameter server can recover its parameters from the saved file.</p>
 <p>Now we will introduce how each process recovers from a failure, the graph below shows how etcd is used:</p>
 <p><img src="src/paddle-etcd.png"/></p>
-<div class="section" id="master-process">
-<span id="id1"></span><h3>Master Process<a class="headerlink" href="#master-process" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="master-server-process">
+<span id="id1"></span><h3>Master Server Process<a class="headerlink" href="#master-server-process" title="Permalink to this headline">¶</a></h3>
 <p>When the master is started by the Kubernetes, it executes the following steps at startup:</p>
 <ol class="simple">
 <li>Grabs a unique <em>master</em> lock in etcd, which prevents concurrent master instantiations.</li>
@@ -293,7 +293,7 @@
 <li>Watches the trainer prefix keys <code class="docutils literal"><span class="pre">/trainer/</span></code> on etcd to find the live trainers.</li>
 <li>Starts dispatching the tasks to the trainers, and updates task queue using an etcd transaction to ensure lock is held during the update.</li>
 </ol>
-<p>When the master process is dead for any reason, Kubernetes will restart it. It will be online again with all states recovered from etcd in few minutes.</p>
+<p>When the master server process is dead for any reason, Kubernetes will restart it. It will be online again with all states recovered from etcd in few minutes.</p>
 </div>
 <div class="section" id="trainer-process">
 <span id="id2"></span><h3>Trainer Process<a class="headerlink" href="#trainer-process" title="Permalink to this headline">¶</a></h3>
@@ -303,7 +303,7 @@
 <li>Generates a unique ID, and sets key <code class="docutils literal"><span class="pre">/trainer/&lt;unique</span> <span class="pre">ID&gt;</span></code> with its contact address as value. The key will be deleted when the lease expires, so the master will be aware of the trainer being online and offline.</li>
 <li>Waits for tasks from the master to start training.</li>
 </ol>
-<p>If trainer&#8217;s etcd lease expires, it will try set key <code class="docutils literal"><span class="pre">/trainer/&lt;unique</span> <span class="pre">ID&gt;</span></code> again so that the master process can discover the trainer again.</p>
+<p>If trainer&#8217;s etcd lease expires, it will try set key <code class="docutils literal"><span class="pre">/trainer/&lt;unique</span> <span class="pre">ID&gt;</span></code> again so that the master server can discover the trainer again.</p>
 <p>When a trainer fails, Kuberentes would try to restart it. The recovered trainer would fetch tasks from the TODO queue and go on training.</p>
 </div>
 <div class="section" id="parameter-server-process">
