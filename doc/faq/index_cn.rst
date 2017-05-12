@@ -237,10 +237,10 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 
 如果运行 :code:`paddle version`, 出现 :code:`PaddlePaddle 0.0.0`；或者运行 :code:`cmake ..`，出现
 
-    ..  code-block:: bash
+..  code-block:: bash
 
-        CMake Warning at cmake/version.cmake:20 (message):
-          Cannot add paddle version from git tag
+    CMake Warning at cmake/version.cmake:20 (message):
+      Cannot add paddle version from git tag
           
 那么用户需要拉取所有的远程分支到本机，命令为 :code:`git fetch upstream`，然后重新cmake即可。
 
