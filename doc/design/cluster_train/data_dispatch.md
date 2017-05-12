@@ -18,7 +18,7 @@
 我们选择[CephFS](http://docs.ceph.com/docs/master/cephfs/)作为存储系统。
 
 - 无论是从[PFSClient](../file_manager/README.md)的角度，还是从[Pod](https://kubernetes.io/docs/concepts/workloads/pods/pod/)中运行任务的角度，统一用`/pfs/$DATACENTER/home/$USER`来访问用户自己的数据。  
-- `/pfs/$DATACENTER/Common`下存放公共数据集合
+- `/pfs/$DATACENTER/common`下存放公共数据集合
 
 <div style="align: center">
 <img src="src/file_storage.png" width="700" align=center/>
@@ -142,12 +142,14 @@ endpoint=datacenter2.paddlepaddle.org
 ### 文件访问的权限
 控制用户权限
 
-- `Common`数据集合只读不能写 
-	- 现在mount到本地以后读写权限
+- `/pfs/$DATACENTER/common`数据集合只读不能写 
+	- 现在mount到本地以后有读写权限
 - 用户可以把自己的数据分享给别人
 
 ### 文件访问方式
 不用mount的方式来访问数据，而是直接用API的接口远程访问
+
+例如：  
 
 ```
 f = open('/pfs/datacenter_name/home/user_name/test1.dat')
