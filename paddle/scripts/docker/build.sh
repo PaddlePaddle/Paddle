@@ -4,9 +4,9 @@ set -xe
 
 # Set BASE_IMAGE according to env variables
 if [ ${WITH_GPU} == "ON" ]; then
-  BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu14.04"
+  BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu16.04"
 else
-  BASE_IMAGE="ubuntu:14.04"
+  BASE_IMAGE="ubuntu:16.04"
 fi
 
 DOCKERFILE_GPU_ENV=""
@@ -22,6 +22,20 @@ cd /paddle/build
 # build script will not fail if *.deb does not exist
 rm *.deb 2>/dev/null || true
 
+cat <<EOF
+========================================
+Configuring cmake in /paddle/build ...
+      -DCMAKE_BUILD_TYPE=Release
+      -DWITH_DOC=OFF
+      -DWITH_GPU=${WITH_GPU:-OFF}
+      -DWITH_AVX=${WITH_AVX:-OFF}
+      -DWITH_SWIG_PY=ON
+      -DCUDNN_ROOT=/usr/
+      -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
+      -DWITH_TESTING=${WITH_TESTING:-OFF}
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+========================================
+EOF
 cmake .. \
       -DCMAKE_BUILD_TYPE=Release \
       -DWITH_DOC=OFF \
@@ -32,50 +46,61 @@ cmake .. \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
       -DWITH_TESTING=${WITH_TESTING:-OFF} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+cat <<EOF
+========================================
+Building in /paddle/build ...
+   Build unit tests: ${WITH_TESTING:-OFF}
+========================================
+EOF
 make -j `nproc`
 if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
     pip uninstall -y py-paddle paddle || true
     ctest -V
 fi
+
+
+cat <<EOF
+========================================
+Installing ...
+========================================
+EOF
 make install
 pip install /usr/local/opt/paddle/share/wheels/*.whl
+paddle version
 
-# To build documentation, we need to run cmake twice.
-# This awkwardness is due to https://github.com/PaddlePaddle/Paddle/issues/1854.
-# It also describes a solution.
+
+# To build documentation, we need to run cmake again after installing
+# PaddlePaddle.  This awkwardness is due to
+# https://github.com/PaddlePaddle/Paddle/issues/1854.  It also
+# describes a solution.
 if [ ${WITH_DOC} == "ON" ]; then
+    cat <<EOF
+========================================
+Building documentation ...
+   In /paddle/build_doc
+========================================
+EOF
     mkdir -p /paddle/build_doc
     pushd /paddle/build_doc
     cmake .. \
           -DWITH_DOC=ON \
           -DWITH_GPU=OFF \
-          -DWITH_AVX=${WITH_AVX:-OFF} \
+          -DWITH_AVX=${WITH_AVX:-ON} \
           -DWITH_SWIG_PY=ON \
           -DWITH_STYLE_CHECK=OFF
     make paddle_docs paddle_docs_cn
-    DOC_DIR="/paddle/paddle/scripts/tools/build_docs/"
-    mkdir -p $DOC_DIR/doc
-    mkdir -p $DOC_DIR/doc_cn
-    cp -r /paddle/build_doc/doc/en/html/* $DOC_DIR/doc
-    cp -r /paddle/build_doc/doc/cn/html/* $DOC_DIR/doc_cn
     popd
-    rm -rf /paddle/build_doc
 fi
-# generate deb package for current build
-cpack -D CPACK_GENERATOR='DEB' ..
+
 
 if [[ ${WOBOQ:-OFF} == 'ON' ]]; then
-    apt-get install -y clang-3.8 llvm-3.8 libclang-3.8-dev
-    # Install woboq_codebrowser.
-    git clone https://github.com/woboq/woboq_codebrowser /woboq
-    cd /woboq
-    cmake -DLLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config-3.8 \
-          -DCMAKE_BUILD_TYPE=Release \
-          .
-    make -j `nproc`
-
-    export WOBOQ_OUT=/woboq_out/paddle
-    export BUILD_DIR=/paddle/build
+    cat <<EOF
+========================================
+Converting C++ source code into HTML ...
+========================================
+EOF
+    export WOBOQ_OUT=/paddle/build/woboq_out
     mkdir -p $WOBOQ_OUT
     cp -rv /woboq/data $WOBOQ_OUT/../data
     /woboq/generator/codebrowser_generator \
@@ -84,11 +109,23 @@ if [[ ${WOBOQ:-OFF} == 'ON' ]]; then
         -o $WOBOQ_OUT \
         -p paddle:/paddle
     /woboq/indexgenerator/codebrowser_indexgenerator $WOBOQ_OUT
-    cd /woboq
-    make clean
 fi
 
-paddle version
+# generate deb package for current build
+# FIXME(typhoonzero): should we remove paddle/scripts/deb ?
+cat <<EOF
+========================================
+Generating .deb package ...
+========================================
+EOF
+cpack -D CPACK_GENERATOR='DEB' ..
+
+
+cat <<EOF
+========================================
+Generate /paddle/build/Dockerfile ...
+========================================
+EOF
 
 cat > /paddle/build/Dockerfile <<EOF
 FROM ${BASE_IMAGE}

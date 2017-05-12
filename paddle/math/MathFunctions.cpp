@@ -34,6 +34,9 @@ void* lapack_dso_handle = nullptr;
 // We have to use two levels of macro to do the expansion.
 // See https://gcc.gnu.org/onlinedocs/cpp/Stringizing.html
 #define STR(x) #x
+
+// clang-format off
+#ifndef LAPACK_FOUND
 #define DYNAMIC_LOAD_LAPACK_WRAP(__name)                                       \
   struct DynLoad__##__name {                                                   \
     template <typename... Args>                                                \
@@ -46,8 +49,16 @@ void* lapack_dso_handle = nullptr;
       return reinterpret_cast<lapack_func>(p_##__name)(args...);               \
     }                                                                          \
   } __name;  // struct DynLoad__##__name
+#else
+#define DYNAMIC_LOAD_LAPACK_WRAP(__name)                                       \
+  struct DynLoad__##__name {                                                   \
+    template <typename... Args>                                                \
+    auto operator()(Args... args) -> decltype(__name(args...)) {               \
+      return __name(args...);                                                  \
+    }                                                                          \
+  } __name;  // struct DynLoad__##__name
+#endif
 
-// clang-format off
 #ifdef PADDLE_USE_ATLAS
   #define  PADDLE_SGETRF  clapack_sgetrf
   #define  PADDLE_DGETRF  clapack_dgetrf
