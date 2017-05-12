@@ -2,6 +2,39 @@
 
 For an overview of trainer's role, please refer to [distributed training design doc](README.md). In this design doc, we will discuss the parameter server's client library, which will manage communication with parameter servers. The library will be implemented in [Go](https://golang.org/) and made available as a static or dynamic library with a C header file.
 
+## Parameter Partition
+
+Each parameter will be partitioned into parameter chunks to make the parameters evenly distributed on parameter servers. The partition is done automatically by the client library. The *sparse parameter* require a little different treatment:
+
+### Sparse Parameter
+
+The sparse parameter is a parameter that is updated sparsely. The name is somewhat misleading, it does not have a sparse representation, it is conceptually a dense vector.
+
+Because a sparse parameter is updated sparsely, the trainer will have to partition the sparse parameter. Because the parameter server will merge all sparse parameter shard into the same file when saving the parameter. It needs special naming convention:
+
+If a sparse parameter is partitioned into n shards, they should be named as:
+
+```text
+name:sparse-0
+name:sparse-1
+...
+name:sparse-n-1
+```
+
+## Gradient Optimization
+
+There are two ways to perform model optimization according to gradients:
+
+- On Client
+  The client does forward and backward update multiple steps. In each step, the gradients are calculated each step and a new model is generated. After some steps, the client will calculate the difference between the newest model and the old model at step 0. The difference will be updated to parameter servers. Parameter servers will just update parameters according to the difference without any optimization using gradients (such as Adam and L1 regularization).
+
+- On Parameter Server
+  The client will send gradients to parameter servers, the parameter server will do the optimization using gradients.
+
+## L1 and L2 Regularization
+
+PaddlePaddle allows L1 or L2 regularizations to be specified per parameter, so when the trainer initializes the parameter. When the parameter server is doing the optimization, the trainer needs to pass a parameter configuration to parameter servers to indicate the Regularization.
+
 ## Parameter Initialization
 
 The parameters on parameter servers need to be initialized. To provide maximum flexibility, we need to allow trainer initialized the parameters. Only one trainer will do the initialization, the other trainers will wait for the completion of initialization and get the parameters from the parameter servers.
@@ -54,24 +87,25 @@ void paddle_pserver_client_release(paddle_pserver_client* client);
  * initialization is done, and they need to get the initialized
  * parameters from parameter servers using @paddle_get_params.
  *
- * @param config_proto serialized parameter server configuration in
+ * @param pserver_config_proto serialized parameter server configuration in
  * Protocol Buffers format.
  * @return 1 if the trainer is selected to initialize parameter
  * servers, otherwise 0.
  */
-int paddle_begin_init_params(paddle_pserver_client* client, const char* config_proto);
+int paddle_begin_init_params(paddle_pserver_client* client, const char* pserver_config_proto);
 
 /**
  * @brief paddle_init_param initializes the parameter on parameter
  * servers.
  *
  * @param param the parameter to initialize.
+ * @param param_config_proto the configuration for the parameter.
  * @return 0 if successful, otherwise -1. On failure, the trainer
  * needs to restart the entire initialization process (starting from
  * @paddle_begin_init_param). Or simply exit the program and wait for
  * the cluster management system to restart the trainer.
  */
-int paddle_init_param(paddle_pserver_client* client, paddle_parameter params);
+int paddle_init_param(paddle_pserver_client* client, paddle_parameter params, const char* param_config_proto);
 
 /**
  * @brief paddle_finish_init_params tells parameter servers client has
@@ -89,31 +123,22 @@ int paddle_finish_init_params(paddle_pserver_client* client);
  * updating parameters.
  *
  * @param grads the array of gradients to send.
- * @param total the total number of gradient inside the gradient array.
+ * @param len the length of the gradient array.
  * @param learning_rate the learning rate for the gradients.
  * @return 0 if successful, otherwise -1.
  */
-int paddle_send_grads(paddle_pserver_client* client, const paddle_gradient* grads, int total, double learning_rate);
-
-/**
- * @brief paddle_set_params sets parameters to parameter servers.
- *
- * @param params the array of parameters to set to parameter servers.
- * @param total the total number of parameters inside the parameter
- * array.
- * @return 0 if successful, otherwise -1.
- */
-int paddle_set_params(paddle_pserver_client* client, const paddle_parameter* params, int total);
+int paddle_send_grads(paddle_pserver_client* client, const paddle_gradient* grads, int len);
 
 /**
  * @brief paddle_get_params gets parameters from parameter servers.
  *
  * @param names the array of names of the parameters to get.
  * @param dst the destination array of parameters to save to.
- * @param total the total number of parameters to get.
+ * @param len the length of the names array and the paddle_parameter
+ * array.
  * @return 0 if successful, otherwise -1.
  */
-int paddle_get_params(paddle_pserver_client* client, const char** names, paddle_parameter* dst, int total);
+int paddle_get_params(paddle_pserver_client* client, const char** names, paddle_parameter* dst, int len);
 
 /**
  * @brief paddle_save_model indicates parameters to save the parameter
