@@ -2,18 +2,12 @@
 mkdir  - mkdir directory(ies)
 
 # Synopsis
-`mkdir [OPTION]... <PFSPath> ...`
+`mkdir <PFSPath> ...`
 
 # Description
-Create the pfs directory(ies), if they do not already exist. And create intermediate directories as required
+Create the pfs directory(ies), if it(they) does(do) not already exist. And create intermediate directories as required.
 
 # Examples
 ```
-paddle pfs mkdir /pfs/mydir1
-```
-
-Output
-
-```
-make directory /pfs/mydir1
+paddle pfs mkdir  /pfs/$DATACENTER/home/$USER/folder
 ```

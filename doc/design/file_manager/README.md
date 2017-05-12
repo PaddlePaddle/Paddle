@@ -3,7 +3,7 @@
 在本文档中，我们设计说明了名为FileManager系统，方便用户管理存放到PaddlePaddle Cloud上的文件。   
 主要功能包括：
 
-- 提供常用的命令行文件管理命令管理文件
+- 提供常用的命令行管理命令管理文件和目录
 	- 支持的命令在[Here](./pfs/pfs.md)
 - 支持大文件的断点上传、下载  
 
@@ -27,7 +27,7 @@
 	- 用Golang写，可以跨平台执行
 
 - 双向验证   
-	PFSClient需要和Ingress之间做双向验证<sup>[tls](#tls)</sup>，所有用户需要首先在`cloud.paddlepaddle.org`上注册一下，申请用户空间，并且把系统生成的Key、CRT、CA下载到本地，然后才能使用PFSClient。
+	PFSClient需要和Ingress之间做双向验证<sup>[tls](#tls)</sup>，所以用户需要首先在`cloud.paddlepaddle.org`上注册一下，申请用户空间，并且把系统生成的Key、CRT、CA下载到本地，然后才能使用PFSClient。
 	
 ### Ingress
 - 功能：  
@@ -43,7 +43,7 @@ FileServer是一个用GoRPC写的HTTPServer，提供[RESTful API](./RESTAPI.md)�
 ## 文件传输优化
 
 ### 分块文件传输
-用户文件可能是比较大的，上传到Cloud或者下载到本地的时间可能比较长，而且在传输的过程中也可能出现网络不稳定的情况。为了应对以上的问题，我们提出了Chunk的概念，一个Chunk由所在的文件偏移、数据、数据长度及校验值组成。文件数据内容的上传和下载都是都过Chunk的操作来实现的。由于Chunk比较小（默认256K），完成一个传输动作完成的时间也比较短，不容易出错。PFSClient在传输完毕最后一个Chunk的时候检查desttination文件的MD5值是否和source文件一致。
+用户文件可能是比较大的，上传到Cloud或者下载到本地的时间可能比较长，而且在传输的过程中也可能出现网络不稳定的情况。为了应对以上的问题，我们提出了Chunk的概念，一个Chunk由所在的文件偏移、数据、数据长度及校验值组成。文件数据内容的上传和下载都是都过Chunk的操作来实现的。由于Chunk比较小（默认256K），完成一个传输动作完成的时间也比较短，不容易出错。PFSClient在传输完毕最后一个Chunk的时候检查destination文件的MD5值是否和source文件一致。
 
 一个典型的Chunk如下所示：
 

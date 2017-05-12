@@ -1,41 +1,45 @@
 # Name  
-cp - copy files and directories
+cp - copy files
 
 # Synopsis
-` cp [OPTION]...
-<LocalPath> <PFSPath> or <PFSPath> <LocalPath> or <PFSPath> <PFSPath>`
+```
+cp [-r] [-f | -n] [-v] [--preserve--links] <LocalPath> <PFSPath>
+cp [-r] [-f | -n] [-v] [--preserve--links] <LocalPath> ... <PFSPath>
+cp [-r] [-f | -n] [-v] [--preserve--links] <PFSPath> <LocalPath> 
+cp [-r] [-f | -n] [-v] [--preserve--links] <PFSPath> ... <LocalPath>
+cp [-r] [-f | -n] [-v] [--preserve--links] <PFSPath> <PFSPath> 
+cp [-r] [-f | -n] [-v] [--preserve--links] <PFSPath> ... <PFSPath>
+```
 
 # Description
+```	   
+The following options are available:
 
-```		
+-r
+   Copy directories recursively
+   
+-f      
+	Do not prompt for confirmation before overwriting the destination path.  (The -f option overrides previous -n options.)
+
+-n      
+	Do not overwrite an existing file.  (The -n option overrides previous -f options.)
+
+-v      
+	Cause cp to be verbose, showing files after they are copied.
+
 --preserve--links
    Reserve links when copy links
-   
--R, -r, --recursive
-   Copy directories recursively
 ```
 
 # Examples
 - The following command copies a single file to pfs
 
 ```
-paddle pfs cp ./text1.txt /pfs/mydir/text1.txt
-```
-
-Output
-
-```
-upload ./text1.txt to /pfs/mydir/text1.txt
+paddle pfs cp ./text1.txt /pfs/$DATACENTER/home/$USER/text1.txt
 ```
 
 - The following command copies pfs file to a local file
 
 ```
-paddle pfs cp /pfs/mydir/text1.txt ./text1.txt
-```
-
-Output
-
-```
-download /pfs/mydir/text1.txt to ./text1.txt
+paddle pfs cp /pfs/$DATACENTER/home/$USER/text1.txt ./text1.txt
 ```

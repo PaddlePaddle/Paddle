@@ -1,42 +1,34 @@
 # Name  
-sync - sync directories. Recursively copies new and updated files from the source directory to the destination
+sync - sync directories. Recursively copies new and updated files from the source directory to the destination.
 
 # Synopsis
-` sync [OPTIONS]...
-<LocalPath> <PFSPath> or <PFSPath> <LocalPath> or <PFSPath> <PFSPath>`
+``` 
+sync [--preserve--links] [-v] <LocalPath> <PFSPath> 
+sync [--preserve--links] [-v] <PFSPath> <LocalPath> 
+sync [--preserve--links] [-v] <PFSPath> <PFSPath>`
+```
 
 # Description
 
 ```
+The following options are available:
+
 --preserve--links
-   Reserve links when copy links
+   Reserve links when copy links.
+   
+-v 
+	Cause sync to be verbose, showing files after their's synchronization is complete.
 ```
 
 # Examples
-- The following command sync locally directory to pfs
+- The following command sync locally directory to pfs.
 
 ```
-paddle pfs sync ./dir1 /pfs/mydir1
+paddle pfs sync ./dir1 /pfs/$DATACENTER/home/$USER/mydir1
 ```
 
-Output
+- The following command sync pfs directory to local.
 
 ```
-upload ./dir1/text1.txt to /pfs/mydir1/text2.txt
-upload ./dir1/text2.txt to /pfs/mydir1/text2.txt
-...
-```
-
-- The following command sync pfs directory to local
-
-```
-paddle pfs sync /pfs/mydir1 .
-```
-
-Output
-
-```
-download /pfs/mydir1/text1.txt to ./text1.txt
-download /pfs/mydir1/text2.txt to ./text2.txt
-...
+paddle pfs sync /pfs/$DATACENTER/home/$USER/mydir1 .
 ```
