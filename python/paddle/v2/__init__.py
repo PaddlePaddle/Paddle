@@ -33,11 +33,12 @@ import networks
 import py_paddle.swig_paddle as api
 import minibatch
 import plot
+import image
 
 __all__ = [
     'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
     'event', 'data_type', 'attr', 'pooling', 'data_feeder', 'dataset', 'reader',
-    'topology', 'networks', 'infer', 'plot', 'evaluator'
+    'topology', 'networks', 'infer', 'plot', 'evaluator', 'image'
 ]
 
 
@@ -52,7 +53,7 @@ def init(**kwargs):
     args_dict.update(kwargs)
     # NOTE: overwrite arguments from ENV if it is in kwargs
     for key in args_dict.keys():
-        args.append('--%s=%s' % (key, str(kwargs[key])))
+        args.append('--%s=%s' % (key, str(args_dict[key])))
 
     api.initPaddle(*args)
 

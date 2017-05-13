@@ -27,10 +27,11 @@
 
 ### 文件预处理
 
+
 在开始训练之前, 数据集需要预先被转换成PaddlePaddle分布式训练使用的存储格[RecordIO](https://github.com/PaddlePaddle/Paddle/issues/1947)。我们提供两个转换方式：
 
-- 提供给用户本地转换的库，用户可以编写程序完成转换。
-- 用户可以上传自己的数据集，在集群运行MapReduce job完成转换。
+1. 用户在本地转换好再上传
+1. 用户上传数据后，在机群上运行转换程序
 
 转换生成的文件名会是以下格式：
 
@@ -97,6 +98,7 @@ random_images-00099-of-00099
 ```
 
 #### 进行训练
+
 
 PaddlePaddle提供专用的[data reader creator](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#python-data-reader-design-doc)，生成给定`RecordIO`文件对应的data reader。**无论在本地还是在云端，reader的使用方式都是一致的**：
 
