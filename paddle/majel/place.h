@@ -1,5 +1,5 @@
 #pragma once
-#include <boost/variant.hpp>
+#include <mapbox/variant.hpp>
 #include <iostream>
 
 namespace majel {
@@ -25,14 +25,14 @@ struct GpuPlace {
   int device;
 };
 
-class IsGpuPlace : public boost::static_visitor<bool> {
+class IsGpuPlace : public mapbox::util::static_visitor<bool> {
 public:
   bool operator()(const CpuPlace&) const { return false; }
 
   bool operator()(const GpuPlace& gpu) const { return true; }
 };
 
-typedef boost::variant<GpuPlace, CpuPlace> Place;
+typedef mapbox::util::variant<GpuPlace, CpuPlace> Place;
 
 void set_place(const Place&);
 
