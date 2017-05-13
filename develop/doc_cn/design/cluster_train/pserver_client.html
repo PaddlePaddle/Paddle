@@ -1,0 +1,396 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Design Doc: The Client Library of Parameter Server &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/evaluators.html">Evaluators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Design Doc: The Client Library of Parameter Server</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="design-doc-the-client-library-of-parameter-server">
+<span id="design-doc-the-client-library-of-parameter-server"></span><h1>Design Doc: The Client Library of Parameter Server<a class="headerlink" href="#design-doc-the-client-library-of-parameter-server" title="永久链接至标题">¶</a></h1>
+<p>For an overview of trainer&#8217;s role, please refer to <a class="reference internal" href="README.html"><span class="doc">distributed training design doc</span></a>. In this design doc, we will discuss the parameter server&#8217;s client library, which will manage communication with parameter servers. The library will be implemented in <a class="reference external" href="https://golang.org/">Go</a> and made available as a static or dynamic library with a C header file.</p>
+<div class="section" id="parameter-partition">
+<span id="parameter-partition"></span><h2>Parameter Partition<a class="headerlink" href="#parameter-partition" title="永久链接至标题">¶</a></h2>
+<p>Each parameter will be partitioned into parameter blocks to make the parameters evenly distributed on parameter servers. The partition is done automatically by the client library. The <em>sparse parameter</em> require a little different treatment:</p>
+<div class="section" id="sparse-parameter">
+<span id="sparse-parameter"></span><h3>Sparse Parameter<a class="headerlink" href="#sparse-parameter" title="永久链接至标题">¶</a></h3>
+<p>The sparse parameter is a parameter that is updated sparsely. The name is somewhat misleading, it does not have a sparse representation, it has the same representation as a dense vector.</p>
+<p>Because a sparse parameter is updated sparsely, the trainer will have to partition the sparse parameter. Because the parameter server will merge all sparse parameter shard into the same file when saving the parameter. It needs special naming convention:</p>
+<p>If a sparse parameter is partitioned into n shards, they should be named as:</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>name:sparse-0
+name:sparse-1
+...
+name:sparse-n-1
+</pre></div>
+</div>
+<p>The library is unaware of the partition, and treat each parameter independently. Only when saving parameters, the parameter servers will merge the sparse parameters according to the naming convention.</p>
+</div>
+</div>
+<div class="section" id="model-optimization-using-gradients">
+<span id="model-optimization-using-gradients"></span><h2>Model Optimization Using Gradients<a class="headerlink" href="#model-optimization-using-gradients" title="永久链接至标题">¶</a></h2>
+<p>There are two ways to perform model optimization using gradients:</p>
+<ul>
+<li><p class="first">On Client</p>
+<p>The client does multiple steps of forward and backward update. In each step, the gradients are calculated and a new model is generated. After some steps, the client will calculate the difference between the newest model and the old model at step 0. The difference will be updated to parameter servers. Parameter servers will just update parameters using the difference without any optimization using gradients (such as Adam and L1 regularization).</p>
+</li>
+<li><p class="first">On Parameter Server</p>
+<p>The client will send accumulated gradients to parameter servers, the parameter server will do the optimization using gradients.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="l1-and-l2-regularization">
+<span id="l1-and-l2-regularization"></span><h2>L1 and L2 Regularization<a class="headerlink" href="#l1-and-l2-regularization" title="永久链接至标题">¶</a></h2>
+<p>PaddlePaddle allows L1 or L2 regularizations to be specified per parameter, so when the trainer initializes the parameter it needs include a parameter configuration when L1 or L2 regularization is necessary.</p>
+</div>
+<div class="section" id="parameter-initialization">
+<span id="parameter-initialization"></span><h2>Parameter Initialization<a class="headerlink" href="#parameter-initialization" title="永久链接至标题">¶</a></h2>
+<p>The parameters on parameter servers need to be initialized. To provide maximum flexibility, the trainer will initialize the parameters. Only one trainer will do the initialization, the other trainers will wait for the completion of initialization and get the parameters from the parameter servers.</p>
+<div class="section" id="trainer-selection">
+<span id="trainer-selection"></span><h3>Trainer Selection<a class="headerlink" href="#trainer-selection" title="永久链接至标题">¶</a></h3>
+<p>To select the trainer for initialization, every trainer will try to get a distributed lock, whoever owns the lock will do the initialization. As illustrated below:</p>
+<p><img src="./src/init_lock.png"></p>
+</div>
+<div class="section" id="trainer-selection-process">
+<span id="trainer-selection-process"></span><h3>Trainer Selection Process<a class="headerlink" href="#trainer-selection-process" title="永久链接至标题">¶</a></h3>
+<p>The trainer select process is encapsulated in the C API function:</p>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="nf">paddle_begin_init_params</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">config_proto</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>The selected trainer&#8217;s call to <code class="docutils literal"><span class="pre">paddle_begin_init_params</span></code> will return with 1, and the other trainers&#8217; call to <code class="docutils literal"><span class="pre">paddle_begin_init_params</span></code> will block until initialization is done, and return 0. As illustrated below:</p>
+<p><img src="./src/pserver_init.png"></p>
+</div>
+</div>
+<div class="section" id="c-interface">
+<span id="c-interface"></span><h2>C Interface<a class="headerlink" href="#c-interface" title="永久链接至标题">¶</a></h2>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+  <span class="n">PADDLE_ELEMENT_TYPE_INT32</span>   <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="n">PADDLE_ELEMENT_TYPE_UINT32</span>  <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+  <span class="n">PADDLE_ELEMENT_TYPE_INT64</span>   <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+  <span class="n">PADDLE_ELEMENT_TYPE_UINT64</span>  <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+  <span class="n">PADDLE_ELEMENT_TYPE_FLOAT32</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+  <span class="n">PADDLE_ELEMENT_TYPE_FLOAT64</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+<span class="p">}</span> <span class="n">paddle_element_type</span><span class="p">;</span>
+
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="kt">char</span><span class="o">*</span>               <span class="n">name</span><span class="p">;</span>
+  <span class="n">paddle_element_type</span> <span class="n">element_type</span><span class="p">;</span>
+  <span class="kt">void</span><span class="o">*</span>               <span class="n">content</span><span class="p">;</span>
+  <span class="kt">int</span>                 <span class="n">content_len</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">paddle_parameter</span><span class="p">,</span> <span class="n">paddle_gradient</span><span class="p">;</span>
+
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">paddle_pserver_client</span> <span class="n">paddle_pserver_client</span><span class="p">;</span>
+
+<span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="nf">paddle_new_pserver_client</span><span class="p">();</span>
+<span class="kt">void</span> <span class="nf">paddle_pserver_client_release</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @brief paddle_begin_init_params begins to initialize parameters on</span>
+<span class="cm"> * parameter servers.</span>
+<span class="cm"> *</span>
+<span class="cm"> * paddle_begin_init_params will be called from multiple trainers,</span>
+<span class="cm"> * only one trainer will be selected to initialize the parameters on</span>
+<span class="cm"> * parameter servers. Other trainers will be blocked until the</span>
+<span class="cm"> * initialization is done, and they need to get the initialized</span>
+<span class="cm"> * parameters from parameter servers using @paddle_get_params.</span>
+<span class="cm"> *</span>
+<span class="cm"> * @param pserver_config_proto serialized parameter server configuration in</span>
+<span class="cm"> * Protocol Buffers format.</span>
+<span class="cm"> * @return 1 if the trainer is selected to initialize parameter</span>
+<span class="cm"> * servers, otherwise 0.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">paddle_begin_init_params</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">pserver_config_proto</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @brief paddle_init_param initializes the parameter on parameter</span>
+<span class="cm"> * servers.</span>
+<span class="cm"> *</span>
+<span class="cm"> * @param param the parameter to initialize.</span>
+<span class="cm"> * @param param_config_proto the configuration for the parameter.</span>
+<span class="cm"> * @return 0 if successful, otherwise -1. On failure, the trainer</span>
+<span class="cm"> * needs to restart the entire initialization process (starting from</span>
+<span class="cm"> * @paddle_begin_init_param). Or simply exit the program and wait for</span>
+<span class="cm"> * the cluster management system to restart the trainer.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">paddle_init_param</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="n">paddle_parameter</span> <span class="n">params</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">param_config_proto</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @brief paddle_finish_init_params tells parameter servers client has</span>
+<span class="cm"> * sent all parameters to parameter servers as initialization.</span>
+<span class="cm"> *</span>
+<span class="cm"> * @return 0 if successful, otherwise -1. On failure, the trainer</span>
+<span class="cm"> * needs to restart the entire initialization process (starting from</span>
+<span class="cm"> * @paddle_begin_init_param). Or simply exit the program and wait for</span>
+<span class="cm"> * the cluster management system to restart the trainer.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">paddle_finish_init_params</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @brief paddle_send_grads sends gradients to parameter servers for</span>
+<span class="cm"> * updating parameters.</span>
+<span class="cm"> *</span>
+<span class="cm"> * @param grads the array of gradients to send.</span>
+<span class="cm"> * @param len the length of the gradient array.</span>
+<span class="cm"> * @param learning_rate the learning rate for the gradients.</span>
+<span class="cm"> * @return 0 if successful, otherwise -1.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">paddle_send_grads</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="n">paddle_gradient</span><span class="o">*</span> <span class="n">grads</span><span class="p">,</span> <span class="kt">int</span> <span class="n">len</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @brief paddle_get_params gets parameters from parameter servers.</span>
+<span class="cm"> *</span>
+<span class="cm"> * @param names the array of names of the parameters to get.</span>
+<span class="cm"> * @param dst the destination array of parameters to save to.</span>
+<span class="cm"> * @param len the length of the names array and the paddle_parameter</span>
+<span class="cm"> * array.</span>
+<span class="cm"> * @return 0 if successful, otherwise -1.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">paddle_get_params</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">**</span> <span class="n">names</span><span class="p">,</span> <span class="n">paddle_parameter</span><span class="o">*</span> <span class="n">dst</span><span class="p">,</span> <span class="kt">int</span> <span class="n">len</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @brief paddle_save_model indicates parameters to save the parameter</span>
+<span class="cm"> * to the given path</span>
+<span class="cm"> *</span>
+<span class="cm"> * @param path the path to save parameters.</span>
+<span class="cm"> * @return 0 if successful, otherwise -1.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">paddle_save_model</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">path</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>
