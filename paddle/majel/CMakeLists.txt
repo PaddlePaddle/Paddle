@@ -37,4 +37,6 @@ endif()
 add_dependencies(majel ${external_project_dependencies})
 #####################################################################
 
-add_subdirectory(test)
+if(WITH_TESTING)
+    add_subdirectory(test)
+endif()
