@@ -1,0 +1,381 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Submit a Distributed Training Job &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/evaluators.html">Evaluators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Submit a Distributed Training Job</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="submit-a-distributed-training-job">
+<span id="submit-a-distributed-training-job"></span><h1>Submit a Distributed Training Job<a class="headerlink" href="#submit-a-distributed-training-job" title="永久链接至标题">¶</a></h1>
+<p>The user can submit a distributed training job with Python code, rather than with a command-line interface.</p>
+<div class="section" id="runtime-environment-on-kubernetes">
+<span id="runtime-environment-on-kubernetes"></span><h2>Runtime Environment On Kubernetes<a class="headerlink" href="#runtime-environment-on-kubernetes" title="永久链接至标题">¶</a></h2>
+<p>For a distributed training job, there is two Docker image called <em>runtime Docker image</em> and <em>base Docker image</em>. The runtime Docker image is the Docker image that gets scheduled by Kubernetes to run during training. The base Docker image is for building the runtime Docker image.</p>
+<div class="section" id="base-docker-image">
+<span id="base-docker-image"></span><h3>Base Docker Image<a class="headerlink" href="#base-docker-image" title="永久链接至标题">¶</a></h3>
+<p>Usually, the base Docker image is PaddlePaddle product Docker image including paddle binary files and python package. And of course, users can specify any image name hosted on any docker registry which users have the access right.</p>
+</div>
+<div class="section" id="runtime-docker-image">
+<span id="runtime-docker-image"></span><h3>Runtime Docker Image<a class="headerlink" href="#runtime-docker-image" title="永久链接至标题">¶</a></h3>
+<p>The trainer package which user upload and some Python dependencies are packaged into a runtime Docker image based on base Docker image.</p>
+<ul>
+<li><p class="first">Handle Python Dependencies</p>
+<p>You need to provide requirements.txt file in your <code class="docutils literal"><span class="pre">trainer-package</span></code> folder. Example:</p>
+<div class="highlight-txt"><div class="highlight"><pre><span></span>pillow
+protobuf==3.1.0
+</pre></div>
+</div>
+<p>More <a class="reference external" href="https://pip.readthedocs.io/en/1.1/requirements.html">details</a> about requirements, an example project looks like:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>  paddle_example
+    <span class="p">|</span>-quick_start
+      <span class="p">|</span>-trainer.py
+      <span class="p">|</span>-dataset.py
+      <span class="p">|</span>-requirements.txt
+</pre></div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="submit-distributed-training-job-with-python-code">
+<span id="submit-distributed-training-job-with-python-code"></span><h2>Submit Distributed Training Job With Python Code<a class="headerlink" href="#submit-distributed-training-job-with-python-code" title="永久链接至标题">¶</a></h2>
+<p><img src="./src/submit-job.png" width="800"></p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">paddle.job.dist_train()</span></code> will call the Job Server API <code class="docutils literal"><span class="pre">/v1/packages</span></code> to upload the trainer package and save them on CephFS, and then call <code class="docutils literal"><span class="pre">/v1/trainer/job</span></code> to submit the PaddlePaddle distributed job.</li>
+<li><code class="docutils literal"><span class="pre">/v1/trainer/job</span></code> will start a building job for preparing the runtime Docker image. When the building job is finished, Job Server will submit the PaddlePaddle distributed job to Kubernetes.</li>
+<li><em>NOTE</em>: For the first version, we will not prepare the runtime Docker image, instead, the package is uploaded to Paddle Cloud, and Paddle Cloud will mount the package in a temporary folder into the base Docker image. We will not support custom Python dependencies in the first version as well.</li>
+</ul>
+<p>You can call <code class="docutils literal"><span class="pre">paddle.job.dist_train</span></code> and provide distributed training configuration as the parameters:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">paddle</span><span class="o">.</span><span class="n">job</span><span class="o">.</span><span class="n">dist_train</span><span class="p">(</span>
+  <span class="n">trainer</span><span class="o">=</span><span class="n">dist_trainer</span><span class="p">(),</span>
+  <span class="n">paddle_job</span><span class="o">=</span><span class="n">PaddleJob</span><span class="p">(</span>
+    <span class="n">job_name</span> <span class="o">=</span> <span class="s2">&quot;paddle-cloud&quot;</span><span class="p">,</span>
+    <span class="n">entry_point</span> <span class="o">=</span> <span class="s2">&quot;python </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="vm">__file__</span><span class="p">,</span>
+    <span class="n">trainer_package</span> <span class="o">=</span> <span class="s2">&quot;/example/word2vec&quot;</span><span class="p">,</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="s2">&quot;yancey1989/paddle-job&quot;</span><span class="p">,</span>
+    <span class="n">trainers</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">pservers</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">trainer_cpu</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">trainer_gpu</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">trainer_mem</span> <span class="o">=</span> <span class="s2">&quot;10G&quot;</span><span class="p">,</span>
+    <span class="n">pserver_cpu</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">pserver_mem</span> <span class="o">=</span> <span class="s2">&quot;2G&quot;</span>
+  <span class="p">))</span>
+</pre></div>
+</div>
+<p>The parameter <code class="docutils literal"><span class="pre">trainer</span></code> of <code class="docutils literal"><span class="pre">paddle.job.dist_train</span></code> is a function and you can implement it as follows:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">dist_trainer</span><span class="p">():</span>
+  <span class="k">def</span> <span class="nf">trainer_creator</span><span class="p">():</span>
+    <span class="n">trainer</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+    <span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">trainer_creator</span>
+</pre></div>
+</div>
+<p>The pseudo code of <code class="docutils literal"><span class="pre">paddle.job.dist_train</span></code> is as follows:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">dist_train</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">paddle_job</span><span class="p">):</span>
+  <span class="c1"># if the code is running on cloud, set PADDLE_ON_CLOUD=YES</span>
+  <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;RUNNING_ON_CLOUD&quot;</span><span class="p">,</span> <span class="s2">&quot;NO&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;NO&quot;</span><span class="p">:</span>
+    <span class="c1">#submit the paddle job</span>
+    <span class="n">paddle_job</span><span class="o">.</span><span class="n">submit</span><span class="p">()</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="c1">#start the training</span>
+    <span class="n">trainer</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="section" id="paddlejob-parameters">
+<span id="paddlejob-parameters"></span><h3>PaddleJob Parameters<a class="headerlink" href="#paddlejob-parameters" title="永久链接至标题">¶</a></h3>
+<p>parameter | type | explanation
+&#8212; | &#8212; | &#8212;
+job_name | str | the unique name for the training job
+entry_point | str | entry point for startup trainer process
+trainer_package | str | trainer package file path which user have the access right
+image|str|the <a class="reference external" href="#base-docker-image">base image</a> for building the <a class="reference external" href="#runtime-docker-image">runtime image</a>
+pservers|int| Parameter Server process count
+trainers|int| Trainer process count
+pserver_cpu|int| CPU count for each Parameter Server process
+pserver_mem|str| memory allocated for each Parameter Server process, a plain integer using one of these suffixes: E, P, T, G, M, K
+trainer_cpu|int| CPU count for each Trainer process
+trainer_mem|str| memory allocated for each Trainer process, a plain integer using one of these suffixes: E, P, T, G, M, K
+trainer_gpu|int| GPU count for each Trainer process, if you only want CPU, do not set this parameter</p>
+</div>
+<div class="section" id="deploy-parameter-server-trainer-and-master-process">
+<span id="deploy-parameter-server-trainer-and-master-process"></span><h3>Deploy Parameter Server, Trainer and Master Process<a class="headerlink" href="#deploy-parameter-server-trainer-and-master-process" title="永久链接至标题">¶</a></h3>
+<ul class="simple">
+<li>Deploy PaddlePaddle Parameter Server processes, it&#8217;s a Kubernetes ReplicaSet.</li>
+<li>Deploy PaddlePaddle Trainer processes, it&#8217;s a Kubernetes Job.</li>
+<li>Deploy PaddlePaddle Master processes, it&#8217;s a Kubernetes ReplicaSet.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="job-server">
+<span id="job-server"></span><h2>Job Server<a class="headerlink" href="#job-server" title="永久链接至标题">¶</a></h2>
+<ul>
+<li><p class="first">RESTful API</p>
+<p>Job server provides RESTful HTTP API for receiving the trainer package and displaying
+PaddlePaddle job related informations.</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">POST</span> <span class="pre">/v1/package</span></code> receive the trainer package and save them on CephFS</li>
+<li><code class="docutils literal"><span class="pre">POST</span> <span class="pre">/v1/trainer/job</span></code> submit a trainer job</li>
+<li><code class="docutils literal"><span class="pre">GET</span> <span class="pre">/v1/jobs/</span></code> list all jobs</li>
+<li><code class="docutils literal"><span class="pre">GET</span> <span class="pre">/v1/jobs/&lt;job-name&gt;</span></code> the status of a job</li>
+<li><code class="docutils literal"><span class="pre">DELETE</span> <span class="pre">/v1/jobs/&lt;job-name&gt;</span></code> delete a job</li>
+<li><code class="docutils literal"><span class="pre">GET</span> <span class="pre">/v1/version</span></code> job server version</li>
+</ul>
+</li>
+<li><p class="first">Build Runtime Docker Image on Kubernetes</p>
+<p><code class="docutils literal"><span class="pre">paddle.job.dist_train</span></code> will upload the trainer package to Job Server, save them on the distributed filesystem, and then start up a job for building the runtime Docker image that gets scheduled by Kubernetes to run during training.</p>
+<p>There are some benefits for building runtime Docker image on JobServer:</p>
+<ul class="simple">
+<li>On Paddle Cloud, users will run the trainer code in a Jupyter Notebook which is a Kubernetes Pod, if we want to execute <code class="docutils literal"><span class="pre">docker</span> <span class="pre">build</span></code> in the Pod, we should mount the host&#8217;s <code class="docutils literal"><span class="pre">docker.sock</span></code> to the Pod, user&#8217;s code will connect the host&#8217;s Docker Engine directly, it&#8217;s not safe.</li>
+<li>Users only need to upload the training package files, does not need to install docker engine, docker registry as dependencies.</li>
+<li>If we want to change another image type, such as RKT, users do not need to care about it.</li>
+</ul>
+</li>
+<li><p class="first">Deploy Parameter Server, Trainer and Master Processes</p>
+<p><code class="docutils literal"><span class="pre">POST</span> <span class="pre">/v1/trainer/job</span></code> receives the distributed training parameters, and deploy the job as follows:</p>
+<ul class="simple">
+<li>Deploy PaddlePaddle Parameter Server processes, it&#8217;s a Kubernetes ReplicaSet.</li>
+<li>Deploy PaddlePaddle Trainer processes, it&#8217;s a Kubernetes Job.</li>
+<li>Deploy PaddlePaddle Master processes, it&#8217;s a Kubernetes ReplicaSet.</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>
