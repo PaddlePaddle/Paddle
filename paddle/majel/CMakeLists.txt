@@ -21,7 +21,7 @@ else()
 endif()
 
 ########################### Build Majel #############################
-set(MAJEL_CXX_FILES place.cpp)
+set(MAJEL_CXX_FILES place.cc)
 set(MAJEL_CUDA_FILES "")
 
 if(CUDA_FOUND)

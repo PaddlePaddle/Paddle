@@ -25,6 +25,7 @@ addons:
       - python2.7-dev
       - python-numpy
       - python-wheel
+      - libboost-dev
       - curl
       - swig
       - graphviz
