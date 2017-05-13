@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-if(GTEST_INCLUDE_DIR AND GTEST_LIBRARIES)
-    message("-- Found gtest (include: ${GTEST_INCLUDE_DIR}, library: ${GTEST_LIBRARIES})")
-else()
+if(${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
     # find #include <majel/xx.h>
     get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
     include_directories(${PARENT_DIR})
@@ -18,6 +16,12 @@ else()
     set(THIRD_PARTY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
     set(WITH_TESTING ON)
     include(external/gtest)
+
+    # enable external variant
+    include(external/variant)
+else()    
+    message("-- Found gtest (include: ${GTEST_INCLUDE_DIR}, library: ${GTEST_LIBRARIES})")
+    message("-- Found variant (include: ${VARIANT_INCLUDE_DIR})")
 endif()
 
 ########################### Build Majel #############################
@@ -29,6 +33,8 @@ if(CUDA_FOUND)
 else()
     add_library(majel ${MAJEL_CXX_FILES})
 endif()
+
+add_dependencies(majel ${external_project_dependencies})
 #####################################################################
 
 add_subdirectory(test)
