@@ -179,25 +179,36 @@
   <div class="section" id="">
 <span id="id1"></span><h1>训练数据的存储和分发<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="">
-<span id="id2"></span><h2>流程介绍<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<span id="id2"></span><h2>概念解释<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h2>流程介绍<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
 <p>生产环境中的训练数据集通常体积很大，并被存储在诸如Hadoop HDFS，Ceph，AWS S3之类的分布式存储之上。这些分布式存储服务通常会把数据切割成多个分片分布式的存储在多个节点之上。这样就可以在云端执行多种数据类计算任务，包括：</p>
 <ul class="simple">
 <li>数据预处理任务</li>
 <li>Paddle训练任务</li>
 <li>在线模型预测服务</li>
 </ul>
-<p><img src="src/paddle-cloud-in-data-center.png" width="500"/></p>
-<p>在上图中显示了在一个实际生产环境中的应用（人脸识别）的数据流图。生产环境的日志数据会通过实时流的方式（Kafka）和离线数据的方式（HDFS）存储，并在集群中运行多个分布式数据处理任务，比如流式数据处理（online data process），离线批处理（offline data process）完成数据的预处理，提供给paddle作为训练数据。用于也可以上传labeled data到分布式存储补充训练数据。在paddle之上运行的深度学习训练输出的模型会提供给在线人脸识别的应用使用。</p>
+<div style="align: center">
+<img src="src/paddle-cloud-in-data-center.png" width="800"/>
+</div><p>在上图中显示了在一个实际生产环境中的应用（人脸识别）的数据流图。生产环境的日志数据会通过实时流的方式（Kafka）和离线数据的方式（HDFS）存储，并在集群中运行多个分布式数据处理任务，比如流式数据处理（online data process），离线批处理（offline data process）完成数据的预处理，提供给paddle作为训练数据。用户也可以上传labeled data到分布式存储补充训练数据。在paddle之上运行的深度学习训练输出的模型会提供给在线人脸识别的应用使用。</p>
 </div>
 <div class="section" id="">
-<span id="id3"></span><h2>训练数据的存储<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
-<p>选择CephFS作为训练数据的存储服务。</p>
-<p>在Kubernetes上运行的不同的计算框架，可以通过Volume或PersistentVolume挂载存储空间到每个容器中。</p>
-<p>在CephFS存储系统中的公开目录，需要保存一些预置的公开数据集（比如MNIST, BOW, ImageNet数据集等），并且可以被提交的job直接使用。</p>
-</div>
+<span id="id4"></span><h2>训练数据存储<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>我们选择<a class="reference external" href="http://docs.ceph.com/docs/master/cephfs/">CephFS</a>作为存储系统。</p>
+<ul class="simple">
+<li>无论是从<a class="reference external" href="design/file_manager/README.md">PFSClient</a>的角度，还是从<a class="reference external" href="https://kubernetes.io/docs/concepts/workloads/pods/pod/">Pod</a>中运行任务的角度，统一用<code class="docutils literal"><span class="pre">/pfs/$DATACENTER/home/$USER</span></code>来访问用户自己的数据。</li>
+<li><code class="docutils literal"><span class="pre">/pfs/$DATACENTER/common</span></code>下存放公共数据集合<ul>
+<li>做只读挂载</li>
+</ul>
+</li>
+</ul>
+<div style="align: center">
+<img src="src/file_storage.png" width="700" align=center/>
+</div></div>
 <div class="section" id="">
-<span id="id4"></span><h2>文件预处理<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
-<p>在数据集可以被训练之前，文件需要预先被转换成PaddlePaddle集群内部的存储格式（RecordIO）。我们提供两个转换方式：</p>
+<span id="id5"></span><h2>文件预处理<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>在开始训练之前, 数据集需要预先被转换成PaddlePaddle分布式训练使用的存储格<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/issues/1947">RecordIO</a>。我们提供两个转换方式：</p>
 <ol class="simple">
 <li>用户在本地转换好再上传</li>
 <li>用户上传数据后，在机群上运行转换程序</li>
@@ -215,7 +226,7 @@ imagenet-00999-of-00999
 </pre></div>
 </div>
 <div class="section" id="">
-<span id="id5"></span><h3>转换库<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
+<span id="id6"></span><h3>转换库<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
 <p>无论是在本地或是云端转换，我们都提供Python的转换库，接口是：</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">convert</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="n">num_shards</span><span class="p">,</span> <span class="n">name_prefix</span><span class="p">)</span>
 </pre></div>
@@ -236,9 +247,9 @@ imagenet-00999-of-00999
 </div>
 </div>
 <div class="section" id="">
-<span id="id6"></span><h2>示例程序<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<span id="id7"></span><h2>示例程序<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="">
-<span id="id7"></span><h3>使用转换库<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
+<span id="id8"></span><h3>使用转换库<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
 <p>以下<code class="docutils literal"><span class="pre">reader_creator</span></code>生成的<code class="docutils literal"><span class="pre">reader</span></code>每次输出一个data instance，每个data instance包涵两个值：numpy.ndarray类型的值和整型的值：</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">reader_creator</span><span class="p">():</span>
     <span class="k">def</span> <span class="nf">reader</span><span class="p">():</span>
@@ -260,10 +271,10 @@ random_images-00099-of-00099
 </div>
 </div>
 <div class="section" id="">
-<span id="id8"></span><h3>进行训练<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
-<p>PaddlePaddle提供专用的<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#python-data-reader-design-doc">data reader creator</a>，生成给定RecordIO文件对应的data reader。<strong>无论在本地还是在云端，reader的使用方式都是一致的</strong>：</p>
+<span id="id9"></span><h3>进行训练<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
+<p>PaddlePaddle提供专用的<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#python-data-reader-design-doc">data reader creator</a>，生成给定<code class="docutils literal"><span class="pre">RecordIO</span></code>文件对应的data reader。<strong>无论在本地还是在云端，reader的使用方式都是一致的</strong>：</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># ...</span>
-<span class="n">reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">creator</span><span class="o">.</span><span class="n">RecordIO</span><span class="p">(</span><span class="s2">&quot;/home/random_images-*-of-*&quot;</span><span class="p">)</span>
+<span class="n">reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">creator</span><span class="o">.</span><span class="n">RecordIO</span><span class="p">(</span><span class="s2">&quot;/pfs/datacenter_name/home/user_name/random_images-*-of-*&quot;</span><span class="p">)</span>
 <span class="n">batch_reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">mnist</span><span class="o">.</span><span class="n">train</span><span class="p">(),</span> <span class="mi">128</span><span class="p">)</span>
 <span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">batch_reader</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
 </pre></div>
@@ -272,19 +283,49 @@ random_images-00099-of-00099
 </div>
 </div>
 <div class="section" id="">
-<span id="id9"></span><h2>上传训练文件<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<span id="id10"></span><h2>上传训练文件<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
 <p>使用下面命令，可以把本地的数据上传到存储集群中。</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle cp filenames pfs://home/folder/
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle pfs cp filename /pfs/<span class="nv">$DATACENTER</span>/home/<span class="nv">$USER</span>/folder/
 </pre></div>
 </div>
 <p>比如，把之前示例中转换完毕的random_images数据集上传到云端的<code class="docutils literal"><span class="pre">/home/</span></code>可以用以下指令：</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle cp random_images-*-of-* pfs://home/
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle pfs cp random_images-*-of-* /pfs/<span class="nv">$DATACENTER</span>/home/<span class="nv">$USER</span>/folder/
+</pre></div>
+</div>
+<p>需要<code class="docutils literal"><span class="pre">$DATACENTER</span></code>的配置写到配置文件中，例如</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># config file</span>
+<span class="p">[</span><span class="n">datacenter_1</span><span class="p">]</span>
+<span class="n">username</span><span class="o">=</span><span class="n">user</span>
+<span class="n">usercert</span><span class="o">=</span><span class="n">user</span><span class="o">.</span><span class="n">pem</span>
+<span class="n">userkey</span><span class="o">=</span><span class="n">user</span><span class="o">-</span><span class="n">key</span><span class="o">.</span><span class="n">pem</span>
+<span class="n">endpoint</span><span class="o">=</span><span class="n">datacenter1</span><span class="o">.</span><span class="n">paddlepaddle</span><span class="o">.</span><span class="n">org</span>
+
+<span class="p">[</span><span class="n">datacenter_2</span><span class="p">]</span>
+<span class="n">username</span><span class="o">=</span><span class="n">user</span>
+<span class="n">usercert</span><span class="o">=</span><span class="n">user</span><span class="o">.</span><span class="n">pem</span>
+<span class="n">userkey</span><span class="o">=</span><span class="n">user</span><span class="o">-</span><span class="n">key</span><span class="o">.</span><span class="n">pem</span>
+<span class="n">endpoint</span><span class="o">=</span><span class="n">datacenter2</span><span class="o">.</span><span class="n">paddlepaddle</span><span class="o">.</span><span class="n">org</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="section" id="todo">
 <span id="todo"></span><h1>TODO<a class="headerlink" href="#todo" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="">
+<span id="id11"></span><h2>文件访问的权限<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>控制用户权限</p>
+<ul class="simple">
+<li>用户可以把自己的数据分享给别人</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id12"></span><h2>文件访问方式<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>不用mount的方式来访问数据，而是直接用API的接口远程访问</p>
+<p>例如：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;/pfs/datacenter_name/home/user_name/test1.dat&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 <div class="section" id="job">
 <span id="job"></span><h2>支持用户自定义的数据预处理job<a class="headerlink" href="#job" title="Permalink to this headline">¶</a></h2>
 </div>
