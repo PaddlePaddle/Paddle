@@ -13,24 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "Attribute.h"
-#include "Tensor.h"
+#include <unordered_map>
+#include <unordered_set>
 
 namespace paddle {
 namespace topology {
+namespace meta {
+template <typename T>
+using Set = std::unordered_set<T>;
+template <typename T1, typename T2>
+using Map = std::unordered_map<T1, T2>;
 
-class Function {
-public:
-  std::string type;
-  std::vector<TensorPtr> inputs;
-  std::vector<TensorPtr> outputs;
-
-  bool useGPU() const { return attributes.get<bool>("useGPU"); }
-  void setUseGPU(bool flag) { attributes["useGPU"] = flag; }
-
-public:
-  AttributeMap attributes;
-};
-
+}  // namespace meta
 }  // namespace topology
 }  // namespace paddle

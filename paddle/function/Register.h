@@ -1,5 +1,6 @@
 #pragma once
 #include "details/Register.h"
+#include "paddle/topology/Attribute.h"
 namespace paddle {
 namespace function {
 
@@ -20,6 +21,5 @@ Function createFunction(const topology::Function& conf);
   return paddle::Error();       \
   }).check();                   \
   });
-
 }  // namespace function
 }  // namespace paddle

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <unordered_set>
+#include "AttributeMap.h"
 #include "AttributeMeta.h"
 namespace paddle {
 namespace topology {
@@ -41,6 +42,24 @@ public:
 
   TensorMeta& supportArgType(int defaultArgType,
                              const Set<int>& supportedTypes = {});
+
+  bool isOptional() const {
+    const bool* op;
+    auto err = attributeMetas_.get<bool>("optional", &op);
+    if (err.isOK()) {
+      return *op;
+    } else {
+      return false;  // default all tensor is not optional.
+    }
+  }
+
+  TensorMeta& setOptional(bool optional = true) {
+    attributeMetas_.set<bool>("optional", optional, /*overwrite*/ true).check();
+    return *this;
+  }
+
+private:
+  AttributeMap attributeMetas_;
 };
 
 typedef std::shared_ptr<TensorMeta> TensorMetaPtr;

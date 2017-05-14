@@ -23,14 +23,12 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "AttributeMap.h"
+#include "TypeDefs.h"
 
 namespace paddle {
 namespace topology {
 namespace meta {
-template <typename T>
-using Set = std::unordered_set<T>;
-template <typename T1, typename T2>
-using Map = std::unordered_map<T1, T2>;
 
 template <typename T>
 class Constraints {
@@ -181,21 +179,34 @@ public:
 
   paddle::Error check(any* attr, bool setted) const;
 
+  template <typename T>
+  paddle::Error setMemberPointer(T ptr) {
+    if (!memberPointer.empty()) return Error("Already set");
+    memberPointer = ptr;
+    return Error();
+  }
+
+  template <typename T>
+  T getMemberPointer() const {
+    return any_cast<T>(memberPointer);
+  }
+
 private:
   paddle::any constraints;
+  paddle::any memberPointer;
 };
 typedef std::shared_ptr<AttributeMeta> AttributeMetaPtr;
 
 class WithAttributeMeta {
 private:
-  Map<std::string, AttributeMetaPtr> attributes_;
+  Map<std::string, AttributeMetaPtr> attributeMetas_;
   std::string errTag_;
 
 public:
   WithAttributeMeta(const std::string& errTag) : errTag_(errTag) {}
 
   const Map<std::string, AttributeMetaPtr>& getAttributes() const {
-    return attributes_;
+    return attributeMetas_;
   }
 
   paddle::Error __must_check
@@ -204,11 +215,11 @@ public:
       return paddle::Error("NULL Pointer Error");
     }
     auto attrName = attributeMeta->name;
-    if (this->attributes_.find(attrName) != this->attributes_.end()) {
+    if (this->attributeMetas_.find(attrName) != this->attributeMetas_.end()) {
       return paddle::Error(
           "%s attribute %s has been setted", errTag_.c_str(), attrName.c_str());
     }
-    this->attributes_[attrName] = attributeMeta;
+    this->attributeMetas_[attrName] = attributeMeta;
     return paddle::Error();
   }
 

@@ -16,8 +16,10 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include "../Tensor.h"
+#include "AttributeMap.h"
 #include "AttributeMeta.h"
 #include "TensorMeta.h"
+
 namespace paddle {
 namespace topology {
 namespace meta {
@@ -37,7 +39,6 @@ private:
 private:
   std::string name;
   static Map<std::string, FunctionMetaPtr> gFuncMetas;
-  Map<std::string, any> metaInfos;
 
   TensorMetas inputs_;
   TensorMetas outputs_;
@@ -45,30 +46,6 @@ private:
 public:
   explicit FunctionMeta(const std::string& name)
       : WithAttributeMeta("function(" + name + ")'s"), name(name) {}
-
-  template <typename T>
-  paddle::Error __must_check addMeta(const std::string& name, const T& val) {
-    if (metaInfos.find(name) != metaInfos.end()) {
-      return paddle::Error("Duplicated meta infos %s", name.c_str());
-    }
-    metaInfos[name] = val;
-    return paddle::Error();
-  }
-
-  template <typename T>
-  paddle::Error __must_check getMeta(const std::string& name,
-                                     const T** val) const {
-    auto it = metaInfos.find(name);
-    if (it == metaInfos.end()) {
-      return paddle::Error("Cannot find meta %s", name.c_str());
-    }
-    const any* ptr = &it->second;
-    *val = any_cast<T>(ptr);
-    if (*val == nullptr) {
-      return paddle::Error("Cannot cast to type %s", typeid(T).name());
-    }
-    return paddle::Error();
-  }
 
   static paddle::Error __must_check
   registerFuncMeta(const std::string& name,
@@ -138,17 +115,35 @@ public:
   }
 
   void setShapeInferer(TenserShapeInferer inferer) {
-    addMeta("shapeInferer", inferer).check();
+    metaAttributes_.set("shapeInferer", inferer).check();
   }
 
   const TenserShapeInferer& getShapeInferer() const {
     const TenserShapeInferer* func;
-    getMeta("shapeInferer", &func).check();
+    metaAttributes_.get("shapeInferer", &func).check();
     return *func;
   }
 
   const std::vector<TensorMetaPtr>& inputs() const { return inputs_; }
   const std::vector<TensorMetaPtr>& outputs() const { return outputs_; }
+
+  template <typename T>
+  Error regAttributeParser(
+      const std::function<Error(const AttributeMap&, T*)>& callback) {
+    return this->metaAttributes_.set("attribute_parser", callback, false);
+  }
+
+  template <typename T>
+  Error parseAttribute(const AttributeMap& attrs, T* attr) const {
+    const std::function<Error(const AttributeMap&, T*)>* callback;
+    auto err = this->metaAttributes_.get("attribute_parser", &callback);
+    if (!err.isOK()) {
+      return err;
+    }
+    return *callback(attrs, attr);
+  }
+
+  AttributeMap metaAttributes_;
 };
 
 }  // namespace meta

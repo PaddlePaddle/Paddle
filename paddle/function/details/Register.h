@@ -45,7 +45,7 @@ public:
 private:
   template <typename T>
   paddle::Error addFunction(const std::string& name, T kernel) {
-    return meta_->addMeta(name, kernel);
+    return meta_->metaAttributes_.set(name, kernel);
   }
   topology::meta::FunctionMetaPtr& meta_;
 };

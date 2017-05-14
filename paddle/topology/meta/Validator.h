@@ -36,7 +36,7 @@ private:
 paddle::Error validateAndInferShape(paddle::topology::Function& func,
                                     bool validOutput = false);
 paddle::Error validate(const WithAttributeMeta& meta,
-                       paddle::topology::Attribute& attr);
+                       paddle::topology::AttributeMap& attr);
 
 }  // namespace meta
 }  // namespace topology

@@ -13,31 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <paddle/utils/Any.h>
+#include <memory>
 #include <string>
 #include <unordered_map>
+#include "meta/AttributeMap.h"
 
 namespace paddle {
 namespace topology {
-
-class Attribute : public std::unordered_map<std::string, any> {
-public:
-  template <typename T>
-  const T& get(const std::string& name) const {
-    auto attrPtr = &at(name);
-    auto* ptr = any_cast<T>(attrPtr);
-    if (ptr == nullptr) throw bad_any_cast();
-    return *ptr;
-  }
-
-  template <typename T>
-  T& get(const std::string& name) {
-    auto attrPtr = &at(name);
-    auto* ptr = any_cast<T>(attrPtr);
-    if (ptr == nullptr) throw bad_any_cast();
-    return *ptr;
-  }
-};
+using meta::AttributeMap;
 
 }  // namespace topology
+
 }  // namespace paddle

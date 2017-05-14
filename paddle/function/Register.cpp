@@ -23,13 +23,14 @@ namespace function {
 class RegistedFunction {
 private:
   static Function getKernel(topology::Function* topo,
-                            const std::string& metaName) {
+                            const std::string& kernelMethodName) {
     auto meta = topology::meta::FunctionMeta::get(topo->type);
     const Function* kernel = nullptr;
-    auto err = meta->getMeta<Function>(metaName, &kernel);
+    auto err = meta->metaAttributes_.get<Function>(kernelMethodName, &kernel);
     if (err.isOK()) return *kernel;
     const FunctionWithAttrs* kernelEx = nullptr;
-    meta->getMeta<FunctionWithAttrs>(metaName, &kernelEx).check();
+    meta->metaAttributes_.get<FunctionWithAttrs>(kernelMethodName, &kernelEx)
+        .check();
     return [topo, kernelEx](const BufferArgs& in, const BufferArgs& out) {
       return (*kernelEx)(in, out, topo->attributes);
     };

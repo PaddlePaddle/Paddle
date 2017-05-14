@@ -28,7 +28,7 @@ public:
   DataType dataType() const;
 
 public:
-  Attribute attributes;
+  AttributeMap attributes;
 };
 
 typedef std::shared_ptr<Tensor> TensorPtr;

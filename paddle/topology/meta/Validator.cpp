@@ -80,7 +80,8 @@ Error validateAndInferShape(Function& func, bool validOutput) {
   return Error();
 }
 
-Error validate(const WithAttributeMeta& meta, Attribute& attr) {
+Error validate(const WithAttributeMeta& meta,
+               paddle::topology::meta::AttributeMap& attr) {
   AttributeValidator validator(meta.getAttributes());
   return validator.validate(&attr);
 }
