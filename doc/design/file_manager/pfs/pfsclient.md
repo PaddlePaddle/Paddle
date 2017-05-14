@@ -1,4 +1,4 @@
-# PFS Client
+# PFSClient
 
 ## Description
 The `pfs` command is a Command Line Interface to manage your files on PaddlePaddle Cloud
@@ -28,7 +28,10 @@ paddle [options] pfs <subcommand> [parameters]
 
 ## Path Arguments
 When using a command, we need to specify path arguments. There are two path argument type: `localpath` and `pfspath`.  
+
 A `pfspath` begin with `/pfs`, eg: `/pfs/$DATACENTER/home/$USER/folder`.
+
+[Here](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/cluster_train/data_dispatch.md#上传训练文件) is how to config DataCenter
 
 ## order of Path Arguments
 Commonly, if there are two path arguments, the first is the source, and the second is the destination.
@@ -42,7 +45,7 @@ Synopsis:
 
 Options:
 	-r 
-		remove directories and their contents recursively 
+		Remove directories and their contents recursively 
 	-v      
 		Cause rm to be verbose, showing files after they are removed.
 	
@@ -86,7 +89,7 @@ Synopsis:
 Options:
 	-r
    		Copy directories recursively
-   -f      
+   	-f      
 		Do not prompt for confirmation before overwriting the destination path.  (The -f option overrides previous -n options.)
 	-n      
 		Do not overwrite an existing file.  (The -n option overrides previous -f options.)
@@ -94,6 +97,10 @@ Options:
 		Cause cp to be verbose, showing files after they are copied.
 	--preserve--links
 	   Reserve links when copy links
+	   
+Examples:
+	paddle pfs cp ./file /pfs/$DATACENTER/home/$USER/file
+	paddle pfs cp /pfs/$DATACENTER/home/$USER/file ./file
 ```
 - ls- list files
 
