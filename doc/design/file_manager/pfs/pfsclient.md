@@ -31,7 +31,7 @@ When using a command, we need to specify path arguments. There are two path argu
 
 A `pfspath` begin with `/pfs`, eg: `/pfs/$DATACENTER/home/$USER/folder`.
 
-[Here](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/cluster_train/data_dispatch.md#上传训练文件) is how to config DataCenter
+[Here](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/cluster_train/data_dispatch.md#上传训练文件) is how to config datacenters.
 
 ## order of Path Arguments
 Commonly, if there are two path arguments, the first is the source, and the second is the destination.

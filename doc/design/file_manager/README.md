@@ -1,6 +1,7 @@
 # FileManager设计文档
 ## 目标
 在本文档中，我们设计说明了名为FileManager系统，方便让用户上传自己的训练数据以进行分布式训练
+
 主要功能包括：
 
 - 提供常用的命令行管理命令管理文件和目录
@@ -41,13 +42,16 @@ RESTful API
 	- `POST /api/v1/files`: Create files or directories.
 	- `DELETE /api/v1/files`: Delete files or directories.
 
+- /api/v1/file/chunks
+	- `GET /api/v1/storage/file/chunks`: Get chunks's attributes in a file.
+
 - /api/v1/storage/files
 	- `GET /api/v1/storage/files`: Download files or directories to local.
 	- `POST /api/v1/storage/files`: Upload files or directories to server.
 
 - /api/v1/storage/file/chunks
-	- `GET /api/v1/storage/file/chunks`: Get chunks's attributes in a file.
-	- `POST /api/v1/storage/file/chunks`: Upload chunks to a file.
+	- `GET /api/v1/storage/file/chunks`: Upload chunks data.
+	- `POST /api/v1/storage/file/chunks`: Download chunks data.
 ```
 ## 文件传输优化
 
