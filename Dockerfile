@@ -61,15 +61,6 @@ RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
            -DCMAKE_BUILD_TYPE=Release . \
      make)
 
-# Install gtest.
-#
-# NOTE: This is added for quick hack of the development work of
-# majel-in-paddle.
-RUN git clone https://github.com/google/googletest /gtest && \
-    cd /gtest && \
-    git checkout -b release-1.8.0 && \
-    cmake . && make install
-
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd
 RUN echo 'root:root' | chpasswd
