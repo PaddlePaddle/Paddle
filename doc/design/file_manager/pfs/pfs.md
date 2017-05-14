@@ -34,9 +34,89 @@ A `pfspath` begin with `/pfs`, eg: `/pfs/$DATACENTER/home/$USER/folder`.
 Commonly, if there are two path arguments, the first is the source, and the second is the destination.
 
 ## Subcommonds
-- [rm](rm.md)
-- [mv](mv.md)
-- [cp](cp.md)
-- [ls](ls.md)
-- [mkdir](mkdir.md)
-- [sync](sync.md)
+- rm - remove files or directories
+
+```
+Synopsis:
+	rm [-r] [-v] <PFSPath> ...
+
+Options:
+	-r 
+		remove directories and their contents recursively 
+	-v      
+		Cause rm to be verbose, showing files after they are removed.
+	
+Examples:
+	paddle pfs rm /pfs/$DATACENTER/home/$USER/file
+	paddle pfs rm -r /pfs/$DATACENTER/home/$USER/folder
+```
+- mv - move (rename) files
+
+```
+Synopsis:
+	mv [-f | -n] [-v] <LocalPath> <PFSPath>
+	mv [-f | -n] [-v] <LocalPath> ... <PFSPath>
+	mv [-f | -n] [-v] <PFSPath> <LocalPath> 
+	mv [-f | -n] [-v] <PFSPath> ... <LocalPath> 
+	mv [-f | -n] [-v] <PFSPath> <PFSPath> 
+	mv [-f | -n] [-v] <PFSPath> ... <PFSPath> 
+	
+Options:
+	-f      
+		Do not prompt for confirmation before overwriting the destination path.  (The -f option overrides previous -n options.)
+	-n      
+		Do not overwrite an existing file.  (The -n option overrides previous -f options.)
+	-v      
+		Cause mv to be verbose, showing files after they are moved.
+		
+Examples:
+	paddle pfs mv ./text1.txt /pfs/$DATACENTER/home/$USER/text1.txt
+```
+- cp - copy files or directories
+
+```
+Synopsis:
+	cp [-r] [-f | -n] [-v] [--preserve--links] <LocalPath> <PFSPath>
+	cp [-r] [-f | -n] [-v] [--preserve--links] <LocalPath> ... <PFSPath>
+	cp [-r] [-f | -n] [-v] [--preserve--links] <PFSPath> <LocalPath> 
+	cp [-r] [-f | -n] [-v] [--preserve--links] <PFSPath> ... <LocalPath>
+	cp [-r] [-f | -n] [-v] [--preserve--links] <PFSPath> <PFSPath> 
+	cp [-r] [-f | -n] [-v] [--preserve--links] <PFSPath> ... <PFSPath>
+
+Options:
+	-r
+   		Copy directories recursively
+   -f      
+		Do not prompt for confirmation before overwriting the destination path.  (The -f option overrides previous -n options.)
+	-n      
+		Do not overwrite an existing file.  (The -n option overrides previous -f options.)
+	-v      
+		Cause cp to be verbose, showing files after they are copied.
+	--preserve--links
+	   Reserve links when copy links
+```
+- ls- list files
+
+```
+Synopsis:
+	ls [-r] <PFSPath> ...
+	
+Options:
+	-r
+   		List directory(ies) recursively
+
+Examples:
+	paddle pfs ls  /pfs/$DATACENTER/home/$USER/file
+	paddle pfs ls  /pfs/$DATACENTER/home/$USER/folder
+```
+
+- mkdir - mkdir directory(ies)
+Create intermediate directory(ies) as required.
+
+```
+Synopsis:
+	mkdir <PFSPath> ...
+
+Examples:
+	paddle pfs mkdir  /pfs/$DATACENTER/home/$USER/folder
+```
