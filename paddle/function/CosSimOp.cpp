@@ -18,6 +18,16 @@ limitations under the License. */
 #include "paddle/math/Vector.h"
 
 namespace paddle {
+
+struct CosSimAttribute : public topology::Attribute {
+  double scale;
+  REGISTER_FUNC_ATTRIBUTE() {
+    regAttr(&CosSimAttribute::scale, "scale", "the scale of cosine operator")
+        .defaultValue(1.0)
+        .largerThan(0.0);
+  }
+};
+
 /**
  * Cosine Similarity for CpuMatrix
  *
@@ -59,22 +69,18 @@ void CosSimForward<DEVICE_TYPE_CPU>(CpuMatrix& out_mat,
 template <DeviceType Device>
 Error cosineForward(const BufferArgs& inputs,
                     const BufferArgs& outputs,
-                    const std::unordered_map<std::string, any>& attrs) {
+                    const CosSimAttribute& attrs) {
   auto out_mat = outputs[0].matrix<Device>();
   const auto in1_mat = inputs[0].matrix<Device>();
   const auto in2_mat = inputs[1].matrix<Device>();
 
   CosSimForward<Device>(
-      out_mat, in1_mat, in2_mat, any_cast<double>(attrs.at("scale")));
+      out_mat, in1_mat, in2_mat, any_cast<double>(attrs.scale));
   return Error();
 }
 
-BEGIN_REGISTER_FUNCTION(cosFwd, cosineForward)
-func->addAttribute<double>("scale", "The scale of cosine operator")
-    .defaultValue(1.0)
-    .largerThan(0.0);
-
-func->addInput(/*dim = */ 2)
+BEGIN_REGISTER_FUNCTION(cosFwd, cosineForward, CosSimAttribute)
+    .addInput(/*dim = */ 2)
     .addInput(/*dim = */ 2)
     .addOutput(/*arg_type*/ ASSIGN_TO,
                /*shape = */ {topology::meta::kTensorShape_BATCH_SIZE, 1})
@@ -174,7 +180,7 @@ void CosSimBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad,
 template <DeviceType Device>
 Error cosBackward(const BufferArgs& ins,
                   const BufferArgs& outs,
-                  const std::unordered_map<std::string, any>& attrs) {
+                  const CosSimAttribute& attrs) {
   const auto out_grad = ins[0].matrix<Device>();
   const auto out_val = ins[1].matrix<Device>();
   const auto in1_val = ins[2].matrix<Device>();
@@ -188,16 +194,12 @@ Error cosBackward(const BufferArgs& ins,
                          in2_val,
                          in1_grad,
                          in2_grad,
-                         any_cast<double>(attrs.at("scale")));
+                         any_cast<double>(attrs.scale));
   return Error();
 }
 
-BEGIN_REGISTER_FUNCTION(cosBwd, cosBackward)
-func->addAttribute<double>("scale", "the scale of cosine operator")
-    .defaultValue(1.0)
-    .largerThan(0.0);
-
-func->addInput({topology::meta::kTensorShape_BATCH_SIZE, 1})
+BEGIN_REGISTER_FUNCTION(cosBwd, cosBackward, CosSimAttribute)
+    .addInput({topology::meta::kTensorShape_BATCH_SIZE, 1})
     .addInput({topology::meta::kTensorShape_BATCH_SIZE, 1})
     .addInput(2)
     .addInput(2)

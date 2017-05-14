@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 #include <functional>
 #include "../FunctionList.h"
+#include "../TensorType.h"
+#include "paddle/topology/Attribute.h"
 #include "paddle/topology/Function.h"
 #include "paddle/topology/meta/FunctionMeta.h"
 #include "paddle/utils/Util.h"
@@ -26,27 +28,31 @@ class FunctionRegister {
 public:
   FunctionRegister(topology::meta::FunctionMetaPtr& meta) : meta_(meta) {}
 
-  paddle::Error addCPUFunction(Function kernel) {
-    return this->addFunction("CPUKernel", kernel);
-  }
-
-  paddle::Error addGPUFunction(Function kernel) {
-    return this->addFunction("GPUKernel", kernel);
-  }
-
-  paddle::Error addCPUFunction(FunctionWithAttrs kernel) {
-    return this->addFunction("CPUKernel", kernel);
-  }
-
-  paddle::Error addGPUFunction(FunctionWithAttrs kernel) {
-    return this->addFunction("GPUKernel", kernel);
+  template <typename T, DeviceType devType>
+  paddle::Error reg(std::function<Error(const BufferArgs& ins,
+                                        const BufferArgs& outs,
+                                        const T& attrs)> kernel) {
+    auto meta = meta_;
+    auto key = devType == DEVICE_TYPE_CPU ? "CPUKernel" : "GPUKernel";
+    auto inited = std::make_shared<bool>(false);
+    auto tmp = std::make_shared<T>();
+    FunctionWithAttrs fn = [kernel, meta, inited, tmp](
+        const BufferArgs& ins,
+        const BufferArgs& outs,
+        const topology::AttributeMap& attrs) {
+      bool& init = *inited;
+      if (!init) {
+        auto err =
+            meta->parseAttribute<paddle::topology::Attribute>(attrs, tmp.get());
+        if (!err.isOK()) return err;
+        init = true;
+      }
+      return kernel(ins, outs, *tmp);
+    };
+    return meta_->metaAttributes_.set(key, fn);
   }
 
 private:
-  template <typename T>
-  paddle::Error addFunction(const std::string& name, T kernel) {
-    return meta_->metaAttributes_.set(name, kernel);
-  }
   topology::meta::FunctionMetaPtr& meta_;
 };
 

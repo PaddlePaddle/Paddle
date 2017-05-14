@@ -6,17 +6,17 @@ namespace function {
 
 Function createFunction(const topology::Function& conf);
 
-#define BEGIN_REGISTER_FUNCTION(name, __func__) \
+#define BEGIN_REGISTER_FUNCTION(name, __func__, __attr_type__) \
   static paddle::InitFunction __init_##name##__([] {\
     paddle::topology::meta::FunctionMeta::registerFuncMeta(\
       #name, [](paddle::topology::meta::FunctionMetaPtr& func) {\
   do {\
   function::details::FunctionRegister reg(func);\
-  reg.addCPUFunction(__func__<DEVICE_TYPE_CPU>);\
-  reg.addGPUFunction(__func__<DEVICE_TYPE_GPU>);\
+  reg.reg<__attr_type__, DEVICE_TYPE_CPU>(__func__<DEVICE_TYPE_CPU>);\
+  reg.reg<__attr_type__, DEVICE_TYPE_GPU>(__func__<DEVICE_TYPE_GPU>);\
 } while(0);\
-  func->addAttribute<bool>("useGPU", "is this function use gpu or not")\
-  .mustSet();
+  __attr_type__::registerFunctionAttribute(func);\
+  (*func)
 #define END_REGISTER_FUNCTION() \
   return paddle::Error();       \
   }).check();                   \

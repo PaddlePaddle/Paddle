@@ -140,7 +140,7 @@ public:
     if (!err.isOK()) {
       return err;
     }
-    return *callback(attrs, attr);
+    return (*callback)(attrs, attr);
   }
 
   AttributeMap metaAttributes_;

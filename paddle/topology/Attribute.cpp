@@ -1,5 +1,10 @@
 #include "Attribute.h"
 
 namespace paddle {
-namespace topology {}  // namespace topology
+namespace topology {
+
+Attribute::~Attribute() {}
+AttributeParserPtr Attribute::parser;
+meta::FunctionMetaPtr Attribute::funcMeta;
+}  // namespace topology
 }  // namespace paddle

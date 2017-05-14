@@ -11,27 +11,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #pragma once
-#include "AttributeMap.h"
-#include "meta/TensorMeta.h"
+#include "meta/AttributeMap.h"
 namespace paddle {
 namespace topology {
-using meta::DataType;
-using meta::SequenceType;
-
-class Tensor {
-public:
-  Tensor& setDataType(int type);
-  Tensor& setSequenceType(int type);
-  Tensor& setShape(const std::vector<int>& shape);
-  std::vector<int>& shape();
-  SequenceType sequenceType() const;
-  DataType dataType() const;
-
-public:
-  AttributeMap attributes;
-};
-
-typedef std::shared_ptr<Tensor> TensorPtr;
+using meta::AttributeMap;
 }  // namespace topology
 }  // namespace paddle

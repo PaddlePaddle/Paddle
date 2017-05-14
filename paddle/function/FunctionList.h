@@ -16,6 +16,7 @@ limitations under the License. */
 #include <functional>
 #include "BufferArgs.h"
 #include "FuncConfig.h"
+#include "paddle/topology/AttributeMap.h"
 #include "paddle/utils/Error.h"
 namespace paddle {
 namespace function {
@@ -28,7 +29,7 @@ typedef std::function<Error(const BufferArgs& inputs,
 
 typedef std::function<Error(const BufferArgs& ins,
                             const BufferArgs& outs,
-                            const std::unordered_map<std::string, any>& attrs)>
+                            const topology::AttributeMap& attrs)>
     FunctionWithAttrs;
 
 class FunctionList : public std::vector<Function> {
