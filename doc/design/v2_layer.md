@@ -2,7 +2,7 @@
 
 ## What are the problems
 
-Paddle V2 API give a flexible way to configure neural network topology. The user can create a neural network topology layer by layer. We use the final layer to represent the neural network topology.
+Paddle V2 API give a flexible way to configure neural network topology. Users can create a neural network topology layer by layer. We use the final layer to represent the Neural Network topology.
 
 The example code for users is:
 
@@ -17,11 +17,36 @@ paddle.train(cost, ...)
 
 We use `cost` to represent the entire topology of the neural network.  We use the last node to traverse the entire topology by `depth first search` algorithm. The connection between each layer is represented by the `input` parameter.  It is fit for representing a plain neural network topology. However, there are some special layers in Paddle, which are not connected explicitly by `input` parameter. They are:
 
-* Evaluator.  An evaluator is used to compute metrics(such as error rate, f1 score) in Paddle. An evaluator can not be the input of other layers. So we cannot access evaluators by simply traversing back from the final layer.
+* Evaluator.  An evaluator is used to compute metrics(such as error rate, f1 score) in Paddle. An evaluator can not be the input of other layers, and can be the final layer of the neural network, because the final layer of the neural network is the optimization target function while training, and we always optimize a `loss function` like `cross entropy`, not optimize the `correct rate`. So we cannot access evaluators by simply traversing back from the final layer.
 * Memory. We use memory layers in Recurrent Neural Network; a memory layer represents the output of some layer in the last time step. However, the memory layer connects to its input layer implicitly by sharing the same name. We also cannot traverse to memory layer because maybe there is no layer using this memory layer.
-* Recurrent Group.  The recurrent group is a sub-topology config using in Recurrent Neural Network. It represents the layers in each recurrent time-step. We could traverse back to some topology in a recurrent group, but the sub-topology is non-splittable. The recurrent group should be either entirely in the topology or not in the topology. 
+* Recurrent Group.  The recurrent group is a sub-topology config using in Recurrent Neural Network. It represents the layers in each recurrent time-step. We could traverse back to some topology in a recurrent group, but the sub-topology is non-splittable. The recurrent group should be either entirely in the topology or not in the topology.
 
-## Thinking how to resolve these problems
+Here is an example of how Paddle describes a recurrent neural network and why traversing back cannot handle recurrent neural network well.
+
+```python
+sequence_input = some_layer_before(...)
+   
+rnn_bootstrap = some_other_layer(...)
+   
+def timestep(input):
+  # the first time step uses rnn_bootstrap layer's output.
+  mem = memory(name="hidden", size=200, boot=rnn_bootstrap)
+  hidden = fc_layer(input=[input, mem], name="hidden", size=200)
+  out1 = fc_layer(input=hidden, size=100)
+  out2 = fc_layer(input=hidden, size=10)
+  return out1, out2
+   
+out1, out2 = recurrent_group(step=timestep, input=sequence_input)
+```
+
+The neural network graph is ![rnn_grouph](http://api.paddlepaddle.org/graphviz?dot=https://gist.githubusercontent.com/reyoung/3426463605372f65e756dfcd6b12ecf9/raw/6e6ebca2c528b40f284205eedc4a870f870beaa9/rnn_example)
+
+The `timestep` method describes the operations in each time step. We use `memory` layer to connect layers between time step. The bootstrap value of `memory` is `RNN Bootstrap` and the value of `memory` in rest time steps is the output value of `hidden` layer in the previous time step.  This recurrent group contains two outputs, `out1` and `out2`. They are both fully connect layer which input is the `hidden` layer. The `timestep` method describes the operations in each time step. We use `memory` layer to connect layers between time step. The bootstrap value of `memory` is `RNN Bootstrap` and the value of `memory` in rest time steps is the output value of `hidden` layer in the previous time step.  This recurrent group contains two outputs, `out1` and `out2`. They are both fully connect layer which input is the `hidden` layer. The code demonstrates defects when we generate the neural network configuration only by traversing back from the final layer.
+
+1. Memory connection are implicit by sharing same name.
+2. If the rest topology only depends on one of RNN output, e.g. `out1`, we should generate RNN including `out2` because `timestep` is a method and is indecomposable. 
+
+## How to resolve these problems
 
 There is a configuration file for each neural network topology when we use Paddle as an executable program. The topology is generated line by line when the configuration function is invoked, no matter whether the output of this function is passed to another method or not.
 
