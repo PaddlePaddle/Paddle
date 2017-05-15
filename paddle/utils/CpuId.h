@@ -12,6 +12,7 @@ limitations under the License. */
 #pragma once
 
 #include "Common.h"
+#include "Error.h"
 
 namespace paddle {
 
@@ -29,6 +30,7 @@ enum simd_t {
   SIMD_AVX    = 1 << 8,     ///< AVX
   SIMD_AVX2   = 1 << 9,     ///< AVX 2
   SIMD_AVX512 = 1 << 10,    ///< AVX 512
+  SIMD_NEON   = 1 << 11,    ///  NEON
 };
 // clang-format on
 
@@ -95,6 +97,40 @@ private:
 #define HAS_AVX     HAS_SIMD(SIMD_AVX)
 #define HAS_AVX2    HAS_SIMD(SIMD_AVX2)
 #define HAS_AVX512  HAS_SIMD(SIMD_AVX512)
+#define HAS_NEON    HAS_SIMD(SIMD_NEON)
 // clang-format on
+
+/**
+ * Invoke checkCPUFeature() before Paddle initialization to
+ * check target machine whether support compiled instructions.
+ * If not, simply throw out an error.
+ */
+inline Error __must_check checkCPUFeature() {
+  Error err;
+#ifndef __AVX__
+  if (HAS_AVX) {
+    LOG(WARNING) << "PaddlePaddle wasn't compiled to use avx instructions, "
+                 << "but these are available on your machine and could "
+                 << "speed up CPU computations via CMAKE .. -DWITH_AVX=ON";
+  }
+#else
+  if (!HAS_AVX) {
+    err = Error(
+        "PaddlePaddle was compiled to use avx instructions, "
+        "but these aren't available on your machine, please "
+        "disable it via CMAKE .. -DWITH_AVX=OFF");
+  }
+#endif  // __AVX__
+#ifdef __SSE3__
+  if (!HAS_SSE3) {
+    err = Error(
+        "PaddlePaddle was compiled to use sse3 instructions, "
+        "which is the minimum requirement of PaddlePaddle. "
+        "But these aren't available on your current machine.");
+  }
+#endif  // __SSE3__
+
+  return err;
+}
 
 }  // namespace paddle

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #include "Function.h"
 
 namespace paddle {
@@ -21,24 +20,25 @@ namespace paddle {
 /**
  * \brief   Context Projection Forward.
  *
- * \param[out]  outputs           output data.
- * \param[in]   input             input data.
- * \param[in]   weight            input weight.
- * \param[in]   sequence          input data.
- * \param[in]   context_length    consecutive rows for concatenation.
- * \param[in]   context_start     context start position.
- * \param[in]   begin_pad         begining pad position.
- * \param[in]   is_padding        whether padding 0 or not.
+ * \param[in/out]  outputs           output data.
+ * \param[in]      input             input data.
+ * \param[in]      weight            input weight.
+ * \param[in]      sequence          input data.
+ * \param[in]      context_length    consecutive rows for concatenation.
+ * \param[in]      context_start     context start position.
+ * \param[in]      begin_pad         begining pad position.
+ * \param[in]      is_padding        whether padding 0 or not.
  *
  */
-template <DeviceType Device>
-void ContextProjectionForward(typename MatrixT<Device>::type* output,
-                              const typename MatrixT<Device>::type* input,
-                              const typename MatrixT<Device>::type* weight,
-                              const typename SequenceT<Device>::type& sequence,
-                              size_t context_length,
-                              int context_start,
-                              size_t begin_pad);
+template <DeviceType DType>
+void ContextProjectionForward(
+    typename Tensor<real, DType>::Matrix& output,
+    const typename Tensor<real, DType>::Matrix& input,
+    const typename Tensor<real, DType>::Matrix& weight,
+    const typename Tensor<int, DType>::Vector& sequence,
+    size_t context_length,
+    int context_start,
+    size_t begin_pad);
 
 /**
  * \brief   Context Projection Backward.
@@ -53,30 +53,31 @@ void ContextProjectionForward(typename MatrixT<Device>::type* output,
  * \param[in]   is_padding        whether padding 0 or not.
  *
  */
-template <DeviceType Device>
-void ContextProjectionBackward(typename MatrixT<Device>::type* out_grad,
-                               typename MatrixT<Device>::type* in_grad,
-                               typename MatrixT<Device>::type* w_grad,
-                               const typename SequenceT<Device>::type& seq_vec,
-                               size_t context_length,
-                               int context_start,
-                               size_t begin_pad,
-                               bool is_padding,
-                               size_t total_pad);
+template <DeviceType DType>
+void ContextProjectionBackward(
+    const typename Tensor<real, DType>::Matrix& out_grad,
+    typename Tensor<real, DType>::Matrix& in_grad,
+    typename Tensor<real, DType>::Matrix& w_grad,
+    const typename Tensor<int, DType>::Vector& seq_vec,
+    size_t context_length,
+    int context_start,
+    size_t begin_pad,
+    bool is_padding,
+    size_t total_pad);
 
-template <DeviceType Device>
+template <DeviceType DType>
 void ContextProjectionBackwardData(
-    typename MatrixT<Device>::type* out_grad,
-    typename MatrixT<Device>::type* in_grad,
-    const typename SequenceT<Device>::type& sequence,
+    const typename Tensor<real, DType>::Matrix& out_grad,
+    typename Tensor<real, DType>::Matrix& in_grad,
+    const typename Tensor<int, DType>::Vector& sequence,
     size_t context_length,
     int context_start);
 
-template <DeviceType Device>
+template <DeviceType DType>
 void ContextProjectionBackwardWeight(
-    typename MatrixT<Device>::type* out_grad,
-    typename MatrixT<Device>::type* w_grad,
-    const typename SequenceT<Device>::type& seq_vec,
+    const typename Tensor<real, DType>::Matrix& out_grad,
+    typename Tensor<real, DType>::Matrix& w_grad,
+    const typename Tensor<int, DType>::Vector& seq_vec,
     size_t context_length,
     int context_start,
     size_t total_pad,

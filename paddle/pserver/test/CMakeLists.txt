@@ -10,9 +10,11 @@ add_test(NAME socket_test
 add_unittest_without_exec(test_ProtoServer
     test_ProtoServer.cpp)
 
-add_test(NAME test_ProtoServer
-    COMMAND ${PROJ_ROOT}/paddle/.set_port.sh -p port
-        ${CMAKE_CURRENT_BINARY_DIR}/test_ProtoServer)
+IF(NOT ON_TRAVIS)
+    add_test(NAME test_ProtoServer
+        COMMAND ${PROJ_ROOT}/paddle/.set_port.sh -p port
+            ${CMAKE_CURRENT_BINARY_DIR}/test_ProtoServer)
+ENDIF(NOT ON_TRAVIS)
 
 # TODO(yuyang18): Run test_ProtoServer when with rdma
 # add_test(NAME test_ProtoServerRDMA

@@ -6,9 +6,10 @@ We thank @lipeng for the pull request that defined the model schemas and pretrai
 
 ## Introduction ###
 ### Chinese Word Dictionary ###
-Our Chinese-word dictionary is created on Baidu ZhiDao and Baidu Baike by using in-house word segmentor. For example, the participle of "《红楼梦》" is "《"，"红楼梦"，"》"，and "《红楼梦》". Our dictionary (using UTF-8 format) has has two columns: word and its frequency. The total word count is 3206325, including 3 special token:
+Our Chinese-word dictionary is created on Baidu ZhiDao and Baidu Baike by using in-house word segmentor. For example, the participle of "《红楼梦》" is "《"，"红楼梦"，"》"，and "《红楼梦》". Our dictionary (using UTF-8 format) has has two columns: word and its frequency. The total word count is 3206326, including 4 special token:
   - `<s>`: the start of a sequence
   - `<e>`: the end of a sequence
+  - `PALCEHOLDER_JUST_IGNORE_THE_EMBEDDING`: a placeholder, just ignore it and its embedding
   - `<unk>`: a word not included in dictionary
 
 ### Pretrained Chinese Word Embedding Model ###

@@ -8,8 +8,8 @@
   :maxdepth: 1
 
   usage/cmd_parameter/index_cn.rst
-  usage/concepts/use_concepts_cn.rst
   usage/cluster/cluster_train_cn.md
+  usage/k8s/k8s_basis_cn.md
   usage/k8s/k8s_cn.md
   usage/k8s/k8s_distributed_cn.md
 

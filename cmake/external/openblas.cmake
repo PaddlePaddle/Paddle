@@ -17,8 +17,8 @@ INCLUDE(cblas)
 IF(NOT ${CBLAS_FOUND})
     INCLUDE(ExternalProject)
 
-    SET(CBLAS_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/openblas)
-    SET(CBLAS_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/install/openblas)
+    SET(CBLAS_SOURCES_DIR ${THIRD_PARTY_PATH}/openblas)
+    SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
     SET(CBLAS_INC_DIR "${CBLAS_INSTALL_DIR}/include" CACHE PATH "openblas include directory." FORCE)
 
     IF(WIN32)
@@ -30,17 +30,17 @@ IF(NOT ${CBLAS_FOUND})
     ExternalProject_Add(
         openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        URL                 "https://github.com/xianyi/OpenBLAS/archive/v0.2.19.tar.gz"
+        GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
+        GIT_TAG             v0.2.19
         PREFIX              ${CBLAS_SOURCES_DIR}
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     1
-        CONFIGURE_COMMAND   ""
-        BUILD_COMMAND       make CC=${CMAKE_C_COMPILER} FC=${CMAKE_Fortran_COMPILER}
-        INSTALL_COMMAND     make install PREFIX=<INSTALL_DIR>
+        BUILD_COMMAND       ${CMAKE_MAKE_PROGRAM} FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} HOSTCC=${CMAKE_C_COMPILER} NO_LAPACK=1 DYNAMIC_ARCH=1 NO_SHARED=1 libs netlib
+        INSTALL_COMMAND     ${CMAKE_MAKE_PROGRAM} install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR>
         UPDATE_COMMAND      ""
+        CONFIGURE_COMMAND   ""
     )
-
     LIST(APPEND external_project_dependencies openblas)
-ENDIF()
+ENDIF(NOT ${CBLAS_FOUND})
 
 INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})

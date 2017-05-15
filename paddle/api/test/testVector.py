@@ -43,7 +43,7 @@ class TestIVector(unittest.TestCase):
 
     def test_cpu_numpy(self):
         vec = np.array([1, 3, 4, 65, 78, 1, 4], dtype="int32")
-        iv = swig_paddle.IVector.createCpuVectorFromNumpy(vec, copy=False)
+        iv = swig_paddle.IVector.createCpuVectorFromNumpy(vec, False)
         self.assertEqual(vec.shape[0], int(iv.__len__()))
         vec[4] = 832
         for i in xrange(len(iv)):
@@ -106,7 +106,7 @@ class TestVector(unittest.TestCase):
 
     def testCpuNumpy(self):
         numpy_arr = np.array([1.2, 2.3, 3.4, 4.5], dtype="float32")
-        vec = swig_paddle.Vector.createCpuVectorFromNumpy(numpy_arr, copy=False)
+        vec = swig_paddle.Vector.createCpuVectorFromNumpy(numpy_arr, False)
         assert isinstance(vec, swig_paddle.Vector)
         numpy_arr[0] = 0.1
         for n, v in zip(numpy_arr, vec):

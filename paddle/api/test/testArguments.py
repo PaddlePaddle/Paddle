@@ -22,6 +22,8 @@ class TestArguments(unittest.TestCase):
         args = swig_paddle.Arguments.createArguments(1)
         args.setSlotValue(0, m)
 
+        self.assertAlmostEqual(27.0, args.sum())
+
         mat = args.getSlotValue(0)
         assert isinstance(mat, swig_paddle.Matrix)
         np_mat = mat.toNumpyMatInplace()

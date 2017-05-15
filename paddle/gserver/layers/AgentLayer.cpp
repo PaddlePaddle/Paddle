@@ -42,7 +42,8 @@ void AgentLayer::forward(PassType passType) {
   // get Arguments from real layers
   if (numSamples_ > 0 && numSamples_ < realHeight) {
     if (realOutput.ids) {
-      output_.ids->subVecFrom(*realOutput.ids, 0, numSamples_);
+      output_.ids =
+          IVector::create(realOutput.ids->getData(), numSamples_, useGpu_);
     } else {
       output_.subArgFrom(
           realOutput, /* offset */ 0, numSamples_, getSize(), useGpu_);

@@ -15,13 +15,19 @@ import sys
 import os, subprocess
 import shlex
 from recommonmark import parser, transform
+try:
+   import py_paddle
+   import paddle
+   import paddle.v2
+except ImportError:
+   print("Must install paddle python package before generating documentation")
+   sys.exit(1)
 
 MarkdownParser = parser.CommonMarkParser
 AutoStructify = transform.AutoStructify
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, '@PROJ_ROOT@/python')
 templates_path = ["@PROJ_ROOT@/doc_theme/templates"]
 
 # -- General configuration ------------------------------------------------
@@ -49,6 +55,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.graphviz'
 ]
+mathjax_path="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"
 table_styling_embed_css = True
 
 autodoc_member_order = 'bysource'

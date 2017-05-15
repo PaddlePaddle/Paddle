@@ -255,6 +255,13 @@ message PriorBoxConfig {
   repeated float variance = 4;
 }
 
+message PadConfig {
+  required ImageConfig image_conf = 1;
+  repeated uint32 pad_c = 2;
+  repeated uint32 pad_h = 3;
+  repeated uint32 pad_w = 4;
+}
+
 message LayerInputConfig {
   required string input_layer_name = 1;
   optional string input_parameter_name = 2;
@@ -271,6 +278,7 @@ message LayerInputConfig {
   optional MaxOutConfig maxout_conf = 11;
   optional SppConfig spp_conf = 12;
   optional PriorBoxConfig priorbox_conf = 13;
+  optional PadConfig pad_conf = 14;
 }
 
 message LayerConfig {
@@ -419,20 +427,25 @@ message LayerConfig {
   // bias size
   optional uint32 bias_size = 48 [default = 0];
 
-  // this parameter can be used as a user-defined parameter when necessary, 
+  // this parameter can be used as a user-defined parameter when necessary,
   // without changing the proto file.
-  // e.g., when a new layer with a user-defined parameter is implemented, 
+  // e.g., when a new layer with a user-defined parameter is implemented,
   // it can be used to pass that parameter, without modifying the proto file.
   // string type is used for flexibility: different types can be converted
-  // to string and reinterpreted in the user's own layer implementation.  
+  // to string and reinterpreted in the user's own layer implementation.
   optional string user_arg = 49;
-  
+
   // to indicate rectangle image data
   optional uint64 height = 50;
   optional uint64 width = 51;
 
   // blank label used in ctc loss
   optional uint32 blank = 52 [default = 0];
+
+  // stride parameter for seqlastins layer, AverageLayer, MaxLayer, which 
+  // controls the scope of pooling operation. can be set > 0.
+  // leave empty or set to -1 to disable this stride pooling.
+  optional int32 seq_pool_stride = 53 [default = -1];
 }
 
 message EvaluatorConfig {
@@ -467,6 +480,10 @@ message EvaluatorConfig {
   // Used by ChunkEvaluator
   // chunk of these types are not counted
   repeated int32 excluded_chunk_types = 12;
+
+  // Used by ClassificationErrorEvaluator
+  // top # classification error
+  optional int32 top_k = 13 [default = 1];
 }
 
 message LinkConfig {

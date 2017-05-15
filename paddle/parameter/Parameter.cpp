@@ -271,55 +271,6 @@ SparsePrefetchRowCpuMatrix* Parameter::getPrefetchMatrix() {
   return nullptr;
 }
 
-void Parameter::updateWithGradient(real learningRate) {
-  sgdUpdate(learningRate * config_.learning_rate(),
-            config_.momentum(),
-            config_.decay_rate(),
-            bufs_[PARAMETER_VALUE].get(),
-            bufs_[PARAMETER_GRADIENT].get(),
-            bufs_[PARAMETER_MOMENTUM].get());
-}
-
-void Parameter::updateWithGradient(real learningRate,
-                                   MatrixPtr gradMat,
-                                   IVectorPtr t0,
-                                   int currentTime,
-                                   bool fini) {
-  SparseRowCpuMatrix* sparseMat =
-      dynamic_cast<SparseRowCpuMatrix*>(gradMat.get());
-  CHECK(sparseMat);
-  CHECK_EQ(config_.momentum(), 0.0f)
-      << "not support momentum in sparse input sgd";
-  bool useL1 = (config_.decay_rate_l1() != 0.0f);
-  sparseMat->sgdUpdate(*bufs_[PARAMETER_VALUE],
-                       *t0,
-                       learningRate * config_.learning_rate(),
-                       currentTime,
-                       useL1 ? config_.decay_rate_l1() : config_.decay_rate(),
-                       useL1,
-                       fini);
-}
-
-void Parameter::updateWithGradient(real learningRate,
-                                   VectorPtr gradVec,
-                                   bool normalUpdate) {
-  if (normalUpdate) {
-    sgdUpdate(learningRate * config_.learning_rate(),
-              config_.momentum(),
-              config_.decay_rate(),
-              bufs_[PARAMETER_VALUE].get(),
-              gradVec.get(),
-              bufs_[PARAMETER_MOMENTUM].get());
-  } else {
-    size_t size = gradVec->getSize();
-    real* mom = bufs_[PARAMETER_MOMENTUM]->getData();
-    real* grad = gradVec->getData();
-    real* value = bufs_[PARAMETER_VALUE]->getData();
-    hl_matrix_add(mom, grad, mom, 1, size, 1.0f, learningRate);
-    hl_matrix_add(value, grad, value, 1, size, 1.0f, learningRate);
-  }
-}
-
 void Parameter::incUpdate(const UpdateCallback& callback) {
   // Static parameter is fixed, and does not need to be updated
   if (isStatic()) {
@@ -375,10 +326,6 @@ bool Parameter::load(const std::string& filename) {
   std::ifstream fs(filename, std::ios_base::binary);
   if (!fs) {
     LOG(INFO) << "missing parameters [" << filename << "] while loading model.";
-    if (isStatic()) {
-      LOG(FATAL) << getName() << " is static but missing, not allowed.";
-      return false;
-    }
     if (kMissParameterFail == FLAGS_load_missing_parameter_strategy) {
       LOG(FATAL) << getName() << " missing, not allowed.";
       return false;

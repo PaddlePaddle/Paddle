@@ -110,14 +110,13 @@ endmacro()
 
 # Get the coverage data.
 file(GLOB_RECURSE GCDA_FILES "${COV_PATH}" "*.gcda")
-message("GCDA files:")
+message("Process GCDA files:")
+message("===============================")
 
 # Get a list of all the object directories needed by gcov
 # (The directories the .gcda files and .o files are found in)
 # and run gcov on those.
 foreach(GCDA ${GCDA_FILES})
-	message("Process: ${GCDA}")
-	message("------------------------------------------------------------------------------")
 	get_filename_component(GCDA_DIR ${GCDA} PATH)
 
 	#
@@ -135,7 +134,7 @@ foreach(GCDA ${GCDA_FILES})
 	# If -p is not specified then the file is named only "the_file.c.gcov"
 	#
 	execute_process(
-		COMMAND ${GCOV_EXECUTABLE} -p -o ${GCDA_DIR} ${GCDA}
+		COMMAND ${GCOV_EXECUTABLE} -p -o ${GCDA_DIR} ${GCDA} >/dev/null
 		WORKING_DIRECTORY ${GCDA_DIR}
 	)
 endforeach()
@@ -383,7 +382,6 @@ foreach(NOT_COVERED_SRC ${COVERAGE_SRCS_REMAINING})
 	set(GCOV_FILE_COVERAGE "${GCOV_FILE_COVERAGE}]")
 
 	# Generate the final JSON for this file.
-	message("Generate JSON for non-gcov file: ${NOT_COVERED_SRC}...")
 	string(CONFIGURE ${SRC_FILE_TEMPLATE} FILE_JSON)
 	set(JSON_GCOV_FILES "${JSON_GCOV_FILES}${FILE_JSON}, ")
 endforeach()

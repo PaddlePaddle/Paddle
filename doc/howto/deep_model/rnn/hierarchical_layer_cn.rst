@@ -19,20 +19,20 @@
 
 在 PaddlePaddle中，下面这些Layer能够接受双层序列作为输入，完成相应的计算。
 
-pooling_layer
-==============
+pooling
+========
 
-pooling_layer 的使用示例如下，详细见 :ref:`api_trainer_config_helpers_layers_pooling_layer` 配置API。
+pooling 的使用示例如下，详细见 :ref:`api_v2.layer_pooling` 配置API。
 
 ..	code-block:: bash
 
-        seq_pool = pooling_layer(input=layer,
-                                 pooling_type=AvgPooling(),
-                                 agg_level=AggregateLevel.EACH_SEQUENCE)
+        seq_pool = pooling(input=layer,
+                           pooling_type=pooling.Max(),
+                           agg_level=AggregateLevel.EACH_SEQUENCE)
         
-- `pooling_type` 目前支持两种，分别是：MaxPooling()和AvgPooling()。
+- `pooling_type` 目前支持两种，分别是：pooling.Max()和pooling.Avg()。
 
-- `agg_level=AggregateLevel.TIMESTEP` 时（默认值）：
+- `agg_level=AggregateLevel.EACH_TIMESTEP` 时（默认值）：
 
   - 作用：双层序列经过运算变成一个0层序列，或单层序列经过运算变成一个0层序列
   - 输入：一个双层序列，或一个单层序列
@@ -47,14 +47,14 @@ pooling_layer 的使用示例如下，详细见 :ref:`api_trainer_config_helpers
 last_seq 和 first_seq
 =====================
 
-last_seq 的使用示例如下（ :ref:`api_trainer_config_helpers_layers_first_seq` 类似），详细见 :ref:`api_trainer_config_helpers_layers_last_seq` 配置API。
+last_seq 的使用示例如下（ :ref:`api_v2.layer_first_seq` 类似），详细见 :ref:`api_v2.layer_last_seq` 配置API。
 
 ..	code-block:: bash
 
         last = last_seq(input=layer,
                         agg_level=AggregateLevel.EACH_SEQUENCE)
         
-- `agg_level=AggregateLevel.TIMESTEP` 时（默认值）：
+- `agg_level=AggregateLevel.EACH_TIMESTEP` 时（默认值）：
 
   - 作用：一个双层序列经过运算变成一个0层序列，或一个单层序列经过运算变成一个0层序列
   - 输入：一个双层序列或一个单层序列
@@ -65,16 +65,16 @@ last_seq 的使用示例如下（ :ref:`api_trainer_config_helpers_layers_first_
   - 输入：必须是一个双层序列
   - 输出：一个单层序列，其中每个元素是双层序列中每个subseq最后一个（或第一个）元素。
 
-expand_layer
-============
+expand
+======
 
-expand_layer 的使用示例如下，详细见 :ref:`api_trainer_config_helpers_layers_expand_layer` 配置API。
+expand 的使用示例如下，详细见 :ref:`api_v2.layer_expand` 配置API。
 
 ..	code-block:: bash
 
-        expand = expand_layer(input=layer1,
-                              expand_as=layer2,
-                              expand_level=ExpandLevel.FROM_TIMESTEP)
+        ex = expand(input=layer1,
+                    expand_as=layer2,
+                    expand_level=ExpandLevel.FROM_TIMESTEP)
         
 - `expand_level=ExpandLevel.FROM_TIMESTEP` 时（默认值）：
 

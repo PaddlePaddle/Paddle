@@ -96,6 +96,7 @@ layers {
     input_layer_name: "rnn_forward"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__recurrent_group_1__"
@@ -145,6 +146,7 @@ layers {
   }
   select_first: true
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__recurrent_group_2__"
@@ -193,6 +195,7 @@ layers {
     input_layer_name: "rnn_subseq_forward"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__lstm_group_0___recurrent_group"
@@ -282,6 +285,7 @@ layers {
     input_layer_name: "__lstm_group_0__"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__gru_group_0___recurrent_group"
@@ -330,6 +334,56 @@ layers {
     input_layer_name: "__gru_group_0__"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
+}
+layers {
+  name: "__recurrent_group_3__"
+  type: "recurrent_layer_group"
+  active_type: ""
+}
+layers {
+  name: "seq_input@__recurrent_group_3__"
+  type: "scatter_agent"
+  size: 100
+  active_type: ""
+}
+layers {
+  name: "__memory_6__@__recurrent_group_3__"
+  type: "agent"
+  size: 200
+  active_type: ""
+}
+layers {
+  name: "__fc_layer_0__@__recurrent_group_3__"
+  type: "fc"
+  size: 200
+  active_type: "tanh"
+  inputs {
+    input_layer_name: "seq_input@__recurrent_group_3__"
+    input_parameter_name: "___fc_layer_0__@__recurrent_group_3__.w0"
+  }
+  inputs {
+    input_layer_name: "__memory_6__@__recurrent_group_3__"
+    input_parameter_name: "___fc_layer_0__@__recurrent_group_3__.w1"
+  }
+  bias_parameter_name: "___fc_layer_0__@__recurrent_group_3__.wbias"
+}
+layers {
+  name: "__fc_layer_0__"
+  type: "gather_agent"
+  size: 200
+  active_type: ""
+}
+layers {
+  name: "__last_seq_4__"
+  type: "seqlastins"
+  size: 200
+  active_type: "linear"
+  inputs {
+    input_layer_name: "__fc_layer_0__"
+  }
+  trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 parameters {
   name: "___mixed_0__.w0"
@@ -465,11 +519,11 @@ parameters {
   name: "___gru_group_0__@__gru_group_0___recurrent_group.w0"
   size: 30000
   initial_mean: 0.0
-  initial_std: 0.01
+  initial_std: 0.1
   dims: 100
   dims: 300
   initial_strategy: 0
-  initial_smart: false
+  initial_smart: true
 }
 parameters {
   name: "___gru_group_0__@__gru_group_0___recurrent_group.wbias"
@@ -481,6 +535,36 @@ parameters {
   initial_strategy: 0
   initial_smart: false
 }
+parameters {
+  name: "___fc_layer_0__@__recurrent_group_3__.w0"
+  size: 20000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 200
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "___fc_layer_0__@__recurrent_group_3__.w1"
+  size: 40000
+  initial_mean: 0.0
+  initial_std: 0.0707106781187
+  dims: 200
+  dims: 200
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "___fc_layer_0__@__recurrent_group_3__.wbias"
+  size: 200
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 200
+  initial_strategy: 0
+  initial_smart: false
+}
 input_layer_names: "seq_input"
 input_layer_names: "sub_seq_input"
 output_layer_names: "__last_seq_0__"
@@ -488,6 +572,7 @@ output_layer_names: "__first_seq_0__"
 output_layer_names: "__last_seq_1__"
 output_layer_names: "__last_seq_2__"
 output_layer_names: "__last_seq_3__"
+output_layer_names: "__last_seq_4__"
 sub_models {
   name: "root"
   layer_names: "seq_input"
@@ -510,6 +595,9 @@ sub_models {
   layer_names: "__gru_group_0___recurrent_group"
   layer_names: "__gru_group_0__"
   layer_names: "__last_seq_3__"
+  layer_names: "__recurrent_group_3__"
+  layer_names: "__fc_layer_0__"
+  layer_names: "__last_seq_4__"
   input_layer_names: "seq_input"
   input_layer_names: "sub_seq_input"
   output_layer_names: "__last_seq_0__"
@@ -517,6 +605,7 @@ sub_models {
   output_layer_names: "__last_seq_1__"
   output_layer_names: "__last_seq_2__"
   output_layer_names: "__last_seq_3__"
+  output_layer_names: "__last_seq_4__"
   is_recurrent_layer_group: false
 }
 sub_models {
@@ -643,6 +732,30 @@ sub_models {
   out_links {
     layer_name: "__gru_group_0__@__gru_group_0___recurrent_group"
     link_name: "__gru_group_0__"
+    has_subseq: false
+  }
+  target_inlinkid: -1
+}
+sub_models {
+  name: "__recurrent_group_3__"
+  layer_names: "seq_input@__recurrent_group_3__"
+  layer_names: "__memory_6__@__recurrent_group_3__"
+  layer_names: "__fc_layer_0__@__recurrent_group_3__"
+  is_recurrent_layer_group: true
+  reversed: false
+  memories {
+    layer_name: "__fc_layer_0__@__recurrent_group_3__"
+    link_name: "__memory_6__@__recurrent_group_3__"
+    is_sequence: false
+  }
+  in_links {
+    layer_name: "seq_input"
+    link_name: "seq_input@__recurrent_group_3__"
+    has_subseq: false
+  }
+  out_links {
+    layer_name: "__fc_layer_0__@__recurrent_group_3__"
+    link_name: "__fc_layer_0__"
     has_subseq: false
   }
   target_inlinkid: -1

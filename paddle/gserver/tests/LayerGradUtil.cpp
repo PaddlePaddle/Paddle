@@ -24,7 +24,7 @@ real getCostSum(LayerPtr& testLayer, MatrixPtr weights) {
   if (weights) {
     outArgs[0].value->dotMul(*outArgs[0].value, *weights);
   }
-  return Argument::sumCosts(outArgs);
+  return Argument::sum(outArgs);
 }
 
 real getDiffAndPrint(real newCost1,
@@ -241,7 +241,7 @@ void testBatchState(LayerPtr testLayer,
 
     std::vector<Argument> args;
     args.push_back(out);
-    EXPECT_EQ(0, Argument::sumCosts(args)) << "testBatchState failed";
+    EXPECT_EQ(0, Argument::sum(args)) << "testBatchState failed";
     for (size_t seqId = 0; seqId < numSequences; ++seqId) {
       start[seqId] += seqLens[seqId];
     }
@@ -672,7 +672,7 @@ void testLayerGradKernel(TestConfig testConf,
     outArgs[0].value->dotMul(*testLayer->getOutput().value, *weights);
   }
 
-  real cost = Argument::sumCosts(outArgs);
+  real cost = Argument::sum(outArgs);
   LOG(INFO) << " cost " << cost;
   EXPECT_FALSE(std::isnan(cost));
 
@@ -778,8 +778,10 @@ void testProjectionGrad(ProjectionConfig conf,
   config.biasSize = biasSize == 0 ? config.layerConfig.size() : biasSize;
   config.layerConfig.set_bias_size(config.biasSize);
   config.layerConfig.set_shared_biases(sharedBias);
-  config.inputDefs.push_back(
-      {inputType, "layer_0", conf.input_size(), parameterSize});
+  config.inputDefs.push_back({inputType,
+                              "layer_0",
+                              static_cast<size_t>(conf.input_size()),
+                              parameterSize});
   *config.layerConfig.add_inputs()->mutable_proj_conf() = conf;
   config.testState = testState;
   testLayerGrad(config, "mixed", batchSize, false, useGpu);

@@ -143,6 +143,7 @@ layers {
     input_layer_name: "__recurrent_layer_0__"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__first_seq_0__"
@@ -154,6 +155,7 @@ layers {
   }
   select_first: true
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__last_seq_1__"
@@ -164,6 +166,7 @@ layers {
     input_layer_name: "__lstmemory_0__"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__first_seq_1__"
@@ -175,6 +178,7 @@ layers {
   }
   select_first: true
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__last_seq_2__"
@@ -185,6 +189,7 @@ layers {
     input_layer_name: "__gru_0__"
   }
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 layers {
   name: "__first_seq_2__"
@@ -196,6 +201,7 @@ layers {
   }
   select_first: true
   trans_type: "non-seq"
+  seq_pool_stride: -1
 }
 parameters {
   name: "___fc_layer_0__.w0"

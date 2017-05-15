@@ -18,9 +18,8 @@ limitations under the License. */
 #include <string.h>
 #include <algorithm>
 #include "Matrix.h"
+#include "RowBuffer.h"
 #include "paddle/utils/Util.h"
-
-DECLARE_bool(allow_inefficient_sparse_update);
 
 namespace paddle {
 
@@ -45,12 +44,9 @@ public:
                      IndexDictPtr indexDictHandle = nullptr,
                      bool trans = false)
       : CpuMatrix(nullptr, height, width, trans),
-        storeMat_(dataHandle,
-                  dataHandle ? dataHandle->getSize() / sizeof(real) / width : 0,
-                  width,
-                  trans),
         indexDictHandle_(indexDictHandle) {
     init(height, width);
+    buf_.reset(new RowBuffer(dataHandle, width));
   }
 
   virtual ~SparseRowCpuMatrix() {}
@@ -71,25 +67,16 @@ public:
    *
    *  @param row row id in local storage
    */
-  real* getLocalRow(size_t row) {
-    if (storeMat_.getData()) return storeMat_.rowBuf(row);
-    if (rowStore_.size() <= row * width_) {
-      rowStore_.resize((row + 1) * width_);
-    }
-    return rowStore_.data() + row * width_;
-  }
+  real* getLocalRow(size_t row) { return buf_->getWithAutoGrowth(row); }
 
   /**
-   *  reserve the storage for rows according to current size of indexDictHandle.
+   *  reserve the storage for rows according to current size of
+   * indexDictHandle.
    *
    *  This is only used when SparseRowCpuMatrix is constructed with
    *  indexDictHandle.
    */
-  void reserveStore() {
-    if (!storeMat_.getData() && !localIndices_->empty()) {
-      rowStore_.resize(localIndices_->size() * width_);
-    }
-  }
+  void reserveStore() { buf_->resize(localIndices_->size()); }
 
   // row is the row id in the original matrix
   virtual real* getRowBuf(size_t row) { return getRow(row); }
@@ -117,7 +104,8 @@ public:
    *
    * If L1 decay set use L1, else if L2 set use L2, otherwise no decay atall.
    *
-   * t0 is a int vector used by L1/L2 decay, size = height of parameter matrix,
+   * t0 is a int vector used by L1/L2 decay, size = height of parameter
+   * matrix,
    * store the time that each weight row last updated.
    *
    * Time is batchId, currentTime is current batchId.
@@ -176,8 +164,7 @@ public:
 protected:
   template <typename Func>
   void apply(Func f) {
-    real* data = storeMat_.getData() ? storeMat_.getData() : rowStore_.data();
-    f(data, localIndices_->size() * width_);
+    f(buf_->data(), localIndices_->size() * width_);
   }
 
   void init(size_t height, size_t width);
@@ -188,25 +175,23 @@ protected:
       globalIndices_[id] = kUnusedId_;
     }
     localIndices_->clear();
-    rowStore_.clear();
+    buf_->clear();
   }
 
   inline void checkStoreSize() {
-    if (storeMat_.getData()) {
-      CHECK_LE(localIndices_->size(), storeMat_.getHeight());
-    } else if (!FLAGS_allow_inefficient_sparse_update) {
-      if (localIndices_->size() > 0.5 * height_) {
-        LOG(WARNING)
-            << "There are more than 0.5*height (" << localIndices_->size()
-            << ") rows are used for sparse "
-            << "update, which is not efficient. Considering not use "
-            << "sparse_update or set --allow_inefficient_sparse_update=true";
+    if (buf_->isAutoGrowth()) {
+      if (buf_->getRowCount() > 0.5 * height_) {
+        LOG(WARNING) << "There are more than 0.5*height ("
+                     << localIndices_->size() << ") rows are used for sparse "
+                     << "update, which is not efficient. Considering not use "
+                     << "sparse_update.";
       }
+    } else {
+      CHECK_LE(localIndices_->size(), buf_->getRowCount());
     }
   }
 
-  CpuMatrix storeMat_;
-  std::vector<real, AlignedAllocator<real, 32>> rowStore_;
+  std::unique_ptr<RowBuffer> buf_;
   IndexDictPtr indexDictHandle_;
   std::vector<unsigned int>* localIndices_;  // =&indexDictHandle_->localIndices
   unsigned int* globalIndices_;  // =indexDictHandle_->globalIndices.data();

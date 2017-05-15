@@ -71,21 +71,10 @@ function(link_paddle_exe TARGET_NAME)
         generate_rdma_links()
     endif()
 
-    if(WITH_METRIC)
-        if(WITH_GPU)
-            set(METRIC_LIBS paddle_metric_learning paddle_dserver_lib metric metric_cpu)
-        else()
-            set(METRIC_LIBS paddle_metric_learning paddle_dserver_lib metric_cpu)
-        endif()
-    else()
-        set(METRIC_LIBS "")
-    endif()
-
     target_circle_link_libraries(${TARGET_NAME}
         ARCHIVE_START
         paddle_gserver
         paddle_function
-        ${METRIC_LIBS}
         ARCHIVE_END
         paddle_pserver
         paddle_trainer_lib
@@ -95,31 +84,16 @@ function(link_paddle_exe TARGET_NAME)
         paddle_parameter
         paddle_proto
         paddle_cuda
-        ${METRIC_LIBS}
         ${EXTERNAL_LIBS}
         ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_DL_LIBS}
         ${RDMA_LD_FLAGS}
         ${RDMA_LIBS})
 
-    if(WITH_PYTHON)
-        target_link_libraries(${TARGET_NAME}
-            ${PYTHON_LIBRARIES} util)
-    endif()
+    if(ANDROID)
+        target_link_libraries(${TARGET_NAME} log)
+    endif(ANDROID)
 
-    if(WITH_GPU)
-        if(NOT WITH_DSO OR WITH_METRIC)
-            target_link_libraries(${TARGET_NAME}
-                ${CUDNN_LIBRARY}
-                ${CUDA_curand_LIBRARY})
-            CUDA_ADD_CUBLAS_TO_TARGET(${TARGET_NAME})
-        endif()
-
-        check_library_exists(rt clock_gettime "time.h" HAVE_CLOCK_GETTIME )
-        if(HAVE_CLOCK_GETTIME)
-            target_link_libraries(${TARGET_NAME} rt)
-        endif()
-    endif()
     add_dependencies(${TARGET_NAME} ${external_project_dependencies})
 endfunction()
 
@@ -164,17 +138,19 @@ macro(add_simple_unittest TARGET_NAME)
 endmacro()
 
 # Creates C resources file from files in given resource file
-function(create_resources res_file output)
-    # Create empty output file
-    file(WRITE ${output} "")
-    # Get short filename
-    string(REGEX MATCH "([^/]+)$" filename ${res_file})
-    # Replace filename spaces & extension separator for C compatibility
-    string(REGEX REPLACE "\\.| |-" "_" filename ${filename})
-    # Read hex data from file
-    file(READ ${res_file} filedata HEX)
-    # Convert hex data for C compatibility
-    string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
-    # Append data to output file
-    file(APPEND ${output} "const unsigned char ${filename}[] = {${filedata}0};\nconst unsigned ${filename}_size = sizeof(${filename});\n")
+function(create_resources res_file output_file)
+  add_custom_command(
+    OUTPUT ${output_file}
+    COMMAND python ARGS ${PROJ_ROOT}/cmake/make_resource.py ${res_file} ${output_file}
+    DEPENDS ${res_file} ${PROJ_ROOT}/cmake/make_resource.py)
+endfunction()
+
+
+# Create a python unittest using run_python_tests.sh,
+# which takes care of making correct running environment
+function(add_python_test TEST_NAME)
+    add_test(NAME ${TEST_NAME}
+        COMMAND bash ${PROJ_ROOT}/paddle/scripts/run_python_tests.sh
+        ${USE_VIRTUALENV_FOR_TEST} ${PYTHON_EXECUTABLE} ${ARGN}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endfunction()

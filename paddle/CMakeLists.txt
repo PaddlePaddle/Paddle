@@ -9,13 +9,20 @@ add_subdirectory(pserver)
 add_subdirectory(trainer)
 add_subdirectory(scripts)
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-    ${CMAKE_CURRENT_SOURCE_DIR}/setup.py)
+find_package(boost QUIET)
 
-if(WITH_PREDICT_SDK)
-    add_subdirectory(predict)
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+  add_subdirectory(majel)
+endif()
+
+if(WITH_C_API)
+    add_subdirectory(capi)
 endif()
 
 if(WITH_SWIG_PY)
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
+          ${CMAKE_CURRENT_SOURCE_DIR}/setup.py)
   add_subdirectory(api)
 endif()
