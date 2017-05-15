@@ -88,7 +88,7 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
     Infer a neural network by given neural network output and parameters.  The
     user should pass either a batch of input data or reader method.
 
-    Example usages:
+    Example usage for sinlge output_layer:
 
     ..  code-block:: python
 
@@ -97,7 +97,7 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
                               input=SomeData)
         print result
 
-    If there are multiple outout_layers and fields, the examples usages:
+    Example usage for multiple outout_layers and fields:
 
     ..  code-block:: python
 
@@ -106,9 +106,6 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
                               input=SomeData,
                               field=[id, value]])
         print result
-
-    The result order is prediction1.id, prediction2.id, prediction1.value, 
-    prediction2.value.
 
     :param output_layer: output of the neural network that would be inferred
     :type output_layer: paddle.v2.config_base.Layer or a list of 
@@ -126,7 +123,9 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
                   Note that `prob` only used when output_layer is beam_search 
                   or max_id.
     :type field: str
-    :return: a numpy array
+    :return: The prediction result. If there are multiple outout_layers and fields, 
+             the return order is outout_layer1.field1, outout_layer2.field1, ..., 
+             outout_layer1.field2, outout_layer2.field2 ...
     :rtype: numpy.ndarray
     """
 
