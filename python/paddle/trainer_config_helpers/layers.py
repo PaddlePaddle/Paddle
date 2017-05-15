@@ -4926,7 +4926,7 @@ def crf_decoding_layer(input,
 @layer_support()
 def nce_layer(input,
               label,
-              num_classes,
+              num_classes=None,
               act=None,
               param_attr=None,
               weight=None,
@@ -4944,7 +4944,8 @@ def nce_layer(input,
 
     .. code-block:: python
 
-       cost = nce_layer(input=layer1, label=layer2, weight=layer3,
+       cost = nce_layer(input=[layer1, layer2], label=layer2,
+                        param_attr=[attr1, attr2], weight=layer3,
                         num_classes=3, neg_distribution=[0.1,0.3,0.6])
 
     :param name: layer name
@@ -4988,6 +4989,8 @@ def nce_layer(input,
 
     assert isinstance(label, LayerOutput)
     assert label.layer_type == LayerType.DATA
+    if num_classes is None:
+        num_classes = label.size
     if neg_distribution is not None:
         assert isinstance(neg_distribution, collections.Sequence)
         assert len(neg_distribution) == num_classes
