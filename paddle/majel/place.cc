@@ -1,10 +1,11 @@
-#include <majel/place.h>
+#include "majel/place.h"
+#include "mapbox/variant.hpp"
 
 namespace majel {
 
 namespace detail {
 
-class PlacePrinter : public boost::static_visitor<> {
+class PlacePrinter : public mapbox::util::static_visitor<> {
 private:
   std::ostream& os_;
 
@@ -29,11 +30,11 @@ const GpuPlace default_gpu() { return GpuPlace(0); }
 const CpuPlace default_cpu() { return CpuPlace(); }
 
 bool is_gpu_place(const Place& p) {
-  return boost::apply_visitor(IsGpuPlace(), p);
+  return mapbox::util::apply_visitor(IsGpuPlace(), p);
 }
 
 bool is_cpu_place(const Place& p) {
-  return !boost::apply_visitor(IsGpuPlace(), p);
+  return !mapbox::util::apply_visitor(IsGpuPlace(), p);
 }
 
 bool places_are_same_class(const Place& p1, const Place& p2) {
@@ -42,7 +43,7 @@ bool places_are_same_class(const Place& p1, const Place& p2) {
 
 std::ostream& operator<<(std::ostream& os, const majel::Place& p) {
   majel::detail::PlacePrinter printer(os);
-  boost::apply_visitor(printer, p);
+  mapbox::util::apply_visitor(printer, p);
   return os;
 }
 

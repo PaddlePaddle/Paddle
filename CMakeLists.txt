@@ -90,7 +90,8 @@ include(external/python)    # download, build, install python
 include(external/openblas)  # download, build, install openblas
 include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
-include(external/any)       # download libn::any
+include(external/variant)   # download  header-only variant
+include(external/any)       # download  header-only any
 
 include(package)            # set paddle packages
 include(cpplint)            # set paddle c++ style
@@ -104,6 +105,7 @@ include(coveralls)          # set code coverage
 include(configure)          # add paddle env configuration
 
 include_directories("${PROJ_ROOT}")
+include_directories("${PROJ_ROOT}/paddle")
 include_directories("${PROJ_ROOT}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 
