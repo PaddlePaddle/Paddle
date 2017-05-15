@@ -4,6 +4,7 @@ set -xe
 
 mkdir -p /paddle/build
 cd /paddle/build
+rm -f /paddle/install 2>/dev/null || true
 cmake -DCMAKE_SYSTEM_NAME=Android \
       -DANDROID_STANDALONE_TOOLCHAIN=$ANDROID_STANDALONE_TOOLCHAIN \
       -DANDROID_ABI=armeabi-v7a \
