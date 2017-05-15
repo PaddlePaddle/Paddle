@@ -17,15 +17,17 @@ import unittest
 
 
 class TestMQ2007(unittest.TestCase):
-  def test_pairwise(self):
-    for label, query_left, query_right in paddle.v2.dataset.mq2007.test(format="pairwise"):
-      self.assertEqual(query_left.shape(), (46, ))
-      self.assertEqual(query_right.shape(), (46, ))
+    def test_pairwise(self):
+        for label, query_left, query_right in paddle.v2.dataset.mq2007.test(
+                format="pairwise"):
+            self.assertEqual(query_left.shape(), (46, ))
+            self.assertEqual(query_right.shape(), (46, ))
 
-  def test_listwise(self):
-    for label_array, query_array in paddle.v2.dataset.mq2007.test(format="listwise"):
-      self.assertEqual(len(label_array), len(query_array))
+    def test_listwise(self):
+        for label_array, query_array in paddle.v2.dataset.mq2007.test(
+                format="listwise"):
+            self.assertEqual(len(label_array), len(query_array))
 
 
 if __name__ == "__main__":
-  unittest.main()
+    unittest.main()
