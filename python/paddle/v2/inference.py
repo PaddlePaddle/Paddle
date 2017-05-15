@@ -97,8 +97,22 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
                               input=SomeData)
         print result
 
+    If there are multiple outout_layers and fields, the examples usages:
+
+    ..  code-block:: python
+
+        result = paddle.infer(output_layer=[prediction1, prediction2], 
+                              parameters=parameters, 
+                              input=SomeData,
+                              field=[id, value]])
+        print result
+
+    The result order is prediction1.id, prediction2.id, prediction1.value, 
+    prediction2.value.
+
     :param output_layer: output of the neural network that would be inferred
-    :type output_layer: paddle.v2.config_base.Layer
+    :type output_layer: paddle.v2.config_base.Layer or a list of 
+                        paddle.v2.config_base.Layer
     :param parameters: parameters of the neural network.
     :type parameters: paddle.v2.parameters.Parameters
     :param input: input data batch. Should be a python iterable object, and each
