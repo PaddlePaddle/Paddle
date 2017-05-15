@@ -10,6 +10,14 @@ add_subdirectory(pserver)
 add_subdirectory(trainer)
 add_subdirectory(scripts)
 
+find_package(boost QUIET)
+
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+  add_subdirectory(majel)
+endif()
+
 if(WITH_C_API)
     add_subdirectory(capi)
 endif()
