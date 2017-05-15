@@ -3765,7 +3765,7 @@ def __cost_input__(input, label, weight=None):
 
 @wrap_name_default()
 @layer_support()
-def mse_cost(input, label, weight=None, name=None, layer_attr=None):
+def mse_cost(input, label, weight=None, name=None, coeff=1.0, layer_attr=None):
     """
     mean squared error cost:
 
@@ -3782,6 +3782,8 @@ def mse_cost(input, label, weight=None, name=None, layer_attr=None):
     :param weight: The weight affects the cost, namely the scale of cost.
                    It is an optional argument.
     :type weight: LayerOutput
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
@@ -3793,6 +3795,7 @@ def mse_cost(input, label, weight=None, name=None, layer_attr=None):
         inputs=ipts,
         type="square_error",
         name=name,
+        coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(name, LayerType.COST, parents=parents, size=1)
 
@@ -4798,6 +4801,7 @@ def crf_layer(input,
               weight=None,
               param_attr=None,
               name=None,
+              coeff=1.0,
               layer_attr=None):
     """
     A layer for calculating the cost of sequential conditional random
@@ -4824,6 +4828,8 @@ def crf_layer(input,
     :type param_attr: ParameterAttribute
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float
     :param layer_attr: Extra Layer config.
     :type layer_attr: ExtraLayerAttribute|None
     :return: LayerOutput object.
@@ -4848,6 +4854,7 @@ def crf_layer(input,
         type=LayerType.CRF_LAYER,
         size=size,
         inputs=ipts,
+        coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     parents = [input, label]
     if weight is not None:
@@ -5379,7 +5386,7 @@ def multi_binary_label_cross_entropy(input,
 
 @wrap_name_default()
 @layer_support()
-def smooth_l1_cost(input, label, name=None, layer_attr=None):
+def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
     """
     This is a L1 loss but more smooth. It requires that the
     size of input and label are equal. The formula is as follows,
@@ -5408,6 +5415,8 @@ def smooth_l1_cost(input, label, name=None, layer_attr=None):
     :type input: LayerOutput
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
@@ -5421,6 +5430,7 @@ def smooth_l1_cost(input, label, name=None, layer_attr=None):
         name=name,
         type=LayerType.SMOOTH_L1,
         inputs=[input.name, label.name],
+        coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name, LayerType.SMOOTH_L1, parents=[input, label], size=1)
