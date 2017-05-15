@@ -21,21 +21,34 @@ IF(NOT ${CBLAS_FOUND})
     SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
     SET(CBLAS_INC_DIR "${CBLAS_INSTALL_DIR}/include" CACHE PATH "openblas include directory." FORCE)
 
-    IF(WIN32)
-        SET(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/openblas.lib" CACHE FILEPATH "openblas library." FORCE)
-    ELSE(WIN32)
-        SET(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/libopenblas.a" CACHE FILEPATH "openblas library" FORCE)
-    ENDIF(WIN32)
+    SET(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/${LIBRARY_PREFIX}openblas${STATIC_LIBRARY_SUFFIX}"
+        CACHE FILEPATH "openblas library." FORCE)
+
+    SET(COMMON_ARGS CC=${CMAKE_C_COMPILER} NO_SHARED=1 NO_LAPACK=1)
+
+    IF(ANDROID)
+        # arm_soft_fp_abi branch of OpenBLAS to support softfp
+        #   https://github.com/xianyi/OpenBLAS/tree/arm_soft_fp_abi
+        SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
+        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0 libs)
+    ELSEIF(RPI)
+        # use hardfp
+        SET(OPENBLAS_COMMIT "v0.2.19")
+        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 USE_THREAD=0 libs)
+    ELSE()
+        SET(OPENBLAS_COMMIT "v0.2.19")
+        SET(OPENBLAS_ARGS DYNAMIC_ARCH=1 libs)
+    ENDIF()
 
     ExternalProject_Add(
         openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
         GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
-        GIT_TAG             v0.2.19
+        GIT_TAG             ${OPENBLAS_COMMIT}
         PREFIX              ${CBLAS_SOURCES_DIR}
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     1
-        BUILD_COMMAND       ${CMAKE_MAKE_PROGRAM} FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} HOSTCC=${CMAKE_C_COMPILER} NO_LAPACK=1 DYNAMIC_ARCH=1 NO_SHARED=1 libs netlib
+        BUILD_COMMAND       ${CMAKE_MAKE_PROGRAM} ${COMMON_ARGS} ${OPTIONAL_ARGS}
         INSTALL_COMMAND     ${CMAKE_MAKE_PROGRAM} install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR>
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
@@ -43,4 +56,5 @@ IF(NOT ${CBLAS_FOUND})
     LIST(APPEND external_project_dependencies openblas)
 ENDIF(NOT ${CBLAS_FOUND})
 
+MESSAGE(STATUS "BLAS library: ${CBLAS_LIBRARIES}")
 INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
