@@ -108,7 +108,6 @@ Because `variant` may be thought of as "multi-type, single value", we can utiliz
  arr[make_ddim({0, 1})] = 1.0；
  ```
 
-
 ## implement Tensor in Paddle
 
 Before writing code, please make sure you already look through Majel Source Code and grabbed the design philosophy of `DArray` in Majel.
