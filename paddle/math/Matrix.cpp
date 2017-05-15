@@ -3877,14 +3877,22 @@ real CpuMatrix::getMax() {
   return res;
 }
 
-void CpuMatrix::circularConv(Matrix& in0, Matrix& in1) {
-  size_t height = this->getHeight();
+void CpuMatrix::circularConv(Matrix& in0,
+                             Matrix& in1,
+                             const ICpuGpuVectorPtr& seqStartPosPtr,
+                             bool useGpu) {
+  size_t height0 = this->getHeight();
   size_t width0 = this->getWidth();
   size_t width1 = in1.getWidth();
+  size_t numSeqs = height0;
+  // if sequence type, height1 should be sequence number
+  if (nullptr != seqStartPosPtr) {
+    numSeqs = seqStartPosPtr->getSize() - 1;
+  }
 
-  CHECK_EQ(height, in0.getHeight());
+  CHECK_EQ(height0, in0.getHeight());
   CHECK_EQ(width0, in0.getWidth());
-  CHECK_EQ(height, in1.getHeight());
+  CHECK_EQ(numSeqs, in1.getHeight());
 
   CHECK_EQ(width1 % 2, 1U);
 
@@ -3892,32 +3900,50 @@ void CpuMatrix::circularConv(Matrix& in0, Matrix& in1) {
   real* inV0 = in0.getData();
   real* inV1 = in1.getData();
 
+  const int* startPosIntPtr = nullptr;
+  if (nullptr != seqStartPosPtr) {
+    startPosIntPtr = seqStartPosPtr->getData(useGpu);
+  }
+
   int leftCtxLen = (width1 - 1) / 2;
-  for (size_t x = 0; x < height;
-       ++x, outV += width0, inV0 += width0, inV1 += width1) {
-    for (size_t i = 0; i < width0; ++i) {  // each dimension of output
-      for (size_t j = 0; j < width1; ++j) {
-        // iterate over all dimentions of inV1
-        int index = i + j - leftCtxLen;
-        index = (index + width0) % width0;
-        outV[i] += inV0[index] * inV1[j];
+  // row first order, treate multiple rows as a long row
+  for (size_t x = 0; x < numSeqs; ++x) {
+    size_t curSeqWidth = width0;
+    if (nullptr != startPosIntPtr)
+      curSeqWidth *= startPosIntPtr[x + 1] - startPosIntPtr[x];
+    // conv a complete sequence
+    for (size_t i = 0; i < curSeqWidth; ++i) {
+      for (size_t j = 0; j < width1;
+           ++j) {  // iterate over convolution template
+        int index = (i + j - leftCtxLen + curSeqWidth) % curSeqWidth;
+        *(outV + i) += *(inV0 + index) * inV1[j];
       }
     }
+    outV += curSeqWidth;
+    inV0 += curSeqWidth;
+    inV1 += width1;
   }
 }
 
-void CpuMatrix::circularConvDerivative(
-    Matrix& outG, Matrix& in0, Matrix& in1, Matrix& inG0, Matrix& inG1) {
-  size_t height = in0.getHeight();
+void CpuMatrix::circularConvDerivative(Matrix& outG,
+                                       Matrix& in0,
+                                       Matrix& in1,
+                                       Matrix& inG0,
+                                       Matrix& inG1,
+                                       const ICpuGpuVectorPtr& seqStartPosPtr,
+                                       bool useGpu) {
+  size_t height0 = in0.getHeight();
   size_t width0 = in0.getWidth();
   size_t width1 = in1.getWidth();
+  size_t numSeqs = height0;
+  if (nullptr != seqStartPosPtr) numSeqs = seqStartPosPtr->getSize() - 1;
 
-  CHECK_EQ(height, in1.getHeight());
-  CHECK_EQ(height, inG0.getHeight());
+  CHECK_EQ(numSeqs, in1.getHeight());
+  CHECK_EQ(height0, inG0.getHeight());
   CHECK_EQ(width0, inG0.getWidth());
-  CHECK_EQ(height, inG1.getHeight());
+  CHECK_EQ(numSeqs, inG1.getHeight());
   CHECK_EQ(width1, inG1.getWidth());
-  CHECK_EQ(height, outG.getHeight());
+  CHECK_EQ(height0, outG.getHeight());
   CHECK_EQ(width0, outG.getWidth());
 
   real* outGV = outG.getData();
@@ -3925,23 +3951,28 @@ void CpuMatrix::circularConvDerivative(
   real* inV1 = in1.getData();
   real* inGV0 = inG0.getData();
   real* inGV1 = inG1.getData();
+  const int* startPosIntPtr = nullptr;
+  if (nullptr != seqStartPosPtr) {
+    startPosIntPtr = seqStartPosPtr->getData(useGpu);
+  }
 
   int leftCtxLen = (width1 - 1) / 2;
-  for (size_t x = 0; x < height; ++x,
-              outGV += width0,
-              inV0 += width0,
-              inV1 += width1,
-              inGV0 += width0,
-              inGV1 += width1) {
-    for (size_t j = 0; j < width1; ++j) {  // iterate over width1
-      for (size_t i = 0; i < width0; ++i) {
-        // such over all dimensions of outG
-        int index = i + j - leftCtxLen;
-        index = (index + width0) % width0;
-        inGV0[index] += outGV[i] * inV1[j];
-        inGV1[j] += outGV[i] * inV0[index];
+  for (size_t x = 0; x < numSeqs; ++x) {
+    size_t curSeqWidth = width0;
+    if (nullptr != startPosIntPtr)
+      curSeqWidth *= startPosIntPtr[x + 1] - startPosIntPtr[x];
+    for (size_t j = 0; j < width1; ++j) {  // iterate over convolution template
+      for (size_t i = 0; i < curSeqWidth; ++i) {
+        int index = (i + j - leftCtxLen + curSeqWidth) % curSeqWidth;
+        *(inGV0 + index) += *(outGV + i) * inV1[j];
+        inGV1[j] += *(outGV + i) * *(inV0 + index);
       }
     }
+    outGV += curSeqWidth;
+    inV0 += curSeqWidth;
+    inV1 += width1;
+    inGV0 += curSeqWidth;
+    inGV1 += width1;
   }
 }
 

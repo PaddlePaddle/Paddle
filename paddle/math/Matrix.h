@@ -744,7 +744,10 @@ public:
    * b's index arithmetic is computed modulo M,
    * c's index arithmetic is computed modulo N.
    */
-  virtual void circularConv(Matrix& b, Matrix& c) {
+  virtual void circularConv(Matrix& b,
+                            Matrix& c,
+                            const ICpuGpuVectorPtr& seqStartPosPtr,
+                            bool useGpu) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -752,7 +755,9 @@ public:
                                       Matrix& prevOut1,
                                       Matrix& prevOut2,
                                       Matrix& prevGrad1,
-                                      Matrix& prevGrad2) {
+                                      Matrix& prevGrad2,
+                                      const ICpuGpuVectorPtr& seqStartPosPtr,
+                                      bool useGpu) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -1719,12 +1724,17 @@ public:
                                         IVector& label,
                                         real alpha);
 
-  void circularConv(Matrix& b, Matrix& c);
+  void circularConv(Matrix& b,
+                    Matrix& c,
+                    const ICpuGpuVectorPtr& seqStartPosPtr = nullptr,
+                    bool useGpu = false);
   void circularConvDerivative(Matrix& output,
                               Matrix& prevOut1,
                               Matrix& prevOut2,
                               Matrix& prevGrad1,
-                              Matrix& prevGrad2);
+                              Matrix& prevGrad2,
+                              const ICpuGpuVectorPtr& seqStartPosPtr = nullptr,
+                              bool useGpu = false);
 
   void softmax(Matrix& output);
   void sequenceSoftmax(Matrix& output, const IVector& index);
