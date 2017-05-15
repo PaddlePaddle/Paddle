@@ -3003,6 +3003,10 @@ It is an optional argument.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">type weight:</th><td class="field-body">paddle.v2.config_base.Layer</td>
 </tr>
+<tr class="field-odd field"><th class="field-name">param coeff:</th><td class="field-body">The coefficient affects the gradient in the backward.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">type coeff:</th><td class="field-body">float</td>
+</tr>
 <tr class="field-odd field"><th class="field-name" colspan="2">param layer_attr:</th></tr>
 <tr class="field-odd field"><td>&#160;</td><td class="field-body">layer&#8217;s extra attribute.</td>
 </tr>
@@ -3130,6 +3134,7 @@ field model.</p>
 optional argument.</li>
 <li><strong>param_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em>) &#8211; Parameter attribute. None means default attribute</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
 <li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttributeNone</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
@@ -3409,6 +3414,7 @@ size of input and label are equal. The formula is as follows,</p>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; The input layer.</li>
 <li><strong>label</strong> &#8211; The input label.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
 <li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
