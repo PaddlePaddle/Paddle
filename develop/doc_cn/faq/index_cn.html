@@ -210,9 +210,10 @@
 <li><a class="reference internal" href="#python" id="id23">8.  python相关的单元测试都过不了</a></li>
 <li><a class="reference internal" href="#docker-gpu-cuda-driver-version-is-insufficient" id="id24">9. 运行Docker GPU镜像出现 &#8220;CUDA driver version is insufficient&#8221;</a></li>
 <li><a class="reference internal" href="#cmake-pythonlibspythoninterp" id="id25">10. CMake源码编译, 找到的PythonLibs和PythonInterp版本不一致</a></li>
-<li><a class="reference internal" href="#a-protocol-message-was-rejected-because-it-was-too-big" id="id26">10. A protocol message was rejected because it was too big</a></li>
-<li><a class="reference internal" href="#gpu" id="id27">11. 如何指定GPU设备</a></li>
-<li><a class="reference internal" href="#floating-point-exception" id="id28">12. 训练过程中出现 <code class="code docutils literal"><span class="pre">Floating</span> <span class="pre">point</span> <span class="pre">exception</span></code>, 训练因此退出怎么办?</a></li>
+<li><a class="reference internal" href="#cmake-paddle0-0-0" id="id26">11. CMake源码编译，Paddle版本号为0.0.0</a></li>
+<li><a class="reference internal" href="#a-protocol-message-was-rejected-because-it-was-too-big" id="id27">12. A protocol message was rejected because it was too big</a></li>
+<li><a class="reference internal" href="#gpu" id="id28">13. 如何指定GPU设备</a></li>
+<li><a class="reference internal" href="#floating-point-exception" id="id29">14. 训练过程中出现 <code class="code docutils literal"><span class="pre">Floating</span> <span class="pre">point</span> <span class="pre">exception</span></code>, 训练因此退出怎么办?</a></li>
 </ul>
 </li>
 </ul>
@@ -467,8 +468,17 @@ $ docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span clas
 </div></blockquote>
 <p>用户需要指定本机上Python的路径：<code class="docutils literal"><span class="pre">&lt;exc_path&gt;</span></code>, <code class="docutils literal"><span class="pre">&lt;lib_path&gt;</span></code>, <code class="docutils literal"><span class="pre">&lt;inc_path&gt;</span></code></p>
 </div>
+<div class="section" id="cmake-paddle0-0-0">
+<h2><a class="toc-backref" href="#id26">11. CMake源码编译，Paddle版本号为0.0.0</a><a class="headerlink" href="#cmake-paddle0-0-0" title="永久链接至标题">¶</a></h2>
+<p>如果运行 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">version</span></code>, 出现 <code class="code docutils literal"><span class="pre">PaddlePaddle</span> <span class="pre">0.0.0</span></code>；或者运行 <code class="code docutils literal"><span class="pre">cmake</span> <span class="pre">..</span></code>，出现</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>CMake Warning at cmake/version.cmake:20 <span class="o">(</span>message<span class="o">)</span>:
+  Cannot add paddle version from git tag
+</pre></div>
+</div>
+<p>那么用户需要拉取所有的远程分支到本机，命令为 <code class="code docutils literal"><span class="pre">git</span> <span class="pre">fetch</span> <span class="pre">upstream</span></code>，然后重新cmake即可。</p>
+</div>
 <div class="section" id="a-protocol-message-was-rejected-because-it-was-too-big">
-<h2><a class="toc-backref" href="#id26">10. A protocol message was rejected because it was too big</a><a class="headerlink" href="#a-protocol-message-was-rejected-because-it-was-too-big" title="永久链接至标题">¶</a></h2>
+<h2><a class="toc-backref" href="#id27">12. A protocol message was rejected because it was too big</a><a class="headerlink" href="#a-protocol-message-was-rejected-because-it-was-too-big" title="永久链接至标题">¶</a></h2>
 <p>如果在训练NLP相关模型时，出现以下错误：</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="o">[</span>libprotobuf ERROR google/protobuf/io/coded_stream.cc:171<span class="o">]</span> A protocol message was rejected because it was too big <span class="o">(</span>more than <span class="m">67108864</span> bytes<span class="o">)</span>.  To increase the limit <span class="o">(</span>or to disable these warnings<span class="o">)</span>, see CodedInputStream::SetTotalBytesLimit<span class="o">()</span> in google/protobuf/io/coded_stream.h.
 F1205 <span class="m">14</span>:59:50.295174 <span class="m">14703</span> TrainerConfigHelper.cpp:59<span class="o">]</span> Check failed: m-&gt;conf.ParseFromString<span class="o">(</span>configProtoStr<span class="o">)</span>
@@ -499,7 +509,7 @@ F1205 <span class="m">14</span>:59:50.295174 <span class="m">14703</span> Traine
 <p>完整源码可参考 <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/tree/develop/demo/seqToseq">seqToseq</a> 示例。</p>
 </div>
 <div class="section" id="gpu">
-<h2><a class="toc-backref" href="#id27">11. 如何指定GPU设备</a><a class="headerlink" href="#gpu" title="永久链接至标题">¶</a></h2>
+<h2><a class="toc-backref" href="#id28">13. 如何指定GPU设备</a><a class="headerlink" href="#gpu" title="永久链接至标题">¶</a></h2>
 <p>例如机器上有4块GPU，编号从0开始，指定使用2、3号GPU：</p>
 <ul class="simple">
 <li>方式1：通过 <a class="reference external" href="http://www.acceleware.com/blog/cudavisibledevices-masking-gpus">CUDA_VISIBLE_DEVICES</a> 环境变量来指定特定的GPU。</li>
@@ -515,7 +525,7 @@ F1205 <span class="m">14</span>:59:50.295174 <span class="m">14703</span> Traine
 </div>
 </div>
 <div class="section" id="floating-point-exception">
-<h2><a class="toc-backref" href="#id28">12. 训练过程中出现 <code class="code docutils literal"><span class="pre">Floating</span> <span class="pre">point</span> <span class="pre">exception</span></code>, 训练因此退出怎么办?</a><a class="headerlink" href="#floating-point-exception" title="永久链接至标题">¶</a></h2>
+<h2><a class="toc-backref" href="#id29">14. 训练过程中出现 <code class="code docutils literal"><span class="pre">Floating</span> <span class="pre">point</span> <span class="pre">exception</span></code>, 训练因此退出怎么办?</a><a class="headerlink" href="#floating-point-exception" title="永久链接至标题">¶</a></h2>
 <p>Paddle二进制在运行时捕获了浮点数异常，只要出现浮点数异常(即训练过程中出现NaN或者Inf)，立刻退出。浮点异常通常的原因是浮点数溢出、除零等问题。
 主要原因包括两个方面:</p>
 <ul class="simple">

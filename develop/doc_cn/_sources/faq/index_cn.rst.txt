@@ -232,7 +232,19 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 
 用户需要指定本机上Python的路径：``<exc_path>``, ``<lib_path>``, ``<inc_path>``
 
-10. A protocol message was rejected because it was too big
+11. CMake源码编译，Paddle版本号为0.0.0
+--------------------------------------
+
+如果运行 :code:`paddle version`, 出现 :code:`PaddlePaddle 0.0.0`；或者运行 :code:`cmake ..`，出现
+
+..  code-block:: bash
+
+    CMake Warning at cmake/version.cmake:20 (message):
+      Cannot add paddle version from git tag
+          
+那么用户需要拉取所有的远程分支到本机，命令为 :code:`git fetch upstream`，然后重新cmake即可。
+
+12. A protocol message was rejected because it was too big
 ----------------------------------------------------------
 
 如果在训练NLP相关模型时，出现以下错误：
@@ -270,7 +282,7 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 
 完整源码可参考 `seqToseq <https://github.com/PaddlePaddle/Paddle/tree/develop/demo/seqToseq>`_ 示例。
 
-11. 如何指定GPU设备
+13. 如何指定GPU设备
 -------------------
 
 例如机器上有4块GPU，编号从0开始，指定使用2、3号GPU：
@@ -288,7 +300,7 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
         paddle train --use_gpu=true --trainer_count=2 --gpu_id=2
 
 
-12. 训练过程中出现 :code:`Floating point exception`, 训练因此退出怎么办?
+14. 训练过程中出现 :code:`Floating point exception`, 训练因此退出怎么办?
 ------------------------------------------------------------------------
 
 Paddle二进制在运行时捕获了浮点数异常，只要出现浮点数异常(即训练过程中出现NaN或者Inf)，立刻退出。浮点异常通常的原因是浮点数溢出、除零等问题。
