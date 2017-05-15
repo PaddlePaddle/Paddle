@@ -16,7 +16,7 @@ limitations under the License. */
 namespace paddle {
 namespace topology {
 namespace meta {
-Map<std::string, FunctionMetaPtr> FunctionMeta::gFuncMetas;
+static Map<std::string, FunctionMetaPtr> gFuncMetas;
 
 const Set<int> FunctionMeta::defaultSeqTypes = {SequenceType::NO_SEQUENCE,
                                                 SequenceType::SEQUENCE,
@@ -33,6 +33,15 @@ Error FunctionMeta::registerFuncMeta(
     gFuncMetas[name] = metaPtr;
   }
   return err;
+}
+
+FunctionMetaPtr FunctionMeta::get(const std::string &name) {
+  auto it = gFuncMetas.find(name);
+  if (it != gFuncMetas.end()) {
+    return it->second;
+  } else {
+    return nullptr;
+  }
 }
 
 }  // namespace meta

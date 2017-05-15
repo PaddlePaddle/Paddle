@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <glog/logging.h>
 #include <paddle/utils/Any.h>
 #include <paddle/utils/Error.h>
 #include <functional>
@@ -30,44 +31,79 @@ namespace paddle {
 namespace topology {
 namespace meta {
 
+/**
+ * Constraints are used to check the validity of a attribute and is a part of
+ * meta information of Attribute, e.g., the value must be larger than 1.
+ *
+ *
+ * The implementation of constraints is very straight-forward. It just a
+ * array of validation functions. Each validation function has type
+ * `(T* attr, bool alreadySet) -> Error`. The first argument is a writable
+ * pointer, the second argument is a bool flag whether this attribute is set by
+ * user or not. If the attribute is not valid, return a reasonable Error
+ * message.
+ */
 template <typename T>
 class Constraints {
 public:
+  /**
+   * @param name the binded attribute name, used for readable error.
+   */
   explicit Constraints(const std::string& name) : name_(name) {}
 
+  /**
+   * @brief Base method to add a constraint function to Constraints
+   * @param callback See the documentation of class.
+   * @return *this
+   */
   Constraints<T>& addConstraint(
       std::function<paddle::Error(T*, bool)> callback) {
     callbacks_.push_back(callback);
     return *this;
   }
 
+  /**
+   * @brief mustSet means this attribute must be set by user.
+   * @return *this
+   */
   Constraints<T>& mustSet() {
-    return this->addConstraint([this](T*, bool setted) -> paddle::Error {
-      if (!setted) {
-        return paddle::Error("Attribute %s must be setted", name_.c_str());
+    return this->addConstraint([this](T*, bool alreadySet) -> paddle::Error {
+      if (!alreadySet) {
+        return paddle::Error("Attribute %s must be alreadySet", name_.c_str());
       }
       return paddle::Error();
     });
   }
 
+  /**
+   * @brief set the default value of this attribute.
+   * @param val default value
+   * @return *this
+   */
   Constraints<T>& defaultValue(const T& val) {
     return this->addConstraint(
-        [this, val](T* attr, bool setted) -> paddle::Error {
-          if (!setted) {
+        [this, val](T* attr, bool alreadySet) -> paddle::Error {
+          if (!alreadySet) {
             *attr = val;
           }
           return paddle::Error();
         });
   }
 
-  paddle::Error operator()(T* attr, bool setted) const {
+  /**
+   * @brief check this attribute is valid or not
+   */
+  paddle::Error validate(T* attr, bool alreadySet) const {
     for (const auto& callback : callbacks_) {
-      paddle::Error err = callback(attr, setted);
+      paddle::Error err = callback(attr, alreadySet);
       if (!err.isOK()) return err;
     }
     return paddle::Error();
   }
 
+  /**
+   * @brief value must be in [min, max].
+   */
   Constraints<T>& inRange(const T& min, const T& max) {
     return this->addConstraint([this, min, max](T* attr, bool) {
       if (*attr < min || *attr > max) {
@@ -81,6 +117,9 @@ public:
     });
   }
 
+  /**
+   * @brief value must in set s.
+   */
   template <typename SetType>
   Constraints<T>& in(const SetType& s) {
     return this->addConstraint([this, s](T* attr, bool) {
@@ -92,6 +131,9 @@ public:
     });
   }
 
+  /**
+   * @brief value must > min;
+   */
   Constraints<T>& largerThan(const T& min) {
     return this->addConstraint([this, min](T* attr, bool) {
       if (*attr < min) {
@@ -104,6 +146,9 @@ public:
     });
   }
 
+  /**
+   * @brief equal value must equal expect
+   */
   Constraints<T>& equal(const T& expect) {
     return this->addConstraint([this, expect](T* actual, bool) {
       if (*actual != expect) {
@@ -113,6 +158,9 @@ public:
     });
   }
 
+  /**
+   * value's demension must be sz
+   */
   template <typename U>
   Constraints<T>& dimsEq(U sz) {
     static_assert(std::is_same<typename T::size_type, U>::value, "");
@@ -129,10 +177,14 @@ public:
 
 private:
   std::string name_;
-  // (T* attr, bool setted) -> paddle::Error
+  // (T* attr, bool alreadySet) -> paddle::Error
   std::vector<std::function<paddle::Error(T*, bool)>> callbacks_;
 };
 
+/**
+ * @brief The meta information of an attribute. It stores attribute type, name,
+ * description and contraints.
+ */
 class AttributeMeta {
 private:
   AttributeMeta(const std::string& name,
@@ -145,31 +197,35 @@ public:
   const std::type_info& type;
   std::string description;
 
+  /**
+   * Create a meta information of an attribute.
+   *
+   * @tparam T: Attribute type.
+   */
   template <typename T>
   static std::shared_ptr<AttributeMeta> create(const std::string& name,
                                                const std::string& description) {
     AttributeMeta* retv = new AttributeMeta(name, typeid(T), description);
-    retv->constraintBuilder<T>();
+    retv->constraints_ = Constraints<T>(name);
     return std::shared_ptr<AttributeMeta>(retv);
   }
 
+  /**
+   *  Get Constraints of an attribute. nullptr if type mismatched.
+   */
   template <typename T>
-  Constraints<T>* constraintBuilder() {
-    if (typeid(T).hash_code() == type.hash_code()) {
-      if (this->constraints.empty()) {
-        this->constraints = Constraints<T>(this->name);
-      }
-      return any_cast<Constraints<T>>(&this->constraints);
-    } else {
-      return nullptr;
-    }
+  Constraints<T>* constraints() {
+    return any_cast<Constraints<T>>(&this->constraints_);
   }
 
+  /**
+   * validate attribute attr.
+   */
   template <typename T>
-  paddle::Error check(T* attr, bool setted) const {
-    auto callbackPtr = any_cast<Constraints<T>>(&this->constraints);
+  paddle::Error validate(T* attr, bool alreadySet) const {
+    auto callbackPtr = any_cast<Constraints<T>>(&this->constraints_);
     if (callbackPtr) {
-      return (*callbackPtr)(attr, setted);
+      return callbackPtr->validate(attr, alreadySet);
     } else {
       return paddle::Error("Type mismatched, the input type is %s, need %s",
                            typeid(T).name(),
@@ -177,23 +233,16 @@ public:
     }
   }
 
-  paddle::Error check(any* attr, bool setted) const;
-
-  template <typename T>
-  paddle::Error setMemberPointer(T ptr) {
-    if (!memberPointer.empty()) return Error("Already set");
-    memberPointer = ptr;
-    return Error();
-  }
-
-  template <typename T>
-  T getMemberPointer() const {
-    return any_cast<T>(memberPointer);
-  }
+  /**
+   * validate attribute attr, using any type.
+   *
+   * @note: not all C++ type is supported. See AttributeMeta.cpp for supported
+   * types.
+   */
+  paddle::Error validate(any* attr, bool alreadySet) const;
 
 private:
-  paddle::any constraints;
-  paddle::any memberPointer;
+  paddle::any constraints_;
 };
 typedef std::shared_ptr<AttributeMeta> AttributeMetaPtr;
 
@@ -203,33 +252,37 @@ private:
   std::string errTag_;
 
 public:
-  WithAttributeMeta(const std::string& errTag) : errTag_(errTag) {}
+  /**
+   * @brief WithAttributeMeta is a base class for other meta information which
+   * contains meta information of attributes.
+   * @param errTag: A tag for readable error message.
+   */
+  explicit WithAttributeMeta(const std::string& errTag) : errTag_(errTag) {}
 
   const Map<std::string, AttributeMetaPtr>& getAttributes() const {
     return attributeMetas_;
   }
 
-  paddle::Error __must_check
-  addAttribute(const AttributeMetaPtr& attributeMeta) {
-    if (attributeMeta == nullptr) {
-      return paddle::Error("NULL Pointer Error");
-    }
-    auto attrName = attributeMeta->name;
-    if (this->attributeMetas_.find(attrName) != this->attributeMetas_.end()) {
-      return paddle::Error(
-          "%s attribute %s has been setted", errTag_.c_str(), attrName.c_str());
-    }
-    this->attributeMetas_[attrName] = attributeMeta;
-    return paddle::Error();
-  }
-
+  /**
+   * Add an attribute.
+   *
+   * @note: Die soon because this function should be invoked during initialize
+   * Padddle, and the error is caused by programming, should not be handled by
+   * user.
+   */
   template <typename T>
   Constraints<T>& addAttribute(const std::string& name,
                                const std::string& description) {
     auto metaPtr = AttributeMeta::create<T>(name, description);
-    auto err = addAttribute(metaPtr);
-    err.check();
-    return *(metaPtr->template constraintBuilder<T>());
+    if (metaPtr == nullptr) {
+      LOG(FATAL) << "NULL pointer error when create attribute meta";
+    }
+    auto attrName = metaPtr->name;
+    if (this->attributeMetas_.find(attrName) != this->attributeMetas_.end()) {
+      LOG(FATAL) << errTag_ << " attribute " << attrName << " has been set.";
+    }
+    this->attributeMetas_[attrName] = metaPtr;
+    return *(metaPtr->template constraints<T>());
   }
 };
 

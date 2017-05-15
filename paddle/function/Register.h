@@ -1,6 +1,7 @@
 #pragma once
 #include "details/Register.h"
 #include "paddle/topology/Attribute.h"
+#include "paddle/topology/Tensor.h"
 namespace paddle {
 namespace function {
 

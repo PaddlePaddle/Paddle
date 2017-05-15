@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Validator.h"
+#include "../Tensor.h"
 #include "FunctionMeta.h"
+
 namespace paddle {
 namespace topology {
 namespace meta {
@@ -24,7 +26,7 @@ Error AttributeValidator::validate(Map<std::string, any>* attrs) const {
     if (metaIt == this->metas_.end()) {
       return Error("No such attribute meta %s", it->first.c_str());
     }
-    auto err = metaIt->second->check(&it->second, true /*setted*/);
+    auto err = metaIt->second->validate(&it->second, true /*alreadySet*/);
     if (!err.isOK()) {
       return Error("Meta Error(%s)", err.msg());
     }
@@ -35,7 +37,7 @@ Error AttributeValidator::validate(Map<std::string, any>* attrs) const {
     if (it != attrs->end()) continue;
     (*attrs)[metaIt->first] = any();
     any* tmp = &(*attrs)[metaIt->first];
-    auto err = metaIt->second->check(tmp, false /*setted*/);
+    auto err = metaIt->second->validate(tmp, false /*alreadySet*/);
     if (!err.isOK()) {
       return err;
     }

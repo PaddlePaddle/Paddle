@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "AttributeMeta.h"
-#include <glog/logging.h>
 #include "TensorMeta.h"
 
 namespace paddle {
@@ -20,37 +19,40 @@ namespace topology {
 namespace meta {
 
 template <typename T>
-bool checkHelper(const AttributeMeta* meta,
-                 any* attr,
-                 bool setted,
-                 Error* err) {
+static bool checkHelper(const AttributeMeta* meta,
+                        any* attr,
+                        bool alreadySet,
+                        Error* err) {
   if (attr->type() == typeid(T)) {
-    *err = meta->check(any_cast<T>(attr), setted);
+    *err = meta->validate(any_cast<T>(attr), alreadySet);
     return true;
   } else if (meta->type == typeid(T) && attr->type() == typeid(void) &&
-             !setted) {
+             !alreadySet) {
     *attr = T();
-    *err = meta->check(any_cast<T>(attr), setted);
+    *err = meta->validate(any_cast<T>(attr), alreadySet);
     return true;
   } else {
     return false;
   }
 }
 
-#define CHECK_HELPER(TYPE)                             \
-  do {                                                 \
-    paddle::Error err;                                 \
-    if (checkHelper<TYPE>(this, attr, setted, &err)) { \
-      return err;                                      \
-    }                                                  \
+#define CHECK_HELPER(TYPE)                                 \
+  do {                                                     \
+    paddle::Error err;                                     \
+    if (checkHelper<TYPE>(this, attr, alreadySet, &err)) { \
+      return err;                                          \
+    }                                                      \
   } while (0)
 
-Error AttributeMeta::check(any* attr, bool setted) const {
+Error AttributeMeta::validate(any* attr, bool alreadySet) const {
   if (attr->type() != this->type && attr->type() != typeid(void)) {
     return Error("Type mismatch, expect %s, actual %s",
                  this->type.name(),
                  attr->type().name());
   }
+  /**
+   * Only following types are supported as an attribute.
+   */
   CHECK_HELPER(int);
   CHECK_HELPER(double);
   CHECK_HELPER(std::vector<int>);

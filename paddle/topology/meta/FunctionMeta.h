@@ -38,8 +38,6 @@ private:
 
 private:
   std::string name;
-  static Map<std::string, FunctionMetaPtr> gFuncMetas;
-
   TensorMetas inputs_;
   TensorMetas outputs_;
 
@@ -51,14 +49,7 @@ public:
   registerFuncMeta(const std::string& name,
                    std::function<paddle::Error(FunctionMetaPtr&)> func);
 
-  static FunctionMetaPtr get(const std::string& name) {
-    auto it = gFuncMetas.find(name);
-    if (it != gFuncMetas.end()) {
-      return it->second;
-    } else {
-      return nullptr;
-    }
-  }
+  static FunctionMetaPtr get(const std::string& name);
 
   TensorMetaPtr& addInput() {
     inputs_.emplace_back(new TensorMeta());
@@ -118,7 +109,7 @@ public:
     metaAttributes_.set("shapeInferer", inferer).check();
   }
 
-  const TenserShapeInferer& getShapeInferer() const {
+  TenserShapeInferer getShapeInferer() const {
     const TenserShapeInferer* func;
     metaAttributes_.get("shapeInferer", &func).check();
     return *func;

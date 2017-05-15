@@ -225,7 +225,7 @@ public:
   /**
    * Set a sequence item o[i] = obj;
    * @param i index
-   * @param obj setted item.
+   * @param obj alreadySet item.
    * @param steal if steal = true, sequence will move object in iteself,
    *              just like std::move. Otherwise, it will increase reference
    *              count. Default is false.

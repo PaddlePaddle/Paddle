@@ -37,7 +37,8 @@ namespace paddle {
 namespace version {
 
 /**
- * @brief print paddle version and exit when --version flag setted. Otherwise,
+ * @brief print paddle version and exit when --version flag alreadySet.
+ * Otherwise,
  * do nothing.
  */
 void printVersion();
