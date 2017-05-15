@@ -95,32 +95,170 @@ Because `variant` may be thought of as "multi-type, single value", we can utiliz
 
 ## implement Tensor in Paddle
 
+We aim to implement an independent tensor library, which provides flexiable and efficient tensor operations and can run on muti-devices(CPU and GPU). In brief, there are mainly two aspects to consider. First, we have to make encapsulation of the hardware for the tensor library, including device memory, computing handles, cuda streams and so on. Second, after the tensor libaray is able to access the hardware resources, we should make carefully design and abstraction of the upper levels and provide flexiable interfaces.  
+
 Before writing code, please make sure you already look through Majel Source Code and grabbed the design philosophy of `DArray` in Majel.
 
-To assign subtasks to our colleagues, we have to discuss how to divide it to independent subtasks.
+### Resources Manegement
 
-- [ ] 1. First, we need to consider the third-party dependencies in Majel.
+#### Device Initializer
 
-    Majel heavily use `boost.variant`, but we don't want to integrate `boost` into PaddlePaddle. It's better to replace boost using the lightweight implementation. https://github.com/mapbox/variant Mapbox variant has the same speedy performance of `boost::variant `but is faster to compile, results in smaller binaries, and has no dependencies.
 
-> @gangliao
+At first, we locate which context runs the tensor library, and then get the GPU device infomation.
+ 
+```
+int count = get_cuda_device_count();
+for (int i = 0; i < count; ++i) {
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, i);
+    deviceProperties[i] = prop;
+}
+```
 
-- [ ] 2. Re-implement `Place` and `Allocation/Memory`
+Second, the system memory allocator is created.
 
-    I found @wangkuiyi submitted a pull request includes `Place`. @gangliao and @qijun could re-implement `Allocation`, because we have the GPU development experience before joining Paddle team.
+```
+gpu::SystemAllocator::init();
+cpu::SystemAllocator::init();
+detail::SharedAllocator::init();
 
-> @wangkuiyi @gangliao @qijun
+```
 
-- [ ] 3. Re-implement `Dim`.
 
-    `Dim` is an excellent implementation in Majel. 
+Third, we make initalization in each GPU.
 
-> ???
+```
+void init_device(int i) {
+    detail::rand_init(GpuPlace(i));
+    gpu::detail::cublas_init(GpuPlace(i));
+#ifdef USE_CUDNN
+    gpu::detail::cudnn_init(GpuPlace(i));
+#endif
+}
+```
 
-- [ ] 4. Re-implement `Array/Tensor`.
+```
+int gpu_count = majel::gpu::detail::get_device_count();
+for (int i = 0; i < gpu_count; ++i) {
+     init_device(i);
+}
+``` 
 
-> Prerequisites: 1 - 3
+The cublasHandle and cudnnHandle will be created for each GPU card.
 
-- [ ] 5. Re-implement fundamental operators for `Array/Tensor`.
 
-> Prerequisites: 1 - 4
+#### Memory Allocator
+Majel has a malloc module to manage the device memory, including initialization, allocation and deallocation. We could reference the elegent design of majel.
+
+TBD.
+
+#### Stream Scheduler
+
+A stream in CUDA is a sequence of operations that execute on the device in the order in which they are issued by the host code. While operations within a stream are guaranteed to execute in the prescribed order, operations in different streams can be interleaved and, when possible, they can even run concurrently.
+
+Majel have a module named scheduler to schedule cuda kernel operation.
+
+At first, `GpuLaunchInfo` is defined as following.
+
+```
+struct GpuLaunchInfo {
+    int            device;
+    cudaStream_t   stream;
+};
+```
+
+Second, a cuda kernel will be set into a specific stream in launch info waiting for executing. There are two examples below.
+
+1.Convlution operation with cuDNN.
+
+```
+cudnnHandle_t prepare_launch(scheduler::GpuLaunchInfo launch) {
+    cudnnHandle_t handle = majel::gpu::detail::cudnn_state[launch.device];
+
+    majel::gpu::detail::set_device(launch.device);
+    majel::detail::throw_on_error(cudnnSetStream(handle,
+                                                 launch.stream),
+                                  "Error when setting stream");
+    return handle;
+}
+```
+
+2.Gemm operation with cuBLAS.
+
+```
+template<typename RealType>
+void gemm_impl(const Array<RealType, 2> in1, bool in1_T, const Array<RealType, 2> in2,
+          bool in2_T, double alpha, Array<RealType, 2> out, double beta, NativeFloatType type) {
+    ...
+
+    auto metrics = check_gemm_params(in1, in1_T, in2, in2_T, out);
+
+    majel::detail::GemmVisitor<RealType> mm(in1, in1_T, in2, in2_T,
+      alpha, out, beta);
+    scheduler::schedule([=](const scheduler::LaunchInfo& li) {
+          boost::apply_visitor(mm, li);
+      }, {in1, in2, out}, {out}, std::move(metrics));
+}
+```
+
+The stream will be created in `GpuEvent` in scheduler module.
+
+```
+GpuEvent::GpuEvent(int device, int priority)
+: device_(device), record_timing_(false) {
+
+    gpu::detail::set_device(device);
+
+    stream_      = gpu::detail::create_new_stream_with_priority(priority);
+    start_event_ = nullptr;
+    end_event_   = nullptr;
+}
+```
+
+Majel has a detailed and powerful scheduler, whereas paddle creates some streams by default in initialization stage and make some manaul scheduling policy. 
+
+Where should we implement the scheduler module, in or out the tensor library? 
+
+
+
+
+### Abstract Concepts
+
+#### DArray and the related
+
+Please refer to [Learn from majel](#Learn from majel).
+
+1. `Place`: memory location [i.e. CPU/GPU].
+2. `Allocation`: heterogeneous resource allocator [i.e. 20MB in GPU].
+3. `Dim`: size of each dimension. [i.e. Dim<4>({10, 2, 5, 1})]
+4. `Array`: dynamic array consists of `Place`, `Dim`, and a pointer to memory.
+
+
+#### Matrix Operation
+Majel provides lots of matrix operation for users.
+
+TBD.
+
+
+#### Lazy Operation
+
+Lazy operation can avoid some temporary memory allocation and merge kernels.
+Majel support lazy operation. And Paddle also implement lazy operation using expression templates.
+
+TBD.
+
+#### Sparse Matrix
+
+We can represent Sparse Matrix using a conbination of DArrayVar.
+
+```
+struct SparseMatrix {
+    DArrayVar row_;
+    DArrayVar col_;
+    DArrayVar value_;
+    
+    size_t nnz_;
+}
+```
+
+TBD.
