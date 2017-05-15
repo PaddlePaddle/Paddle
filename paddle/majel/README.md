@@ -48,9 +48,7 @@ int main()
 }
 ```
 
-In Majel, `DDimVar` is derived from `Dim`, `DArrayVar` is from 
-`Array`.
-
+In Majel, `DDimVar` is derived from `Dim`, `DArrayVar` is from `Array`.
 
 ```c++
 template<int i>
@@ -70,8 +68,8 @@ private:
     Dim<D> stride_;
     T* ptr_;
 };
-``` 
- 
+```
+
 ```c++
 typedef boost::variant<GpuPlace, CpuPlace> Place;
 typedef boost::variant<Dim<1>, Dim<2>, Dim<3>, Dim<4>, Dim<5>,
@@ -129,7 +127,7 @@ To assign subtasks to our colleagues, we have to discuss how to divide it to ind
 - [ ] 3. Re-implement `Dim`.
 
     `Dim` is an excellent implementation in Majel.
-    
+
 > ???
 
 - [ ] 4. Re-implement `Array/Tensor`.
