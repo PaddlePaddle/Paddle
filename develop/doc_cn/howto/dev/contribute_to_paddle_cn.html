@@ -198,6 +198,7 @@
 <li>确保编译器选项 <code class="docutils literal"><span class="pre">WITH_STYLE_CHECK</span></code> 已打开，并且编译能通过代码样式检查。</li>
 <li>所有代码必须具有单元测试。</li>
 <li>通过所有单元测试。</li>
+<li>请遵守<a class="reference external" href="#提交代码的一些约定">提交代码的一些约定</a>。</li>
 </ul>
 <p>以下教程将指导您提交代码。</p>
 </div>
@@ -368,6 +369,36 @@ upstream
 </pre></div>
 </div>
 <p>至此，我们就完成了一次代码贡献的过程。</p>
+</div>
+<div class="section" id="">
+<span id="id9"></span><h2>提交代码的一些约定<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>为了使评审人在评审代码时更好地专注于代码本身，请您每次提交代码时，遵守以下约定：</p>
+<ol class="simple">
+<li>请保证Travis-CI 中单元测试能顺利通过。如果没过，说明提交的代码存在问题，评审人一般不做评审。</li>
+<li>提交PUll Request前：<ul>
+<li>请注意commit的数量：<ul>
+<li>原因：如果仅仅修改一个文件但提交了十几个commit，每个commit只做了少量的修改，这会给评审人带来很大困扰。评审人需要逐一查看每个commit才能知道做了哪些修改，且不排除commit之间的修改存在相互覆盖的情况。</li>
+<li>建议：每次提交时，保持尽量少的commit，可以通过<code class="docutils literal"><span class="pre">git</span> <span class="pre">commit</span> <span class="pre">--amend</span></code>补充上次的commit。对已经Push到远程仓库的多个commit，可以参考<a class="reference external" href="http://stackoverflow.com/questions/5667884/how-to-squash-commits-in-git-after-they-have-been-pushed">squash commits after push</a>。</li>
+</ul>
+</li>
+<li>请注意每个commit的名称：应能反映当前commit的内容，不能太随意。</li>
+</ul>
+</li>
+<li>如果解决了某个Issue的问题，请在该PUll Request的<strong>第一个</strong>评论框中加上：<code class="docutils literal"><span class="pre">fix</span> <span class="pre">#issue_number</span></code>，这样当该PUll Request被合并后，会自动关闭对应的Issue。关键词包括：close, closes, closed, fix, fixes, fixed, resolve, resolves, resolved，请选择合适的词汇。详细可参考<a class="reference external" href="https://help.github.com/articles/closing-issues-via-commit-messages">Closing issues via commit messages</a>。</li>
+</ol>
+<p>此外，在回复评审人意见时，请您遵守以下约定：</p>
+<ol class="simple">
+<li>评审人的每个意见都必须回复（这是开源社区的基本礼貌，别人帮了忙，应该说谢谢）：<ul>
+<li>对评审意见同意且按其修改完的，给个简单的<code class="docutils literal"><span class="pre">Done</span></code>即可；</li>
+<li>对评审意见不同意的，请给出您自己的反驳理由。</li>
+</ul>
+</li>
+<li>如果评审意见比较多：<ul>
+<li>请给出总体的修改情况。</li>
+<li>请采用<a class="reference external" href="https://help.github.com/articles/reviewing-proposed-changes-in-a-pull-request/">start a review</a>进行回复，而非直接回复的方式。原因是每个回复都会发送一封邮件，会造成邮件灾难。</li>
+</ul>
+</li>
+</ol>
 </div>
 </div>
 
