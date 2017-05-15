@@ -494,10 +494,18 @@ index that reader returns.</li>
 <code class="descclassname">paddle.v2.</code><code class="descname">infer</code><span class="sig-paren">(</span><em>output_layer</em>, <em>parameters</em>, <em>input</em>, <em>feeding=None</em>, <em>field='value'</em><span class="sig-paren">)</span></dt>
 <dd><p>Infer a neural network by given neural network output and parameters.  The
 user should pass either a batch of input data or reader method.</p>
-<p>Example usages:</p>
+<p>Example usage for sinlge output_layer:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">output_layer</span><span class="o">=</span><span class="n">prediction</span><span class="p">,</span>
                       <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
                       <span class="nb">input</span><span class="o">=</span><span class="n">SomeData</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">result</span>
+</pre></div>
+</div>
+<p>Example usage for multiple outout_layers and fields:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">output_layer</span><span class="o">=</span><span class="p">[</span><span class="n">prediction1</span><span class="p">,</span> <span class="n">prediction2</span><span class="p">],</span>
+                      <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
+                      <span class="nb">input</span><span class="o">=</span><span class="n">SomeData</span><span class="p">,</span>
+                      <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="nb">id</span><span class="p">,</span> <span class="n">value</span><span class="p">]])</span>
 <span class="k">print</span> <span class="n">result</span>
 </pre></div>
 </div>
@@ -506,7 +514,8 @@ user should pass either a batch of input data or reader method.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>output_layer</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; output of the neural network that would be inferred</li>
+<li><strong>output_layer</strong> (<em>paddle.v2.config_base.Layer</em><em> or </em><em>a list of
+paddle.v2.config_base.Layer</em>) &#8211; output of the neural network that would be inferred</li>
 <li><strong>parameters</strong> (<em>paddle.v2.parameters.Parameters</em>) &#8211; parameters of the neural network.</li>
 <li><strong>input</strong> (<em>collections.Iterable</em>) &#8211; input data batch. Should be a python iterable object, and each
 element is the data batch.</li>
@@ -520,7 +529,9 @@ or max_id.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">a numpy array</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The prediction result. If there are multiple outout_layers and fields,
+the return order is outout_layer1.field1, outout_layer2.field1, ...,
+outout_layer1.field2, outout_layer2.field2 ...</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">numpy.ndarray</p>
