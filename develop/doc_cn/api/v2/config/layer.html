@@ -3312,7 +3312,8 @@ should be consistent as that used in your labels.</li>
 Implements the method in the following paper:
 A fast and simple algorithm for training neural probabilistic language models.</p>
 <p>The example usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">nce</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">layer2</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">layer3</span><span class="p">,</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">nce</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="n">layer2</span><span class="p">,</span>
+                 <span class="n">param_attr</span><span class="o">=</span><span class="p">[</span><span class="n">attr1</span><span class="p">,</span> <span class="n">attr2</span><span class="p">],</span> <span class="n">weight</span><span class="o">=</span><span class="n">layer3</span><span class="p">,</span>
                  <span class="n">num_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">neg_distribution</span><span class="o">=</span><span class="p">[</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">0.3</span><span class="p">,</span><span class="mf">0.6</span><span class="p">])</span>
 </pre></div>
 </div>
@@ -3327,6 +3328,7 @@ A fast and simple algorithm for training neural probabilistic language models.</
 <li><strong>weight</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; weight layer, can be None(default)</li>
 <li><strong>num_classes</strong> (<em>int</em>) &#8211; number of classes.</li>
 <li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation, default is Sigmoid.</li>
+<li><strong>param_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em>) &#8211; The Parameter Attribute|list.</li>
 <li><strong>num_neg_samples</strong> (<em>int</em>) &#8211; number of negative samples. Default is 10.</li>
 <li><strong>neg_distribution</strong> (<em>list|tuple|collections.Sequence|None</em>) &#8211; The distribution for generating the random negative labels.
 A uniform distribution will be used if not provided.
