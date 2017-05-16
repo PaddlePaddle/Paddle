@@ -1,6 +1,7 @@
 #pragma once
-#include "details/Register.h"
+#include "FunctionList.h"
 #include "paddle/topology/Attribute.h"
+#include "paddle/topology/Function.h"
 #include "paddle/topology/Tensor.h"
 #include "paddle/topology/meta/TypeDefs.h"
 
@@ -8,6 +9,13 @@ namespace paddle {
 namespace function {
 using paddle::topology::meta::Set;
 using paddle::topology::meta::Map;
+
+namespace details {
+typedef std::function<Error(const BufferArgs& ins,
+                            const BufferArgs& outs,
+                            const topology::AttributeMap& attrs)>
+    FunctionWithAttrs;
+}
 
 Function createFunction(const topology::Function& conf);
 
@@ -65,7 +73,7 @@ protected:
     auto key = devType == DEVICE_TYPE_CPU ? "CPUKernel" : "GPUKernel";
     auto inited = std::make_shared<bool>(false);
     auto tmp = std::make_shared<AttributeType>();
-    FunctionWithAttrs fn = [kernel, meta, inited, tmp](
+    details::FunctionWithAttrs fn = [kernel, meta, inited, tmp](
         const BufferArgs& ins,
         const BufferArgs& outs,
         const topology::AttributeMap& attrs) {

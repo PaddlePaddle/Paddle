@@ -28,8 +28,9 @@ private:
     const Function* kernel = nullptr;
     auto err = meta->metaAttributes_.get<Function>(kernelMethodName, &kernel);
     if (err.isOK()) return *kernel;
-    const FunctionWithAttrs* kernelEx = nullptr;
-    meta->metaAttributes_.get<FunctionWithAttrs>(kernelMethodName, &kernelEx)
+    const details::FunctionWithAttrs* kernelEx = nullptr;
+    meta->metaAttributes_
+        .get<details::FunctionWithAttrs>(kernelMethodName, &kernelEx)
         .check();
     return [topo, kernelEx](const BufferArgs& in, const BufferArgs& out) {
       return (*kernelEx)(in, out, topo->attributes);
