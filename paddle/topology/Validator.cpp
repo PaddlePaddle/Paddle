@@ -13,12 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Validator.h"
-#include "../Tensor.h"
-#include "FunctionMeta.h"
+#include <string>
+#include "meta/FunctionMeta.h"
+#include "meta/TypeDefs.h"
 
 namespace paddle {
 namespace topology {
-namespace meta {
+using meta::Map;
+
+class AttributeValidator {
+public:
+  AttributeValidator(
+      const Map<std::string, meta::AttributeMetaPtr>& attributeMetas)
+      : metas_(attributeMetas) {}
+
+  paddle::Error validate(Map<std::string, any>* attrs) const;
+
+private:
+  const Map<std::string, meta::AttributeMetaPtr>& metas_;
+};
 
 Error AttributeValidator::validate(Map<std::string, any>* attrs) const {
   for (auto it = attrs->begin(); it != attrs->end(); ++it) {
@@ -45,8 +58,8 @@ Error AttributeValidator::validate(Map<std::string, any>* attrs) const {
   return Error();
 }
 
-Error validateAndInferShape(Function& func, bool validOutput) {
-  auto meta = FunctionMeta::get(func.type);
+Error validateAndInferShape(Function& func) {
+  auto meta = meta::FunctionMeta::get(func.type);
   if (meta == nullptr) {
     return Error("No such function type %s", func.type.c_str());
   }
@@ -67,12 +80,7 @@ Error validateAndInferShape(Function& func, bool validOutput) {
     err = validate(*inMetas[i], func.inputs[i]->attributes);
     if (!err.isOK()) return Error("Input %d error %s", i, err.msg());
   }
-  if (validOutput) {
-    for (size_t i = 0; i < outMetas.size(); ++i) {
-      err = validate(*outMetas[i], func.outputs[i]->attributes);
-      if (!err.isOK()) return err;
-    }
-  }
+
   err = meta->getShapeInferer()(func.inputs, func.outputs);
   if (!err.isOK()) return err;
   for (size_t i = 0; i < outMetas.size(); ++i) {
@@ -82,12 +90,10 @@ Error validateAndInferShape(Function& func, bool validOutput) {
   return Error();
 }
 
-Error validate(const WithAttributeMeta& meta,
-               paddle::topology::meta::AttributeMap& attr) {
+Error validate(const meta::AttributeMetaMap& meta, AttributeMap& attr) {
   AttributeValidator validator(meta.getAttributes());
   return validator.validate(&attr);
 }
 
-}  // namespace meta
 }  // namespace topology
 }  // namespace paddle

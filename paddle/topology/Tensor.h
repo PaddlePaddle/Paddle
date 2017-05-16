@@ -23,8 +23,8 @@ class Tensor {
 public:
   Tensor& setDataType(int type);
   Tensor& setSequenceType(int type);
-  Tensor& setShape(const std::vector<int>& shape);
-  std::vector<int>& shape();
+  Tensor& setShape(const std::vector<size_t>& shape);
+  std::vector<size_t>& shape();
   SequenceType sequenceType() const;
   DataType dataType() const;
 

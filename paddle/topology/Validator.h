@@ -14,30 +14,23 @@ limitations under the License. */
 
 #pragma once
 #include <unordered_map>
-#include "../Function.h"
-#include "../Tensor.h"
-#include "AttributeMeta.h"
+#include "Function.h"
+#include "Tensor.h"
+#include "meta/AttributeMeta.h"
 #include "paddle/utils/Any.h"
 namespace paddle {
 namespace topology {
-namespace meta {
 
-class AttributeValidator {
-public:
-  AttributeValidator(const Map<std::string, AttributeMetaPtr>& attributeMetas)
-      : metas_(attributeMetas) {}
+/**
+ * @brief validate a function and inference the output shape.
+ */
+paddle::Error validateAndInferShape(Function& func);
 
-  paddle::Error validate(Map<std::string, any>* attrs) const;
+/**
+ * @brief validate a attribute map.
+ * @return
+ */
+paddle::Error validate(const meta::AttributeMetaMap& meta, AttributeMap& attr);
 
-private:
-  const Map<std::string, AttributeMetaPtr>& metas_;
-};
-
-paddle::Error validateAndInferShape(paddle::topology::Function& func,
-                                    bool validOutput = false);
-paddle::Error validate(const WithAttributeMeta& meta,
-                       paddle::topology::AttributeMap& attr);
-
-}  // namespace meta
 }  // namespace topology
 }  // namespace paddle

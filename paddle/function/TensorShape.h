@@ -80,6 +80,13 @@ public:
 
   bool operator!=(const TensorShape& t) const { return !(*this == t); }
 
+  /**
+   * Tensor shape can be implicit cast to std::vector<size_t>;
+   */
+  operator std::vector<size_t>&() { return dims_; }
+
+  operator const std::vector<size_t>&() const { return dims_; }
+
 private:
   // compute number of elements
   void numElements() {

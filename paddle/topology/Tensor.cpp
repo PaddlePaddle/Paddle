@@ -25,13 +25,13 @@ Tensor &Tensor::setSequenceType(int type) {
   return *this;
 }
 
-Tensor &Tensor::setShape(const std::vector<int> &shape) {
+Tensor &Tensor::setShape(const std::vector<size_t> &shape) {
   attributes["shape"] = shape;
   return *this;
 }
 
-std::vector<int> &Tensor::shape() {
-  return attributes.get<std::vector<int>>("shape");
+std::vector<size_t> &Tensor::shape() {
+  return attributes.get<std::vector<size_t>>("shape");
 }
 SequenceType Tensor::sequenceType() const {
   return (SequenceType)attributes.get<int>("sequence_type");

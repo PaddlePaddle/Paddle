@@ -75,6 +75,17 @@ public:
     this->get<T>(name, &ptr).check();
     return *ptr;
   }
+
+  template <typename T>
+  T get(const std::string& name, T defaultVal) const {
+    const T* tmp;
+    auto err = get(name, &tmp);
+    if (err.isOK()) {
+      return *tmp;
+    } else {
+      return defaultVal;
+    }
+  }
 };
 
 }  // namespace meta

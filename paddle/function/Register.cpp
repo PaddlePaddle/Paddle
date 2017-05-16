@@ -15,7 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <iterator>
 #include <sstream>
-#include "paddle/topology/meta/Validator.h"
+#include "paddle/topology/Validator.h"
 
 namespace paddle {
 namespace function {
@@ -138,16 +138,11 @@ public:
     }
 
     for (size_t i = 0; i < funcTopo_.inputs.size(); ++i) {
-      std::vector<int> shape;
-      shape.resize(in[i].shape().ndims());
-      for (size_t j = 0; j < shape.size(); ++j) {
-        shape[j] = (int)in[i].shape()[j];
-      }
-      funcTopo_.inputs[i]->setShape(shape);
+      funcTopo_.inputs[i]->setShape(in[i].shape());
     }
 
     //! Only check when first invoke.
-    auto err = topology::meta::validateAndInferShape(funcTopo_);
+    auto err = topology::validateAndInferShape(funcTopo_);
     if (!err.isOK()) return Error("Topology error: %s", err.msg());
 
     for (size_t i = 0; i < out.size(); ++i) {

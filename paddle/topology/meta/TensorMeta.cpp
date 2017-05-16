@@ -20,18 +20,18 @@ namespace meta {
 const Set<int> DefaultSequenceType = {SEQUENCE, NO_SEQUENCE, NESTED_SEQUENCE};
 
 TensorMeta &TensorMeta::setShapeDimension(
-    size_t dims, Constraints<std::vector<int>> **constraints) {
-  auto &cons = addAttribute<std::vector<int>>("shape", "The shape of tensor")
+    size_t dims, Constraints<std::vector<size_t>> **constraints) {
+  auto &cons = addAttribute<std::vector<size_t>>("shape", "The shape of tensor")
                    .mustSet()
                    .dimsEq(dims);
   if (constraints != nullptr) *constraints = &cons;
   return *this;
 }
 
-TensorMeta &TensorMeta::setShapeWithConstraints(const std::vector<int> &shape) {
-  Constraints<std::vector<int>> *ptr;
+TensorMeta &TensorMeta::setShape(const std::vector<size_t> &shape) {
+  Constraints<std::vector<size_t>> *ptr;
   this->setShapeDimension(shape.size(), &ptr);
-  ptr->addConstraint([shape](std::vector<int> *attr, bool) {
+  ptr->addConstraint([shape](std::vector<size_t> *attr, bool) {
     for (size_t i = 0; i < shape.size(); ++i) {
       if (shape[i] != kTensorShape_BATCH_SIZE) {
         if (shape[i] != attr->at(i)) {

@@ -23,10 +23,37 @@ limitations under the License. */
 
 namespace paddle {
 namespace topology {
+
+/**
+ * @brief Base class for Function/Layer attribute.
+ *
+ * The inherit classes of this class could be registered to Function or Layer,
+ * and could be automatically parsed.
+ *
+ * The example code is:
+ *
+ * @code{cpp}
+ * // Some strong typed attribute used by Function/Layer
+ * struct CosSimAttribute : public topology::Attribute {
+ *   double scale;
+ *
+ *   // register function attributes, so we can automatically parsed from
+ *   // AttributeMap.
+ *   REGISTER_FUNC_ATTRIBUTE() {
+ *     regAttr(&CosSimAttribute::scale, "scale", "the scale of cosine operator")
+ *       .defaultValue(1.0)
+ *       .largerThan(0.0);
+ *   }
+ * };
+ * @endcode{cpp}
+ */
 class Attribute {
 public:
   bool useGPU;
 
+  /**
+   * @brief Enable RTTI
+   */
   virtual ~Attribute();
 
 protected:
@@ -38,11 +65,18 @@ protected:
     return details::gCurFuncMeta->addAttribute<T>(name, description);
   }
 
+  /**
+   * Some attribute shared from all attributes.
+   */
   static void parentRegAttrs() {
     regAttr(&Attribute::useGPU, "useGPU", "Use GPU or not").mustSet();
   }
 };
 
+/**
+ * Register a function attribute class.
+ * See Attribute's document for details
+ */
 #define REGISTER_FUNC_ATTRIBUTE()                                      \
   static void registerFunctionAttribute(                               \
       const paddle::topology::meta::FunctionMetaPtr metaPtr) {         \

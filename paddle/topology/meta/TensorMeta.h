@@ -25,43 +25,80 @@ enum SequenceType { NO_SEQUENCE = 0, SEQUENCE, NESTED_SEQUENCE };
 
 extern const Set<int> DefaultSequenceType;
 
-const int kTensorShape_BATCH_SIZE = -1;
+const size_t kTensorShape_BATCH_SIZE = -1UL;
 
-class TensorMeta : public WithAttributeMeta {
+/**
+ * @brief A tensor meta save the meta information of a input/output of a layer
+ * or a function.
+ *
+ * Tensor is a AttributeMetaMap, which contains many meta information of
+ * Attribute.
+ */
+class TensorMeta : public AttributeMetaMap {
 public:
-  TensorMeta() : WithAttributeMeta("Tensor") {}
+  TensorMeta() : AttributeMetaMap("Tensor") {}
 
+  /**
+   * @brief setShapeDimension add constraints about the tensor shape dimension.
+   * @param dims expected dimension
+   * @param [out] constraints the raw Constraints object, used to add more
+   * constraints.
+   * @return *this
+   */
   TensorMeta& setShapeDimension(
-      size_t dims, Constraints<std::vector<int>>** constraints = nullptr);
+      size_t dims, Constraints<std::vector<size_t>>** constraints = nullptr);
 
-  TensorMeta& setShapeWithConstraints(const std::vector<int>& shape);
+  /**
+   * @brief setShape add constrains about the tensor shape. If some elment of
+   * this shape is dynamic and as same as batch size, set it to
+   * kTensorShape_BATCH_SIZE.
+   *
+   * For example, if the tensor is a matrix, height = batch_size, width = 1, the
+   * meta information of shape should be [kTensorShape_BATCH_SIZE, 1]
+   *
+   * @return *this
+   */
+  TensorMeta& setShape(const std::vector<size_t>& shape);
 
+  /**
+   * @brief Make tensor support sequence, default support all sequence.
+   * @return *this
+   */
   TensorMeta& supportSequenceTypes(
-      const Set<int>& supportedTypes = {NO_SEQUENCE, SEQUENCE, NESTED_SEQUENCE},
+      const Set<int>& supportedTypes = DefaultSequenceType,
       Constraints<int>** constraints = nullptr);
 
+  /**
+   * @brief supportDataTypes set supported data type
+   * @return *this
+   */
   TensorMeta& supportDataTypes(const Set<int>& supportedTypes);
 
+  /**
+   * @brief Set default argument type. Used by paddle::Function.
+   * @return *this;
+   */
   TensorMeta& supportArgType(int defaultArgType,
                              const Set<int>& supportedTypes = {});
 
+  /**
+   * @brief if this tensor is optional for Function/Layer or not.
+   */
   bool isOptional() const {
-    const bool* op;
-    auto err = attributeMetas_.get<bool>("optional", &op);
-    if (err.isOK()) {
-      return *op;
-    } else {
-      return false;  // default all tensor is not optional.
-    }
+    return metaAttributes_.get<bool>("optional", /*default = */ false);
   }
 
+  /**
+   * @brief setOptional set this tensor is optional or not for Funciton/Layer
+   * @return *this;
+   */
   TensorMeta& setOptional(bool optional = true) {
-    attributeMetas_.set<bool>("optional", optional, /*overwrite*/ true).check();
+    metaAttributes_.set<bool>("optional", optional, /*overwrite*/ true).check();
     return *this;
   }
 
 private:
-  AttributeMap attributeMetas_;
+  AttributeMap metaAttributes_;
 };
 
 typedef std::shared_ptr<TensorMeta> TensorMetaPtr;

@@ -80,9 +80,9 @@ Error cosineForward(const BufferArgs& inputs,
 }
 
 BEGIN_REGISTER_FUNCTION(cosFwd, cosineForward, CosSimAttribute)
-    .addTensor<topology::meta::FunctionTensorType::INPUT>(/*dim = */ 2)
-    .addTensor<topology::meta::FunctionTensorType::INPUT>(/*dim = */ 2)
-    .addTensor<topology::meta::FunctionTensorType::OUTPUT>(
+    .addInput(/*dim = */ 2)
+    .addInput(/*dim = */ 2)
+    .addOutput(
         /*shape = */ {topology::meta::kTensorShape_BATCH_SIZE, 1},
         /*arg_type*/ ASSIGN_TO)
     .setShapeInferer([](std::vector<topology::TensorPtr>& ins,
@@ -200,14 +200,12 @@ Error cosBackward(const BufferArgs& ins,
 }
 
 BEGIN_REGISTER_FUNCTION(cosBwd, cosBackward, CosSimAttribute)
-    .addTensor<topology::meta::FunctionTensorType::INPUT>(
-        {topology::meta::kTensorShape_BATCH_SIZE, 1})
-    .addTensor<topology::meta::FunctionTensorType::INPUT>(
-        {topology::meta::kTensorShape_BATCH_SIZE, 1})
-    .addTensor<topology::meta::FunctionTensorType::INPUT>(2)
-    .addTensor<topology::meta::FunctionTensorType::INPUT>(2)
-    .addTensor<topology::meta::FunctionTensorType::OUTPUT>(2, ADD_TO)
-    .addTensor<topology::meta::FunctionTensorType::OUTPUT>(2, ADD_TO)
+    .addInput({topology::meta::kTensorShape_BATCH_SIZE, 1})
+    .addInput({topology::meta::kTensorShape_BATCH_SIZE, 1})
+    .addInput(2)
+    .addInput(2)
+    .addOutput(2, ADD_TO)
+    .addOutput(2, ADD_TO)
     .setShapeInferer([](std::vector<topology::TensorPtr>& ins,
                         std::vector<topology::TensorPtr>& outs) -> Error {
       if (ins[0]->shape() != ins[1]->shape() ||
