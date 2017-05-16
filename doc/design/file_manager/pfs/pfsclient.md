@@ -109,7 +109,7 @@ Synopsis:
 	ls [-r] <PFSPath> ...
 	
 Options:
-	-r
+	-R
    		List directory(ies) recursively
 
 Examples:

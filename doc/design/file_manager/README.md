@@ -34,16 +34,16 @@
 ### PFSServer
 PFSServer提供RESTful API接口，接收处理PFSClient端的文件管理请求，并且把结果返回PFSClient端。
 
-```
 RESTful API
 
 - /api/v1/files
-	- `GET /api/v1/files`: Get attributes of files or directories.
-	- `POST /api/v1/files`: Update files or directories.
+	- `GET /api/v1/files`: Get metadata of files or directories.
+	- `POST /api/v1/files`: Create files or directories.
+	- `PATCH /api/v1/files`: Update files or directories.
 	- `DELETE /api/v1/files`: Delete files or directories.
 
 - /api/v1/file/chunks
-	- `GET /api/v1/storage/file/chunks`: Get chunks's attributes of a file.
+	- `GET /api/v1/storage/file/chunks`: Get chunks's metadata of a file.
 
 - /api/v1/storage/files
 	- `GET /api/v1/storage/files`: Download files or directories.
@@ -52,11 +52,11 @@ RESTful API
 - /api/v1/storage/file/chunks
 	- `GET /api/v1/storage/file/chunks`: Download chunks's data.
 	- `POST /api/v1/storage/file/chunks`: Upload chunks's data.
-```
+
 ## 文件传输优化
 
 ### 分块文件传输
-用户文件可能是比较大的，上传到Cloud或者下载到本地的时间可能比较长，而且在传输的过程中也可能出现网络不稳定的情况。为了应对以上的问题，我们提出了Chunk的概念，一个Chunk由所在的文件偏移、数据、数据长度及校验值组成。文件数据内容的上传和下载都是都过Chunk的操作来实现的。由于Chunk比较小（默认256K），完成一个传输动作完成的时间也比较短，不容易出错。PFSClient需要在传输完毕最后一个Chunk的时候检查destination文件的MD5值是否和source文件一致。
+用户文件可能是比较大的，上传到Cloud或者下载到本地的时间可能比较长，而且在传输的过程中也可能出现网络不稳定的情况。为了应对以上的问题，我们提出了Chunk的概念，一个Chunk由所在的文件偏移、数据、数据长度及校验值组成。文件的上传和下载都是通过对Chunk的操作来实现的。由于Chunk比较小（默认256K），完成一个传输动作完成的时间也比较短，不容易出错。PFSClient需要在传输完毕最后一个Chunk的时候检查destination文件的MD5值是否和source文件一致。
 
 一个典型的Chunk如下所示：
 
