@@ -45,9 +45,9 @@ int main() {
     panic();
   }
 
-  paddle_parameter params[2];
+  paddle_parameter* params[2] = {NULL, NULL};
   char* names[]={"param_a", "param_b"};
-  if (!paddle_get_params(c, names, params, 0, 2)) {
+  if (!paddle_get_params(c, names, params, 2)) {
     panic();
   }
 
