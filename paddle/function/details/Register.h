@@ -42,8 +42,10 @@ public:
         const topology::AttributeMap& attrs) {
       bool& init = *inited;
       if (!init) {
-        auto err =
-            meta->parseAttribute<paddle::topology::Attribute>(attrs, tmp.get());
+        auto parserFunction = meta->metaAttributes_.get<std::function<Error(
+            const topology::AttributeMap&, topology::Attribute*)>>(
+            "attribute_parser");
+        auto err = parserFunction(attrs, tmp.get());
         if (!err.isOK()) return err;
         init = true;
       }

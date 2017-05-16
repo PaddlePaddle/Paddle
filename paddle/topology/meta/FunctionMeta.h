@@ -97,23 +97,6 @@ public:
   const std::vector<TensorMetaPtr>& inputs() const { return inputs_; }
   const std::vector<TensorMetaPtr>& outputs() const { return outputs_; }
 
-  template <typename T>
-  FunctionMeta& regAttributeParser(
-      const std::function<Error(const AttributeMap&, T*)>& callback) {
-    this->metaAttributes_.set("attribute_parser", callback, false).check();
-    return *this;
-  }
-
-  template <typename T>
-  Error parseAttribute(const AttributeMap& attrs, T* attr) const {
-    const std::function<Error(const AttributeMap&, T*)>* callback;
-    auto err = this->metaAttributes_.get("attribute_parser", &callback);
-    if (!err.isOK()) {
-      return err;
-    }
-    return (*callback)(attrs, attr);
-  }
-
   AttributeMap metaAttributes_;
 };
 
