@@ -347,32 +347,45 @@ def chunk_evaluator(
         excluded_chunk_types=None, ):
     """
     Chunk evaluator is used to evaluate segment labelling accuracy for a
-    sequence. It calculates the chunk detection F1 score.
+    sequence. It calculates precision, recall and F1 score of the chunk detection.
 
-    A chunk is correctly detected if its beginning, end and type are correct.
-    Other chunk type is ignored.
-
-    For each label in the label sequence, we have:
+    To use chunk evaluator, the construction of label dict should obey the following rules:
+    (1) Use one of the listed labelling schemes. These schemes differ in ways indicating chunk boundry.
 
     .. code-block:: python
-
-       tagType = label % numTagType
-       chunkType = label / numTagType
-       otherChunkType = numChunkTypes
-
-    The total number of different labels is numTagType*numChunkTypes+1.
-    We support 4 labelling scheme.
-    The tag type for each of the scheme is shown as follows:
-
+     Scheme Begin Inside End   Single
+      plain  0     -      -     -
+      IOB    0     1      -     -
+      IOE    -     0      1     -
+      IOBES  0     1      2     3
     .. code-block:: python
 
-       Scheme Begin Inside End   Single
-       plain  0     -      -     -
-       IOB    0     1      -     -
-       IOE    -     0      1     -
-       IOBES  0     1      2     3
+    To make it clear, let's illustrate by a NER example.
+    Assuming that there are two named entity types including ORG and PER which are called 'chunk type' here,
+    if 'IOB' scheme were used, the label set will be extended to a set including B-ORG, I-ORG, B-PER, I-PER and O,
+    in which B-ORG for begining of ORG and I-ORG for end of ORG.
+    Prefixes which are called 'tag type' here are added to chunk types and there are two tag types including B and I.
+    Of course, the training data should be labeled accordingly.
 
-    'plain' means the whole chunk must contain exactly the same chunk label.
+    (2) Map can be done correctly by the listed equations.
+
+    .. code-block:: python
+    tagType = label % numTagType
+    chunkType = label / numTagType
+    otherChunkType = numChunkTypes
+    .. code-block:: python
+
+    Continue the NER example, and the label dict should like this to satify above equations:
+
+    .. code-block:: python
+      B-ORG  0
+      I-ORG  1
+      B-PER  2
+      I-PER  3
+      O      4
+    .. code-block:: python
+
+    Realizing that the number of is chunk type is 2 and number of tag type is 2, it is easy to validate this.
 
     The simple usage is:
 
