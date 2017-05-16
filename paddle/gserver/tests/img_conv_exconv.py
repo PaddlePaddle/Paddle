@@ -1,4 +1,4 @@
-#!/bin/bash
+#edit-mode: -*- python -*-
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,24 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.trainer_config_helpers import *
 
-pushd `dirname $0` > /dev/null
-SCRIPTPATH=$PWD
-popd > /dev/null
+settings(batch_size=10)
+data = data_layer(name="input", size=8 * 16 * 16)
+conv = img_conv_layer(
+    input=data,
+    filter_size=1,
+    filter_size_y=1,
+    num_channels=8,
+    num_filters=16,
+    stride=1,
+    bias_attr=True,
+    act=LinearActivation(),
+    groups=2,
+    layer_type="exconv")
 
-cd $SCRIPTPATH
-
-$1 -m pip install ../../dist/*.whl
-
-test_list="testArguments.py testGradientMachine.py testMatrix.py  testVector.py testTrain.py testTrainer.py"
-
-export PYTHONPATH=$PWD/../../../python/
-
-for fn in $test_list
-do
-  echo "test $fn"
-  $1 $fn
-  if [ $? -ne 0 ]; then
-    exit 1
-  fi
-done
+outputs(conv)

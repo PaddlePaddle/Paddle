@@ -11,4 +11,9 @@ outputs(
     classification_cost(
         input=fc, label=lbl, weight=wt),
     mse_cost(
-        input=fc, label=lbl, weight=wt))
+        input=fc, label=lbl, weight=wt),
+    nce_layer(
+        input=fc,
+        label=data_layer(
+            name='multi_class_label', size=500),
+        weight=wt))

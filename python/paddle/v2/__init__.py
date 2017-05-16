@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import optimizer
 import layer
 import activation
@@ -32,18 +33,27 @@ import networks
 import py_paddle.swig_paddle as api
 import minibatch
 import plot
+import image
 
 __all__ = [
     'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
     'event', 'data_type', 'attr', 'pooling', 'data_feeder', 'dataset', 'reader',
-    'topology', 'networks', 'infer', 'plot', 'evaluator'
+    'topology', 'networks', 'infer', 'plot', 'evaluator', 'image'
 ]
 
 
 def init(**kwargs):
     args = []
-    for key in kwargs.keys():
-        args.append('--%s=%s' % (key, str(kwargs[key])))
+    args_dict = {}
+    # NOTE: append arguments if they are in ENV
+    for ek, ev in os.environ.iteritems():
+        if ek.startswith("PADDLE_INIT_"):
+            args_dict[ek.replace("PADDLE_INIT_", "").lower()] = str(ev)
+
+    args_dict.update(kwargs)
+    # NOTE: overwrite arguments from ENV if it is in kwargs
+    for key in args_dict.keys():
+        args.append('--%s=%s' % (key, str(args_dict[key])))
 
     api.initPaddle(*args)
 
