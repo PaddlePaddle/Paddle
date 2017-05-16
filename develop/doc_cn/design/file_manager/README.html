@@ -1,0 +1,357 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>FileManager设计文档 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/evaluators.html">Evaluators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>FileManager设计文档</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="filemanager">
+<span id="filemanager"></span><h1>FileManager设计文档<a class="headerlink" href="#filemanager" title="永久链接至标题">¶</a></h1>
+<div class="section" id="">
+<span id="id1"></span><h2>目标<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>在本文档中，我们设计说明了名为FileManager系统，方便用户上传自己的训练数据以进行分布式训练</p>
+<p>主要功能包括：</p>
+<ul class="simple">
+<li>提供常用的命令行管理命令管理文件和目录</li>
+<li>支持大文件的断点上传、下载</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id2"></span><h2>名词解释<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li>PFS：是<code class="docutils literal"><span class="pre">Paddlepaddle</span> <span class="pre">cloud</span> <span class="pre">File</span> <span class="pre">System</span></code>的缩写，是对用户文件存储空间的抽象，与之相对的是local filesystem。目前我们用CephFS来搭建。</li>
+<li><a class="reference external" href="http://docs.ceph.com/docs/master/cephfs/">CephFS</a>：一个POSIX兼容的文件系统。</li>
+<li>Chunk：逻辑划上文件分块的单位。</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h2>模块<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<div class="section" id="">
+<span id="id4"></span><h3>架构图<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p><image src=./src/filemanager.png width=900></p>
+</div>
+<div class="section" id="pfsclient">
+<span id="pfsclient"></span><h3>PFSClient<a class="headerlink" href="#pfsclient" title="永久链接至标题">¶</a></h3>
+<ul class="simple">
+<li>功能： 详细设计<a class="reference internal" href="pfs/pfsclient.html"><span class="doc">link</span></a><ul>
+<li>提供用户管理文件的命令</li>
+<li>需要可以跨平台执行</li>
+</ul>
+</li>
+<li>双向验证PFSClient需要和Ingress之间做双向验证<sup><a class="reference external" href="#tls">tls</a></sup>，所以用户需要首先在<code class="docutils literal"><span class="pre">cloud.paddlepaddle.org</span></code>上注册一下，申请用户空间，并且把系统生成的CA(certificate authority)、Key、CRT(CA signed certificate)下载到本地，然后才能使用PFSClient。</li>
+</ul>
+</div>
+<div class="section" id="ingress">
+<span id="ingress"></span><h3><a class="reference external" href="https://kubernetes.io/docs/concepts/services-networking/ingress/">Ingress</a><a class="headerlink" href="#ingress" title="永久链接至标题">¶</a></h3>
+<ul class="simple">
+<li>功能：提供七层协议的反向代理、基于粘性会话的负载均衡功能。</li>
+<li>透传用户身份的办法Ingress需要把PFSClient的身份信息传给PFSServer，配置的方法参考<a class="reference external" href="http://www.integralist.co.uk/posts/clientcertauth.html#3">link</a></li>
+</ul>
+</div>
+<div class="section" id="pfsserver">
+<span id="pfsserver"></span><h3>PFSServer<a class="headerlink" href="#pfsserver" title="永久链接至标题">¶</a></h3>
+<p>PFSServer提供RESTful API接口，接收处理PFSClient端的文件管理请求，并且把结果返回PFSClient端。</p>
+<p>RESTful API</p>
+<ul class="simple">
+<li>/api/v1/files<ul>
+<li><code class="docutils literal"><span class="pre">GET</span> <span class="pre">/api/v1/files</span></code>: Get metadata of files or directories.</li>
+<li><code class="docutils literal"><span class="pre">POST</span> <span class="pre">/api/v1/files</span></code>: Create files or directories.</li>
+<li><code class="docutils literal"><span class="pre">PATCH</span> <span class="pre">/api/v1/files</span></code>: Update files or directories.</li>
+<li><code class="docutils literal"><span class="pre">DELETE</span> <span class="pre">/api/v1/files</span></code>: Delete files or directories.</li>
+</ul>
+</li>
+<li>/api/v1/file/chunks<ul>
+<li><code class="docutils literal"><span class="pre">GET</span> <span class="pre">/api/v1/storage/file/chunks</span></code>: Get chunks&#8217;s metadata of a file.</li>
+</ul>
+</li>
+<li>/api/v1/storage/files<ul>
+<li><code class="docutils literal"><span class="pre">GET</span> <span class="pre">/api/v1/storage/files</span></code>: Download files or directories.</li>
+<li><code class="docutils literal"><span class="pre">POST</span> <span class="pre">/api/v1/storage/files</span></code>: Upload files or directories.</li>
+</ul>
+</li>
+<li>/api/v1/storage/file/chunks<ul>
+<li><code class="docutils literal"><span class="pre">GET</span> <span class="pre">/api/v1/storage/file/chunks</span></code>: Download chunks&#8217;s data.</li>
+<li><code class="docutils literal"><span class="pre">POST</span> <span class="pre">/api/v1/storage/file/chunks</span></code>: Upload chunks&#8217;s data.</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h2>文件传输优化<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<div class="section" id="">
+<span id="id6"></span><h3>分块文件传输<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>用户文件可能是比较大的，上传到Cloud或者下载到本地的时间可能比较长，而且在传输的过程中也可能出现网络不稳定的情况。为了应对以上的问题，我们提出了Chunk的概念，一个Chunk由所在的文件偏移、数据、数据长度及校验值组成。文件的上传和下载都是通过对Chunk的操作来实现的。由于Chunk比较小（默认256K），完成一个传输动作完成的时间也比较短，不容易出错。PFSClient需要在传输完毕最后一个Chunk的时候检查destination文件的MD5值是否和source文件一致。</p>
+<p>一个典型的Chunk如下所示：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="nb">type</span> <span class="n">Chunk</span> <span class="n">struct</span> <span class="p">{</span>
+    <span class="n">fileOffset</span> <span class="n">int64</span>
+    <span class="n">checksum</span> <span class="n">uint32</span>
+    <span class="nb">len</span>     <span class="n">uint32</span>
+    <span class="n">data</span>    <span class="p">[]</span><span class="n">byte</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="sparse">
+<span id="sparse"></span><h3>生成sparse文件<a class="headerlink" href="#sparse" title="永久链接至标题">¶</a></h3>
+<p>当destination文件不存在或者大小和source文件不一致时，可以用<a class="reference external" href="https://Go.org/pkg/syscall/#Fallocate">Fallocate</a>生成sparse文件，然后就可以并发写入多个Chunk。</p>
+</div>
+<div class="section" id="">
+<span id="id7"></span><h3>覆盖不一致的部分<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>文件传输的的关键在于需要PFSClient端对比source和destination的文件Chunks的checksum是否保持一致，不一致的由PFSClient下载或者传输Chunk完成。这样已经传输成功的部分就不用重新传输了。</p>
+</div>
+</div>
+<div class="section" id="">
+<span id="id8"></span><h2>用户使用流程<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>参考<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/cluster_train/data_dispatch.md">link</a></p>
+</div>
+<div class="section" id="">
+<span id="id9"></span><h2>框架生成<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>用<a class="reference external" href="https://github.com/swagger-api/swagger-codegen">swagger</a>生成PFSClient和PFSServer的框架部分，以便我们可以把更多的精力放到逻辑本身上。</p>
+</div>
+<div class="section" id="">
+<span id="id10"></span><h2>参考文档<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li><a name=tls></a><a class="reference external" href="https://github.com/k8sp/tls/blob/master/tls.md">TLS complete guide</a></li>
+<li><a class="reference external" href="http://docs.aws.amazon.com/cli/latest/reference/s3/">aws.s3</a></li>
+<li><a class="reference external" href="https://linux.die.net/man/">linux man document</a></li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>
