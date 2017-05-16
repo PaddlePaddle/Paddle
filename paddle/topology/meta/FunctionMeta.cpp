@@ -35,12 +35,6 @@ FunctionMetaPtr FunctionMeta::get(const std::string &name) {
   }
 }
 
-FunctionMeta &FunctionMeta::setShapeInferer(
-    FunctionMeta::TenserShapeInferer inferer) {
-  metaAttributes_.set("shapeInferer", inferer).check();
-  return *this;
-}
-
 FunctionMeta::TenserShapeInferer FunctionMeta::getShapeInferer() const {
   const TenserShapeInferer *func;
   metaAttributes_.get("shapeInferer", &func).check();

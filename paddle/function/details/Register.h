@@ -23,42 +23,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace function {
-namespace details {
-class FunctionRegister {
-public:
-  FunctionRegister(topology::meta::FunctionMetaPtr& meta) : meta_(meta) {}
-
-  template <typename T, DeviceType devType>
-  paddle::Error reg(std::function<Error(const BufferArgs& ins,
-                                        const BufferArgs& outs,
-                                        const T& attrs)> kernel) {
-    auto meta = meta_;
-    auto key = devType == DEVICE_TYPE_CPU ? "CPUKernel" : "GPUKernel";
-    auto inited = std::make_shared<bool>(false);
-    auto tmp = std::make_shared<T>();
-    FunctionWithAttrs fn = [kernel, meta, inited, tmp](
-        const BufferArgs& ins,
-        const BufferArgs& outs,
-        const topology::AttributeMap& attrs) {
-      bool& init = *inited;
-      if (!init) {
-        auto parserFunction = meta->metaAttributes_.get<std::function<Error(
-            const topology::AttributeMap&, topology::Attribute*)>>(
-            "attribute_parser");
-        auto err = parserFunction(attrs, tmp.get());
-        if (!err.isOK()) return err;
-        init = true;
-      }
-      return kernel(ins, outs, *tmp);
-    };
-    return meta_->metaAttributes_.set(key, fn);
-  }
-
-private:
-  topology::meta::FunctionMetaPtr& meta_;
-};
-
-}  // namespace details
+namespace details {}  // namespace details
 
 }  // namespace function
 }  // namespace paddle

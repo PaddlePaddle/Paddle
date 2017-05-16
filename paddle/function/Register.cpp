@@ -138,12 +138,20 @@ public:
     }
 
     for (size_t i = 0; i < funcTopo_.inputs.size(); ++i) {
-      funcTopo_.inputs[i]->setShape(in[i].shape());
+      std::vector<size_t> tmp;
+      tmp.resize(in[i].shape().ndims());
+      for (size_t j = 0; j < tmp.size(); ++j) {
+        tmp[j] = in[i].shape()[j];
+      }
+      funcTopo_.inputs[i]->setShape(tmp);
     }
 
     //! Only check when first invoke.
     auto err = topology::validateAndInferShape(funcTopo_);
-    if (!err.isOK()) return Error("Topology error: %s", err.msg());
+    if (!err.isOK()) {
+      return Error(
+          "Function (%s) error: %s", funcTopo_.type.c_str(), err.msg());
+    }
 
     for (size_t i = 0; i < out.size(); ++i) {
       err = checkSame(funcTopo_.outputs[i], out[i]);

@@ -80,28 +80,27 @@ Error cosineForward(const BufferArgs& inputs,
 }
 
 BEGIN_REGISTER_FUNCTION(cosFwd, cosineForward, CosSimAttribute)
-    .addInput(/*dim = */ 2)
-    .addInput(/*dim = */ 2)
-    .addOutput(
-        /*shape = */ {topology::meta::kTensorShape_BATCH_SIZE, 1},
-        /*arg_type*/ ASSIGN_TO)
-    .setShapeInferer([](std::vector<topology::TensorPtr>& ins,
-                        std::vector<topology::TensorPtr>& outs) {
-      auto& shape0 = ins[0]->shape();
-      auto& shape1 = ins[1]->shape();
+addTensor<INPUT>(2);
+addTensor<INPUT>(2);
+addTensor<OUTPUT>(/*shape = */ {topology::meta::kTensorShape_BATCH_SIZE, 1},
+                  /*arg_type*/ ASSIGN_TO);
 
-      if (shape0 != shape1 && (shape0[1] != shape1[1] || shape1[0] != 1))
-        return Error(
-            "Input shape should be same, or the second height should be 1");
-      if (ins[0]->sequenceType() != ins[1]->sequenceType())
-        return Error("Input sequence type should be same");
-      outs[0]->setShape({ins[0]->shape()[0], 1});
-      outs[0]->setSequenceType(ins[0]->sequenceType());
-      outs[0]->setDataType(ins[0]->dataType());
-      return Error();
-    });
+setShapeInferer([](std::vector<topology::TensorPtr>& ins,
+                   std::vector<topology::TensorPtr>& outs) {
+  auto& shape0 = ins[0]->shape();
+  auto& shape1 = ins[1]->shape();
 
-END_REGISTER_FUNCTION()
+  if (shape0 != shape1 && (shape0[1] != shape1[1] || shape1[0] != 1))
+    return Error(
+        "Input shape should be same, or the second height should be 1");
+  if (ins[0]->sequenceType() != ins[1]->sequenceType())
+    return Error("Input sequence type should be same");
+  outs[0]->setShape({ins[0]->shape()[0], 1});
+  outs[0]->setSequenceType(ins[0]->sequenceType());
+  outs[0]->setDataType(ins[0]->dataType());
+  return Error();
+});
+END_REGISTER_FUNCTION(cosFwd);
 
 /**
  * Cosine Similarity Derivative for CpuMatrix
@@ -200,31 +199,31 @@ Error cosBackward(const BufferArgs& ins,
 }
 
 BEGIN_REGISTER_FUNCTION(cosBwd, cosBackward, CosSimAttribute)
-    .addInput({topology::meta::kTensorShape_BATCH_SIZE, 1})
-    .addInput({topology::meta::kTensorShape_BATCH_SIZE, 1})
-    .addInput(2)
-    .addInput(2)
-    .addOutput(2, ADD_TO)
-    .addOutput(2, ADD_TO)
-    .setShapeInferer([](std::vector<topology::TensorPtr>& ins,
-                        std::vector<topology::TensorPtr>& outs) -> Error {
-      if (ins[0]->shape() != ins[1]->shape() ||
-          ins[2]->shape()[1] != ins[3]->shape()[1]) {
-        return Error("Input shape mismatch");
-      }
+addTensor<INPUT>({topology::meta::kTensorShape_BATCH_SIZE, 1});
+addTensor<INPUT>({topology::meta::kTensorShape_BATCH_SIZE, 1});
+addTensor<INPUT>(2);
+addTensor<INPUT>(2);
+addTensor<OUTPUT>(2, ADD_TO);
+addTensor<OUTPUT>(2, ADD_TO);
+setShapeInferer([](std::vector<topology::TensorPtr>& ins,
+                   std::vector<topology::TensorPtr>& outs) -> Error {
+  if (ins[0]->shape() != ins[1]->shape() ||
+      ins[2]->shape()[1] != ins[3]->shape()[1]) {
+    return Error("Input shape mismatch");
+  }
 
-      if (ins[0]->shape()[0] != ins[2]->shape()[0]) {
-        return Error("Input shape mismatch, height should be same.");
-      }
+  if (ins[0]->shape()[0] != ins[2]->shape()[0]) {
+    return Error("Input shape mismatch, height should be same.");
+  }
 
-      for (size_t i = 0; i < outs.size(); ++i) {
-        auto& out = outs[i];
-        out->setShape(ins[2 + i]->shape());
-        out->setSequenceType(ins[2 + i]->sequenceType());
-        out->setDataType(ins[2 + i]->dataType());
-      }
-      return Error();
-    });
+  for (size_t i = 0; i < outs.size(); ++i) {
+    auto& out = outs[i];
+    out->setShape(ins[2 + i]->shape());
+    out->setSequenceType(ins[2 + i]->sequenceType());
+    out->setDataType(ins[2 + i]->dataType());
+  }
+  return Error();
+});
+END_REGISTER_FUNCTION(cosBwd);
 
-END_REGISTER_FUNCTION()
 }  // namespace paddle

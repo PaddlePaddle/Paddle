@@ -84,69 +84,6 @@ public:
     return arr->back();
   }
 
-  template <FunctionTensorType type>
-  FunctionMeta& addTensor(size_t dim,
-                          int argType = -1,
-                          const Set<int>& dataTypes = {DataType::DENSE},
-                          const Set<int>& seqTypes = DefaultSequenceType) {
-    TensorMetaPtr& meta = addTensor<type>();
-    meta->supportDataTypes(dataTypes)
-        .supportSequenceTypes(seqTypes)
-        .setShapeDimension(dim);
-    if (argType != -1) meta->supportArgType(argType);
-    return *this;
-  }
-
-  template <FunctionTensorType type>
-  FunctionMeta& addTensor(const std::vector<size_t>& shape,
-                          int argType = -1,
-                          const Set<int>& dataTypes = {DataType::DENSE},
-                          const Set<int>& seqTypes = DefaultSequenceType) {
-    TensorMetaPtr& meta = addTensor<type>();
-    meta->supportDataTypes(dataTypes).supportSequenceTypes(seqTypes).setShape(
-        shape);
-    if (argType != -1) meta->supportArgType(argType);
-    return *this;
-  }
-
-  // Some alias for addTensor, make user interface simple.
-  FunctionMeta& addInput(size_t dim,
-                         const Set<int>& dataTypes = {DataType::DENSE},
-                         const Set<int>& seqTypes = DefaultSequenceType) {
-    return addTensor<FunctionTensorType::INPUT>(dim, -1, dataTypes, seqTypes);
-  }
-
-  FunctionMeta& addInput(const std::vector<size_t>& shape,
-                         const Set<int>& dataTypes = {DataType::DENSE},
-                         const Set<int>& seqTypes = DefaultSequenceType) {
-    return addTensor<FunctionTensorType::INPUT>(shape, -1, dataTypes, seqTypes);
-  }
-
-  FunctionMeta& addOutput(size_t dim,
-                          int argType,
-                          const Set<int>& dataTypes = {DataType::DENSE},
-                          const Set<int>& seqTypes = DefaultSequenceType) {
-    return addTensor<FunctionTensorType::OUTPUT>(
-        dim, argType, dataTypes, seqTypes);
-  }
-
-  FunctionMeta& addOutput(const std::vector<size_t>& shape,
-                          int argType,
-                          const Set<int>& dataTypes = {DataType::DENSE},
-                          const Set<int>& seqTypes = DefaultSequenceType) {
-    return addTensor<FunctionTensorType::OUTPUT>(
-        shape, argType, dataTypes, seqTypes);
-  }
-
-  /**
-   * @brief set shape inferer function. The shape inferer is a function, which
-   * uses input tensor shapes as input, inference the output tensor should be
-   * what shape.
-   * @param inferer
-   * @return *this
-   */
-  FunctionMeta& setShapeInferer(TenserShapeInferer inferer);
-
   TenserShapeInferer getShapeInferer() const;
 
   const std::vector<TensorMetaPtr>& inputs() const { return inputs_; }
