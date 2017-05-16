@@ -8,6 +8,20 @@ void panic() {
   *(void*)0;
 }
 
+void releaseParam(paddle_parameter* param) {
+  if (param != NULL) {
+    if (param->name != NULL) {
+      free(param->name);
+    }
+
+    if (param->content != NULL) {
+      free(param->content);
+    }
+
+    free(param);
+  }
+}
+
 int main() {
   char addr[] = "localhost:3000";
   client c = paddle_new_pserver_client(addr);
@@ -50,6 +64,9 @@ int main() {
   if (!paddle_get_params(c, names, params, 2)) {
     panic();
   }
+
+  releaseParam(params[0]);
+  releaseParam(params[1]);
 
   if (!paddle_save_model(c, "/tmp/")) {
     panic();
