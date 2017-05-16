@@ -9,6 +9,13 @@ if(${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
     get_filename_component(PARENT_DIR ${PARENT_DIR} DIRECTORY)
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PARENT_DIR}/cmake")
 
+    # enable boost
+    find_package(Boost REQUIRED)
+    if(NOT Boost_FOUND)
+        message(FATAL "Cannot find Boost library.")
+    endif()
+    include_directories(${Boost_INCLUDE_DIRS})
+
     # enable c++11
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
