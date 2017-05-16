@@ -23,6 +23,8 @@ namespace meta {
 enum DataType { DENSE = 0, SPARSE_INTEGER, SPARSE, INTEGER };
 enum SequenceType { NO_SEQUENCE = 0, SEQUENCE, NESTED_SEQUENCE };
 
+extern const Set<int> DefaultSequenceType;
+
 const int kTensorShape_BATCH_SIZE = -1;
 
 class TensorMeta : public WithAttributeMeta {

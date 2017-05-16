@@ -17,6 +17,8 @@ namespace paddle {
 namespace topology {
 namespace meta {
 
+const Set<int> DefaultSequenceType = {SEQUENCE, NO_SEQUENCE, NESTED_SEQUENCE};
+
 TensorMeta &TensorMeta::setShapeDimension(
     size_t dims, Constraints<std::vector<int>> **constraints) {
   auto &cons = addAttribute<std::vector<int>>("shape", "The shape of tensor")

@@ -18,21 +18,12 @@ namespace topology {
 namespace meta {
 static Map<std::string, FunctionMetaPtr> gFuncMetas;
 
-const Set<int> FunctionMeta::defaultSeqTypes = {SequenceType::NO_SEQUENCE,
-                                                SequenceType::SEQUENCE,
-                                                SequenceType::NESTED_SEQUENCE};
-
-Error FunctionMeta::registerFuncMeta(
-    const std::string &name, std::function<Error(FunctionMetaPtr &)> func) {
-  if (gFuncMetas.find(name) != gFuncMetas.end()) {
-    return paddle::Error("Function %s has been registered", name.c_str());
-  }
+FunctionMetaPtr FunctionMeta::registerFuncMeta(const std::string &name) {
+  CHECK(gFuncMetas.find(name) == gFuncMetas.end()) << "Function " << name
+                                                   << " has been registered";
   auto metaPtr = std::make_shared<FunctionMeta>(name);
-  auto err = func(metaPtr);
-  if (err.isOK()) {
-    gFuncMetas[name] = metaPtr;
-  }
-  return err;
+  gFuncMetas[name] = metaPtr;
+  return metaPtr;
 }
 
 FunctionMetaPtr FunctionMeta::get(const std::string &name) {
@@ -42,6 +33,18 @@ FunctionMetaPtr FunctionMeta::get(const std::string &name) {
   } else {
     return nullptr;
   }
+}
+
+FunctionMeta &FunctionMeta::setShapeInferer(
+    FunctionMeta::TenserShapeInferer inferer) {
+  metaAttributes_.set("shapeInferer", inferer).check();
+  return *this;
+}
+
+FunctionMeta::TenserShapeInferer FunctionMeta::getShapeInferer() const {
+  const TenserShapeInferer *func;
+  metaAttributes_.get("shapeInferer", &func).check();
+  return *func;
 }
 
 }  // namespace meta

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 #include <paddle/utils/Any.h>
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include "../Tensor.h"
@@ -23,6 +24,11 @@ limitations under the License. */
 namespace paddle {
 namespace topology {
 namespace meta {
+namespace details {
+enum FunctionTensorType { INPUT = 0, OUTPUT };
+}  // namespace details
+
+using details::FunctionTensorType;
 
 class FunctionMeta;
 typedef std::shared_ptr<FunctionMeta> FunctionMetaPtr;
@@ -34,9 +40,6 @@ public:
       TenserShapeInferer;
 
 private:
-  const static Set<int> defaultSeqTypes;
-
-private:
   std::string name;
   TensorMetas inputs_;
   TensorMetas outputs_;
@@ -45,83 +48,60 @@ public:
   explicit FunctionMeta(const std::string& name)
       : WithAttributeMeta("function(" + name + ")'s"), name(name) {}
 
-  static paddle::Error __must_check
-  registerFuncMeta(const std::string& name,
-                   std::function<paddle::Error(FunctionMetaPtr&)> func);
+  static FunctionMetaPtr registerFuncMeta(const std::string& name);
 
   static FunctionMetaPtr get(const std::string& name);
 
-  TensorMetaPtr& addInput() {
-    inputs_.emplace_back(new TensorMeta());
-    return inputs_.back();
+  template <FunctionTensorType type>
+  TensorMetaPtr& addTensor() {
+    TensorMetas* arr = nullptr;
+    if (type == FunctionTensorType::INPUT) {
+      arr = &inputs_;
+    } else {
+      arr = &outputs_;
+    }
+    arr->emplace_back(new TensorMeta());
+    return arr->back();
   }
 
-  FunctionMeta& addInput(size_t dim,
-                         const Set<int>& dataTypes = {DataType::DENSE},
-                         const Set<int>& seqTypes = defaultSeqTypes) {
-    addInput()
-        ->supportDataTypes(dataTypes)
+  template <FunctionTensorType type>
+  FunctionMeta& addTensor(size_t dim,
+                          int argType = -1,
+                          const Set<int>& dataTypes = {DataType::DENSE},
+                          const Set<int>& seqTypes = DefaultSequenceType) {
+    TensorMetaPtr& meta = addTensor<type>();
+    meta->supportDataTypes(dataTypes)
         .supportSequenceTypes(seqTypes)
         .setShapeDimension(dim);
+    if (argType != -1) meta->supportArgType(argType);
     return *this;
   }
 
-  FunctionMeta& addInput(const std::vector<int>& shape,
-                         const Set<int>& dataTypes = {DataType::DENSE},
-                         const Set<int>& seqTypes = defaultSeqTypes) {
-    addInput()
-        ->supportDataTypes(dataTypes)
+  template <FunctionTensorType type>
+  FunctionMeta& addTensor(const std::vector<int>& shape,
+                          int argType = -1,
+                          const Set<int>& dataTypes = {DataType::DENSE},
+                          const Set<int>& seqTypes = DefaultSequenceType) {
+    TensorMetaPtr& meta = addTensor<type>();
+    meta->supportDataTypes(dataTypes)
         .supportSequenceTypes(seqTypes)
         .setShapeWithConstraints(shape);
+    if (argType != -1) meta->supportArgType(argType);
     return *this;
   }
 
-  TensorMetaPtr& addOutput() {
-    outputs_.emplace_back(new TensorMeta());
-    return outputs_.back();
-  }
+  FunctionMeta& setShapeInferer(TenserShapeInferer inferer);
 
-  FunctionMeta& addOutput(int argType,
-                          size_t dim,
-                          const Set<int>& dataTypes = {DataType::DENSE},
-                          const Set<int>& seqTypes = defaultSeqTypes) {
-    addOutput()
-        ->supportDataTypes(dataTypes)
-        .supportSequenceTypes(seqTypes)
-        .setShapeDimension(dim)
-        .supportArgType(argType);
-    return *this;
-  }
-
-  FunctionMeta& addOutput(int argType,
-                          const std::vector<int>& shape,
-                          const Set<int>& dataTypes = {DataType::DENSE},
-                          const Set<int>& seqTypes = defaultSeqTypes) {
-    addOutput()
-        ->supportDataTypes(dataTypes)
-        .supportSequenceTypes(seqTypes)
-        .setShapeWithConstraints(shape)
-        .supportArgType(argType);
-    return *this;
-  }
-
-  void setShapeInferer(TenserShapeInferer inferer) {
-    metaAttributes_.set("shapeInferer", inferer).check();
-  }
-
-  TenserShapeInferer getShapeInferer() const {
-    const TenserShapeInferer* func;
-    metaAttributes_.get("shapeInferer", &func).check();
-    return *func;
-  }
+  TenserShapeInferer getShapeInferer() const;
 
   const std::vector<TensorMetaPtr>& inputs() const { return inputs_; }
   const std::vector<TensorMetaPtr>& outputs() const { return outputs_; }
 
   template <typename T>
-  Error regAttributeParser(
+  FunctionMeta& regAttributeParser(
       const std::function<Error(const AttributeMap&, T*)>& callback) {
-    return this->metaAttributes_.set("attribute_parser", callback, false);
+    this->metaAttributes_.set("attribute_parser", callback, false).check();
+    return *this;
   }
 
   template <typename T>
