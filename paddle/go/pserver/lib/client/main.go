@@ -150,7 +150,7 @@ func paddle_send_grads(client C.client, grads *C.paddle_gradient, total C.int) C
 }
 
 //export paddle_get_params
-func paddle_get_params(client C.client, names **C.char, dst *C.paddle_parameter, total C.int) C.int {
+func paddle_get_params(client C.client, names **C.char, dst *C.paddle_parameter, reuse C.int, total C.int) C.int {
 	var ns []string
 	for i := 0; i < int(total); i++ {
 		name := *(**C.char)(unsafe.Pointer((uintptr(unsafe.Pointer(names)) + uintptr(i)*unsafe.Sizeof(*names))))
@@ -172,7 +172,7 @@ func paddle_get_params(client C.client, names **C.char, dst *C.paddle_parameter,
 		name := C.CString(p.Name)
 		param := (*C.paddle_parameter)(unsafe.Pointer((uintptr(unsafe.Pointer(dst)) + uintptr(i)*unsafe.Sizeof(*dst))))
 
-		if unsafe.Pointer(param.name) != nullPtr {
+		if reuse != 0 && unsafe.Pointer(param.name) != nullPtr {
 			if n := C.GoString(param.name); n != p.Name {
 				log.Println("warning: pre-allocated parameter name not match parameter name, pre-allocated parameter name will be freed.", n, p.Name)
 				C.free(unsafe.Pointer(param.name))
@@ -183,7 +183,7 @@ func paddle_get_params(client C.client, names **C.char, dst *C.paddle_parameter,
 		}
 
 		memReady := false
-		if param.content != nullPtr {
+		if reuse != 0 && param.content != nullPtr {
 			if int(param.content_len) < len(p.Content) {
 				memReady = true
 			} else {

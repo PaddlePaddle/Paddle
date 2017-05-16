@@ -39,13 +39,15 @@ int main() {
   }
 
   char content[] = {0x00, 0x11, 0x22};
-  paddle_gradient params[] = {{"param_a", PADDLE_ELEMENT_TYPE_INT32, content, 3}, {"param_b", PADDLE_ELEMENT_TYPE_FLOAT32, content, 3}};
-  if (!paddle_send_grads(c, params, 2)) {
+  paddle_gradient grads[2] = {{"param_a", PADDLE_ELEMENT_TYPE_INT32, content, 3}, {"param_b", PADDLE_ELEMENT_TYPE_FLOAT32, content, 3}};
+
+  if (!paddle_send_grads(c, grads, 2)) {
     panic();
   }
 
+  paddle_parameter params[2];
   char* names[]={"param_a", "param_b"};
-  if (!paddle_get_params(c, names, params, 2)) {
+  if (!paddle_get_params(c, names, params, 0, 2)) {
     panic();
   }
 
