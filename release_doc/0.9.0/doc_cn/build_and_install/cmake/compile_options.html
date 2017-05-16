@@ -1,0 +1,253 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>设置PaddlePaddle的编译选项 &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="paddlepaddle">
+<h1>设置PaddlePaddle的编译选项<a class="headerlink" href="#paddlepaddle" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle的编译选项可以在调用cmake的时候设置。cmake是一个跨平台的编译脚本，调用
+cmake可以将cmake项目文件，生成各个平台的makefile。详细的cmake使用方法可以参考
+<a class="reference external" href="https://cmake.org/cmake-tutorial">cmake的官方文档</a> 。</p>
+<p>PaddlePaddle的编译选项是可以控制PaddlePaddle生成CPU/GPU版本二进制，链接何种blas等等。所有的
+编译选项列表如下</p>
+<div class="section" id="id1">
+<h2>PaddlePaddle的编译选项<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="bool">
+<h3>bool型的编译选项<a class="headerlink" href="#bool" title="Permalink to this headline">¶</a></h3>
+<p>设置下列编译选项时，可以在cmake的命令行设置。使用 -D命令即可。例如
+<code class="code docutils literal"><span class="pre">cmake</span> <span class="pre">-D</span> <span class="pre">WITH_GPU=OFF</span></code></p>
+<table border="1" class="docutils" id="id2">
+<caption><span class="caption-text">PaddlePaddle的bool型编译选项</span><a class="headerlink" href="#id2" title="Permalink to this table">¶</a></caption>
+<colgroup>
+<col width="10%" />
+<col width="70%" />
+<col width="20%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>选项</td>
+<td>说明</td>
+<td>默认值</td>
+</tr>
+<tr class="row-even"><td>WITH_GPU</td>
+<td>是否编译GPU支持。</td>
+<td>是否寻找到cuda工具链</td>
+</tr>
+<tr class="row-odd"><td>WITH_DOUBLE</td>
+<td>是否使用双精度浮点数。</td>
+<td>否</td>
+</tr>
+<tr class="row-even"><td>WITH_DSO</td>
+<td>是否使用运行时动态加载cuda动态库，而非静态加载cuda动态库。</td>
+<td>是</td>
+</tr>
+<tr class="row-odd"><td>WITH_AVX</td>
+<td>是否编译含有AVX指令集的PaddlePaddle二进制</td>
+<td>是</td>
+</tr>
+<tr class="row-even"><td>WITH_PYTHON</td>
+<td>是否内嵌python解释器。可以方便嵌入式工作。</td>
+<td>是</td>
+</tr>
+<tr class="row-odd"><td>WITH_STYLE_CHECK</td>
+<td>是否编译时进行代码风格检查</td>
+<td>是</td>
+</tr>
+<tr class="row-even"><td>WITH_RDMA</td>
+<td>是否开启RDMA支持</td>
+<td>否</td>
+</tr>
+<tr class="row-odd"><td>WITH_GLOG</td>
+<td>是否使用GLOG，如果不使用则会使用一个简化版的日志实现。可以方便嵌入式工作。</td>
+<td>取决于是否寻找到GLOG</td>
+</tr>
+<tr class="row-even"><td>WITH_GFLAGS</td>
+<td>是否使用GFLAGS，如果不使用则会使用一个简化版的命令行参数解析。可以方便嵌入式工作。</td>
+<td>取决于是否寻找到GFLAGS</td>
+</tr>
+<tr class="row-odd"><td>WITH_TIMER</td>
+<td>是否开启计时功能开启计时功能会导致运行略慢，打印的日志变多。但是方便调试和benchmark</td>
+<td>否</td>
+</tr>
+<tr class="row-even"><td>WITH_TESTING</td>
+<td>是否开启单元测试</td>
+<td>取决于是否寻找到gtest</td>
+</tr>
+<tr class="row-odd"><td>WITH_DOC</td>
+<td>是否编译英文文档</td>
+<td>否</td>
+</tr>
+<tr class="row-even"><td>WITH_DOC_CN</td>
+<td>是否编译中文文档</td>
+<td>否</td>
+</tr>
+<tr class="row-odd"><td>WITH_SWIG_PY</td>
+<td>是否编译python的swig接口，python的swig接口可以方便进行预测和定制化训练</td>
+<td>取决于是否找到swig</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="blas">
+<h3>blas相关的编译选项<a class="headerlink" href="#blas" title="Permalink to this headline">¶</a></h3>
+<p>PaddlePaddle可以使用 <a class="reference external" href="https://software.intel.com/en-us/intel-mkl">MKL</a> ，
+<a class="reference external" href="http://math-atlas.sourceforge.net/">Atlas</a> ,
+<a class="reference external" href="http://www.openblas.net/">OpenBlas</a> 和
+<a class="reference external" href="http://www.netlib.org/blas/">refference Blas</a> ，任意一种cblas实现。
+通过编译时指定路径来实现引用各种blas。</p>
+<p>cmake编译时会首先在系统路径(/usr/lib:/usr/local/lib)中寻找这些blas的实现。同时
+也会读取相关路径变量来进行搜索。路径变量为:</p>
+<table border="1" class="docutils" id="id3">
+<caption><span class="caption-text">PaddlePaddle的cblas编译选项</span><a class="headerlink" href="#id3" title="Permalink to this table">¶</a></caption>
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">编译选项</th>
+<th class="head">描述</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>MKL_ROOT</td>
+<td>mkl的路径，在${MKL_ROOT}/include下需要包含mkl.h，在${MKL_ROOT}/lib目录下需要包含 mkl_core，mkl_sequential和mkl_intel_lp64三个库</td>
+</tr>
+<tr class="row-odd"><td>ATLAS_ROOT</td>
+<td>ATLAS库的路径，在${ATLAS_ROOT}/include下需要包含cblas.h，而在${ATLAS_ROOT}/lib下需要包含cblas和atlas两个库</td>
+</tr>
+<tr class="row-even"><td>OPENBLAS_ROOT</td>
+<td>在${OPENBLAS_ROOT}/include下需要包含cblas.h，而在${OPENBLAS_ROOT}/lib下需要包含openblas库</td>
+</tr>
+<tr class="row-odd"><td>REFERENCE_CBLAS_ROOT</td>
+<td>在${REFERENCE_CBLAS_ROOT}/include下需要包含cblas.h，在${REFERENCE_CBLAS_ROOT}/lib下需要包含cblas库</td>
+</tr>
+</tbody>
+</table>
+<p>这些变量均可以使用 -D命令指定。例如 <code class="code docutils literal"><span class="pre">cmake</span> <span class="pre">-D</span> <span class="pre">MKL_ROOT=/opt/mkl/</span></code>。这些变
+量也可以通过调用cmake命令前通过环境变量指定。例如</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">MKL_ROOT</span><span class="o">=</span>/opt/mkl
+cmake
+</pre></div>
+</div>
+<p>需要注意的是，这些变量只在第一次cmake的时候有效。如果在第一次cmake之后想要重新设
+置这些变量，推荐清理( <code class="code docutils literal"><span class="pre">rm</span> <span class="pre">-rf</span></code> )掉编译目录后，再指定。</p>
+</div>
+<div class="section" id="cuda-cudnn">
+<h3>cuda/cudnn相关的编译选项<a class="headerlink" href="#cuda-cudnn" title="Permalink to this headline">¶</a></h3>
+<p>PaddlePaddle可以使用 cudnn v2之后的任何一个cudnn版本来编译运行。但需要注意的是编译和
+运行使用的cudnn尽量是同一个版本。推荐使用最新版本的cudnn v5.1。</p>
+<p>在cmake配置时可以使用 <code class="code docutils literal"><span class="pre">CUDNN_ROOT</span></code> 来配置CUDNN的安装路径。使用的命令也是
+-D，例如 <code class="code docutils literal"><span class="pre">cmake</span> <span class="pre">-D</span> <span class="pre">CUDNN_ROOT=/opt/cudnnv5</span></code> 。</p>
+<p>需要注意的是，这些变量只在第一次cmake的时候有效。如果在第一次cmake之后想要重新设
+置这些变量，推荐清理( <code class="code docutils literal"><span class="pre">rm</span> <span class="pre">-rf</span></code> )掉编译目录后，再指定。</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">设置PaddlePaddle的编译选项</a><ul>
+<li><a class="reference internal" href="#id1">PaddlePaddle的编译选项</a><ul>
+<li><a class="reference internal" href="#bool">bool型的编译选项</a></li>
+<li><a class="reference internal" href="#blas">blas相关的编译选项</a></li>
+<li><a class="reference internal" href="#cuda-cudnn">cuda/cudnn相关的编译选项</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/build_and_install/cmake/compile_options.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,301 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Layers Documents &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Layer Documents" href="../../../layer.html" />
+    <link rel="next" title="Base" href="layer.html" />
+    <link rel="prev" title="Layer Documents" href="../../../layer.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="layer.html" title="Base"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../../../layer.html" title="Layer Documents"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../layer.html" accesskey="U">Layer Documents</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="layers-documents">
+<h1>Layers Documents<a class="headerlink" href="#layers-documents" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="layer.html">Base</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#layer">Layer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#projection">Projection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#operator">Operator</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#data-layer">Data Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#fully-connected-layers">Fully Connected Layers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#fullyconnectedlayer">FullyConnectedLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#selectivefullyconnectedlayer">SelectiveFullyConnectedLayer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#conv-layers">Conv Layers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#convbaselayer">ConvBaseLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#convoperator">ConvOperator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#convshiftlayer">ConvShiftLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#cudnnconvlayer">CudnnConvLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#expandconvlayer">ExpandConvLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#contextprojection">ContextProjection</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#pooling-layers">Pooling Layers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#poollayer">PoolLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#poolprojectionlayer">PoolProjectionLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#cudnnpoollayer">CudnnPoolLayer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#norm-layers">Norm Layers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#normlayer">NormLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#cmrprojectionnormlayer">CMRProjectionNormLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#datanormlayer">DataNormLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#responsenormlayer">ResponseNormLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#batchnormbaselayer">BatchNormBaseLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#batchnormalizationlayer">BatchNormalizationLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#cudnnbatchnormlayer">CudnnBatchNormLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#sumtoonenormlayer">SumToOneNormLayer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#activation-layer">Activation Layer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#parameterrelulayer">ParameterReluLayer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#recurrent-layers">Recurrent Layers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#recurrentlayer">RecurrentLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#sequencetobatch">SequenceToBatch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#lstm">LSTM</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#lstmlayer">LstmLayer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#lstmsteplayer">LstmStepLayer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#lstmcompute">LstmCompute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#mdlstm">MDLSTM</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#mdlstmlayer">MDLstmLayer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#coorditerator">CoordIterator</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#gru">GRU</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#gatedrecurrentlayer">GatedRecurrentLayer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#grusteplayer">GruStepLayer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#grucompute">GruCompute</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#recurrent-layer-group">Recurrent Layer Group</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#agentlayer">AgentLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#sequenceagentlayer">SequenceAgentLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#gatheragentlayer">GatherAgentLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#sequencegatheragentlayer">SequenceGatherAgentLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#scatteragentlayer">ScatterAgentLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#sequencescatteragentlayer">SequenceScatterAgentLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#getoutputlayer">GetOutputLayer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#mixed-layer">Mixed Layer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#dotmulprojection">DotMulProjection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#dotmuloperator">DotMulOperator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#fullmatrixprojection">FullMatrixProjection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#identityprojection">IdentityProjection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#identityoffsetprojection">IdentityOffsetProjection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#tableprojection">TableProjection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#transposedfullmatrixprojection">TransposedFullMatrixProjection</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#aggregate-layers">Aggregate Layers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#aggregate">Aggregate</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#averagelayer">AverageLayer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#maxlayer">MaxLayer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#sequencelastinstancelayer">SequenceLastInstanceLayer</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#concat">Concat</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#concatenatelayer">ConcatenateLayer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#concatenatelayer2">ConcatenateLayer2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#sequenceconcatlayer">SequenceConcatLayer</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#subset">Subset</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#subsequencelayer">SubSequenceLayer</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#reshaping-layers">Reshaping Layers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#blockexpandlayer">BlockExpandLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#expandlayer">ExpandLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#featuremapexpandlayer">FeatureMapExpandLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#resizelayer">ResizeLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#sequencereshapelayer">SequenceReshapeLayer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#math-layers">Math Layers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#addtolayer">AddtoLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#convexcombinationlayer">ConvexCombinationLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#interpolationlayer">InterpolationLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#multiplexlayer">MultiplexLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#outerprodlayer">OuterProdLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#powerlayer">PowerLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#scalinglayer">ScalingLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#slopeinterceptlayer">SlopeInterceptLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#tensorlayer">TensorLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#translayer">TransLayer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#sampling-layers">Sampling Layers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#multinomialsampler">MultinomialSampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#maxidlayer">MaxIdLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#samplingidlayer">SamplingIdLayer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#cost-layers">Cost Layers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#costlayer">CostLayer</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#hubertwoclass">HuberTwoClass</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#lambdacost">LambdaCost</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#multibinarylabelcrossentropy">MultiBinaryLabelCrossEntropy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#multiclasscrossentropy">MultiClassCrossEntropy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#multiclasscrossentropywithselfnorm">MultiClassCrossEntropyWithSelfNorm</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#rankingcost">RankingCost</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#softbinaryclasscrossentropy">SoftBinaryClassCrossEntropy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#sumofsquarescostlayer">SumOfSquaresCostLayer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#sumcostlayer">SumCostLayer</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#cossimlayer">CosSimLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#cossimvecmatlayer">CosSimVecMatLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#crfdecodinglayer">CRFDecodingLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#crflayer">CRFLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#ctclayer">CTCLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#hierarchicalsigmoidlayer">HierarchicalSigmoidLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#linearchaincrf">LinearChainCRF</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#linearchainctc">LinearChainCTC</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#ncelayer">NCELayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#validation-layers">Validation Layers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#validationlayer">ValidationLayer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#aucvalidation">AucValidation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html#pnpairvalidation">PnpairValidation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="layer.html#check-layers">Check Layers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer.html#eosidchecklayer">EosIdCheckLayer</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../../../layer.html"
+                        title="previous chapter">Layer Documents</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="layer.html"
+                        title="next chapter">Base</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/source/gserver/layers/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="layer.html" title="Base"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../../../layer.html" title="Layer Documents"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../layer.html" >Layer Documents</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

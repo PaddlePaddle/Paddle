@@ -1,0 +1,216 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>CustomStackTrace &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="Source Code Documents" href="../index.html" />
+    <link rel="next" title="enumeration_wrapper" href="enum.html" />
+    <link rel="prev" title="API" href="../api/api.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="enum.html" title="enumeration_wrapper"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../api/api.html" title="API"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="customstacktrace">
+<h1>CustomStackTrace<a class="headerlink" href="#customstacktrace" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="class-customstacktrace">
+<h2>class CustomStackTrace<a class="headerlink" href="#class-customstacktrace" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<span class="target" id="paddleclasspaddle_1_1CustomStackTrace"></span><em class="property">template </em>&lt;<em class="property">typename</em> T&gt;</dt>
+<dt id="_CPPv2N6paddle16CustomStackTraceE">
+<span id="paddle::CustomStackTrace"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">CustomStackTrace</code><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTraceE" title="Permalink to this definition">¶</a></dt>
+<dd><p>A ThreadLocal stack for tracing train/test process. (More details of ThreadLocal can be find in the comments of ThreadLocal class.)</p>
+<p>For example. <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span><span class="p">::</span><span class="n">CustomStackTrace</span><span class="o">&lt;</span><span class="n">std</span><span class="p">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">stack</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="n">auto</span><span class="o">&amp;</span> <span class="n">layer</span> <span class="p">:</span> <span class="n">layers</span><span class="p">){</span>
+  <span class="n">stack</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">layer</span><span class="o">-&gt;</span><span class="n">getName</span><span class="p">());</span>
+  <span class="n">layer</span><span class="o">-&gt;</span><span class="n">forward</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">);</span>  <span class="o">//</span> <span class="n">mark</span> <span class="n">under</span> <span class="n">pop</span> <span class="n">stage</span><span class="o">.</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="n">auto</span> <span class="n">it</span> <span class="o">=</span> <span class="n">layers</span><span class="o">.</span><span class="n">rbegin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">layers</span><span class="o">.</span><span class="n">rend</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">){</span>
+  <span class="n">auto</span><span class="o">&amp;</span> <span class="n">layer</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
+  <span class="n">layer</span><span class="o">-&gt;</span><span class="n">backward</span><span class="p">(</span><span class="n">passType</span><span class="p">);</span>
+  <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">layer</span><span class="o">-&gt;</span><span class="n">getName</span><span class="p">());</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+ </p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Types</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle16CustomStackTrace12DumpCallbackE">
+<span id="paddle::CustomStackTrace::DumpCallback"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1a20aa01a42317e892007a44f79da691ee"></span><em class="property">typedef </em>std::function&lt;void<span class="sig-paren">(</span><em class="property">const</em> std::thread::id&amp;, bool *, <em class="property">const</em> T&amp;<span class="sig-paren">)</span>&gt; <code class="descname">DumpCallback</code><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace12DumpCallbackE" title="Permalink to this definition">¶</a></dt>
+<dd><p>DumpCallback Type. It will be invoked many times by dump method. </p>
+<p>The first parameter is stack thread id. The second parameter is the last action of stack is push or not. The third parameter is the item in stack. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle16CustomStackTrace3popERK1T">
+<span id="paddle::CustomStackTrace::pop__TCR"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1a1667d0cc62656c2b5503d1b4e2b5b1e9"></span>void <code class="descname">pop</code><span class="sig-paren">(</span><em class="property">const</em> T &amp;<em>item</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace3popERK1T" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pop out an item from the top of the stack if item == top. Else, just set status to popping. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16CustomStackTrace5clearEv">
+<span id="paddle::CustomStackTrace::clear"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1af2c8f589407dc9b154c0b23d13547308"></span>void <code class="descname">clear</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace5clearEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>clear current thread stack. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle16CustomStackTrace5emptyEv">
+<span id="paddle::CustomStackTrace::emptyC"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1a7ca345481c51b1d161d17e96dd781fe6"></span>bool <code class="descname">empty</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle16CustomStackTrace5emptyEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>return true if all thread&#8217;s stack is empty. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>true if empty </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16CustomStackTrace4dumpERK12DumpCallbackb">
+<span id="paddle::CustomStackTrace::dump__DumpCallbackCR.b"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1ad9ca1717c54c24c13f9accc21a02f9f5"></span>void <code class="descname">dump</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle16CustomStackTrace12DumpCallbackE" title="paddle::CustomStackTrace::DumpCallback">DumpCallback</a> &amp;<em>callback</em>, bool <em>onlyCurrentThread</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace4dumpERK12DumpCallbackb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dump all thread stack, and all stack will be cleared. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16CustomStackTrace4pushERK1T">
+<span id="paddle::CustomStackTrace::push__TCR"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1ac6bbb68065cf534f66b8bf747151eebf"></span>void <code class="descname">push</code><span class="sig-paren">(</span><em class="property">const</em> T &amp;<em>item</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace4pushERK1T" title="Permalink to this definition">¶</a></dt>
+<dd><p>Push item to current thread stack. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">CustomStackTrace</a><ul>
+<li><a class="reference internal" href="#class-customstacktrace">class CustomStackTrace</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../api/api.html"
+                        title="previous chapter">API</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="enum.html"
+                        title="next chapter">enumeration_wrapper</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/source/utils/customStackTrace.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="enum.html" title="enumeration_wrapper"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../api/api.html" title="API"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

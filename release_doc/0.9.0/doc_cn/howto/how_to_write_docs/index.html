@@ -1,0 +1,160 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>如何贡献/修改PaddlePaddle的文档 &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="paddlepaddle">
+<h1>如何贡献/修改PaddlePaddle的文档<a class="headerlink" href="#paddlepaddle" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle的文档使用 <a class="reference external" href="https://cmake.org/">cmake</a> 驱动 <a class="reference external" href="http://www.sphinx-doc.org/en/1.4.8/">sphinx</a> 生成。公有两个文档，<code class="code docutils literal"><span class="pre">doc</span></code> 和 <code class="code docutils literal"><span class="pre">doc_cn</span></code> 。这两者会在 <a class="reference external" href="https://cmake.org/">cmake</a> 中进行编译，生成后的文档会存储在服务器的 <code class="code docutils literal"><span class="pre">doc</span></code> 和 <code class="code docutils literal"><span class="pre">doc_cn</span></code> 两个目录下。</p>
+<p>下面分几个部分介绍一下PaddlePaddle文档的贡献方法。</p>
+<div class="section" id="id1">
+<h2>如何书写PaddlePaddle的文档<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>TBD</p>
+</div>
+<div class="section" id="id2">
+<h2>如何构建PaddlePaddle的文档<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>构建PaddlePaddle文档，需要使用构建Paddle的全部环境。准备这个环境相对来说比较复杂，所以本文档提供两种方式构建PaddlePaddle的文档，即</p>
+<ul class="simple">
+<li>使用Docker构建PaddlePaddle的文档</li>
+<li>直接构建PaddlePaddle的文档。</li>
+</ul>
+<p>并且，我们推荐使用Docker来构建PaddlePaddle的文档。</p>
+<div class="section" id="dockerpaddlepaddle">
+<h3>使用Docker构建PaddlePaddle的文档<a class="headerlink" href="#dockerpaddlepaddle" title="Permalink to this headline">¶</a></h3>
+<p>使用Docker构建PaddlePaddle的文档，首先要求在系统里安装好Docker工具包。安装Docker请参考 <a class="reference external" href="https://docs.docker.com/">Docker的官网</a> 。</p>
+<p>安装好Docker之后可以使用源码目录下的脚本构建文档，即</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> TO_YOUR_PADDLE_CLONE_PATH
+<span class="nb">cd</span> paddle/scripts/tools/build_docs
+bash build_docs.sh
+</pre></div>
+</div>
+<p>执行完这个脚本后，该目录下会生成两个目录，分别是:</p>
+<ul class="simple">
+<li>doc 目录，英文文档地址</li>
+<li>doc_cn 目录，中文文档地址</li>
+</ul>
+<p>打开浏览器访问对应目录下的index.html即可访问本地文档。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>open doc_cn/index.html
+</pre></div>
+</div>
+</div>
+<div class="section" id="id3">
+<h3>直接构建PaddlePaddle的文档<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>TBD</p>
+</div>
+</div>
+<div class="section" id="www-paddlepaddle-org">
+<h2>如何更新www.paddlepaddle.org文档<a class="headerlink" href="#www-paddlepaddle-org" title="Permalink to this headline">¶</a></h2>
+<p>TBD</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">如何贡献/修改PaddlePaddle的文档</a><ul>
+<li><a class="reference internal" href="#id1">如何书写PaddlePaddle的文档</a></li>
+<li><a class="reference internal" href="#id2">如何构建PaddlePaddle的文档</a><ul>
+<li><a class="reference internal" href="#dockerpaddlepaddle">使用Docker构建PaddlePaddle的文档</a></li>
+<li><a class="reference internal" href="#id3">直接构建PaddlePaddle的文档</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#www-paddlepaddle-org">如何更新www.paddlepaddle.org文档</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/howto/how_to_write_docs/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

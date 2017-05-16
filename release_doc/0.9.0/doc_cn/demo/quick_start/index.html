@@ -1,0 +1,615 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>PaddlePaddle快速入门教程 &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="paddlepaddle">
+<span id="paddlepaddle"></span><h1>PaddlePaddle快速入门教程<a class="headerlink" href="#paddlepaddle" title="Permalink to this headline">¶</a></h1>
+<p>我们以文本分类问题作为背景，介绍PaddlePaddle使用流程和常用的网络基础单元的配置方法。</p>
+<div class="section" id="install">
+<span id="install"></span><h2>安装(Install)<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h2>
+<p>首先请参考<a href = "../../build_and_install/index.html">安装教程</a>安装PaddlePaddle。</p>
+</div>
+<div class="section" id="overview">
+<span id="overview"></span><h2>使用概述(Overview)<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p><strong>文本分类问题</strong>：对于给定的一条文本， 我们从提前给定的类别集合中选择其所属类
+别。比如通过用户对电子商务网站评论，评估产品的质量：</p>
+<ul class="simple">
+<li>这个显示器很棒！ （好评）</li>
+<li>用了两个月之后这个显示器屏幕碎了。（差评）</li>
+</ul>
+<p>每一个任务流程都可以分为如下5个基础部分。
+<center> <img alt="" src="../../_images/Pipeline.jpg" /> </center></p>
+<ol class="simple">
+<li>数据格式准备<ul>
+<li>每行保存一条样本，类别Id 和文本信息用Tab间隔， 文本中的单词用空格分隔（如果不切词，则字与字之间用空格分隔），例如：<code class="docutils literal"><span class="pre">类别Id</span> <span class="pre">‘\t’</span> <span class="pre">这</span> <span class="pre">个</span> <span class="pre">显</span> <span class="pre">示</span> <span class="pre">器</span> <span class="pre">很</span> <span class="pre">棒</span> <span class="pre">！</span></code></li>
+</ul>
+</li>
+<li>数据向模型传送<ul>
+<li>PaddlePaddle可以读取Python写的传输数据脚本，所有字符都将转换为连续整数表示的Id传给模型</li>
+</ul>
+</li>
+<li>网络结构（由易到难展示4种不同的网络配置）<ul>
+<li>逻辑回归模型</li>
+<li>词向量模型</li>
+<li>卷积模型</li>
+<li>时序模型</li>
+<li>优化算法</li>
+</ul>
+</li>
+<li>训练模型</li>
+<li>预测</li>
+</ol>
+</div>
+<div class="section" id="data-preparation">
+<span id="data-preparation"></span><h2>数据格式准备(Data Preparation)<a class="headerlink" href="#data-preparation" title="Permalink to this headline">¶</a></h2>
+<p>在本问题中，我们使用<a class="reference external" href="http://jmcauley.ucsd.edu/data/amazon/">Amazon电子产品评论数据</a>，
+将评论分为好评(正样本)和差评(负样本)两类。<a class="reference external" href="https://github.com/baidu/Paddle">源码</a>的<code class="docutils literal"><span class="pre">demo/quick_start</span></code>里提供了数据下载脚本
+和预处理脚本。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/quick_start
+./data/get_data.sh
+./preprocess.sh
+</pre></div>
+</div>
+</div>
+<div class="section" id="transfer-data-to-model">
+<span id="transfer-data-to-model"></span><h2>数据向模型传送(Transfer Data to Model)<a class="headerlink" href="#transfer-data-to-model" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="python-data-provider-script">
+<span id="python-data-provider-script"></span><h3>Python数据加载脚本(Data Provider Script)<a class="headerlink" href="#python-data-provider-script" title="Permalink to this headline">¶</a></h3>
+<p>下面dataprovider_bow.py文件给出了完整例子，主要包括两部分：</p>
+<ul class="simple">
+<li>initalizer： 定义文本信息、类别Id的数据类型。</li>
+<li>process： yield文本信息和类别Id，和initalizer里定义顺序一致。</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer.PyDataProvider2</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c1"># id of the word not in dictionary</span>
+<span class="n">UNK_IDX</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="c1"># initializer is called by the framework during initialization.</span>
+<span class="c1"># It allows the user to describe the data types and setup the</span>
+<span class="c1"># necessary data structure for later use.</span>
+<span class="c1"># `settings` is an object. initializer need to properly fill settings.input_types.</span>
+<span class="c1"># initializer can also store other data structures needed to be used at process().</span>
+<span class="c1"># In this example, dictionary is stored in settings.</span>
+<span class="c1"># `dictionay` and `kwargs` are arguments passed from trainer_config.lr.py</span>
+<span class="k">def</span> <span class="nf">initializer</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="c1"># Put the word dictionary into settings</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span> <span class="o">=</span> <span class="n">dictionary</span>
+
+    <span class="c1"># setting.input_types specifies what the data types the data provider</span>
+    <span class="c1"># generates.</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">input_types</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="c1"># The first input is a sparse_binary_vector,</span>
+        <span class="c1"># which means each dimension of the vector is either 0 or 1. It is the</span>
+        <span class="c1"># bag-of-words (BOW) representation of the texts.</span>
+        <span class="n">sparse_binary_vector</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dictionary</span><span class="p">)),</span>
+        <span class="c1"># The second input is an integer. It represents the category id of the</span>
+        <span class="c1"># sample. 2 means there are two labels in the dataset.</span>
+        <span class="c1"># (1 for positive and 0 for negative)</span>
+        <span class="n">integer_value</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
+
+<span class="c1"># Delaring a data provider. It has an initializer &#39;data_initialzer&#39;.</span>
+<span class="c1"># It will cache the generated data of the first pass in memory, so that</span>
+<span class="c1"># during later pass, no on-the-fly data generation will be needed.</span>
+<span class="c1"># `setting` is the same object used by initializer()</span>
+<span class="c1"># `file_name` is the name of a file listed train_list or test_list file given</span>
+<span class="c1"># to define_py_data_sources2(). See trainer_config.lr.py.</span>
+<span class="nd">@provider</span><span class="p">(</span><span class="n">init_hook</span><span class="o">=</span><span class="n">initializer</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">CacheType</span><span class="o">.</span><span class="n">CACHE_PASS_IN_MEM</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+    <span class="c1"># Open the input data file.</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="c1"># Read each line.</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+            <span class="c1"># Each line contains the label and text of the comment, separated by \t.</span>
+            <span class="n">label</span><span class="p">,</span> <span class="n">comment</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Split the words into a list.</span>
+            <span class="n">words</span> <span class="o">=</span> <span class="n">comment</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+            <span class="c1"># convert the words into a list of ids by looking them up in word_dict.</span>
+            <span class="n">word_vector</span> <span class="o">=</span> <span class="p">[</span><span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">UNK_IDX</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span><span class="p">]</span>
+
+            <span class="c1"># Return the features for the current comment. The first is a list</span>
+            <span class="c1"># of ids representing a 0-1 binary sparse vector of the text,</span>
+            <span class="c1"># the second is the integer id of the label.</span>
+            <span class="k">yield</span> <span class="n">word_vector</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="data-provider-in-configure">
+<span id="data-provider-in-configure"></span><h3>配置中的数据加载定义(Data Provider in Configure)<a class="headerlink" href="#data-provider-in-configure" title="Permalink to this headline">¶</a></h3>
+<p>在模型配置中利用<code class="docutils literal"><span class="pre">define_py_data_sources2</span></code>加载数据：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="nb">file</span> <span class="o">=</span> <span class="s2">&quot;data/dict.txt&quot;</span>
+<span class="n">word_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">dict_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">word_dict</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+<span class="c1"># define the data sources for the model.</span>
+<span class="c1"># We need to use different process for training and prediction.</span>
+<span class="c1"># For training, the input data includes both word IDs and labels.</span>
+<span class="c1"># For prediction, the input data only includs word Ids.</span>
+<span class="n">define_py_data_sources2</span><span class="p">(</span><span class="n">train_list</span><span class="o">=</span><span class="s1">&#39;data/train.list&#39;</span><span class="p">,</span>
+                        <span class="n">test_list</span><span class="o">=</span><span class="s1">&#39;data/test.list&#39;</span><span class="p">,</span>
+                        <span class="n">module</span><span class="o">=</span><span class="s2">&quot;dataprovider_bow&quot;</span><span class="p">,</span>
+                        <span class="n">obj</span><span class="o">=</span><span class="s2">&quot;process&quot;</span><span class="p">,</span>
+                        <span class="n">args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;dictionary&quot;</span><span class="p">:</span> <span class="n">word_dict</span><span class="p">})</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>data/train.list,data/test.list: 指定训练、测试数据</li>
+<li>module=&#8221;dataprovider&#8221;: 数据处理Python文件名</li>
+<li>obj=&#8221;process&#8221;: 指定生成数据的函数</li>
+<li>args={&#8220;dictionary&#8221;: word_dict}: 额外的参数，这里指定词典</li>
+</ul>
+<p>更详细数据格式和用例请参考<a href = "../../ui/data_provider/pydataprovider2.html">
+PyDataProvider2</a>。</p>
+</div>
+</div>
+<div class="section" id="network-architecture">
+<span id="network-architecture"></span><h2>网络结构(Network Architecture)<a class="headerlink" href="#network-architecture" title="Permalink to this headline">¶</a></h2>
+<p>本节我们将专注于网络结构的介绍。
+<center> <img alt="" src="../../_images/PipelineNetwork.jpg" /> </center></p>
+<p>我们将以基本的逻辑回归网络作为起点，并逐渐展示更加深入的功能。更详细的网络配置
+连接请参考<a href = "../../../doc/layer.html">Layer文档</a>。
+所有配置在<a class="reference external" href="https://github.com/baidu/Paddle">源码</a><code class="docutils literal"><span class="pre">demo/quick_start</span></code>目录，首先列举逻辑回归网络。</p>
+<div class="section" id="logistic-regression">
+<span id="logistic-regression"></span><h3>逻辑回归模型(Logistic Regression)<a class="headerlink" href="#logistic-regression" title="Permalink to this headline">¶</a></h3>
+<p>流程如下：
+<center> <img alt="" src="../../_images/NetLR.jpg" /> </center></p>
+<ul class="simple">
+<li>获取利用one-hot vector表示的每个单词，维度是词典大小</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">word</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;word&quot;</span><span class="p">,</span>  <span class="n">size</span><span class="o">=</span><span class="n">word_dim</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>获取该条样本类别Id，维度是类别个数。</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">label</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">label_dim</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>利用逻辑回归模型对该向量进行分类，同时会计算分类准确率</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># Define a fully connected layer with logistic activation (also called softmax activation).</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">word</span><span class="p">,</span>
+                  <span class="n">size</span><span class="o">=</span><span class="n">label_dim</span><span class="p">,</span>
+                  <span class="n">act_type</span><span class="o">=</span><span class="n">SoftmaxActivation</span><span class="p">())</span>
+<span class="c1"># Define cross-entropy classification loss and error.</span>
+<span class="n">classification_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">output</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>input: 除过data层，每个层都有一个或多个input,多个input以list方式输入</li>
+<li>size: 该层神经元个数</li>
+<li>act_type: 激活函数类型</li>
+</ul>
+<p>效果总结：我们将在后面介绍训练和预测的流程的脚本。在此为方便对比不同网络结构，
+我们随时总结了各个网络的复杂度和效果。</p>
+<p><html>
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border"><thead>
+<th scope="col" class="left">网络名称</th>
+<th scope="col" class="left">参数数量</th>
+<th scope="col" class="left">错误率</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">逻辑回归</td>
+<td class="left">252 KB</td>
+<td class="left">8.652%</td>
+</tr></tbody>
+</table></center>
+</html>
+<br></div>
+<div class="section" id="word-vector">
+<span id="word-vector"></span><h3>词向量模型(Word Vector)<a class="headerlink" href="#word-vector" title="Permalink to this headline">¶</a></h3>
+<p>embedding模型需要稍微改变数据提供的脚本，即<code class="docutils literal"><span class="pre">dataprovider_emb.py</span></code>，词向量模型、
+卷积模型、时序模型均使用该脚本。其中文本输入类型定义为整数时序类型integer_value_sequence。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">initializer</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span> <span class="o">=</span> <span class="n">dictionary</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">input_types</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="c1"># Define the type of the first input as sequence of integer.</span>
+        <span class="c1"># The value of the integers range from 0 to len(dictrionary)-1</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dictionary</span><span class="p">)),</span>
+        <span class="c1"># Define the second input for label id</span>
+        <span class="n">integer_value</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
+
+<span class="nd">@provider</span><span class="p">(</span><span class="n">init_hook</span><span class="o">=</span><span class="n">initializer</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+    <span class="o">...</span>
+    <span class="c1"># omitted, it is same as the data provider for LR model</span>
+</pre></div>
+</div>
+<p>该模型依然是使用逻辑回归分类网络的框架， 只是将句子利用连续向量表示替换稀疏
+向量表示， 即对第3步进行替换。句子表示的计算更新为2步：
+<center> <img alt="" src="../../_images/NetContinuous.jpg" /> </center></p>
+<ul class="simple">
+<li>利用单词Id查找对应的该单词的连续表示向量(维度为word_dim)， 输入N个单词，输出为N个word_dim维度向量</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">emb</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">word</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">word_dim</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>将该句话包含的所有单词向量求平均得到句子的表示</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">avg</span> <span class="o">=</span> <span class="n">pooling_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">emb</span><span class="p">,</span> <span class="n">pooling_type</span><span class="o">=</span><span class="n">AvgPooling</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>其它部分和逻辑回归网络结构一致。
+效果总结：</p>
+<p><html>
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border"><thead>
+<th scope="col" class="left">网络名称</th>
+<th scope="col" class="left">参数数量</th>
+<th scope="col" class="left">错误率</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">词向量模型</td>
+<td class="left">15 MB</td>
+<td class="left">8.484%</td>
+</tr></tbody>
+</table>
+</html></center>
+<br></div>
+<div class="section" id="convolution">
+<span id="convolution"></span><h3>卷积模型(Convolution)<a class="headerlink" href="#convolution" title="Permalink to this headline">¶</a></h3>
+<p>卷积网络是一种特殊的从词向量表示到句子表示的方法， 也就是将词向量模型额步
+骤3-2进行进一步演化， 变为3个新的子步骤。
+<center> <img alt="" src="../../_images/NetConv.jpg" /> </center></p>
+<p>文本卷积分为三个步骤：</p>
+<ol class="simple">
+<li>获取每个单词左右各k个近邻， 拼接成一个新的向量表示；</li>
+<li>对该表示进行非线性变换 （例如Sigmoid变换）, 成为维度为hidden_dim的新的向量；</li>
+<li>在每个维度上取出在该句话新的向量集合上该维度的最大值作为最后的句子表示向量。 这3个子步骤可配置为:</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">text_conv</span> <span class="o">=</span> <span class="n">sequence_conv_pool</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">emb</span><span class="p">,</span>
+                               <span class="n">context_start</span><span class="o">=</span><span class="n">k</span><span class="p">,</span>
+                               <span class="n">context_len</span><span class="o">=</span><span class="mi">2</span> <span class="o">*</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>效果总结：</p>
+<p><html>
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border"><thead>
+<th scope="col" class="left">网络名称</th>
+<th scope="col" class="left">参数数量</th>
+<th scope="col" class="left">错误率</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">卷积模型</td>
+<td class="left">16 MB</td>
+<td class="left">5.628%</td>
+</tr></tbody>
+</table></center>
+<br></div>
+<div class="section" id="time-sequence">
+<span id="time-sequence"></span><h3>时序模型(Time Sequence)<a class="headerlink" href="#time-sequence" title="Permalink to this headline">¶</a></h3>
+<p><center> <img alt="" src="../../_images/NetRNN.jpg" /> </center></p>
+<p>时序模型即为RNN模型, 包括简单的RNN模型、GRU模型、LSTM模型等。</p>
+<ul class="simple">
+<li>GRU模型配置：</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">gru</span> <span class="o">=</span> <span class="n">simple_gru</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">emb</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">gru_size</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>LSTM模型配置：</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">lstm</span> <span class="o">=</span> <span class="n">simple_lstm</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">emb</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">lstm_size</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>针对本问题，我们采用单层LSTM模型，并使用了Dropout，效果总结：</p>
+<p><html>
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border"><thead>
+<th scope="col" class="left">网络名称</th>
+<th scope="col" class="left">参数数量</th>
+<th scope="col" class="left">错误率</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">时序模型</td>
+<td class="left">16 MB</td>
+<td class="left">4.812%</td>
+</tr></tbody>
+</table></center>
+</html>
+<br></div>
+</div>
+<div class="section" id="optimization-algorithm">
+<span id="optimization-algorithm"></span><h2>优化算法(Optimization Algorithm)<a class="headerlink" href="#optimization-algorithm" title="Permalink to this headline">¶</a></h2>
+<p><a href = "../../../doc/ui/trainer_config_helpers_api.html#module-paddle.trainer_config_helpers.optimizers">优化算法</a>包括
+Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优化方法，加了L2正则和梯度截断。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">settings</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+         <span class="n">learning_rate</span><span class="o">=</span><span class="mf">2e-3</span><span class="p">,</span>
+         <span class="n">learning_method</span><span class="o">=</span><span class="n">AdamOptimizer</span><span class="p">(),</span>
+         <span class="n">regularization</span><span class="o">=</span><span class="n">L2Regularization</span><span class="p">(</span><span class="mf">8e-4</span><span class="p">),</span>
+         <span class="n">gradient_clipping_threshold</span><span class="o">=</span><span class="mi">25</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="training-model">
+<span id="training-model"></span><h2>训练模型(Training Model)<a class="headerlink" href="#training-model" title="Permalink to this headline">¶</a></h2>
+<p>在完成了数据和网络结构搭建之后， 我们进入到训练部分。
+<center> <img alt="" src="../../_images/PipelineTrain.jpg" /> </center></p>
+<p>训练脚本：我们将训练的命令行保存在了 <code class="docutils literal"><span class="pre">train.sh</span></code>文件中。训练时所需设置的主要参数如下：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train <span class="se">\</span>
+--config<span class="o">=</span>trainer_config.py <span class="se">\</span>
+--log_period<span class="o">=</span><span class="m">20</span> <span class="se">\</span>
+--save_dir<span class="o">=</span>./output <span class="se">\</span>
+--num_passes<span class="o">=</span><span class="m">15</span> <span class="se">\</span>
+--use_gpu<span class="o">=</span><span class="nb">false</span>
+</pre></div>
+</div>
+<p>这里没有介绍多机分布式训练，可以参考<a href = "../../cluster/index.html">分布式训练</a>的demo学习如何进行多机训练。</p>
+</div>
+<div class="section" id="prediction">
+<span id="prediction"></span><h2>预测(Prediction)<a class="headerlink" href="#prediction" title="Permalink to this headline">¶</a></h2>
+<p>可以使用训练好的模型评估带有label的验证集，也可以预测没有label的测试集。
+<center> <img alt="" src="../../_images/PipelineTest.jpg" /> </center></p>
+<p>测试脚本如下，将会测试配置文件中test.list指定的数据。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train <span class="se">\</span>
+--use_gpu<span class="o">=</span><span class="nb">false</span> <span class="se">\</span>
+--job<span class="o">=</span><span class="nb">test</span> <span class="se">\</span>
+--init_model_path<span class="o">=</span>./output/pass-0000x
+</pre></div>
+</div>
+<p>可以参考<a href = "../../ui/predict/swig_py_paddle.html">Python API预测</a>
+教程，或其他<a href = "../../demo/index.html">demo</a>的Python预测过程。也可以通过如下方式预测。</p>
+<p>预测脚本(<code class="docutils literal"><span class="pre">predict.sh</span></code>)：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">model</span><span class="o">=</span><span class="s2">&quot;output/pass-00003&quot;</span>
+paddle train <span class="se">\</span>
+    --config<span class="o">=</span>trainer_config.lstm.py <span class="se">\</span>
+    --use_gpu<span class="o">=</span><span class="nb">false</span> <span class="se">\</span>
+    --job<span class="o">=</span><span class="nb">test</span> <span class="se">\</span>
+    --init_model_path<span class="o">=</span><span class="nv">$model</span> <span class="se">\</span>
+    --config_args<span class="o">=</span><span class="nv">is_predict</span><span class="o">=</span><span class="m">1</span> <span class="se">\</span>
+    --predict_output_dir<span class="o">=</span>. <span class="se">\</span>
+
+mv rank-00000 result.txt
+</pre></div>
+</div>
+<p>这里以<code class="docutils literal"><span class="pre">output/pass-00003</span></code>为例进行预测，用户可以根据训练log选择test结果最好的模型来预测。与训练网络配置不同的是：无需label相关的层，指定outputs输出概率层(softmax输出)，
+指定batch_size=1，数据传输无需label数据，预测数据指定test_list的位置。</p>
+<p>预测结果以文本的形式保存在<code class="docutils literal"><span class="pre">result.txt</span></code>中，一行为一个样本，格式如下：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">预测ID</span><span class="p">;</span><span class="n">ID为0的概率</span> <span class="n">ID为1的概率</span>
+<span class="n">预测ID</span><span class="p">;</span><span class="n">ID为0的概率</span> <span class="n">ID为1的概率</span>
+</pre></div>
+</div>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">is_predict</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;is_predict&#39;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+<span class="n">trn</span> <span class="o">=</span> <span class="s1">&#39;data/train.list&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="kc">None</span>
+<span class="n">tst</span> <span class="o">=</span> <span class="s1">&#39;data/test.list&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="s1">&#39;data/pred.list&#39;</span>
+<span class="n">obj</span> <span class="o">=</span> <span class="s1">&#39;process&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="s1">&#39;process_pre&#39;</span>
+<span class="n">batch_size</span> <span class="o">=</span> <span class="mi">128</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="mi">1</span>
+<span class="k">if</span> <span class="n">is_predict</span><span class="p">:</span>
+    <span class="n">maxid</span> <span class="o">=</span> <span class="n">maxid_layer</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+    <span class="n">outputs</span><span class="p">([</span><span class="n">maxid</span><span class="p">,</span><span class="n">output</span><span class="p">])</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">cls</span> <span class="o">=</span> <span class="n">classification_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">output</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+    <span class="n">outputs</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="summary">
+<span id="summary"></span><h2>总体效果总结(Summary)<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<p>这些流程中的数据下载、网络配置、训练脚本在<code class="docutils literal"><span class="pre">/demo/quick_start</span></code>目录，我们在此总
+结上述网络结构在Amazon-Elec测试集(25k)上的效果:</p>
+<p><center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border"><thead>
+<th scope="col" class="left">网络名称</th>
+<th scope="col" class="left">参数数量</th>
+<th scope="col" class="left">错误率</th>
+<th scope="col" class="left">配置文件</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">逻辑回归模型</td>
+<td class="left"> 252KB </td>
+<td class="left">8.652%</td>
+<td class="left">trainer_config.lr.py</td>
+</tr><tr>
+<td class="left">词向量模型</td>
+<td class="left"> 15MB </td>
+<td class="left"> 8.484%</td>
+<td class="left">trainer_config.emb.py</td>
+</tr><tr>
+<td class="left">卷积模型</td>
+<td class="left"> 16MB </td>
+<td class="left"> 5.628%</td>
+<td class="left">trainer_config.cnn.py</td>
+</tr><tr>
+<td class="left">时序模型</td>
+<td class="left"> 16MB </td>
+<td class="left"> 4.812%</td>
+<td class="left">trainer_config.lstm.py</td>
+</tr></tbody>
+</table>
+</center>
+<br></div>
+<div class="section" id="appendix">
+<span id="appendix"></span><h2>附录(Appendix)<a class="headerlink" href="#appendix" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="command-line-argument">
+<span id="command-line-argument"></span><h3>命令行参数(Command Line Argument)<a class="headerlink" href="#command-line-argument" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>--config：网络配置</li>
+<li>--save_dir：模型存储路径</li>
+<li>--log_period：每隔多少batch打印一次日志</li>
+<li>--num_passes：训练轮次，一个pass表示过一遍所有训练样本</li>
+<li>--config_args：命令指定的参数会传入网络配置中。</li>
+<li>--init_model_path：指定初始化模型路径，可用在测试或训练时指定初始化模型。</li>
+</ul>
+<p>默认一个pass保存一次模型，也可以通过saving_period_by_batches设置每隔多少batch保存一次模型。
+可以通过show_parameter_stats_period设置打印参数信息等。
+其他参数请参考<a href = "../../ui/index.html#command-line-argument">令行参数文档</a>。</p>
+</div>
+<div class="section" id="log">
+<span id="log"></span><h3>输出日志(Log)<a class="headerlink" href="#log" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">TrainerInternal</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">160</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">20</span> <span class="n">samples</span><span class="o">=</span><span class="mi">2560</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mf">0.628761</span> <span class="n">CurrentCost</span><span class="o">=</span><span class="mf">0.628761</span> <span class="n">Eval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.304297</span>  <span class="n">CurrentEval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.304297</span>
+</pre></div>
+</div>
+<p>模型训练会看到这样的日志，详细的参数解释如下面表格：
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border"><thead>
+<th scope="col" class="left">名称</th>
+<th scope="col" class="left">解释</th>
+</tr>
+</thead><tr>
+<td class="left">Batch=20</td>
+<td class="left"> 表示过了20个batch </td>
+</tr><tr>
+<td class="left">samples=2560</td>
+<td class="left"> 表示过了2560个样本 </td>
+</tr><tr>
+<td class="left">AvgCost</td>
+<td class="left"> 每个pass的第0个batch到当前batch所有样本的平均cost </td>
+</tr><tr>
+<td class="left">CurrentCost</td>
+<td class="left"> 当前log_period个batch所有样本的平均cost </td>
+</tr><tr>
+<td class="left">Eval: classification_error_evaluator</td>
+<td class="left"> 每个pass的第0个batch到当前batch所有样本的平均分类错误率 </td>
+</tr><tr>
+<td class="left">CurrentEval: classification_error_evaluator</td>
+<td class="left"> 当前log_period个batch所有样本的平均分类错误率 </td>
+</tr></tbody>
+</table>
+</center>
+<br></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">PaddlePaddle快速入门教程</a><ul>
+<li><a class="reference internal" href="#install">安装(Install)</a></li>
+<li><a class="reference internal" href="#overview">使用概述(Overview)</a></li>
+<li><a class="reference internal" href="#data-preparation">数据格式准备(Data Preparation)</a></li>
+<li><a class="reference internal" href="#transfer-data-to-model">数据向模型传送(Transfer Data to Model)</a><ul>
+<li><a class="reference internal" href="#python-data-provider-script">Python数据加载脚本(Data Provider Script)</a></li>
+<li><a class="reference internal" href="#data-provider-in-configure">配置中的数据加载定义(Data Provider in Configure)</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#network-architecture">网络结构(Network Architecture)</a><ul>
+<li><a class="reference internal" href="#logistic-regression">逻辑回归模型(Logistic Regression)</a></li>
+<li><a class="reference internal" href="#word-vector">词向量模型(Word Vector)</a></li>
+<li><a class="reference internal" href="#convolution">卷积模型(Convolution)</a></li>
+<li><a class="reference internal" href="#time-sequence">时序模型(Time Sequence)</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#optimization-algorithm">优化算法(Optimization Algorithm)</a></li>
+<li><a class="reference internal" href="#training-model">训练模型(Training Model)</a></li>
+<li><a class="reference internal" href="#prediction">预测(Prediction)</a></li>
+<li><a class="reference internal" href="#summary">总体效果总结(Summary)</a></li>
+<li><a class="reference internal" href="#appendix">附录(Appendix)</a><ul>
+<li><a class="reference internal" href="#command-line-argument">命令行参数(Command Line Argument)</a></li>
+<li><a class="reference internal" href="#log">输出日志(Log)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/demo/quick_start/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,3121 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Layers &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Model Config Interface" href="index.html" />
+    <link rel="next" title="Activations" href="activations.html" />
+    <link rel="prev" title="DataSources" href="data_sources.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="activations.html" title="Activations"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="data_sources.html" title="DataSources"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Model Config Interface</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="layers">
+<h1>Layers<a class="headerlink" href="#layers" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="base">
+<h2>Base<a class="headerlink" href="#base" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="layertype">
+<h3>LayerType<a class="headerlink" href="#layertype" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">LayerType</code></dt>
+<dd><p>Layer type enumerations.</p>
+<dl class="staticmethod">
+<dt>
+<em class="property">static </em><code class="descname">is_layer_type</code><span class="sig-paren">(</span><em>type_name</em><span class="sig-paren">)</span></dt>
+<dd><p>If type_name is a layer type.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>type_name</strong> (<em>basestring</em>) &#8211; layer type name. Because layer type enumerations are
+strings.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">True if is a layer_type</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="layeroutput">
+<h3>LayerOutput<a class="headerlink" href="#layeroutput" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">LayerOutput</code><span class="sig-paren">(</span><em>name</em>, <em>layer_type</em>, <em>parents=None</em>, <em>activation=None</em>, <em>num_filters=None</em>, <em>img_norm_type=None</em>, <em>size=None</em>, <em>outputs=None</em>, <em>reverse=None</em><span class="sig-paren">)</span></dt>
+<dd><p>LayerOutput is output for layer function. It is used internally by several
+reasons.</p>
+<ul>
+<li><p class="first">Check layer connection make sense.</p>
+<blockquote>
+<div><ul class="simple">
+<li>FC(Softmax) =&gt; Cost(MSE Error) is not good for example.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">Tracking layer connection.</p>
+</li>
+<li><p class="first">Pass to layer methods as input.</p>
+</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer output name.</li>
+<li><strong>layer_type</strong> (<em>basestring</em>) &#8211; Current Layer Type. One of LayerType enumeration.</li>
+<li><strong>activation</strong> (<em>BaseActivation.</em>) &#8211; Layer Activation.</li>
+<li><strong>parents</strong> (<em>list|tuple|collections.Sequence</em>) &#8211; Layer&#8217;s parents.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="data-layer">
+<h2>Data layer<a class="headerlink" href="#data-layer" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id1">
+<h3>data_layer<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">data_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Define DataLayer For NeuralNetwork.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;input&quot;</span><span class="p">,</span>
+                  <span class="n">size</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Name of this data layer.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; Size of this data layer.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="fully-connected-layers">
+<h2>Fully Connected Layers<a class="headerlink" href="#fully-connected-layers" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="fc-layer">
+<h3>fc_layer<a class="headerlink" href="#fc-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">fc_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Helper for declare fully connected layer.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">fc</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+              <span class="n">size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+              <span class="n">act</span><span class="o">=</span><span class="n">LinearActivation</span><span class="p">(),</span>
+              <span class="n">bias_attr</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>which is equal to:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">1024</span><span class="p">)</span> <span class="k">as</span> <span class="n">fc</span><span class="p">:</span>
+    <span class="n">fc</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
+<li><strong>input</strong> (<em>LayerOutput|list|tuple</em>) &#8211; The input layer. Could be a list/tuple of input layer.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; The layer dimension.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type. Default is tanh.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; The Parameter Attribute|list.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|None|Any</em>) &#8211; The Bias Attribute. If no bias, then pass False or
+something not type of ParameterAttribute. None will get a
+default Bias.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="selective-fc-layer">
+<h3>selective_fc_layer<a class="headerlink" href="#selective-fc-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">selective_fc_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Selectived fully connected layer. Different from fc_layer, the output
+of this layer maybe sparse. It requires an additional input to indicate
+several selected columns for output. If the selected columns is not
+specified, selective_fc_layer acts exactly like fc_layer.</p>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">sel_fc</span> <span class="o">=</span> <span class="n">selective_fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">())</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
+<li><strong>input</strong> (<em>LayerOutput|list|tuple</em>) &#8211; The input layer.</li>
+<li><strong>select</strong> (<em>LayerOutput</em>) &#8211; The select layer. The output of select layer should be a
+sparse binary matrix, and treat as the mask of selective fc.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; The layer dimension.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type. Default is tanh.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; The Parameter Attribute.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|None|Any</em>) &#8211; The Bias Attribute. If no bias, then pass False or
+something not type of ParameterAttribute. None will get a
+default Bias.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="conv-layers">
+<h2>Conv Layers<a class="headerlink" href="#conv-layers" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="conv-operator">
+<h3>conv_operator<a class="headerlink" href="#conv-operator" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">conv_operator</code><span class="sig-paren">(</span><em>img</em>, <em>filter</em>, <em>filter_size</em>, <em>num_filters</em>, <em>num_channels=None</em>, <em>stride=1</em>, <em>padding=0</em>, <em>filter_size_y=None</em>, <em>stride_y=None</em>, <em>padding_y=None</em><span class="sig-paren">)</span></dt>
+<dd><p>Different from img_conv_layer, conv_op is an Operator, which can be used
+in mixed_layer. And conv_op takes two inputs to perform convolution.
+The first input is the image and the second is filter kernel. It only
+support GPU mode.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">op</span> <span class="o">=</span> <span class="n">conv_operator</span><span class="p">(</span><span class="n">img</span><span class="o">=</span><span class="n">input1</span><span class="p">,</span>
+                   <span class="nb">filter</span><span class="o">=</span><span class="n">input2</span><span class="p">,</span>
+                   <span class="n">filter_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                   <span class="n">num_filters</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+                   <span class="n">num_channels</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>img</strong> (<em>LayerOutput</em>) &#8211; input image</li>
+<li><strong>filter</strong> (<em>LayerOutput</em>) &#8211; input filter</li>
+<li><strong>filter_size</strong> (<em>int</em>) &#8211; The x dimension of a filter kernel.</li>
+<li><strong>filter_size_y</strong> (<em>int</em>) &#8211; The y dimension of a filter kernel. Since
+PaddlePaddle now supports rectangular filters,
+the filter&#8217;s shape can be (filter_size, filter_size_y).</li>
+<li><strong>num_filters</strong> (<em>int</em>) &#8211; channel of output data.</li>
+<li><strong>num_channels</strong> (<em>int</em>) &#8211; channel of input data.</li>
+<li><strong>stride</strong> (<em>int</em>) &#8211; The x dimension of the stride.</li>
+<li><strong>stride_y</strong> (<em>int</em>) &#8211; The y dimension of the stride.</li>
+<li><strong>padding</strong> (<em>int</em>) &#8211; The x dimension of padding.</li>
+<li><strong>padding_y</strong> (<em>int</em>) &#8211; The y dimension of padding.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A ConvOperator Object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">ConvOperator</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="conv-projection">
+<h3>conv_projection<a class="headerlink" href="#conv-projection" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">conv_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>ConvProjection with a layer as input.
+It performs element-wise multiplication with weight.</p>
+<p>Different from img_conv_layer and conv_op, conv_projection is an Projection,
+which can be used in mixed_layer and conat_layer. It use cudnn to implement
+conv and only support GPU mode.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">proj</span> <span class="o">=</span> <span class="n">conv_projection</span><span class="p">(</span><span class="n">img</span><span class="o">=</span><span class="n">input1</span><span class="p">,</span>
+                       <span class="n">filter_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                       <span class="n">num_filters</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+                       <span class="n">num_channels</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer</li>
+<li><strong>filter_size</strong> (<em>int</em>) &#8211; The x dimension of a filter kernel.</li>
+<li><strong>filter_size_y</strong> (<em>int</em>) &#8211; The y dimension of a filter kernel. Since
+PaddlePaddle now supports rectangular filters,
+the filter&#8217;s shape can be (filter_size, filter_size_y).</li>
+<li><strong>num_filters</strong> (<em>int</em>) &#8211; channel of output data.</li>
+<li><strong>num_channels</strong> (<em>int</em>) &#8211; channel of input data.</li>
+<li><strong>stride</strong> (<em>int</em>) &#8211; The x dimension of the stride.</li>
+<li><strong>stride_y</strong> (<em>int</em>) &#8211; The y dimension of the stride.</li>
+<li><strong>padding</strong> (<em>int</em>) &#8211; The x dimension of padding.</li>
+<li><strong>padding_y</strong> (<em>int</em>) &#8211; The y dimension of padding.</li>
+<li><strong>groups</strong> (<em>int</em>) &#8211; The group number.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Convolution param attribute. None means default attribute</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A DotMulProjection Object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">DotMulProjection</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="conv-shift-layer">
+<h3>conv_shift_layer<a class="headerlink" href="#conv-shift-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">conv_shift_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><dl class="docutils">
+<dt>This layer performs cyclic convolution for two input. For example:</dt>
+<dd><ul class="first last simple">
+<li>a[in]: contains M elements.</li>
+<li>b[in]: contains N elements (N should be odd).</li>
+<li>c[out]: contains M elements.</li>
+</ul>
+</dd>
+</dl>
+<div class="math">
+\[c[i] = \sum_{j=-(N-1)/2}^{(N-1)/2}a_{i+j} * b_{j}\]</div>
+<dl class="docutils">
+<dt>In this formular:</dt>
+<dd><ul class="first last simple">
+<li>a&#8217;s index is computed modulo M. When it is negative, then get item from
+the right side (which is the end of array) to the left.</li>
+<li>b&#8217;s index is computed modulo N. When it is negative, then get item from
+the right size (which is the end of array) to the left.</li>
+</ul>
+</dd>
+</dl>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">conv_shift</span> <span class="o">=</span> <span class="n">conv_shift_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">])</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
+<li><strong>a</strong> (<em>LayerOutput</em>) &#8211; Input layer a.</li>
+<li><strong>b</strong> (<em>LayerOutput</em>) &#8211; input layer b</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; layer&#8217;s extra attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="img-conv-layer">
+<h3>img_conv_layer<a class="headerlink" href="#img-conv-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">img_conv_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Convolution layer for image. Paddle only support square input currently and
+thus input image&#8217;s width equals height.</p>
+<p>The details of convolution layer, please refer UFLDL&#8217;s <a class="reference external" href="http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/">convolution</a> .</p>
+<p>Convolution Transpose (deconv) layer for image. Paddle only support square
+input currently and thus input image&#8217;s width equals height.</p>
+<p>The details of convolution transpose layer,
+please refer to the following explanation and references therein
+&lt;<a class="reference external" href="http://datascience.stackexchange.com/questions/6107/">http://datascience.stackexchange.com/questions/6107/</a>
+what-are-deconvolutional-layers/&gt;`_ .
+The num_channel means input image&#8217;s channel number. It may be 1 or 3 when
+input is raw pixels of image(mono or RGB), or it may be the previous layer&#8217;s
+num_filters * num_group.</p>
+<p>There are several group of filter in PaddlePaddle implementation.
+Each group will process some channel of the inputs. For example, if an input
+num_channel = 256, group = 4, num_filter=32, the PaddlePaddle will create
+32*4 = 128 filters to process inputs. The channels will be split into 4
+pieces. First 256/4 = 64 channels will process by first 32 filters. The
+rest channels will be processed by rest group of filters.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Layer Input.</li>
+<li><strong>filter_size</strong> (<em>int|tuple|list</em>) &#8211; The x dimension of a filter kernel. Or input a tuple for
+two image dimension.</li>
+<li><strong>filter_size_y</strong> (<em>int|None</em>) &#8211; The y dimension of a filter kernel. Since PaddlePaddle
+currently supports rectangular filters, the filter&#8217;s
+shape will be (filter_size, filter_size_y).</li>
+<li><strong>num_filters</strong> &#8211; Each filter group&#8217;s number of filter</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation type. Default is tanh</li>
+<li><strong>groups</strong> (<em>int</em>) &#8211; Group size of filters.</li>
+<li><strong>stride</strong> (<em>int|tuple|list</em>) &#8211; The x dimension of the stride. Or input a tuple for two image
+dimension.</li>
+<li><strong>stride_y</strong> (<em>int</em>) &#8211; The y dimension of the stride.</li>
+<li><strong>padding</strong> (<em>int|tuple|list</em>) &#8211; The x dimension of the padding. Or input a tuple for two
+image dimension</li>
+<li><strong>padding_y</strong> (<em>int</em>) &#8211; The y dimension of the padding.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; Convolution bias attribute. None means default bias.
+False means no bias.</li>
+<li><strong>num_channels</strong> (<em>int</em>) &#8211; number of input channels. If None will be set
+automatically from previous output.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Convolution param attribute. None means default attribute</li>
+<li><strong>shared_biases</strong> (<em>bool</em>) &#8211; Is biases will be shared between filters or not.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Layer Extra Attribute.</li>
+<li><strong>trans</strong> (<em>bool</em>) &#8211; true if it is a convTransLayer, false if it is a convLayer</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="context-projection">
+<h3>context_projection<a class="headerlink" href="#context-projection" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">context_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Context Projection.</p>
+<p>It just simply reorganizes input sequence, combines &#8220;context_len&#8221; sequence
+to one context from context_start. &#8220;context_start&#8221; will be set to
+-(context_len - 1) / 2 by default. If context position out of sequence
+length, padding will be filled as zero if padding_attr = False, otherwise
+it is trainable.</p>
+<p>For example, origin sequence is [A B C D E F G], context len is 3, then
+after context projection and not set padding_attr, sequence will
+be [ 0AB ABC BCD CDE DEF EFG FG0 ].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input Sequence.</li>
+<li><strong>context_len</strong> (<em>int</em>) &#8211; context length.</li>
+<li><strong>context_start</strong> (<em>int</em>) &#8211; context start position. Default is
+-(context_len - 1)/2</li>
+<li><strong>padding_attr</strong> (<em>bool|ParameterAttribute</em>) &#8211; Padding Parameter Attribute. If false, it means padding
+always be zero. Otherwise Padding is learnable, and
+parameter attribute is set by this parameter.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Projection</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">Projection</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="image-pooling-layer">
+<h2>Image Pooling Layer<a class="headerlink" href="#image-pooling-layer" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="img-pool-layer">
+<h3>img_pool_layer<a class="headerlink" href="#img-pool-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">img_pool_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Image pooling Layer.</p>
+<p>The details of pooling layer, please refer ufldl&#8217;s <a class="reference external" href="http://ufldl.stanford.edu/tutorial/supervised/Pooling/">pooling</a> .</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>padding</strong> (<em>int</em>) &#8211; pooling padding width.</li>
+<li><strong>padding_y</strong> (<em>int|None</em>) &#8211; pooling padding height. It&#8217;s equal to padding by default.</li>
+<li><strong>name</strong> (<em>basestring.</em>) &#8211; name of pooling layer</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; layer&#8217;s input</li>
+<li><strong>pool_size</strong> (<em>int</em>) &#8211; pooling window width</li>
+<li><strong>pool_size_y</strong> (<em>int|None</em>) &#8211; pooling window height. It&#8217;s eaqual to pool_size by default.</li>
+<li><strong>num_channels</strong> (<em>int</em>) &#8211; number of input channel.</li>
+<li><strong>pool_type</strong> (<em>BasePoolingType</em>) &#8211; pooling type. MaxPooling or AvgPooling. Default is
+MaxPooling.</li>
+<li><strong>stride</strong> (<em>int</em>) &#8211; stride width of pooling.</li>
+<li><strong>stride_y</strong> (<em>int|None</em>) &#8211; stride height of pooling. It is equal to stride by default.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
+<li><strong>img_width</strong> (<em>int|None</em>) &#8211; the width of input feature map. If it is None, the input feature
+map should be square.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="spp-layer">
+<h3>spp_layer<a class="headerlink" href="#spp-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">spp_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition.
+The details please refer to
+<a class="reference external" href="https://arxiv.org/abs/1406.4729">Kaiming He&#8217;s paper</a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; layer&#8217;s input.</li>
+<li><strong>num_channels</strong> (<em>int</em>) &#8211; number of input channel.</li>
+<li><strong>pool_type</strong> &#8211; Pooling type. MaxPooling or AveragePooling. Default is MaxPooling.</li>
+<li><strong>pyramid_height</strong> (<em>int</em>) &#8211; pyramid height.</li>
+<li><strong>img_width</strong> (<em>int|None</em>) &#8211; the width of input feature map. If it is None, the input feature
+map should be square.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="maxout-layer">
+<h3>maxout_layer<a class="headerlink" href="#maxout-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">maxout_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><dl class="docutils">
+<dt>A layer to do max out on conv layer output.</dt>
+<dd><ul class="first last simple">
+<li>Input: output of a conv layer.</li>
+<li>Output: feature map size same as input. Channel is (input channel) / groups.</li>
+</ul>
+</dd>
+</dl>
+<p>So groups should be larger than 1, and the num of channels should be able
+to devided by groups.</p>
+<dl class="docutils">
+<dt>Please refer to Paper:</dt>
+<dd><ul class="first last simple">
+<li>Maxout Networks: <a class="reference external" href="http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf">http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf</a></li>
+<li>Multi-digit Number Recognition from Street View         Imagery using Deep Convolutional Neural Networks:         <a class="reference external" href="https://arxiv.org/pdf/1312.6082v4.pdf">https://arxiv.org/pdf/1312.6082v4.pdf</a></li>
+</ul>
+</dd>
+</dl>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">maxout</span> <span class="o">=</span> <span class="n">maxout_layer</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span>
+                      <span class="n">num_channels</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+                      <span class="n">groups</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layer.</li>
+<li><strong>num_channels</strong> (<em>int|None</em>) &#8211; The channel number of input layer. If None will be set
+automatically from previous output.</li>
+<li><strong>groups</strong> (<em>int</em>) &#8211; The group number of input layer.</li>
+<li><strong>size_x</strong> (<em>int|None</em>) &#8211; conv output width. If None will be set
+automatically from previous output.</li>
+<li><strong>size_y</strong> (<em>int|None</em>) &#8211; conv output height. If None will be set
+automatically from previous output.</li>
+<li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layer, which can not specify.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="norm-layer">
+<h2>Norm Layer<a class="headerlink" href="#norm-layer" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="img-cmrnorm-layer">
+<h3>img_cmrnorm_layer<a class="headerlink" href="#img-cmrnorm-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">img_cmrnorm_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Response normalization across feature maps.
+The details please refer to
+<a class="reference external" href="http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf">Alex&#8217;s paper</a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>None|basestring</em>) &#8211; layer name.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; layer&#8217;s input.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; Normalize in number of <span class="math">\(size\)</span> feature maps.</li>
+<li><strong>scale</strong> (<em>float</em>) &#8211; The hyper-parameter.</li>
+<li><strong>power</strong> (<em>float</em>) &#8211; The hyper-parameter.</li>
+<li><strong>num_channels</strong> &#8211; input layer&#8217;s filers number or channels. If
+num_channels is None, it will be set automatically.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="batch-norm-layer">
+<h3>batch_norm_layer<a class="headerlink" href="#batch-norm-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">batch_norm_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Batch Normalization Layer. The notation of this layer as follow.</p>
+<p><span class="math">\(x\)</span> is the input features over a mini-batch.</p>
+<div class="math">
+\[\begin{split}\mu_{\beta} &amp;\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &amp;//\
+\ mini-batch\ mean \\
+\sigma_{\beta}^{2} &amp;\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
+\mu_{\beta})^2 \qquad &amp;//\ mini-batch\ variance \\
+\hat{x_i} &amp;\gets \frac{x_i - \mu_\beta} {\sqrt{\
+\sigma_{\beta}^{2} + \epsilon}} \qquad &amp;//\ normalize \\
+y_i &amp;\gets \gamma \hat{x_i} + \beta \qquad &amp;//\ scale\ and\ shift\end{split}\]</div>
+<p>The details of batch normalization please refer to this
+<a class="reference external" href="http://arxiv.org/abs/1502.03167">paper</a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; batch normalization input. Better be linear activation.
+Because there is an activation inside batch_normalization.</li>
+<li><strong>batch_norm_type</strong> (<em>None|string, None or &quot;batch_norm&quot; or &quot;cudnn_batch_norm&quot;</em>) &#8211; We have batch_norm and cudnn_batch_norm. batch_norm
+supports both CPU and GPU. cudnn_batch_norm requires
+cuDNN version greater or equal to v4 (&gt;=v4). But
+cudnn_batch_norm is faster and needs less memory
+than batch_norm. By default (None), we will
+automaticly select cudnn_batch_norm for GPU and
+batch_norm for CPU. Otherwise, select batch norm
+type based on the specified type. If you use cudnn_batch_norm,
+we suggested you use latest version, such as v5.1.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type. Better be relu. Because batch
+normalization will normalize input near zero.</li>
+<li><strong>num_channels</strong> (<em>int</em>) &#8211; num of image channels or previous layer&#8217;s number of
+filters. None will automatically get from layer&#8217;s
+input.</li>
+<li><strong>bias_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; <span class="math">\(\beta\)</span>, better be zero when initialize. So the
+initial_std=0, initial_mean=1 is best practice.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; <span class="math">\(\gamma\)</span>, better be one when initialize. So the
+initial_std=0, initial_mean=1 is best practice.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>use_global_stats</strong> (<em>bool|None.</em>) &#8211; whether use moving mean/variance statistics
+during testing peroid. If None or True,
+it will use moving mean/variance statistics during
+testing. If False, it will use the mean
+and variance of current batch of test data for
+testing.</li>
+<li><strong>moving_average_fraction</strong> (<em>float.</em>) &#8211; Factor used in the moving average
+computation, referred to as facotr,
+<span class="math">\(runningMean = newMean*(1-factor)
++ runningMean*factor\)</span></li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="sum-to-one-norm-layer">
+<h3>sum_to_one_norm_layer<a class="headerlink" href="#sum-to-one-norm-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">sum_to_one_norm_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A layer for sum-to-one normalization,
+which is used in NEURAL TURING MACHINE.</p>
+<div class="math">
+\[out[i] = \frac {in[i]} {\sum_{k=1}^N in[k]}\]</div>
+<p>where <span class="math">\(in\)</span> is a (batchSize x dataDim) input vector,
+and <span class="math">\(out\)</span> is a (batchSize x dataDim) output vector.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">sum_to_one_norm</span> <span class="o">=</span> <span class="n">sum_to_one_norm_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="recurrent-layers">
+<h2>Recurrent Layers<a class="headerlink" href="#recurrent-layers" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="recurrent-layer">
+<h3>recurrent_layer<a class="headerlink" href="#recurrent-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">recurrent_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Simple recurrent unit layer. It is just a fully connect layer through both
+time and neural network.</p>
+<p>For each sequence [start, end] it performs the following computation:</p>
+<div class="math">
+\[\begin{split}out_{i} = act(in_{i})     \      \      \text{for} \ i = start \\
+out_{i} = act(in_{i} + out_{i-1} * W) \ \ \text{for} \ start &lt; i &lt;= end\end{split}\]</div>
+<p>If reversed is true, the order is reversed:</p>
+<div class="math">
+\[\begin{split}out_{i} = act(in_{i})           \    \   \text{for} \ i = end  \\
+out_{i} = act(in_{i} + out_{i+1} * W) \ \ \text{for} \ start &lt;= i &lt; end\end{split}\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input Layer</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; activation.</li>
+<li><strong>bias_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; bias attribute.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; parameter attribute.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; name of the layer</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="lstmemory">
+<h3>lstmemory<a class="headerlink" href="#lstmemory" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">lstmemory</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Long Short-term Memory Cell.</p>
+<p>The memory cell was implemented as follow equations.</p>
+<div class="math">
+\[ \begin{align}\begin{aligned}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\\f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\\c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\\o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\\h_t &amp; = o_t tanh(c_t)\end{aligned}\end{align} \]</div>
+<p>NOTE: In PaddlePaddle&#8217;s implementation, the multiplications
+<span class="math">\(W_{xi}x_{t}\)</span> , <span class="math">\(W_{xf}x_{t}\)</span>,
+<span class="math">\(W_{xc}x_t\)</span>, <span class="math">\(W_{xo}x_{t}\)</span> are not done in the lstmemory layer,
+so an additional mixed_layer with full_matrix_projection or a fc_layer must
+be included in the configuration file to complete the input-to-hidden
+mappings before lstmemory is called.</p>
+<p>NOTE: This is a low level user interface. You can use network.simple_lstm
+to config a simple plain lstm layer.</p>
+<p>Please refer to <strong>Generating Sequences With Recurrent Neural Networks</strong> for
+more details about LSTM.</p>
+<p><a class="reference external" href="http://arxiv.org/abs/1308.0850">Link</a> goes as below.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; The lstmemory layer name.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer name.</li>
+<li><strong>reverse</strong> (<em>bool</em>) &#8211; is sequence process reversed or not.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; activation type, TanhActivation by default. <span class="math">\(h_t\)</span></li>
+<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; gate activation type, SigmoidActivation by default.</li>
+<li><strong>state_act</strong> (<em>BaseActivation</em>) &#8211; state activation type, TanhActivation by default.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Bias attribute. None means default bias. False means no
+bias.</li>
+<li><strong>param_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Parameter Attribute.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer attribute</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="lstm-step-layer">
+<h3>lstm_step_layer<a class="headerlink" href="#lstm-step-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">lstm_step_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>LSTM Step Layer. It used in recurrent_group. The lstm equations are shown
+as follow.</p>
+<div class="math">
+\[ \begin{align}\begin{aligned}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\\f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\\c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\\o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\\h_t &amp; = o_t tanh(c_t)\end{aligned}\end{align} \]</div>
+<p>The input of lstm step is <span class="math">\(Wx_t + Wh_{t-1}\)</span>, and user should use
+<code class="code docutils literal"><span class="pre">mixed_layer</span></code> and <code class="code docutils literal"><span class="pre">full_matrix_projection</span></code> to calculate these
+input vector.</p>
+<p>The state of lstm step is <span class="math">\(c_{t-1}\)</span>. And lstm step layer will do</p>
+<div class="math">
+\[ \begin{align}\begin{aligned}i_t = \sigma(input + W_{ci}c_{t-1} + b_i)\\...\end{aligned}\end{align} \]</div>
+<p>This layer contains two outputs. Default output is <span class="math">\(h_t\)</span>. The other
+output is <span class="math">\(o_t\)</span>, which name is &#8216;state&#8217; and can use
+<code class="code docutils literal"><span class="pre">get_output_layer</span></code> to extract this output.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer&#8217;s name.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; Layer&#8217;s size. NOTE: lstm layer&#8217;s size, should be equal as
+<code class="code docutils literal"><span class="pre">input.size/4</span></code>, and should be equal as
+<code class="code docutils literal"><span class="pre">state.size</span></code>.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer. <span class="math">\(Wx_t + Wh_{t-1}\)</span></li>
+<li><strong>state</strong> (<em>LayerOutput</em>) &#8211; State Layer. <span class="math">\(c_{t-1}\)</span></li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation type. Default is tanh</li>
+<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; Gate Activation Type. Default is sigmoid, and should
+be sigmoid only.</li>
+<li><strong>state_act</strong> (<em>BaseActivation</em>) &#8211; State Activation Type. Default is sigmoid, and should
+be sigmoid only.</li>
+<li><strong>bias_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Bias Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; layer&#8217;s extra attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="grumemory">
+<h3>grumemory<a class="headerlink" href="#grumemory" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">grumemory</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Gate Recurrent Unit Layer.</p>
+<p>The memory cell was implemented as follow equations.</p>
+<p>1. update gate <span class="math">\(z\)</span>: defines how much of the previous memory to
+keep around or the unit updates its activations. The update gate
+is computed by:</p>
+<div class="math">
+\[z_t = \sigma(W_{z}x_{t} + U_{z}h_{t-1} + b_z)\]</div>
+<p>2. reset gate <span class="math">\(r\)</span>: determines how to combine the new input with the
+previous memory. The reset gate is computed similarly to the update gate:</p>
+<div class="math">
+\[r_t = \sigma(W_{r}x_{t} + U_{r}h_{t-1} + b_r)\]</div>
+<p>3. The candidate activation <span class="math">\(\tilde{h_t}\)</span> is computed similarly to
+that of the traditional recurrent unit:</p>
+<div class="math">
+\[{\tilde{h_t}} = tanh(W x_{t} + U (r_{t} \odot h_{t-1}) + b)\]</div>
+<p>4. The hidden activation <span class="math">\(h_t\)</span> of the GRU at time t is a linear
+interpolation between the previous activation <span class="math">\(h_{t-1}\)</span> and the
+candidate activation <span class="math">\(\tilde{h_t}\)</span>:</p>
+<div class="math">
+\[h_t = (1 - z_t) h_{t-1} + z_t {\tilde{h_t}}\]</div>
+<p>NOTE: In PaddlePaddle&#8217;s implementation, the multiplication operations
+<span class="math">\(W_{r}x_{t}\)</span>, <span class="math">\(W_{z}x_{t}\)</span> and <span class="math">\(W x_t\)</span> are not computed in
+gate_recurrent layer. Consequently, an additional mixed_layer with
+full_matrix_projection or a fc_layer must be included before grumemory
+is called.</p>
+<p>More details can be found by referring to <a class="reference external" href="https://arxiv.org/abs/1412.3555">Empirical Evaluation of Gated
+Recurrent Neural Networks on Sequence Modeling.</a></p>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">gru</span> <span class="o">=</span> <span class="n">grumemory</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>None|basestring</em>) &#8211; The gru layer name.</li>
+<li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; input layer.</li>
+<li><strong>reverse</strong> (<em>bool</em>) &#8211; Whether sequence process is reversed or not.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; activation type, TanhActivation by default. This activation
+affects the <span class="math">\({\tilde{h_t}}\)</span>.</li>
+<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; gate activation type, SigmoidActivation by default.
+This activation affects the <span class="math">\(z_t\)</span> and <span class="math">\(r_t\)</span>. It is the
+<span class="math">\(\sigma\)</span> in the above formula.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Bias attribute. None means default bias. False means no
+bias.</li>
+<li><strong>param_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Parameter Attribute.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer attribute</li>
+<li><strong>size</strong> (<em>None</em>) &#8211; Stub parameter of size, but actually not used. If set this size
+will get a warning.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="gru-step-layer">
+<h3>gru_step_layer<a class="headerlink" href="#gru-step-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">gru_step_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; </li>
+<li><strong>output_mem</strong> &#8211; </li>
+<li><strong>size</strong> &#8211; </li>
+<li><strong>act</strong> &#8211; </li>
+<li><strong>name</strong> &#8211; </li>
+<li><strong>gate_act</strong> &#8211; </li>
+<li><strong>bias_attr</strong> &#8211; </li>
+<li><strong>layer_attr</strong> &#8211; </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="recurrent-layer-group">
+<h2>Recurrent Layer Group<a class="headerlink" href="#recurrent-layer-group" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="memory">
+<h3>memory<a class="headerlink" href="#memory" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">memory</code><span class="sig-paren">(</span><em>name</em>, <em>size</em>, <em>is_seq=False</em>, <em>boot_layer=None</em>, <em>boot_bias=None</em>, <em>boot_bias_active_type=None</em>, <em>boot_with_const_id=None</em><span class="sig-paren">)</span></dt>
+<dd><p>The memory layers is a layer cross each time step. Reference this output
+as previous time step layer <code class="code docutils literal"><span class="pre">name</span></code> &#8216;s output.</p>
+<p>The default memory is zero in first time step, previous time step&#8217;s
+output in the rest time steps.</p>
+<p>If boot_bias, the first time step value is this bias and
+with activation.</p>
+<p>If boot_with_const_id, then the first time stop is a IndexSlot, the
+Arguments.ids()[0] is this <code class="code docutils literal"><span class="pre">cost_id</span></code>.</p>
+<p>If boot_layer is not null, the memory is just the boot_layer&#8217;s output.
+Set <code class="code docutils literal"><span class="pre">is_seq</span></code> is true boot layer is sequence.</p>
+<p>The same name layer in recurrent group will set memory on each time
+step.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; memory&#8217;s name.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; size of memory.</li>
+<li><strong>is_seq</strong> (<em>bool</em>) &#8211; is sequence for boot_layer</li>
+<li><strong>boot_layer</strong> (<em>LayerOutput|None</em>) &#8211; boot layer of memory.</li>
+<li><strong>boot_bias</strong> (<em>ParameterAttribute|None</em>) &#8211; boot layer&#8217;s bias</li>
+<li><strong>boot_bias_active_type</strong> (<em>BaseActivation</em>) &#8211; boot layer&#8217;s active type.</li>
+<li><strong>boot_with_const_id</strong> (<em>int</em>) &#8211; boot layer&#8217;s id.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object which is a memory.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="recurrent-group">
+<h3>recurrent_group<a class="headerlink" href="#recurrent-group" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">recurrent_group</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Recurrent layer group is an extremely flexible recurrent unit in
+PaddlePaddle. As long as the user defines the calculation done within a
+time step, PaddlePaddle will iterate such a recurrent calculation over
+sequence input. This is extremely usefull for attention based model, or
+Neural Turning Machine like models.</p>
+<p>The basic usage (time steps) is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+                      <span class="n">size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+                      <span class="n">act</span><span class="o">=</span><span class="n">LinearActivation</span><span class="p">(),</span>
+                      <span class="n">bias_attr</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">output</span>
+
+<span class="n">group</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+                        <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can see following configs for further usages:</p>
+<ul class="simple">
+<li>time steps: lstmemory_group, paddle/gserver/tests/sequence_layer_group.conf,                   demo/seqToseq/seqToseq_net.py</li>
+<li>sequence steps: paddle/gserver/tests/sequence_nest_layer_group.conf</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>step</strong> (<em>callable</em>) &#8211; <p>recurrent one time step function.The input of this function is
+input of the group. The return of this function will be
+recurrent group&#8217;s return value.</p>
+<p>The recurrent group scatter a sequence into time steps. And
+for each time step, will invoke step function, and return
+a time step result. Then gather each time step of output into
+layer group&#8217;s output.</p>
+</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; recurrent_group&#8217;s name.</li>
+<li><strong>input</strong> (<em>LayerOutput|StaticInput|SubsequenceInput|list|tuple</em>) &#8211; <p>Input links array.</p>
+<p>LayerOutput will be scattered into time steps.
+SubsequenceInput will be scattered into sequence steps.
+StaticInput will be imported to each time step, and doesn&#8217;t change
+through time. It&#8217;s a mechanism to access layer outside step function.</p>
+</li>
+<li><strong>reverse</strong> (<em>bool</em>) &#8211; If reverse is set true, the recurrent unit will process the
+input sequence in a reverse order.</li>
+<li><strong>targetInlink</strong> (<em>LayerOutput|SubsequenceInput</em>) &#8211; <p>the input layer which share info with layer group&#8217;s output</p>
+<p>Param input specifies multiple input layers. For
+SubsequenceInput inputs, config should assign one input
+layer that share info(the number of sentences and the number
+of words in each sentence) with all layer group&#8217;s outputs.
+targetInlink should be one of the layer group&#8217;s input.</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="beam-search">
+<h3>beam_search<a class="headerlink" href="#beam-search" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">beam_search</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Beam search is a heuristic search algorithm used in sequence generation.
+It explores a graph by expanding the most promising nodes in a limited set
+to maintain tractability.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">rnn_step</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+    <span class="n">last_time_step_output</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;rnn&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rnn&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">simple_rnn</span><span class="p">:</span>
+        <span class="n">simple_rnn</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+        <span class="n">simple_rnn</span> <span class="o">+=</span> <span class="n">last_time_step_output</span>
+    <span class="k">return</span> <span class="n">simple_rnn</span>
+
+<span class="n">beam_gen</span> <span class="o">=</span> <span class="n">beam_search</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;decoder&quot;</span><span class="p">,</span>
+                       <span class="n">step</span><span class="o">=</span><span class="n">rnn_step</span><span class="p">,</span>
+                       <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="n">encoder_last</span><span class="p">)],</span>
+                       <span class="n">bos_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                       <span class="n">eos_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                       <span class="n">beam_size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Please see the following demo for more details:</p>
+<ul class="simple">
+<li>machine translation : demo/seqToseq/translation/gen.conf                             demo/seqToseq/seqToseq_net.py</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>base string</em>) &#8211; Name of the recurrent unit that generates sequences.</li>
+<li><strong>step</strong> (<em>callable</em>) &#8211; <p>A callable function that defines the calculation in a time
+step, and it is applied to sequences with arbitrary length by
+sharing a same set of weights.</p>
+<p>You can refer to the first parameter of recurrent_group, or
+demo/seqToseq/seqToseq_net.py for more details.</p>
+</li>
+<li><strong>input</strong> (<em>list</em>) &#8211; Input data for the recurrent unit</li>
+<li><strong>bos_id</strong> (<em>int</em>) &#8211; Index of the start symbol in the dictionary. The start symbol
+is a special token for NLP task, which indicates the
+beginning of a sequence. In the generation task, the start
+symbol is essential, since it is used to initialize the RNN
+internal state.</li>
+<li><strong>eos_id</strong> (<em>int</em>) &#8211; Index of the end symbol in the dictionary. The end symbol is
+a special token for NLP task, which indicates the end of a
+sequence. The generation process will stop once the end
+symbol is generated, or a pre-defined max iteration number
+is exceeded.</li>
+<li><strong>max_length</strong> (<em>int</em>) &#8211; Max generated sequence length.</li>
+<li><strong>beam_size</strong> (<em>int</em>) &#8211; Beam search for sequence generation is an iterative search
+algorithm. To maintain tractability, every iteration only
+only stores a predetermined number, called the beam_size,
+of the most promising next words. The greater the beam
+size, the fewer candidate words are pruned.</li>
+<li><strong>num_results_per_sample</strong> (<em>int</em>) &#8211; Number of the generated results per input
+sequence. This number must always be less than
+beam size.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The generated word index.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="get-output-layer">
+<h3>get_output_layer<a class="headerlink" href="#get-output-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">get_output_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Get layer&#8217;s output by name. In PaddlePaddle, a layer might return multiple
+values, but returns one layer&#8217;s output. If the user wants to use another
+output besides the default one, please use get_output_layer first to get
+the output from input.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer&#8217;s name.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; get output layer&#8217;s input. And this layer should contains
+multiple outputs.</li>
+<li><strong>arg_name</strong> (<em>basestring</em>) &#8211; Output name from input.</li>
+<li><strong>layer_attr</strong> &#8211; Layer&#8217;s extra attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="mixed-layer">
+<h2>Mixed Layer<a class="headerlink" href="#mixed-layer" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id2">
+<h3>mixed_layer<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">mixed_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Mixed Layer. A mixed layer will add all inputs together, then activate.
+Each inputs is a projection or operator.</p>
+<p>There are two styles of usages.</p>
+<ol class="arabic simple">
+<li>When not set inputs parameter, use mixed_layer like this:</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span> <span class="k">as</span> <span class="n">m</span><span class="p">:</span>
+    <span class="n">m</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">+=</span> <span class="n">identity_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer2</span><span class="p">)</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li>You can also set all inputs when invoke mixed_layer as follows:</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">m</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+                <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">),</span>
+                       <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer2</span><span class="p">)])</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; mixed layer name. Can be referenced by other layer.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; layer size.</li>
+<li><strong>input</strong> &#8211; inputs layer. It is an optional parameter. If set,
+then this function will just return layer&#8217;s name.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute or None or bool</em>) &#8211; The Bias Attribute. If no bias, then pass False or
+something not type of ParameterAttribute. None will get a
+default Bias.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; The extra layer config. Default is None.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">MixedLayerType object can add inputs or layer name.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">MixedLayerType</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="embedding-layer">
+<h3>embedding_layer<a class="headerlink" href="#embedding-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">embedding_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Define a embedding Layer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Name of this embedding layer.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layer for this embedding. NOTE: must be Index Data.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; The embedding dimension.</li>
+<li><strong>param_attr</strong> (<em>ParameterAttribute|None</em>) &#8211; The embedding parameter attribute. See ParameterAttribute
+for details.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra layer Config. Default is None.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="scaling-projection">
+<h3>scaling_projection<a class="headerlink" href="#scaling-projection" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">scaling_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>scaling_projection multiplies the input with a scalar parameter and add to
+the output.</p>
+<div class="math">
+\[out += w * in\]</div>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">proj</span> <span class="o">=</span> <span class="n">scaling_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input Layer.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter config, None if use default.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A ScalingProjection object</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">ScalingProjection</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="dotmul-projection">
+<h3>dotmul_projection<a class="headerlink" href="#dotmul-projection" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">dotmul_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>DotMulProjection with a layer as input.
+It performs element-wise multiplication with weight.</p>
+<div class="math">
+\[out.row[i] += in.row[i] .* weight\]</div>
+<p>where <span class="math">\(.*\)</span> means element-wise multiplication.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">proj</span> <span class="o">=</span> <span class="n">dotmul_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter config, None if use default.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A DotMulProjection Object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">DotMulProjection</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="dotmul-operator">
+<h3>dotmul_operator<a class="headerlink" href="#dotmul-operator" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">dotmul_operator</code><span class="sig-paren">(</span><em>a=None</em>, <em>b=None</em>, <em>scale=1</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>DotMulOperator takes two inputs and performs element-wise multiplication:</p>
+<div class="math">
+\[out.row[i] += scale * (x.row[i] .* y.row[i])\]</div>
+<p>where <span class="math">\(.*\)</span> means element-wise multiplication, and
+scale is a config scalar, its default value is one.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">op</span> <span class="o">=</span> <span class="n">dotmul_operator</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">layer2</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>a</strong> (<em>LayerOutput</em>) &#8211; Input layer1</li>
+<li><strong>b</strong> (<em>LayerOutput</em>) &#8211; Input layer2</li>
+<li><strong>scale</strong> (<em>float</em>) &#8211; config scalar, default value is one.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A DotMulOperator Object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">DotMulOperator</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="full-matrix-projection">
+<h3>full_matrix_projection<a class="headerlink" href="#full-matrix-projection" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">full_matrix_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Full Matrix Projection. It performs full matrix multiplication.</p>
+<div class="math">
+\[out.row[i] += in.row[i] * weight\]</div>
+<p>There are two styles of usage.</p>
+<ol class="arabic simple">
+<li>When used in mixed_layer like this, you can only set the input:</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span> <span class="k">as</span> <span class="n">m</span><span class="p">:</span>
+    <span class="n">m</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li>When used as an independant object like this, you must set the size:</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">proj</span> <span class="o">=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+                              <span class="n">size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                              <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;_proj&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; The parameter size. Means the width of parameter.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter config, None if use default.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A FullMatrixProjection Object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">FullMatrixProjection</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="identity-projection">
+<h3>identity_projection<a class="headerlink" href="#identity-projection" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">identity_projection</code><span class="sig-paren">(</span><em>input</em>, <em>offset=None</em><span class="sig-paren">)</span></dt>
+<dd><ol class="arabic simple">
+<li>IdentityProjection if offset=None. It performs:</li>
+</ol>
+<div class="math">
+\[out.row[i] += in.row[i]\]</div>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">proj</span> <span class="o">=</span> <span class="n">identity_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>2. IdentityOffsetProjection if offset!=None. It likes IdentityProjection,
+but layer size may be smaller than input size.
+It select dimesions [offset, offset+layer_size) from input:</p>
+<div class="math">
+\[out.row[i] += in.row[i + \textrm{offset}]\]</div>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">proj</span> <span class="o">=</span> <span class="n">identity_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+                           <span class="n">offset</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that both of two projections should not have any parameter.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input Layer.</li>
+<li><strong>offset</strong> (<em>int</em>) &#8211; Offset, None if use default.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A IdentityProjection or IdentityOffsetProjection object</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">IdentityProjection or IdentityOffsetProjection</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="table-projection">
+<h3>table_projection<a class="headerlink" href="#table-projection" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">table_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Table Projection. It selects rows from parameter where row_id
+is in input_ids.</p>
+<div class="math">
+\[out.row[i] += table.row[ids[i]]\]</div>
+<p>where <span class="math">\(out\)</span> is output, <span class="math">\(table\)</span> is parameter, <span class="math">\(ids\)</span> is input_ids,
+and <span class="math">\(i\)</span> is row_id.</p>
+<p>There are two styles of usage.</p>
+<ol class="arabic simple">
+<li>When used in mixed_layer like this, you can only set the input:</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span> <span class="k">as</span> <span class="n">m</span><span class="p">:</span>
+    <span class="n">m</span> <span class="o">+=</span> <span class="n">table_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li>When used as an independant object like this, you must set the size:</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">proj</span> <span class="o">=</span> <span class="n">table_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+                        <span class="n">size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                        <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;_proj&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer, which must contains id fields.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; The parameter size. Means the width of parameter.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter config, None if use default.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A TableProjection Object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">TableProjection</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="trans-full-matrix-projection">
+<h3>trans_full_matrix_projection<a class="headerlink" href="#trans-full-matrix-projection" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">trans_full_matrix_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Different from full_matrix_projection, this projection performs matrix
+multiplication, using transpose of weight.</p>
+<div class="math">
+\[out.row[i] += in.row[i] * w^\mathrm{T}\]</div>
+<p><span class="math">\(w^\mathrm{T}\)</span> means transpose of weight.
+The simply usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">proj</span> <span class="o">=</span> <span class="n">trans_full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+                                    <span class="n">size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                                    <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span>
+                                         <span class="n">name</span><span class="o">=</span><span class="s1">&#39;_proj&#39;</span><span class="p">,</span>
+                                         <span class="n">initial_mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                                         <span class="n">initial_std</span><span class="o">=</span><span class="mf">0.01</span><span class="p">))</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; The parameter size. Means the width of parameter.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter config, None if use default.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A TransposedFullMatrixProjection Object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">TransposedFullMatrixProjection</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="aggregate-layers">
+<h2>Aggregate Layers<a class="headerlink" href="#aggregate-layers" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="pooling-layer">
+<h3>pooling_layer<a class="headerlink" href="#pooling-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">pooling_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Pooling layer for sequence inputs, not used for Image.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">seq_pool</span> <span class="o">=</span> <span class="n">pooling_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+                         <span class="n">pooling_type</span><span class="o">=</span><span class="n">AvgPooling</span><span class="p">(),</span>
+                         <span class="n">agg_level</span><span class="o">=</span><span class="n">AggregateLevel</span><span class="o">.</span><span class="n">EACH_SEQUENCE</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>agg_level</strong> (<em>AggregateLevel</em>) &#8211; AggregateLevel.EACH_TIMESTEP or
+AggregateLevel.EACH_SEQUENCE</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer name.</li>
+<li><strong>pooling_type</strong> (<em>BasePoolingType|None</em>) &#8211; Type of pooling, MaxPooling(default), AvgPooling,
+SumPooling, SquareRootNPooling.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Bias parameter attribute. False if no bias.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; The Extra Attributes for layer, such as dropout.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerType</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="last-seq">
+<h3>last_seq<a class="headerlink" href="#last-seq" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">last_seq</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Get Last Timestamp Activation of a sequence.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>agg_level</strong> &#8211; Aggregated level</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="first-seq">
+<h3>first_seq<a class="headerlink" href="#first-seq" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">first_seq</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Get First Timestamp Activation of a sequence.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>agg_level</strong> &#8211; aggregation level</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="concat-layer">
+<h3>concat_layer<a class="headerlink" href="#concat-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">concat_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Concat all input vector into one huge vector.
+Inputs can be list of LayerOutput or list of projection.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">concat</span> <span class="o">=</span> <span class="n">concat_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">])</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>input</strong> (<em>list|tuple|collections.Sequence</em>) &#8211; input layers or projections</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation type.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="reshaping-layers">
+<h2>Reshaping Layers<a class="headerlink" href="#reshaping-layers" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="block-expand-layer">
+<h3>block_expand_layer<a class="headerlink" href="#block-expand-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">block_expand_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><dl class="docutils">
+<dt>Expand feature map to minibatch matrix.</dt>
+<dd><ul class="first last simple">
+<li>matrix width is: block_y * block_x * num_channels</li>
+<li>matirx height is: outputH * outputW</li>
+</ul>
+</dd>
+</dl>
+<div class="math">
+\[ \begin{align}\begin{aligned}outputH = 1 + (2 * padding_y + imgSizeH - block_y + stride_y - 1) / stride_y\\outputW = 1 + (2 * padding_x + imgSizeW - block_x + stride_x - 1) / stride_x\end{aligned}\end{align} \]</div>
+<p>The expand method is the same with ExpandConvLayer, but saved the transposed
+value. After expanding, output.sequenceStartPositions will store timeline.
+The number of time steps are outputH * outputW and the dimension of each
+time step is block_y * block_x * num_channels. This layer can be used after
+convolution neural network, and before recurrent neural network.</p>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">block_expand</span> <span class="o">=</span> <span class="n">block_expand_layer</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span>
+                                  <span class="n">num_channels</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+                                  <span class="n">stride_x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                                  <span class="n">stride_y</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                                  <span class="n">block_x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                                  <span class="n">block_x</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layer.</li>
+<li><strong>num_channels</strong> (<em>int|None</em>) &#8211; The channel number of input layer.</li>
+<li><strong>block_x</strong> (<em>int</em>) &#8211; The width of sub block.</li>
+<li><strong>block_y</strong> (<em>int</em>) &#8211; The width of sub block.</li>
+<li><strong>stride_x</strong> (<em>int</em>) &#8211; The stride size in horizontal direction.</li>
+<li><strong>stride_y</strong> (<em>int</em>) &#8211; The stride size in vertical direction.</li>
+<li><strong>padding_x</strong> (<em>int</em>) &#8211; The padding size in horizontal direction.</li>
+<li><strong>padding_y</strong> (<em>int</em>) &#8211; The padding size in vertical direction.</li>
+<li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layer, which can not specify.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="expand-layer">
+<h3>expand_layer<a class="headerlink" href="#expand-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">expand_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A layer for &#8220;Expand Dense data or (sequence data where the length of each
+sequence is one) to sequence data.&#8221;</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">expand</span> <span class="o">=</span> <span class="n">expand_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span>
+                      <span class="n">expand_as</span><span class="o">=</span><span class="n">layer2</span><span class="p">,</span>
+                      <span class="n">expand_level</span><span class="o">=</span><span class="n">ExpandLevel</span><span class="o">.</span><span class="n">FROM_TIMESTEP</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer</li>
+<li><strong>expand_as</strong> (<em>LayerOutput</em>) &#8211; Expand as this layer&#8217;s sequence info.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Bias attribute. None means default bias. False means no
+bias.</li>
+<li><strong>expand_level</strong> (<em>ExpandLevel</em>) &#8211; whether input layer is timestep(default) or sequence.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="repeat-layer">
+<h3>repeat_layer<a class="headerlink" href="#repeat-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">repeat_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A layer for repeating the input for num_repeats times. This is equivalent
+to apply concat_layer() with num_repeats same input.</p>
+<div class="math">
+\[y  = [x, x, \cdots, x]\]</div>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">expand</span> <span class="o">=</span> <span class="n">repeat_layer</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer</li>
+<li><strong>num_repeats</strong> (<em>int</em>) &#8211; Repeat the input so many times</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="math-layers">
+<h2>Math Layers<a class="headerlink" href="#math-layers" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="addto-layer">
+<h3>addto_layer<a class="headerlink" href="#addto-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">addto_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>AddtoLayer.</p>
+<div class="math">
+\[y = f(\sum_{i} x_i + b)\]</div>
+<p>where <span class="math">\(y\)</span> is output, <span class="math">\(x\)</span> is input, <span class="math">\(b\)</span> is bias,
+and <span class="math">\(f\)</span> is activation function.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">addto</span> <span class="o">=</span> <span class="n">addto_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">],</span>
+                    <span class="n">act</span><span class="o">=</span><span class="n">ReluActivation</span><span class="p">(),</span>
+                    <span class="n">bias_attr</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This layer just simply add all input layers together, then activate the sum
+inputs. Each input of this layer should be the same size, which is also the
+output size of this layer.</p>
+<p>There is no weight matrix for each input, because it just a simple add
+operation. If you want a complicated operation before add, please use
+mixed_layer.</p>
+<p>It is a very good way to set dropout outside the layers. Since not all
+PaddlePaddle layer support dropout, you can add an add_to layer, set
+dropout here.
+Please refer to dropout_layer for details.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>input</strong> (<em>LayerOutput|list|tuple</em>) &#8211; Input layers. It could be a LayerOutput or list/tuple of
+LayerOutput.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type, default is tanh.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|bool</em>) &#8211; Bias attribute. If False, means no bias. None is default
+bias.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="linear-comb-layer">
+<h3>linear_comb_layer<a class="headerlink" href="#linear-comb-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">linear_comb_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><dl class="docutils">
+<dt>A layer for weighted sum of vectors takes two inputs.</dt>
+<dd><ul class="first last">
+<li><dl class="first docutils">
+<dt>Input: size of weights is M</dt>
+<dd><p class="first last">size of vectors is M*N</p>
+</dd>
+</dl>
+</li>
+<li><p class="first">Output: a vector of size=N</p>
+</li>
+</ul>
+</dd>
+</dl>
+<div class="math">
+\[z(i) = \sum_{j=0}^{M-1} x(j) y(i+Nj)\]</div>
+<p>where <span class="math">\(0 \le i \le N-1\)</span></p>
+<p>Or in the matrix notation:</p>
+<div class="math">
+\[z = x^\mathrm{T} Y\]</div>
+<dl class="docutils">
+<dt>In this formular:</dt>
+<dd><ul class="first last simple">
+<li><span class="math">\(x\)</span>: weights</li>
+<li><span class="math">\(y\)</span>: vectors.</li>
+<li><span class="math">\(z\)</span>: the output.</li>
+</ul>
+</dd>
+</dl>
+<p>Note that the above computation is for one sample. Multiple samples are
+processed in one batch.</p>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">linear_comb</span> <span class="o">=</span> <span class="n">linear_comb_layer</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="n">weight</span><span class="p">,</span> <span class="n">vectors</span><span class="o">=</span><span class="n">vectors</span><span class="p">,</span>
+                                <span class="n">size</span><span class="o">=</span><span class="n">elem_dim</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>weights</strong> (<em>LayerOutput</em>) &#8211; The weight layer.</li>
+<li><strong>vectors</strong> (<em>LayerOutput</em>) &#8211; The vector layer.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; the dimension of this layer.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="interpolation-layer">
+<h3>interpolation_layer<a class="headerlink" href="#interpolation-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">interpolation_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>This layer is for linear interpolation with two inputs,
+which is used in NEURAL TURING MACHINE.</p>
+<div class="math">
+\[y.row[i] = w[i] * x_1.row[i] + (1 - w[i]) * x_2.row[i]\]</div>
+<p>where <span class="math">\(x_1\)</span> and <span class="math">\(x_2\)</span> are two (batchSize x dataDim) inputs,
+<span class="math">\(w\)</span> is (batchSize x 1) weight vector, and <span class="math">\(y\)</span> is
+(batchSize x dataDim) output.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">interpolation</span> <span class="o">=</span> <span class="n">interpolation_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">],</span> <span class="n">weight</span><span class="o">=</span><span class="n">layer3</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>list|tuple</em>) &#8211; Input layer.</li>
+<li><strong>weight</strong> (<em>LayerOutput</em>) &#8211; Weight layer.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="bilinear-interp-layer">
+<h3>bilinear_interp_layer<a class="headerlink" href="#bilinear-interp-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">bilinear_interp_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>This layer is to implement bilinear interpolation on conv layer output.</p>
+<p>Please refer to Wikipedia: <a class="reference external" href="https://en.wikipedia.org/wiki/Bilinear_interpolation">https://en.wikipedia.org/wiki/Bilinear_interpolation</a></p>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">bilinear</span> <span class="o">=</span> <span class="n">bilinear_interp_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">out_size_x</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">out_size_y</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; A input layer.</li>
+<li><strong>out_size_x</strong> (<em>int|None</em>) &#8211; bilinear interpolation output width.</li>
+<li><strong>out_size_y</strong> (<em>int|None</em>) &#8211; bilinear interpolation output height.</li>
+<li><strong>name</strong> (<em>None|basestring</em>) &#8211; The layer&#8217;s name, which cna not be specified.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="power-layer">
+<h3>power_layer<a class="headerlink" href="#power-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">power_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>This layer applies a power function to a vector element-wise,
+which is used in NEURAL TURING MACHINE.</p>
+<div class="math">
+\[y = x^w\]</div>
+<p>where <span class="math">\(x\)</span> is a input vector, <span class="math">\(w\)</span> is scalar weight,
+and <span class="math">\(y\)</span> is a output vector.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">power</span> <span class="o">=</span> <span class="n">power_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">layer2</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer.</li>
+<li><strong>weight</strong> (<em>LayerOutput</em>) &#8211; Weight layer.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="scaling-layer">
+<h3>scaling_layer<a class="headerlink" href="#scaling-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">scaling_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A layer for multiplying input vector by weight scalar.</p>
+<div class="math">
+\[y  = w x\]</div>
+<p>where <span class="math">\(x\)</span> is size=dataDim input, <span class="math">\(w\)</span> is size=1 weight,
+and <span class="math">\(y\)</span> is size=dataDim output.</p>
+<p>Note that the above computation is for one sample. Multiple samples are
+processed in one batch.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">scale</span> <span class="o">=</span> <span class="n">scaling_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">layer2</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer.</li>
+<li><strong>weight</strong> (<em>LayerOutput</em>) &#8211; Weight layer.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="slope-intercept-layer">
+<h3>slope_intercept_layer<a class="headerlink" href="#slope-intercept-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">slope_intercept_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>This layer for applying a slope and an intercept to the input
+element-wise. There is no activation and weight.</p>
+<div class="math">
+\[y = slope * x + intercept\]</div>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">scale</span> <span class="o">=</span> <span class="n">slope_intercept_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span> <span class="n">slope</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">intercept</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layer.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
+<li><strong>slope</strong> (<em>float.</em>) &#8211; the scale factor.</li>
+<li><strong>intercept</strong> (<em>float.</em>) &#8211; the offset.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="tensor-layer">
+<h3>tensor_layer<a class="headerlink" href="#tensor-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">tensor_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>This layer performs tensor operation for two input.
+For example, each sample:</p>
+<div class="math">
+\[y_{i} = a * W_{i} * {b^\mathrm{T}}, i=0,1,...,K-1\]</div>
+<dl class="docutils">
+<dt>In this formular:</dt>
+<dd><ul class="first last simple">
+<li><span class="math">\(a\)</span>: the first input contains M elements.</li>
+<li><span class="math">\(b\)</span>: the second input contains N elements.</li>
+<li><span class="math">\(y_{i}\)</span>: the i-th element of y.</li>
+<li><span class="math">\(W_{i}\)</span>: the i-th learned weight, shape if [M, N]</li>
+<li><span class="math">\(b^\mathrm{T}\)</span>: the transpose of <span class="math">\(b_{2}\)</span>.</li>
+</ul>
+</dd>
+</dl>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">tensor</span> <span class="o">=</span> <span class="n">tensor_layer</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">layer2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
+<li><strong>a</strong> (<em>LayerOutput</em>) &#8211; Input layer a.</li>
+<li><strong>b</strong> (<em>LayerOutput</em>) &#8211; input layer b.</li>
+<li><strong>size</strong> (<em>int.</em>) &#8211; the layer dimension.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type. Default is tanh.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; The Parameter Attribute.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|None|Any</em>) &#8211; The Bias Attribute. If no bias, then pass False or
+something not type of ParameterAttribute. None will get a
+default Bias.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="cos-sim">
+<h3>cos_sim<a class="headerlink" href="#cos-sim" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">cos_sim</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Cosine Similarity Layer. The cosine similarity equation is here.</p>
+<div class="math">
+\[similarity = cos(\theta) = {\mathbf{a} \cdot \mathbf{b}
+\over \|\mathbf{a}\| \|\mathbf{b}\|}\]</div>
+<p>The size of a is M, size of b is M*N,
+Similarity will be calculated N times by step M. The output size is
+N. The scale will be multiplied to similarity.</p>
+<p>Note that the above computation is for one sample. Multiple samples are
+processed in one batch.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
+<li><strong>a</strong> (<em>LayerOutput</em>) &#8211; input layer a</li>
+<li><strong>b</strong> (<em>LayerOutput</em>) &#8211; input layer b</li>
+<li><strong>scale</strong> (<em>float</em>) &#8211; scale for cosine value. default is 5.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; layer size. NOTE size_a * size should equal size_b.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="trans-layer">
+<h3>trans_layer<a class="headerlink" href="#trans-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">trans_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A layer for transposition.</p>
+<div class="math">
+\[y = x^\mathrm{T}\]</div>
+<p>where <span class="math">\(x\)</span> is (M x N) input, and <span class="math">\(y\)</span> is (N x M) output.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">trans</span> <span class="o">=</span> <span class="n">trans_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="sampling-layers">
+<h2>Sampling Layers<a class="headerlink" href="#sampling-layers" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="maxid-layer">
+<h3>maxid_layer<a class="headerlink" href="#maxid-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">maxid_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A layer for finding the id which has the maximal value for each sample.
+The result is stored in output.ids.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">maxid</span> <span class="o">=</span> <span class="n">maxid_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer name.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="sampling-id-layer">
+<h3>sampling_id_layer<a class="headerlink" href="#sampling-id-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">sampling_id_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A layer for sampling id from multinomial distribution from the input layer.
+Sampling one id for one sample.</p>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">samping_id</span> <span class="o">=</span> <span class="n">sampling_id_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layer.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="cost-layers">
+<h2>Cost Layers<a class="headerlink" href="#cost-layers" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="cross-entropy">
+<h3>cross_entropy<a class="headerlink" href="#cross-entropy" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">cross_entropy</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A loss layer for multi class entropy.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">cross_entropy</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">input_layer</span><span class="p">,</span>
+                     <span class="n">label</span><span class="o">=</span><span class="n">label_layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; The first input layer.</li>
+<li><strong>label</strong> &#8211; The input label.</li>
+<li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="cross-entropy-with-selfnorm">
+<h3>cross_entropy_with_selfnorm<a class="headerlink" href="#cross-entropy-with-selfnorm" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">cross_entropy_with_selfnorm</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A loss layer for multi class entropy with selfnorm.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">cross_entropy_with_selfnorm</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">input_layer</span><span class="p">,</span>
+                                   <span class="n">label</span><span class="o">=</span><span class="n">label_layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; The first input layer.</li>
+<li><strong>label</strong> &#8211; The input label.</li>
+<li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>softmax_selfnorm_alpha</strong> (<em>float.</em>) &#8211; The scale factor affects the cost.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="multi-binary-label-cross-entropy">
+<h3>multi_binary_label_cross_entropy<a class="headerlink" href="#multi-binary-label-cross-entropy" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">multi_binary_label_cross_entropy</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A loss layer for multi binary label cross entropy.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">multi_binary_label_cross_entropy</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">input_layer</span><span class="p">,</span>
+                                        <span class="n">label</span><span class="o">=</span><span class="n">label_layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The first input layer.</li>
+<li><strong>label</strong> &#8211; The input label.</li>
+<li><strong>type</strong> (<em>basestring</em>) &#8211; The type of cost.</li>
+<li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="huber-cost">
+<h3>huber_cost<a class="headerlink" href="#huber-cost" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">huber_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A loss layer for huber loss.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">huber_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">input_layer</span><span class="p">,</span>
+                  <span class="n">label</span><span class="o">=</span><span class="n">label_layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; The first input layer.</li>
+<li><strong>label</strong> &#8211; The input label.</li>
+<li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="lambda-cost">
+<h3>lambda_cost<a class="headerlink" href="#lambda-cost" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">lambda_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>lambdaCost for lambdaRank LTR approach.</p>
+<p>The simple usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">lambda_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
+                   <span class="n">score</span><span class="o">=</span><span class="n">score</span><span class="p">,</span>
+                   <span class="n">NDCG_num</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                   <span class="n">max_sort_size</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Samples of the same query should be loaded as sequence.</li>
+<li><strong>score</strong> &#8211; The 2nd input. Score of each sample.</li>
+<li><strong>NDCG_num</strong> (<em>int</em>) &#8211; The size of NDCG (Normalized Discounted Cumulative Gain),
+e.g., 5 for NDCG&#64;5. It must be less than for equal to the
+minimum size of lists.</li>
+<li><strong>max_sort_size</strong> (<em>int</em>) &#8211; The size of partial sorting in calculating gradient.
+If max_sort_size = -1, then for each list, the
+algorithm will sort the entire list to get gradient.
+In other cases, max_sort_size must be greater than or
+equal to NDCG_num. And if max_sort_size is greater
+than the size of a list, the algorithm will sort the
+entire list of get gradient.</li>
+<li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="rank-cost">
+<h3>rank_cost<a class="headerlink" href="#rank-cost" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">rank_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A cost Layer for learning to rank using gradient descent. Details can refer
+to <a class="reference external" href="http://research.microsoft.com/en-us/um/people/cburges/papers/ICML_ranking.pdf">papers</a>.
+This layer contains at least three inputs. The weight is an optional
+argument, which affects the cost.</p>
+<div class="math">
+\[ \begin{align}\begin{aligned}C_{i,j} &amp; = -\tilde{P_{ij}} * o_{i,j} + log(1 + e^{o_{i,j}})\\o_{i,j} &amp; =  o_i - o_j\\\tilde{P_{i,j}} &amp; = \{0, 0.5, 1\} \ or \ \{0, 1\}\end{aligned}\end{align} \]</div>
+<dl class="docutils">
+<dt>In this formula:</dt>
+<dd><ul class="first last simple">
+<li><span class="math">\(C_{i,j}\)</span> is the cross entropy cost.</li>
+<li><span class="math">\(\tilde{P_{i,j}}\)</span> is the label. 1 means positive order
+and 0 means reverse order.</li>
+<li><span class="math">\(o_i\)</span> and <span class="math">\(o_j\)</span>: the left output and right output.
+Their dimension is one.</li>
+</ul>
+</dd>
+</dl>
+<p>The simple usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">rank_cost</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="n">out_left</span><span class="p">,</span>
+                 <span class="n">right</span><span class="o">=</span><span class="n">out_right</span><span class="p">,</span>
+                 <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>left</strong> (<em>LayerOutput</em>) &#8211; The first input, the size of this layer is 1.</li>
+<li><strong>right</strong> (<em>LayerOutput</em>) &#8211; The right input, the size of this layer is 1.</li>
+<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; Label is 1 or 0, means positive order and reverse order.</li>
+<li><strong>weight</strong> (<em>LayerOutput</em>) &#8211; The weight affects the cost, namely the scale of cost.
+It is an optional argument.</li>
+<li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="crf-layer">
+<h3>crf_layer<a class="headerlink" href="#crf-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">crf_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A layer for calculating the cost of sequential conditional random
+field model.</p>
+<p>The simple usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">crf</span> <span class="o">=</span> <span class="n">crf_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
+                <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
+                <span class="n">size</span><span class="o">=</span><span class="n">label_dim</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The first input layer is the feature.</li>
+<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; The second input layer is label.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; The category number.</li>
+<li><strong>weight</strong> (<em>LayerOutput</em>) &#8211; The third layer is &#8220;weight&#8221; of each sample, which is an
+optional argument.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter attribute. None means default attribute</li>
+<li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="crf-decoding-layer">
+<h3>crf_decoding_layer<a class="headerlink" href="#crf-decoding-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">crf_decoding_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A layer for calculating the decoding sequence of sequential conditional
+random field model. The decoding sequence is stored in output.ids.
+If a second input is provided, it is treated as the ground-truth label, and
+this layer will also calculate error. output.value[i] is 1 for incorrect
+decoding or 0 for correct decoding.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The first input layer.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; size of this layer.</li>
+<li><strong>label</strong> (<em>LayerOutput or None</em>) &#8211; None or ground-truth label.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter attribute. None means default attribute</li>
+<li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="ctc-layer">
+<h3>ctc_layer<a class="headerlink" href="#ctc-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">ctc_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Connectionist Temporal Classification (CTC) is designed for temporal
+classication task. That is, for sequence labeling problems where the
+alignment between the inputs and the target labels is unknown.</p>
+<p>More details can be found by referring to <a class="reference external" href="http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf">Connectionist Temporal
+Classification: Labelling Unsegmented Sequence Data with Recurrent
+Neural Networks</a></p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Considering the &#8216;blank&#8217; label needed by CTC, you need to use
+(num_classes + 1) as the input size. num_classes is the category number.
+And the &#8216;blank&#8217; is the last category index. So the size of &#8216;input&#8217; layer, such as
+fc_layer with softmax activation, should be num_classes + 1. The size of ctc_layer
+should also be num_classes + 1.</p>
+</div>
+<p>The simple usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">ctc</span> <span class="o">=</span> <span class="n">ctc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
+                <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
+                <span class="n">size</span><span class="o">=</span><span class="mi">9055</span><span class="p">,</span>
+                <span class="n">norm_by_times</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layer.</li>
+<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; The data layer of label with variable length.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; category numbers + 1.</li>
+<li><strong>name</strong> (<em>basestring|None</em>) &#8211; The name of this layer</li>
+<li><strong>norm_by_times</strong> (<em>bool</em>) &#8211; Whether to normalization by times. False by default.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="nce-layer">
+<h3>nce_layer<a class="headerlink" href="#nce-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">nce_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Noise-contrastive estimation.
+Implements the method in the following paper:
+A fast and simple algorithm for training neural probabilistic language models.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">nce_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">layer2</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">layer3</span><span class="p">,</span>
+                 <span class="n">num_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">neg_distribution</span><span class="o">=</span><span class="p">[</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">0.3</span><span class="p">,</span><span class="mf">0.6</span><span class="p">])</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
+<li><strong>input</strong> (<em>LayerOutput|list|tuple|collections.Sequence</em>) &#8211; input layers. It could be a LayerOutput of list/tuple of LayerOutput.</li>
+<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; label layer</li>
+<li><strong>weight</strong> (<em>LayerOutput</em>) &#8211; weight layer, can be None(default)</li>
+<li><strong>num_classes</strong> (<em>int</em>) &#8211; number of classes.</li>
+<li><strong>num_neg_samples</strong> (<em>int</em>) &#8211; number of negative samples. Default is 10.</li>
+<li><strong>neg_distribution</strong> (<em>list|tuple|collections.Sequence|None</em>) &#8211; The distribution for generating the random negative labels.
+A uniform distribution will be used if not provided.
+If not None, its length must be equal to num_classes.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Bias parameter attribute. True if no bias.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">layer name.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="hsigmoid">
+<h3>hsigmoid<a class="headerlink" href="#hsigmoid" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">hsigmoid</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Organize the classes into a binary tree. At each node, a sigmoid function
+is used to calculate the probability of belonging to the right branch.
+This idea is from &#8220;F. Morin, Y. Bengio (AISTATS 05):
+Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">hsigmoid</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">],</span>
+                <span class="n">label</span><span class="o">=</span><span class="n">data_layer</span><span class="p">,</span>
+                <span class="n">num_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput|list|tuple</em>) &#8211; Input layers. It could be a LayerOutput or list/tuple of
+LayerOutput.</li>
+<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; Label layer.</li>
+<li><strong>num_classes</strong> (<em>int</em>) &#8211; number of classes.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; Bias attribute. None means default bias.
+False means no bias.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="sum-cost">
+<h3>sum_cost<a class="headerlink" href="#sum-cost" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">sum_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A loss layer which calculate the sum of the input as loss</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">sum_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">input_layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; The first input layer.</li>
+<li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="check-layer">
+<h2>Check Layer<a class="headerlink" href="#check-layer" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="eos-layer">
+<h3>eos_layer<a class="headerlink" href="#eos-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">eos_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A layer for checking EOS for each sample:
+- output_id = (input_id == conf.eos_id)</p>
+<p>The result is stored in output_.ids.
+It is used by recurrent layer group.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">eos</span> <span class="o">=</span> <span class="n">eos_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span> <span class="n">eos_id</span><span class="o">=</span><span class="nb">id</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer name.</li>
+<li><strong>eos_id</strong> (<em>int</em>) &#8211; end id of sequence</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Layers</a><ul>
+<li><a class="reference internal" href="#base">Base</a><ul>
+<li><a class="reference internal" href="#layertype">LayerType</a></li>
+<li><a class="reference internal" href="#layeroutput">LayerOutput</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#data-layer">Data layer</a><ul>
+<li><a class="reference internal" href="#id1">data_layer</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#fully-connected-layers">Fully Connected Layers</a><ul>
+<li><a class="reference internal" href="#fc-layer">fc_layer</a></li>
+<li><a class="reference internal" href="#selective-fc-layer">selective_fc_layer</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#conv-layers">Conv Layers</a><ul>
+<li><a class="reference internal" href="#conv-operator">conv_operator</a></li>
+<li><a class="reference internal" href="#conv-projection">conv_projection</a></li>
+<li><a class="reference internal" href="#conv-shift-layer">conv_shift_layer</a></li>
+<li><a class="reference internal" href="#img-conv-layer">img_conv_layer</a></li>
+<li><a class="reference internal" href="#context-projection">context_projection</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#image-pooling-layer">Image Pooling Layer</a><ul>
+<li><a class="reference internal" href="#img-pool-layer">img_pool_layer</a></li>
+<li><a class="reference internal" href="#spp-layer">spp_layer</a></li>
+<li><a class="reference internal" href="#maxout-layer">maxout_layer</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#norm-layer">Norm Layer</a><ul>
+<li><a class="reference internal" href="#img-cmrnorm-layer">img_cmrnorm_layer</a></li>
+<li><a class="reference internal" href="#batch-norm-layer">batch_norm_layer</a></li>
+<li><a class="reference internal" href="#sum-to-one-norm-layer">sum_to_one_norm_layer</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#recurrent-layers">Recurrent Layers</a><ul>
+<li><a class="reference internal" href="#recurrent-layer">recurrent_layer</a></li>
+<li><a class="reference internal" href="#lstmemory">lstmemory</a></li>
+<li><a class="reference internal" href="#lstm-step-layer">lstm_step_layer</a></li>
+<li><a class="reference internal" href="#grumemory">grumemory</a></li>
+<li><a class="reference internal" href="#gru-step-layer">gru_step_layer</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#recurrent-layer-group">Recurrent Layer Group</a><ul>
+<li><a class="reference internal" href="#memory">memory</a></li>
+<li><a class="reference internal" href="#recurrent-group">recurrent_group</a></li>
+<li><a class="reference internal" href="#beam-search">beam_search</a></li>
+<li><a class="reference internal" href="#get-output-layer">get_output_layer</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mixed-layer">Mixed Layer</a><ul>
+<li><a class="reference internal" href="#id2">mixed_layer</a></li>
+<li><a class="reference internal" href="#embedding-layer">embedding_layer</a></li>
+<li><a class="reference internal" href="#scaling-projection">scaling_projection</a></li>
+<li><a class="reference internal" href="#dotmul-projection">dotmul_projection</a></li>
+<li><a class="reference internal" href="#dotmul-operator">dotmul_operator</a></li>
+<li><a class="reference internal" href="#full-matrix-projection">full_matrix_projection</a></li>
+<li><a class="reference internal" href="#identity-projection">identity_projection</a></li>
+<li><a class="reference internal" href="#table-projection">table_projection</a></li>
+<li><a class="reference internal" href="#trans-full-matrix-projection">trans_full_matrix_projection</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#aggregate-layers">Aggregate Layers</a><ul>
+<li><a class="reference internal" href="#pooling-layer">pooling_layer</a></li>
+<li><a class="reference internal" href="#last-seq">last_seq</a></li>
+<li><a class="reference internal" href="#first-seq">first_seq</a></li>
+<li><a class="reference internal" href="#concat-layer">concat_layer</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#reshaping-layers">Reshaping Layers</a><ul>
+<li><a class="reference internal" href="#block-expand-layer">block_expand_layer</a></li>
+<li><a class="reference internal" href="#expand-layer">expand_layer</a></li>
+<li><a class="reference internal" href="#repeat-layer">repeat_layer</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#math-layers">Math Layers</a><ul>
+<li><a class="reference internal" href="#addto-layer">addto_layer</a></li>
+<li><a class="reference internal" href="#linear-comb-layer">linear_comb_layer</a></li>
+<li><a class="reference internal" href="#interpolation-layer">interpolation_layer</a></li>
+<li><a class="reference internal" href="#bilinear-interp-layer">bilinear_interp_layer</a></li>
+<li><a class="reference internal" href="#power-layer">power_layer</a></li>
+<li><a class="reference internal" href="#scaling-layer">scaling_layer</a></li>
+<li><a class="reference internal" href="#slope-intercept-layer">slope_intercept_layer</a></li>
+<li><a class="reference internal" href="#tensor-layer">tensor_layer</a></li>
+<li><a class="reference internal" href="#cos-sim">cos_sim</a></li>
+<li><a class="reference internal" href="#trans-layer">trans_layer</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#sampling-layers">Sampling Layers</a><ul>
+<li><a class="reference internal" href="#maxid-layer">maxid_layer</a></li>
+<li><a class="reference internal" href="#sampling-id-layer">sampling_id_layer</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#cost-layers">Cost Layers</a><ul>
+<li><a class="reference internal" href="#cross-entropy">cross_entropy</a></li>
+<li><a class="reference internal" href="#cross-entropy-with-selfnorm">cross_entropy_with_selfnorm</a></li>
+<li><a class="reference internal" href="#multi-binary-label-cross-entropy">multi_binary_label_cross_entropy</a></li>
+<li><a class="reference internal" href="#huber-cost">huber_cost</a></li>
+<li><a class="reference internal" href="#lambda-cost">lambda_cost</a></li>
+<li><a class="reference internal" href="#rank-cost">rank_cost</a></li>
+<li><a class="reference internal" href="#crf-layer">crf_layer</a></li>
+<li><a class="reference internal" href="#crf-decoding-layer">crf_decoding_layer</a></li>
+<li><a class="reference internal" href="#ctc-layer">ctc_layer</a></li>
+<li><a class="reference internal" href="#nce-layer">nce_layer</a></li>
+<li><a class="reference internal" href="#hsigmoid">hsigmoid</a></li>
+<li><a class="reference internal" href="#sum-cost">sum_cost</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#check-layer">Check Layer</a><ul>
+<li><a class="reference internal" href="#eos-layer">eos_layer</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="data_sources.html"
+                        title="previous chapter">DataSources</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="activations.html"
+                        title="next chapter">Activations</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/ui/api/trainer_config_helpers/layers.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="activations.html" title="Activations"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="data_sources.html" title="DataSources"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Model Config Interface</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,764 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Regression MovieLens Ratting &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="Examples and demos" href="../index.html" />
+    <link rel="next" title="Model Zoo - ImageNet" href="../imagenet_model/resnet_model.html" />
+    <link rel="prev" title="MovieLens Dataset" href="ml_dataset.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../imagenet_model/resnet_model.html" title="Model Zoo - ImageNet"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ml_dataset.html" title="MovieLens Dataset"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Examples and demos</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="regression-movielens-ratting">
+<h1>Regression MovieLens Ratting<a class="headerlink" href="#regression-movielens-ratting" title="Permalink to this headline">¶</a></h1>
+<p>Here we demonstrate a <strong>Cosine Similarity Regression</strong> job in movie lens dataset.
+This demo will show how paddle does (word) embedding job,
+handles the similarity regression,
+the character-level convolutional networks for text, and how does paddle handle
+multiple types of inputs.
+Note that the model structure is not fine-tuned and just a demo to show how paddle works.</p>
+<p>YOU ARE WELCOME TO BUILD A BETTER DEMO
+BY USING PADDLEPADDLE, AND LET US KNOW TO MAKE THIS DEMO BETTER.</p>
+<div class="section" id="data-preparation">
+<h2>Data Preparation<a class="headerlink" href="#data-preparation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="download-and-extract-dataset">
+<h3>Download and extract dataset<a class="headerlink" href="#download-and-extract-dataset" title="Permalink to this headline">¶</a></h3>
+<p>We use <a class="reference external" href="ml_dataset.html">movielens 1m dataset</a> here.
+To download and unzip the dataset, simply run the following commands.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/recommendation/data
+./ml_data.sh
+</pre></div>
+</div>
+<p>And the directory structure of <code class="code docutils literal"><span class="pre">demo/recommendation/data/ml-1m</span></code> is:</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>+--ml-1m
+     +--- movies.dat    # movie features
+     +--- ratings.dat   # ratings
+     +--- users.dat     # user features
+     +--- README        # dataset description
+</pre></div>
+</div>
+</div>
+<div class="section" id="field-config-file">
+<h3>Field config file<a class="headerlink" href="#field-config-file" title="Permalink to this headline">¶</a></h3>
+<p><strong>Field config file</strong> is used to specific the fields dataset and file format,
+i.e, specific <strong>WHAT</strong> type it is in each feature file.</p>
+<p>The field config file of ml-1m shows in <code class="code docutils literal"><span class="pre">demo/recommendation/data/config.json</span></code>.
+It specifics the field types and file names: 1) there are four types of field for user file: id, gender, age and occupation;
+2) the filename is &#8220;users.dat&#8221;, and the delimiter of file is &#8221;::&#8221;.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;users.dat&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;delimiter&quot;</span><span class="p">:</span> <span class="s2">&quot;::&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;fields&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;gender&quot;</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">,</span> <span class="s2">&quot;occupation&quot;</span><span class="p">]</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;movie&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;movies.dat&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;delimiter&quot;</span><span class="p">:</span> <span class="s2">&quot;::&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;fields&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="s2">&quot;genres&quot;</span><span class="p">]</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="preprocess-data">
+<h2>Preprocess Data<a class="headerlink" href="#preprocess-data" title="Permalink to this headline">¶</a></h2>
+<p>You need to install python 3rd party libraries.
+IT IS HIGHLY RECOMMEND TO USE VIRTUALENV MAKE A CLEAN PYTHON ENVIRONMENT.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>pip install -r requirements.txt
+</pre></div>
+</div>
+<p>The general command for preprocessing the dataset is:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/recommendation
+./preprocess.sh
+</pre></div>
+</div>
+<p>And the detail steps are introduced as follows.</p>
+<div class="section" id="extract-movie-user-features-to-python-object">
+<h3>Extract Movie/User features to python object<a class="headerlink" href="#extract-movie-user-features-to-python-object" title="Permalink to this headline">¶</a></h3>
+<p>There are many features in movie or user in movielens 1m dataset.
+Each line of rating file just provides a Movie/User id to refer each movie or user.
+We process the movie/user feature file first, and pickle the feature (<strong>Meta</strong>) object as a file.</p>
+<div class="section" id="meta-config-file">
+<h4>Meta config file<a class="headerlink" href="#meta-config-file" title="Permalink to this headline">¶</a></h4>
+<p><strong>Meta config file</strong> is used to specific <strong>HOW</strong> to parse each field in dataset.
+It could be translated from field config file, or written by hand.
+Its file format could be either json or yaml syntax file. Parser will automatically choose the file format by extension name.</p>
+<p>To convert Field config file to meta config file, just run:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/recommendation/data
+python config_generator.py config.json &gt; meta_config.json
+</pre></div>
+</div>
+<p>The meta config file shows below:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="s2">&quot;meta&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">&quot;movie&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;fields&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span> 
+          <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="mi">0</span>
+        <span class="p">},</span> 
+        <span class="p">{</span>
+          <span class="s2">&quot;regex&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;pattern&quot;</span><span class="p">:</span> <span class="s2">&quot;^(.*)</span><span class="se">\\</span><span class="s2">((</span><span class="se">\\</span><span class="s2">d+)</span><span class="se">\\</span><span class="s2">)$&quot;</span><span class="p">,</span> 
+            <span class="s2">&quot;group_id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> 
+            <span class="s2">&quot;strip&quot;</span><span class="p">:</span> <span class="n">true</span>
+          <span class="p">},</span> 
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;seq_type&quot;</span><span class="p">:</span> <span class="s2">&quot;sequence&quot;</span><span class="p">,</span> 
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;embedding&quot;</span>
+          <span class="p">},</span> 
+          <span class="s2">&quot;dict&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;char_based&quot;</span>
+          <span class="p">},</span> 
+          <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;title&quot;</span><span class="p">,</span> 
+          <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="mi">1</span>
+        <span class="p">},</span> 
+        <span class="p">{</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;one_hot_dense&quot;</span><span class="p">,</span> 
+          <span class="s2">&quot;dict&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;delimiter&quot;</span><span class="p">:</span> <span class="s2">&quot;|&quot;</span><span class="p">,</span> 
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;split&quot;</span>
+          <span class="p">},</span> 
+          <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;genres&quot;</span><span class="p">,</span> 
+          <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="mi">2</span>
+        <span class="p">}</span>
+      <span class="p">],</span> 
+      <span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;delimiter&quot;</span><span class="p">:</span> <span class="s2">&quot;::&quot;</span><span class="p">,</span> 
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;split&quot;</span><span class="p">,</span> 
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;movies.dat&quot;</span>
+      <span class="p">}</span>
+    <span class="p">},</span> 
+    <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;fields&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span> 
+          <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="mi">0</span>
+        <span class="p">},</span> 
+        <span class="p">{</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;embedding&quot;</span><span class="p">,</span> 
+          <span class="s2">&quot;dict&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;char_based&quot;</span>
+          <span class="p">},</span> 
+          <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;gender&quot;</span><span class="p">,</span> 
+          <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="mi">1</span>
+        <span class="p">},</span> 
+        <span class="p">{</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;embedding&quot;</span><span class="p">,</span> 
+          <span class="s2">&quot;dict&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;sort&quot;</span><span class="p">:</span> <span class="n">true</span><span class="p">,</span> 
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;whole_content&quot;</span>
+          <span class="p">},</span> 
+          <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;age&quot;</span><span class="p">,</span> 
+          <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="mi">2</span>
+        <span class="p">},</span> 
+        <span class="p">{</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;embedding&quot;</span><span class="p">,</span> 
+          <span class="s2">&quot;dict&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;sort&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span> 
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;whole_content&quot;</span>
+          <span class="p">},</span> 
+          <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;occupation&quot;</span><span class="p">,</span> 
+          <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="mi">3</span>
+        <span class="p">}</span>
+      <span class="p">],</span> 
+      <span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;delimiter&quot;</span><span class="p">:</span> <span class="s2">&quot;::&quot;</span><span class="p">,</span> 
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;split&quot;</span><span class="p">,</span> 
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;users.dat&quot;</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>There are two kinds of features in meta: movie and user.</p>
+<ul>
+<li><dl class="first docutils">
+<dt>in movie file, whose name is movies.dat</dt>
+<dd><ul class="first last">
+<li><p class="first">we just split each line by &#8221;::&#8221;</p>
+</li>
+<li><p class="first">pos 0 is id.</p>
+</li>
+<li><dl class="first docutils">
+<dt>pos 1 feature:</dt>
+<dd><ul class="first last simple">
+<li>name is title.</li>
+<li>it uses regex to parse this feature.</li>
+<li>it is a char based word embedding feature.</li>
+<li>it is a sequence.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>pos 2 feature:</dt>
+<dd><ul class="first last simple">
+<li>name is genres.</li>
+<li>type is one hot dense vector.</li>
+<li>dictionary is auto generated by parsing, each key is split by &#8216;|&#8217;</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>in user file, whose name is users.dat</dt>
+<dd><ul class="first last">
+<li><p class="first">we just split each line by &#8221;::&#8221;</p>
+</li>
+<li><p class="first">pos 0 is id.</p>
+</li>
+<li><dl class="first docutils">
+<dt>pos 1 feature:</dt>
+<dd><ul class="first last simple">
+<li>name is gender</li>
+<li>just simple char based embedding.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>pos 2 feature:</dt>
+<dd><ul class="first last simple">
+<li>name is age</li>
+<li>just whole word embedding.</li>
+<li>embedding id will be sort by word.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>pos 3 feature:</dt>
+<dd><ul class="first last simple">
+<li>name is occupation.</li>
+<li>just simple whole word embedding.</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="meta-file">
+<h3>Meta file<a class="headerlink" href="#meta-file" title="Permalink to this headline">¶</a></h3>
+<p>After having meta config file, we can generate <strong>Meta file</strong>, a python pickle object which stores movie/user information.
+The following commands could be run to generate it.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>python meta_generator.py ml-1m meta.bin --config<span class="o">=</span>meta_config.json
+</pre></div>
+</div>
+<p>And the structure of the meta file <code class="code docutils literal"><span class="pre">meta.bin</span></code> is:</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>+--+ movie
+|      +--+ __meta__
+|      |       +--+ raw_meta  # each feature meta config. list
+|      |       |       +
+|      |       |       |     # ID Field, we use id as key
+|      |       |       +--+ {&#39;count&#39;: 3883, &#39;max&#39;: 3952, &#39;is_key&#39;: True, &#39;type&#39;: &#39;id&#39;, &#39;min&#39;: 1}
+|      |       |       |
+|      |       |       |     # Titile field, the dictionary list of embedding.
+|      |       |       +--+ {&#39;dict&#39;: [ ... ], &#39;type&#39;: &#39;embedding&#39;, &#39;name&#39;: &#39;title&#39;, &#39;seq&#39;: &#39;sequence&#39;}
+|      |       |       |
+|      |       |       |     # Genres field, the genres dictionary
+|      |       |       +--+ {&#39;dict&#39;: [ ... ], &#39;type&#39;: &#39;one_hot_dense&#39;, &#39;name&#39;: &#39;genres&#39;}
+|      |       |
+|      |       +--+ feature_map [1, 2] # a list for raw_meta index for feature field.
+|      |                               # it means there are 2 features for each key.
+|      |                               #    * 0 offset of feature is raw_meta[1], Title.
+|      |                               #    * 1 offset of feature is raw_meta[2], Genres.
+|      |
+|      +--+ 1 # movie 1 features
+|      |    +
+|      |    +---+ [[...], [...]] # title ids, genres dense vector
+|      |
+|      +--+ 2
+|      |
+|      +--+ ...
+|
++--- user
+       +--+ __meta__
+       |       +
+       |       +--+ raw_meta
+       |       |       +
+       |       |       +--+ id field as user
+       |       |       |
+       |       |       +--+ {&#39;dict&#39;: [&#39;F&#39;, &#39;M&#39;], &#39;type&#39;: &#39;embedding&#39;, &#39;name&#39;: &#39;gender&#39;, &#39;seq&#39;: &#39;no_sequence&#39;}
+       |       |       |
+       |       |       +--+ {&#39;dict&#39;: [&#39;1&#39;, &#39;18&#39;, &#39;25&#39;, &#39;35&#39;, &#39;45&#39;, &#39;50&#39;, &#39;56&#39;], &#39;type&#39;: &#39;embedding&#39;, &#39;name&#39;: &#39;age&#39;, &#39;seq&#39;: &#39;no_sequence&#39;}
+       |       |       |
+       |       |       +--+ {&#39;dict&#39;: [...], &#39;type&#39;: &#39;embedding&#39;, &#39;name&#39;: &#39;occupation&#39;, &#39;seq&#39;: &#39;no_sequence&#39;}
+       |       |
+       |       +--+ feature_map [1, 2, 3]
+       |
+       +--+ 1 # user 1 features
+       |
+       +--+ 2
+       +--+ ...
+</pre></div>
+</div>
+</div>
+<div class="section" id="split-training-testing-files">
+<h3>Split Training/Testing files<a class="headerlink" href="#split-training-testing-files" title="Permalink to this headline">¶</a></h3>
+<p>We split <code class="code docutils literal"><span class="pre">ml-1m/ratings.dat</span></code> into a training and testing file. The way to split file is for each user, we split the
+rating by two parts. So each user in testing file will have some rating information in training file.</p>
+<p>Use separate.py to separate the training and testing file.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>python split.py ml-1m/ratings.dat --delimiter<span class="o">=</span><span class="s2">&quot;::&quot;</span> --test_ratio<span class="o">=</span>0.1
+</pre></div>
+</div>
+<p>Then two files will be generated: <code class="code docutils literal"><span class="pre">ml-1m/ratings.dat.train</span></code> and <code class="code docutils literal"><span class="pre">ml-1m/rating.data.test</span></code>.
+Move them to workspace <code class="code docutils literal"><span class="pre">data</span></code>, shuffle the train file, and prepare the file list for paddle train.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>shuf ml-1m/ratings.dat.train &gt; ratings.dat.train
+cp ml-1m/ratings.dat.test .
+<span class="nb">echo</span> <span class="s2">&quot;./data/ratings.dat.train&quot;</span> &gt; train.list
+<span class="nb">echo</span> <span class="s2">&quot;./data/ratings.dat.test&quot;</span> &gt; test.list
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="neural-network-configuration">
+<h2>Neural Network Configuration<a class="headerlink" href="#neural-network-configuration" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="trainer-config-file">
+<h3>Trainer Config File<a class="headerlink" href="#trainer-config-file" title="Permalink to this headline">¶</a></h3>
+<p>The network structure shows below.</p>
+<img alt="rec_regression_network" class="align-center" src="../../_images/rec_regression_network.png" />
+<p>The demo&#8217;s neural network config file &#8220;trainer_config.py&#8221; show as below.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">cPickle</span> <span class="kn">as</span> <span class="nn">pickle</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">pickle</span>
+
+<span class="n">is_predict</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;is_predict&#39;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+
+<span class="n">META_FILE</span> <span class="o">=</span> <span class="s1">&#39;data/meta.bin&#39;</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">META_FILE</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="c1"># load meta file</span>
+    <span class="n">meta</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+<span class="n">settings</span><span class="p">(</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">1600</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">learning_method</span><span class="o">=</span><span class="n">RMSPropOptimizer</span><span class="p">())</span>
+
+
+<span class="k">def</span> <span class="nf">construct_feature</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Construct movie/user features.</span>
+
+<span class="sd">    This method read from meta data. Then convert feature to neural network due</span>
+<span class="sd">    to feature type. The map relation as follow.</span>
+
+<span class="sd">    * id: embedding =&gt; fc</span>
+<span class="sd">    * embedding:</span>
+<span class="sd">        is_sequence:  embedding =&gt; context_projection =&gt; fc =&gt; pool</span>
+<span class="sd">        not sequence: embedding =&gt; fc</span>
+<span class="sd">    * one_hot_dense:  fc =&gt; fc</span>
+
+<span class="sd">    Then gather all features vector, and use a fc layer to combined them as</span>
+<span class="sd">    return.</span>
+
+<span class="sd">    :param name: &#39;movie&#39; or &#39;user&#39;</span>
+<span class="sd">    :type name: basestring</span>
+<span class="sd">    :return: combined feature output</span>
+<span class="sd">    :rtype: LayerOutput</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__meta__</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s1">&#39;__meta__&#39;</span><span class="p">][</span><span class="s1">&#39;raw_meta&#39;</span><span class="p">]</span>
+    <span class="n">fusion</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">each_meta</span> <span class="ow">in</span> <span class="n">__meta__</span><span class="p">:</span>
+        <span class="n">type_name</span> <span class="o">=</span> <span class="n">each_meta</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span>
+        <span class="n">slot_name</span> <span class="o">=</span> <span class="n">each_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_id&#39;</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">type_name</span> <span class="o">==</span> <span class="s1">&#39;id&#39;</span><span class="p">:</span>
+            <span class="n">slot_dim</span> <span class="o">=</span> <span class="n">each_meta</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">]</span>
+            <span class="n">embedding</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span>
+                <span class="nb">input</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span>
+                    <span class="n">slot_name</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">slot_dim</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+            <span class="n">fusion</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">embedding</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">type_name</span> <span class="o">==</span> <span class="s1">&#39;embedding&#39;</span><span class="p">:</span>
+            <span class="n">is_seq</span> <span class="o">=</span> <span class="n">each_meta</span><span class="p">[</span><span class="s1">&#39;seq&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;sequence&#39;</span>
+            <span class="n">slot_dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">each_meta</span><span class="p">[</span><span class="s1">&#39;dict&#39;</span><span class="p">])</span>
+            <span class="n">din</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">slot_name</span><span class="p">,</span> <span class="n">slot_dim</span><span class="p">)</span>
+            <span class="n">embedding</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">din</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">is_seq</span><span class="p">:</span>
+                <span class="n">fusion</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">text_conv_pool</span><span class="p">(</span>
+                        <span class="nb">input</span><span class="o">=</span><span class="n">embedding</span><span class="p">,</span> <span class="n">context_len</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">256</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">fusion</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">embedding</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">type_name</span> <span class="o">==</span> <span class="s1">&#39;one_hot_dense&#39;</span><span class="p">:</span>
+            <span class="n">slot_dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">each_meta</span><span class="p">[</span><span class="s1">&#39;dict&#39;</span><span class="p">])</span>
+            <span class="n">hidden</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">slot_name</span><span class="p">,</span> <span class="n">slot_dim</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+            <span class="n">fusion</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">hidden</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">fc_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_fusion&quot;</span> <span class="o">%</span> <span class="n">name</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="n">fusion</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+
+
+<span class="n">movie_feature</span> <span class="o">=</span> <span class="n">construct_feature</span><span class="p">(</span><span class="s2">&quot;movie&quot;</span><span class="p">)</span>
+<span class="n">user_feature</span> <span class="o">=</span> <span class="n">construct_feature</span><span class="p">(</span><span class="s2">&quot;user&quot;</span><span class="p">)</span>
+<span class="n">similarity</span> <span class="o">=</span> <span class="n">cos_sim</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">movie_feature</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">user_feature</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span><span class="p">:</span>
+    <span class="n">outputs</span><span class="p">(</span>
+        <span class="n">regression_cost</span><span class="p">(</span>
+            <span class="nb">input</span><span class="o">=</span><span class="n">similarity</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span>
+                <span class="s1">&#39;rating&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">)))</span>
+
+    <span class="n">define_py_data_sources2</span><span class="p">(</span>
+        <span class="s1">&#39;data/train.list&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;data/test.list&#39;</span><span class="p">,</span>
+        <span class="n">module</span><span class="o">=</span><span class="s1">&#39;dataprovider&#39;</span><span class="p">,</span>
+        <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;process&#39;</span><span class="p">,</span>
+        <span class="n">args</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;meta&#39;</span><span class="p">:</span> <span class="n">meta</span><span class="p">})</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">outputs</span><span class="p">(</span><span class="n">similarity</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this <code class="code docutils literal"><span class="pre">trainer_config.py</span></code>, we just map each feature type to
+a feature vector, following shows how to map each feature to a vector shows below.</p>
+<ul>
+<li><p class="first"><code class="code docutils literal"><span class="pre">id</span></code>: Just simple embedding, and then add to fully connected layer.</p>
+</li>
+<li><dl class="first docutils">
+<dt><code class="code docutils literal"><span class="pre">embedding</span></code>:</dt>
+<dd><ul class="first last simple">
+<li>if is_sequence, get the embedding and do a text convolutional operation,
+get the average pooling result.</li>
+<li>if not sequence, get the embedding and add to fully connected layer.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><code class="code docutils literal"><span class="pre">one_host_dense</span></code>:</dt>
+<dd><ul class="first last simple">
+<li>just two fully connected layer.</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>Then we combine each features of movie into one movie feature by a
+<code class="code docutils literal"><span class="pre">fc_layer</span></code> with multiple inputs, and do the same thing to user features,
+get one user feature. Then we calculate the cosine similarity of these two
+features.</p>
+<p>In these network, we use several api in <a class="reference external" href="../../ui/api/trainer_config_helpers/index.html">trainer_config_helpers</a>. There are</p>
+<ul class="simple">
+<li>Data Layer, <a class="reference external" href="../../ui/api/trainer_config_helpers/layers.html#id1">data_layer</a></li>
+<li>Fully Connected Layer, <a class="reference external" href="../../ui/api/trainer_config_helpers/layers.html#fc-layer">fc_layer</a></li>
+<li>Embedding Layer, <a class="reference external" href="../../ui/api/trainer_config_helpers/layers.html#embedding-layer">embedding_layer</a></li>
+<li>Context Projection Layer, <a class="reference external" href="../../ui/api/trainer_config_helpers/layers.html#context-projection">context_projection</a></li>
+<li>Pooling Layer, <a class="reference external" href="../../ui/api/trainer_config_helpers/layers.html#pooling-layer">pooling_layer</a></li>
+<li>Cosine Similarity Layer, <a class="reference external" href="../../ui/api/trainer_config_helpers/layers.html#cos-sim">cos_sim</a></li>
+<li>Text Convolution Pooling Layer, <a class="reference external" href="../../ui/api/trainer_config_helpers/networks.html#trainer_config_helpers.networks.text_conv_pool">text_conv_pool</a></li>
+<li>Declare Python Data Sources, <a class="reference external" href="../../ui/api/trainer_config_helpers/data_sources.html">define_py_data_sources2</a></li>
+</ul>
+</div>
+<div class="section" id="data-provider">
+<h3>Data Provider<a class="headerlink" href="#data-provider" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer.PyDataProvider2</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">common_utils</span>  <span class="c1"># parse</span>
+
+
+<span class="k">def</span> <span class="nf">hook</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Init hook is invoked before process data. It will set obj.slots and store</span>
+<span class="sd">    data meta.</span>
+
+<span class="sd">    :param obj: global object. It will passed to process routine.</span>
+<span class="sd">    :type obj: object</span>
+<span class="sd">    :param meta: the meta file object, which passed from trainer_config. Meta</span>
+<span class="sd">                 file record movie/user features.</span>
+<span class="sd">    :param kwargs: unused other arguments.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">del</span> <span class="n">kwargs</span>  <span class="c1"># unused kwargs</span>
+
+    <span class="c1"># Header define slots that used for paddle.</span>
+    <span class="c1">#    first part is movie features.</span>
+    <span class="c1">#    second part is user features.</span>
+    <span class="c1">#    final part is rating score.</span>
+    <span class="c1"># header is a list of [USE_SEQ_OR_NOT?, SlotType]</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">common_utils</span><span class="o">.</span><span class="n">meta_to_header</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="s1">&#39;movie&#39;</span><span class="p">))</span>
+    <span class="n">headers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">common_utils</span><span class="o">.</span><span class="n">meta_to_header</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">)))</span>
+    <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dense_vector</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>  <span class="c1"># Score</span>
+
+    <span class="c1"># slot types.</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">input_types</span> <span class="o">=</span> <span class="n">headers</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span>
+
+
+<span class="nd">@provider</span><span class="p">(</span><span class="n">init_hook</span><span class="o">=</span><span class="n">hook</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">CacheType</span><span class="o">.</span><span class="n">CACHE_PASS_IN_MEM</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+            <span class="c1"># Get a rating from file.</span>
+            <span class="n">user_id</span><span class="p">,</span> <span class="n">movie_id</span><span class="p">,</span> <span class="n">score</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;::&#39;</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+            <span class="c1"># Scale score to [-5, +5]</span>
+            <span class="n">score</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">score</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">-</span> <span class="mf">5.0</span>
+
+            <span class="c1"># Get movie/user features by movie_id, user_id</span>
+            <span class="n">movie_meta</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s1">&#39;movie&#39;</span><span class="p">][</span><span class="n">movie_id</span><span class="p">]</span>
+            <span class="n">user_meta</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s1">&#39;user&#39;</span><span class="p">][</span><span class="n">user_id</span><span class="p">]</span>
+
+            <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">movie_id</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+
+            <span class="c1"># Then add movie features</span>
+            <span class="k">for</span> <span class="n">each_meta</span> <span class="ow">in</span> <span class="n">movie_meta</span><span class="p">:</span>
+                <span class="n">outputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">each_meta</span><span class="p">)</span>
+
+            <span class="c1"># Then add user id.</span>
+            <span class="n">outputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">user_id</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+            <span class="c1"># Then add user features.</span>
+            <span class="k">for</span> <span class="n">each_meta</span> <span class="ow">in</span> <span class="n">user_meta</span><span class="p">:</span>
+                <span class="n">outputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">each_meta</span><span class="p">)</span>
+
+            <span class="c1"># Finally, add score</span>
+            <span class="n">outputs</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">score</span><span class="p">])</span>
+            <span class="c1"># Return data to paddle</span>
+            <span class="k">yield</span> <span class="n">outputs</span>
+</pre></div>
+</div>
+<p>The data provider just read the meta.bin and rating file, yield each sample for training.
+In this <code class="code docutils literal"><span class="pre">dataprovider.py</span></code>, we should set:</p>
+<ul class="simple">
+<li>obj.slots: The feature types and dimension.</li>
+<li>use_seq: Whether this <code class="code docutils literal"><span class="pre">dataprovider.py</span></code> in sequence mode or not.</li>
+<li>process: Return each sample of data to <code class="code docutils literal"><span class="pre">paddle</span></code>.</li>
+</ul>
+<p>The data provider details document see <a class="reference external" href="../../ui/data_provider/pydataprovider2.html">there</a>.</p>
+</div>
+</div>
+<div class="section" id="train">
+<h2>Train<a class="headerlink" href="#train" title="Permalink to this headline">¶</a></h2>
+<p>After prepare data, config network, writting data provider, now we can run paddle training.</p>
+<p>The run.sh is shown as follow:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train <span class="se">\</span>
+    --config<span class="o">=</span>trainer_config.py <span class="se">\</span>
+    --save_dir<span class="o">=</span>./output <span class="se">\</span>
+    --use_gpu<span class="o">=</span><span class="nb">false</span> <span class="se">\</span>
+    --trainer_count<span class="o">=</span>4<span class="se">\</span>
+    --test_all_data_in_one_period<span class="o">=</span><span class="nb">true</span> <span class="se">\</span>
+    --log_period<span class="o">=</span><span class="m">100</span> <span class="se">\</span>
+    --dot_period<span class="o">=</span><span class="m">1</span> <span class="se">\</span>
+    --num_passes<span class="o">=</span><span class="m">50</span>  2&gt;<span class="p">&amp;</span><span class="m">1</span> <span class="p">|</span> tee <span class="s1">&#39;log.txt&#39;</span>
+</pre></div>
+</div>
+<p>It just start a paddle training process, write the log to <cite>log.txt</cite>,
+then print it on screen.</p>
+<p>Each command line argument in <code class="code docutils literal"><span class="pre">run.sh</span></code>, please refer to the <a class="reference external" href="../../ui/index.html#command-line-argument">command line
+arguments</a> page. The short description of these arguments is shown as follow.</p>
+<ul class="simple">
+<li>config: Tell paddle which file is neural network configuration.</li>
+<li>save_dir: Tell paddle save model into &#8216;./output&#8217;</li>
+<li>use_gpu: Use gpu or not. Default is false.</li>
+<li>trainer_count: The compute thread in one machine.</li>
+<li>test_all_data_in_one_period: Test All Data during one test period. Otherwise,
+will test a <code class="code docutils literal"><span class="pre">batch_size</span></code> data in one test period.</li>
+<li>log_period: Print log after train <code class="code docutils literal"><span class="pre">log_period</span></code> batches.</li>
+<li>dot_period: Print a <code class="code docutils literal"><span class="pre">.</span></code> after train <code class="code docutils literal"><span class="pre">dot_period</span></code> batches.</li>
+<li>num_passes: Train at most <code class="code docutils literal"><span class="pre">num_passes</span></code>.</li>
+</ul>
+<p>If training process starts successfully, the output likes follow:</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>I0601 08:07:22.832059 10549 TrainerInternal.cpp:157]  Batch=100 samples=160000 AvgCost=4.13494 CurrentCost=4.13494 Eval:  CurrentEval:
+
+I0601 08:07:50.672627 10549 TrainerInternal.cpp:157]  Batch=200 samples=320000 AvgCost=3.80957 CurrentCost=3.48421 Eval:  CurrentEval:
+
+I0601 08:08:18.877369 10549 TrainerInternal.cpp:157]  Batch=300 samples=480000 AvgCost=3.68145 CurrentCost=3.42519 Eval:  CurrentEval:
+
+I0601 08:08:46.863963 10549 TrainerInternal.cpp:157]  Batch=400 samples=640000 AvgCost=3.6007 CurrentCost=3.35847 Eval:  CurrentEval:
+
+I0601 08:09:15.413025 10549 TrainerInternal.cpp:157]  Batch=500 samples=800000 AvgCost=3.54811 CurrentCost=3.33773 Eval:  CurrentEval:
+I0601 08:09:36.058670 10549 TrainerInternal.cpp:181]  Pass=0 Batch=565 samples=902826 AvgCost=3.52368 Eval:
+I0601 08:09:46.215489 10549 Tester.cpp:101]  Test samples=97383 cost=3.32155 Eval:
+I0601 08:09:46.215966 10549 GradientMachine.cpp:132] Saving parameters to ./output/model/pass-00000
+I0601 08:09:46.233397 10549 ParamUtil.cpp:99] save dir ./output/model/pass-00000
+I0601 08:09:46.233438 10549 Util.cpp:209] copy trainer_config.py to ./output/model/pass-00000
+I0601 08:09:46.233541 10549 ParamUtil.cpp:147] fileName trainer_config.py
+</pre></div>
+</div>
+<p>The model is saved in <code class="code docutils literal"><span class="pre">output/</span></code> directory. You can use <code class="code docutils literal"><span class="pre">Ctrl-C</span></code> to stop training whenever you want.</p>
+</div>
+<div class="section" id="evaluate-and-predict">
+<h2>Evaluate and Predict<a class="headerlink" href="#evaluate-and-predict" title="Permalink to this headline">¶</a></h2>
+<p>After training several passes, you can evaluate them and get the best pass. Just run</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>./evaluate.sh
+</pre></div>
+</div>
+<p>You will see messages like this:</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>Best pass is 00009,  error is 3.06949, which means predict get error as 0.875998002281
+evaluating from pass output/pass-00009
+</pre></div>
+</div>
+<p>Then, you can predict what any user will rate a movie. Just run</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>python prediction.py <span class="s1">&#39;output/pass-00009/&#39;</span>
+</pre></div>
+</div>
+<p>Predictor will read user input, and predict scores. It has a command-line user interface as follows:</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>Input movie_id: 9
+Input user_id: 4
+Prediction Score is 2.56
+Input movie_id: 8
+Input user_id: 2
+Prediction Score is 3.13
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Regression MovieLens Ratting</a><ul>
+<li><a class="reference internal" href="#data-preparation">Data Preparation</a><ul>
+<li><a class="reference internal" href="#download-and-extract-dataset">Download and extract dataset</a></li>
+<li><a class="reference internal" href="#field-config-file">Field config file</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#preprocess-data">Preprocess Data</a><ul>
+<li><a class="reference internal" href="#extract-movie-user-features-to-python-object">Extract Movie/User features to python object</a><ul>
+<li><a class="reference internal" href="#meta-config-file">Meta config file</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#meta-file">Meta file</a></li>
+<li><a class="reference internal" href="#split-training-testing-files">Split Training/Testing files</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#neural-network-configuration">Neural Network Configuration</a><ul>
+<li><a class="reference internal" href="#trainer-config-file">Trainer Config File</a></li>
+<li><a class="reference internal" href="#data-provider">Data Provider</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#train">Train</a></li>
+<li><a class="reference internal" href="#evaluate-and-predict">Evaluate and Predict</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ml_dataset.html"
+                        title="previous chapter">MovieLens Dataset</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../imagenet_model/resnet_model.html"
+                        title="next chapter">Model Zoo - ImageNet</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/demo/rec/ml_regression.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../imagenet_model/resnet_model.html" title="Model Zoo - ImageNet"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ml_dataset.html" title="MovieLens Dataset"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

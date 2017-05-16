@@ -1,0 +1,551 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>PyDataProvider2的使用 &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="pydataprovider2">
+<h1>PyDataProvider2的使用<a class="headerlink" href="#pydataprovider2" title="Permalink to this headline">¶</a></h1>
+<p>PyDataProvider是PaddlePaddle使用Python提供数据的推荐接口。使用该接口用户可以只关注如何
+从文件中读取每一条数据，而不用关心数据如何传输给PaddlePaddle，数据如何存储等等。该数据
+接口使用多线程读取数据，并提供了简单的Cache功能。</p>
+<div class="section" id="id1">
+<h2>简单的使用场景<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>这里以MNIST手写识别为例，来说明简单的PyDataProvider如何使用。MNIST是一个包含有
+70,000张灰度图片的数字分类数据集。对于MNIST而言，标签是0-9的数字，而特征即为
+28*28的像素灰度值。这里我们使用简单的文本文件表示MNIST图片，样例数据如下。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">5</span><span class="p">;</span><span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.215686</span> <span class="mf">0.533333</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.67451</span> <span class="mf">0.992157</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.070588</span> <span class="mf">0.886275</span> <span class="mf">0.992157</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.192157</span> <span class="mf">0.070588</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.670588</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.117647</span> <span class="mf">0.933333</span> <span class="mf">0.858824</span> <span class="mf">0.313725</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.090196</span> <span class="mf">0.858824</span> <span class="mf">0.992157</span> <span class="mf">0.831373</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.141176</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.611765</span> <span class="mf">0.054902</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.258824</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.529412</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.368627</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.419608</span> <span class="mf">0.003922</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.094118</span> <span class="mf">0.835294</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.517647</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.603922</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.603922</span> <span class="mf">0.545098</span> <span class="mf">0.043137</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.447059</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.956863</span> <span class="mf">0.062745</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.011765</span> <span class="mf">0.666667</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.745098</span> <span class="mf">0.137255</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.152941</span> <span class="mf">0.866667</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.521569</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.070588</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.803922</span> <span class="mf">0.352941</span> <span class="mf">0.745098</span> <span class="mf">0.992157</span> <span class="mf">0.945098</span> <span class="mf">0.317647</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.580392</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.764706</span> <span class="mf">0.043137</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.070588</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.776471</span> <span class="mf">0.043137</span> <span class="mi">0</span> <span class="mf">0.007843</span> <span class="mf">0.27451</span> <span class="mf">0.882353</span> <span class="mf">0.941176</span> <span class="mf">0.176471</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.180392</span> <span class="mf">0.898039</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.313725</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.070588</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.713725</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.627451</span> <span class="mf">0.992157</span> <span class="mf">0.729412</span> <span class="mf">0.062745</span> <span class="mi">0</span> <span class="mf">0.509804</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.776471</span> <span class="mf">0.035294</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.494118</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.968627</span> <span class="mf">0.168627</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.423529</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.364706</span> <span class="mi">0</span> <span class="mf">0.717647</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.317647</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.533333</span> <span class="mf">0.992157</span> <span class="mf">0.984314</span> <span class="mf">0.945098</span> <span class="mf">0.603922</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.003922</span> <span class="mf">0.466667</span> <span class="mf">0.992157</span> <span class="mf">0.988235</span> <span class="mf">0.976471</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.788235</span> <span class="mf">0.007843</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.686275</span> <span class="mf">0.882353</span> <span class="mf">0.364706</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.098039</span> <span class="mf">0.588235</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.980392</span> <span class="mf">0.305882</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.101961</span> <span class="mf">0.67451</span> <span class="mf">0.321569</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.105882</span> <span class="mf">0.733333</span> <span class="mf">0.976471</span> <span class="mf">0.811765</span> <span class="mf">0.713725</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.65098</span> <span class="mf">0.992157</span> <span class="mf">0.321569</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.25098</span> <span class="mf">0.007843</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">1</span> <span class="mf">0.94902</span> <span class="mf">0.219608</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.968627</span> <span class="mf">0.764706</span> <span class="mf">0.152941</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.498039</span> <span class="mf">0.25098</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span><span class="p">;</span>
+<span class="mi">0</span><span class="p">;</span><span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.298039</span> <span class="mf">0.333333</span> <span class="mf">0.333333</span> <span class="mf">0.333333</span> <span class="mf">0.337255</span> <span class="mf">0.333333</span> <span class="mf">0.333333</span> <span class="mf">0.109804</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.027451</span> <span class="mf">0.223529</span> <span class="mf">0.776471</span> <span class="mf">0.964706</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.992157</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.780392</span> <span class="mf">0.098039</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.14902</span> <span class="mf">0.698039</span> <span class="mf">0.988235</span> <span class="mf">0.992157</span> <span class="mf">0.988235</span> <span class="mf">0.901961</span> <span class="mf">0.87451</span> <span class="mf">0.568627</span> <span class="mf">0.882353</span> <span class="mf">0.976471</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.501961</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.188235</span> <span class="mf">0.647059</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.745098</span> <span class="mf">0.439216</span> <span class="mf">0.098039</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.572549</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.2</span> <span class="mf">0.933333</span> <span class="mf">0.992157</span> <span class="mf">0.941176</span> <span class="mf">0.247059</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.188235</span> <span class="mf">0.898039</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.039216</span> <span class="mf">0.639216</span> <span class="mf">0.933333</span> <span class="mf">0.988235</span> <span class="mf">0.913725</span> <span class="mf">0.278431</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.113725</span> <span class="mf">0.843137</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.235294</span> <span class="mf">0.988235</span> <span class="mf">0.992157</span> <span class="mf">0.988235</span> <span class="mf">0.815686</span> <span class="mf">0.07451</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.333333</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.552941</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.211765</span> <span class="mf">0.878431</span> <span class="mf">0.988235</span> <span class="mf">0.992157</span> <span class="mf">0.701961</span> <span class="mf">0.329412</span> <span class="mf">0.109804</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.698039</span> <span class="mf">0.988235</span> <span class="mf">0.913725</span> <span class="mf">0.145098</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.188235</span> <span class="mf">0.890196</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.745098</span> <span class="mf">0.047059</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.882353</span> <span class="mf">0.988235</span> <span class="mf">0.568627</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.2</span> <span class="mf">0.933333</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.447059</span> <span class="mf">0.294118</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.447059</span> <span class="mf">0.992157</span> <span class="mf">0.768627</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.623529</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.992157</span> <span class="mf">0.47451</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.188235</span> <span class="mf">0.933333</span> <span class="mf">0.87451</span> <span class="mf">0.509804</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.992157</span> <span class="mf">0.988235</span> <span class="mf">0.937255</span> <span class="mf">0.792157</span> <span class="mf">0.988235</span> <span class="mf">0.894118</span> <span class="mf">0.082353</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.027451</span> <span class="mf">0.647059</span> <span class="mf">0.992157</span> <span class="mf">0.654902</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.623529</span> <span class="mf">0.988235</span> <span class="mf">0.913725</span> <span class="mf">0.329412</span> <span class="mf">0.376471</span> <span class="mf">0.184314</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.027451</span> <span class="mf">0.513725</span> <span class="mf">0.988235</span> <span class="mf">0.635294</span> <span class="mf">0.219608</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.196078</span> <span class="mf">0.929412</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.741176</span> <span class="mf">0.309804</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.529412</span> <span class="mf">0.988235</span> <span class="mf">0.678431</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.223529</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mi">1</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mi">1</span> <span class="mf">0.992157</span> <span class="mf">0.992157</span> <span class="mf">0.882353</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.023529</span> <span class="mf">0.478431</span> <span class="mf">0.654902</span> <span class="mf">0.658824</span> <span class="mf">0.952941</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.988235</span> <span class="mf">0.992157</span> <span class="mf">0.988235</span> <span class="mf">0.729412</span> <span class="mf">0.278431</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.196078</span> <span class="mf">0.647059</span> <span class="mf">0.764706</span> <span class="mf">0.764706</span> <span class="mf">0.768627</span> <span class="mf">0.580392</span> <span class="mf">0.047059</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span><span class="p">;</span>
+<span class="mi">4</span><span class="p">;</span><span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.180392</span> <span class="mf">0.470588</span> <span class="mf">0.623529</span> <span class="mf">0.623529</span> <span class="mf">0.623529</span> <span class="mf">0.588235</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.243137</span> <span class="mf">0.494118</span> <span class="mf">0.862745</span> <span class="mf">0.870588</span> <span class="mf">0.960784</span> <span class="mf">0.996078</span> <span class="mf">0.996078</span> <span class="mf">0.996078</span> <span class="mf">0.996078</span> <span class="mf">0.992157</span> <span class="mf">0.466667</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.317647</span> <span class="mf">0.639216</span> <span class="mf">0.639216</span> <span class="mf">0.639216</span> <span class="mf">0.639216</span> <span class="mf">0.639216</span> <span class="mf">0.470588</span> <span class="mf">0.262745</span> <span class="mf">0.333333</span> <span class="mf">0.929412</span> <span class="mf">0.694118</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.811765</span> <span class="mf">0.694118</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.811765</span> <span class="mf">0.694118</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.811765</span> <span class="mf">0.694118</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.184314</span> <span class="mf">0.992157</span> <span class="mf">0.694118</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.192157</span> <span class="mf">0.996078</span> <span class="mf">0.384314</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.454902</span> <span class="mf">0.980392</span> <span class="mf">0.219608</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.564706</span> <span class="mf">0.941176</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.588235</span> <span class="mf">0.776471</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.945098</span> <span class="mf">0.560784</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.054902</span> <span class="mf">0.952941</span> <span class="mf">0.356863</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.337255</span> <span class="mf">0.917647</span> <span class="mf">0.109804</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.698039</span> <span class="mf">0.701961</span> <span class="mf">0.019608</span> <span class="mf">0.4</span> <span class="mf">0.662745</span> <span class="mf">0.662745</span> <span class="mf">0.662745</span> <span class="mf">0.662745</span> <span class="mf">0.662745</span> <span class="mf">0.662745</span> <span class="mf">0.662745</span> <span class="mf">0.376471</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.090196</span> <span class="mf">0.639216</span> <span class="mf">0.972549</span> <span class="mf">0.945098</span> <span class="mf">0.913725</span> <span class="mf">0.996078</span> <span class="mf">0.996078</span> <span class="mf">0.996078</span> <span class="mf">0.996078</span> <span class="mi">1</span> <span class="mf">0.996078</span> <span class="mf">0.996078</span> <span class="mi">1</span> <span class="mf">0.996078</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.007843</span> <span class="mf">0.105882</span> <span class="mf">0.717647</span> <span class="mf">0.776471</span> <span class="mf">0.905882</span> <span class="mf">0.996078</span> <span class="mf">0.996078</span> <span class="mf">0.988235</span> <span class="mf">0.980392</span> <span class="mf">0.862745</span> <span class="mf">0.537255</span> <span class="mf">0.223529</span> <span class="mf">0.223529</span> <span class="mf">0.368627</span> <span class="mf">0.376471</span> <span class="mf">0.6</span> <span class="mf">0.6</span> <span class="mf">0.6</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.262745</span> <span class="mf">0.470588</span> <span class="mf">0.6</span> <span class="mf">0.996078</span> <span class="mf">0.996078</span> <span class="mf">0.996078</span> <span class="mf">0.996078</span> <span class="mf">0.847059</span> <span class="mf">0.356863</span> <span class="mf">0.156863</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.909804</span> <span class="mf">0.705882</span> <span class="mf">0.823529</span> <span class="mf">0.635294</span> <span class="mf">0.490196</span> <span class="mf">0.219608</span> <span class="mf">0.113725</span> <span class="mf">0.062745</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mf">0.152941</span> <span class="mf">0.152941</span> <span class="mf">0.156863</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>其数据使用;间隔，第一段数据为这张图片的label，第二段数据为这个图片的像素值。
+首先我们将这个数据文件(例如文件名是&#8217;mnist_train.txt&#8217;)写入train.list。那么
+train.list即为</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">mnist_train</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+<p>那么对应的dataprovider既为</p>
+<div class="highlight-default"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer.PyDataProvider2</span> <span class="k">import</span> <span class="o">*</span>
+
+
+<span class="c1"># Define a py data provider</span>
+<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">[</span><span class="n">dense_vector</span><span class="p">(</span><span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">),</span> <span class="n">integer_value</span><span class="p">(</span><span class="mi">10</span><span class="p">)])</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>  <span class="c1"># settings is not used currently.</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>  <span class="c1"># open one of training file</span>
+
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>  <span class="c1"># read each line</span>
+        <span class="n">label</span><span class="p">,</span> <span class="n">pixel</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;;&#39;</span><span class="p">)</span>
+
+        <span class="c1"># get features and label</span>
+        <span class="n">pixels_str</span> <span class="o">=</span> <span class="n">pixel</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+
+        <span class="n">pixels_float</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">each_pixel_str</span> <span class="ow">in</span> <span class="n">pixels_str</span><span class="p">:</span>
+            <span class="n">pixels_float</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">each_pixel_str</span><span class="p">))</span>
+
+        <span class="c1"># give data to paddle.</span>
+        <span class="k">yield</span> <span class="n">pixels_float</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># close file</span>
+</pre></div>
+</td></tr></table></div>
+<p>其中第一行是引入PaddlePaddle的PyDataProvider2包。主要函数是process函数。process函数
+具有两个参数，第一个参数是 settings 。这个参数在这个样例里没有使用，具
+体可以参考 settings 。第二个参数是filename，这个参数被PaddlePaddle进程传入，为
+train.list中的一行(即train.list若干数据文件路径的某一个路径)。</p>
+<p><code class="code docutils literal"><span class="pre">&#64;provider</span></code> 是一个Python的 <a class="reference external" href="http://www.learnpython.org/en/Decorators">Decorator</a>
+。这行的作用是设置DataProvider的一些属性，并且标记process函数是一个DataProvider。
+如果不了解 <a class="reference external" href="http://www.learnpython.org/en/Decorators">Decorator</a> 是什么也没关系，
+只需要知道这只是一个标记属性的方法就可以了。</p>
+<p>属性 <a class="reference internal" href="#input-types">input_types</a> 是设置这个DataProvider返回什么样的数据。这里设置的是返回一个
+28*28的稠密向量和一个[0-9]，10维的整数值。 <a class="reference internal" href="#input-types">input_types</a> 具体可以设置成什么其他格
+式，请参考 <a class="reference internal" href="#input-types">input_types</a> 的文档。</p>
+<p>process函数是实现数据输入的主函数，在这个函数中，实现了打开文本文件，从文本文件中读取
+每一行，并将每行转换成和 <a class="reference internal" href="#input-types">input_types</a> 一致的特征，并在23行返回给PaddlePaddle进程。需要注意
+的是， 返回的顺序需要和 <a class="reference internal" href="#input-types">input_types</a> 中定义的顺序一致。</p>
+<p>同时，返回数据在PaddlePaddle中是仅仅返回一条完整的训练样本，并且使用关键词 <code class="code docutils literal"><span class="pre">yield</span></code> 。
+在PyDataProvider中，可以为一个数据文件返回多条训练样本(就像这个样例一样)，只需要在
+process函数调用多次 <code class="code docutils literal"><span class="pre">yield</span></code> 即可。 <code class="code docutils literal"><span class="pre">yield</span></code> 是Python的一个关键词，相关的概
+念是 <code class="code docutils literal"><span class="pre">generator</span></code> 。使用这个关键词，可以在一个函数里，多次返回变量。</p>
+<p>在训练配置里，只需要使用一行代码即可以设置训练引用这个DataProvider。这个设置为</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="k">import</span> <span class="o">*</span>
+
+<span class="n">define_py_data_sources2</span><span class="p">(</span>
+    <span class="n">train_list</span><span class="o">=</span><span class="s1">&#39;train.list&#39;</span><span class="p">,</span>
+    <span class="n">test_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">module</span><span class="o">=</span><span class="s1">&#39;mnist_provider&#39;</span><span class="p">,</span>
+    <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;process&#39;</span><span class="p">)</span>
+<span class="n">img</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;pixel&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">784</span><span class="p">)</span>
+<span class="n">label</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>这里说明了训练数据是 &#8216;train.list&#8217;，而没有测试数据。引用的DataProvider是 &#8216;mnist_provider&#8217;
+这个模块中的 &#8216;process&#8217; 函数。</p>
+<p>同时，根据模型配置文件中 <code class="code docutils literal"><span class="pre">data_layer</span></code> 的名字，用户也可以显式指定返回的数据对应关系。例如:</p>
+<div class="highlight-default"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer.PyDataProvider2</span> <span class="k">import</span> <span class="o">*</span>
+
+
+<span class="c1"># Define a py data provider</span>
+<span class="nd">@provider</span><span class="p">(</span>
+    <span class="n">input_types</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;pixel&#39;</span><span class="p">:</span> <span class="n">dense_vector</span><span class="p">(</span><span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">),</span>
+                 <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="n">integer_value</span><span class="p">(</span><span class="mi">10</span><span class="p">)})</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>  <span class="c1"># settings is not used currently.</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>  <span class="c1"># open one of training file</span>
+
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>  <span class="c1"># read each line</span>
+        <span class="n">label</span><span class="p">,</span> <span class="n">pixel</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;;&#39;</span><span class="p">)</span>
+
+        <span class="c1"># get features and label</span>
+        <span class="n">pixels_str</span> <span class="o">=</span> <span class="n">pixel</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+
+        <span class="n">pixels_float</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">each_pixel_str</span> <span class="ow">in</span> <span class="n">pixels_str</span><span class="p">:</span>
+            <span class="n">pixels_float</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">each_pixel_str</span><span class="p">))</span>
+
+        <span class="c1"># give data to paddle.</span>
+        <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;pixel&quot;</span><span class="p">:</span> <span class="n">pixels_float</span><span class="p">,</span> <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)}</span>
+
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># close file</span>
+</pre></div>
+</td></tr></table></div>
+<p>如果用户不指定返回数据的对应关系，那么PaddlePaddle会粗略的根据layer的声明顺序，
+来确定对应关系。这个对应关系可能不正确。所以推荐使用显式指定返回值和数据对应关系。</p>
+<p>至此，简单的PyDataProvider样例就说明完毕了。对于用户来说，讲数据发送给PaddlePaddle，仅仅需要
+知道如何从 <strong>一个文件</strong> 里面读取 <strong>一条</strong> 样本。而PaddlePaddle进程帮助用户做了</p>
+<ul class="simple">
+<li>将数据组合成Batch训练</li>
+<li>Shuffle训练数据</li>
+<li>多线程数据读取</li>
+<li>缓存训练数据到内存(可选)</li>
+<li>CPU-&gt;GPU双缓存</li>
+</ul>
+<p>是不是很简单呢？</p>
+</div>
+<div class="section" id="id3">
+<h2>序列模型数据提供<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>序列模型是指数据的某一维度是一个序列形式，即包含时间步信息。所谓时间步信息，
+不一定和时间有关系，只是说明数据的顺序是重要的。例如，文本信息就是一个序列
+数据。</p>
+<p>这里举例的数据是英文情感分类的数据。数据是给一段英文文本，分类成正面情绪和
+负面情绪两类(用0和1表示)。样例数据为</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">0</span>       <span class="n">I</span> <span class="n">saw</span> <span class="n">this</span> <span class="n">movie</span> <span class="n">at</span> <span class="n">the</span> <span class="n">AFI</span> <span class="n">Dallas</span> <span class="n">festival</span> <span class="o">.</span> <span class="n">It</span> <span class="nb">all</span> <span class="n">takes</span> <span class="n">place</span> <span class="n">at</span> <span class="n">a</span> <span class="n">lake</span> <span class="n">house</span> <span class="ow">and</span> <span class="n">it</span> <span class="n">looks</span> <span class="n">wonderful</span> <span class="o">.</span>
+<span class="mi">1</span>       <span class="n">This</span> <span class="n">documentary</span> <span class="n">makes</span> <span class="n">you</span> <span class="n">travel</span> <span class="nb">all</span> <span class="n">around</span> <span class="n">the</span> <span class="n">globe</span> <span class="o">.</span> <span class="n">It</span> <span class="n">contains</span> <span class="n">rare</span> <span class="ow">and</span> <span class="n">stunning</span> <span class="n">sequels</span> <span class="kn">from</span> <span class="nn">the</span> <span class="n">wilderness</span> <span class="o">.</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>这里，DataProvider可以是</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer.PyDataProvider2</span> <span class="k">import</span> <span class="o">*</span>
+
+
+<span class="k">def</span> <span class="nf">on_init</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="c1"># on_init will invoke when data provider is initialized. The dictionary</span>
+    <span class="c1"># is passed from trainer_config, and is a dict object with type</span>
+    <span class="c1"># (word string =&gt; word id).</span>
+
+    <span class="c1"># set input types in runtime. It will do the same thing as</span>
+    <span class="c1"># @provider(input_types) will do, but it is set dynamically during runtime.</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">input_types</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="c1"># The text is a sequence of integer values, and each value is a word id.</span>
+        <span class="c1"># The whole sequence is the sentences that we want to predict its</span>
+        <span class="c1"># sentimental.</span>
+        <span class="n">integer_value</span><span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">dictionary</span><span class="p">),</span> <span class="n">seq_type</span><span class="o">=</span><span class="n">SequenceType</span><span class="p">),</span>  <span class="c1"># text input</span>
+
+        <span class="c1"># label positive/negative</span>
+        <span class="n">integer_value</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="c1"># save dictionary as settings.dictionary. It will be used in process</span>
+    <span class="c1"># method.</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">dictionary</span> <span class="o">=</span> <span class="n">dictionary</span>
+
+
+<span class="nd">@provider</span><span class="p">(</span><span class="n">init_hook</span><span class="o">=</span><span class="n">on_init</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>  <span class="c1"># read each line of file</span>
+        <span class="n">label</span><span class="p">,</span> <span class="n">sentence</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>  <span class="c1"># get label and sentence</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="n">sentence</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>  <span class="c1"># get words</span>
+
+        <span class="c1"># convert word string to word id</span>
+        <span class="c1"># the word not in dictionary will be ignored.</span>
+        <span class="n">word_ids</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">each_word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">each_word</span> <span class="ow">in</span> <span class="n">settings</span><span class="o">.</span><span class="n">dictionary</span><span class="p">:</span>
+                <span class="n">word_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">dictionary</span><span class="p">[</span><span class="n">each_word</span><span class="p">])</span>
+
+        <span class="c1"># give data to paddle.</span>
+        <span class="k">yield</span> <span class="n">word_ids</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>这个序列模型比较复杂。主要是增加了初始化机制。其中 <code class="code docutils literal"><span class="pre">on_init</span></code> 函数是使用
+<a class="reference internal" href="#provider">&#64;provider</a> 中的 <a class="reference internal" href="#init-hook">init_hook</a> 配置参数配置给DataProvider的。这个函数会在
+DataProvider创建的时候执行。这个初始化函数具有如下参数:</p>
+<ul class="simple">
+<li>第一个参数是 settings 对象。</li>
+<li>其他参数均使用key word argument形式传入。有部分参数是Paddle自动生成的，
+参考 <a class="reference internal" href="#init-hook">init_hook</a> 。这里的 <code class="code docutils literal"><span class="pre">dictionary</span></code> 是从训练配置传入的dict对象。
+即从单词字符串到单词id的字典。</li>
+</ul>
+<p>传入这个变量的方式为</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="k">import</span> <span class="o">*</span>
+
+<span class="n">dictionary</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="o">...</span>  <span class="c1">#  read dictionary from outside</span>
+
+<span class="n">define_py_data_sources2</span><span class="p">(</span>
+    <span class="n">train_list</span><span class="o">=</span><span class="s1">&#39;train.list&#39;</span><span class="p">,</span>
+    <span class="n">test_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">module</span><span class="o">=</span><span class="s1">&#39;sentimental_provider&#39;</span><span class="p">,</span>
+    <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;process&#39;</span><span class="p">,</span>
+    <span class="c1"># above codes same as mnist sample.</span>
+    <span class="n">args</span><span class="o">=</span><span class="p">{</span>  <span class="c1"># pass to provider.</span>
+        <span class="s1">&#39;dictionary&#39;</span><span class="p">:</span> <span class="n">dictionary</span>
+    <span class="p">})</span>
+</pre></div>
+</div>
+<p>这个声明基本上和mnist的样例一致。除了</p>
+<ul class="simple">
+<li>在配置中读取了字典</li>
+<li>在声明DataProvider的时候传入了dictionary作为参数。</li>
+</ul>
+<p>在 <code class="code docutils literal"><span class="pre">on_init</span></code> 函数中，配置了 <cite>input_types</cite> 。这个和在 <a class="reference internal" href="#provider">&#64;provider</a> 中配置
+<cite>input_types</cite> 效果一致，但是在 <cite>on_init</cite> 中配置 <cite>input_types</cite> 是在运行时执行的，所以
+可以根据不同的数据配置不同的输入类型。这里的输入特征是词id的序列，所以将 <code class="code docutils literal"><span class="pre">seq_type</span></code>
+设置成了序列(同时，也可以使用 <code class="code docutils literal"><span class="pre">integer_sequence</span></code> 类型来设置)。</p>
+<p>同时，将字典存入了settings 对象。这个字典可以在 <code class="code docutils literal"><span class="pre">process</span></code> 函数中使用。 <code class="code docutils literal"><span class="pre">process</span></code>
+函数中的 settings 和 <code class="code docutils literal"><span class="pre">on_init</span></code> 中的settings 是同一个对象。</p>
+<p>而在 <code class="code docutils literal"><span class="pre">process</span></code> 函数中，基本的处理逻辑也和mnist逻辑一致。依次返回了文件中的每条数据。</p>
+<p>至此，基本的PyDataProvider使用介绍完毕了。具体DataProvider还具有什么功能，请参考下节reference。</p>
+</div>
+<div class="section" id="reference">
+<h2>参考(Reference)<a class="headerlink" href="#reference" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="provider">
+<h3>&#64;provider<a class="headerlink" href="#provider" title="Permalink to this headline">¶</a></h3>
+<p><code class="code docutils literal"><span class="pre">&#64;provider</span></code> 是一个Python的 <a class="reference external" href="http://www.learnpython.org/en/Decorators">Decorator</a> ，他可以将某一个函数标记成一个PyDataProvider。它包含的参数有:</p>
+<ul class="simple">
+<li><a class="reference internal" href="#input-types">input_types</a> 是数据输入格式。具体有哪些格式，参考 <a class="reference internal" href="#input-types">input_types</a> 。</li>
+<li>should_shuffle 是个DataProvider是不是要做shuffle，如果不设置的话，训练的时候默认shuffle，
+测试的时候默认不shuffle。</li>
+<li>min_pool_size 是设置DataProvider在内存中最小暂存的数据条数。这个也是PaddlePaddle所能够保证的shuffle粒度。
+设置成-1的话，会预先读取全部数据到内存中。</li>
+<li>pool_size 是设置DataProvider在内存中暂存的数据条数。设置成-1的话，即不在乎内存暂存多少条数据。</li>
+<li>can_over_batch_size 表示是否允许Paddle暂存略微多余pool_size的数据。这样做可以避免很多死锁问题。
+一般推荐设置成True</li>
+<li>calc_batch_size 传入的是一个函数，这个函数以一条数据为参数，返回batch_size的大小。默认情况下一条数据
+是一个batch size，但是有时为了计算均衡性，可以将一条数据设置成多个batch size</li>
+<li>cache 是数据缓存的策略，参考 <a class="reference internal" href="#cache">cache</a></li>
+<li>init_hook 是初始化时调用的函数，参考 <a class="reference internal" href="#init-hook">init_hook</a></li>
+<li>check 设置成true的话，会根据input_types检查数据的合法性。</li>
+<li>check_fail_continue 如果设置成true的话，即使在check中数据不合法，也会扔到这条数据，继续训练。 如果
+check是false的话，没有作用。</li>
+</ul>
+</div>
+<div class="section" id="input-types">
+<h3>input_types<a class="headerlink" href="#input-types" title="Permalink to this headline">¶</a></h3>
+<p>PaddlePaddle的数据包括四种主要类型，和三种序列模式。其中，四种数据类型是</p>
+<ul class="simple">
+<li>dense_vector 表示稠密的浮点数向量。</li>
+<li>sparse_binary_vector 表示稀疏的零一向量，即大部分值为0，有值的位置只能取1</li>
+<li>sparse_float_vector 表示稀疏的向量，即大部分值为0，有值的部分可以是任何浮点数</li>
+<li>integer 表示整数标签。</li>
+</ul>
+<p>而三种序列模式为</p>
+<ul class="simple">
+<li>SequenceType.NO_SEQUENCE 即不是一条序列</li>
+<li>SequenceType.SEQUENCE 即是一条时间序列</li>
+<li>SequenceType.SUB_SEQUENCE 即是一条时间序列，且序列的每一个元素还是一个时间序列。</li>
+</ul>
+<p>不同的数据类型和序列模式返回的格式不同，列表如下</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="17%" />
+<col width="17%" />
+<col width="28%" />
+<col width="38%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">&nbsp;</th>
+<th class="head">NO_SEQUENCE</th>
+<th class="head">SEQUENCE</th>
+<th class="head">SUB_SEQUENCE</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>dense_vector</td>
+<td>[f, f, ...]</td>
+<td>[[f, ...], [f, ...], ...]</td>
+<td>[[[f, ...], ...], [[f, ...], ...],...]</td>
+</tr>
+<tr class="row-odd"><td>sparse_binary_vector</td>
+<td>[i, i, ...]</td>
+<td>[[i, ...], [i, ...], ...]</td>
+<td>[[[i, ...], ...], [[i, ...], ...],...]</td>
+</tr>
+<tr class="row-even"><td>sparse_float_vector</td>
+<td>[(i,f), (i,f), ...]</td>
+<td>[[(i,f), ...], [(i,f), ...], ...]</td>
+<td>[[[(i,f), ...], ...], [[(i,f), ...], ...],...]</td>
+</tr>
+<tr class="row-odd"><td>integer_value</td>
+<td>i</td>
+<td>[i, i, ...]</td>
+<td>[[i, ...], [i, ...], ...]</td>
+</tr>
+</tbody>
+</table>
+<p>其中，f代表一个浮点数，i代表一个整数。</p>
+</div>
+<div class="section" id="init-hook">
+<h3>init_hook<a class="headerlink" href="#init-hook" title="Permalink to this headline">¶</a></h3>
+<p>init_hook可以传入一个函数。这个函数在初始化的时候会被调用。这个函数的参数是:</p>
+<ul>
+<li><dl class="first docutils">
+<dt>第一个参数是 settings 对象。这个对象和process的第一个参数一致。具有的属性有</dt>
+<dd><ul class="first last simple">
+<li>settings.input_types 设置输入类型。参考 <a class="reference internal" href="#input-types">input_types</a></li>
+<li>settings.logger 一个logging对象</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>其他参数都使用key word argument传入。这些参数包括paddle定义的参数，和用户传入的参数。</dt>
+<dd><ul class="first last">
+<li><dl class="first docutils">
+<dt>Paddle定义的参数包括:</dt>
+<dd><ul class="first last simple">
+<li>is_train bool参数，表示这个DataProvider是训练用的DataProvider或者测试用的
+DataProvider</li>
+<li>file_list 所有文件列表。</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p class="first">用户定义的参数使用args在训练配置中设置。</p>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>注意，PaddlePaddle保留添加参数的权力，所以init_hook尽量使用 <code class="code docutils literal"><span class="pre">**kwargs</span></code> , 来接受不使用的
+函数来保证兼容性。</p>
+</div>
+<div class="section" id="cache">
+<h3>cache<a class="headerlink" href="#cache" title="Permalink to this headline">¶</a></h3>
+<p>DataProvider提供了两种简单的Cache策略。他们是</p>
+<ul class="simple">
+<li>CacheType.NO_CACHE 不缓存任何数据，每次都会从python端读取数据</li>
+<li>CacheType.CACHE_PASS_IN_MEM 第一个pass会从python端读取数据，剩下的pass会直接从内存里
+读取数据。</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id4">
+<h2>注意事项<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id5">
+<h3>可能的内存泄露问题<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p>PaddlePaddle将train.list中的每一行，都传递给process函数，从而生成多个generator。
+即如果train.list中，有100个训练文件，即会生成100个generator。这个本身不是一个很
+严重的问题。</p>
+<p>但是，如果在训练时，每一条训练数据都是一个文件，并且，训练数据非常多的情况下，就
+会生成多个generator。每个generator在没有调用的时候，是几乎不占内存的。但是，当调
+用过一次的时候，generator便会存下当前的上下文(Context)。而这个Context可能会非常
+大。并且，generator至少调用两次才会知道是否停止。所以，即使在process里面只会有一
+个yield，也需要两次随机选择到同样的generator的时候，才会释放该段内存。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">func</span><span class="p">():</span>
+    <span class="k">yield</span> <span class="mi">0</span>
+
+<span class="n">f</span> <span class="o">=</span> <span class="n">func</span><span class="p">()</span>  <span class="c1"># 创建generator</span>
+<span class="n">tmp</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>  <span class="c1"># 调用一次，返回0</span>
+<span class="n">tmp</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>  <span class="c1"># 调用第二次的时候，才会Stop Iteration</span>
+</pre></div>
+</div>
+<p>而如果按顺序调用这些generator就不会出现这个问题。</p>
+<p>所以最佳实践推荐不要将每一个样本都放入train.list。而是将样本的地址放入另一个文本
+文件，train.list写入那个文本文件的地址。 或者在python generator的上下文中尽量留
+下非常少的变量引用。例如</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">real_process</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+    <span class="c1"># ... read from fn</span>
+    <span class="k">return</span> <span class="n">result</span>   <span class="c1"># 当函数返回的时候，python可以解除掉内部变量的引用。</span>
+
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+    <span class="k">yield</span> <span class="n">real_process</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>这个问题是PyDataProvider读数据时候的逻辑问题，基本上不能整体修正。</p>
+</div>
+<div class="section" id="id6">
+<h3>内存不够用的情况<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>PyDataProvider2会尽量使用内存。所以如果对于内存比较小的机器，推荐设置
+<code class="code docutils literal"><span class="pre">pool_size</span></code> 变量，而这个变量推荐大于训练的batch size，并且在内存足够
+的情况下越大越好。</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">PyDataProvider2的使用</a><ul>
+<li><a class="reference internal" href="#id1">简单的使用场景</a></li>
+<li><a class="reference internal" href="#id3">序列模型数据提供</a></li>
+<li><a class="reference internal" href="#reference">参考(Reference)</a><ul>
+<li><a class="reference internal" href="#provider">&#64;provider</a></li>
+<li><a class="reference internal" href="#input-types">input_types</a></li>
+<li><a class="reference internal" href="#init-hook">init_hook</a></li>
+<li><a class="reference internal" href="#cache">cache</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id4">注意事项</a><ul>
+<li><a class="reference internal" href="#id5">可能的内存泄露问题</a></li>
+<li><a class="reference internal" href="#id6">内存不够用的情况</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/ui/data_provider/pydataprovider2.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,551 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>双层RNN配置与示例 &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="rnn">
+<span id="rnn"></span><h1>双层RNN配置与示例<a class="headerlink" href="#rnn" title="Permalink to this headline">¶</a></h1>
+<p>我们在<code class="docutils literal"><span class="pre">paddle/gserver/tests/test_RecurrentGradientMachine</span></code>单测中，通过多组语义相同的单双层RNN配置，讲解如何使用双层RNN。</p>
+<div class="section" id="subseqmemory">
+<span id="subseqmemory"></span><h2>示例1：双进双出，subseq间无memory<a class="headerlink" href="#subseqmemory" title="Permalink to this headline">¶</a></h2>
+<p>配置：单层RNN（<code class="docutils literal"><span class="pre">sequence_layer_group</span></code>）和双层RNN（<code class="docutils literal"><span class="pre">sequence_nest_layer_group</span></code>），语义完全相同。</p>
+<div class="section" id="">
+<span id="id1"></span><h3>读取双层序列的方法<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
+<p>首先，我们看一下单双层序列的不同数据组织形式（您也可以采用别的组织形式）：</p>
+<ul class="simple">
+<li>单层序列的数据（<code class="docutils literal"><span class="pre">Sequence/tour_train_wdseg</span></code>）如下，一共有10个样本。每个样本由两部分组成，一个label（此处都为2）和一个已经分词后的句子。</li>
+</ul>
+<div class="highlight-text"><div class="highlight"><pre><span></span>2   酒店 有 很 舒适 的 床垫 子 ， 床上用品 也 应该 是 一人 一 换 ， 感觉 很 利落 对 卫生 很 放心 呀 。
+2   很 温馨 ， 也 挺 干净 的 * 地段 不错 ， 出来 就 有 全家 ， 离 地铁站 也 近 ， 交通 很方便 * 就是 都 不 给 刷牙 的 杯子 啊 ， 就 第一天 给 了 一次性杯子 *
+2   位置 方便 ， 强烈推荐 ， 十一 出去玩 的 时候 选 的 ， 对面 就是 华润万家 ， 周围 吃饭 的 也 不少 。
+2   交通便利 ， 吃 很 便利 ， 乾 浄 、 安静 ， 商务 房 有 电脑 、 上网 快 ， 价格 可以 ， 就 早餐 不 好吃 。 整体 是 不错 的 。 適 合 出差 來 住 。
+2   本来 准备 住 两 晚 ， 第 2 天 一早 居然 停电 ， 且 无 通知 ， 只有 口头 道歉 。 总体来说 性价比 尚可 ， 房间 较 新 ， 还是 推荐 .
+2   这个 酒店 去过 很多 次 了 ， 选择 的 主要原因 是 离 客户 最 便宜 相对 又 近 的 酒店
+2   挺好 的 汉庭 ， 前台 服务 很 热情 ， 卫生 很 整洁 ， 房间 安静 ， 水温 适中 ， 挺好 ！
+2   HowardJohnson 的 品质 ， 服务 相当 好 的 一 家 五星级 。 房间 不错 、 泳池 不错 、 楼层 安排 很 合理 。 还有 就是 地理位置 ， 简直 一 流 。 就 在 天一阁 、 月湖 旁边 ， 离 天一广场 也 不远 。 下次 来 宁波 还会 住 。
+2   酒店 很干净 ， 很安静 ， 很 温馨 ， 服务员 服务 好 ， 各方面 都 不错 *
+2   挺好 的 ， 就是 没 窗户 ， 不过 对 得 起 这 价格
+</pre></div>
+</div>
+<ul class="simple">
+<li>双层序列的数据（<code class="docutils literal"><span class="pre">Sequence/tour_train_wdseg.nest</span></code>）如下，一共有4个样本。样本间用空行分开，代表不同的双层序列，序列数据和上面的完全一样。每个样本的子句数分别为2,3,2,3。</li>
+</ul>
+<div class="highlight-text"><div class="highlight"><pre><span></span>2   酒店 有 很 舒适 的 床垫 子 ， 床上用品 也 应该 是 一人 一 换 ， 感觉 很 利落 对 卫生 很 放心 呀 。
+2   很 温馨 ， 也 挺 干净 的 * 地段 不错 ， 出来 就 有 全家 ， 离 地铁站 也 近 ， 交通 很方便 * 就是 都 不 给 刷牙 的 杯子 啊 ， 就 第一天 给 了 一次性杯子 *
+
+2   位置 方便 ， 强烈推荐 ， 十一 出去玩 的 时候 选 的 ， 对面 就是 华润万家 ， 周围 吃饭 的 也 不少 。
+2   交通便利 ， 吃 很 便利 ， 乾 浄 、 安静 ， 商务 房 有 电脑 、 上网 快 ， 价格 可以 ， 就 早餐 不 好吃 。 整体 是 不错 的 。 適 合 出差 來 住 。
+2   本来 准备 住 两 晚 ， 第 2 天 一早 居然 停电 ， 且 无 通知 ， 只有 口头 道歉 。 总体来说 性价比 尚可 ， 房间 较 新 ， 还是 推荐 .
+
+2   这个 酒店 去过 很多 次 了 ， 选择 的 主要原因 是 离 客户 最 便宜 相对 又 近 的 酒店
+2   挺好 的 汉庭 ， 前台 服务 很 热情 ， 卫生 很 整洁 ， 房间 安静 ， 水温 适中 ， 挺好 ！
+
+2   HowardJohnson 的 品质 ， 服务 相当 好 的 一 家 五星级 。 房间 不错 、 泳池 不错 、 楼层 安排 很 合理 。 还有 就是 地理位置 ， 简直 一 流 。 就 在 天一阁 、 月湖 旁边 ， 离 天一广场 也 不远 。 下次 来 宁波 还会 住 。
+2   酒店 很干净 ， 很安静 ， 很 温馨 ， 服务员 服务 好 ， 各方面 都 不错 *
+2   挺好 的 ， 就是 没 窗户 ， 不过 对 得 起 这 价格
+</pre></div>
+</div>
+<p>其次，我们看一下单双层序列的不同dataprovider（见<code class="docutils literal"><span class="pre">sequenceGen.py</span></code>）：</p>
+<ul class="simple">
+<li>单层序列的dataprovider如下：<ul>
+<li>word_slot是integer_value_sequence类型，代表单层序列。</li>
+<li>label是integer_value类型，代表一个向量。</li>
+</ul>
+</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">hook</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">dict_file</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span> <span class="o">=</span> <span class="n">dict_file</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">input_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="p">)),</span> 
+                            <span class="n">integer_value</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span>
+
+<span class="nd">@provider</span><span class="p">(</span><span class="n">init_hook</span><span class="o">=</span><span class="n">hook</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fdata</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">fdata</span><span class="p">:</span>
+            <span class="n">label</span><span class="p">,</span> <span class="n">comment</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">label</span><span class="o">.</span><span class="n">split</span><span class="p">()))</span>
+            <span class="n">words</span> <span class="o">=</span> <span class="n">comment</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="n">word_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span> <span class="k">if</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="p">]</span>
+            <span class="k">yield</span> <span class="n">word_slot</span><span class="p">,</span> <span class="n">label</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>双层序列的dataprovider如下：<ul>
+<li>word_slot是integer_value_sub_sequence类型，代表双层序列。</li>
+<li>label是integer_value_sequence类型，代表单层序列，即一个子句一个label。注意：也可以为integer_value类型，代表一个向量，即一个句子一个label。通常根据任务需求进行不同设置。</li>
+<li>关于dataprovider中input_types的详细用法，参见PyDataProvider2。</li>
+</ul>
+</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">hook2</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">dict_file</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span> <span class="o">=</span> <span class="n">dict_file</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">input_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">integer_value_sub_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="p">)),</span>
+                            <span class="n">integer_value_sequence</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span>
+
+<span class="nd">@provider</span><span class="p">(</span><span class="n">init_hook</span><span class="o">=</span><span class="n">hook2</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process2</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">fdata</span><span class="p">:</span>
+        <span class="n">label_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">word_slot_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">fdata</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">label</span><span class="p">,</span><span class="n">comment</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">label</span><span class="o">.</span><span class="n">split</span><span class="p">()))</span>
+                <span class="n">words</span> <span class="o">=</span> <span class="n">comment</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                <span class="n">word_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span> <span class="k">if</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="p">]</span>
+                <span class="n">label_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+                <span class="n">word_slot_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">word_slot</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">word_slot_list</span><span class="p">,</span> <span class="n">label_list</span>
+                <span class="n">label_list</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">word_slot_list</span> <span class="o">=</span> <span class="p">[]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id2"></span><h3>模型中的配置<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
+<p>首先，我们看一下单层序列的配置（见<code class="docutils literal"><span class="pre">sequence_layer_group.conf</span></code>）。注意：batchsize=5表示一次过5句单层序列，因此2个batch就可以完成1个pass。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">settings</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;word&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">dict_dim</span><span class="p">)</span>
+
+<span class="n">emb</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">word_dim</span><span class="p">)</span>
+
+<span class="c1"># (lstm_input + lstm) is equal to lstmemory </span>
+<span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">hidden_dim</span><span class="o">*</span><span class="mi">4</span><span class="p">)</span> <span class="k">as</span> <span class="n">lstm_input</span><span class="p">:</span>
+    <span class="n">lstm_input</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">emb</span><span class="p">)</span>
+
+<span class="n">lstm</span> <span class="o">=</span> <span class="n">lstmemory_group</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">lstm_input</span><span class="p">,</span>
+                       <span class="n">size</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
+                       <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
+                       <span class="n">gate_act</span><span class="o">=</span><span class="n">SigmoidActivation</span><span class="p">(),</span>
+                       <span class="n">state_act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
+                       <span class="n">lstm_layer_attr</span><span class="o">=</span><span class="n">ExtraLayerAttribute</span><span class="p">(</span><span class="n">error_clipping_threshold</span><span class="o">=</span><span class="mi">50</span><span class="p">))</span>
+
+<span class="n">lstm_last</span> <span class="o">=</span> <span class="n">last_seq</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">lstm</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">label_dim</span><span class="p">,</span> 
+                 <span class="n">act</span><span class="o">=</span><span class="n">SoftmaxActivation</span><span class="p">(),</span> 
+                 <span class="n">bias_attr</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">output</span><span class="p">:</span>
+    <span class="n">output</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">lstm_last</span><span class="p">)</span>
+
+<span class="n">outputs</span><span class="p">(</span><span class="n">classification_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">output</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">)))</span>
+
+</pre></div>
+</div>
+<p>其次，我们看一下语义相同的双层序列配置（见<code class="docutils literal"><span class="pre">sequence_nest_layer_group.conf</span></code>），并对其详细分析：</p>
+<ul class="simple">
+<li>batchsize=2表示一次过2句双层序列。但从上面的数据格式可知，2句双层序列和5句单层序列的数据完全一样。</li>
+<li>data_layer和embedding_layer不关心数据是否是序列格式，因此两个配置在这两层上的输出是一样的。</li>
+<li>lstmemory:<ul>
+<li>单层序列过了一个mixed_layer和lstmemory_group。</li>
+<li>双层序列在同样的mixed_layer和lstmemory_group外，直接加了一层group。由于这个外层group里面没有memory，表示subseq间不存在联系，即起到的作用仅仅是把双层seq拆成单层，因此双层序列过完lstmemory的输出和单层的一样。</li>
+</ul>
+</li>
+<li>last_seq：<ul>
+<li>单层序列直接取了最后一个元素</li>
+<li>双层序列首先（last_seq层）取了每个subseq的最后一个元素，将其拼接成一个新的单层序列；接着（expand_layer层）将其扩展成一个新的双层序列，其中第i个subseq中的所有向量均为输入的单层序列中的第i个向量；最后（average_layer层）取了每个subseq的平均值。</li>
+<li>分析得出：第一个last_seq后，每个subseq的最后一个元素就等于单层序列的最后一个元素，而expand_layer和average_layer后，依然保持每个subseq最后一个元素的值不变（这两层仅是为了展示它们的用法，实际中并不需要）。因此单双层序列的输出是一样旳。</li>
+</ul>
+</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">settings</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;word&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">dict_dim</span><span class="p">)</span>
+
+<span class="n">emb_group</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">word_dim</span><span class="p">)</span>
+
+<span class="c1"># (lstm_input + lstm) is equal to lstmemory </span>
+<span class="k">def</span> <span class="nf">lstm_group</span><span class="p">(</span><span class="n">lstm_group_input</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">hidden_dim</span><span class="o">*</span><span class="mi">4</span><span class="p">)</span> <span class="k">as</span> <span class="n">group_input</span><span class="p">:</span>
+      <span class="n">group_input</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">lstm_group_input</span><span class="p">)</span>
+
+    <span class="n">lstm_output</span> <span class="o">=</span> <span class="n">lstmemory_group</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">group_input</span><span class="p">,</span>
+                                  <span class="n">name</span><span class="o">=</span><span class="s2">&quot;lstm_group&quot;</span><span class="p">,</span>
+                                  <span class="n">size</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
+                                  <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
+                                  <span class="n">gate_act</span><span class="o">=</span><span class="n">SigmoidActivation</span><span class="p">(),</span>
+                                  <span class="n">state_act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
+                                  <span class="n">lstm_layer_attr</span><span class="o">=</span><span class="n">ExtraLayerAttribute</span><span class="p">(</span><span class="n">error_clipping_threshold</span><span class="o">=</span><span class="mi">50</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">lstm_output</span>
+
+<span class="n">lstm_nest_group</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">SubsequenceInput</span><span class="p">(</span><span class="n">emb_group</span><span class="p">),</span>
+                                  <span class="n">step</span><span class="o">=</span><span class="n">lstm_group</span><span class="p">,</span>
+                                  <span class="n">name</span><span class="o">=</span><span class="s2">&quot;lstm_nest_group&quot;</span><span class="p">)</span>
+<span class="c1"># hasSubseq -&gt;(seqlastins) seq</span>
+<span class="n">lstm_last</span> <span class="o">=</span> <span class="n">last_seq</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">lstm_nest_group</span><span class="p">,</span> <span class="n">agg_level</span><span class="o">=</span><span class="n">AggregateLevel</span><span class="o">.</span><span class="n">EACH_SEQUENCE</span><span class="p">)</span>
+
+<span class="c1"># seq -&gt;(expand) hasSubseq</span>
+<span class="n">lstm_expand</span> <span class="o">=</span> <span class="n">expand_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">lstm_last</span><span class="p">,</span> <span class="n">expand_as</span><span class="o">=</span><span class="n">emb_group</span><span class="p">,</span> <span class="n">expand_level</span><span class="o">=</span><span class="n">ExpandLevel</span><span class="o">.</span><span class="n">FROM_SEQUENCE</span><span class="p">)</span>
+
+<span class="c1"># hasSubseq -&gt;(average) seq</span>
+<span class="n">lstm_average</span> <span class="o">=</span> <span class="n">pooling_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">lstm_expand</span><span class="p">,</span>
+                             <span class="n">pooling_type</span><span class="o">=</span><span class="n">AvgPooling</span><span class="p">(),</span>
+                             <span class="n">agg_level</span><span class="o">=</span><span class="n">AggregateLevel</span><span class="o">.</span><span class="n">EACH_SEQUENCE</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">label_dim</span><span class="p">,</span> 
+                 <span class="n">act</span><span class="o">=</span><span class="n">SoftmaxActivation</span><span class="p">(),</span> 
+                 <span class="n">bias_attr</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">output</span><span class="p">:</span>
+    <span class="n">output</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">lstm_average</span><span class="p">)</span>
+
+<span class="n">outputs</span><span class="p">(</span><span class="n">classification_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">output</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">)))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="subseqmemory">
+<span id="id3"></span><h2>示例2：双进双出，subseq间有memory<a class="headerlink" href="#subseqmemory" title="Permalink to this headline">¶</a></h2>
+<p>配置：单层RNN（<code class="docutils literal"><span class="pre">sequence_rnn.conf</span></code>），双层RNN（<code class="docutils literal"><span class="pre">sequence_nest_rnn.conf</span></code>和<code class="docutils literal"><span class="pre">sequence_nest_rnn_readonly_memory.conf</span></code>），语义完全相同。</p>
+<div class="section" id="">
+<span id="id4"></span><h3>读取双层序列的方法<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
+<p>我们看一下单双层序列的不同数据组织形式和dataprovider（见<code class="docutils literal"><span class="pre">rnn_data_provider.py</span></code>）</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">]],</span> <span class="mi">0</span><span class="p">],</span>
+    <span class="p">[[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]],</span> <span class="mi">1</span><span class="p">],</span>
+<span class="p">]</span>
+
+<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">[</span><span class="n">integer_value_sub_sequence</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+                       <span class="n">integer_value</span><span class="p">(</span><span class="mi">3</span><span class="p">)])</span>
+<span class="k">def</span> <span class="nf">process_subseq</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">d</span>
+
+<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">[</span><span class="n">integer_value_sequence</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+                       <span class="n">integer_value</span><span class="p">(</span><span class="mi">3</span><span class="p">)])</span>
+<span class="k">def</span> <span class="nf">process_seq</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+        <span class="n">seq</span> <span class="o">=</span> <span class="p">[]</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>单层序列：有两句，分别为[1,3,2,4,5,2]和[0,2,2,5,0,1,2]。</li>
+<li>双层序列：有两句，分别为[[1,3,2],[4,5,2]]（2个子句）和[[0,2],[2,5],[0,1,2]]（3个子句）。</li>
+<li>单双层序列的label都分别是0和1</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h3>模型中的配置<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
+<p>我们选取单双层序列配置中的不同部分，来对比分析两者语义相同的原因。</p>
+<ul class="simple">
+<li>单层序列：过了一个很简单的recurrent_group。每一个时间步，当前的输入y和上一个时间步的输出rnn_state做了一个全链接。</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+    <span class="n">mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;rnn_state&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">y</span><span class="p">,</span> <span class="n">mem</span><span class="p">],</span>
+                    <span class="n">size</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
+                    <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
+                    <span class="n">bias_attr</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;rnn_state&quot;</span><span class="p">)</span>
+
+<span class="n">out</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="n">emb</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>双层序列，外层memory是一个元素：<ul>
+<li>内层inner_step的recurrent_group和单层序列的几乎一样。除了boot_layer=outer_mem，表示将外层的outer_mem作为内层memory的初始状态。外层outer_step中，outer_mem是一个子句的最后一个向量，即整个双层group是将前一个子句的最后一个向量，作为下一个子句memory的初始状态。</li>
+<li>从输入数据上看，单双层序列的句子是一样的，只是双层序列将其又做了子序列划分。因此双层序列的配置中，必须将前一个子句的最后一个元素，作为boot_layer传给下一个子句的memory，才能保证和单层序列的配置中“每一个时间步都用了上一个时间步的输出结果”一致。</li>
+</ul>
+</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">outer_step</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="n">outer_mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;outer_rnn_state&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">inner_step</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+        <span class="n">inner_mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;inner_rnn_state&quot;</span><span class="p">,</span>
+                           <span class="n">size</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
+                           <span class="n">boot_layer</span><span class="o">=</span><span class="n">outer_mem</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">y</span><span class="p">,</span> <span class="n">inner_mem</span><span class="p">],</span>
+                        <span class="n">size</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
+                        <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
+                        <span class="n">bias_attr</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;inner_rnn_state&quot;</span><span class="p">)</span>
+
+    <span class="n">inner_rnn_output</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span>
+        <span class="n">step</span><span class="o">=</span><span class="n">inner_step</span><span class="p">,</span>
+        <span class="nb">input</span><span class="o">=</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">last</span> <span class="o">=</span> <span class="n">last_seq</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">inner_rnn_output</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;outer_rnn_state&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">inner_rnn_output</span>
+
+<span class="n">out</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">outer_step</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="n">SubsequenceInput</span><span class="p">(</span><span class="n">emb</span><span class="p">))</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>双层序列，外层memory是单层序列：<ul>
+<li>由于外层每个时间步返回的是一个子句，这些子句的长度往往不等长。因此当外层有is_seq=True的memory时，内层是<strong>无法直接使用</strong>它的，即内层memory的boot_layer不能链接外层的这个memory。</li>
+<li>如果内层memory想<strong>间接使用</strong>这个外层memory，只能通过<code class="docutils literal"><span class="pre">pooling_layer</span></code>、<code class="docutils literal"><span class="pre">last_seq</span></code>或<code class="docutils literal"><span class="pre">first_seq</span></code>这三个layer将它先变成一个元素。但这种情况下，外层memory必须有boot_layer，否则在第0个时间步时，由于外层memory没有任何seq信息，因此上述三个layer的前向会报出“<strong>Check failed: input.sequenceStartPositions</strong>”的错误。</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="">
+<span id="id6"></span><h2>示例3：双进双出，输入不等长<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p><strong>输入不等长</strong>是指recurrent_group的多个输入在各时刻的长度可以不相等, 但需要指定一个和输出长度一致的input，用<font color="red">targetInlink</font>表示。参考配置：单层RNN（<code class="docutils literal"><span class="pre">sequence_rnn_multi_unequalength_inputs.conf</span></code>），双层RNN（<code class="docutils literal"><span class="pre">sequence_nest_rnn_multi_unequalength_inputs.conf</span></code>）</p>
+<div class="section" id="">
+<span id="id7"></span><h3>读取双层序列的方法<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
+<p>我们看一下单双层序列的数据组织形式和dataprovider（见<code class="docutils literal"><span class="pre">rnn_data_provider.py</span></code>）</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data2</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span> <span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+    <span class="p">[[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]],[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="mi">1</span><span class="p">],</span>
+<span class="p">]</span>
+
+<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">[</span><span class="n">integer_value_sub_sequence</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+                       <span class="n">integer_value_sub_sequence</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+                       <span class="n">integer_value</span><span class="p">(</span><span class="mi">2</span><span class="p">)],</span>
+          <span class="n">should_shuffle</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process_unequalength_subseq</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span> <span class="c1">#双层RNN的dataprovider</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data2</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">d</span>
+
+
+<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">[</span><span class="n">integer_value_sequence</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+                       <span class="n">integer_value_sequence</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+                       <span class="n">integer_value</span><span class="p">(</span><span class="mi">2</span><span class="p">)],</span>
+          <span class="n">should_shuffle</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process_unequalength_seq</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span> <span class="c1">#单层RNN的dataprovider</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data2</span><span class="p">:</span>
+        <span class="n">words1</span><span class="o">=</span><span class="nb">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="n">x</span><span class="o">+</span><span class="n">y</span><span class="p">,</span> <span class="n">d</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">words2</span><span class="o">=</span><span class="nb">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="n">x</span><span class="o">+</span><span class="n">y</span><span class="p">,</span> <span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">yield</span> <span class="n">words1</span><span class="p">,</span> <span class="n">words2</span><span class="p">,</span> <span class="n">d</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>data2 中有两个样本，每个样本有两个特征, 记fea1, fea2。</p>
+<ul class="simple">
+<li>单层序列：两个样本分别为[[1, 2, 4, 5, 2], [5, 4, 1, 3, 1]] 和 [[0, 2, 2, 5, 0, 1, 2], [1, 5, 4, 2, 3, 6, 1]]</li>
+<li>双层序列：两个样本分别为<ul>
+<li><strong>样本1</strong>：[[[1, 2], [4, 5, 2]], [[5, 4, 1], [3, 1]]]。fea1和fea2都分别有2个子句，fea1=[[1, 2], [4, 5, 2]], fea2=[[5, 4, 1], [3, 1]]</li>
+<li><strong>样本2</strong>：[[[0, 2], [2, 5], [0, 1, 2]],[[1, 5], [4], [2, 3, 6, 1]]]。fea1和fea2都分别有3个子句， fea1=[[0, 2], [2, 5], [0, 1, 2]], fea2=[[1, 5], [4], [2, 3, 6, 1]]。<br/></li>
+<li><strong>注意</strong>：每个样本中，各特征的子句数目需要相等。这里说的“双进双出，输入不等长”是指fea1在i时刻的输入的长度可以不等于fea2在i时刻的输入的长度。如对于第1个样本，时刻i=2, fea1[2]=[4, 5, 2]，fea2[2]=[3, 1]，3≠2。</li>
+</ul>
+</li>
+<li>单双层序列中，两个样本的label都分别是0和1</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id8"></span><h3>模型中的配置<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h3>
+<p>单层RNN（<code class="docutils literal"><span class="pre">sequence_rnn_multi_unequalength_inputs.conf</span></code>）和双层RNN（<code class="docutils literal"><span class="pre">sequence_nest_rnn_multi_unequalength_inputs.conf</span></code>）两个模型配置达到的效果完全一样，区别只在于输入为单层还是双层序列，现在我们来看它们内部分别是如何实现的。</p>
+<ul class="simple">
+<li>单层序列：<ul>
+<li>过了一个简单的recurrent_group。每一个时间步，当前的输入y和上一个时间步的输出rnn_state做了一个全连接，功能与示例2中<code class="docutils literal"><span class="pre">sequence_rnn.conf</span></code>的<code class="docutils literal"><span class="pre">step</span></code>函数完全相同。这里，两个输入x1,x2分别通过calrnn返回最后时刻的状态。结果得到的encoder1_rep和encoder2_rep分别是单层序列，最后取encoder1_rep的最后一个时刻和encoder2_rep的所有时刻分别相加得到context。</li>
+<li>注意到这里recurrent_group输入的每个样本中，fea1和fea2的长度都分别相等，这并非偶然，而是因为recurrent_group要求输入为单层序列时，所有输入的长度都必须相等。</li>
+</ul>
+</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">calrnn</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+        <span class="n">mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;rnn_state_&#39;</span> <span class="o">+</span> <span class="n">y</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="n">hidden_dim</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="p">[</span><span class="n">y</span><span class="p">,</span> <span class="n">mem</span><span class="p">],</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="n">hidden_dim</span><span class="p">,</span>
+            <span class="n">act</span> <span class="o">=</span> <span class="n">TanhActivation</span><span class="p">(),</span>
+            <span class="n">bias_attr</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;rnn_state_&#39;</span> <span class="o">+</span> <span class="n">y</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+    <span class="n">encoder1</span> <span class="o">=</span> <span class="n">calrnn</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+    <span class="n">encoder2</span> <span class="o">=</span> <span class="n">calrnn</span><span class="p">(</span><span class="n">x2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">encoder1</span><span class="p">,</span> <span class="n">encoder2</span><span class="p">]</span>
+    
+<span class="n">encoder1_rep</span><span class="p">,</span> <span class="n">encoder2_rep</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;stepout&quot;</span><span class="p">,</span>                           
+    <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span>
+    <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">emb1</span><span class="p">,</span> <span class="n">emb2</span><span class="p">])</span>
+
+<span class="n">encoder1_last</span> <span class="o">=</span> <span class="n">last_seq</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="n">encoder1_rep</span><span class="p">)</span>                           
+<span class="n">encoder1_expandlast</span> <span class="o">=</span> <span class="n">expand_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="n">encoder1_last</span><span class="p">,</span>
+                                   <span class="n">expand_as</span> <span class="o">=</span> <span class="n">encoder2_rep</span><span class="p">)</span>
+<span class="n">context</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="p">[</span><span class="n">identity_projection</span><span class="p">(</span><span class="n">encoder1_expandlast</span><span class="p">),</span>
+                               <span class="n">identity_projection</span><span class="p">(</span><span class="n">encoder2_rep</span><span class="p">)],</span>
+                      <span class="n">size</span> <span class="o">=</span> <span class="n">hidden_dim</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>双层序列：<ul>
+<li>双层RNN中，对输入的两个特征分别求时序上的连续全连接(<code class="docutils literal"><span class="pre">inner_step1</span></code>和<code class="docutils literal"><span class="pre">inner_step2</span></code>分别处理fea1和fea2)，其功能与示例2中<code class="docutils literal"><span class="pre">sequence_nest_rnn.conf</span></code>的<code class="docutils literal"><span class="pre">outer_step</span></code>函数完全相同。不同之处是，此时输入<code class="docutils literal"><span class="pre">[SubsequenceInput(emb1),</span> <span class="pre">SubsequenceInput(emb2)]</span></code>在各时刻并不等长。</li>
+<li>函数<code class="docutils literal"><span class="pre">outer_step</span></code>中可以分别处理这两个特征，但我们需要用<font color=red>targetInlink</font>指定recurrent_group的输出的格式（各子句长度）只能和其中一个保持一致，如这里选择了和emb2的长度一致。</li>
+<li>最后，依然是取encoder1_rep的最后一个时刻和encoder2_rep的所有时刻分别相加得到context。</li>
+</ul>
+</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">outer_step</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">):</span>
+    <span class="n">outer_mem1</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;outer_rnn_state1&quot;</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="n">hidden_dim</span><span class="p">)</span>
+    <span class="n">outer_mem2</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;outer_rnn_state2&quot;</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="n">hidden_dim</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">inner_step1</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+        <span class="n">inner_mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;inner_rnn_state_&#39;</span> <span class="o">+</span> <span class="n">y</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                           <span class="n">size</span> <span class="o">=</span> <span class="n">hidden_dim</span><span class="p">,</span>
+                           <span class="n">boot_layer</span> <span class="o">=</span> <span class="n">outer_mem1</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="p">[</span><span class="n">y</span><span class="p">,</span> <span class="n">inner_mem</span><span class="p">],</span>
+                       <span class="n">size</span> <span class="o">=</span> <span class="n">hidden_dim</span><span class="p">,</span>
+                       <span class="n">act</span> <span class="o">=</span> <span class="n">TanhActivation</span><span class="p">(),</span>
+                       <span class="n">bias_attr</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+                       <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;inner_rnn_state_&#39;</span> <span class="o">+</span> <span class="n">y</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+    <span class="k">def</span> <span class="nf">inner_step2</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+        <span class="n">inner_mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;inner_rnn_state_&#39;</span> <span class="o">+</span> <span class="n">y</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                           <span class="n">size</span> <span class="o">=</span> <span class="n">hidden_dim</span><span class="p">,</span>
+                           <span class="n">boot_layer</span> <span class="o">=</span> <span class="n">outer_mem2</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="p">[</span><span class="n">y</span><span class="p">,</span> <span class="n">inner_mem</span><span class="p">],</span>
+                       <span class="n">size</span> <span class="o">=</span> <span class="n">hidden_dim</span><span class="p">,</span>
+                       <span class="n">act</span> <span class="o">=</span> <span class="n">TanhActivation</span><span class="p">(),</span>
+                       <span class="n">bias_attr</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+                       <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;inner_rnn_state_&#39;</span> <span class="o">+</span> <span class="n">y</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+    <span class="n">encoder1</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="n">inner_step1</span><span class="p">,</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;inner1&#39;</span><span class="p">,</span>
+        <span class="nb">input</span> <span class="o">=</span> <span class="n">x1</span><span class="p">)</span>
+
+    <span class="n">encoder2</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="n">inner_step2</span><span class="p">,</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;inner2&#39;</span><span class="p">,</span>
+        <span class="nb">input</span> <span class="o">=</span> <span class="n">x2</span><span class="p">)</span>
+
+    <span class="n">sentence_last_state1</span> <span class="o">=</span> <span class="n">last_seq</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="n">encoder1</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;outer_rnn_state1&#39;</span><span class="p">)</span>
+    <span class="n">sentence_last_state2_</span> <span class="o">=</span> <span class="n">last_seq</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="n">encoder2</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;outer_rnn_state2&#39;</span><span class="p">)</span>
+
+    <span class="n">encoder1_expand</span> <span class="o">=</span> <span class="n">expand_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="n">sentence_last_state1</span><span class="p">,</span>
+                                   <span class="n">expand_as</span> <span class="o">=</span> <span class="n">encoder2</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">[</span><span class="n">encoder1_expand</span><span class="p">,</span> <span class="n">encoder2</span><span class="p">]</span>
+
+<span class="n">encoder1_rep</span><span class="p">,</span> <span class="n">encoder2_rep</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;outer&quot;</span><span class="p">,</span>
+    <span class="n">step</span><span class="o">=</span><span class="n">outer_step</span><span class="p">,</span>
+    <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">SubsequenceInput</span><span class="p">(</span><span class="n">emb1</span><span class="p">),</span> <span class="n">SubsequenceInput</span><span class="p">(</span><span class="n">emb2</span><span class="p">)],</span>
+    <span class="n">targetInlink</span><span class="o">=</span><span class="n">emb2</span><span class="p">)</span>
+
+<span class="n">encoder1_last</span> <span class="o">=</span> <span class="n">last_seq</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="n">encoder1_rep</span><span class="p">)</span>
+<span class="n">encoder1_expandlast</span> <span class="o">=</span> <span class="n">expand_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="n">encoder1_last</span><span class="p">,</span>
+                                   <span class="n">expand_as</span> <span class="o">=</span> <span class="n">encoder2_rep</span><span class="p">)</span>
+<span class="n">context</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="p">[</span><span class="n">identity_projection</span><span class="p">(</span><span class="n">encoder1_expandlast</span><span class="p">),</span>
+                               <span class="n">identity_projection</span><span class="p">(</span><span class="n">encoder2_rep</span><span class="p">)],</span>
+                      <span class="n">size</span> <span class="o">=</span> <span class="n">hidden_dim</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="beam-search">
+<span id="beam-search"></span><h2>示例4：beam_search的生成<a class="headerlink" href="#beam-search" title="Permalink to this headline">¶</a></h2>
+<p>TBD</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">双层RNN配置与示例</a><ul>
+<li><a class="reference internal" href="#subseqmemory">示例1：双进双出，subseq间无memory</a><ul>
+<li><a class="reference internal" href="#">读取双层序列的方法</a></li>
+<li><a class="reference internal" href="#">模型中的配置</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#subseqmemory">示例2：双进双出，subseq间有memory</a><ul>
+<li><a class="reference internal" href="#">读取双层序列的方法</a></li>
+<li><a class="reference internal" href="#">模型中的配置</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#">示例3：双进双出，输入不等长</a><ul>
+<li><a class="reference internal" href="#">读取双层序列的方法</a></li>
+<li><a class="reference internal" href="#">模型中的配置</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#beam-search">示例4：beam_search的生成</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/algorithm/rnn/hierarchical-rnn.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

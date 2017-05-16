@@ -1,0 +1,518 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Writing New Layers &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="Writing New Layers" href="index.html" />
+    <link rel="next" title="Source Code Documents" href="../../source/index.html" />
+    <link rel="prev" title="Writing New Layers" href="index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../source/index.html" title="Source Code Documents"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Writing New Layers"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Writing New Layers</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="writing-new-layers">
+<h1>Writing New Layers<a class="headerlink" href="#writing-new-layers" title="Permalink to this headline">¶</a></h1>
+<p>This tutorial will guide you to write customized layers in PaddlePaddle. We will utilize fully connected layer as an example to guide you through the following steps for writing a new layer.</p>
+<ul class="simple">
+<li>Derive equations for the forward and backward part of the layer.</li>
+<li>Implement C++ class for the layer.</li>
+<li>Write gradient check unit test to make sure the gradients are correctly computed.</li>
+<li>Implement Python wrapper for the layer.</li>
+</ul>
+</div>
+<div class="section" id="derive-equations">
+<h1>Derive Equations<a class="headerlink" href="#derive-equations" title="Permalink to this headline">¶</a></h1>
+<p>First we need to derive equations of the <em>forward</em> and <em>backward</em> part of the layer. The forward part computes the output given an input. The backward part computes the gradients of the input and the parameters given the the gradients of the output.</p>
+<p>The illustration of a fully connected layer is shown in the following figure. In a fully connected layer, all output nodes are connected to all the input nodes.</p>
+<a class="reference internal image-reference" href="../../_images/FullyConnected.jpg"><img alt="../../_images/FullyConnected.jpg" class="align-center" src="../../_images/FullyConnected.jpg" style="width: 391.2px; height: 175.2px;" /></a>
+<p>The <em>forward part</em> of a layer transforms an input into the corresponding output.
+Fully connected layer takes a dense input vector with dimension <span class="math">\(D_i\)</span>. It uses a transformation matrix <span class="math">\(W\)</span> with size <span class="math">\(D_i \times D_o\)</span> to project <span class="math">\(x\)</span> into a <span class="math">\(D_o\)</span> dimensional vector, and add a bias vector <span class="math">\(b\)</span> with dimension <span class="math">\(D_o\)</span> to the vector.</p>
+<div class="math">
+\[y = f(W^T x + b)\]</div>
+<p>where <span class="math">\(f(.)\)</span> is an nonlinear <em>activation</em> function, such as sigmoid, tanh, and Relu.</p>
+<p>The transformation matrix <span class="math">\(W\)</span> and bias vector <span class="math">\(b\)</span> are the <em>parameters</em> of the layer. The <em>parameters</em> of a layer are learned during training in the <em>backward pass</em>. The backward pass computes the gradients of the output function with respect to all parameters and inputs. The optimizer can use chain rule to compute the gradients of the loss function with respect to each parameter.</p>
+<p>Suppose our loss function is <span class="math">\(c(y)\)</span>, then</p>
+<div class="math">
+\[\frac{\partial c(y)}{\partial x} = \frac{\partial c(y)}{\partial y} \frac{\partial y}{\partial x}\]</div>
+<p>Suppose <span class="math">\(z = f(W^T x + b)\)</span>, then</p>
+<div class="math">
+\[\frac{\partial y}{\partial z} = \frac{\partial f(z)}{\partial z}\]</div>
+<p>This derivative can be automatically computed by our base layer class.</p>
+<p>Then, for fully connected layer, we need to compute:</p>
+<div class="math">
+\[\frac{\partial z}{\partial x} = W, \frac{\partial z_j}{\partial W_{ij}} = x_i, \frac{\partial z}{\partial b} = \mathbf 1\]</div>
+<p>where <span class="math">\(\mathbf 1\)</span> is an all one vector, <span class="math">\(W_{ij}\)</span> is the number at the i-th row and j-th column of the matrix <span class="math">\(W\)</span>, <span class="math">\(z_j\)</span> is the j-th component of the vector <span class="math">\(z\)</span>, and <span class="math">\(x_i\)</span> is the i-th component of the vector <span class="math">\(x\)</span>.</p>
+<p>Finally we can use chain rule to calculate <span class="math">\(\frac{\partial z}{\partial x}\)</span>, and <span class="math">\(\frac{\partial z}{\partial W}\)</span>. The details of the computation will be given in the next section.</p>
+</div>
+<div class="section" id="implement-c-class">
+<h1>Implement C++ Class<a class="headerlink" href="#implement-c-class" title="Permalink to this headline">¶</a></h1>
+<p>The C++ class of the layer implements the initialization, forward, and backward part of the layer. The fully connected layer is at <code class="code docutils literal"><span class="pre">paddle/gserver/layers/FullyConnectedLayer.h</span></code> and <code class="code docutils literal"><span class="pre">paddle/gserver/layers/FullyConnectedLayer.cpp</span></code>. We list simplified version of the code below.</p>
+<p>It needs to derive the base class <code class="code docutils literal"><span class="pre">paddle::BaseLayer</span></code>, and it needs to override the following functions:</p>
+<ul class="simple">
+<li>constructor and destructor.</li>
+<li><code class="code docutils literal"><span class="pre">init</span></code> function. It is used to initialize the parameters and settings.</li>
+<li><code class="code docutils literal"><span class="pre">forward</span></code>. It implements the forward part of the layer.</li>
+<li><code class="code docutils literal"><span class="pre">backward</span></code>. It implements the backward part of the layer.</li>
+<li><code class="code docutils literal"><span class="pre">prefetch</span></code>. It is utilized to determine the rows corresponding parameter matrix to prefetch from parameter server. You do not need to override this function if your layer does not need remote sparse update. (most layers do not need to support remote sparse update)</li>
+</ul>
+<p>The header file is listed below:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="k">namespace</span> <span class="n">paddle</span> <span class="p">{</span>
+<span class="cm">/**</span>
+<span class="cm"> * A layer has full connections to all neurons in the previous layer.</span>
+<span class="cm"> * It computes an inner product with a set of learned weights, and</span>
+<span class="cm"> * (optionally) adds biases.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The config file api is fc_layer.</span>
+<span class="cm"> */</span>
+
+<span class="k">class</span> <span class="nc">FullyConnectedLayer</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Layer</span> <span class="p">{</span>
+<span class="k">protected</span><span class="o">:</span>
+  <span class="n">WeightList</span> <span class="n">weights_</span><span class="p">;</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Weight</span><span class="o">&gt;</span> <span class="n">biases_</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+  <span class="k">explicit</span> <span class="n">FullyConnectedLayer</span><span class="p">(</span><span class="k">const</span> <span class="n">LayerConfig</span><span class="o">&amp;</span> <span class="n">config</span><span class="p">)</span>
+      <span class="o">:</span> <span class="n">Layer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span> <span class="p">{}</span>
+  <span class="o">~</span><span class="n">FullyConnectedLayer</span><span class="p">()</span> <span class="p">{}</span>
+
+  <span class="kt">bool</span> <span class="n">init</span><span class="p">(</span><span class="k">const</span> <span class="n">LayerMap</span><span class="o">&amp;</span> <span class="n">layerMap</span><span class="p">,</span> <span class="k">const</span> <span class="n">ParameterMap</span><span class="o">&amp;</span> <span class="n">parameterMap</span><span class="p">);</span>
+
+  <span class="n">Weight</span><span class="o">&amp;</span> <span class="n">getWeight</span><span class="p">(</span><span class="kt">int</span> <span class="n">idx</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="o">*</span><span class="n">weights_</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span> <span class="p">}</span>
+
+  <span class="kt">void</span> <span class="n">prefetch</span><span class="p">();</span>
+  <span class="kt">void</span> <span class="nf">forward</span><span class="p">(</span><span class="n">PassType</span> <span class="n">passType</span><span class="p">);</span>
+  <span class="kt">void</span> <span class="nf">backward</span><span class="p">(</span><span class="k">const</span> <span class="n">UpdateCallback</span><span class="o">&amp;</span> <span class="n">callback</span> <span class="o">=</span> <span class="k">nullptr</span><span class="p">);</span>
+<span class="p">};</span>
+<span class="p">}</span>  <span class="c1">// namespace paddle</span>
+</pre></div>
+</div>
+<p>It defines the parameters as class variables. We use <code class="code docutils literal"><span class="pre">Weight</span></code> class as abstraction of parameters. It supports multi-thread update. The details of this class will be described in details in the implementations.</p>
+<ul class="simple">
+<li><code class="code docutils literal"><span class="pre">weights_</span></code> is a list of weights for the transformation matrices. The current implementation can have more than one inputs. Thus, it has a list of weights. One weight corresponds to an input.</li>
+<li><code class="code docutils literal"><span class="pre">biases_</span></code> is a weight for the bias vector.</li>
+</ul>
+<p>The fully connected layer does not have layer configuration hyper-parameters. If there are some layer hyper-parameters, a common practice is to store it in <code class="code docutils literal"><span class="pre">LayerConfig&amp;</span> <span class="pre">config</span></code>, and put it into a class variable in the constructor.</p>
+<p>The following code snippet implements the <code class="code docutils literal"><span class="pre">init</span></code> function.</p>
+<ul class="simple">
+<li>First, every <code class="code docutils literal"><span class="pre">init</span></code> function must call the <code class="code docutils literal"><span class="pre">init</span></code> function of the base class <code class="code docutils literal"><span class="pre">Layer::init(layerMap,</span> <span class="pre">parameterMap);</span></code>. This statement will initialize the required variables and connections for each layer.</li>
+<li>The it initializes all the weights matrices <span class="math">\(W\)</span>. The current implementation can have more than one inputs. Thus, it has a list of weights.</li>
+<li>Finally, it initializes the bias.</li>
+</ul>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="kt">bool</span> <span class="n">FullyConnectedLayer</span><span class="o">::</span><span class="n">init</span><span class="p">(</span><span class="k">const</span> <span class="n">LayerMap</span><span class="o">&amp;</span> <span class="n">layerMap</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="n">ParameterMap</span><span class="o">&amp;</span> <span class="n">parameterMap</span><span class="p">)</span> <span class="p">{</span>
+  <span class="cm">/* Initialize the basic parent class */</span>
+  <span class="n">Layer</span><span class="o">::</span><span class="n">init</span><span class="p">(</span><span class="n">layerMap</span><span class="p">,</span> <span class="n">parameterMap</span><span class="p">);</span>
+
+  <span class="cm">/* initialize the weightList */</span>
+  <span class="n">CHECK</span><span class="p">(</span><span class="n">inputLayers_</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">==</span> <span class="n">parameters_</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">inputLayers_</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// Option the parameters</span>
+    <span class="kt">size_t</span> <span class="n">height</span> <span class="o">=</span> <span class="n">inputLayers_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getSize</span><span class="p">();</span>
+    <span class="kt">size_t</span> <span class="n">width</span> <span class="o">=</span> <span class="n">getSize</span><span class="p">();</span>
+
+    <span class="c1">// create a new weight</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">parameters_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">isSparse</span><span class="p">())</span> <span class="p">{</span>
+      <span class="n">CHECK_LE</span><span class="p">(</span><span class="n">parameters_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getSize</span><span class="p">(),</span> <span class="n">width</span> <span class="o">*</span> <span class="n">height</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="n">CHECK_EQ</span><span class="p">(</span><span class="n">parameters_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getSize</span><span class="p">(),</span> <span class="n">width</span> <span class="o">*</span> <span class="n">height</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">Weight</span><span class="o">*</span> <span class="n">w</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Weight</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">parameters_</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+
+    <span class="c1">// append the new weight to the list</span>
+    <span class="n">weights_</span><span class="p">.</span><span class="n">emplace_back</span><span class="p">(</span><span class="n">w</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="cm">/* initialize biases_ */</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">biasParameter_</span><span class="p">.</span><span class="n">get</span><span class="p">()</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">biases_</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Weight</span><span class="o">&gt;</span><span class="p">(</span><span class="k">new</span> <span class="n">Weight</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">getSize</span><span class="p">(),</span> <span class="n">biasParameter_</span><span class="p">));</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The implementation of the forward part has the following steps.</p>
+<ul class="simple">
+<li>Every layer must call <code class="code docutils literal"><span class="pre">Layer::forward(passType);</span></code> at the beginning of its <code class="code docutils literal"><span class="pre">forward</span></code> function.</li>
+<li>Then it allocates memory for the output using <code class="code docutils literal"><span class="pre">reserveOutput(batchSize,</span> <span class="pre">size);</span></code>. This step is necessary because we support the batches to have different batch sizes. <code class="code docutils literal"><span class="pre">reserveOutput</span></code> will change the size of the output accordingly. For the sake of efficiency, we will allocate new memory if we want to expand the matrix, but we will reuse the existing memory block if we want to shrink the matrix.</li>
+<li>Then it computes <span class="math">\(\sum_i W_i x + b\)</span> using Matrix operations. <code class="code docutils literal"><span class="pre">getInput(i).value</span></code> retrieve the matrix of the i-th input. Each input is a <span class="math">\(batchSize \times dim\)</span> matrix, where each row represents an single input in a batch. For a complete lists of supported matrix operations, please refer to <code class="code docutils literal"><span class="pre">paddle/math/Matrix.h</span></code> and <code class="code docutils literal"><span class="pre">paddle/math/BaseMatrix.h</span></code>.</li>
+<li>Finally it applies the activation function using <code class="code docutils literal"><span class="pre">forwardActivation();</span></code>. It will automatically applies the corresponding activation function specifies in the network configuration.</li>
+</ul>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="n">FullyConnectedLayer</span><span class="o">::</span><span class="n">forward</span><span class="p">(</span><span class="n">PassType</span> <span class="n">passType</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">Layer</span><span class="o">::</span><span class="n">forward</span><span class="p">(</span><span class="n">passType</span><span class="p">);</span>
+
+  <span class="cm">/* malloc memory for the output_ if necessary */</span>
+  <span class="kt">int</span> <span class="n">batchSize</span> <span class="o">=</span> <span class="n">getInput</span><span class="p">(</span><span class="mi">0</span><span class="p">).</span><span class="n">getBatchSize</span><span class="p">();</span>
+  <span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="n">getSize</span><span class="p">();</span>
+
+  <span class="p">{</span>
+    <span class="c1">// Settup the size of the output.</span>
+    <span class="n">reserveOutput</span><span class="p">(</span><span class="n">batchSize</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">MatrixPtr</span> <span class="n">outV</span> <span class="o">=</span> <span class="n">getOutputValue</span><span class="p">();</span>
+
+  <span class="c1">// Apply the the transformation matrix to each input.</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">inputLayers_</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">input</span> <span class="o">=</span> <span class="n">getInput</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+    <span class="n">CHECK</span><span class="p">(</span><span class="n">input</span><span class="p">.</span><span class="n">value</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;The input of &#39;fc&#39; layer must be matrix&quot;</span><span class="p">;</span>
+    <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">?</span> <span class="n">outV</span><span class="o">-&gt;</span><span class="n">mul</span><span class="p">(</span><span class="n">input</span><span class="p">.</span><span class="n">value</span><span class="p">,</span> <span class="n">weights_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getW</span><span class="p">(),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+           <span class="o">:</span> <span class="n">outV</span><span class="o">-&gt;</span><span class="n">mul</span><span class="p">(</span><span class="n">input</span><span class="p">.</span><span class="n">value</span><span class="p">,</span> <span class="n">weights_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getW</span><span class="p">(),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="cm">/* add the bias-vector */</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">biases_</span><span class="p">.</span><span class="n">get</span><span class="p">()</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">outV</span><span class="o">-&gt;</span><span class="n">addBias</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">biases_</span><span class="o">-&gt;</span><span class="n">getW</span><span class="p">()),</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="cm">/* activation */</span> <span class="p">{</span>
+    <span class="n">forwardActivation</span><span class="p">();</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The implementation of the backward part has the following steps.</p>
+<ul class="simple">
+<li><code class="code docutils literal"><span class="pre">backwardActivation()</span></code> computes the gradients of the activation. The gradients will be multiplies in place to the gradients of the output, which can be retrieved using <code class="code docutils literal"><span class="pre">getOutputGrad()</span></code>.</li>
+<li>Compute the gradients of bias. Notice that we an use <code class="code docutils literal"><span class="pre">biases_-&gt;getWGrad()</span></code> to get the gradient matrix of the corresponding parameter. After the gradient of one parameter is updated, it <strong>MUST</strong> call <code class="code docutils literal"><span class="pre">getParameterPtr()-&gt;incUpdate(callback);</span></code>. This is utilize for parameter update over multiple threads or multiple machines.</li>
+<li>Then it computes the gradients of the transformation matrices and inputs, and it calls <code class="code docutils literal"><span class="pre">incUpdate</span></code> for the corresponding parameter. This gives the framework the chance to know whether it has gathered all the gradient to one parameter so that it can do some overlapping work (e.g., network communication)</li>
+</ul>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="n">FullyConnectedLayer</span><span class="o">::</span><span class="n">backward</span><span class="p">(</span><span class="k">const</span> <span class="n">UpdateCallback</span><span class="o">&amp;</span> <span class="n">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="cm">/* Do derivation for activations.*/</span> <span class="p">{</span>
+    <span class="n">backwardActivation</span><span class="p">();</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="n">biases_</span> <span class="o">&amp;&amp;</span> <span class="n">biases_</span><span class="o">-&gt;</span><span class="n">getWGrad</span><span class="p">())</span> <span class="p">{</span>
+    <span class="n">biases_</span><span class="o">-&gt;</span><span class="n">getWGrad</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">collectBias</span><span class="p">(</span><span class="o">*</span><span class="n">getOutputGrad</span><span class="p">(),</span> <span class="mi">1</span><span class="p">);</span>
+
+    <span class="cm">/* Increasing the number of gradient */</span>
+    <span class="n">biases_</span><span class="o">-&gt;</span><span class="n">getParameterPtr</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">incUpdate</span><span class="p">(</span><span class="n">callback</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="kt">bool</span> <span class="n">syncFlag</span> <span class="o">=</span> <span class="n">hl_get_sync_flag</span><span class="p">();</span>
+
+  <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">inputLayers_</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="cm">/* Calculate the W-gradient for the current layer */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">weights_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getWGrad</span><span class="p">())</span> <span class="p">{</span>
+      <span class="n">MatrixPtr</span> <span class="n">input_T</span> <span class="o">=</span> <span class="n">getInputValue</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">getTranspose</span><span class="p">();</span>
+      <span class="n">MatrixPtr</span> <span class="n">oGrad</span> <span class="o">=</span> <span class="n">getOutputGrad</span><span class="p">();</span>
+      <span class="p">{</span>
+        <span class="n">weights_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getWGrad</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">mul</span><span class="p">(</span><span class="n">input_T</span><span class="p">,</span> <span class="n">oGrad</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+
+
+    <span class="cm">/* Calculate the input layers error */</span>
+    <span class="n">MatrixPtr</span> <span class="n">preGrad</span> <span class="o">=</span> <span class="n">getInputGrad</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">!=</span> <span class="n">preGrad</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">MatrixPtr</span> <span class="n">weights_T</span> <span class="o">=</span> <span class="n">weights_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getW</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">getTranspose</span><span class="p">();</span>
+      <span class="n">preGrad</span><span class="o">-&gt;</span><span class="n">mul</span><span class="p">(</span><span class="n">getOutputGrad</span><span class="p">(),</span> <span class="n">weights_T</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="p">{</span>
+      <span class="n">weights_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getParameterPtr</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">incUpdate</span><span class="p">(</span><span class="n">callback</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <code class="code docutils literal"><span class="pre">prefetch</span></code> function specifies the rows that need to be fetched from parameter server during training. It is only useful for remote sparse training. In remote sparse training, the full parameter matrix is stored distributedly at the parameter server. When the layer uses a batch for training, only a subset of locations of the input is non-zero in this batch. Thus, this layer only needs the rows of the transformation matrix corresponding to the locations of these non-zero entries. The <code class="code docutils literal"><span class="pre">prefetch</span></code> function specifies the ids of these rows.</p>
+<p>Most of the layers do not need remote sparse training function. You do not need to override this function in this case.</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="n">FullyConnectedLayer</span><span class="o">::</span><span class="n">prefetch</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">inputLayers_</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span><span class="o">*</span> <span class="n">sparseParam</span> <span class="o">=</span>
+        <span class="k">dynamic_cast</span><span class="o">&lt;</span><span class="n">SparsePrefetchRowCpuMatrix</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">weights_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">getW</span><span class="p">().</span><span class="n">get</span><span class="p">());</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sparseParam</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">MatrixPtr</span> <span class="n">input</span> <span class="o">=</span> <span class="n">getInputValue</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+      <span class="n">sparseParam</span><span class="o">-&gt;</span><span class="n">addRows</span><span class="p">(</span><span class="n">input</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Finally, you can use <code class="code docutils literal"><span class="pre">REGISTER_LAYER(fc,</span> <span class="pre">FullyConnectedLayer);</span></code> to register the layer. <code class="code docutils literal"><span class="pre">fc</span></code> is the identifier of the layer, and <code class="code docutils literal"><span class="pre">FullyConnectedLayer</span></code> is the class name of the layer.</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="k">namespace</span> <span class="n">paddle</span> <span class="p">{</span>
+<span class="n">REGISTER_LAYER</span><span class="p">(</span><span class="n">fc</span><span class="p">,</span> <span class="n">FullyConnectedLayer</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>If the <code class="code docutils literal"><span class="pre">cpp</span></code> file is put into <code class="code docutils literal"><span class="pre">paddle/gserver/layers</span></code>, it will be automatically added to the compilation list.</p>
+</div>
+<div class="section" id="write-gradient-check-unit-test">
+<h1>Write Gradient Check Unit Test<a class="headerlink" href="#write-gradient-check-unit-test" title="Permalink to this headline">¶</a></h1>
+<p>An easy way to verify the correctness of new layer&#8217;s implementation is to write a gradient check unit test. Gradient check unit test utilizes finite difference method to verify the gradient of a layer. It modifies the input with a small perturbation <span class="math">\(\Delta x\)</span> and observes the changes of output <span class="math">\(\Delta y\)</span>, the gradient can be computed as <span class="math">\(\frac{\Delta y}{\Delta x }\)</span>. This gradient can be compared with the gradient computed by the <code class="code docutils literal"><span class="pre">backward</span></code> function of the layer to ensure the correctness of the gradient computation. Notice that the gradient check only tests the correctness of the gradient computation, it does not necessarily guarantee the correctness of the implementation of the <code class="code docutils literal"><span class="pre">forward</span></code> and <code class="code docutils literal"><span class="pre">backward</span></code> function. You need to write more sophisticated unit tests to make sure your layer is implemented correctly.</p>
+<p>All the gradient check unit tests are located in <code class="code docutils literal"><span class="pre">paddle/gserver/tests/test_LayerGrad.cpp</span></code>. You are recommended to put your test into a new test file if you are planning to write a new layer. The gradient test of the gradient check unit test of the fully connected layer is listed below. It has the following steps.</p>
+<ul>
+<li><dl class="first docutils">
+<dt>Create layer configuration. A layer configuration can include the following attributes:</dt>
+<dd><ul class="first last simple">
+<li>size of the bias parameter. (4096 in our example)</li>
+<li>type of the layer. (fc in our example)</li>
+<li>size of the layer. (4096 in our example)</li>
+<li>activation type. (softmax in our example)</li>
+<li>dropout rate. (0.1 in our example)</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>configure the input of the layer. In our example, we have only one input.</dt>
+<dd><ul class="first last">
+<li><dl class="first docutils">
+<dt>type of the input (<code class="code docutils literal"><span class="pre">INPUT_DATA</span></code>) in our example. It can be one of the following types</dt>
+<dd><ul class="first last simple">
+<li><code class="code docutils literal"><span class="pre">INPUT_DATA</span></code>: dense vector.</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_LABEL</span></code>: integer.</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_DATA_TARGET</span></code>: dense vector, but it does not used to compute gradient.</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_SEQUENCE_DATA</span></code>: dense vector with sequence information.</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_HASSUB_SEQUENCE_DATA</span></code>: dense vector with both sequence and sub-sequence information.</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_SEQUENCE_LABEL</span></code>: integer with sequence information.</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_SPARSE_NON_VALUE_DATA</span></code>: 0-1 sparse data.</li>
+<li><code class="code docutils literal"><span class="pre">INPUT_SPARSE_FLOAT_VALUE_DATA</span></code>: float sparse data.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p class="first">name of the input. (<code class="code docutils literal"><span class="pre">layer_0</span></code> in our example)</p>
+</li>
+<li><p class="first">size of the input. (8192 in our example)</p>
+</li>
+<li><p class="first">number of non-zeros, only useful for sparse inputs.</p>
+</li>
+<li><p class="first">format of sparse data, only useful for sparse inputs.</p>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p class="first">each inputs needs to call <code class="code docutils literal"><span class="pre">config.layerConfig.add_inputs();</span></code> once.</p>
+</li>
+<li><dl class="first docutils">
+<dt>call <code class="code docutils literal"><span class="pre">testLayerGrad</span></code> to perform gradient checks. It has the following arguments.</dt>
+<dd><ul class="first last simple">
+<li>layer and input configurations. (<code class="code docutils literal"><span class="pre">config</span></code> in our example)</li>
+<li>type of the input. (<code class="code docutils literal"><span class="pre">fc</span></code> in our example)</li>
+<li>batch size of the gradient check. (100 in our example)</li>
+<li>whether the input is transpose. Most layers need to set it to <code class="code docutils literal"><span class="pre">false</span></code>. (<code class="code docutils literal"><span class="pre">false</span></code> in our example)</li>
+<li>whether to use weights. Some layers or activations perform normalization so that the sum of their output is a constant. For example, the sum of output of a softmax activation is one. In this case, we cannot correctly compute the gradients using regular gradient check techniques. A weighted sum of the output, which is not a constant, is utilized to compute the gradients. (<code class="code docutils literal"><span class="pre">true</span></code> in our example, because the activation of a fully connected layer can be softmax)</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">testFcLayer</span><span class="p">(</span><span class="n">string</span> <span class="n">format</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nnz</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// Create layer configuration.</span>
+  <span class="n">TestConfig</span> <span class="n">config</span><span class="p">;</span>
+  <span class="n">config</span><span class="p">.</span><span class="n">biasSize</span> <span class="o">=</span> <span class="mi">4096</span><span class="p">;</span>
+  <span class="n">config</span><span class="p">.</span><span class="n">layerConfig</span><span class="p">.</span><span class="n">set_type</span><span class="p">(</span><span class="s">&quot;fc&quot;</span><span class="p">);</span>
+  <span class="n">config</span><span class="p">.</span><span class="n">layerConfig</span><span class="p">.</span><span class="n">set_size</span><span class="p">(</span><span class="mi">4096</span><span class="p">);</span>
+  <span class="n">config</span><span class="p">.</span><span class="n">layerConfig</span><span class="p">.</span><span class="n">set_active_type</span><span class="p">(</span><span class="s">&quot;sigmoid&quot;</span><span class="p">);</span>
+  <span class="n">config</span><span class="p">.</span><span class="n">layerConfig</span><span class="p">.</span><span class="n">set_drop_rate</span><span class="p">(</span><span class="mf">0.1</span><span class="p">);</span>
+  <span class="c1">// Setup inputs.</span>
+  <span class="n">config</span><span class="p">.</span><span class="n">inputDefs</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span>
+      <span class="p">{</span><span class="n">INPUT_DATA</span><span class="p">,</span> <span class="s">&quot;layer_0&quot;</span><span class="p">,</span> <span class="mi">8192</span><span class="p">,</span> <span class="n">nnz</span><span class="p">,</span> <span class="n">ParaSparse</span><span class="p">(</span><span class="n">format</span><span class="p">)});</span>
+    <span class="n">config</span><span class="p">.</span><span class="n">layerConfig</span><span class="p">.</span><span class="n">add_inputs</span><span class="p">();</span>
+  <span class="n">LOG</span><span class="p">(</span><span class="n">INFO</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">config</span><span class="p">.</span><span class="n">inputDefs</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">sparse</span><span class="p">.</span><span class="n">sparse</span> <span class="o">&lt;&lt;</span> <span class="s">&quot; &quot;</span>
+            <span class="o">&lt;&lt;</span> <span class="n">config</span><span class="p">.</span><span class="n">inputDefs</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">sparse</span><span class="p">.</span><span class="n">format</span><span class="p">;</span>
+  <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">useGpu</span> <span class="p">:</span> <span class="p">{</span><span class="nb">false</span><span class="p">,</span> <span class="nb">true</span><span class="p">})</span> <span class="p">{</span>
+    <span class="n">testLayerGrad</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s">&quot;fc&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="cm">/* trans */</span> <span class="nb">false</span><span class="p">,</span> <span class="n">useGpu</span><span class="p">,</span>
+                  <span class="cm">/* weight */</span> <span class="nb">true</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>If you are creating a new file for the test, such as <code class="code docutils literal"><span class="pre">paddle/gserver/tests/testFCGrad.cpp</span></code>, you need to add the file to <code class="code docutils literal"><span class="pre">paddle/gserver/tests/CMakeLists.txt</span></code>. An example is given below. All the unit tests will run when you execute the command <code class="code docutils literal"><span class="pre">make</span> <span class="pre">tests</span></code>. Notice that some layers might need high accuracy for the gradient check unit tests to work well. You need to configure <code class="code docutils literal"><span class="pre">WITH_DOUBLE</span></code> to <cite>ON</cite> when configuring cmake.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>add_unittest_without_exec<span class="o">(</span>test_FCGrad
+    test_FCGrad.cpp
+    LayerGradUtil.cpp
+    TestUtil.cpp<span class="o">)</span>
+
+add_test<span class="o">(</span>NAME test_FCGrad
+    COMMAND test_FCGrad<span class="o">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="implement-python-wrapper">
+<h1>Implement Python Wrapper<a class="headerlink" href="#implement-python-wrapper" title="Permalink to this headline">¶</a></h1>
+<p>Implementing Python wrapper allows us to use the added layer in configuration files. All the Python wrappers are in file <code class="code docutils literal"><span class="pre">python/paddle/trainer/config_parser.py</span></code>. An example of the Python wrapper for fully connected layer is listed below. It has the following steps:</p>
+<ul>
+<li><p class="first">Use <code class="code docutils literal"><span class="pre">&#64;config_layer('fc')</span></code> at the decorator for all the Python wrapper class. <code class="code docutils literal"><span class="pre">fc</span></code> is the identifier of the layer.</p>
+</li>
+<li><dl class="first docutils">
+<dt>Implements <code class="code docutils literal"><span class="pre">__init__</span></code> constructor function.</dt>
+<dd><ul class="first last simple">
+<li>It first call <code class="code docutils literal"><span class="pre">super(FCLayer,</span> <span class="pre">self).__init__(name,</span> <span class="pre">'fc',</span> <span class="pre">size,</span> <span class="pre">inputs=inputs,</span> <span class="pre">**xargs)</span></code> base constructor function. <code class="code docutils literal"><span class="pre">FCLayer</span></code> is the Python wrapper class name, and <code class="code docutils literal"><span class="pre">fc</span></code> is the layer identifier name. They must be correct in order for the wrapper to work.</li>
+<li>Then it computes the size and format (whether sparse) of each transformation matrix as well as the size.</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nd">@config_layer</span><span class="p">(</span><span class="s1">&#39;fc&#39;</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">FCLayer</span><span class="p">(</span><span class="n">LayerBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">name</span><span class="p">,</span>
+            <span class="n">size</span><span class="p">,</span>
+            <span class="n">inputs</span><span class="p">,</span>
+            <span class="n">bias</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">xargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">FCLayer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;fc&#39;</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span> <span class="o">**</span><span class="n">xargs</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">input_index</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">)):</span>
+            <span class="n">input_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input_layer</span><span class="p">(</span><span class="n">input_index</span><span class="p">)</span>
+            <span class="n">psize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">size</span> <span class="o">*</span> <span class="n">input_layer</span><span class="o">.</span><span class="n">size</span>
+            <span class="n">dims</span> <span class="o">=</span> <span class="p">[</span><span class="n">input_layer</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">size</span><span class="p">]</span>
+            <span class="n">format</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="n">input_index</span><span class="p">]</span><span class="o">.</span><span class="n">format</span>
+            <span class="n">sparse</span> <span class="o">=</span> <span class="n">format</span> <span class="o">==</span> <span class="s2">&quot;csr&quot;</span> <span class="ow">or</span> <span class="n">format</span> <span class="o">==</span> <span class="s2">&quot;csc&quot;</span>
+            <span class="k">if</span> <span class="n">sparse</span><span class="p">:</span>
+                <span class="n">psize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="n">input_index</span><span class="p">]</span><span class="o">.</span><span class="n">nnz</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">create_input_parameter</span><span class="p">(</span><span class="n">input_index</span><span class="p">,</span> <span class="n">psize</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="n">sparse</span><span class="p">,</span> <span class="n">format</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">create_bias_parameter</span><span class="p">(</span><span class="n">bias</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In network configuration, the layer can be specifies using the following code snippets. The arguments of this class are:</p>
+<ul class="simple">
+<li><code class="code docutils literal"><span class="pre">name</span></code> is the name identifier of the layer instance.</li>
+<li><code class="code docutils literal"><span class="pre">type</span></code> is the type of the layer, specified using layer identifier.</li>
+<li><code class="code docutils literal"><span class="pre">size</span></code> is the output size of the layer.</li>
+<li><code class="code docutils literal"><span class="pre">bias</span></code> specifies whether this layer instance has bias.</li>
+<li><code class="code docutils literal"><span class="pre">inputs</span></code> specifies a list of layer instance names as inputs.</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">Layer</span><span class="p">(</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;fc1&quot;</span><span class="p">,</span>
+    <span class="nb">type</span> <span class="o">=</span> <span class="s2">&quot;fc&quot;</span><span class="p">,</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span>
+    <span class="n">bias</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">Input</span><span class="p">(</span><span class="s2">&quot;pool3&quot;</span><span class="p">)]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>You are also recommended to implement a helper for the Python wrapper, which makes it easier to write models. You can refer to <code class="code docutils literal"><span class="pre">python/paddle/trainer_config_helpers/layers.py</span></code> for examples.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Writing New Layers</a></li>
+<li><a class="reference internal" href="#derive-equations">Derive Equations</a></li>
+<li><a class="reference internal" href="#implement-c-class">Implement C++ Class</a></li>
+<li><a class="reference internal" href="#write-gradient-check-unit-test">Write Gradient Check Unit Test</a></li>
+<li><a class="reference internal" href="#implement-python-wrapper">Implement Python Wrapper</a></li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Writing New Layers</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../../source/index.html"
+                        title="next chapter">Source Code Documents</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/dev/new_layer/new_layer.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../source/index.html" title="Source Code Documents"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Writing New Layers"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Writing New Layers</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

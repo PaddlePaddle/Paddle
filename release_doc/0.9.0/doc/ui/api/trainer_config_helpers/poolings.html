@@ -1,0 +1,221 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Poolings &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Model Config Interface" href="index.html" />
+    <link rel="next" title="Networks" href="networks.html" />
+    <link rel="prev" title="Activations" href="activations.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="networks.html" title="Networks"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="activations.html" title="Activations"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Model Config Interface</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="poolings">
+<h1>Poolings<a class="headerlink" href="#poolings" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="basepoolingtype">
+<h2>BasePoolingType<a class="headerlink" href="#basepoolingtype" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">BasePoolingType</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span></dt>
+<dd><p>Base Pooling Type.
+Note these pooling types are used for sequence input, not for images.
+Each PoolingType contains one parameter:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<em>basestring</em>) &#8211; pooling layer type name used by paddle.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="avgpooling">
+<h2>AvgPooling<a class="headerlink" href="#avgpooling" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">AvgPooling</code><span class="sig-paren">(</span><em>strategy='average'</em><span class="sig-paren">)</span></dt>
+<dd><p>Average pooling.</p>
+<p>Return the average values for each dimension in sequence or time steps.</p>
+<div class="math">
+\[sum(samples\_of\_a\_sequence)/sample\_num\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="maxpooling">
+<h2>MaxPooling<a class="headerlink" href="#maxpooling" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">MaxPooling</code><span class="sig-paren">(</span><em>output_max_index=None</em><span class="sig-paren">)</span></dt>
+<dd><p>Max pooling.</p>
+<p>Return the very large values for each dimension in sequence or time steps.</p>
+<div class="math">
+\[max(samples\_of\_a\_sequence)\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>output_max_index</strong> (<em>bool|None</em>) &#8211; True if output sequence max index instead of max
+value. None means use default value in proto.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="sumpooling">
+<h2>SumPooling<a class="headerlink" href="#sumpooling" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">SumPooling</code></dt>
+<dd><p>Sum pooling.</p>
+<p>Return the sum values of each dimension in sequence or time steps.</p>
+<div class="math">
+\[sum(samples\_of\_a\_sequence)\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="squarerootnpooling">
+<h2>SquareRootNPooling<a class="headerlink" href="#squarerootnpooling" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">SquareRootNPooling</code></dt>
+<dd><p>Square Root Pooling.</p>
+<p>Return the square root values of each dimension in sequence or time steps.</p>
+<div class="math">
+\[sum(samples\_of\_a\_sequence)/sqrt(sample\_num)\]</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Poolings</a><ul>
+<li><a class="reference internal" href="#basepoolingtype">BasePoolingType</a></li>
+<li><a class="reference internal" href="#avgpooling">AvgPooling</a></li>
+<li><a class="reference internal" href="#maxpooling">MaxPooling</a></li>
+<li><a class="reference internal" href="#sumpooling">SumPooling</a></li>
+<li><a class="reference internal" href="#squarerootnpooling">SquareRootNPooling</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="activations.html"
+                        title="previous chapter">Activations</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="networks.html"
+                        title="next chapter">Networks</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/ui/api/trainer_config_helpers/poolings.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="networks.html" title="Networks"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="activations.html" title="Activations"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Model Config Interface</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

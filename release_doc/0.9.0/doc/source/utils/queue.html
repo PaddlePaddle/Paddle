@@ -1,0 +1,360 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Queue &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="Source Code Documents" href="../index.html" />
+    <link rel="next" title="Lock" href="thread.html" />
+    <link rel="prev" title="Thread" href="lock.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="thread.html" title="Lock"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="lock.html" title="Thread"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="queue">
+<h1>Queue<a class="headerlink" href="#queue" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="class-queue">
+<h2>class Queue<a class="headerlink" href="#class-queue" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<span class="target" id="paddleclasspaddle_1_1Queue"></span><em class="property">template </em>&lt;class <em>T</em>&gt;</dt>
+<dt id="_CPPv2N6paddle5QueueE">
+<span id="paddle::Queue"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">Queue</code><a class="headerlink" href="#_CPPv2N6paddle5QueueE" title="Permalink to this definition">¶</a></dt>
+<dd><p>A thread-safe queue that automatically grows but never shrinks. Dequeue a empty queue will block current thread. Enqueue an element will wake up another thread that blocked by dequeue method.</p>
+<p>For example. <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span><span class="p">::</span><span class="n">Queue</span><span class="o">&lt;</span><span class="nb">int</span><span class="o">&gt;</span> <span class="n">q</span><span class="p">;</span>
+<span class="n">END_OF_JOB</span><span class="o">=-</span><span class="mi">1</span>
+<span class="n">void</span> <span class="n">thread1</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">while</span> <span class="p">(</span><span class="n">true</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">auto</span> <span class="n">job</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">dequeue</span><span class="p">();</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">job</span> <span class="o">==</span> <span class="n">END_OF_JOB</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">processJob</span><span class="p">(</span><span class="n">job</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">void</span> <span class="n">thread2</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">while</span> <span class="p">(</span><span class="n">true</span><span class="p">)</span> <span class="p">{</span>
+     <span class="n">auto</span> <span class="n">job</span> <span class="o">=</span> <span class="n">getJob</span><span class="p">();</span>
+     <span class="n">q</span><span class="o">.</span><span class="n">enqueue</span><span class="p">(</span><span class="n">job</span><span class="p">);</span>
+     <span class="k">if</span> <span class="p">(</span><span class="n">job</span> <span class="o">==</span> <span class="n">END_OF_JOB</span><span class="p">)</span> <span class="p">{</span>
+       <span class="k">break</span><span class="p">;</span>
+     <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+ </p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle5Queue5QueueEv">
+<span id="paddle::Queue::Queue"></span><span class="target" id="paddleclasspaddle_1_1Queue_1a4f635b36dbf76eca675be69de3eda18a"></span><code class="descname">Queue</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Queue5QueueEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct Function. Default capacity of <a class="reference internal" href="#paddleclasspaddle_1_1Queue"><span class="std std-ref">Queue</span></a> is zero. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle5QueueD0Ev">
+<span id="paddle::Queue::~Queue"></span><span class="target" id="paddleclasspaddle_1_1Queue_1a6d5171d804a7e7d691467f863d25699a"></span><code class="descname">~Queue</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5QueueD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle5Queue7enqueueERK1T">
+<span id="paddle::Queue::enqueue__TCR"></span><span class="target" id="paddleclasspaddle_1_1Queue_1ab7feef122fb9fff3c0009e7830fa432a"></span>void <code class="descname">enqueue</code><span class="sig-paren">(</span><em class="property">const</em> T &amp;<em>el</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Queue7enqueueERK1T" title="Permalink to this definition">¶</a></dt>
+<dd><p>enqueue an element into <a class="reference internal" href="#paddleclasspaddle_1_1Queue"><span class="std std-ref">Queue</span></a>. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>This method is thread-safe, and will wake up another blocked thread. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">el</span></code>: The enqueue element. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle5Queue7enqueueERR1T">
+<span id="paddle::Queue::enqueue__TRR"></span><span class="target" id="paddleclasspaddle_1_1Queue_1a364dd46c374795465b79044df4ef3056"></span>void <code class="descname">enqueue</code><span class="sig-paren">(</span>T &amp;&amp;<em>el</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Queue7enqueueERR1T" title="Permalink to this definition">¶</a></dt>
+<dd><p>enqueue an element into <a class="reference internal" href="#paddleclasspaddle_1_1Queue"><span class="std std-ref">Queue</span></a>. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>This method is thread-safe, and will wake up another blocked thread. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">el</span></code>: The enqueue element. rvalue reference . </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle5Queue7dequeueEv">
+<span id="paddle::Queue::dequeue"></span><span class="target" id="paddleclasspaddle_1_1Queue_1a3c4ed6257434fa448db9cf6a800c770f"></span>T <code class="descname">dequeue</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Queue7dequeueEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dequeue from a queue and return a element. <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>this method will be blocked until not empty. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle5Queue4sizeEv">
+<span id="paddle::Queue::sizeC"></span><span class="target" id="paddleclasspaddle_1_1Queue_1ad156d8247d2c476e1147fc63b9365220"></span>int <code class="descname">size</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle5Queue4sizeEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return size of queue.</p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>This method is not thread safe. Obviously this number can change by the time you actually look at it. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle5Queue5emptyEv">
+<span id="paddle::Queue::emptyC"></span><span class="target" id="paddleclasspaddle_1_1Queue_1a3926bc21e5fd4e3a9361e05ce3c48b3e"></span>bool <code class="descname">empty</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle5Queue5emptyEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>is empty or not. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>true if empty. </dd>
+<dt><strong>Note</strong></dt>
+<dd>This method is not thread safe. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle5Queue9waitEmptyEv">
+<span id="paddle::Queue::waitEmpty"></span><span class="target" id="paddleclasspaddle_1_1Queue_1a96aa776b63591273bf78308947d05467"></span>void <code class="descname">waitEmpty</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Queue9waitEmptyEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>wait util queue is empty </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle5Queue15waitNotEmptyForEi">
+<span id="paddle::Queue::waitNotEmptyFor__i"></span><span class="target" id="paddleclasspaddle_1_1Queue_1a2e21790ab2a03898307814c188ddcac1"></span>bool <code class="descname">waitNotEmptyFor</code><span class="sig-paren">(</span>int <em>seconds</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Queue15waitNotEmptyForEi" title="Permalink to this definition">¶</a></dt>
+<dd><p>wait queue is not empty at most for some seconds. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>true if queue is not empty. false if timeout. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">seconds</span></code>: wait time limit. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="class-blockingqueue">
+<h2>class BlockingQueue<a class="headerlink" href="#class-blockingqueue" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<span class="target" id="paddleclasspaddle_1_1BlockingQueue"></span><em class="property">template </em>&lt;typename <em>T</em>&gt;</dt>
+<dt id="_CPPv2N6paddle13BlockingQueueE">
+<span id="paddle::BlockingQueue"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">BlockingQueue</code><a class="headerlink" href="#_CPPv2N6paddle13BlockingQueueE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle13BlockingQueue13BlockingQueueE6size_t">
+<span id="paddle::BlockingQueue::BlockingQueue__s"></span><span class="target" id="paddleclasspaddle_1_1BlockingQueue_1aea985aef6eae7bbf2e075140d00caff2"></span><code class="descname">BlockingQueue</code><span class="sig-paren">(</span>size_t <em>capacity</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13BlockingQueue13BlockingQueueE6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct Function. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">capacity</span></code>: the max numer of elements the queue can have. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13BlockingQueue7enqueueERK1T">
+<span id="paddle::BlockingQueue::enqueue__TCR"></span><span class="target" id="paddleclasspaddle_1_1BlockingQueue_1ae342ffe1695f6fd71f7cd6533436de3d"></span>void <code class="descname">enqueue</code><span class="sig-paren">(</span><em class="property">const</em> T &amp;<em>x</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13BlockingQueue7enqueueERK1T" title="Permalink to this definition">¶</a></dt>
+<dd><p>enqueue an element into <a class="reference internal" href="#paddleclasspaddle_1_1Queue"><span class="std std-ref">Queue</span></a>. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><p class="first">This method is thread-safe, and will wake up another thread who was blocked because of the queue is empty. </p>
+<p class="last">If it&#8217;s <a class="reference internal" href="#paddleclasspaddle_1_1BlockingQueue_1a896e557a322cd5583491e2a603f462f9"><span class="std std-ref">size()</span></a> &gt;= capacity before enqueue, this method will block and wait until <a class="reference internal" href="#paddleclasspaddle_1_1BlockingQueue_1a896e557a322cd5583491e2a603f462f9"><span class="std std-ref">size()</span></a> &lt; capacity. </p>
+</dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">x</span></code>: The enqueue element, pass by reference . </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13BlockingQueue7dequeueEv">
+<span id="paddle::BlockingQueue::dequeue"></span><span class="target" id="paddleclasspaddle_1_1BlockingQueue_1a5e3a8bafedde4c154eab3310b42d66cd"></span>T <code class="descname">dequeue</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13BlockingQueue7dequeueEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dequeue from a queue and return a element. <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><p class="first">this method will be blocked until not empty. </p>
+<p class="last">this method will wake up another thread who was blocked because of the queue is full. </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13BlockingQueue4sizeEv">
+<span id="paddle::BlockingQueue::size"></span><span class="target" id="paddleclasspaddle_1_1BlockingQueue_1a896e557a322cd5583491e2a603f462f9"></span>size_t <code class="descname">size</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13BlockingQueue4sizeEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return size of queue.</p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>This method is thread safe. The size of the queue won&#8217;t change until the method return. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13BlockingQueue5emptyEv">
+<span id="paddle::BlockingQueue::empty"></span><span class="target" id="paddleclasspaddle_1_1BlockingQueue_1a80485c3c5cf957833ac49773d4efd0f2"></span>size_t <code class="descname">empty</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13BlockingQueue5emptyEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>is empty or not. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>true if empty. </dd>
+<dt><strong>Note</strong></dt>
+<dd>This method is thread safe. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Queue</a><ul>
+<li><a class="reference internal" href="#class-queue">class Queue</a></li>
+<li><a class="reference internal" href="#class-blockingqueue">class BlockingQueue</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="lock.html"
+                        title="previous chapter">Thread</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="thread.html"
+                        title="next chapter">Lock</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/source/utils/queue.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="thread.html" title="Lock"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="lock.html" title="Thread"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1585 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Optimizer &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Parameter Documents" href="index.html" />
+    <link rel="next" title="Client Documents" href="../../pserver/client/index.html" />
+    <link rel="prev" title="Parameter Documents" href="index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../pserver/client/index.html" title="Client Documents"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Parameter Documents"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Parameter Documents</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="optimizer">
+<h1>Optimizer<a class="headerlink" href="#optimizer" title="Permalink to this headline">¶</a></h1>
+<dl class="type">
+<dt id="_CPPv26paddle">
+<span id="paddle"></span><span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="class">
+<dt id="_CPPv2N6paddle12SgdOptimizerE">
+<span id="paddle::SgdOptimizer"></span><span class="target" id="paddleclasspaddle_1_1SgdOptimizer"></span><em class="property">class </em><code class="descname">SgdOptimizer</code><a class="headerlink" href="#_CPPv2N6paddle12SgdOptimizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer"><span class="std std-ref">paddle::ParameterOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12SgdOptimizer12SgdOptimizerERK18OptimizationConfig">
+<span id="paddle::SgdOptimizer::SgdOptimizer__OptimizationConfigCR"></span><span class="target" id="paddleclasspaddle_1_1SgdOptimizer_1ace10e4aa494c4d3c2b57cb7e00a37d2e"></span><code class="descname">SgdOptimizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SgdOptimizer12SgdOptimizerERK18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SgdOptimizer10startBatchE7int64_t">
+<span id="paddle::SgdOptimizer::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1SgdOptimizer_1a1314d9cce634862f4d00d5d80f4e9b5a"></span><em class="property">virtual</em> void <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>numSamplesProcessed</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SgdOptimizer10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer before forward() of a batch. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle12SgdOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::SgdOptimizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1SgdOptimizer_1a43747e1c849291a35b7951d12b51152f"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle12SgdOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1SgdOptimizer_1a1314d9cce634862f4d00d5d80f4e9b5a"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1SgdOptimizer_1ae83ffdcf2827703678bc9332cc2620ca"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SgdOptimizer_1a43747e1c849291a35b7951d12b51152f"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SgdOptimizer11finishBatchEv">
+<span id="paddle::SgdOptimizer::finishBatch"></span><span class="target" id="paddleclasspaddle_1_1SgdOptimizer_1ae83ffdcf2827703678bc9332cc2620ca"></span><em class="property">virtual</em> void <code class="descname">finishBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SgdOptimizer11finishBatchEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer after backward() of a batch </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizerE">
+<span id="paddle::SparseMomentumParameterOptimizer"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer"></span><em class="property">class </em><code class="descname">SparseMomentumParameterOptimizer</code><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer"><span class="std std-ref">paddle::ParameterOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer32SparseMomentumParameterOptimizerERK18OptimizationConfig">
+<span id="paddle::SparseMomentumParameterOptimizer::SparseMomentumParameterOptimizer__OptimizationConfigCR"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1af98463e550528151d72900df6cdb3cf0"></span><code class="descname">SparseMomentumParameterOptimizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer32SparseMomentumParameterOptimizerERK18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer4initE6size_tPK15ParameterConfig">
+<span id="paddle::SparseMomentumParameterOptimizer::init__s.ParameterConfigCP"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1a31abb97bf4cf9de214c8f734a4f8e6d7"></span>void <code class="descname">init</code><span class="sig-paren">(</span>size_t <em>numRows</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> *<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer4initE6size_tPK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>For sparse update, optimizer can maintain numRows of timer(t0). Some sparse optimizer depends on parameter config in functions such as <a class="reference internal" href="#paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1afc2509f80468f5e681f76e7f77241abc"><span class="std std-ref">startBatch()</span></a>. Optimizer can get it here. But notice that, not all callers can pass config here, so the optimizer should check config passed in is not null ptr. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer10startBatchE7int64_t">
+<span id="paddle::SparseMomentumParameterOptimizer::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1afc2509f80468f5e681f76e7f77241abc"></span>void <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>numSamplesProcessed</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer before forward() of a batch. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle32SparseMomentumParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::SparseMomentumParameterOptimizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1ac04e4548c8df279090446d3e5ed7f290"></span>void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle32SparseMomentumParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1afc2509f80468f5e681f76e7f77241abc"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1aa50f912ed13bdc65f038ac4e64693171"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1ac04e4548c8df279090446d3e5ed7f290"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle32SparseMomentumParameterOptimizer20needSpecialTraversalERK15ParameterConfig">
+<span id="paddle::SparseMomentumParameterOptimizer::needSpecialTraversal__ParameterConfigCRC"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1a76e55e874bccd874d8b57122c43285a2"></span><a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a>::<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">needSpecialTraversal</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle32SparseMomentumParameterOptimizer20needSpecialTraversalERK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>following hooks useful for sparse update, because the traversal in block costs. called by Trainer after update and before finishBatch e.g. Trainer call like this:</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">startBatch</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">update</span><span class="p">(</span><span class="n">blockVec</span><span class="p">);</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+  <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">update</span><span class="p">(</span><span class="n">rowVec</span><span class="p">)}</span>
+<span class="p">}</span>
+<span class="n">auto</span> <span class="n">callback</span> <span class="o">=</span> <span class="n">needSpecialTraversal</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="o">//</span> <span class="n">do</span> <span class="n">traverse</span><span class="p">,</span> <span class="n">maybe</span> <span class="n">multi</span><span class="o">-</span><span class="n">thread</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">callback</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">all_rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">callback</span><span class="p">();}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="n">finishBatch</span><span class="p">();</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>callback if need traverse, else return nullptr. It should be no state change. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer11finishBatchEv">
+<span id="paddle::SparseMomentumParameterOptimizer::finishBatch"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1aa50f912ed13bdc65f038ac4e64693171"></span>void <code class="descname">finishBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer11finishBatchEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer after backward() of a batch </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer6timer_E">
+<span id="paddle::SparseMomentumParameterOptimizer::timer___int64_t"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1a47850cc8eb54a06f82c10cdd9481f468"></span>int64_t <code class="descname">timer_</code><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer6timer_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer6t0Vec_E">
+<span id="paddle::SparseMomentumParameterOptimizer::t0Vec___std::vector:int64_t:"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1a2f62cc8ed56d29b82174c8115014a734"></span>std::vector&lt;int64_t&gt; <code class="descname">t0Vec_</code><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer6t0Vec_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer18isParameterSparse_E">
+<span id="paddle::SparseMomentumParameterOptimizer::isParameterSparse___b"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1a88b594dedf775a5087c2bb76b4aeb563"></span>bool <code class="descname">isParameterSparse_</code><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer18isParameterSparse_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer6alpha_E">
+<span id="paddle::SparseMomentumParameterOptimizer::alpha___real"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1aa20b1003ec8f8a6a4477135eb05a03a6"></span>real <code class="descname">alpha_</code><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer6alpha_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer5beta_E">
+<span id="paddle::SparseMomentumParameterOptimizer::beta___real"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1a16b68c9918e5c2dd3a45d3bc2646cf90"></span>real <code class="descname">beta_</code><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer5beta_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer4tau_E">
+<span id="paddle::SparseMomentumParameterOptimizer::tau___real"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1a9d77b38bce2daa300704e1969c028b3c"></span>real <code class="descname">tau_</code><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer4tau_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer6gamma_E">
+<span id="paddle::SparseMomentumParameterOptimizer::gamma___real"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1aef195f2e394bde2a67720e6eb2bb6f2f"></span>real <code class="descname">gamma_</code><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer6gamma_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer10threshold_E">
+<span id="paddle::SparseMomentumParameterOptimizer::threshold___real"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1ac6e57aee1b82328166da7bb8e67f2710"></span>real <code class="descname">threshold_</code><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer10threshold_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer9momentum_E">
+<span id="paddle::SparseMomentumParameterOptimizer::momentum___real"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1a24fd95d6b9e88c89b69502c5ed49903f"></span>real <code class="descname">momentum_</code><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer9momentum_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle32SparseMomentumParameterOptimizer10decayRate_E">
+<span id="paddle::SparseMomentumParameterOptimizer::decayRate___real"></span><span class="target" id="paddleclasspaddle_1_1SparseMomentumParameterOptimizer_1a62739397435f9cbfbcf1fb2097eb86c0"></span>real <code class="descname">decayRate_</code><a class="headerlink" href="#_CPPv2N6paddle32SparseMomentumParameterOptimizer10decayRate_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle25AdagradParameterOptimizerE">
+<span id="paddle::AdagradParameterOptimizer"></span><span class="target" id="paddleclasspaddle_1_1AdagradParameterOptimizer"></span><em class="property">class </em><code class="descname">AdagradParameterOptimizer</code><a class="headerlink" href="#_CPPv2N6paddle25AdagradParameterOptimizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer"><span class="std std-ref">paddle::ParameterOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle25AdagradParameterOptimizer25AdagradParameterOptimizerERK18OptimizationConfig">
+<span id="paddle::AdagradParameterOptimizer::AdagradParameterOptimizer__OptimizationConfigCR"></span><span class="target" id="paddleclasspaddle_1_1AdagradParameterOptimizer_1a44d8d7ecf0f9ee180b9a2f7be51ebbfd"></span><code class="descname">AdagradParameterOptimizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25AdagradParameterOptimizer25AdagradParameterOptimizerERK18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25AdagradParameterOptimizer10startBatchE7int64_t">
+<span id="paddle::AdagradParameterOptimizer::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1AdagradParameterOptimizer_1a27e757f4c30f64907a3b3b954cd18d91"></span><em class="property">virtual</em> void <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>numSamplesProcessed</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25AdagradParameterOptimizer10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer before forward() of a batch. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle25AdagradParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::AdagradParameterOptimizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1AdagradParameterOptimizer_1ae0cca3ea6ec4bca219b84ced8692d844"></span>void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle25AdagradParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1AdagradParameterOptimizer_1a27e757f4c30f64907a3b3b954cd18d91"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1a260329cf2cd4259384db03fa5c1ec3f3"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AdagradParameterOptimizer_1ae0cca3ea6ec4bca219b84ced8692d844"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle25AdagradParameterOptimizer20needSpecialTraversalERK15ParameterConfig">
+<span id="paddle::AdagradParameterOptimizer::needSpecialTraversal__ParameterConfigCRC"></span><span class="target" id="paddleclasspaddle_1_1AdagradParameterOptimizer_1a047d95ae4dc46f9c9918d637d8fddd2e"></span><a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a>::<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">needSpecialTraversal</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle25AdagradParameterOptimizer20needSpecialTraversalERK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>following hooks useful for sparse update, because the traversal in block costs. called by Trainer after update and before finishBatch e.g. Trainer call like this:</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">startBatch</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">update</span><span class="p">(</span><span class="n">blockVec</span><span class="p">);</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+  <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">update</span><span class="p">(</span><span class="n">rowVec</span><span class="p">)}</span>
+<span class="p">}</span>
+<span class="n">auto</span> <span class="n">callback</span> <span class="o">=</span> <span class="n">needSpecialTraversal</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="o">//</span> <span class="n">do</span> <span class="n">traverse</span><span class="p">,</span> <span class="n">maybe</span> <span class="n">multi</span><span class="o">-</span><span class="n">thread</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">callback</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">all_rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">callback</span><span class="p">();}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="n">finishBatch</span><span class="p">();</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>callback if need traverse, else return nullptr. It should be no state change. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle25AdagradParameterOptimizer11numUpdates_E">
+<span id="paddle::AdagradParameterOptimizer::numUpdates___int64_t"></span><span class="target" id="paddleclasspaddle_1_1AdagradParameterOptimizer_1ae580d9c874096cc05e9c1c7827277a47"></span>int64_t <code class="descname">numUpdates_</code><a class="headerlink" href="#_CPPv2N6paddle25AdagradParameterOptimizer11numUpdates_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Static Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle25AdagradParameterOptimizer18kMaxNumAccumulatesE">
+<span id="paddle::AdagradParameterOptimizer::kMaxNumAccumulates__int64_tC"></span><span class="target" id="paddleclasspaddle_1_1AdagradParameterOptimizer_1a9ee3473a414c4d811fef82db4fcec9a5"></span><em class="property">const</em> int64_t <code class="descname">kMaxNumAccumulates</code><a class="headerlink" href="#_CPPv2N6paddle25AdagradParameterOptimizer18kMaxNumAccumulatesE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle26AdaDeltaParameterOptimizerE">
+<span id="paddle::AdaDeltaParameterOptimizer"></span><span class="target" id="paddleclasspaddle_1_1AdaDeltaParameterOptimizer"></span><em class="property">class </em><code class="descname">AdaDeltaParameterOptimizer</code><a class="headerlink" href="#_CPPv2N6paddle26AdaDeltaParameterOptimizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer"><span class="std std-ref">paddle::ParameterOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle26AdaDeltaParameterOptimizer26AdaDeltaParameterOptimizerERK18OptimizationConfig">
+<span id="paddle::AdaDeltaParameterOptimizer::AdaDeltaParameterOptimizer__OptimizationConfigCR"></span><span class="target" id="paddleclasspaddle_1_1AdaDeltaParameterOptimizer_1a704794479c4284b982120e09de2d71b3"></span><code class="descname">AdaDeltaParameterOptimizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle26AdaDeltaParameterOptimizer26AdaDeltaParameterOptimizerERK18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle26AdaDeltaParameterOptimizer10startBatchE7int64_t">
+<span id="paddle::AdaDeltaParameterOptimizer::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1AdaDeltaParameterOptimizer_1a891099512f6c045832cdd284db481fc5"></span><em class="property">virtual</em> void <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>numSamplesProcessed</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle26AdaDeltaParameterOptimizer10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer before forward() of a batch. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle26AdaDeltaParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::AdaDeltaParameterOptimizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1AdaDeltaParameterOptimizer_1a61e7f6a2ea8903c86606b39b28ba19f6"></span>void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle26AdaDeltaParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1AdaDeltaParameterOptimizer_1a891099512f6c045832cdd284db481fc5"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1a260329cf2cd4259384db03fa5c1ec3f3"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AdaDeltaParameterOptimizer_1a61e7f6a2ea8903c86606b39b28ba19f6"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle26AdaDeltaParameterOptimizer4rou_E">
+<span id="paddle::AdaDeltaParameterOptimizer::rou___real"></span><span class="target" id="paddleclasspaddle_1_1AdaDeltaParameterOptimizer_1a1f132593ac4c3444ec539cb8eee920e7"></span>real <code class="descname">rou_</code><a class="headerlink" href="#_CPPv2N6paddle26AdaDeltaParameterOptimizer4rou_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle26AdaDeltaParameterOptimizer8epsilon_E">
+<span id="paddle::AdaDeltaParameterOptimizer::epsilon___real"></span><span class="target" id="paddleclasspaddle_1_1AdaDeltaParameterOptimizer_1a5813d5471be663283619d92e071bafba"></span>real <code class="descname">epsilon_</code><a class="headerlink" href="#_CPPv2N6paddle26AdaDeltaParameterOptimizer8epsilon_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle25RMSPropParameterOptimizerE">
+<span id="paddle::RMSPropParameterOptimizer"></span><span class="target" id="paddleclasspaddle_1_1RMSPropParameterOptimizer"></span><em class="property">class </em><code class="descname">RMSPropParameterOptimizer</code><a class="headerlink" href="#_CPPv2N6paddle25RMSPropParameterOptimizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer"><span class="std std-ref">paddle::ParameterOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle25RMSPropParameterOptimizer25RMSPropParameterOptimizerERK18OptimizationConfig">
+<span id="paddle::RMSPropParameterOptimizer::RMSPropParameterOptimizer__OptimizationConfigCR"></span><span class="target" id="paddleclasspaddle_1_1RMSPropParameterOptimizer_1a5bdf33f8d783101bed10fb7d86853863"></span><code class="descname">RMSPropParameterOptimizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25RMSPropParameterOptimizer25RMSPropParameterOptimizerERK18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25RMSPropParameterOptimizer4initE6size_tPK15ParameterConfig">
+<span id="paddle::RMSPropParameterOptimizer::init__s.ParameterConfigCP"></span><span class="target" id="paddleclasspaddle_1_1RMSPropParameterOptimizer_1a6de48d61f6b93ecacdb697ee1ac0390d"></span><em class="property">virtual</em> void <code class="descname">init</code><span class="sig-paren">(</span>size_t <em>numRows</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> *<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25RMSPropParameterOptimizer4initE6size_tPK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>For sparse update, optimizer can maintain numRows of timer(t0). Some sparse optimizer depends on parameter config in functions such as <a class="reference internal" href="#paddleclasspaddle_1_1RMSPropParameterOptimizer_1a2cc69151ebac285798af757530577c0a"><span class="std std-ref">startBatch()</span></a>. Optimizer can get it here. But notice that, not all callers can pass config here, so the optimizer should check config passed in is not null ptr. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25RMSPropParameterOptimizer10startBatchE7int64_t">
+<span id="paddle::RMSPropParameterOptimizer::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1RMSPropParameterOptimizer_1a2cc69151ebac285798af757530577c0a"></span><em class="property">virtual</em> void <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>numSamplesProcessed</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25RMSPropParameterOptimizer10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer before forward() of a batch. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25RMSPropParameterOptimizer11finishBatchEv">
+<span id="paddle::RMSPropParameterOptimizer::finishBatch"></span><span class="target" id="paddleclasspaddle_1_1RMSPropParameterOptimizer_1a13f54bed32eb4318cd06c8ec761408c4"></span><em class="property">virtual</em> void <code class="descname">finishBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25RMSPropParameterOptimizer11finishBatchEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer after backward() of a batch </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle25RMSPropParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::RMSPropParameterOptimizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1RMSPropParameterOptimizer_1ae973aa5db1b2762fa9bba75f5881eae2"></span>void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle25RMSPropParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1RMSPropParameterOptimizer_1a2cc69151ebac285798af757530577c0a"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1RMSPropParameterOptimizer_1a13f54bed32eb4318cd06c8ec761408c4"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1RMSPropParameterOptimizer_1ae973aa5db1b2762fa9bba75f5881eae2"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle25RMSPropParameterOptimizer4rou_E">
+<span id="paddle::RMSPropParameterOptimizer::rou___real"></span><span class="target" id="paddleclasspaddle_1_1RMSPropParameterOptimizer_1ad8c5bd2f6f31bc17eda173c765cb38de"></span>real <code class="descname">rou_</code><a class="headerlink" href="#_CPPv2N6paddle25RMSPropParameterOptimizer4rou_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle25RMSPropParameterOptimizer8epsilon_E">
+<span id="paddle::RMSPropParameterOptimizer::epsilon___real"></span><span class="target" id="paddleclasspaddle_1_1RMSPropParameterOptimizer_1a190fb382a11764a8dec2948c2f5681dc"></span>real <code class="descname">epsilon_</code><a class="headerlink" href="#_CPPv2N6paddle25RMSPropParameterOptimizer8epsilon_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle25RMSPropParameterOptimizer6timer_E">
+<span id="paddle::RMSPropParameterOptimizer::timer___int64_t"></span><span class="target" id="paddleclasspaddle_1_1RMSPropParameterOptimizer_1af916ade6351cca49473b690446875da5"></span>int64_t <code class="descname">timer_</code><a class="headerlink" href="#_CPPv2N6paddle25RMSPropParameterOptimizer6timer_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>counting batches, donot need catch up with t(timer_) is current time, t0(t0Vec_) are last occur time of i rows. if one block is update by multi threads, caller should hash sparse ids to avoid write conflict in t0Vec_. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle25RMSPropParameterOptimizer6t0Vec_E">
+<span id="paddle::RMSPropParameterOptimizer::t0Vec___std::vector:int64_t:"></span><span class="target" id="paddleclasspaddle_1_1RMSPropParameterOptimizer_1a449be6d175fae53f41c6222caa5b229f"></span>std::vector&lt;int64_t&gt; <code class="descname">t0Vec_</code><a class="headerlink" href="#_CPPv2N6paddle25RMSPropParameterOptimizer6t0Vec_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle32DecayedAdagradParameterOptimizerE">
+<span id="paddle::DecayedAdagradParameterOptimizer"></span><span class="target" id="paddleclasspaddle_1_1DecayedAdagradParameterOptimizer"></span><em class="property">class </em><code class="descname">DecayedAdagradParameterOptimizer</code><a class="headerlink" href="#_CPPv2N6paddle32DecayedAdagradParameterOptimizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer"><span class="std std-ref">paddle::ParameterOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle32DecayedAdagradParameterOptimizer32DecayedAdagradParameterOptimizerERK18OptimizationConfig">
+<span id="paddle::DecayedAdagradParameterOptimizer::DecayedAdagradParameterOptimizer__OptimizationConfigCR"></span><span class="target" id="paddleclasspaddle_1_1DecayedAdagradParameterOptimizer_1a23610e6517b21b9a042426218e923614"></span><code class="descname">DecayedAdagradParameterOptimizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32DecayedAdagradParameterOptimizer32DecayedAdagradParameterOptimizerERK18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32DecayedAdagradParameterOptimizer4initE6size_tPK15ParameterConfig">
+<span id="paddle::DecayedAdagradParameterOptimizer::init__s.ParameterConfigCP"></span><span class="target" id="paddleclasspaddle_1_1DecayedAdagradParameterOptimizer_1a4c0b67d1ede0cbf2692ff82e290d66c4"></span><em class="property">virtual</em> void <code class="descname">init</code><span class="sig-paren">(</span>size_t <em>numRows</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> *<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32DecayedAdagradParameterOptimizer4initE6size_tPK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>For sparse update, optimizer can maintain numRows of timer(t0). Some sparse optimizer depends on parameter config in functions such as <a class="reference internal" href="#paddleclasspaddle_1_1DecayedAdagradParameterOptimizer_1a257cbda1bddfb34b82ef8a5f742f48db"><span class="std std-ref">startBatch()</span></a>. Optimizer can get it here. But notice that, not all callers can pass config here, so the optimizer should check config passed in is not null ptr. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32DecayedAdagradParameterOptimizer10startBatchE7int64_t">
+<span id="paddle::DecayedAdagradParameterOptimizer::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1DecayedAdagradParameterOptimizer_1a257cbda1bddfb34b82ef8a5f742f48db"></span><em class="property">virtual</em> void <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>numSamplesProcessed</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32DecayedAdagradParameterOptimizer10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer before forward() of a batch. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32DecayedAdagradParameterOptimizer11finishBatchEv">
+<span id="paddle::DecayedAdagradParameterOptimizer::finishBatch"></span><span class="target" id="paddleclasspaddle_1_1DecayedAdagradParameterOptimizer_1a909a5d8e0ec5eff18186fa764ad8da49"></span><em class="property">virtual</em> void <code class="descname">finishBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32DecayedAdagradParameterOptimizer11finishBatchEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer after backward() of a batch </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle32DecayedAdagradParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::DecayedAdagradParameterOptimizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1DecayedAdagradParameterOptimizer_1a4548400c59d03b2c7d7b2438de1b2775"></span>void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle32DecayedAdagradParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1DecayedAdagradParameterOptimizer_1a257cbda1bddfb34b82ef8a5f742f48db"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1DecayedAdagradParameterOptimizer_1a909a5d8e0ec5eff18186fa764ad8da49"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DecayedAdagradParameterOptimizer_1a4548400c59d03b2c7d7b2438de1b2775"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle32DecayedAdagradParameterOptimizer4rou_E">
+<span id="paddle::DecayedAdagradParameterOptimizer::rou___real"></span><span class="target" id="paddleclasspaddle_1_1DecayedAdagradParameterOptimizer_1a700d7fa479ddbc913b483fabd04405ea"></span>real <code class="descname">rou_</code><a class="headerlink" href="#_CPPv2N6paddle32DecayedAdagradParameterOptimizer4rou_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle32DecayedAdagradParameterOptimizer8epsilon_E">
+<span id="paddle::DecayedAdagradParameterOptimizer::epsilon___real"></span><span class="target" id="paddleclasspaddle_1_1DecayedAdagradParameterOptimizer_1a05bc4f758e4798daf0ba3b68f8321435"></span>real <code class="descname">epsilon_</code><a class="headerlink" href="#_CPPv2N6paddle32DecayedAdagradParameterOptimizer8epsilon_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle32DecayedAdagradParameterOptimizer6timer_E">
+<span id="paddle::DecayedAdagradParameterOptimizer::timer___int64_t"></span><span class="target" id="paddleclasspaddle_1_1DecayedAdagradParameterOptimizer_1ad09bf344ddd64d0990de6b3a96c58b59"></span>int64_t <code class="descname">timer_</code><a class="headerlink" href="#_CPPv2N6paddle32DecayedAdagradParameterOptimizer6timer_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>counting batches, donot need catch up with t(timer_) is current time, t0(t0Vec_) are last occur time of i rows. if one block is update by multi threads, caller should hash sparse ids to avoid write conflict in t0Vec_. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle32DecayedAdagradParameterOptimizer6t0Vec_E">
+<span id="paddle::DecayedAdagradParameterOptimizer::t0Vec___std::vector:int64_t:"></span><span class="target" id="paddleclasspaddle_1_1DecayedAdagradParameterOptimizer_1a1273cfe9d709fce66d1603018c8fddc7"></span>std::vector&lt;int64_t&gt; <code class="descname">t0Vec_</code><a class="headerlink" href="#_CPPv2N6paddle32DecayedAdagradParameterOptimizer6t0Vec_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle22AdamParameterOptimizerE">
+<span id="paddle::AdamParameterOptimizer"></span><span class="target" id="paddleclasspaddle_1_1AdamParameterOptimizer"></span><em class="property">class </em><code class="descname">AdamParameterOptimizer</code><a class="headerlink" href="#_CPPv2N6paddle22AdamParameterOptimizerE" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;FirstOrderOptimizer.h&gt;</em><p>Adam Optimizer. Reference Paper: <a class="reference external" href="http://arxiv.org/abs/1412.6980">http://arxiv.org/abs/1412.6980</a> Algorithm 1 </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer"><span class="std std-ref">paddle::ParameterOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle22AdamParameterOptimizer22AdamParameterOptimizerERK18OptimizationConfig">
+<span id="paddle::AdamParameterOptimizer::AdamParameterOptimizer__OptimizationConfigCR"></span><span class="target" id="paddleclasspaddle_1_1AdamParameterOptimizer_1aadf5341a443f954803f1017360c92701"></span><code class="descname">AdamParameterOptimizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22AdamParameterOptimizer22AdamParameterOptimizerERK18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22AdamParameterOptimizer11finishBatchEv">
+<span id="paddle::AdamParameterOptimizer::finishBatch"></span><span class="target" id="paddleclasspaddle_1_1AdamParameterOptimizer_1a9b5e0f460d6f1cb1c0a41c49861c4dbd"></span><em class="property">virtual</em> void <code class="descname">finishBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22AdamParameterOptimizer11finishBatchEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer after backward() of a batch </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle22AdamParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::AdamParameterOptimizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1AdamParameterOptimizer_1a64a586906f3f6a94a5cdf99cfcef2efc"></span>void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle22AdamParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1aa524be2e130730a4ea351b3aea2d816f"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1AdamParameterOptimizer_1a9b5e0f460d6f1cb1c0a41c49861c4dbd"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AdamParameterOptimizer_1a64a586906f3f6a94a5cdf99cfcef2efc"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle22AdamParameterOptimizer6beta1_E">
+<span id="paddle::AdamParameterOptimizer::beta1___real"></span><span class="target" id="paddleclasspaddle_1_1AdamParameterOptimizer_1a4a167fccaa2d23d66b726219596dbf62"></span>real <code class="descname">beta1_</code><a class="headerlink" href="#_CPPv2N6paddle22AdamParameterOptimizer6beta1_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22AdamParameterOptimizer6beta2_E">
+<span id="paddle::AdamParameterOptimizer::beta2___real"></span><span class="target" id="paddleclasspaddle_1_1AdamParameterOptimizer_1a389f09433b3f2e3c869483255315bf6e"></span>real <code class="descname">beta2_</code><a class="headerlink" href="#_CPPv2N6paddle22AdamParameterOptimizer6beta2_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22AdamParameterOptimizer8epsilon_E">
+<span id="paddle::AdamParameterOptimizer::epsilon___real"></span><span class="target" id="paddleclasspaddle_1_1AdamParameterOptimizer_1ae5d29897eef4d4992fdb630805344fd0"></span>real <code class="descname">epsilon_</code><a class="headerlink" href="#_CPPv2N6paddle22AdamParameterOptimizer8epsilon_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22AdamParameterOptimizer5step_E">
+<span id="paddle::AdamParameterOptimizer::step___int64_t"></span><span class="target" id="paddleclasspaddle_1_1AdamParameterOptimizer_1a691a6775a91c6c618fd46732bdef8b45"></span>int64_t <code class="descname">step_</code><a class="headerlink" href="#_CPPv2N6paddle22AdamParameterOptimizer5step_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22AdamParameterOptimizer13learningRate_E">
+<span id="paddle::AdamParameterOptimizer::learningRate___real"></span><span class="target" id="paddleclasspaddle_1_1AdamParameterOptimizer_1af424161c3270f360611a261c1e3286d7"></span>real <code class="descname">learningRate_</code><a class="headerlink" href="#_CPPv2N6paddle22AdamParameterOptimizer13learningRate_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle24AdamaxParameterOptimizerE">
+<span id="paddle::AdamaxParameterOptimizer"></span><span class="target" id="paddleclasspaddle_1_1AdamaxParameterOptimizer"></span><em class="property">class </em><code class="descname">AdamaxParameterOptimizer</code><a class="headerlink" href="#_CPPv2N6paddle24AdamaxParameterOptimizerE" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;FirstOrderOptimizer.h&gt;</em><p>AdaMax Optimizer. Reference Paper: <a class="reference external" href="http://arxiv.org/abs/1412.6980">http://arxiv.org/abs/1412.6980</a> Algorithm 2 </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer"><span class="std std-ref">paddle::ParameterOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle24AdamaxParameterOptimizer24AdamaxParameterOptimizerERK18OptimizationConfig">
+<span id="paddle::AdamaxParameterOptimizer::AdamaxParameterOptimizer__OptimizationConfigCR"></span><span class="target" id="paddleclasspaddle_1_1AdamaxParameterOptimizer_1a45027c7231b86dd584bd02c4e3f2c571"></span><code class="descname">AdamaxParameterOptimizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24AdamaxParameterOptimizer24AdamaxParameterOptimizerERK18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24AdamaxParameterOptimizer11finishBatchEv">
+<span id="paddle::AdamaxParameterOptimizer::finishBatch"></span><span class="target" id="paddleclasspaddle_1_1AdamaxParameterOptimizer_1aaa4a8a18c7b3c76b079da382c30ba9a3"></span><em class="property">virtual</em> void <code class="descname">finishBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24AdamaxParameterOptimizer11finishBatchEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer after backward() of a batch </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle24AdamaxParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::AdamaxParameterOptimizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1AdamaxParameterOptimizer_1a5034f51e1969041a51d9dc640ac42843"></span>void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle24AdamaxParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1aa524be2e130730a4ea351b3aea2d816f"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1AdamaxParameterOptimizer_1aaa4a8a18c7b3c76b079da382c30ba9a3"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AdamaxParameterOptimizer_1a5034f51e1969041a51d9dc640ac42843"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle24AdamaxParameterOptimizer6beta1_E">
+<span id="paddle::AdamaxParameterOptimizer::beta1___real"></span><span class="target" id="paddleclasspaddle_1_1AdamaxParameterOptimizer_1ad2032a40efd877f4fe13f905ad3cd1af"></span>real <code class="descname">beta1_</code><a class="headerlink" href="#_CPPv2N6paddle24AdamaxParameterOptimizer6beta1_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24AdamaxParameterOptimizer6beta2_E">
+<span id="paddle::AdamaxParameterOptimizer::beta2___real"></span><span class="target" id="paddleclasspaddle_1_1AdamaxParameterOptimizer_1aec80fb78fc84b15d24ac8e63e4494eaa"></span>real <code class="descname">beta2_</code><a class="headerlink" href="#_CPPv2N6paddle24AdamaxParameterOptimizer6beta2_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24AdamaxParameterOptimizer5step_E">
+<span id="paddle::AdamaxParameterOptimizer::step___int64_t"></span><span class="target" id="paddleclasspaddle_1_1AdamaxParameterOptimizer_1aabb20367b60f23df2afd60104e2e8b85"></span>int64_t <code class="descname">step_</code><a class="headerlink" href="#_CPPv2N6paddle24AdamaxParameterOptimizer5step_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24AdamaxParameterOptimizer13learningRate_E">
+<span id="paddle::AdamaxParameterOptimizer::learningRate___real"></span><span class="target" id="paddleclasspaddle_1_1AdamaxParameterOptimizer_1a4b98ee1addc4bb9ae227e7d09ce83973"></span>real <code class="descname">learningRate_</code><a class="headerlink" href="#_CPPv2N6paddle24AdamaxParameterOptimizer13learningRate_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle12AddOptimizerE">
+<span id="paddle::AddOptimizer"></span><span class="target" id="paddleclasspaddle_1_1AddOptimizer"></span><em class="property">class </em><code class="descname">AddOptimizer</code><a class="headerlink" href="#_CPPv2N6paddle12AddOptimizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer"><span class="std std-ref">paddle::ParameterOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12AddOptimizer12AddOptimizerERK18OptimizationConfig">
+<span id="paddle::AddOptimizer::AddOptimizer__OptimizationConfigCR"></span><span class="target" id="paddleclasspaddle_1_1AddOptimizer_1aa7de5bd440acf85bd84024c89c9e5cf0"></span><code class="descname">AddOptimizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AddOptimizer12AddOptimizerERK18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12AddOptimizer10startBatchE7int64_t">
+<span id="paddle::AddOptimizer::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1AddOptimizer_1a9aaaab2ed38c9590b8bc0d2e85cf8743"></span><em class="property">virtual</em> void <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>numSamplesProcessed</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AddOptimizer10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer before forward() of a batch. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle12AddOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::AddOptimizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1AddOptimizer_1a64287dcefb5726a8a5e8f060c2fd4121"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle12AddOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1AddOptimizer_1a9aaaab2ed38c9590b8bc0d2e85cf8743"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1a260329cf2cd4259384db03fa5c1ec3f3"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AddOptimizer_1a64287dcefb5726a8a5e8f060c2fd4121"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle14DummyOptimizerE">
+<span id="paddle::DummyOptimizer"></span><span class="target" id="paddleclasspaddle_1_1DummyOptimizer"></span><em class="property">class </em><code class="descname">DummyOptimizer</code><a class="headerlink" href="#_CPPv2N6paddle14DummyOptimizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer"><span class="std std-ref">paddle::ParameterOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle14DummyOptimizer14DummyOptimizerERK18OptimizationConfig">
+<span id="paddle::DummyOptimizer::DummyOptimizer__OptimizationConfigCR"></span><span class="target" id="paddleclasspaddle_1_1DummyOptimizer_1aa412e3e1ea8dfa4b49ed53a3a481c4d4"></span><code class="descname">DummyOptimizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14DummyOptimizer14DummyOptimizerERK18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle14DummyOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::DummyOptimizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1DummyOptimizer_1a5684ba7582d6615e448edd8ac8b4855f"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle14DummyOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1aa524be2e130730a4ea351b3aea2d816f"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1a260329cf2cd4259384db03fa5c1ec3f3"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DummyOptimizer_1a5684ba7582d6615e448edd8ac8b4855f"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle29OptimizerWithGradientClippingE">
+<span id="paddle::OptimizerWithGradientClipping"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithGradientClipping"></span><em class="property">class </em><code class="descname">OptimizerWithGradientClipping</code><a class="headerlink" href="#_CPPv2N6paddle29OptimizerWithGradientClippingE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer"><span class="std std-ref">paddle::ParameterOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle29OptimizerWithGradientClipping29OptimizerWithGradientClippingERK18OptimizationConfigP18ParameterOptimizer">
+<span id="paddle::OptimizerWithGradientClipping::OptimizerWithGradientClipping__OptimizationConfigCR.ParameterOptimizerP"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithGradientClipping_1a179499641cf8df23ac06bab25238ddf9"></span><code class="descname">OptimizerWithGradientClipping</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em>, <a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a> *<em>optimizer</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle29OptimizerWithGradientClipping29OptimizerWithGradientClippingERK18OptimizationConfigP18ParameterOptimizer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle29OptimizerWithGradientClipping4initE6size_tPK15ParameterConfig">
+<span id="paddle::OptimizerWithGradientClipping::init__s.ParameterConfigCP"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithGradientClipping_1ae3532cb9e27980d21907abface19dcbc"></span><em class="property">virtual</em> void <code class="descname">init</code><span class="sig-paren">(</span>size_t <em>numRows</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> *<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle29OptimizerWithGradientClipping4initE6size_tPK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>For sparse update, optimizer can maintain numRows of timer(t0). Some sparse optimizer depends on parameter config in functions such as <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithGradientClipping_1a01a6071629082c59af350506ee658cee"><span class="std std-ref">startBatch()</span></a>. Optimizer can get it here. But notice that, not all callers can pass config here, so the optimizer should check config passed in is not null ptr. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle29OptimizerWithGradientClipping9startPassEv">
+<span id="paddle::OptimizerWithGradientClipping::startPass"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithGradientClipping_1aa960ef79c8ecade31afd24a353512f80"></span><em class="property">virtual</em> void <code class="descname">startPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle29OptimizerWithGradientClipping9startPassEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle29OptimizerWithGradientClipping10finishPassEv">
+<span id="paddle::OptimizerWithGradientClipping::finishPass"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithGradientClipping_1ad452c21d902f79dfd4901277dd4f006b"></span><em class="property">virtual</em> void <code class="descname">finishPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle29OptimizerWithGradientClipping10finishPassEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle29OptimizerWithGradientClipping10startBatchE7int64_t">
+<span id="paddle::OptimizerWithGradientClipping::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithGradientClipping_1a01a6071629082c59af350506ee658cee"></span><em class="property">virtual</em> void <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>numSamplesProcessed</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle29OptimizerWithGradientClipping10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer before forward() of a batch. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle29OptimizerWithGradientClipping11finishBatchEv">
+<span id="paddle::OptimizerWithGradientClipping::finishBatch"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithGradientClipping_1a6148dfd60dd4df3a56ee7750b8dfee34"></span><em class="property">virtual</em> void <code class="descname">finishBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle29OptimizerWithGradientClipping11finishBatchEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer after backward() of a batch </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle29OptimizerWithGradientClipping20needSpecialTraversalERK15ParameterConfig">
+<span id="paddle::OptimizerWithGradientClipping::needSpecialTraversal__ParameterConfigCRC"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithGradientClipping_1ac6e3ed587561bb6dfca96a303fe79c53"></span><em class="property">virtual</em> TraverseCallback <code class="descname">needSpecialTraversal</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle29OptimizerWithGradientClipping20needSpecialTraversalERK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>following hooks useful for sparse update, because the traversal in block costs. called by Trainer after update and before finishBatch e.g. Trainer call like this:</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">startBatch</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">update</span><span class="p">(</span><span class="n">blockVec</span><span class="p">);</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+  <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">update</span><span class="p">(</span><span class="n">rowVec</span><span class="p">)}</span>
+<span class="p">}</span>
+<span class="n">auto</span> <span class="n">callback</span> <span class="o">=</span> <span class="n">needSpecialTraversal</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="o">//</span> <span class="n">do</span> <span class="n">traverse</span><span class="p">,</span> <span class="n">maybe</span> <span class="n">multi</span><span class="o">-</span><span class="n">thread</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">callback</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">all_rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">callback</span><span class="p">();}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="n">finishBatch</span><span class="p">();</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>callback if need traverse, else return nullptr. It should be no state change. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle29OptimizerWithGradientClipping6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::OptimizerWithGradientClipping::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithGradientClipping_1ad8bd6333c927524a9511db4fb80fdec6"></span>void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle29OptimizerWithGradientClipping6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithGradientClipping_1a01a6071629082c59af350506ee658cee"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithGradientClipping_1a6148dfd60dd4df3a56ee7750b8dfee34"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithGradientClipping_1ad8bd6333c927524a9511db4fb80fdec6"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle29OptimizerWithGradientClipping10setNoDecayEv">
+<span id="paddle::OptimizerWithGradientClipping::setNoDecay"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithGradientClipping_1a3bdfed694e864bbb4335031a90a1f2c5"></span><em class="property">virtual</em> void <code class="descname">setNoDecay</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle29OptimizerWithGradientClipping10setNoDecayEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle29OptimizerWithGradientClipping10optimizer_E">
+<span id="paddle::OptimizerWithGradientClipping::optimizer___std::unique_ptr:ParameterOptimizer:"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithGradientClipping_1a14d336f825d1a2628c1406d56e9b22fd"></span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a>&gt; <code class="descname">optimizer_</code><a class="headerlink" href="#_CPPv2N6paddle29OptimizerWithGradientClipping10optimizer_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv26paddle">
+<span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="class">
+<dt id="_CPPv2N6paddle16AverageOptimizerE">
+<span id="paddle::AverageOptimizer"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer"></span><em class="property">class </em><code class="descname">AverageOptimizer</code><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer"><span class="std std-ref">paddle::ParameterOptimizer</span></a></p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1AverageSparseOptimizer"><span class="std std-ref">paddle::AverageSparseOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle16AverageOptimizer16AverageOptimizerERK18OptimizationConfigP18ParameterOptimizerb">
+<span id="paddle::AverageOptimizer::AverageOptimizer__OptimizationConfigCR.ParameterOptimizerP.b"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1ae90e86daccea8b8ef7ad407e14a55150"></span><code class="descname">AverageOptimizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em>, <a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a> *<em>optimizer</em>, bool <em>useParameterApply</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer16AverageOptimizerERK18OptimizationConfigP18ParameterOptimizerb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16AverageOptimizer4initE6size_tPK15ParameterConfig">
+<span id="paddle::AverageOptimizer::init__s.ParameterConfigCP"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1a8b378390826e64e540672216c3d1237e"></span><em class="property">virtual</em> void <code class="descname">init</code><span class="sig-paren">(</span>size_t <em>numRows</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> *<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer4initE6size_tPK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>For sparse update, optimizer can maintain numRows of timer(t0). Some sparse optimizer depends on parameter config in functions such as <a class="reference internal" href="#paddleclasspaddle_1_1AverageOptimizer_1acb53cfbb4a2403f005172a05bc63ad1e"><span class="std std-ref">startBatch()</span></a>. Optimizer can get it here. But notice that, not all callers can pass config here, so the optimizer should check config passed in is not null ptr. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16AverageOptimizer9startPassEv">
+<span id="paddle::AverageOptimizer::startPass"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1ac71f80803711cb8038d33dfebf1824a8"></span><em class="property">virtual</em> void <code class="descname">startPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer9startPassEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16AverageOptimizer10finishPassEv">
+<span id="paddle::AverageOptimizer::finishPass"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1af62b262e52336575f76928361fd85449"></span><em class="property">virtual</em> void <code class="descname">finishPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer10finishPassEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16AverageOptimizer10startBatchE7int64_t">
+<span id="paddle::AverageOptimizer::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1acb53cfbb4a2403f005172a05bc63ad1e"></span>void <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>numSamplesProcessed</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer before forward() of a batch. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16AverageOptimizer11finishBatchEv">
+<span id="paddle::AverageOptimizer::finishBatch"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1a63c94b0bdcbd9e02e3c4b4b02a77bcd8"></span>void <code class="descname">finishBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer11finishBatchEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer after backward() of a batch </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle16AverageOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::AverageOptimizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1a1e4fd183d5aec84f62825a479b0998b2"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle16AverageOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1AverageOptimizer_1acb53cfbb4a2403f005172a05bc63ad1e"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1AverageOptimizer_1a63c94b0bdcbd9e02e3c4b4b02a77bcd8"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AverageOptimizer_1a1e4fd183d5aec84f62825a479b0998b2"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle16AverageOptimizer20needSpecialTraversalERK15ParameterConfig">
+<span id="paddle::AverageOptimizer::needSpecialTraversal__ParameterConfigCRC"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1a8666fab05830d29dfacc98e9d5dfe63d"></span><a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a>::<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">needSpecialTraversal</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle16AverageOptimizer20needSpecialTraversalERK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>following hooks useful for sparse update, because the traversal in block costs. called by Trainer after update and before finishBatch e.g. Trainer call like this:</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">startBatch</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">update</span><span class="p">(</span><span class="n">blockVec</span><span class="p">);</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+  <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">update</span><span class="p">(</span><span class="n">rowVec</span><span class="p">)}</span>
+<span class="p">}</span>
+<span class="n">auto</span> <span class="n">callback</span> <span class="o">=</span> <span class="n">needSpecialTraversal</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="o">//</span> <span class="n">do</span> <span class="n">traverse</span><span class="p">,</span> <span class="n">maybe</span> <span class="n">multi</span><span class="o">-</span><span class="n">thread</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">callback</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">all_rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">callback</span><span class="p">();}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="n">finishBatch</span><span class="p">();</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>callback if need traverse, else return nullptr. It should be no state change. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle16AverageOptimizer16startCatchUpWithEv">
+<span id="paddle::AverageOptimizer::startCatchUpWithC"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1a25fb61164897b4b45545e7e1321984b8"></span><em class="property">virtual</em> TraverseCallback <code class="descname">startCatchUpWith</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle16AverageOptimizer16startCatchUpWithEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>following hooks catch up with current time for sparse update, In the beginning, call <a class="reference internal" href="#paddleclasspaddle_1_1AverageOptimizer_1a25fb61164897b4b45545e7e1321984b8"><span class="std std-ref">startCatchUpWith()</span></a> and check return. In the end, call finishCatchUpWith() to finish state. callback do the actual works, can call many times for sparse data. e.g. Trainer call like this:</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">auto</span> <span class="n">callback</span> <span class="o">=</span> <span class="n">startCatchUpWith</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="o">//</span> <span class="n">do</span> <span class="n">catch</span> <span class="n">up</span> <span class="k">with</span><span class="p">,</span> <span class="n">maybe</span> <span class="n">multi</span><span class="o">-</span><span class="n">thread</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">callback</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">callback</span><span class="p">();}</span>
+  <span class="p">}</span>
+  <span class="o">//</span> <span class="n">finish</span> <span class="n">catch</span> <span class="n">up</span> <span class="k">with</span><span class="p">,</span> <span class="n">main</span> <span class="n">thread</span>
+  <span class="n">finishCatchUpWith</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>callback if need catch up with, else return nullptr. It should be no state change. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16AverageOptimizer17finishCatchUpWithEv">
+<span id="paddle::AverageOptimizer::finishCatchUpWith"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1abde666e1eced5f46d60035906f97c701"></span><em class="property">virtual</em> void <code class="descname">finishCatchUpWith</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer17finishCatchUpWithEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16AverageOptimizer5applyEv">
+<span id="paddle::AverageOptimizer::apply"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1ae2e19fa960d02ef14b082e9022b08a45"></span><a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a>::<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer5applyEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>following two hooks used by averager, apply to final parameter value (PARAMETER_VALUE or PARAMETER_APPLY).</p>
+<p>restore() will restore orginal value if it apply to PARAMETER_VALUE. Caller must ensure it&#8217;s catched up with current time before apply.</p>
+<p>Use returned callback same way as callback returned by <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1afec182e2d4c2bac9b2a9aa5cc3b1156e"><span class="std std-ref">ParameterOptimizer::needSpecialTraversal()</span></a> </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16AverageOptimizer7restoreEv">
+<span id="paddle::AverageOptimizer::restore"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1a406a7648c9fb4f0ef60bd2c4faba41f7"></span><a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a>::<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">restore</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer7restoreEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16AverageOptimizer10setNoDecayEv">
+<span id="paddle::AverageOptimizer::setNoDecay"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1ac7cb59fd86916773a3d0216cda6c0cd1"></span><em class="property">virtual</em> void <code class="descname">setNoDecay</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer10setNoDecayEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle16AverageOptimizer6createERK18OptimizationConfigP18ParameterOptimizerbb">
+<span id="paddle::AverageOptimizer::create__OptimizationConfigCR.ParameterOptimizerP.b.b"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1aceee2008aacd6c93239e07c8b4bf8505"></span><a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em>, <a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a> *<em>optimizer</em>, bool <em>isParameterSparse</em> = false, bool <em>useParameterApply</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer6createERK18OptimizationConfigP18ParameterOptimizerbb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle16AverageOptimizer24updateAverageWindowLimitEv">
+<span id="paddle::AverageOptimizer::updateAverageWindowLimit"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1a29306f944c2dad0f8750d33d73e92416"></span>void <code class="descname">updateAverageWindowLimit</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer24updateAverageWindowLimitEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle16AverageOptimizer22isAverageWindowTooLongEv">
+<span id="paddle::AverageOptimizer::isAverageWindowTooLongC"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1a7e3cdf43733da5efc1ebe130fc3dd1e6"></span>bool <code class="descname">isAverageWindowTooLong</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle16AverageOptimizer22isAverageWindowTooLongEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle16AverageOptimizer10optimizer_E">
+<span id="paddle::AverageOptimizer::optimizer___std::unique_ptr:ParameterOptimizer:"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1af8853223a3ee5597b5d14215e55f6186"></span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a>&gt; <code class="descname">optimizer_</code><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer10optimizer_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16AverageOptimizer9useApply_E">
+<span id="paddle::AverageOptimizer::useApply___b"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1a38835c3361fe07284df89742c5167832"></span>bool <code class="descname">useApply_</code><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer9useApply_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16AverageOptimizer11numUpdates_E">
+<span id="paddle::AverageOptimizer::numUpdates___int64_t"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1aca15c641b1688eb21a49b9d91db46c79"></span>int64_t <code class="descname">numUpdates_</code><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer11numUpdates_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16AverageOptimizer15prevNumUpdates_E">
+<span id="paddle::AverageOptimizer::prevNumUpdates___int64_t"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1a7601c59d6484fe240bbf4dfaf316da75"></span>int64_t <code class="descname">prevNumUpdates_</code><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer15prevNumUpdates_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16AverageOptimizer15numAccumulates_E">
+<span id="paddle::AverageOptimizer::numAccumulates___int64_t"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1a5688eaf3cc109bc805105cc8b77bf372"></span>int64_t <code class="descname">numAccumulates_</code><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer15numAccumulates_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16AverageOptimizer18oldNumAccumulates_E">
+<span id="paddle::AverageOptimizer::oldNumAccumulates___int64_t"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1a4c88162b14235d647478763988690bf4"></span>int64_t <code class="descname">oldNumAccumulates_</code><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer18oldNumAccumulates_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16AverageOptimizer17minAverageWindow_E">
+<span id="paddle::AverageOptimizer::minAverageWindow___int64_t"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1af7c0a263135523d8380b638ebb9950c1"></span>int64_t <code class="descname">minAverageWindow_</code><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer17minAverageWindow_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16AverageOptimizer17maxAverageWindow_E">
+<span id="paddle::AverageOptimizer::maxAverageWindow___int64_t"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1ac2401aa4aed47150c349daf87da20970"></span>int64_t <code class="descname">maxAverageWindow_</code><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer17maxAverageWindow_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Static Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle16AverageOptimizer18kMaxNumAccumulatesE">
+<span id="paddle::AverageOptimizer::kMaxNumAccumulates__int64_tC"></span><span class="target" id="paddleclasspaddle_1_1AverageOptimizer_1aa5d312e78e8357690766e489d346f93d"></span><em class="property">const</em> int64_t <code class="descname">kMaxNumAccumulates</code><a class="headerlink" href="#_CPPv2N6paddle16AverageOptimizer18kMaxNumAccumulatesE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle22AverageSparseOptimizerE">
+<span id="paddle::AverageSparseOptimizer"></span><span class="target" id="paddleclasspaddle_1_1AverageSparseOptimizer"></span><em class="property">class </em><code class="descname">AverageSparseOptimizer</code><a class="headerlink" href="#_CPPv2N6paddle22AverageSparseOptimizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1AverageOptimizer"><span class="std std-ref">paddle::AverageOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle22AverageSparseOptimizer22AverageSparseOptimizerERK18OptimizationConfigP18ParameterOptimizerb">
+<span id="paddle::AverageSparseOptimizer::AverageSparseOptimizer__OptimizationConfigCR.ParameterOptimizerP.b"></span><span class="target" id="paddleclasspaddle_1_1AverageSparseOptimizer_1a26ce359f997f788a5063b9dde60a4989"></span><code class="descname">AverageSparseOptimizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em>, <a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a> *<em>optimizer</em>, bool <em>useParameterApply</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22AverageSparseOptimizer22AverageSparseOptimizerERK18OptimizationConfigP18ParameterOptimizerb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22AverageSparseOptimizer4initE6size_tPK15ParameterConfig">
+<span id="paddle::AverageSparseOptimizer::init__s.ParameterConfigCP"></span><span class="target" id="paddleclasspaddle_1_1AverageSparseOptimizer_1a7240ea3fd2b1ddb175b422445fdddb85"></span><em class="property">virtual</em> void <code class="descname">init</code><span class="sig-paren">(</span>size_t <em>numRows</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> *<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22AverageSparseOptimizer4initE6size_tPK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>For sparse update, optimizer can maintain numRows of timer(t0). Some sparse optimizer depends on parameter config in functions such as <a class="reference internal" href="#paddleclasspaddle_1_1AverageOptimizer_1acb53cfbb4a2403f005172a05bc63ad1e"><span class="std std-ref">startBatch()</span></a>. Optimizer can get it here. But notice that, not all callers can pass config here, so the optimizer should check config passed in is not null ptr. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22AverageSparseOptimizer11finishBatchEv">
+<span id="paddle::AverageSparseOptimizer::finishBatch"></span><span class="target" id="paddleclasspaddle_1_1AverageSparseOptimizer_1a36f150f4b0866bfe68375bb2f9f96b93"></span><em class="property">virtual</em> void <code class="descname">finishBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22AverageSparseOptimizer11finishBatchEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer after backward() of a batch </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle22AverageSparseOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::AverageSparseOptimizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1AverageSparseOptimizer_1ac697800ddab2000986ceb08749299e0e"></span>void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle22AverageSparseOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1AverageOptimizer_1acb53cfbb4a2403f005172a05bc63ad1e"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1AverageSparseOptimizer_1a36f150f4b0866bfe68375bb2f9f96b93"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AverageSparseOptimizer_1ac697800ddab2000986ceb08749299e0e"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle22AverageSparseOptimizer11catchUpWithEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::AverageSparseOptimizer::catchUpWith__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1AverageSparseOptimizer_1aac60c1520957012ec5d6e5cd8f1bc491"></span>void <code class="descname">catchUpWith</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>paraConfig</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle22AverageSparseOptimizer11catchUpWithEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle22AverageSparseOptimizer16startCatchUpWithEv">
+<span id="paddle::AverageSparseOptimizer::startCatchUpWithC"></span><span class="target" id="paddleclasspaddle_1_1AverageSparseOptimizer_1adc12f1012590d742faed05ef291521f6"></span><a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a>::<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">startCatchUpWith</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle22AverageSparseOptimizer16startCatchUpWithEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>following hooks catch up with current time for sparse update, In the beginning, call <a class="reference internal" href="#paddleclasspaddle_1_1AverageSparseOptimizer_1adc12f1012590d742faed05ef291521f6"><span class="std std-ref">startCatchUpWith()</span></a> and check return. In the end, call finishCatchUpWith() to finish state. callback do the actual works, can call many times for sparse data. e.g. Trainer call like this:</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">auto</span> <span class="n">callback</span> <span class="o">=</span> <span class="n">startCatchUpWith</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="o">//</span> <span class="n">do</span> <span class="n">catch</span> <span class="n">up</span> <span class="k">with</span><span class="p">,</span> <span class="n">maybe</span> <span class="n">multi</span><span class="o">-</span><span class="n">thread</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">callback</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">callback</span><span class="p">();}</span>
+  <span class="p">}</span>
+  <span class="o">//</span> <span class="n">finish</span> <span class="n">catch</span> <span class="n">up</span> <span class="k">with</span><span class="p">,</span> <span class="n">main</span> <span class="n">thread</span>
+  <span class="n">finishCatchUpWith</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>callback if need catch up with, else return nullptr. It should be no state change. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22AverageSparseOptimizer17finishCatchUpWithEv">
+<span id="paddle::AverageSparseOptimizer::finishCatchUpWith"></span><span class="target" id="paddleclasspaddle_1_1AverageSparseOptimizer_1a65e718d0cd4950f11a0fe4ba248a263b"></span><em class="property">virtual</em> void <code class="descname">finishCatchUpWith</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22AverageSparseOptimizer17finishCatchUpWithEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle22AverageSparseOptimizer6timer_E">
+<span id="paddle::AverageSparseOptimizer::timer___i"></span><span class="target" id="paddleclasspaddle_1_1AverageSparseOptimizer_1a446bf9258727421d69554b9f77605730"></span>int <code class="descname">timer_</code><a class="headerlink" href="#_CPPv2N6paddle22AverageSparseOptimizer6timer_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>counting batches, clear after catch up with t(timer_) is current time, t0(t0Vec_) are last occur time of i rows. if one block is update by multi threads, caller should hash sparse ids to avoid write conflict in t0Vec_. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22AverageSparseOptimizer6t0Vec_E">
+<span id="paddle::AverageSparseOptimizer::t0Vec___std::vector:int32_t:"></span><span class="target" id="paddleclasspaddle_1_1AverageSparseOptimizer_1a37866ccdbac93f3e2854a3e5446b6af5"></span>std::vector&lt;int32_t&gt; <code class="descname">t0Vec_</code><a class="headerlink" href="#_CPPv2N6paddle22AverageSparseOptimizer6t0Vec_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt>
+<span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code></dt>
+<dd><dl class="class">
+<dt id="_CPPv2N6paddle18ParameterOptimizerE">
+<span id="paddle::ParameterOptimizer"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer"></span><em class="property">class </em><code class="descname">ParameterOptimizer</code><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizerE" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;ParameterOptimizer.h&gt;</em><p>Some member functions are set to const for two reasons:</p>
+<p><ol class="arabic simple">
+<li>For sparse update thread safe: <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1ac2f022ac5222500fda5c9d1027bb8a06"><span class="std std-ref">update()</span></a>, traverse callback(const this) may be called many times, each time one row, and these function can be called parallelly by multi worker, to speed up large block.</li>
+<li>For predicate functions, <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1afec182e2d4c2bac9b2a9aa5cc3b1156e"><span class="std std-ref">needSpecialTraversal()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1ac247dc85e634d427f578bbcc856b9887"><span class="std std-ref">startCatchUpWith()</span></a> may be called many times, should be no state change between calls. </li>
+</ol>
+</p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1AdaDeltaParameterOptimizer"><span class="std std-ref">paddle::AdaDeltaParameterOptimizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AdagradParameterOptimizer"><span class="std std-ref">paddle::AdagradParameterOptimizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AdamaxParameterOptimizer"><span class="std std-ref">paddle::AdamaxParameterOptimizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AdamParameterOptimizer"><span class="std std-ref">paddle::AdamParameterOptimizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AddOptimizer"><span class="std std-ref">paddle::AddOptimizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AverageOptimizer"><span class="std std-ref">paddle::AverageOptimizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DecayedAdagradParameterOptimizer"><span class="std std-ref">paddle::DecayedAdagradParameterOptimizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DummyOptimizer"><span class="std std-ref">paddle::DummyOptimizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithGradientClipping"><span class="std std-ref">paddle::OptimizerWithGradientClipping</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizer"><span class="std std-ref">paddle::OptimizerWithRegularizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1RMSPropParameterOptimizer"><span class="std std-ref">paddle::RMSPropParameterOptimizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SgdOptimizer"><span class="std std-ref">paddle::SgdOptimizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SparseMomentumParameterOptimizer"><span class="std std-ref">paddle::SparseMomentumParameterOptimizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Types</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE">
+<span id="paddle::ParameterOptimizer::TraverseCallback"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1af35823117cc054b5a3066cf4cd09c0fb"></span><em class="property">typedef </em>std::function&lt;void<span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> vecs[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;config, size_t sparseId<span class="sig-paren">)</span>&gt; <code class="descname">TraverseCallback</code><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizer18ParameterOptimizerERK18OptimizationConfig">
+<span id="paddle::ParameterOptimizer::ParameterOptimizer__OptimizationConfigCR"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a89dceaca58771a204f53867f57e27bf7"></span><code class="descname">ParameterOptimizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer18ParameterOptimizerERK18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizer16calcLearningRateE7int64_t7int64_t">
+<span id="paddle::ParameterOptimizer::calcLearningRate__int64_t.int64_t"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a0a1ed4235c4e1bcb9c79e34b558c41c0"></span>real <code class="descname">calcLearningRate</code><span class="sig-paren">(</span>int64_t <em>numSamplesProcessed</em>, int64_t <em>pass</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer16calcLearningRateE7int64_t7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizerD0Ev">
+<span id="paddle::ParameterOptimizer::~ParameterOptimizer"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1aba0d599b45c29ad1d97024db217fbeff"></span><em class="property">virtual</em> <code class="descname">~ParameterOptimizer</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizerD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizer4initE6size_tPK15ParameterConfig">
+<span id="paddle::ParameterOptimizer::init__s.ParameterConfigCP"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1ac6752089a478b3f0093749b5cac70fba"></span><em class="property">virtual</em> void <code class="descname">init</code><span class="sig-paren">(</span>size_t <em>numRows</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> *<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer4initE6size_tPK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>For sparse update, optimizer can maintain numRows of timer(t0). Some sparse optimizer depends on parameter config in functions such as <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1aa524be2e130730a4ea351b3aea2d816f"><span class="std std-ref">startBatch()</span></a>. Optimizer can get it here. But notice that, not all callers can pass config here, so the optimizer should check config passed in is not null ptr. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizer9startPassEv">
+<span id="paddle::ParameterOptimizer::startPass"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a5e97ff80c81904cde0ff6369470e512f"></span><em class="property">virtual</em> void <code class="descname">startPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer9startPassEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizer10finishPassEv">
+<span id="paddle::ParameterOptimizer::finishPass"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a3dc2fe520f79ea181c4166b04efbfb55"></span><em class="property">virtual</em> void <code class="descname">finishPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer10finishPassEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizer10startBatchE7int64_t">
+<span id="paddle::ParameterOptimizer::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1aa524be2e130730a4ea351b3aea2d816f"></span><em class="property">virtual</em> void <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>numSamplesProcessed</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer before forward() of a batch. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle18ParameterOptimizer20needSpecialTraversalERK15ParameterConfig">
+<span id="paddle::ParameterOptimizer::needSpecialTraversal__ParameterConfigCRC"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1afec182e2d4c2bac9b2a9aa5cc3b1156e"></span><em class="property">virtual</em> <a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">needSpecialTraversal</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle18ParameterOptimizer20needSpecialTraversalERK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>following hooks useful for sparse update, because the traversal in block costs. called by Trainer after update and before finishBatch e.g. Trainer call like this:</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">startBatch</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">update</span><span class="p">(</span><span class="n">blockVec</span><span class="p">);</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+  <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">update</span><span class="p">(</span><span class="n">rowVec</span><span class="p">)}</span>
+<span class="p">}</span>
+<span class="n">auto</span> <span class="n">callback</span> <span class="o">=</span> <span class="n">needSpecialTraversal</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="o">//</span> <span class="n">do</span> <span class="n">traverse</span><span class="p">,</span> <span class="n">maybe</span> <span class="n">multi</span><span class="o">-</span><span class="n">thread</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">callback</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">all_rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">callback</span><span class="p">();}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="n">finishBatch</span><span class="p">();</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>callback if need traverse, else return nullptr. It should be no state change. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizer11finishBatchEv">
+<span id="paddle::ParameterOptimizer::finishBatch"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a260329cf2cd4259384db03fa5c1ec3f3"></span><em class="property">virtual</em> void <code class="descname">finishBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer11finishBatchEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer after backward() of a batch </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle18ParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::ParameterOptimizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1ac2f022ac5222500fda5c9d1027bb8a06"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em> = -1LU<span class="sig-paren">)</span> <em class="property">const</em> = 0<a class="headerlink" href="#_CPPv2NK6paddle18ParameterOptimizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1aa524be2e130730a4ea351b3aea2d816f"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1a260329cf2cd4259384db03fa5c1ec3f3"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1ac2f022ac5222500fda5c9d1027bb8a06"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle18ParameterOptimizer16startCatchUpWithEv">
+<span id="paddle::ParameterOptimizer::startCatchUpWithC"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1ac247dc85e634d427f578bbcc856b9887"></span><em class="property">virtual</em> <a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">startCatchUpWith</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle18ParameterOptimizer16startCatchUpWithEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>following hooks catch up with current time for sparse update, In the beginning, call <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1ac247dc85e634d427f578bbcc856b9887"><span class="std std-ref">startCatchUpWith()</span></a> and check return. In the end, call finishCatchUpWith() to finish state. callback do the actual works, can call many times for sparse data. e.g. Trainer call like this:</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">auto</span> <span class="n">callback</span> <span class="o">=</span> <span class="n">startCatchUpWith</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="o">//</span> <span class="n">do</span> <span class="n">catch</span> <span class="n">up</span> <span class="k">with</span><span class="p">,</span> <span class="n">maybe</span> <span class="n">multi</span><span class="o">-</span><span class="n">thread</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">callback</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">callback</span><span class="p">();}</span>
+  <span class="p">}</span>
+  <span class="o">//</span> <span class="n">finish</span> <span class="n">catch</span> <span class="n">up</span> <span class="k">with</span><span class="p">,</span> <span class="n">main</span> <span class="n">thread</span>
+  <span class="n">finishCatchUpWith</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>callback if need catch up with, else return nullptr. It should be no state change. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizer17finishCatchUpWithEv">
+<span id="paddle::ParameterOptimizer::finishCatchUpWith"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a6f7165a3982989cba9e5d225e5f0a68d"></span><em class="property">virtual</em> void <code class="descname">finishCatchUpWith</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer17finishCatchUpWithEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizer5applyEv">
+<span id="paddle::ParameterOptimizer::apply"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1aca2f346a8982d45ab528fdac40db05b3"></span><em class="property">virtual</em> <a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer5applyEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>following two hooks used by averager, apply to final parameter value (PARAMETER_VALUE or PARAMETER_APPLY).</p>
+<p>restore() will restore orginal value if it apply to PARAMETER_VALUE. Caller must ensure it&#8217;s catched up with current time before apply.</p>
+<p>Use returned callback same way as callback returned by <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer_1afec182e2d4c2bac9b2a9aa5cc3b1156e"><span class="std std-ref">ParameterOptimizer::needSpecialTraversal()</span></a> </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizer7restoreEv">
+<span id="paddle::ParameterOptimizer::restore"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a0ce7a3d0de9d024e81cec54dad161090"></span><em class="property">virtual</em> <a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">restore</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer7restoreEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle18ParameterOptimizer17getParameterTypesEv">
+<span id="paddle::ParameterOptimizer::getParameterTypesC"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a5a33aa28130835447d58e567f71f21ec"></span><em class="property">const</em> std::vector&lt;ParameterType&gt; &amp;<code class="descname">getParameterTypes</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle18ParameterOptimizer17getParameterTypesEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the parameter types used by this updater </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizer16addParameterTypeE13ParameterType">
+<span id="paddle::ParameterOptimizer::addParameterType__ParameterType"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a6acbbd875936710c42ce8f2ec7957c04"></span>void <code class="descname">addParameterType</code><span class="sig-paren">(</span>ParameterType <em>type</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer16addParameterTypeE13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle18ParameterOptimizer15getLearningRateEv">
+<span id="paddle::ParameterOptimizer::getLearningRateC"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a169537fae382ca494659acbd72389adf"></span>real <code class="descname">getLearningRate</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle18ParameterOptimizer15getLearningRateEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizer10setNoDecayEv">
+<span id="paddle::ParameterOptimizer::setNoDecay"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1acd224664f841eb0c3a155f86ef111256"></span><em class="property">virtual</em> void <code class="descname">setNoDecay</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer10setNoDecayEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N18ParameterOptimizer6createERK18OptimizationConfigb">
+<span id="ParameterOptimizer::create__OptimizationConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a8f083c03a2d8b7ab22fe5fc57051cf0e"></span><a class="reference internal" href="../../api/api.html#_CPPv218ParameterOptimizer" title="ParameterOptimizer">ParameterOptimizer</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em>, bool <em>inPserver</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N18ParameterOptimizer6createERK18OptimizationConfigb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Types</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle18ParameterOptimizer19TraverseCallbackVecE">
+<span id="paddle::ParameterOptimizer::TraverseCallbackVec"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1ad8abe87d8f9781a92f57dd2fe50c5f02"></span><em class="property">typedef </em>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a>::<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a>&gt; <code class="descname">TraverseCallbackVec</code><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer19TraverseCallbackVecE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle18ParameterOptimizer11applyDecay_E">
+<span id="paddle::ParameterOptimizer::applyDecay___b"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1ae58ade02db465d54496384750c2b1a60"></span>bool <code class="descname">applyDecay_</code><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer11applyDecay_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle18ParameterOptimizer10optConfig_E">
+<span id="paddle::ParameterOptimizer::optConfig___OptimizationConfigCR"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1aeffbffd43e11c430f7eebda84043eef4"></span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<code class="descname">optConfig_</code><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer10optConfig_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle18ParameterOptimizer15parameterTypes_E">
+<span id="paddle::ParameterOptimizer::parameterTypes___std::vector:ParameterType:"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a44462cd2d98006a2a0ac6647cdd7e78c"></span>std::vector&lt;ParameterType&gt; <code class="descname">parameterTypes_</code><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer15parameterTypes_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle18ParameterOptimizer13learningRate_E">
+<span id="paddle::ParameterOptimizer::learningRate___real"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1ad6aaa634ee1003524a7d7b0078d3c271"></span>real <code class="descname">learningRate_</code><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer13learningRate_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>global learning rate, init value is opt_config.learning_rate, sparse regularizer get this value per batch, after StartBatch() called so, if lr change in StartBatch, please assign to learningRate_ </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle18ParameterOptimizer22learningRateScheduler_E">
+<span id="paddle::ParameterOptimizer::learningRateScheduler___std::unique_ptr:LearningRateScheduler:"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a50ba133cc28f3309990d57b49e7a43b3"></span>std::unique_ptr&lt;LearningRateScheduler&gt; <code class="descname">learningRateScheduler_</code><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer22learningRateScheduler_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle18ParameterOptimizer5pass_E">
+<span id="paddle::ParameterOptimizer::pass___int64_t"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1afdc0d5eb328aa6480097e5e3ca6387ae"></span>int64_t <code class="descname">pass_</code><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer5pass_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle18ParameterOptimizer10firstTime_E">
+<span id="paddle::ParameterOptimizer::firstTime___b"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1a7841b6e8fa2c664ffb4c0faf8908a96d"></span>bool <code class="descname">firstTime_</code><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer10firstTime_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle18ParameterOptimizer16composeCallbacksERK19TraverseCallbackVec">
+<span id="paddle::ParameterOptimizer::composeCallbacks__TraverseCallbackVecCR"></span><span class="target" id="paddleclasspaddle_1_1ParameterOptimizer_1ae260571ee7b0d80946d334a3d51f13a3"></span><em class="property">static</em> <a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">composeCallbacks</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer19TraverseCallbackVecE" title="paddle::ParameterOptimizer::TraverseCallbackVec">TraverseCallbackVec</a> &amp;<em>callbacks</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ParameterOptimizer16composeCallbacksERK19TraverseCallbackVec" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt>
+<span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code></dt>
+<dd><dl class="class">
+<dt id="_CPPv2N6paddle24OptimizerWithRegularizerE">
+<span id="paddle::OptimizerWithRegularizer"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizer"></span><em class="property">class </em><code class="descname">OptimizerWithRegularizer</code><a class="headerlink" href="#_CPPv2N6paddle24OptimizerWithRegularizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterOptimizer"><span class="std std-ref">paddle::ParameterOptimizer</span></a></p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches"><span class="std std-ref">paddle::OptimizerWithRegularizerEveryNumBatches</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizerSparse"><span class="std std-ref">paddle::OptimizerWithRegularizerSparse</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle24OptimizerWithRegularizer24OptimizerWithRegularizerERK18OptimizationConfigP18ParameterOptimizerP11Regularizer">
+<span id="paddle::OptimizerWithRegularizer::OptimizerWithRegularizer__OptimizationConfigCR.ParameterOptimizerP.RegularizerP"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizer_1ab7944195971761e779fd4ae01580a6ab"></span><code class="descname">OptimizerWithRegularizer</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em>, <a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a> *<em>optimizer</em>, <a class="reference internal" href="../parameter/parameter.html#_CPPv2N6paddle11RegularizerE" title="paddle::Regularizer">Regularizer</a> *<em>regularizer</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24OptimizerWithRegularizer24OptimizerWithRegularizerERK18OptimizationConfigP18ParameterOptimizerP11Regularizer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24OptimizerWithRegularizer4initE6size_tPK15ParameterConfig">
+<span id="paddle::OptimizerWithRegularizer::init__s.ParameterConfigCP"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizer_1ade284070a64ded07254727b4122f77d7"></span><em class="property">virtual</em> void <code class="descname">init</code><span class="sig-paren">(</span>size_t <em>numRows</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> *<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24OptimizerWithRegularizer4initE6size_tPK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>For sparse update, optimizer can maintain numRows of timer(t0). Some sparse optimizer depends on parameter config in functions such as <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizer_1a0f437aca89ccb0879f92a5c5ef437652"><span class="std std-ref">startBatch()</span></a>. Optimizer can get it here. But notice that, not all callers can pass config here, so the optimizer should check config passed in is not null ptr. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24OptimizerWithRegularizer9startPassEv">
+<span id="paddle::OptimizerWithRegularizer::startPass"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizer_1ab9bf54c65ec830ffa881b576caa81ba2"></span><em class="property">virtual</em> void <code class="descname">startPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24OptimizerWithRegularizer9startPassEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24OptimizerWithRegularizer10finishPassEv">
+<span id="paddle::OptimizerWithRegularizer::finishPass"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizer_1adb294006f7239fe7ac679ddae143d40d"></span><em class="property">virtual</em> void <code class="descname">finishPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24OptimizerWithRegularizer10finishPassEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24OptimizerWithRegularizer10startBatchE7int64_t">
+<span id="paddle::OptimizerWithRegularizer::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizer_1a0f437aca89ccb0879f92a5c5ef437652"></span><em class="property">virtual</em> void <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>numSamplesProcessed</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24OptimizerWithRegularizer10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer before forward() of a batch. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24OptimizerWithRegularizer11finishBatchEv">
+<span id="paddle::OptimizerWithRegularizer::finishBatch"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizer_1a07b935a3f25a1b5130dc1ec9aa33179d"></span><em class="property">virtual</em> void <code class="descname">finishBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24OptimizerWithRegularizer11finishBatchEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>called by Trainer after backward() of a batch </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle24OptimizerWithRegularizer20needSpecialTraversalERK15ParameterConfig">
+<span id="paddle::OptimizerWithRegularizer::needSpecialTraversal__ParameterConfigCRC"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizer_1aa882a31e2086fa364c3370032a634b7b"></span><em class="property">virtual</em> TraverseCallback <code class="descname">needSpecialTraversal</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle24OptimizerWithRegularizer20needSpecialTraversalERK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>following hooks useful for sparse update, because the traversal in block costs. called by Trainer after update and before finishBatch e.g. Trainer call like this:</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">startBatch</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">update</span><span class="p">(</span><span class="n">blockVec</span><span class="p">);</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+  <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">update</span><span class="p">(</span><span class="n">rowVec</span><span class="p">)}</span>
+<span class="p">}</span>
+<span class="n">auto</span> <span class="n">callback</span> <span class="o">=</span> <span class="n">needSpecialTraversal</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="o">//</span> <span class="n">do</span> <span class="n">traverse</span><span class="p">,</span> <span class="n">maybe</span> <span class="n">multi</span><span class="o">-</span><span class="n">thread</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">callback</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">all_rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">callback</span><span class="p">();}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="n">finishBatch</span><span class="p">();</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>callback if need traverse, else return nullptr. It should be no state change. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle24OptimizerWithRegularizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::OptimizerWithRegularizer::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizer_1ab22cb81e799739c7c02896e7e75aae8c"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle24OptimizerWithRegularizer6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizer_1a0f437aca89ccb0879f92a5c5ef437652"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizer_1a07b935a3f25a1b5130dc1ec9aa33179d"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizer_1ab22cb81e799739c7c02896e7e75aae8c"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle24OptimizerWithRegularizer6createERK18OptimizationConfigRK15ParameterConfigbb">
+<span id="paddle::OptimizerWithRegularizer::create__OptimizationConfigCR.ParameterConfigCR.b.b"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizer_1acca8297b580d9cdf1c4f2648ccd638a5"></span><a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>paraConfig</em>, bool <em>isParameterSparse</em>, bool <em>inPserver</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24OptimizerWithRegularizer6createERK18OptimizationConfigRK15ParameterConfigbb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle24OptimizerWithRegularizer10optimizer_E">
+<span id="paddle::OptimizerWithRegularizer::optimizer___std::unique_ptr:ParameterOptimizer:"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizer_1ab0bcf2325b88ff638adcf86e46646446"></span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a>&gt; <code class="descname">optimizer_</code><a class="headerlink" href="#_CPPv2N6paddle24OptimizerWithRegularizer10optimizer_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24OptimizerWithRegularizer12regularizer_E">
+<span id="paddle::OptimizerWithRegularizer::regularizer___RegularizerP"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizer_1a9d53d48a07bf36b0da32f8a7e9d2fbed"></span><a class="reference internal" href="../parameter/parameter.html#_CPPv2N6paddle11RegularizerE" title="paddle::Regularizer">Regularizer</a> *<code class="descname">regularizer_</code><a class="headerlink" href="#_CPPv2N6paddle24OptimizerWithRegularizer12regularizer_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24OptimizerWithRegularizer6timer_E">
+<span id="paddle::OptimizerWithRegularizer::timer___i"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizer_1a39dfa8cfd149e937eaec286078448b0b"></span>int <code class="descname">timer_</code><a class="headerlink" href="#_CPPv2N6paddle24OptimizerWithRegularizer6timer_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>counting batches, clear after catch up with t(timer_) is current time, t0(t0Vec_) are last occur time of i rows. if one block is update by multi threads, caller should hash sparse ids to avoid write conflict in t0Vec_. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle39OptimizerWithRegularizerEveryNumBatchesE">
+<span id="paddle::OptimizerWithRegularizerEveryNumBatches"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches"></span><em class="property">class </em><code class="descname">OptimizerWithRegularizerEveryNumBatches</code><a class="headerlink" href="#_CPPv2N6paddle39OptimizerWithRegularizerEveryNumBatchesE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizer"><span class="std std-ref">paddle::OptimizerWithRegularizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle39OptimizerWithRegularizerEveryNumBatches39OptimizerWithRegularizerEveryNumBatchesERK18OptimizationConfigP18ParameterOptimizerP11Regularizer">
+<span id="paddle::OptimizerWithRegularizerEveryNumBatches::OptimizerWithRegularizerEveryNumBatches__OptimizationConfigCR.ParameterOptimizerP.RegularizerP"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches_1a6fa43f7f6739d3df416bc6de2d223af4"></span><code class="descname">OptimizerWithRegularizerEveryNumBatches</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em>, <a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a> *<em>optimizer</em>, <a class="reference internal" href="../parameter/parameter.html#_CPPv2N6paddle11RegularizerE" title="paddle::Regularizer">Regularizer</a> *<em>regularizer</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle39OptimizerWithRegularizerEveryNumBatches39OptimizerWithRegularizerEveryNumBatchesERK18OptimizationConfigP18ParameterOptimizerP11Regularizer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle39OptimizerWithRegularizerEveryNumBatches9startPassEv">
+<span id="paddle::OptimizerWithRegularizerEveryNumBatches::startPass"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches_1a19e7f0b866ce42494bbb2eebe7499db4"></span><em class="property">virtual</em> void <code class="descname">startPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle39OptimizerWithRegularizerEveryNumBatches9startPassEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle39OptimizerWithRegularizerEveryNumBatches6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::OptimizerWithRegularizerEveryNumBatches::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches_1a79cecbf803dd0f10b1903e6cae97396b"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle39OptimizerWithRegularizerEveryNumBatches6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizer_1a0f437aca89ccb0879f92a5c5ef437652"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizer_1a07b935a3f25a1b5130dc1ec9aa33179d"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches_1a79cecbf803dd0f10b1903e6cae97396b"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle39OptimizerWithRegularizerEveryNumBatches20needSpecialTraversalERK15ParameterConfig">
+<span id="paddle::OptimizerWithRegularizerEveryNumBatches::needSpecialTraversal__ParameterConfigCRC"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches_1a92cab2d8f80bc2a502172bccb2305fd5"></span><a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a>::<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">needSpecialTraversal</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle39OptimizerWithRegularizerEveryNumBatches20needSpecialTraversalERK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>following hooks useful for sparse update, because the traversal in block costs. called by Trainer after update and before finishBatch e.g. Trainer call like this:</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">startBatch</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">update</span><span class="p">(</span><span class="n">blockVec</span><span class="p">);</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+  <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">update</span><span class="p">(</span><span class="n">rowVec</span><span class="p">)}</span>
+<span class="p">}</span>
+<span class="n">auto</span> <span class="n">callback</span> <span class="o">=</span> <span class="n">needSpecialTraversal</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="o">//</span> <span class="n">do</span> <span class="n">traverse</span><span class="p">,</span> <span class="n">maybe</span> <span class="n">multi</span><span class="o">-</span><span class="n">thread</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">callback</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">all_rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">callback</span><span class="p">();}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="n">finishBatch</span><span class="p">();</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>callback if need traverse, else return nullptr. It should be no state change. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle39OptimizerWithRegularizerEveryNumBatches11doTraversalEA_K9VectorPtrRK15ParameterConfig">
+<span id="paddle::OptimizerWithRegularizerEveryNumBatches::doTraversal__VectorPtrCA.ParameterConfigCRC"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches_1aaa4e0626e0073a94a4a9576816767352"></span>void <code class="descname">doTraversal</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle39OptimizerWithRegularizerEveryNumBatches11doTraversalEA_K9VectorPtrRK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle39OptimizerWithRegularizerEveryNumBatches11catchUpWithEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::OptimizerWithRegularizerEveryNumBatches::catchUpWith__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches_1a6857d1662f2b36074a3a5d764a699d94"></span>void <code class="descname">catchUpWith</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle39OptimizerWithRegularizerEveryNumBatches11catchUpWithEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle39OptimizerWithRegularizerEveryNumBatches16startCatchUpWithEv">
+<span id="paddle::OptimizerWithRegularizerEveryNumBatches::startCatchUpWithC"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches_1a80e08f38770ec53389c633d8fa6b8f42"></span><a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a>::<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">startCatchUpWith</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle39OptimizerWithRegularizerEveryNumBatches16startCatchUpWithEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>following hooks catch up with current time for sparse update, In the beginning, call <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches_1a80e08f38770ec53389c633d8fa6b8f42"><span class="std std-ref">startCatchUpWith()</span></a> and check return. In the end, call finishCatchUpWith() to finish state. callback do the actual works, can call many times for sparse data. e.g. Trainer call like this:</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">auto</span> <span class="n">callback</span> <span class="o">=</span> <span class="n">startCatchUpWith</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="o">//</span> <span class="n">do</span> <span class="n">catch</span> <span class="n">up</span> <span class="k">with</span><span class="p">,</span> <span class="n">maybe</span> <span class="n">multi</span><span class="o">-</span><span class="n">thread</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">callback</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">callback</span><span class="p">();}</span>
+  <span class="p">}</span>
+  <span class="o">//</span> <span class="n">finish</span> <span class="n">catch</span> <span class="n">up</span> <span class="k">with</span><span class="p">,</span> <span class="n">main</span> <span class="n">thread</span>
+  <span class="n">finishCatchUpWith</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>callback if need catch up with, else return nullptr. It should be no state change. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle39OptimizerWithRegularizerEveryNumBatches17finishCatchUpWithEv">
+<span id="paddle::OptimizerWithRegularizerEveryNumBatches::finishCatchUpWith"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches_1a87b3cec2d9e13051ba2ddbf7039b3931"></span><em class="property">virtual</em> void <code class="descname">finishCatchUpWith</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle39OptimizerWithRegularizerEveryNumBatches17finishCatchUpWithEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2NK6paddle39OptimizerWithRegularizerEveryNumBatches21isRegularizationBatchERK15ParameterConfig">
+<span id="paddle::OptimizerWithRegularizerEveryNumBatches::isRegularizationBatch__ParameterConfigCRC"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches_1afe0f82ab916adebfbaa97470614e7478"></span>bool <code class="descname">isRegularizationBatch</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle39OptimizerWithRegularizerEveryNumBatches21isRegularizationBatchERK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle39OptimizerWithRegularizerEveryNumBatches10baseTimer_E">
+<span id="paddle::OptimizerWithRegularizerEveryNumBatches::baseTimer___i"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerEveryNumBatches_1a327aabc975f7c5733c10d23626043515"></span>int <code class="descname">baseTimer_</code><a class="headerlink" href="#_CPPv2N6paddle39OptimizerWithRegularizerEveryNumBatches10baseTimer_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>recored the timer_ value while catchUpWith called. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle30OptimizerWithRegularizerSparseE">
+<span id="paddle::OptimizerWithRegularizerSparse"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerSparse"></span><em class="property">class </em><code class="descname">OptimizerWithRegularizerSparse</code><a class="headerlink" href="#_CPPv2N6paddle30OptimizerWithRegularizerSparseE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizer"><span class="std std-ref">paddle::OptimizerWithRegularizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle30OptimizerWithRegularizerSparse30OptimizerWithRegularizerSparseERK18OptimizationConfigP18ParameterOptimizerP11Regularizer">
+<span id="paddle::OptimizerWithRegularizerSparse::OptimizerWithRegularizerSparse__OptimizationConfigCR.ParameterOptimizerP.RegularizerP"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerSparse_1a42b03b4ab154747419af177d40211c32"></span><code class="descname">OptimizerWithRegularizerSparse</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em>, <a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a> *<em>optimizer</em>, <a class="reference internal" href="../parameter/parameter.html#_CPPv2N6paddle11RegularizerE" title="paddle::Regularizer">Regularizer</a> *<em>regularizer</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle30OptimizerWithRegularizerSparse30OptimizerWithRegularizerSparseERK18OptimizationConfigP18ParameterOptimizerP11Regularizer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle30OptimizerWithRegularizerSparse4initE6size_tPK15ParameterConfig">
+<span id="paddle::OptimizerWithRegularizerSparse::init__s.ParameterConfigCP"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerSparse_1ad6110975e0cf8411280523f463021662"></span>void <code class="descname">init</code><span class="sig-paren">(</span>size_t <em>numRows</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> *<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle30OptimizerWithRegularizerSparse4initE6size_tPK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>For sparse update, optimizer can maintain numRows of timer(t0). Some sparse optimizer depends on parameter config in functions such as <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizer_1a0f437aca89ccb0879f92a5c5ef437652"><span class="std std-ref">startBatch()</span></a>. Optimizer can get it here. But notice that, not all callers can pass config here, so the optimizer should check config passed in is not null ptr. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle30OptimizerWithRegularizerSparse6updateEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::OptimizerWithRegularizerSparse::update__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerSparse_1a50bb9332691195885d4fa8c818fed621"></span>void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle30OptimizerWithRegularizerSparse6updateEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>between <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizer_1a0f437aca89ccb0879f92a5c5ef437652"><span class="std std-ref">startBatch()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizer_1a07b935a3f25a1b5130dc1ec9aa33179d"><span class="std std-ref">finishBatch()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizerSparse_1a50bb9332691195885d4fa8c818fed621"><span class="std std-ref">update()</span></a> will be called by the trainer multiple times, each time for updating one <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> with its gradient in PARAMETER_GRADIENT. sparseId is row id, when sparseId set, update is sparse, each time one row. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle30OptimizerWithRegularizerSparse11catchUpWithEA_K9VectorPtrRK15ParameterConfig6size_t">
+<span id="paddle::OptimizerWithRegularizerSparse::catchUpWith__VectorPtrCA.ParameterConfigCR.sC"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerSparse_1a4df8963a794500cbe49a6f430e784d71"></span>void <code class="descname">catchUpWith</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, size_t <em>sparseId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle30OptimizerWithRegularizerSparse11catchUpWithEA_K9VectorPtrRK15ParameterConfig6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle30OptimizerWithRegularizerSparse16startCatchUpWithEv">
+<span id="paddle::OptimizerWithRegularizerSparse::startCatchUpWithC"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerSparse_1a1d698def06a3a1c1afb8c3008e460443"></span><a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizerE" title="paddle::ParameterOptimizer">ParameterOptimizer</a>::<a class="reference internal" href="#_CPPv2N6paddle18ParameterOptimizer16TraverseCallbackE" title="paddle::ParameterOptimizer::TraverseCallback">TraverseCallback</a> <code class="descname">startCatchUpWith</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle30OptimizerWithRegularizerSparse16startCatchUpWithEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>following hooks catch up with current time for sparse update, In the beginning, call <a class="reference internal" href="#paddleclasspaddle_1_1OptimizerWithRegularizerSparse_1a1d698def06a3a1c1afb8c3008e460443"><span class="std std-ref">startCatchUpWith()</span></a> and check return. In the end, call finishCatchUpWith() to finish state. callback do the actual works, can call many times for sparse data. e.g. Trainer call like this:</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">auto</span> <span class="n">callback</span> <span class="o">=</span> <span class="n">startCatchUpWith</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="o">//</span> <span class="n">do</span> <span class="n">catch</span> <span class="n">up</span> <span class="k">with</span><span class="p">,</span> <span class="n">maybe</span> <span class="n">multi</span><span class="o">-</span><span class="n">thread</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">dense</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">callback</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span><span class="o">//</span><span class="n">sparse</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">row</span> <span class="p">:</span> <span class="n">rows_in_block</span><span class="p">)</span> <span class="p">{</span><span class="n">callback</span><span class="p">();}</span>
+  <span class="p">}</span>
+  <span class="o">//</span> <span class="n">finish</span> <span class="n">catch</span> <span class="n">up</span> <span class="k">with</span><span class="p">,</span> <span class="n">main</span> <span class="n">thread</span>
+  <span class="n">finishCatchUpWith</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>callback if need catch up with, else return nullptr. It should be no state change. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle30OptimizerWithRegularizerSparse17finishCatchUpWithEv">
+<span id="paddle::OptimizerWithRegularizerSparse::finishCatchUpWith"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerSparse_1af3d22b9d7bd0728ebb56567a060cc28c"></span><em class="property">virtual</em> void <code class="descname">finishCatchUpWith</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle30OptimizerWithRegularizerSparse17finishCatchUpWithEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle30OptimizerWithRegularizerSparse6t0Vec_E">
+<span id="paddle::OptimizerWithRegularizerSparse::t0Vec___std::vector:int32_t:"></span><span class="target" id="paddleclasspaddle_1_1OptimizerWithRegularizerSparse_1a62489bf2349d53a4601cb53a5afd37e3"></span>std::vector&lt;int32_t&gt; <code class="descname">t0Vec_</code><a class="headerlink" href="#_CPPv2N6paddle30OptimizerWithRegularizerSparse6t0Vec_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>t0Vec_ are last occur time of i rows if one block is update by multi threads, caller should hash sparse ids to avoid write conflict in t0Vec_. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Parameter Documents</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../../pserver/client/index.html"
+                        title="next chapter">Client Documents</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/source/parameter/optimizer/optimizer.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../pserver/client/index.html" title="Client Documents"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Parameter Documents"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Parameter Documents</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

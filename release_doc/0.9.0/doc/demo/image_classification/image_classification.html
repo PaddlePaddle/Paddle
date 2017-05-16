@@ -1,0 +1,345 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Image Classification Tutorial &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="Image Classification Tutorial" href="index.html" />
+    <link rel="next" title="Sentiment Analasis Tutorial" href="../sentiment_analysis/index.html" />
+    <link rel="prev" title="Image Classification Tutorial" href="index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../sentiment_analysis/index.html" title="Sentiment Analasis Tutorial"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Image Classification Tutorial"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Image Classification Tutorial</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="image-classification-tutorial">
+<span id="image-classification-tutorial"></span><h1>Image Classification Tutorial<a class="headerlink" href="#image-classification-tutorial" title="Permalink to this headline">¶</a></h1>
+<p>This tutorial will guide you through training a convolutional neural network to classify objects using the CIFAR-10 image classification dataset.
+As shown in the following figure, the convolutional neural network can recognize the main object in images, and output the classification result.</p>
+<p><center><img alt="Image Classification" src="../../_images/image_classification.png" /></center></p>
+<div class="section" id="data-preparation">
+<span id="data-preparation"></span><h2>Data Preparation<a class="headerlink" href="#data-preparation" title="Permalink to this headline">¶</a></h2>
+<p>First, download CIFAR-10 dataset. CIFAR-10 dataset can be downloaded from its official website.</p>
+<p><a class="reference external" href="https://www.cs.toronto.edu/~kriz/cifar.html">https://www.cs.toronto.edu/~kriz/cifar.html</a></p>
+<p>We have prepared a script to download and process CIFAR-10 dataset. The script will download CIFAR-10 dataset from the official dataset.
+It will convert it to jpeg images and organize them into a directory with the required structure for the tutorial. Make sure that you have installed pillow and its dependents.
+Consider the following commands:</p>
+<ol class="simple">
+<li>install pillow dependents</li>
+</ol>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>sudo apt-get install libjpeg-dev
+pip install pillow
+</pre></div>
+</div>
+<ol class="simple">
+<li>download data and preparation</li>
+</ol>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/image_classification/data/
+sh download_cifar.sh
+</pre></div>
+</div>
+<p>The CIFAR-10 dataset consists of 60000 32x32 color images in 10 classes, with 6000 images per class. There are 50000 training images and 10000 test images.</p>
+<p>Here are the classes in the dataset, as well as 10 random images from each:
+<center><img alt="Image Classification" src="../../_images/cifar.png" /></center></p>
+<p>After downloading and converting, we should find a directory (cifar-out) containing the dataset in the following format:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">train</span>
+<span class="o">---</span><span class="n">airplane</span>
+<span class="o">---</span><span class="n">automobile</span>
+<span class="o">---</span><span class="n">bird</span>
+<span class="o">---</span><span class="n">cat</span>
+<span class="o">---</span><span class="n">deer</span>
+<span class="o">---</span><span class="n">dog</span>
+<span class="o">---</span><span class="n">frog</span>
+<span class="o">---</span><span class="n">horse</span>
+<span class="o">---</span><span class="n">ship</span>
+<span class="o">---</span><span class="n">truck</span>
+<span class="n">test</span>
+<span class="o">---</span><span class="n">airplane</span>
+<span class="o">---</span><span class="n">automobile</span>
+<span class="o">---</span><span class="n">bird</span>
+<span class="o">---</span><span class="n">cat</span>
+<span class="o">---</span><span class="n">deer</span>
+<span class="o">---</span><span class="n">dog</span>
+<span class="o">---</span><span class="n">frog</span>
+<span class="o">---</span><span class="n">horse</span>
+<span class="o">---</span><span class="n">ship</span>
+<span class="o">---</span><span class="n">truck</span>
+</pre></div>
+</div>
+<p>It has two directories:<code class="docutils literal"><span class="pre">train</span></code> and <code class="docutils literal"><span class="pre">test</span></code>. These two directories contain training data and testing data of CIFAR-10, respectively. Each of these two folders contains 10 sub-folders, ranging from <code class="docutils literal"><span class="pre">airplane</span></code> to <code class="docutils literal"><span class="pre">truck</span></code>. Each sub-folder contains images with the corresponding label. After the images are organized into this structure, we are ready to train an image classification model.</p>
+</div>
+<div class="section" id="preprocess">
+<span id="preprocess"></span><h2>Preprocess<a class="headerlink" href="#preprocess" title="Permalink to this headline">¶</a></h2>
+<p>After the data has been downloaded, it needs to be pre-processed into the Paddle format. We can run the following command for preprocessing.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">image_classification</span><span class="o">/</span>
+<span class="n">sh</span> <span class="n">preprocess</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">preprocess.sh</span></code> calls <code class="docutils literal"><span class="pre">./demo/image_classification/preprocess.py</span></code> to preprocess image data.</p>
+<div class="highlight-sh"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PYTHONPATH</span>:../../
+<span class="nv">data_dir</span><span class="o">=</span>./data/cifar-out
+python preprocess.py -i <span class="nv">$data_dir</span> -s <span class="m">32</span> -c 1
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">./demo/image_classification/preprocess.py</span></code> has the following arguments</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">-i</span></code> or <code class="docutils literal"><span class="pre">--input</span></code> specifes  the input data directory.</li>
+<li><code class="docutils literal"><span class="pre">-s</span></code> or <code class="docutils literal"><span class="pre">--size</span></code> specifies the processed size of images.</li>
+<li><code class="docutils literal"><span class="pre">-c</span></code> or <code class="docutils literal"><span class="pre">--color</span></code> specifes whether images are color images or gray images.</li>
+</ul>
+</div>
+<div class="section" id="model-training">
+<span id="model-training"></span><h2>Model Training<a class="headerlink" href="#model-training" title="Permalink to this headline">¶</a></h2>
+<p>We need to create a model config file before training the model. An example of the config file (vgg_16_cifar.py) is listed below. <strong>Note</strong>, it is slightly different from the <code class="docutils literal"><span class="pre">vgg_16_cifar.py</span></code> which also applies to the prediction.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">data_dir</span><span class="o">=</span><span class="s1">&#39;data/cifar-out/batches/&#39;</span>
+<span class="n">meta_path</span><span class="o">=</span><span class="n">data_dir</span><span class="o">+</span><span class="s1">&#39;batches.meta&#39;</span>
+<span class="n">args</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;meta&#39;</span><span class="p">:</span><span class="n">meta_path</span><span class="p">,</span> <span class="s1">&#39;mean_img_size&#39;</span><span class="p">:</span> <span class="mi">32</span><span class="p">,</span>
+        <span class="s1">&#39;img_size&#39;</span><span class="p">:</span> <span class="mi">32</span><span class="p">,</span> <span class="s1">&#39;num_classes&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="s1">&#39;use_jpeg&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s2">&quot;color&quot;</span><span class="p">}</span>
+<span class="n">define_py_data_sources2</span><span class="p">(</span><span class="n">train_list</span><span class="o">=</span><span class="n">data_dir</span><span class="o">+</span><span class="s2">&quot;train.list&quot;</span><span class="p">,</span>
+                        <span class="n">test_list</span><span class="o">=</span><span class="n">data_dir</span><span class="o">+</span><span class="s1">&#39;test.list&#39;</span><span class="p">,</span>
+                        <span class="n">module</span><span class="o">=</span><span class="s1">&#39;image_provider&#39;</span><span class="p">,</span>
+                        <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;processData&#39;</span><span class="p">,</span>
+                        <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">)</span>
+<span class="n">settings</span><span class="p">(</span>
+    <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span>
+    <span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="o">/</span> <span class="mf">128.0</span><span class="p">,</span>
+    <span class="n">learning_method</span> <span class="o">=</span> <span class="n">MomentumOptimizer</span><span class="p">(</span><span class="mf">0.9</span><span class="p">),</span>
+    <span class="n">regularization</span> <span class="o">=</span> <span class="n">L2Regularization</span><span class="p">(</span><span class="mf">0.0005</span> <span class="o">*</span> <span class="mi">128</span><span class="p">))</span>
+
+<span class="n">img</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">3</span><span class="o">*</span><span class="mi">32</span><span class="o">*</span><span class="mi">32</span><span class="p">)</span>
+<span class="n">lbl</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="c1"># small_vgg is predined in trainer_config_helpers.network</span>
+<span class="n">predict</span> <span class="o">=</span> <span class="n">small_vgg</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="n">img</span><span class="p">,</span> <span class="n">num_channels</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">outputs</span><span class="p">(</span><span class="n">classification_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">predict</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">lbl</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>The first line imports python functions for defining networks.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="kn">import</span> <span class="o">*</span>
+</pre></div>
+</div>
+<p>Then define an <code class="docutils literal"><span class="pre">define_py_data_sources2</span></code> which use python data provider
+interface. The arguments in <code class="docutils literal"><span class="pre">args</span></code> are used in <code class="docutils literal"><span class="pre">image_provider.py</span></code> which
+yeilds image data and transform them to Paddle.</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">meta</span></code>: the mean value of training set.</li>
+<li><code class="docutils literal"><span class="pre">mean_img_size</span></code>: the size of mean feature map.</li>
+<li><code class="docutils literal"><span class="pre">img_size</span></code>: the height and width of input image.</li>
+<li><code class="docutils literal"><span class="pre">num_classes</span></code>: the number of classes.</li>
+<li><code class="docutils literal"><span class="pre">use_jpeg</span></code>: the data storage type when preprocessing.</li>
+<li><code class="docutils literal"><span class="pre">color</span></code>: specify color image.</li>
+</ul>
+<p><code class="docutils literal"><span class="pre">settings</span></code> specifies the training algorithm. In the following example,
+it specifies learning rate as 0.1, but divided by batch size, and the weight decay
+is 0.0005 and multiplied by batch size.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">settings</span><span class="p">(</span>
+    <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span>
+    <span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="o">/</span> <span class="mf">128.0</span><span class="p">,</span>
+    <span class="n">learning_method</span> <span class="o">=</span> <span class="n">MomentumOptimizer</span><span class="p">(</span><span class="mf">0.9</span><span class="p">),</span>
+    <span class="n">regularization</span> <span class="o">=</span> <span class="n">L2Regularization</span><span class="p">(</span><span class="mf">0.0005</span> <span class="o">*</span> <span class="mi">128</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">small_vgg</span></code> specifies the network. We use a small version of VGG convolutional network as our network
+for classification. A description of VGG network can be found here <a class="reference external" href="http://www.robots.ox.ac.uk/~vgg/research/very_deep/">http://www.robots.ox.ac.uk/~vgg/research/very_deep/</a>.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># small_vgg is predined in trainer_config_helpers.network</span>
+<span class="n">predict</span> <span class="o">=</span> <span class="n">small_vgg</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="n">img</span><span class="p">,</span> <span class="n">num_channels</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>After writing the config, we can train the model by running the script train.sh. Notice that the following script assumes the you run the script in the <code class="docutils literal"><span class="pre">./demo/image_classification</span></code> folder. If you run the script in a different folder, you need to change the paths of the scripts and the configuration files accordingly.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">config</span><span class="o">=</span>vgg_16_cifar.py
+<span class="nv">output</span><span class="o">=</span>./cifar_vgg_model
+<span class="nv">log</span><span class="o">=</span>train.log
+
+paddle train <span class="se">\</span>
+--config<span class="o">=</span><span class="nv">$config</span> <span class="se">\</span>
+--dot_period<span class="o">=</span><span class="m">10</span> <span class="se">\</span>
+--log_period<span class="o">=</span><span class="m">100</span> <span class="se">\</span>
+--test_all_data_in_one_period<span class="o">=</span><span class="m">1</span> <span class="se">\</span>
+--use_gpu<span class="o">=</span><span class="m">1</span> <span class="se">\</span>
+--save_dir<span class="o">=</span><span class="nv">$output</span> <span class="se">\</span>
+2&gt;<span class="p">&amp;</span><span class="m">1</span> <span class="p">|</span> tee <span class="nv">$log</span>
+
+python -m paddle.utils.plotcurve -i <span class="nv">$log</span> &gt; plot.png
+</pre></div>
+</div>
+<ul class="simple">
+<li>Here we use GPU mode to train. If you have no gpu environment, just set <code class="docutils literal"><span class="pre">use_gpu=0</span></code>.</li>
+<li><code class="docutils literal"><span class="pre">./demo/image_classification/vgg_16_cifar.py</span></code> is the network and data configuration file. The meaning of the other flags can be found in the documentation of the command line flags.</li>
+<li>The script <code class="docutils literal"><span class="pre">plotcurve.py</span></code> requires the python module of <code class="docutils literal"><span class="pre">matplotlib</span></code>, so if it fails, maybe you need to install <code class="docutils literal"><span class="pre">matplotlib</span></code>.</li>
+</ul>
+<p>After training finishes, the training and testing error curves will be saved to <code class="docutils literal"><span class="pre">plot.png</span></code> using <code class="docutils literal"><span class="pre">plotcurve.py</span></code> script. An example of the plot is shown below:</p>
+<p><center><img alt="Training and testing curves." src="../../_images/plot.png" /></center></p>
+</div>
+<div class="section" id="prediction">
+<span id="prediction"></span><h2>Prediction<a class="headerlink" href="#prediction" title="Permalink to this headline">¶</a></h2>
+<p>After we train the model, the model file as well as the model parameters are stored in path <code class="docutils literal"><span class="pre">./cifar_vgg_model/pass-%05d</span></code>. For example, the model of the 300-th pass is stored at <code class="docutils literal"><span class="pre">./cifar_vgg_model/pass-00299</span></code>.</p>
+<p>To make a prediction for an image, one can run <code class="docutils literal"><span class="pre">predict.sh</span></code> as follows. The script will output the label of the classfiication.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">sh</span> <span class="n">predict</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>predict.sh:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>model=cifar_vgg_model/pass-00299/
+image=data/cifar-out/test/airplane/seaplane_s_000978.png
+use_gpu=1
+python prediction.py $model $image $use_gpu
+</pre></div>
+</div>
+</div>
+<div class="section" id="exercise">
+<span id="exercise"></span><h2>Exercise<a class="headerlink" href="#exercise" title="Permalink to this headline">¶</a></h2>
+<p>Train a image classification of birds using VGG model and CUB-200 dataset. The birds dataset can be downloaded here. It contains an image dataset with photos of 200 bird species (mostly North American).</p>
+<p><a class="reference external" href="http://www.vision.caltech.edu/visipedia/CUB-200.html">http://www.vision.caltech.edu/visipedia/CUB-200.html</a></p>
+</div>
+<div class="section" id="delve-into-details">
+<span id="delve-into-details"></span><h2>Delve into Details<a class="headerlink" href="#delve-into-details" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="convolutional-neural-network">
+<span id="convolutional-neural-network"></span><h3>Convolutional Neural Network<a class="headerlink" href="#convolutional-neural-network" title="Permalink to this headline">¶</a></h3>
+<p>A Convolutional Neural Network is a feedforward neural network that uses convolution layers. It is very suitable for building neural networks that process and understand images. A standard convolutional neural network is shown below:</p>
+<p><img alt="Convolutional Neural Network" src="../../_images/lenet.png" /></p>
+<p>Convolutional Neural Network contains the following layers:</p>
+<ul class="simple">
+<li>Convolutional layer: It uses convolution operation to extract features from an image or a feature map.</li>
+<li>Pooling layer: It uses max-pooling to downsample feature maps.</li>
+<li>Fully Connected layer: It uses fully connected connections to transform features.</li>
+</ul>
+<p>Convolutional Neural Network achieves amazing performance for image classification because it exploits two important characteristics of images: <em>local correlation</em> and <em>spatial invariance</em>. By iteratively applying convolution and max-pooing operations, convolutional neural network can well represent these two characteristics of images.</p>
+<p>For more details of how to define layers and their connections, please refer to the documentation of layers.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Image Classification Tutorial</a><ul>
+<li><a class="reference internal" href="#data-preparation">Data Preparation</a></li>
+<li><a class="reference internal" href="#preprocess">Preprocess</a></li>
+<li><a class="reference internal" href="#model-training">Model Training</a></li>
+<li><a class="reference internal" href="#prediction">Prediction</a></li>
+<li><a class="reference internal" href="#exercise">Exercise</a></li>
+<li><a class="reference internal" href="#delve-into-details">Delve into Details</a><ul>
+<li><a class="reference internal" href="#convolutional-neural-network">Convolutional Neural Network</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Image Classification Tutorial</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../sentiment_analysis/index.html"
+                        title="next chapter">Sentiment Analasis Tutorial</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/demo/image_classification/image_classification.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../sentiment_analysis/index.html" title="Sentiment Analasis Tutorial"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Image Classification Tutorial"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Image Classification Tutorial</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

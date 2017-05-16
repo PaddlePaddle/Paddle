@@ -1,0 +1,840 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Utilities &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Utils" href="index.html" />
+    <link rel="next" title="Activations" href="../../gserver/activations/index.html" />
+    <link rel="prev" title="Utils" href="index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../gserver/activations/index.html" title="Activations"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Utils"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Utils</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="utilities">
+<h1>Utilities<a class="headerlink" href="#utilities" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="hppl-base">
+<h2>HPPL Base<a class="headerlink" href="#hppl-base" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="hl-base-h">
+<h3>hl_base.h<a class="headerlink" href="#hl-base-h" title="Permalink to this headline">¶</a></h3>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Defines</p>
+<dl class="macro">
+<dt id="c.HL_FLOAT_MAX">
+<span class="target" id="paddlehl__base_8h_1af2c0ec4bc91ab93d033fb3033ffc9e56"></span><code class="descname">HL_FLOAT_MAX</code><a class="headerlink" href="#c.HL_FLOAT_MAX" title="Permalink to this definition">¶</a></dt>
+<dd><p>HPPL data type: real (float or double)</p>
+<p>if real == float</p>
+<p>HL_FLOAT_MAX: 3.40282347e+38F</p>
+<p>HL_FLOAT_MIN: 1.17549435e-38F </p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.HL_FLOAT_MIN">
+<span class="target" id="paddlehl__base_8h_1a8ec00dc793c7e506c36369ad6d7d01e6"></span><code class="descname">HL_FLOAT_MIN</code><a class="headerlink" href="#c.HL_FLOAT_MIN" title="Permalink to this definition">¶</a></dt>
+<dd><p>if real == double</p>
+<p>HL_FLOAT_MAX: 1.7976931348623157e+308</p>
+<p>HL_FLOAT_MIN: 2.2250738585072014e-308 </p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.EXP_MAX_INPUT">
+<span class="target" id="paddlehl__base_8h_1acdfa5ecb592af041069633c09a119caa"></span><code class="descname">EXP_MAX_INPUT</code><a class="headerlink" href="#c.EXP_MAX_INPUT" title="Permalink to this definition">¶</a></dt>
+<dd><p>The maximum input value for exp, used to avoid overflow problem.</p>
+<p>Currently only used for tanh function. </p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.DIVUP">
+<span class="target" id="paddlehl__base_8h_1ae637c5ecf04d7a87be9ce233d85abae0"></span><code class="descname">DIVUP</code><span class="sig-paren">(</span>x, y<span class="sig-paren">)</span><a class="headerlink" href="#c.DIVUP" title="Permalink to this definition">¶</a></dt>
+<dd><p>DIVUP(x, y) is similar to ceil(x / y). </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>For CUDA, DIVUP will be used to specify the size of blockDim. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Typedefs</p>
+<dl class="type">
+<dt id="_CPPv211hl_matrix_s">
+<span id="hl_matrix_s"></span><span class="target" id="paddlehl__base_8h_1ad926355227fbceff68b5375318b28422"></span><em class="property">typedef </em><em class="property">struct</em> _hl_matrix_s *<code class="descname">hl_matrix_s</code><a class="headerlink" href="#_CPPv211hl_matrix_s" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv218hl_sparse_matrix_s">
+<span id="hl_sparse_matrix_s"></span><span class="target" id="paddlehl__base_8h_1a81f5002f32e0e04f66c0b06395889850"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv219_hl_sparse_matrix_s" title="_hl_sparse_matrix_s">_hl_sparse_matrix_s</a> *<code class="descname">hl_sparse_matrix_s</code><a class="headerlink" href="#_CPPv218hl_sparse_matrix_s" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Enums</p>
+<dl class="type">
+<dt id="_CPPv211hl_stream_t">
+<span id="hl_stream_t"></span><span class="target" id="paddlehl__base_8h_1abfba4d7a80aae1fa5d5192c6942ddd36"></span><em class="property">enum </em><code class="descname">hl_stream_t</code><a class="headerlink" href="#_CPPv211hl_stream_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>HPPL CUDA Stream. </p>
+<p>HPPL is an internal high performance parallel computing library for high-level neural network routines, which can support many heterogeneous compute architectures, such as GPU, FPGA, etc. <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>Each thread can use HPPL_STREAM_* after calling hl_init. HPPL_STREAM_DEFAULT is HPPL default stream. </dd>
+</dl>
+</p>
+<p><em>Values:</em></p>
+<dl class="member">
+<dt id="_CPPv219HPPL_STREAM_DEFAULT">
+<span id="HPPL_STREAM_DEFAULT"></span><span class="target" id="paddlehl__base_8h_1abfba4d7a80aae1fa5d5192c6942ddd36a9926a0bb9229fcfa74c54ecc698d60bc"></span><code class="descname">HPPL_STREAM_DEFAULT</code> = 0<a class="headerlink" href="#_CPPv219HPPL_STREAM_DEFAULT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv213HPPL_STREAM_1">
+<span id="HPPL_STREAM_1"></span><span class="target" id="paddlehl__base_8h_1abfba4d7a80aae1fa5d5192c6942ddd36af10def2af4618ae1896b164cba34dc79"></span><code class="descname">HPPL_STREAM_1</code> = 1<a class="headerlink" href="#_CPPv213HPPL_STREAM_1" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv213HPPL_STREAM_2">
+<span id="HPPL_STREAM_2"></span><span class="target" id="paddlehl__base_8h_1abfba4d7a80aae1fa5d5192c6942ddd36a478947d79df4ecd206ab751be73d3eda"></span><code class="descname">HPPL_STREAM_2</code> = 2<a class="headerlink" href="#_CPPv213HPPL_STREAM_2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv213HPPL_STREAM_3">
+<span id="HPPL_STREAM_3"></span><span class="target" id="paddlehl__base_8h_1abfba4d7a80aae1fa5d5192c6942ddd36ab491c3c8c10d4542549a3aed1aba35d9"></span><code class="descname">HPPL_STREAM_3</code> = 3<a class="headerlink" href="#_CPPv213HPPL_STREAM_3" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv213HPPL_STREAM_4">
+<span id="HPPL_STREAM_4"></span><span class="target" id="paddlehl__base_8h_1abfba4d7a80aae1fa5d5192c6942ddd36a99f562cfe8f7010d7d151642e86fd349"></span><code class="descname">HPPL_STREAM_4</code> = 4<a class="headerlink" href="#_CPPv213HPPL_STREAM_4" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv220HPPL_THREAD_STREAM_1">
+<span id="HPPL_THREAD_STREAM_1"></span><span class="target" id="paddlehl__base_8h_1abfba4d7a80aae1fa5d5192c6942ddd36a7675fc899b692b7af22a1b07ae0467c3"></span><code class="descname">HPPL_THREAD_STREAM_1</code> = 5<a class="headerlink" href="#_CPPv220HPPL_THREAD_STREAM_1" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv220HPPL_THREAD_STREAM_2">
+<span id="HPPL_THREAD_STREAM_2"></span><span class="target" id="paddlehl__base_8h_1abfba4d7a80aae1fa5d5192c6942ddd36ae1438f1560439383ec721e6e745015aa"></span><code class="descname">HPPL_THREAD_STREAM_2</code> = 6<a class="headerlink" href="#_CPPv220HPPL_THREAD_STREAM_2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv220HPPL_THREAD_STREAM_3">
+<span id="HPPL_THREAD_STREAM_3"></span><span class="target" id="paddlehl__base_8h_1abfba4d7a80aae1fa5d5192c6942ddd36af299bc53e5da7284b22688ce459b8fcd"></span><code class="descname">HPPL_THREAD_STREAM_3</code> = 7<a class="headerlink" href="#_CPPv220HPPL_THREAD_STREAM_3" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv220HPPL_THREAD_STREAM_4">
+<span id="HPPL_THREAD_STREAM_4"></span><span class="target" id="paddlehl__base_8h_1abfba4d7a80aae1fa5d5192c6942ddd36a3da7b82086c10bacd5f8c8eb47e10c75"></span><code class="descname">HPPL_THREAD_STREAM_4</code> = 8<a class="headerlink" href="#_CPPv220HPPL_THREAD_STREAM_4" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv215HPPL_STREAM_END">
+<span id="HPPL_STREAM_END"></span><span class="target" id="paddlehl__base_8h_1abfba4d7a80aae1fa5d5192c6942ddd36a8ebae13995cefba61e51cb2ac73fc509"></span><code class="descname">HPPL_STREAM_END</code><a class="headerlink" href="#_CPPv215HPPL_STREAM_END" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv220hl_activation_mode_t">
+<span id="hl_activation_mode_t"></span><span class="target" id="paddlehl__base_8h_1a53443f21c0e95f0560a71951e225af13"></span><em class="property">enum </em><code class="descname">hl_activation_mode_t</code><a class="headerlink" href="#_CPPv220hl_activation_mode_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>HPPL activation mode. </p>
+<p><em>Values:</em></p>
+<dl class="member">
+<dt id="_CPPv221HL_ACTIVATION_SIGMOID">
+<span id="HL_ACTIVATION_SIGMOID"></span><span class="target" id="paddlehl__base_8h_1a53443f21c0e95f0560a71951e225af13ada92daed3c4e74d4a6013c1342a7493e"></span><code class="descname">HL_ACTIVATION_SIGMOID</code> = 0<a class="headerlink" href="#_CPPv221HL_ACTIVATION_SIGMOID" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv218HL_ACTIVATION_RELU">
+<span id="HL_ACTIVATION_RELU"></span><span class="target" id="paddlehl__base_8h_1a53443f21c0e95f0560a71951e225af13a470c605568dfc515506acc23ebe9930c"></span><code class="descname">HL_ACTIVATION_RELU</code> = 1<a class="headerlink" href="#_CPPv218HL_ACTIVATION_RELU" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv218HL_ACTIVATION_TANH">
+<span id="HL_ACTIVATION_TANH"></span><span class="target" id="paddlehl__base_8h_1a53443f21c0e95f0560a71951e225af13a23562b3f3efe1d89bf27319ca8ee9634"></span><code class="descname">HL_ACTIVATION_TANH</code> = 2<a class="headerlink" href="#_CPPv218HL_ACTIVATION_TANH" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv220HL_ACTIVATION_LINEAR">
+<span id="HL_ACTIVATION_LINEAR"></span><span class="target" id="paddlehl__base_8h_1a53443f21c0e95f0560a71951e225af13a8446f5e166b105841e1ddf6356c6d8f9"></span><code class="descname">HL_ACTIVATION_LINEAR</code> = 3<a class="headerlink" href="#_CPPv220HL_ACTIVATION_LINEAR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv217HL_ACTIVATION_END">
+<span id="HL_ACTIVATION_END"></span><span class="target" id="paddlehl__base_8h_1a53443f21c0e95f0560a71951e225af13a5b04a4e449ee1efb011f4b0b208cae38"></span><code class="descname">HL_ACTIVATION_END</code><a class="headerlink" href="#_CPPv217HL_ACTIVATION_END" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv213hl_trans_op_t">
+<span id="hl_trans_op_t"></span><span class="target" id="paddlehl__base_8h_1acbf024a287bd3da4bff62cc116453883"></span><em class="property">enum </em><code class="descname">hl_trans_op_t</code><a class="headerlink" href="#_CPPv213hl_trans_op_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transpose type. </p>
+<p><em>Values:</em></p>
+<dl class="member">
+<dt id="_CPPv29HPPL_OP_N">
+<span id="HPPL_OP_N"></span><span class="target" id="paddlehl__base_8h_1acbf024a287bd3da4bff62cc116453883a8f43e7fe51cd11e449a9263265cb7c8b"></span><code class="descname">HPPL_OP_N</code> = 0<a class="headerlink" href="#_CPPv29HPPL_OP_N" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv29HPPL_OP_T">
+<span id="HPPL_OP_T"></span><span class="target" id="paddlehl__base_8h_1acbf024a287bd3da4bff62cc116453883ada3ff1c2f7f3dba08fd8841ccbf10829"></span><code class="descname">HPPL_OP_T</code> = 1<a class="headerlink" href="#_CPPv29HPPL_OP_T" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv211HPPL_OP_END">
+<span id="HPPL_OP_END"></span><span class="target" id="paddlehl__base_8h_1acbf024a287bd3da4bff62cc116453883a596214acf0427136e1eaa53ec97c6836"></span><code class="descname">HPPL_OP_END</code><a class="headerlink" href="#_CPPv211HPPL_OP_END" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv217hl_matrix_value_t">
+<span id="hl_matrix_value_t"></span><span class="target" id="paddlehl__base_8h_1aa31b500274de7e4adc3c925ac6db2b6e"></span><em class="property">enum </em><code class="descname">hl_matrix_value_t</code><a class="headerlink" href="#_CPPv217hl_matrix_value_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sparse matrix value type. </p>
+<p><em>Values:</em></p>
+<dl class="member">
+<dt id="_CPPv211HL_NO_VALUE">
+<span id="HL_NO_VALUE"></span><span class="target" id="paddlehl__base_8h_1aa31b500274de7e4adc3c925ac6db2b6eab8e74ddb1c7790020fc20515b5490808"></span><code class="descname">HL_NO_VALUE</code> = 0<a class="headerlink" href="#_CPPv211HL_NO_VALUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv214HL_FLOAT_VALUE">
+<span id="HL_FLOAT_VALUE"></span><span class="target" id="paddlehl__base_8h_1aa31b500274de7e4adc3c925ac6db2b6eae5e3b6ec5cebb27e8df075fc73bc2979"></span><code class="descname">HL_FLOAT_VALUE</code> = 1<a class="headerlink" href="#_CPPv214HL_FLOAT_VALUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv212HL_VALUE_END">
+<span id="HL_VALUE_END"></span><span class="target" id="paddlehl__base_8h_1aa31b500274de7e4adc3c925ac6db2b6ea12edb2282eb10adf37392a0861c62acd"></span><code class="descname">HL_VALUE_END</code><a class="headerlink" href="#_CPPv212HL_VALUE_END" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv218hl_matrix_format_t">
+<span id="hl_matrix_format_t"></span><span class="target" id="paddlehl__base_8h_1a51be59d8ca65fbb06c09fe0ed07c4bc0"></span><em class="property">enum </em><code class="descname">hl_matrix_format_t</code><a class="headerlink" href="#_CPPv218hl_matrix_format_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>HPPL matrix format. </p>
+<p><em>Values:</em></p>
+<dl class="member">
+<dt id="_CPPv213HL_SPARSE_CSR">
+<span id="HL_SPARSE_CSR"></span><span class="target" id="paddlehl__base_8h_1a51be59d8ca65fbb06c09fe0ed07c4bc0a7021d001ec03bae73ad5b2f4d3bd5322"></span><code class="descname">HL_SPARSE_CSR</code> = 0<a class="headerlink" href="#_CPPv213HL_SPARSE_CSR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv213HL_SPARSE_CSC">
+<span id="HL_SPARSE_CSC"></span><span class="target" id="paddlehl__base_8h_1a51be59d8ca65fbb06c09fe0ed07c4bc0a34f9a6f331a7c20e79c5e42d3bccb518"></span><code class="descname">HL_SPARSE_CSC</code> = 1<a class="headerlink" href="#_CPPv213HL_SPARSE_CSC" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv213HL_SPARSE_END">
+<span id="HL_SPARSE_END"></span><span class="target" id="paddlehl__base_8h_1a51be59d8ca65fbb06c09fe0ed07c4bc0a0e0ddb81af8904dcf85a99b0f1f4dac8"></span><code class="descname">HL_SPARSE_END</code><a class="headerlink" href="#_CPPv213HL_SPARSE_END" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv213hl_lstm_value">
+<span id="hl_lstm_value"></span><span class="target" id="paddlestructhl__lstm__value"></span><em class="property">struct </em><code class="descname">hl_lstm_value</code><a class="headerlink" href="#_CPPv213hl_lstm_value" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;hl_base.h&gt;</em><p>Lstm value. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">gateValue</span></code>: input value. </li>
+<li><code class="docutils literal"><span class="pre">prevStateValue</span></code>: previous state value. </li>
+<li><code class="docutils literal"><span class="pre">stateValue</span></code>: state value. </li>
+<li><code class="docutils literal"><span class="pre">stateActiveValue</span></code>: state active value. </li>
+<li><code class="docutils literal"><span class="pre">outputValue</span></code>: output value. </li>
+</ul>
+</dd>
+</dl>
+</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N13hl_lstm_value9gateValueE">
+<span id="hl_lstm_value::gateValue__realP"></span><span class="target" id="paddlestructhl__lstm__value_1a5da1a3733ca78c629bd67bd621c14047"></span>real *<code class="descname">gateValue</code><a class="headerlink" href="#_CPPv2N13hl_lstm_value9gateValueE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N13hl_lstm_value14prevStateValueE">
+<span id="hl_lstm_value::prevStateValue__realP"></span><span class="target" id="paddlestructhl__lstm__value_1a73bbcc3f33c9e9b49ed96878d5695bac"></span>real *<code class="descname">prevStateValue</code><a class="headerlink" href="#_CPPv2N13hl_lstm_value14prevStateValueE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N13hl_lstm_value10stateValueE">
+<span id="hl_lstm_value::stateValue__realP"></span><span class="target" id="paddlestructhl__lstm__value_1a2f404f4a1f6b02c7641b53ff5bec9141"></span>real *<code class="descname">stateValue</code><a class="headerlink" href="#_CPPv2N13hl_lstm_value10stateValueE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N13hl_lstm_value16stateActiveValueE">
+<span id="hl_lstm_value::stateActiveValue__realP"></span><span class="target" id="paddlestructhl__lstm__value_1a1c4069f667b3b93cc7a2cc3167a9e4c3"></span>real *<code class="descname">stateActiveValue</code><a class="headerlink" href="#_CPPv2N13hl_lstm_value16stateActiveValueE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N13hl_lstm_value11outputValueE">
+<span id="hl_lstm_value::outputValue__realP"></span><span class="target" id="paddlestructhl__lstm__value_1a933d6a273676835eebf597cd214b246f"></span>real *<code class="descname">outputValue</code><a class="headerlink" href="#_CPPv2N13hl_lstm_value11outputValueE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N13hl_lstm_value7checkIgE">
+<span id="hl_lstm_value::checkIg__realP"></span><span class="target" id="paddlestructhl__lstm__value_1aa77f541611e424e84c37ac33c52fbce5"></span>real *<code class="descname">checkIg</code><a class="headerlink" href="#_CPPv2N13hl_lstm_value7checkIgE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N13hl_lstm_value7checkFgE">
+<span id="hl_lstm_value::checkFg__realP"></span><span class="target" id="paddlestructhl__lstm__value_1ab344ff0c7e3d0eb8173b08642ff6c762"></span>real *<code class="descname">checkFg</code><a class="headerlink" href="#_CPPv2N13hl_lstm_value7checkFgE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N13hl_lstm_value7checkOgE">
+<span id="hl_lstm_value::checkOg__realP"></span><span class="target" id="paddlestructhl__lstm__value_1ac4d83eefdd4754f71573d688fbbf484e"></span>real *<code class="descname">checkOg</code><a class="headerlink" href="#_CPPv2N13hl_lstm_value7checkOgE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv212hl_lstm_grad">
+<span id="hl_lstm_grad"></span><span class="target" id="paddlestructhl__lstm__grad"></span><em class="property">struct </em><code class="descname">hl_lstm_grad</code><a class="headerlink" href="#_CPPv212hl_lstm_grad" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;hl_base.h&gt;</em><p>Lstm gradient. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">gateGrad</span></code>: input gradient. </li>
+<li><code class="docutils literal"><span class="pre">prevStateGrad</span></code>: previous state gradient. </li>
+<li><code class="docutils literal"><span class="pre">stateGrad</span></code>: state gradient. </li>
+<li><code class="docutils literal"><span class="pre">stateActiveGrad</span></code>: state active gradient. </li>
+<li><code class="docutils literal"><span class="pre">outputGrad</span></code>: output gradient. </li>
+</ul>
+</dd>
+</dl>
+</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N12hl_lstm_grad8gateGradE">
+<span id="hl_lstm_grad::gateGrad__realP"></span><span class="target" id="paddlestructhl__lstm__grad_1add2fc26a31f288d53aee4fb142824e0e"></span>real *<code class="descname">gateGrad</code><a class="headerlink" href="#_CPPv2N12hl_lstm_grad8gateGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N12hl_lstm_grad13prevStateGradE">
+<span id="hl_lstm_grad::prevStateGrad__realP"></span><span class="target" id="paddlestructhl__lstm__grad_1a5a5b67ff3aeeb5ff7adc140bd74ccef0"></span>real *<code class="descname">prevStateGrad</code><a class="headerlink" href="#_CPPv2N12hl_lstm_grad13prevStateGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N12hl_lstm_grad9stateGradE">
+<span id="hl_lstm_grad::stateGrad__realP"></span><span class="target" id="paddlestructhl__lstm__grad_1aa542ca946157374f5199fb8b1757e53f"></span>real *<code class="descname">stateGrad</code><a class="headerlink" href="#_CPPv2N12hl_lstm_grad9stateGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N12hl_lstm_grad15stateActiveGradE">
+<span id="hl_lstm_grad::stateActiveGrad__realP"></span><span class="target" id="paddlestructhl__lstm__grad_1a48dc0891e058936c4111b0dedba780b9"></span>real *<code class="descname">stateActiveGrad</code><a class="headerlink" href="#_CPPv2N12hl_lstm_grad15stateActiveGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N12hl_lstm_grad10outputGradE">
+<span id="hl_lstm_grad::outputGrad__realP"></span><span class="target" id="paddlestructhl__lstm__grad_1ae53bee8f9038733cfa26fdb87854f4f3"></span>real *<code class="descname">outputGrad</code><a class="headerlink" href="#_CPPv2N12hl_lstm_grad10outputGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N12hl_lstm_grad11checkIgGradE">
+<span id="hl_lstm_grad::checkIgGrad__realP"></span><span class="target" id="paddlestructhl__lstm__grad_1a80977f5ab75011eba67dad85e3889d06"></span>real *<code class="descname">checkIgGrad</code><a class="headerlink" href="#_CPPv2N12hl_lstm_grad11checkIgGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N12hl_lstm_grad11checkFgGradE">
+<span id="hl_lstm_grad::checkFgGrad__realP"></span><span class="target" id="paddlestructhl__lstm__grad_1acb16c537f942406288630a01d89ab8ae"></span>real *<code class="descname">checkFgGrad</code><a class="headerlink" href="#_CPPv2N12hl_lstm_grad11checkFgGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N12hl_lstm_grad11checkOgGradE">
+<span id="hl_lstm_grad::checkOgGrad__realP"></span><span class="target" id="paddlestructhl__lstm__grad_1a2e4374b014c5f6c61312090e9b028811"></span>real *<code class="descname">checkOgGrad</code><a class="headerlink" href="#_CPPv2N12hl_lstm_grad11checkOgGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv212hl_gru_value">
+<span id="hl_gru_value"></span><span class="target" id="paddlestructhl__gru__value"></span><em class="property">struct </em><code class="descname">hl_gru_value</code><a class="headerlink" href="#_CPPv212hl_gru_value" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;hl_base.h&gt;</em><p>Gru value. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">gateWeight</span></code>: gate weight (updateGate + resetGate). </li>
+<li><code class="docutils literal"><span class="pre">stateWeight</span></code>: frame state weight. </li>
+<li><code class="docutils literal"><span class="pre">gateValue</span></code>: gate value results. </li>
+<li><code class="docutils literal"><span class="pre">resetOutputValue</span></code>: resetOutput value. </li>
+<li><code class="docutils literal"><span class="pre">outputValue</span></code>: output value. </li>
+<li><code class="docutils literal"><span class="pre">prevOutValue</span></code>: previous output value. </li>
+</ul>
+</dd>
+</dl>
+</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N12hl_gru_value10gateWeightE">
+<span id="hl_gru_value::gateWeight__realP"></span><span class="target" id="paddlestructhl__gru__value_1a730dc2a39407395a92187d442294225a"></span>real *<code class="descname">gateWeight</code><a class="headerlink" href="#_CPPv2N12hl_gru_value10gateWeightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N12hl_gru_value11stateWeightE">
+<span id="hl_gru_value::stateWeight__realP"></span><span class="target" id="paddlestructhl__gru__value_1ad730244aba4da5cdea532d64765c934f"></span>real *<code class="descname">stateWeight</code><a class="headerlink" href="#_CPPv2N12hl_gru_value11stateWeightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N12hl_gru_value9gateValueE">
+<span id="hl_gru_value::gateValue__realP"></span><span class="target" id="paddlestructhl__gru__value_1af8788ebbe27a8241a65a674a6c400da2"></span>real *<code class="descname">gateValue</code><a class="headerlink" href="#_CPPv2N12hl_gru_value9gateValueE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N12hl_gru_value16resetOutputValueE">
+<span id="hl_gru_value::resetOutputValue__realP"></span><span class="target" id="paddlestructhl__gru__value_1aea5573f13d565f6eca411ea7ace2e2e6"></span>real *<code class="descname">resetOutputValue</code><a class="headerlink" href="#_CPPv2N12hl_gru_value16resetOutputValueE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N12hl_gru_value11outputValueE">
+<span id="hl_gru_value::outputValue__realP"></span><span class="target" id="paddlestructhl__gru__value_1aea80719fa9db36ca34aab620d13f2e3a"></span>real *<code class="descname">outputValue</code><a class="headerlink" href="#_CPPv2N12hl_gru_value11outputValueE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N12hl_gru_value12prevOutValueE">
+<span id="hl_gru_value::prevOutValue__realP"></span><span class="target" id="paddlestructhl__gru__value_1ae6028fb9b6d79b88c5cd873eff74a1a9"></span>real *<code class="descname">prevOutValue</code><a class="headerlink" href="#_CPPv2N12hl_gru_value12prevOutValueE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv211hl_gru_grad">
+<span id="hl_gru_grad"></span><span class="target" id="paddlestructhl__gru__grad"></span><em class="property">struct </em><code class="descname">hl_gru_grad</code><a class="headerlink" href="#_CPPv211hl_gru_grad" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;hl_base.h&gt;</em><p>Gru gradient. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">gateWeightGrad</span></code>: gate weight gradient. </li>
+<li><code class="docutils literal"><span class="pre">stateWeightGrad</span></code>: frame state weight gradient. </li>
+<li><code class="docutils literal"><span class="pre">gateGrad</span></code>: gate gradient results. </li>
+<li><code class="docutils literal"><span class="pre">resetOutputGrad</span></code>: resetOutput gradient. </li>
+<li><code class="docutils literal"><span class="pre">outputGrad</span></code>: output gradient. </li>
+<li><code class="docutils literal"><span class="pre">prevOutGrad</span></code>: previous output gradient. </li>
+</ul>
+</dd>
+</dl>
+</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N11hl_gru_grad14gateWeightGradE">
+<span id="hl_gru_grad::gateWeightGrad__realP"></span><span class="target" id="paddlestructhl__gru__grad_1ad030fa16207a82ee7478d29ac6b9e0f0"></span>real *<code class="descname">gateWeightGrad</code><a class="headerlink" href="#_CPPv2N11hl_gru_grad14gateWeightGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N11hl_gru_grad15stateWeightGradE">
+<span id="hl_gru_grad::stateWeightGrad__realP"></span><span class="target" id="paddlestructhl__gru__grad_1a942eb470baca2af9668dfa0d64f37c15"></span>real *<code class="descname">stateWeightGrad</code><a class="headerlink" href="#_CPPv2N11hl_gru_grad15stateWeightGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N11hl_gru_grad8gateGradE">
+<span id="hl_gru_grad::gateGrad__realP"></span><span class="target" id="paddlestructhl__gru__grad_1a2878d1f0dafcd5897f4906ec21ca71e5"></span>real *<code class="descname">gateGrad</code><a class="headerlink" href="#_CPPv2N11hl_gru_grad8gateGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N11hl_gru_grad15resetOutputGradE">
+<span id="hl_gru_grad::resetOutputGrad__realP"></span><span class="target" id="paddlestructhl__gru__grad_1a89a413cfe06b70314fefe4c5d0a46470"></span>real *<code class="descname">resetOutputGrad</code><a class="headerlink" href="#_CPPv2N11hl_gru_grad15resetOutputGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N11hl_gru_grad10outputGradE">
+<span id="hl_gru_grad::outputGrad__realP"></span><span class="target" id="paddlestructhl__gru__grad_1aa03c9746c8eccf9cb36fa07fe6fb84d2"></span>real *<code class="descname">outputGrad</code><a class="headerlink" href="#_CPPv2N11hl_gru_grad10outputGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N11hl_gru_grad11prevOutGradE">
+<span id="hl_gru_grad::prevOutGrad__realP"></span><span class="target" id="paddlestructhl__gru__grad_1a724f9abd849b2de8afb99c5bb16859dd"></span>real *<code class="descname">prevOutGrad</code><a class="headerlink" href="#_CPPv2N11hl_gru_grad11prevOutGradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv219_hl_sparse_matrix_s">
+<span id="_hl_sparse_matrix_s"></span><span class="target" id="paddlestruct__hl__sparse__matrix__s"></span><em class="property">struct </em><code class="descname">_hl_sparse_matrix_s</code><a class="headerlink" href="#_CPPv219_hl_sparse_matrix_s" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;hl_base.h&gt;</em><p>HPPL sparse matrix. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">matrix</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">format</span></code>: matrix format. </li>
+<li><code class="docutils literal"><span class="pre">type</span></code>: the type of matrix values. </li>
+<li><code class="docutils literal"><span class="pre">rows</span></code>: matrix rows. </li>
+<li><code class="docutils literal"><span class="pre">cols</span></code>: matrix columns. </li>
+<li><code class="docutils literal"><span class="pre">nnz</span></code>: nonzero values of sparse matrix. </li>
+</ul>
+</dd>
+</dl>
+</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N19_hl_sparse_matrix_s6matrixE">
+<span id="_hl_sparse_matrix_s::matrix__hl_matrix_s"></span><span class="target" id="paddlestruct__hl__sparse__matrix__s_1a3e818263df8f0950a950a2d2ceab2d2a"></span><a class="reference internal" href="#_CPPv211hl_matrix_s" title="hl_matrix_s">hl_matrix_s</a> <code class="descname">matrix</code><a class="headerlink" href="#_CPPv2N19_hl_sparse_matrix_s6matrixE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_sparse_matrix_s6formatE">
+<span id="_hl_sparse_matrix_s::format__hl_matrix_format_t"></span><span class="target" id="paddlestruct__hl__sparse__matrix__s_1a99fa3033f368797ac05e77667ba15886"></span><a class="reference internal" href="#_CPPv218hl_matrix_format_t" title="hl_matrix_format_t">hl_matrix_format_t</a> <code class="descname">format</code><a class="headerlink" href="#_CPPv2N19_hl_sparse_matrix_s6formatE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_sparse_matrix_s4typeE">
+<span id="_hl_sparse_matrix_s::type__hl_matrix_value_t"></span><span class="target" id="paddlestruct__hl__sparse__matrix__s_1a240e190ff634bedc36588b028ae638d2"></span><a class="reference internal" href="#_CPPv217hl_matrix_value_t" title="hl_matrix_value_t">hl_matrix_value_t</a> <code class="descname">type</code><a class="headerlink" href="#_CPPv2N19_hl_sparse_matrix_s4typeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_sparse_matrix_s4rowsE">
+<span id="_hl_sparse_matrix_s::rows__i"></span><span class="target" id="paddlestruct__hl__sparse__matrix__s_1aa382ad565ae94f0b84da1357b73b14d8"></span>int <code class="descname">rows</code><a class="headerlink" href="#_CPPv2N19_hl_sparse_matrix_s4rowsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_sparse_matrix_s4colsE">
+<span id="_hl_sparse_matrix_s::cols__i"></span><span class="target" id="paddlestruct__hl__sparse__matrix__s_1a43ca1ab681cbf083dbffd28c5f092e08"></span>int <code class="descname">cols</code><a class="headerlink" href="#_CPPv2N19_hl_sparse_matrix_s4colsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_sparse_matrix_s3nnzE">
+<span id="_hl_sparse_matrix_s::nnz__s"></span><span class="target" id="paddlestruct__hl__sparse__matrix__s_1aa38acdb287f375a949caa8ec9a1f8fe9"></span>size_t <code class="descname">nnz</code><a class="headerlink" href="#_CPPv2N19_hl_sparse_matrix_s3nnzE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="timer">
+<h2>Timer<a class="headerlink" href="#timer" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="hl-time-h">
+<h3>hl_time.h<a class="headerlink" href="#hl-time-h" title="Permalink to this headline">¶</a></h3>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv219getCurrentTimeStickv">
+<span id="getCurrentTimeStick__void"></span><span class="target" id="paddlehl__time_8h_1ab447a7f7f8c6d8d9d41bba74ddc35bea"></span>int64_t <code class="descname">getCurrentTimeStick</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219getCurrentTimeStickv" title="Permalink to this definition">¶</a></dt>
+<dd><p>High resolution timer. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>int64_t the representation value of the object as a count of periods, which are not necessarily seconds.</dd>
+<dt><strong>Note</strong></dt>
+<dd>It is used to generate random perturbation parameters. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</div>
+</div>
+<div class="section" id="thread-resource">
+<h2>Thread Resource<a class="headerlink" href="#thread-resource" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="hl-thread-ph">
+<h3>hl_thread.ph<a class="headerlink" href="#hl-thread-ph" title="Permalink to this headline">¶</a></h3>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Defines</p>
+<dl class="macro">
+<dt id="c.HL_THREAD_PH_">
+<span class="target" id="paddlehl__thread_8ph_1a8135369d2b3c89edd811ba0a8803b61a"></span><code class="descname">HL_THREAD_PH_</code><a class="headerlink" href="#c.HL_THREAD_PH_" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Typedefs</p>
+<dl class="type">
+<dt id="_CPPv218hl_thread_resource">
+<span id="hl_thread_resource"></span><span class="target" id="paddlehl__thread_8ph_1acc8b7fa9703382260a0050593e5718e0"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv219_hl_thread_resource" title="_hl_thread_resource">_hl_thread_resource</a> *<code class="descname">hl_thread_resource</code><a class="headerlink" href="#_CPPv218hl_thread_resource" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv213hl_cudnn_initP13cudnnHandle_t12cudaStream_t">
+<span id="hl_cudnn_init__cudnnHandle_tP.cudaStream_t"></span><span class="target" id="paddlehl__thread_8ph_1ace7cbc335b3d90b295aacf73688e503d"></span>void <code class="descname">hl_cudnn_init</code><span class="sig-paren">(</span>cudnnHandle_t *<em>cudnn_handle</em>, cudaStream_t <em>stream</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv213hl_cudnn_initP13cudnnHandle_t12cudaStream_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize cudnn. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">cudnn_handle</span></code>: Cudnn handle. </li>
+<li><code class="docutils literal"><span class="pre">stream</span></code>: Cudnn stream. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv214hl_cublas_initP14cublasHandle_t12cudaStream_t">
+<span id="hl_cublas_init__cublasHandle_tP.cudaStream_t"></span><span class="target" id="paddlehl__thread_8ph_1ab6ee693cba0443e435f341d222f3e5b2"></span>void <code class="descname">hl_cublas_init</code><span class="sig-paren">(</span>cublasHandle_t *<em>cublas_handle</em>, cudaStream_t <em>stream</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv214hl_cublas_initP14cublasHandle_t12cudaStream_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize cublas. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">cublas_handle</span></code>: Cublas handle. </li>
+<li><code class="docutils literal"><span class="pre">stream</span></code>: Cuda stream. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv218hl_cudnn_desc_initP23cudnnTensorDescriptor_t">
+<span id="hl_cudnn_desc_init__cudnnTensorDescriptor_tP"></span><span class="target" id="paddlehl__thread_8ph_1aa4ef8db77d30effcc7a02ee181001438"></span>void <code class="descname">hl_cudnn_desc_init</code><span class="sig-paren">(</span>cudnnTensorDescriptor_t *<em>cudnn_desc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218hl_cudnn_desc_initP23cudnnTensorDescriptor_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize cudnn tensor descriptor. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">cudnn_desc</span></code>: Cudnn tensor descriptor. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Variables</p>
+<dl class="member">
+<dt>
+<span class="target" id="paddlehl__thread_8ph_1a1e2209c7d024f0ab59b8a00e26e518a4"></span><code class="descname">__thread _hl_thread_resource t_resource</code></dt>
+<dd><p>thread resource. </p>
+</dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv219_hl_thread_resource">
+<span id="_hl_thread_resource"></span><span class="target" id="paddlestruct__hl__thread__resource"></span><em class="property">struct </em><code class="descname">_hl_thread_resource</code><a class="headerlink" href="#_CPPv219_hl_thread_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Thread resource structure. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">stream[HPPL_STREAM_END]</span></code>: Stream for thread. </li>
+<li><code class="docutils literal"><span class="pre">handle</span></code>: Cublas Handle. </li>
+<li><code class="docutils literal"><span class="pre">gen</span></code>: Curand Generator. </li>
+<li><code class="docutils literal"><span class="pre">cudnn_handle</span></code>: Cudnn handle. </li>
+<li><code class="docutils literal"><span class="pre">cudnn_desc</span></code>: Cudnn image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">*gen_mutex</span></code>: Gen lock. </li>
+<li><code class="docutils literal"><span class="pre">*gpu_mem</span></code>: HPPL GPU Memory. </li>
+<li><code class="docutils literal"><span class="pre">*cpu_mem</span></code>: HPPL CPU Memory. </li>
+<li><code class="docutils literal"><span class="pre">event</span></code>: gpu_mem event. </li>
+<li><code class="docutils literal"><span class="pre">device</span></code>: Thread device context. </li>
+<li><code class="docutils literal"><span class="pre">major</span></code>: Compute capability. </li>
+<li><code class="docutils literal"><span class="pre">is_init</span></code>: Thread init or not. </li>
+</ul>
+</dd>
+</dl>
+</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource6streamE">
+<span id="_hl_thread_resource::stream__cudaStream_tA"></span><span class="target" id="paddlestruct__hl__thread__resource_1a95a6c3e8343b483b7caf736c1dc826db"></span>cudaStream_t <code class="descname">stream</code>[HPPL_STREAM_END]<a class="headerlink" href="#_CPPv2N19_hl_thread_resource6streamE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource6handleE">
+<span id="_hl_thread_resource::handle__cublasHandle_t"></span><span class="target" id="paddlestruct__hl__thread__resource_1abf8160b9ad45bcaae5ee6ffd7cce9e8a"></span>cublasHandle_t <code class="descname">handle</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource6handleE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource3genE">
+<span id="_hl_thread_resource::gen__curandGenerator_t"></span><span class="target" id="paddlestruct__hl__thread__resource_1a7f8f1b12e292b0b9a3bb50c9e3d63ee4"></span>curandGenerator_t <code class="descname">gen</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource3genE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource12cudnn_handleE">
+<span id="_hl_thread_resource::cudnn_handle__cudnnHandle_t"></span><span class="target" id="paddlestruct__hl__thread__resource_1ac44cd6d4ed2f5c0e0fbda3741accda31"></span>cudnnHandle_t <code class="descname">cudnn_handle</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource12cudnn_handleE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource10cudnn_descE">
+<span id="_hl_thread_resource::cudnn_desc__cudnnTensorDescriptor_t"></span><span class="target" id="paddlestruct__hl__thread__resource_1a1092b26e6ce754f2a1e4890185141a4d"></span>cudnnTensorDescriptor_t <code class="descname">cudnn_desc</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource10cudnn_descE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource9gen_mutexE">
+<span id="_hl_thread_resource::gen_mutex__pthread_mutex_tP"></span><span class="target" id="paddlestruct__hl__thread__resource_1acfb4edfc27ea3bf3d4718d07f990b86d"></span>pthread_mutex_t *<code class="descname">gen_mutex</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource9gen_mutexE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource7gpu_memE">
+<span id="_hl_thread_resource::gpu_mem__realP"></span><span class="target" id="paddlestruct__hl__thread__resource_1a43cb1847444dd5417809e7818de202bc"></span>real *<code class="descname">gpu_mem</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource7gpu_memE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource7cpu_memE">
+<span id="_hl_thread_resource::cpu_mem__realP"></span><span class="target" id="paddlestruct__hl__thread__resource_1a4c6431877c05c7579843fbf0166d3691"></span>real *<code class="descname">cpu_mem</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource7cpu_memE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource5eventE">
+<span id="_hl_thread_resource::event__cudaEvent_t"></span><span class="target" id="paddlestruct__hl__thread__resource_1a8f425ef27b458ee79ba1024bb337481b"></span>cudaEvent_t <code class="descname">event</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource5eventE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource6deviceE">
+<span id="_hl_thread_resource::device__i"></span><span class="target" id="paddlestruct__hl__thread__resource_1a428c54baa3ebd53c9d3163978007f369"></span>int <code class="descname">device</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource6deviceE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource5majorE">
+<span id="_hl_thread_resource::major__i"></span><span class="target" id="paddlestruct__hl__thread__resource_1ad6cb28493f55db83ea03141ed35aa8e7"></span>int <code class="descname">major</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource5majorE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource7is_initE">
+<span id="_hl_thread_resource::is_init__b"></span><span class="target" id="paddlestruct__hl__thread__resource_1a0a88327b2fe51bdf2c3bdb07b081181e"></span>bool <code class="descname">is_init</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource7is_initE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Utilities</a><ul>
+<li><a class="reference internal" href="#hppl-base">HPPL Base</a><ul>
+<li><a class="reference internal" href="#hl-base-h">hl_base.h</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#timer">Timer</a><ul>
+<li><a class="reference internal" href="#hl-time-h">hl_time.h</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#thread-resource">Thread Resource</a><ul>
+<li><a class="reference internal" href="#hl-thread-ph">hl_thread.ph</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Utils</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../../gserver/activations/index.html"
+                        title="next chapter">Activations</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/source/cuda/utils/utils.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../gserver/activations/index.html" title="Activations"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Utils"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Utils</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

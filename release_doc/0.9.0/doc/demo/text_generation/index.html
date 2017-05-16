@@ -1,0 +1,164 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Text Generation Tutorial &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="Examples and demos" href="../index.html" />
+    <link rel="next" title="Text generation Tutorial" href="text_generation.html" />
+    <link rel="prev" title="Sentiment Analysis Tutorial" href="../sentiment_analysis/sentiment_analysis.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="text_generation.html" title="Text generation Tutorial"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../sentiment_analysis/sentiment_analysis.html" title="Sentiment Analysis Tutorial"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Examples and demos</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="text-generation-tutorial">
+<h1>Text Generation Tutorial<a class="headerlink" href="#text-generation-tutorial" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="text_generation.html">Training Locally</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="text_generation.html#data-preparation">Data Preparation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="text_generation.html#download-and-extract">Download and Extract</a></li>
+<li class="toctree-l3"><a class="reference internal" href="text_generation.html#user-defined-dataset">User Defined Dataset</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="text_generation.html#data-preprocess">Data Preprocess</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="text_generation.html#preprocessing-workflow">Preprocessing Workflow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="text_generation.html#preprocessing-command-and-result">Preprocessing Command and Result</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="text_generation.html#model-training">Model Training</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="text_generation.html#introduction">Introduction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="text_generation.html#training-model-in-paddlepaddle">Training Model in PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="text_generation.html#training-command-and-result">Training Command and Result</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="text_generation.html#text-generation">Text Generation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="text_generation.html#introduction">Introduction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="text_generation.html#pretrained-model">Pretrained model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="text_generation.html#generating-model-in-paddlepaddle">Generating Model in PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="text_generation.html#generating-command-and-result">Generating Command and Result</a></li>
+<li class="toctree-l3"><a class="reference internal" href="text_generation.html#bleu-evalutaion">Bleu Evalutaion</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../sentiment_analysis/sentiment_analysis.html"
+                        title="previous chapter">Sentiment Analysis Tutorial</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="text_generation.html"
+                        title="next chapter">Text generation Tutorial</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/demo/text_generation/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="text_generation.html" title="Text generation Tutorial"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../sentiment_analysis/sentiment_analysis.html" title="Sentiment Analysis Tutorial"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

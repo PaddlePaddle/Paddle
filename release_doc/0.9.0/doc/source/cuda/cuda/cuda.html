@@ -1,0 +1,1831 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Cuda &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="CUDA" href="index.html" />
+    <link rel="next" title="Matrix" href="../matrix/index.html" />
+    <link rel="prev" title="CUDA" href="index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../matrix/index.html" title="Matrix"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="CUDA"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">CUDA</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="cuda">
+<h1>Cuda<a class="headerlink" href="#cuda" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="dynamic-link-libs">
+<h2>Dynamic Link Libs<a class="headerlink" href="#dynamic-link-libs" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="hl-dso-loader-h">
+<h3>hl_dso_loader.h<a class="headerlink" href="#hl-dso-loader-h" title="Permalink to this headline">¶</a></h3>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv218GetCublasDsoHandlePPv">
+<span id="GetCublasDsoHandle__voidPP"></span><span class="target" id="paddlehl__dso__loader_8h_1a94993e62d3e03f21c32df5e10a5fd0ba"></span>void <code class="descname">GetCublasDsoHandle</code><span class="sig-paren">(</span>void **<em>dso_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218GetCublasDsoHandlePPv" title="Permalink to this definition">¶</a></dt>
+<dd><p>load the DSO of CUBLAS </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">**dso_handle</span></code>: dso handler </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv217GetCudnnDsoHandlePPv">
+<span id="GetCudnnDsoHandle__voidPP"></span><span class="target" id="paddlehl__dso__loader_8h_1a16f946702a4c4286b4c21d7f188d3c09"></span>void <code class="descname">GetCudnnDsoHandle</code><span class="sig-paren">(</span>void **<em>dso_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv217GetCudnnDsoHandlePPv" title="Permalink to this definition">¶</a></dt>
+<dd><p>load the DSO of CUDNN </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">**dso_handle</span></code>: dso handler </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv218GetCudartDsoHandlePPv">
+<span id="GetCudartDsoHandle__voidPP"></span><span class="target" id="paddlehl__dso__loader_8h_1a9ec14f071aa899c32072da2f0f69f59d"></span>void <code class="descname">GetCudartDsoHandle</code><span class="sig-paren">(</span>void **<em>dso_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218GetCudartDsoHandlePPv" title="Permalink to this definition">¶</a></dt>
+<dd><p>load the DSO of CUDA Run Time </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">**dso_handle</span></code>: dso handler </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv218GetCurandDsoHandlePPv">
+<span id="GetCurandDsoHandle__voidPP"></span><span class="target" id="paddlehl__dso__loader_8h_1a7afcd74a88467c4f6dd5b9c19bb648fd"></span>void <code class="descname">GetCurandDsoHandle</code><span class="sig-paren">(</span>void **<em>dso_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218GetCurandDsoHandlePPv" title="Permalink to this definition">¶</a></dt>
+<dd><p>load the DSO of CURAND </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">**dso_handle</span></code>: dso handler </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</div>
+</div>
+<div class="section" id="gpu-resources">
+<h2>GPU Resources<a class="headerlink" href="#gpu-resources" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="hl-cuda-ph">
+<h3>hl_cuda.ph<a class="headerlink" href="#hl-cuda-ph" title="Permalink to this headline">¶</a></h3>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Defines</p>
+<dl class="macro">
+<dt id="c.HL_CUDA_PH_">
+<span class="target" id="paddlehl__cuda_8ph_1ab9113fecc49bd70882bbbb6478381253"></span><code class="descname">HL_CUDA_PH_</code><a class="headerlink" href="#c.HL_CUDA_PH_" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Typedefs</p>
+<dl class="type">
+<dt id="_CPPv223global_device_resources">
+<span id="global_device_resources"></span><span class="target" id="paddlehl__cuda_8ph_1acd58697e55a96ced8da0252c5a6884a6"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv224_global_device_resources" title="_global_device_resources">_global_device_resources</a> *<code class="descname">global_device_resources</code><a class="headerlink" href="#_CPPv223global_device_resources" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv223thread_device_resources">
+<span id="thread_device_resources"></span><span class="target" id="paddlehl__cuda_8ph_1a95caa4662f824a6764e2ce970255ee3e"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv224_thread_device_resources" title="_thread_device_resources">_thread_device_resources</a> *<code class="descname">thread_device_resources</code><a class="headerlink" href="#_CPPv223thread_device_resources" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv214hl_device_prop">
+<span id="hl_device_prop"></span><span class="target" id="paddlehl__cuda_8ph_1aa827d4daf2dfe66f8c7a7b7ea567a196"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv215_hl_device_prop" title="_hl_device_prop">_hl_device_prop</a> *<code class="descname">hl_device_prop</code><a class="headerlink" href="#_CPPv214hl_device_prop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv226hl_create_thread_resourcesi23thread_device_resources">
+<span id="hl_create_thread_resources__i.thread_device_resources"></span><span class="target" id="paddlehl__cuda_8ph_1a97fb5d83c1ad727771f4941e7ac75869"></span>void <code class="descname">hl_create_thread_resources</code><span class="sig-paren">(</span>int <em>device</em>, <a class="reference internal" href="#_CPPv223thread_device_resources" title="thread_device_resources">thread_device_resources</a> <em>device_res</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv226hl_create_thread_resourcesi23thread_device_resources" title="Permalink to this definition">¶</a></dt>
+<dd><p>thread device resource allocation. </p>
+<p>create cuda stream and cuda event, allocate gpu memory and host page-lock memory for threads.</p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">device</span></code>: device number. </li>
+<li><code class="docutils literal"><span class="pre">device_res</span></code>: device properties. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv226hl_create_global_resources14hl_device_prop">
+<span id="hl_create_global_resources__hl_device_prop"></span><span class="target" id="paddlehl__cuda_8ph_1adc525db9497d94d6b2bcc14cdd4ffd3f"></span>void <code class="descname">hl_create_global_resources</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv214hl_device_prop" title="hl_device_prop">hl_device_prop</a> <em>device_prop</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv226hl_create_global_resources14hl_device_prop" title="Permalink to this definition">¶</a></dt>
+<dd><p>global device resource allocation. </p>
+<p>create cuda stream, initialize cublas, curand and cudnn.</p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">device_prop</span></code>: device properties. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv212_hl_event_st">
+<span id="_hl_event_st"></span><span class="target" id="paddlestruct__hl__event__st"></span><em class="property">struct </em><code class="descname">_hl_event_st</code><a class="headerlink" href="#_CPPv212_hl_event_st" title="Permalink to this definition">¶</a></dt>
+<dd><p>hppl event. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">cuda</span></code>: event. </li>
+</ul>
+</dd>
+</dl>
+</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N12_hl_event_st8cu_eventE">
+<span id="_hl_event_st::cu_event__cudaEvent_t"></span><span class="target" id="paddlestruct__hl__event__st_1a7b4a06d4c5bd36fe392e6fe08fd461f3"></span>cudaEvent_t <code class="descname">cu_event</code><a class="headerlink" href="#_CPPv2N12_hl_event_st8cu_eventE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv224_global_device_resources">
+<span id="_global_device_resources"></span><span class="target" id="paddlestruct__global__device__resources"></span><em class="property">struct </em><code class="descname">_global_device_resources</code><a class="headerlink" href="#_CPPv224_global_device_resources" title="Permalink to this definition">¶</a></dt>
+<dd><p>global device resources. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">*stream</span></code>: device global stream. </li>
+<li><code class="docutils literal"><span class="pre">handle</span></code>: devcie cublas handle. </li>
+<li><code class="docutils literal"><span class="pre">gen</span></code>: device curand generator. </li>
+<li><code class="docutils literal"><span class="pre">cudnn_handle</span></code>: cudnn handle. </li>
+<li><code class="docutils literal"><span class="pre">*gen_mutex</span></code>: gen lock. </li>
+</ul>
+</dd>
+</dl>
+</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N24_global_device_resources6streamE">
+<span id="_global_device_resources::stream__cudaStream_tP"></span><span class="target" id="paddlestruct__global__device__resources_1a58e5b4e1d528664e6e950c2419f9da48"></span>cudaStream_t *<code class="descname">stream</code><a class="headerlink" href="#_CPPv2N24_global_device_resources6streamE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_global_device_resources6handleE">
+<span id="_global_device_resources::handle__cublasHandle_t"></span><span class="target" id="paddlestruct__global__device__resources_1ae875afe02169ebc8db855729cc9cd725"></span>cublasHandle_t <code class="descname">handle</code><a class="headerlink" href="#_CPPv2N24_global_device_resources6handleE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_global_device_resources3genE">
+<span id="_global_device_resources::gen__curandGenerator_t"></span><span class="target" id="paddlestruct__global__device__resources_1a3452656c163b5b1464760aa790614f6a"></span>curandGenerator_t <code class="descname">gen</code><a class="headerlink" href="#_CPPv2N24_global_device_resources3genE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_global_device_resources12cudnn_handleE">
+<span id="_global_device_resources::cudnn_handle__cudnnHandle_t"></span><span class="target" id="paddlestruct__global__device__resources_1a5ae725d1d276bbfa600e1ffeaf3ed48d"></span>cudnnHandle_t <code class="descname">cudnn_handle</code><a class="headerlink" href="#_CPPv2N24_global_device_resources12cudnn_handleE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_global_device_resources9gen_mutexE">
+<span id="_global_device_resources::gen_mutex__pthread_mutex_tP"></span><span class="target" id="paddlestruct__global__device__resources_1aecf8a0607a1670407bb349b504377843"></span>pthread_mutex_t *<code class="descname">gen_mutex</code><a class="headerlink" href="#_CPPv2N24_global_device_resources9gen_mutexE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv224_thread_device_resources">
+<span id="_thread_device_resources"></span><span class="target" id="paddlestruct__thread__device__resources"></span><em class="property">struct </em><code class="descname">_thread_device_resources</code><a class="headerlink" href="#_CPPv224_thread_device_resources" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N24_thread_device_resources6streamE">
+<span id="_thread_device_resources::stream__cudaStream_tP"></span><span class="target" id="paddlestruct__thread__device__resources_1a01eb8e8192db1d0d2b0b084e1c8dd47f"></span>cudaStream_t *<code class="descname">stream</code><a class="headerlink" href="#_CPPv2N24_thread_device_resources6streamE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_thread_device_resources7gpu_memE">
+<span id="_thread_device_resources::gpu_mem__realP"></span><span class="target" id="paddlestruct__thread__device__resources_1a0a8d7af9306a50996c26f4df22ee0968"></span>real *<code class="descname">gpu_mem</code><a class="headerlink" href="#_CPPv2N24_thread_device_resources7gpu_memE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_thread_device_resources7cpu_memE">
+<span id="_thread_device_resources::cpu_mem__realP"></span><span class="target" id="paddlestruct__thread__device__resources_1a89b759c163d25238379a5dd973c72b30"></span>real *<code class="descname">cpu_mem</code><a class="headerlink" href="#_CPPv2N24_thread_device_resources7cpu_memE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_thread_device_resources9mem_eventE">
+<span id="_thread_device_resources::mem_event__cudaEvent_t"></span><span class="target" id="paddlestruct__thread__device__resources_1a51aabd8937bd2c0507e0b8eef55f1711"></span>cudaEvent_t <code class="descname">mem_event</code><a class="headerlink" href="#_CPPv2N24_thread_device_resources9mem_eventE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv215_hl_device_prop">
+<span id="_hl_device_prop"></span><span class="target" id="paddlestruct__hl__device__prop"></span><em class="property">struct </em><code class="descname">_hl_device_prop</code><a class="headerlink" href="#_CPPv215_hl_device_prop" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop6deviceE">
+<span id="_hl_device_prop::device__i"></span><span class="target" id="paddlestruct__hl__device__prop_1a2fd3eb125032d77dd0d051fc61cc508e"></span>int <code class="descname">device</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop6deviceE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop11device_typeE">
+<span id="_hl_device_prop::device_type__i"></span><span class="target" id="paddlestruct__hl__device__prop_1a095711453d6d00375e825e3a412f09b1"></span>int <code class="descname">device_type</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop11device_typeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop11device_nameE">
+<span id="_hl_device_prop::device_name__cA"></span><span class="target" id="paddlestruct__hl__device__prop_1af1f1486578aa13303a9fd467a815959f"></span>char <code class="descname">device_name</code>[256]<a class="headerlink" href="#_CPPv2N15_hl_device_prop11device_nameE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop10device_memE">
+<span id="_hl_device_prop::device_mem__s"></span><span class="target" id="paddlestruct__hl__device__prop_1a6861e80dd85370370203a975b949a84e"></span>size_t <code class="descname">device_mem</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop10device_memE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop5majorE">
+<span id="_hl_device_prop::major__i"></span><span class="target" id="paddlestruct__hl__device__prop_1a253d35c030e45aa440aacb0f47bb161e"></span>int <code class="descname">major</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop5majorE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop5minorE">
+<span id="_hl_device_prop::minor__i"></span><span class="target" id="paddlestruct__hl__device__prop_1a86ec1f025e9d53cc58a99d6d7b6986e6"></span>int <code class="descname">minor</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop5minorE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop8is_localE">
+<span id="_hl_device_prop::is_local__b"></span><span class="target" id="paddlestruct__hl__device__prop_1a65427da7c88dd42a45add36e5bb36ed9"></span>bool <code class="descname">is_local</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop8is_localE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop16device_resourcesE">
+<span id="_hl_device_prop::device_resources__global_device_resources"></span><span class="target" id="paddlestruct__hl__device__prop_1a6fcf40e5bd6ccaa80b654bb69336d8f8"></span><a class="reference internal" href="#_CPPv223global_device_resources" title="global_device_resources">global_device_resources</a> <code class="descname">device_resources</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop16device_resourcesE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="hl-cuda-h">
+<h3>hl_cuda.h<a class="headerlink" href="#hl-cuda-h" title="Permalink to this headline">¶</a></h3>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Typedefs</p>
+<dl class="type">
+<dt id="_CPPv210hl_event_t">
+<span id="hl_event_t"></span><span class="target" id="paddlehl__cuda_8h_1a715cad0fd0a065d74069fe27e3e08059"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv212_hl_event_st" title="_hl_event_st">_hl_event_st</a> *<code class="descname">hl_event_t</code><a class="headerlink" href="#_CPPv210hl_event_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>HPPL event. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv223hl_get_cuda_lib_versionv">
+<span id="hl_get_cuda_lib_version"></span><span class="target" id="paddlehl__cuda_8h_1acd232a9b3ca6e5bc1fbdcf69b54033a5"></span>int <code class="descname">hl_get_cuda_lib_version</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv223hl_get_cuda_lib_versionv" title="Permalink to this definition">¶</a></dt>
+<dd><p>return cuda runtime api version. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv28hl_startv">
+<span id="hl_start"></span><span class="target" id="paddlehl__cuda_8h_1af1f21ebf0f1ad9860b4355e01ef92c38"></span>void <code class="descname">hl_start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv28hl_startv" title="Permalink to this definition">¶</a></dt>
+<dd><p>HPPL strat(Initialize all GPU). </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv224hl_specify_devices_startPii">
+<span id="hl_specify_devices_start__iP.i"></span><span class="target" id="paddlehl__cuda_8h_1a8e586332dd039872bf897399baa62d71"></span>void <code class="descname">hl_specify_devices_start</code><span class="sig-paren">(</span>int *<em>device</em>, int <em>number</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv224hl_specify_devices_startPii" title="Permalink to this definition">¶</a></dt>
+<dd><p>HPPL start(Initialize the specific GPU). </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">device</span></code>: device id(0, 1......). if device is NULL, will start all GPU. </li>
+<li><code class="docutils literal"><span class="pre">number</span></code>: number of devices. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv225hl_device_can_access_peerii">
+<span id="hl_device_can_access_peer__i.i"></span><span class="target" id="paddlehl__cuda_8h_1a8350de8820306618c33be86f6d15fb15"></span>bool <code class="descname">hl_device_can_access_peer</code><span class="sig-paren">(</span>int <em>device</em>, int <em>peerDevice</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv225hl_device_can_access_peerii" title="Permalink to this definition">¶</a></dt>
+<dd><p>Queries if a device may directly access a peer device&#8217;s memory. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>Returns true if device is capable of directly accessing memory from peerDevice and false otherwise. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">device</span></code>: Device from which allocations on peerDevice are to be directly accessed. </li>
+<li><code class="docutils literal"><span class="pre">peerDevice</span></code>: Device on which the allocations to be directly accessed by device reside.</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv228hl_device_enable_peer_accessi">
+<span id="hl_device_enable_peer_access__i"></span><span class="target" id="paddlehl__cuda_8h_1a79469fb8ddbd9e209441fcb5c3dc9cb0"></span>void <code class="descname">hl_device_enable_peer_access</code><span class="sig-paren">(</span>int <em>peerDevice</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv228hl_device_enable_peer_accessi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enables direct access to memory allocations on a peer device. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">peerDevice</span></code>: Peer device to enable direct access to from the current device </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv27hl_initi">
+<span id="hl_init__i"></span><span class="target" id="paddlehl__cuda_8h_1a8c9260de57645f7036ed32f3d774d13a"></span>void <code class="descname">hl_init</code><span class="sig-paren">(</span>int <em>device</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv27hl_initi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Init a work thread. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">device</span></code>: device id. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv27hl_finiv">
+<span id="hl_fini"></span><span class="target" id="paddlehl__cuda_8h_1a1b2ac3b2a60fa972d57e257ad6baeb7f"></span>void <code class="descname">hl_fini</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv27hl_finiv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finish a work thread. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv216hl_set_sync_flagb">
+<span id="hl_set_sync_flag__b"></span><span class="target" id="paddlehl__cuda_8h_1aadbeb39de033529c6155e7e3ba1b9109"></span>void <code class="descname">hl_set_sync_flag</code><span class="sig-paren">(</span>bool <em>flag</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv216hl_set_sync_flagb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set synchronous/asynchronous flag. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>This setting is only valid for the current worker thread. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">flag</span></code>: true(default), set synchronous flag. false, set asynchronous flag.</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv216hl_get_sync_flagv">
+<span id="hl_get_sync_flag"></span><span class="target" id="paddlehl__cuda_8h_1a018ca43d6b81ba69cd498d4398ab6bf2"></span>bool <code class="descname">hl_get_sync_flag</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv216hl_get_sync_flagv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get synchronous/asynchronous flag. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>Synchronous call true. Asynchronous call false. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv219hl_get_device_countv">
+<span id="hl_get_device_count"></span><span class="target" id="paddlehl__cuda_8h_1a9488ec8fee236a0d0148ec945b7d3ba5"></span>int <code class="descname">hl_get_device_count</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_get_device_countv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the number of compute-capable devices. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv213hl_set_devicei">
+<span id="hl_set_device__i"></span><span class="target" id="paddlehl__cuda_8h_1ac81e0e5a56d6a294540d7838690af0b4"></span>void <code class="descname">hl_set_device</code><span class="sig-paren">(</span>int <em>device</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv213hl_set_devicei" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set device to be used. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">device</span></code>: device id. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv213hl_get_devicev">
+<span id="hl_get_device"></span><span class="target" id="paddlehl__cuda_8h_1a7ef37c55eac8d924db8f634c8fd249fb"></span>int <code class="descname">hl_get_device</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv213hl_get_devicev" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns which device is currently being used. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>device device id. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv216hl_malloc_device6size_t">
+<span id="hl_malloc_device__s"></span><span class="target" id="paddlehl__cuda_8h_1adb470bb9db6ba774451959c759cf6b35"></span>void *<code class="descname">hl_malloc_device</code><span class="sig-paren">(</span>size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv216hl_malloc_device6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allocate device memory. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>dest_d pointer to device memory. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy.</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv218hl_free_mem_devicePv">
+<span id="hl_free_mem_device__voidP"></span><span class="target" id="paddlehl__cuda_8h_1a674f35fa9c5dea69a691d6db240403f2"></span>void <code class="descname">hl_free_mem_device</code><span class="sig-paren">(</span>void *<em>dest_d</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218hl_free_mem_devicePv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Free device memory. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_d</span></code>: pointer to device memory. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv214hl_malloc_host6size_t">
+<span id="hl_malloc_host__s"></span><span class="target" id="paddlehl__cuda_8h_1a091ce7a21ec3354de382da62e01cabed"></span>void *<code class="descname">hl_malloc_host</code><span class="sig-paren">(</span>size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv214hl_malloc_host6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allocate host page-lock memory. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>dest_h pointer to host memory. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy.</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv216hl_free_mem_hostPv">
+<span id="hl_free_mem_host__voidP"></span><span class="target" id="paddlehl__cuda_8h_1afffc447f09e31b0fbde475e15809dac7"></span>void <code class="descname">hl_free_mem_host</code><span class="sig-paren">(</span>void *<em>dest_h</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv216hl_free_mem_hostPv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Free host page-lock memory. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_h</span></code>: pointer to host memory. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv29hl_memcpyPvPv6size_t">
+<span id="hl_memcpy__voidP.voidP.s"></span><span class="target" id="paddlehl__cuda_8h_1ad49423baac9904ad3320d7cf07befb10"></span>void <code class="descname">hl_memcpy</code><span class="sig-paren">(</span>void *<em>dst</em>, void *<em>src</em>, size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv29hl_memcpyPvPv6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy data. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dst</span></code>: dst memory address(host or device). </li>
+<li><code class="docutils literal"><span class="pre">src</span></code>: src memory address(host or device). </li>
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv216hl_memset_devicePvi6size_t">
+<span id="hl_memset_device__voidP.i.s"></span><span class="target" id="paddlehl__cuda_8h_1ac081607491215d447218a830b48e5de8"></span>void <code class="descname">hl_memset_device</code><span class="sig-paren">(</span>void *<em>dest_d</em>, int <em>value</em>, size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv216hl_memset_devicePvi6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set device memory to a value. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_d</span></code>: pointer to device memory. </li>
+<li><code class="docutils literal"><span class="pre">value</span></code>: value to set for each byte of specified memory. </li>
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to set. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv221hl_memcpy_host2devicePvPv6size_t">
+<span id="hl_memcpy_host2device__voidP.voidP.s"></span><span class="target" id="paddlehl__cuda_8h_1ab60598bdacfa8d4551fafd7d185c1f7f"></span>void <code class="descname">hl_memcpy_host2device</code><span class="sig-paren">(</span>void *<em>dest_d</em>, void *<em>src_h</em>, size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv221hl_memcpy_host2devicePvPv6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy host memory to device memory. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_d</span></code>: dst memory address. </li>
+<li><code class="docutils literal"><span class="pre">src_h</span></code>: src memory address. </li>
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv221hl_memcpy_device2hostPvPv6size_t">
+<span id="hl_memcpy_device2host__voidP.voidP.s"></span><span class="target" id="paddlehl__cuda_8h_1a5fa06e5c0a17608f7248a86fefdc2b20"></span>void <code class="descname">hl_memcpy_device2host</code><span class="sig-paren">(</span>void *<em>dest_h</em>, void *<em>src_d</em>, size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv221hl_memcpy_device2hostPvPv6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy device memory to host memory. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_h</span></code>: dst memory address. </li>
+<li><code class="docutils literal"><span class="pre">src_d</span></code>: src memory address. </li>
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv223hl_memcpy_device2devicePvPv6size_t">
+<span id="hl_memcpy_device2device__voidP.voidP.s"></span><span class="target" id="paddlehl__cuda_8h_1aec81fd08b0475bc68e095f21413f15a0"></span>void <code class="descname">hl_memcpy_device2device</code><span class="sig-paren">(</span>void *<em>dest_d</em>, void *<em>src_d</em>, size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv223hl_memcpy_device2devicePvPv6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy device memory to device memory. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_d</span></code>: dst memory address. </li>
+<li><code class="docutils literal"><span class="pre">src_d</span></code>: src memory address. </li>
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv27hl_randP4real6size_t">
+<span id="hl_rand__realP.s"></span><span class="target" id="paddlehl__cuda_8h_1a07115d96ce64a0d2377c66775c2bfed9"></span>void <code class="descname">hl_rand</code><span class="sig-paren">(</span>real *<em>dest_d</em>, size_t <em>num</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv27hl_randP4real6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate uniformly distributed floats (0, 1.0]. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_d</span></code>: pointer to device memory to store results. </li>
+<li><code class="docutils literal"><span class="pre">num</span></code>: number of floats to generate. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv28hl_srandj">
+<span id="hl_srand__unsigned-i"></span><span class="target" id="paddlehl__cuda_8h_1a72aa0c9ac6f0be13383d09d7b8a2f7db"></span>void <code class="descname">hl_srand</code><span class="sig-paren">(</span>unsigned int <em>seed</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv28hl_srandj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the seed value of the random number generator. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">seed</span></code>: seed value. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv215hl_memcpy_asyncPvPv6size_t11hl_stream_t">
+<span id="hl_memcpy_async__voidP.voidP.s.hl_stream_t"></span><span class="target" id="paddlehl__cuda_8h_1ad48f4ad2924e94bb7b0fd2efd48eb268"></span>void <code class="descname">hl_memcpy_async</code><span class="sig-paren">(</span>void *<em>dst</em>, void *<em>src</em>, size_t <em>size</em>, <a class="reference internal" href="../utils/utils.html#_CPPv211hl_stream_t" title="hl_stream_t">hl_stream_t</a> <em>stream</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv215hl_memcpy_asyncPvPv6size_t11hl_stream_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy data. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dst</span></code>: dst memory address(host or device). </li>
+<li><code class="docutils literal"><span class="pre">src</span></code>: src memory address(host or device). </li>
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy. </li>
+<li><code class="docutils literal"><span class="pre">stream</span></code>: stream id. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv221hl_stream_synchronize11hl_stream_t">
+<span id="hl_stream_synchronize__hl_stream_t"></span><span class="target" id="paddlehl__cuda_8h_1a75a6bdfcda8d2867447b496ae38a51c5"></span>void <code class="descname">hl_stream_synchronize</code><span class="sig-paren">(</span><a class="reference internal" href="../utils/utils.html#_CPPv211hl_stream_t" title="hl_stream_t">hl_stream_t</a> <em>stream</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv221hl_stream_synchronize11hl_stream_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Waits for stream tasks to complete. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">stream</span></code>: stream id. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv215hl_create_eventP10hl_event_t">
+<span id="hl_create_event__hl_event_tP"></span><span class="target" id="paddlehl__cuda_8h_1af36ba62bf4068c8f7c9508e0883d99cc"></span>void <code class="descname">hl_create_event</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv210hl_event_t" title="hl_event_t">hl_event_t</a> *<em>event</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv215hl_create_eventP10hl_event_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates an event object. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">event</span></code>: New event. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv216hl_destroy_event10hl_event_t">
+<span id="hl_destroy_event__hl_event_t"></span><span class="target" id="paddlehl__cuda_8h_1a95132dd862e573051a04116a4af16d29"></span>void <code class="descname">hl_destroy_event</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv210hl_event_t" title="hl_event_t">hl_event_t</a> <em>event</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv216hl_destroy_event10hl_event_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Destroys an event object. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">event</span></code>: Event to destroy. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv221hl_event_elapsed_time10hl_event_t10hl_event_t">
+<span id="hl_event_elapsed_time__hl_event_t.hl_event_t"></span><span class="target" id="paddlehl__cuda_8h_1aab01937cc16dae4a18ac9bfda8f12845"></span>float <code class="descname">hl_event_elapsed_time</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv210hl_event_t" title="hl_event_t">hl_event_t</a> <em>start</em>, <a class="reference internal" href="#_CPPv210hl_event_t" title="hl_event_t">hl_event_t</a> <em>end</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv221hl_event_elapsed_time10hl_event_t10hl_event_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the elapsed time between events. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>time Time between start and end in ms. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">start</span></code>: Starting event. </li>
+<li><code class="docutils literal"><span class="pre">end</span></code>: Ending event.</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv222hl_stream_record_event11hl_stream_t10hl_event_t">
+<span id="hl_stream_record_event__hl_stream_t.hl_event_t"></span><span class="target" id="paddlehl__cuda_8h_1a76a150f800b3e7e042d63cf8072ad62f"></span>void <code class="descname">hl_stream_record_event</code><span class="sig-paren">(</span><a class="reference internal" href="../utils/utils.html#_CPPv211hl_stream_t" title="hl_stream_t">hl_stream_t</a> <em>stream</em>, <a class="reference internal" href="#_CPPv210hl_event_t" title="hl_event_t">hl_event_t</a> <em>event</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv222hl_stream_record_event11hl_stream_t10hl_event_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Records an event. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">stream</span></code>: Stream in which to insert event. </li>
+<li><code class="docutils literal"><span class="pre">event</span></code>: Event waiting to be recorded as completed. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv220hl_stream_wait_event11hl_stream_t10hl_event_t">
+<span id="hl_stream_wait_event__hl_stream_t.hl_event_t"></span><span class="target" id="paddlehl__cuda_8h_1a30390983f3e6eb103682998d9b814755"></span>void <code class="descname">hl_stream_wait_event</code><span class="sig-paren">(</span><a class="reference internal" href="../utils/utils.html#_CPPv211hl_stream_t" title="hl_stream_t">hl_stream_t</a> <em>stream</em>, <a class="reference internal" href="#_CPPv210hl_event_t" title="hl_event_t">hl_event_t</a> <em>event</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv220hl_stream_wait_event11hl_stream_t10hl_event_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a compute stream wait on an event. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">stream</span></code>: Stream in which to insert event. </li>
+<li><code class="docutils literal"><span class="pre">event</span></code>: Event to wait on. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv220hl_event_synchronize10hl_event_t">
+<span id="hl_event_synchronize__hl_event_t"></span><span class="target" id="paddlehl__cuda_8h_1a4ef0dfa86784b41f43ae386517955577"></span>void <code class="descname">hl_event_synchronize</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv210hl_event_t" title="hl_event_t">hl_event_t</a> <em>event</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv220hl_event_synchronize10hl_event_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait for an event to complete. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">event</span></code>: event to wait for. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv225hl_set_device_flags_blockv">
+<span id="hl_set_device_flags_block"></span><span class="target" id="paddlehl__cuda_8h_1a4b15c273fdbc507760bcac50856426db"></span>void <code class="descname">hl_set_device_flags_block</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv225hl_set_device_flags_blockv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets block flags to be used for device executions. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>This interface needs to be called before hl_start. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv226hl_get_device_error_stringv">
+<span id="hl_get_device_error_string"></span><span class="target" id="paddlehl__cuda_8h_1a960af507e3745840279135023be5e6a1"></span><em class="property">const</em> char *<code class="descname">hl_get_device_error_string</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv226hl_get_device_error_stringv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the last error string from a cuda runtime call. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv226hl_get_device_error_string6size_t">
+<span id="hl_get_device_error_string__s"></span><span class="target" id="paddlehl__cuda_8h_1a61aca99627abbac672fc5ea09c1fbf46"></span><em class="property">const</em> char *<code class="descname">hl_get_device_error_string</code><span class="sig-paren">(</span>size_t <em>err</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv226hl_get_device_error_string6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the last error string from a cuda runtime call. </p>
+<p><dl class="docutils">
+<dt><strong>See</strong></dt>
+<dd>hl_get_device_last_error() </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">err</span></code>: error number.</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv224hl_get_device_last_errorv">
+<span id="hl_get_device_last_error"></span><span class="target" id="paddlehl__cuda_8h_1a068ff090da2a64de28a6fb991db7d3a9"></span>int <code class="descname">hl_get_device_last_error</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv224hl_get_device_last_errorv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the last error number. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>error number.</dd>
+<dt><strong>See</strong></dt>
+<dd>hl_get_device_error_string() </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv222hl_cuda_event_is_ready10hl_event_t">
+<span id="hl_cuda_event_is_ready__hl_event_t"></span><span class="target" id="paddlehl__cuda_8h_1a3b39053ef49ad16ff443c45f6ab7f456"></span>bool <code class="descname">hl_cuda_event_is_ready</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv210hl_event_t" title="hl_event_t">hl_event_t</a> <em>event</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv222hl_cuda_event_is_ready10hl_event_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>check cuda event is ready </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>true cuda event is ready. false cuda event is not ready. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">event</span></code>: cuda event to query.</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv221hl_device_synchronizev">
+<span id="hl_device_synchronize"></span><span class="target" id="paddlehl__cuda_8h_1a3fb7f701d6576568492ae2b9fafbd060"></span>void <code class="descname">hl_device_synchronize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv221hl_device_synchronizev" title="Permalink to this definition">¶</a></dt>
+<dd><p>hppl device synchronization. </p>
+</dd></dl>
+
+</div>
+</div>
+</div>
+<div class="section" id="cuda-wrapper">
+<h2>CUDA Wrapper<a class="headerlink" href="#cuda-wrapper" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="hl-cuda-cublas-h">
+<h3>hl_cuda_cublas.h<a class="headerlink" href="#hl-cuda-cublas-h" title="Permalink to this headline">¶</a></h3>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv219hl_matrix_transposeP4realP4realiiii">
+<span id="hl_matrix_transpose__realP.realP.i.i.i.i"></span><span class="target" id="paddlehl__cuda__cublas_8h_1ac973bad16dc03aa3f82273f4bcf99aa9"></span>void <code class="descname">hl_matrix_transpose</code><span class="sig-paren">(</span>real *<em>A_d</em>, real *<em>C_d</em>, int <em>dimM</em>, int <em>dimN</em>, int <em>lda</em>, int <em>ldc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_matrix_transposeP4realP4realiiii" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> transpose: C_d = T(A_d) </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input matrix (dimM x dimN). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output matrix (dimN x dimM). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: the first dimension of A_d. </li>
+<li><code class="docutils literal"><span class="pre">ldc</span></code>: the first dimension of C_d. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv219hl_matrix_transposeP4realP4realii">
+<span id="hl_matrix_transpose__realP.realP.i.i"></span><span class="target" id="paddlehl__cuda__cublas_8h_1a14bbf661acdbdea6f0518bc7249494ec"></span>void <code class="descname">hl_matrix_transpose</code><span class="sig-paren">(</span>real *<em>A_d</em>, real *<em>C_d</em>, int <em>dimM</em>, int <em>dimN</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_matrix_transposeP4realP4realii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv217hl_matrix_inverseP4realP4realiii">
+<span id="hl_matrix_inverse__realP.realP.i.i.i"></span><span class="target" id="paddlehl__cuda__cublas_8h_1a9dfbccb4e8766d12fcdc7589b9c9e17d"></span>void <code class="descname">hl_matrix_inverse</code><span class="sig-paren">(</span>real *<em>A_d</em>, real *<em>C_d</em>, int <em>dimN</em>, int <em>lda</em>, int <em>ldc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv217hl_matrix_inverseP4realP4realiii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv213hl_matrix_mulP4real13hl_trans_op_tP4real13hl_trans_op_tP4realiii4real4realiii">
+<span id="hl_matrix_mul__realP.hl_trans_op_t.realP.hl_trans_op_t.realP.i.i.i.real.real.i.i.i"></span><span class="target" id="paddlehl__cuda__cublas_8h_1af5cd7ac9a866d67dbe135a79c1e5e05c"></span>void <code class="descname">hl_matrix_mul</code><span class="sig-paren">(</span>real *<em>A_d</em>, <a class="reference internal" href="../utils/utils.html#_CPPv213hl_trans_op_t" title="hl_trans_op_t">hl_trans_op_t</a> <em>transa</em>, real *<em>B_d</em>, <a class="reference internal" href="../utils/utils.html#_CPPv213hl_trans_op_t" title="hl_trans_op_t">hl_trans_op_t</a> <em>transb</em>, real *<em>C_d</em>, int <em>dimM</em>, int <em>dimN</em>, int <em>dimK</em>, real <em>alpha</em>, real <em>beta</em>, int <em>lda</em>, int <em>ldb</em>, int <em>ldc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv213hl_matrix_mulP4real13hl_trans_op_tP4real13hl_trans_op_tP4realiii4real4realiii" title="Permalink to this definition">¶</a></dt>
+<dd><p>C_d = alpha*(op(A_d) * op(B_d)) + beta*C_d. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input. </li>
+<li><code class="docutils literal"><span class="pre">transa</span></code>: operation op(A) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: input. </li>
+<li><code class="docutils literal"><span class="pre">transb</span></code>: operation op(B) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height of op(A) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width of op(B) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimK</span></code>: width of op(A) &amp; height of op(B) </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: the first dimension of A_d. </li>
+<li><code class="docutils literal"><span class="pre">ldb</span></code>: the first dimension of B_d. </li>
+<li><code class="docutils literal"><span class="pre">ldc</span></code>: the first dimension of C_d. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv213hl_matrix_mulP4real13hl_trans_op_tP4real13hl_trans_op_tP4realiii4real4real">
+<span id="hl_matrix_mul__realP.hl_trans_op_t.realP.hl_trans_op_t.realP.i.i.i.real.real"></span><span class="target" id="paddlehl__cuda__cublas_8h_1af89a99baebd86e8c0dd56e674def9a91"></span>void <code class="descname">hl_matrix_mul</code><span class="sig-paren">(</span>real *<em>A_d</em>, <a class="reference internal" href="../utils/utils.html#_CPPv213hl_trans_op_t" title="hl_trans_op_t">hl_trans_op_t</a> <em>transa</em>, real *<em>B_d</em>, <a class="reference internal" href="../utils/utils.html#_CPPv213hl_trans_op_t" title="hl_trans_op_t">hl_trans_op_t</a> <em>transb</em>, real *<em>C_d</em>, int <em>dimM</em>, int <em>dimN</em>, int <em>dimK</em>, real <em>alpha</em>, real <em>beta</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv213hl_matrix_mulP4real13hl_trans_op_tP4real13hl_trans_op_tP4realiii4real4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>C_d = alpha*(op(A_d) * op(B_d)) + beta*C_d. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input. </li>
+<li><code class="docutils literal"><span class="pre">transa</span></code>: operation op(A) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: input. </li>
+<li><code class="docutils literal"><span class="pre">transb</span></code>: operation op(B) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height of op(A) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width of op(B) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimK</span></code>: width of op(A) &amp; height of op(B) </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for multiplication. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv220hl_matrix_mul_vectorP4real13hl_trans_op_tP4realP4realii4real4realiii">
+<span id="hl_matrix_mul_vector__realP.hl_trans_op_t.realP.realP.i.i.real.real.i.i.i"></span><span class="target" id="paddlehl__cuda__cublas_8h_1a648a3f94551c8aa22da5ef27a4ca521b"></span>void <code class="descname">hl_matrix_mul_vector</code><span class="sig-paren">(</span>real *<em>A_d</em>, <a class="reference internal" href="../utils/utils.html#_CPPv213hl_trans_op_t" title="hl_trans_op_t">hl_trans_op_t</a> <em>trans</em>, real *<em>B_d</em>, real *<em>C_d</em>, int <em>dimM</em>, int <em>dimN</em>, real <em>alpha</em>, real <em>beta</em>, int <em>lda</em>, int <em>incb</em>, int <em>incc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv220hl_matrix_mul_vectorP4real13hl_trans_op_tP4realP4realii4real4realiii" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function performs the matrix-vector multiplication. C_d = alpha*op(A_d)*B_d + beta*C_d. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">trans</span></code>: operation op(A) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: vector with dimN(dimM) elements if trans==HPPL_OP_N(HPPL_OP_T). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: vector with dimM(dimN) elements if trans==HPPL_OP_N(HPPL_OP_T). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: number of rows of matrix A_d. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: number of columns of matrix A_d. </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: the first dimension of A_d. </li>
+<li><code class="docutils literal"><span class="pre">incb</span></code>: increase B_d size for compaction. </li>
+<li><code class="docutils literal"><span class="pre">incc</span></code>: increase C_d size for compaction. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv220hl_matrix_mul_vectorP4real13hl_trans_op_tP4realP4realii4real4real">
+<span id="hl_matrix_mul_vector__realP.hl_trans_op_t.realP.realP.i.i.real.real"></span><span class="target" id="paddlehl__cuda__cublas_8h_1a2b1b4bf890f17a49de1e33a2c8043b52"></span>void <code class="descname">hl_matrix_mul_vector</code><span class="sig-paren">(</span>real *<em>A_d</em>, <a class="reference internal" href="../utils/utils.html#_CPPv213hl_trans_op_t" title="hl_trans_op_t">hl_trans_op_t</a> <em>trans</em>, real *<em>B_d</em>, real *<em>C_d</em>, int <em>dimM</em>, int <em>dimN</em>, real <em>alpha</em>, real <em>beta</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv220hl_matrix_mul_vectorP4real13hl_trans_op_tP4realP4realii4real4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function performs the matrix-vector multiplication. C_d = alpha*op(A_d)*B_d + beta*C_d. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">trans</span></code>: operation op(A) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: vector with dimN(dimM) elements if trans==HPPL_OP_N(HPPL_OP_T). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: vector with dimM(dimN) elements if trans==HPPL_OP_N(HPPL_OP_T). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: number of rows of matrix A_d. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: number of columns of matrix A_d. </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for multiplication. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="hl-cuda-cudnn-h">
+<h3>hl_cuda_cudnn.h<a class="headerlink" href="#hl-cuda-cudnn-h" title="Permalink to this headline">¶</a></h3>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Typedefs</p>
+<dl class="type">
+<dt id="_CPPv220hl_tensor_descriptor">
+<span id="hl_tensor_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a6e315640b6bbf88b751d010fec4e5234"></span><em class="property">typedef </em><em class="property">struct</em> _hl_tensor_descriptor *<code class="descname">hl_tensor_descriptor</code><a class="headerlink" href="#_CPPv220hl_tensor_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>hppl image descriptor. </p>
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv221hl_pooling_descriptor">
+<span id="hl_pooling_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a1e073f0ddaea393cdc20d004f683aa68"></span><em class="property">typedef </em><em class="property">struct</em> _hl_pooling_descriptor *<code class="descname">hl_pooling_descriptor</code><a class="headerlink" href="#_CPPv221hl_pooling_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>hppl pooling descriptor. </p>
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv220hl_filter_descriptor">
+<span id="hl_filter_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a91516237a59f8c23154ae8dcc6940881"></span><em class="property">typedef </em><em class="property">struct</em> _hl_filter_descriptor *<code class="descname">hl_filter_descriptor</code><a class="headerlink" href="#_CPPv220hl_filter_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>hppl filter descriptor. </p>
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv225hl_convolution_descriptor">
+<span id="hl_convolution_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1ae3608436bf9df13c16e36f20d46a7f09"></span><em class="property">typedef </em><em class="property">struct</em> _hl_convolution_descriptor *<code class="descname">hl_convolution_descriptor</code><a class="headerlink" href="#_CPPv225hl_convolution_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>hppl filter descriptor. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Enums</p>
+<dl class="type">
+<dt id="_CPPv217hl_pooling_mode_t">
+<span id="hl_pooling_mode_t"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1ac6e6904404eafbc6a26846764a69e3f4"></span><em class="property">enum </em><code class="descname">hl_pooling_mode_t</code><a class="headerlink" href="#_CPPv217hl_pooling_mode_t" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>Values:</em></p>
+<dl class="member">
+<dt id="_CPPv214HL_POOLING_MAX">
+<span id="HL_POOLING_MAX"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1ac6e6904404eafbc6a26846764a69e3f4a0e63505355b12a762bcc7a592e535f28"></span><code class="descname">HL_POOLING_MAX</code> = 0<a class="headerlink" href="#_CPPv214HL_POOLING_MAX" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv218HL_POOLING_AVERAGE">
+<span id="HL_POOLING_AVERAGE"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1ac6e6904404eafbc6a26846764a69e3f4ad92fa5085dd625767c53cd4ec5d9bb16"></span><code class="descname">HL_POOLING_AVERAGE</code> = 1<a class="headerlink" href="#_CPPv218HL_POOLING_AVERAGE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv234HL_POOLING_AVERAGE_EXCLUDE_PADDING">
+<span id="HL_POOLING_AVERAGE_EXCLUDE_PADDING"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1ac6e6904404eafbc6a26846764a69e3f4a784d3b6343665773e23cdd381ec02ff0"></span><code class="descname">HL_POOLING_AVERAGE_EXCLUDE_PADDING</code> = 2<a class="headerlink" href="#_CPPv234HL_POOLING_AVERAGE_EXCLUDE_PADDING" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv214HL_POOLING_END">
+<span id="HL_POOLING_END"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1ac6e6904404eafbc6a26846764a69e3f4a9e644de9c97f2848fcd67c931fb3caa6"></span><code class="descname">HL_POOLING_END</code><a class="headerlink" href="#_CPPv214HL_POOLING_END" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv224hl_get_cudnn_lib_versionv">
+<span id="hl_get_cudnn_lib_version"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a79e8aae542f697b9e6251784113ebf10"></span>int <code class="descname">hl_get_cudnn_lib_version</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv224hl_get_cudnn_lib_versionv" title="Permalink to this definition">¶</a></dt>
+<dd><p>return cudnn lib version </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv227hl_create_tensor_descriptorP20hl_tensor_descriptor">
+<span id="hl_create_tensor_descriptor__hl_tensor_descriptorP"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a09c615b6a0d445ab7dff3509d942f2f9"></span>void <code class="descname">hl_create_tensor_descriptor</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> *<em>image_desc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv227hl_create_tensor_descriptorP20hl_tensor_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>create image descriptor. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">image_desc</span></code>: image descriptor. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv217hl_tensor_reshape20hl_tensor_descriptoriiii">
+<span id="hl_tensor_reshape__hl_tensor_descriptor.i.i.i.i"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1aab7365dcb7bedb06329a0c96985cfe82"></span>void <code class="descname">hl_tensor_reshape</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>image_desc</em>, int <em>batch_size</em>, int <em>feature_maps</em>, int <em>height</em>, int <em>width</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv217hl_tensor_reshape20hl_tensor_descriptoriiii" title="Permalink to this definition">¶</a></dt>
+<dd><p>reshape image descriptor. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">image_desc</span></code>: image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">batch_size</span></code>: input batch size. </li>
+<li><code class="docutils literal"><span class="pre">feature_maps</span></code>: image feature maps. </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: image height. </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: image width. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv217hl_tensor_reshape20hl_tensor_descriptoriiiiiiii">
+<span id="hl_tensor_reshape__hl_tensor_descriptor.i.i.i.i.i.i.i.i"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a1b33311f2a195fd01aa1439106be4f2b"></span>void <code class="descname">hl_tensor_reshape</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>image_desc</em>, int <em>batch_size</em>, int <em>feature_maps</em>, int <em>height</em>, int <em>width</em>, int <em>nStride</em>, int <em>cStride</em>, int <em>hStride</em>, int <em>wStride</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv217hl_tensor_reshape20hl_tensor_descriptoriiiiiiii" title="Permalink to this definition">¶</a></dt>
+<dd><p>reshape image descriptor. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">image_desc</span></code>: image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">batch_size</span></code>: input batch size. </li>
+<li><code class="docutils literal"><span class="pre">feature_maps</span></code>: image feature maps. </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: image height. </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: image width. </li>
+<li><code class="docutils literal"><span class="pre">nStride</span></code>: stride between two consecutive images. </li>
+<li><code class="docutils literal"><span class="pre">cStride</span></code>: stride between two consecutive feature maps. </li>
+<li><code class="docutils literal"><span class="pre">hStride</span></code>: stride between two consecutive rows. </li>
+<li><code class="docutils literal"><span class="pre">wStride</span></code>: stride between two consecutive columns. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv228hl_destroy_tensor_descriptor20hl_tensor_descriptor">
+<span id="hl_destroy_tensor_descriptor__hl_tensor_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a7072d71eb981d81ab3b1f55c6e383b88"></span>void <code class="descname">hl_destroy_tensor_descriptor</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>image_desc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv228hl_destroy_tensor_descriptor20hl_tensor_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>destroy image descriptor. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">image_desc</span></code>: hppl image descriptor. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv228hl_create_pooling_descriptorP21hl_pooling_descriptor17hl_pooling_mode_tiiiiii">
+<span id="hl_create_pooling_descriptor__hl_pooling_descriptorP.hl_pooling_mode_t.i.i.i.i.i.i"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1adf5561b1d4a8c41994fc1868337b875d"></span>void <code class="descname">hl_create_pooling_descriptor</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv221hl_pooling_descriptor" title="hl_pooling_descriptor">hl_pooling_descriptor</a> *<em>pooling_desc</em>, <a class="reference internal" href="#_CPPv217hl_pooling_mode_t" title="hl_pooling_mode_t">hl_pooling_mode_t</a> <em>mode</em>, int <em>height</em>, int <em>width</em>, int <em>height_padding</em>, int <em>width_padding</em>, int <em>stride_height</em>, int <em>stride_width</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv228hl_create_pooling_descriptorP21hl_pooling_descriptor17hl_pooling_mode_tiiiiii" title="Permalink to this definition">¶</a></dt>
+<dd><p>create pooling descriptor. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">pooling_desc</span></code>: pooling descriptor. </li>
+<li><code class="docutils literal"><span class="pre">mode</span></code>: pooling mode. </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: height of the pooling window. </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: width of the pooling window. </li>
+<li><code class="docutils literal"><span class="pre">height_padding</span></code>: padding height. </li>
+<li><code class="docutils literal"><span class="pre">width_padding</span></code>: padding width. </li>
+<li><code class="docutils literal"><span class="pre">stride_height</span></code>: pooling vertical stride. </li>
+<li><code class="docutils literal"><span class="pre">stride_width</span></code>: pooling horizontal stride. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv229hl_destroy_pooling_descriptor21hl_pooling_descriptor">
+<span id="hl_destroy_pooling_descriptor__hl_pooling_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a86cac6081148634512f5699d5269232f"></span>void <code class="descname">hl_destroy_pooling_descriptor</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv221hl_pooling_descriptor" title="hl_pooling_descriptor">hl_pooling_descriptor</a> <em>pooling_desc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv229hl_destroy_pooling_descriptor21hl_pooling_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>destroy pooling descriptor. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">pooling_desc</span></code>: hppl pooling descriptor. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv218hl_pooling_forward20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real21hl_pooling_descriptor">
+<span id="hl_pooling_forward__hl_tensor_descriptor.realP.hl_tensor_descriptor.realP.hl_pooling_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1acbfb896e3bbd22b8f0e17342b0a0ca88"></span>void <code class="descname">hl_pooling_forward</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>input</em>, real *<em>input_image</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>output</em>, real *<em>output_image</em>, <a class="reference internal" href="#_CPPv221hl_pooling_descriptor" title="hl_pooling_descriptor">hl_pooling_descriptor</a> <em>pooling</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218hl_pooling_forward20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real21hl_pooling_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>pooling forward(calculate output image). </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">input_image</span></code>: input image data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_image</span></code>: output image data. </li>
+<li><code class="docutils literal"><span class="pre">pooling</span></code>: pooling descriptor. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv219hl_pooling_backward20hl_tensor_descriptorP4realP4real20hl_tensor_descriptorP4realP4real21hl_pooling_descriptor">
+<span id="hl_pooling_backward__hl_tensor_descriptor.realP.realP.hl_tensor_descriptor.realP.realP.hl_pooling_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a40b590f3bd29c6ddd5cca4b3293221a2"></span>void <code class="descname">hl_pooling_backward</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>input</em>, real *<em>input_image</em>, real *<em>input_image_grad</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>output</em>, real *<em>output_image</em>, real *<em>output_image_grad</em>, <a class="reference internal" href="#_CPPv221hl_pooling_descriptor" title="hl_pooling_descriptor">hl_pooling_descriptor</a> <em>pooling</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_pooling_backward20hl_tensor_descriptorP4realP4real20hl_tensor_descriptorP4realP4real21hl_pooling_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>pooling backward(calculate input image gradient). </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">input_image</span></code>: input image data. </li>
+<li><code class="docutils literal"><span class="pre">input_image_grad</span></code>: input image gradient data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_image</span></code>: output image data. </li>
+<li><code class="docutils literal"><span class="pre">output_image_grad</span></code>: output image gradient data. </li>
+<li><code class="docutils literal"><span class="pre">pooling</span></code>: pooling descriptor. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv227hl_create_filter_descriptorP20hl_filter_descriptoriiii">
+<span id="hl_create_filter_descriptor__hl_filter_descriptorP.i.i.i.i"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a648ce5e2aa9b15093a04b11271a7555c"></span>void <code class="descname">hl_create_filter_descriptor</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_filter_descriptor" title="hl_filter_descriptor">hl_filter_descriptor</a> *<em>filter</em>, int <em>input_feature_maps</em>, int <em>output_feature_maps</em>, int <em>height</em>, int <em>width</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv227hl_create_filter_descriptorP20hl_filter_descriptoriiii" title="Permalink to this definition">¶</a></dt>
+<dd><p>create filter descriptor. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor. </li>
+<li><code class="docutils literal"><span class="pre">input_feature_maps</span></code>: input image feature maps. </li>
+<li><code class="docutils literal"><span class="pre">output_feature_maps</span></code>: output image feature maps. </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: filter height. </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: filter width. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv217hl_conv_workspace20hl_tensor_descriptor20hl_tensor_descriptor20hl_filter_descriptor25hl_convolution_descriptorPiP6size_tPiP6size_tPiP6size_t">
+<span id="hl_conv_workspace__hl_tensor_descriptor.hl_tensor_descriptor.hl_filter_descriptor.hl_convolution_descriptor.iP.sP.iP.sP.iP.sP"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a40937abd585d17faa4cbcab17adb3675"></span>void <code class="descname">hl_conv_workspace</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>input</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>output</em>, <a class="reference internal" href="#_CPPv220hl_filter_descriptor" title="hl_filter_descriptor">hl_filter_descriptor</a> <em>filter</em>, <a class="reference internal" href="#_CPPv225hl_convolution_descriptor" title="hl_convolution_descriptor">hl_convolution_descriptor</a> <em>conv</em>, int *<em>convFwdAlgo</em>, size_t *<em>fwdLimitBytes</em>, int *<em>convBwdDataAlgo</em>, size_t *<em>bwdDataLimitBytes</em>, int *<em>convBwdFilterAlgo</em>, size_t *<em>bwdFilterLimitBytes</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv217hl_conv_workspace20hl_tensor_descriptor20hl_tensor_descriptor20hl_filter_descriptor25hl_convolution_descriptorPiP6size_tPiP6size_tPiP6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>convolution workspace configuration </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: image descriptor </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: image descriptor </li>
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor </li>
+<li><code class="docutils literal"><span class="pre">conv</span></code>: convolution descriptor </li>
+<li><code class="docutils literal"><span class="pre">convFwdAlgo</span></code>: forward algorithm </li>
+<li><code class="docutils literal"><span class="pre">fwdLimitBytes</span></code>: forward workspace size </li>
+<li><code class="docutils literal"><span class="pre">convBwdDataAlgo</span></code>: backward data algorithm </li>
+<li><code class="docutils literal"><span class="pre">bwdDataLimitBytes</span></code>: backward data workspace size </li>
+<li><code class="docutils literal"><span class="pre">convBwdFilterAlgo</span></code>: backward filter algorithm </li>
+<li><code class="docutils literal"><span class="pre">bwdFilterLimitBytes</span></code>: backward filter workspace size </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv228hl_destroy_filter_descriptor20hl_filter_descriptor">
+<span id="hl_destroy_filter_descriptor__hl_filter_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a085babb4b499439258d67a8667924a95"></span>void <code class="descname">hl_destroy_filter_descriptor</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_filter_descriptor" title="hl_filter_descriptor">hl_filter_descriptor</a> <em>filter</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv228hl_destroy_filter_descriptor20hl_filter_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>destroy filter descriptor. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">filter</span></code>: hppl filter descriptor. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv232hl_create_convolution_descriptorP25hl_convolution_descriptor20hl_tensor_descriptor20hl_filter_descriptoriiii">
+<span id="hl_create_convolution_descriptor__hl_convolution_descriptorP.hl_tensor_descriptor.hl_filter_descriptor.i.i.i.i"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1af74014013925136b9104f6a85c98517d"></span>void <code class="descname">hl_create_convolution_descriptor</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv225hl_convolution_descriptor" title="hl_convolution_descriptor">hl_convolution_descriptor</a> *<em>conv</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>image</em>, <a class="reference internal" href="#_CPPv220hl_filter_descriptor" title="hl_filter_descriptor">hl_filter_descriptor</a> <em>filter</em>, int <em>padding_height</em>, int <em>padding_width</em>, int <em>stride_height</em>, int <em>stride_width</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv232hl_create_convolution_descriptorP25hl_convolution_descriptor20hl_tensor_descriptor20hl_filter_descriptoriiii" title="Permalink to this definition">¶</a></dt>
+<dd><p>create convolution descriptor. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">conv</span></code>: conv descriptor. </li>
+<li><code class="docutils literal"><span class="pre">image</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor. </li>
+<li><code class="docutils literal"><span class="pre">padding_height</span></code>: padding height. </li>
+<li><code class="docutils literal"><span class="pre">padding_width</span></code>: padding width. </li>
+<li><code class="docutils literal"><span class="pre">stride_height</span></code>: stride height. </li>
+<li><code class="docutils literal"><span class="pre">stride_width</span></code>: stride width. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv231hl_reset_convolution_descriptor25hl_convolution_descriptor20hl_tensor_descriptor20hl_filter_descriptoriiii">
+<span id="hl_reset_convolution_descriptor__hl_convolution_descriptor.hl_tensor_descriptor.hl_filter_descriptor.i.i.i.i"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1aa4bb989230bed2aee50f45ef2d986eca"></span>void <code class="descname">hl_reset_convolution_descriptor</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv225hl_convolution_descriptor" title="hl_convolution_descriptor">hl_convolution_descriptor</a> <em>conv</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>image</em>, <a class="reference internal" href="#_CPPv220hl_filter_descriptor" title="hl_filter_descriptor">hl_filter_descriptor</a> <em>filter</em>, int <em>padding_height</em>, int <em>padding_width</em>, int <em>stride_height</em>, int <em>stride_width</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv231hl_reset_convolution_descriptor25hl_convolution_descriptor20hl_tensor_descriptor20hl_filter_descriptoriiii" title="Permalink to this definition">¶</a></dt>
+<dd><p>reset convolution descriptor. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">conv</span></code>: conv descriptor. </li>
+<li><code class="docutils literal"><span class="pre">image</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor. </li>
+<li><code class="docutils literal"><span class="pre">padding_height</span></code>: padding height. </li>
+<li><code class="docutils literal"><span class="pre">padding_width</span></code>: padding width. </li>
+<li><code class="docutils literal"><span class="pre">stride_height</span></code>: stride height. </li>
+<li><code class="docutils literal"><span class="pre">stride_width</span></code>: stride width. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv233hl_destroy_convolution_descriptor25hl_convolution_descriptor">
+<span id="hl_destroy_convolution_descriptor__hl_convolution_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1aa7c89a20954fb7ad114398a4b1765f07"></span>void <code class="descname">hl_destroy_convolution_descriptor</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv225hl_convolution_descriptor" title="hl_convolution_descriptor">hl_convolution_descriptor</a> <em>conv</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv233hl_destroy_convolution_descriptor25hl_convolution_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>destroy convolution descriptor. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">conv</span></code>: hppl convolution descriptor. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv222hl_convolution_forward20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_filter_descriptorP4real25hl_convolution_descriptorPv6size_ti">
+<span id="hl_convolution_forward__hl_tensor_descriptor.realP.hl_tensor_descriptor.realP.hl_filter_descriptor.realP.hl_convolution_descriptor.voidP.s.i"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a55c3a7144156d02e24cf20e2a5eaa0ea"></span>void <code class="descname">hl_convolution_forward</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>input</em>, real *<em>input_data</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>output</em>, real *<em>output_data</em>, <a class="reference internal" href="#_CPPv220hl_filter_descriptor" title="hl_filter_descriptor">hl_filter_descriptor</a> <em>filter</em>, real *<em>filter_data</em>, <a class="reference internal" href="#_CPPv225hl_convolution_descriptor" title="hl_convolution_descriptor">hl_convolution_descriptor</a> <em>conv</em>, void *<em>gpuWorkSpace</em>, size_t <em>sizeInBytes</em>, int <em>convFwdAlgo</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv222hl_convolution_forward20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_filter_descriptorP4real25hl_convolution_descriptorPv6size_ti" title="Permalink to this definition">¶</a></dt>
+<dd><p>convolution forward(calculate output image). </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">input_data</span></code>: input image data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_data</span></code>: output image data. </li>
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor. </li>
+<li><code class="docutils literal"><span class="pre">filter_data</span></code>: filter data. </li>
+<li><code class="docutils literal"><span class="pre">conv</span></code>: convolution descriptor. </li>
+<li><code class="docutils literal"><span class="pre">gpuWorkSpace</span></code>: limited gpu workspace. </li>
+<li><code class="docutils literal"><span class="pre">sizeInBytes</span></code>: gpu workspace size (bytes). </li>
+<li><code class="docutils literal"><span class="pre">convFwdAlgo</span></code>: forward algorithm. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv231hl_convolution_forward_add_bias20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real">
+<span id="hl_convolution_forward_add_bias__hl_tensor_descriptor.realP.hl_tensor_descriptor.realP"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a846720ad8939032091f2fd2e1a43c6dd"></span>void <code class="descname">hl_convolution_forward_add_bias</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>bias</em>, real *<em>bias_data</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>output</em>, real *<em>output_data</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv231hl_convolution_forward_add_bias20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>convolution forward add bias(calculate output add bias). </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">bias</span></code>: bias descriptor. </li>
+<li><code class="docutils literal"><span class="pre">bias_data</span></code>: bias data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_data</span></code>: output image data. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv230hl_convolution_backward_filter20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_filter_descriptorP4real25hl_convolution_descriptorPv6size_ti">
+<span id="hl_convolution_backward_filter__hl_tensor_descriptor.realP.hl_tensor_descriptor.realP.hl_filter_descriptor.realP.hl_convolution_descriptor.voidP.s.i"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a9981f7d6f2a1a81f6583200a1028c2df"></span>void <code class="descname">hl_convolution_backward_filter</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>input</em>, real *<em>input_data</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>output</em>, real *<em>output_grad_data</em>, <a class="reference internal" href="#_CPPv220hl_filter_descriptor" title="hl_filter_descriptor">hl_filter_descriptor</a> <em>filter</em>, real *<em>filter_grad_data</em>, <a class="reference internal" href="#_CPPv225hl_convolution_descriptor" title="hl_convolution_descriptor">hl_convolution_descriptor</a> <em>conv</em>, void *<em>gpuWorkSpace</em>, size_t <em>sizeInBytes</em>, int <em>convBwdFilterAlgo</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv230hl_convolution_backward_filter20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_filter_descriptorP4real25hl_convolution_descriptorPv6size_ti" title="Permalink to this definition">¶</a></dt>
+<dd><p>convolution backward filter(calculate filter grad data). </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">input_data</span></code>: input image data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_grad_data</span></code>: output image grad data. </li>
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor. </li>
+<li><code class="docutils literal"><span class="pre">filter_grad_data</span></code>: filter grad data. </li>
+<li><code class="docutils literal"><span class="pre">conv</span></code>: convolution descriptor. </li>
+<li><code class="docutils literal"><span class="pre">gpuWorkSpace</span></code>: limited gpu workspace. </li>
+<li><code class="docutils literal"><span class="pre">sizeInBytes</span></code>: gpu workspace size (bytes). </li>
+<li><code class="docutils literal"><span class="pre">convBwdFilterAlgo</span></code>: backward filter algorithm. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv228hl_convolution_backward_data20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_filter_descriptorP4real25hl_convolution_descriptorPv6size_ti">
+<span id="hl_convolution_backward_data__hl_tensor_descriptor.realP.hl_tensor_descriptor.realP.hl_filter_descriptor.realP.hl_convolution_descriptor.voidP.s.i"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1ad7e3619cc8e8246fad277b60871a2923"></span>void <code class="descname">hl_convolution_backward_data</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>input</em>, real *<em>input_data_grad</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>output</em>, real *<em>output_grad_data</em>, <a class="reference internal" href="#_CPPv220hl_filter_descriptor" title="hl_filter_descriptor">hl_filter_descriptor</a> <em>filter</em>, real *<em>filter_data</em>, <a class="reference internal" href="#_CPPv225hl_convolution_descriptor" title="hl_convolution_descriptor">hl_convolution_descriptor</a> <em>conv</em>, void *<em>gpuWorkSpace</em>, size_t <em>sizeInBytes</em>, int <em>convBwdDataAlgo</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv228hl_convolution_backward_data20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_filter_descriptorP4real25hl_convolution_descriptorPv6size_ti" title="Permalink to this definition">¶</a></dt>
+<dd><p>convolution backward data(calculate input image grad data). </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">input_data_grad</span></code>: input image grad data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_grad_data</span></code>: output image grad data. </li>
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor. </li>
+<li><code class="docutils literal"><span class="pre">filter_data</span></code>: filter data. </li>
+<li><code class="docutils literal"><span class="pre">conv</span></code>: convolution descriptor. </li>
+<li><code class="docutils literal"><span class="pre">gpuWorkSpace</span></code>: limited gpu workspace. </li>
+<li><code class="docutils literal"><span class="pre">sizeInBytes</span></code>: gpu workspace size (bytes). </li>
+<li><code class="docutils literal"><span class="pre">convBwdDataAlgo</span></code>: backward data algorithm. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv228hl_convolution_backward_bias20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real">
+<span id="hl_convolution_backward_bias__hl_tensor_descriptor.realP.hl_tensor_descriptor.realP"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a97a779ee2c5771c2d6fe3c7ab1e50fc2"></span>void <code class="descname">hl_convolution_backward_bias</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>bias</em>, real *<em>bias_grad_data</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>output</em>, real *<em>output_grad_data</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv228hl_convolution_backward_bias20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>convolution backward bias(calculate bias grad data). </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">bias</span></code>: bias descriptor. </li>
+<li><code class="docutils literal"><span class="pre">bias_grad_data</span></code>: bias grad data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_grad_data</span></code>: output image grad data. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv218hl_softmax_forwardP4realP4realii">
+<span id="hl_softmax_forward__realP.realP.i.i"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a8ac35ecbec8810e1b474bd7147d1ee8e"></span>void <code class="descname">hl_softmax_forward</code><span class="sig-paren">(</span>real *<em>input</em>, real *<em>output</em>, int <em>height</em>, int <em>width</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218hl_softmax_forwardP4realP4realii" title="Permalink to this definition">¶</a></dt>
+<dd><p>softmax forward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: input value. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output value. </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: matrix width. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv219hl_softmax_backwardP4realP4realii">
+<span id="hl_softmax_backward__realP.realP.i.i"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1aa44692321b75d93ecd3dc64d7b425cb6"></span>void <code class="descname">hl_softmax_backward</code><span class="sig-paren">(</span>real *<em>output_value</em>, real *<em>output_grad</em>, int <em>height</em>, int <em>width</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_softmax_backwardP4realP4realii" title="Permalink to this definition">¶</a></dt>
+<dd><p>softmax backward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">output_value</span></code>: output value data. </li>
+<li><code class="docutils literal"><span class="pre">output_grad</span></code>: output grad data. </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: matrix width. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv230hl_batch_norm_forward_training20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_tensor_descriptorP4realP4realdP4realP4realdP4realP4real">
+<span id="hl_batch_norm_forward_training__hl_tensor_descriptor.realP.hl_tensor_descriptor.realP.hl_tensor_descriptor.realP.realP.double.realP.realP.double.realP.realP"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a25f556baf61654ebc332c73a66f8ba52"></span>void <code class="descname">hl_batch_norm_forward_training</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>inputDesc</em>, real *<em>input</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>outputDesc</em>, real *<em>output</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>bnParamDesc</em>, real *<em>scale</em>, real *<em>bias</em>, double <em>factor</em>, real *<em>runningMean</em>, real *<em>runningInvVar</em>, double <em>epsilon</em>, real *<em>savedMean</em>, real *<em>savedVar</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv230hl_batch_norm_forward_training20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_tensor_descriptorP4realP4realdP4realP4realdP4realP4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>cudnn batch norm forward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">inputDesc</span></code>: input tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">input</span></code>: input data. </li>
+<li><code class="docutils literal"><span class="pre">outputDesc</span></code>: output tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output data. </li>
+<li><code class="docutils literal"><span class="pre">bnParamDesc</span></code>: tensor descriptor desc. bnScale, bnBias, running mean/var, save_mean/var. </li>
+<li><code class="docutils literal"><span class="pre">scale</span></code>: batch normalization scale parameter (in original paper scale is referred to as gamma). </li>
+<li><code class="docutils literal"><span class="pre">bias</span></code>: batch normalization bias parameter (in original paper scale is referred to as beta). </li>
+<li><code class="docutils literal"><span class="pre">factor</span></code>: Factor used in the moving average computation. runningMean = newMean * factor<ul>
+<li>runningMean * (1 - factor) </li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">runningMean</span></code>: running mean. </li>
+<li><code class="docutils literal"><span class="pre">runningInvVar</span></code>: running variance. </li>
+<li><code class="docutils literal"><span class="pre">epsilon</span></code>: Epsilon value used in the batch normalization formula. </li>
+<li><code class="docutils literal"><span class="pre">savedMean</span></code>: optional cache to save intermediate results. </li>
+<li><code class="docutils literal"><span class="pre">savedVar</span></code>: optional cache to save intermediate results. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv231hl_batch_norm_forward_inference20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_tensor_descriptorP4realP4realP4realP4reald">
+<span id="hl_batch_norm_forward_inference__hl_tensor_descriptor.realP.hl_tensor_descriptor.realP.hl_tensor_descriptor.realP.realP.realP.realP.double"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a1cbb11460c86808165a03807bdcec1ef"></span>void <code class="descname">hl_batch_norm_forward_inference</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>inputDesc</em>, real *<em>input</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>outputDesc</em>, real *<em>output</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>bnParamDesc</em>, real *<em>scale</em>, real *<em>bias</em>, real *<em>estimatedMean</em>, real *<em>estimatedVar</em>, double <em>epsilon</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv231hl_batch_norm_forward_inference20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_tensor_descriptorP4realP4realP4realP4reald" title="Permalink to this definition">¶</a></dt>
+<dd><p>cudnn batch norm forward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">inputDesc</span></code>: input tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">input</span></code>: input data. </li>
+<li><code class="docutils literal"><span class="pre">outputDesc</span></code>: output tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output data. </li>
+<li><code class="docutils literal"><span class="pre">bnParamDesc</span></code>: tensor descriptor desc. bnScale, bnBias, running mean/var, save_mean/var. </li>
+<li><code class="docutils literal"><span class="pre">scale</span></code>: batch normalization scale parameter (in original paper scale is referred to as gamma). </li>
+<li><code class="docutils literal"><span class="pre">bias</span></code>: batch normalization bias parameter (in original paper scale is referred to as beta). </li>
+<li><code class="docutils literal"><span class="pre">estimatedMean</span></code>: </li>
+<li><code class="docutils literal"><span class="pre">estimatedVar</span></code>: It is suggested that resultRunningMean, resultRunningVariance from the cudnnBatchNormalizationForwardTraining call accumulated during the training phase are passed as inputs here. </li>
+<li><code class="docutils literal"><span class="pre">epsilon</span></code>: Epsilon value used in the batch normalization formula. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv222hl_batch_norm_backward20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_tensor_descriptorP4realP4realP4realdP4realP4real">
+<span id="hl_batch_norm_backward__hl_tensor_descriptor.realP.hl_tensor_descriptor.realP.hl_tensor_descriptor.realP.hl_tensor_descriptor.realP.realP.realP.double.realP.realP"></span><span class="target" id="paddlehl__cuda__cudnn_8h_1a2881c82975712681ecfd86ca49d4bbe9"></span>void <code class="descname">hl_batch_norm_backward</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>inputDesc</em>, real *<em>input</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>outGradDesc</em>, real *<em>outGrad</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>inGradDesc</em>, real *<em>inGrad</em>, <a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <em>dBnParamDesc</em>, real *<em>scale</em>, real *<em>scaleGrad</em>, real *<em>biasGrad</em>, double <em>epsilon</em>, real *<em>savedMean</em>, real *<em>savedInvVar</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv222hl_batch_norm_backward20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_tensor_descriptorP4real20hl_tensor_descriptorP4realP4realP4realdP4realP4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>cudnn batch norm forward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">inputDesc</span></code>: input tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">input</span></code>: input data. </li>
+<li><code class="docutils literal"><span class="pre">outGradDesc</span></code>: output tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">outGrad</span></code>: output data. </li>
+<li><code class="docutils literal"><span class="pre">inGradDesc</span></code>: input tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">inGrad</span></code>: input data. </li>
+<li><code class="docutils literal"><span class="pre">dBnParamDesc</span></code>: tensor descriptor desc. bnScale, bnBias, running mean/var, save_mean/var. </li>
+<li><code class="docutils literal"><span class="pre">scale</span></code>: batch normalization scale parameter (in original paper scale is referred to as gamma). </li>
+<li><code class="docutils literal"><span class="pre">scaleGrad</span></code>: batch normalization scale parameter (in original paper scale is referred to as gamma) gradient. </li>
+<li><code class="docutils literal"><span class="pre">biasGrad</span></code>: batch normalization bias parameter (in original paper scale is referred to as beta) gradient. </li>
+<li><code class="docutils literal"><span class="pre">epsilon</span></code>: Epsilon value used in the batch normalization formula. </li>
+<li><code class="docutils literal"><span class="pre">savedMean</span></code>: optional cache to save intermediate results. </li>
+<li><code class="docutils literal"><span class="pre">savedInvVar</span></code>: optional cache to save intermediate results. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="id1">
+<h3>hl_cuda_cudnn.h<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Defines</p>
+<dl class="macro">
+<dt id="c.HL_CUDA_CUDNN_PH_">
+<span class="target" id="paddlehl__cuda__cudnn_8ph_1af37ad83432f635a5c14c1296fb821d61"></span><code class="descname">HL_CUDA_CUDNN_PH_</code><a class="headerlink" href="#c.HL_CUDA_CUDNN_PH_" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="macro">
+<dt id="c.GET_TENSOR_DESCRIPTOR">
+<span class="target" id="paddlehl__cuda__cudnn_8ph_1a29ea1b2806c24cc162ad70babe865bfe"></span><code class="descname">GET_TENSOR_DESCRIPTOR</code><span class="sig-paren">(</span>image<span class="sig-paren">)</span><a class="headerlink" href="#c.GET_TENSOR_DESCRIPTOR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="macro">
+<dt id="c.GET_FILTER_DESCRIPTOR">
+<span class="target" id="paddlehl__cuda__cudnn_8ph_1a705be45e61a86199b3a8b7194f24b360"></span><code class="descname">GET_FILTER_DESCRIPTOR</code><span class="sig-paren">(</span>filter<span class="sig-paren">)</span><a class="headerlink" href="#c.GET_FILTER_DESCRIPTOR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="macro">
+<dt id="c.GET_CONVOLUTION_DESCRIPTOR">
+<span class="target" id="paddlehl__cuda__cudnn_8ph_1a03bc673123b7730e7ee50f7d249a2110"></span><code class="descname">GET_CONVOLUTION_DESCRIPTOR</code><span class="sig-paren">(</span>conv<span class="sig-paren">)</span><a class="headerlink" href="#c.GET_CONVOLUTION_DESCRIPTOR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Typedefs</p>
+<dl class="type">
+<dt id="_CPPv223cudnn_tensor_descriptor">
+<span id="cudnn_tensor_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8ph_1a2841ccdea77e5afec084deb7f2603c1b"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv224_cudnn_tensor_descriptor" title="_cudnn_tensor_descriptor">_cudnn_tensor_descriptor</a> *<code class="descname">cudnn_tensor_descriptor</code><a class="headerlink" href="#_CPPv223cudnn_tensor_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv224cudnn_pooling_descriptor">
+<span id="cudnn_pooling_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8ph_1a4ea1eb980c037f28c532f89f1e5d177d"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv225_cudnn_pooling_descriptor" title="_cudnn_pooling_descriptor">_cudnn_pooling_descriptor</a> *<code class="descname">cudnn_pooling_descriptor</code><a class="headerlink" href="#_CPPv224cudnn_pooling_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv223cudnn_filter_descriptor">
+<span id="cudnn_filter_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8ph_1a595dbce8b5cb023552af619ee182a3b7"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv224_cudnn_filter_descriptor" title="_cudnn_filter_descriptor">_cudnn_filter_descriptor</a> *<code class="descname">cudnn_filter_descriptor</code><a class="headerlink" href="#_CPPv223cudnn_filter_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv228cudnn_convolution_descriptor">
+<span id="cudnn_convolution_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8ph_1a7b3131a2ecb5bde7e4655be0ae50dad6"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv229_cudnn_convolution_descriptor" title="_cudnn_convolution_descriptor">_cudnn_convolution_descriptor</a> *<code class="descname">cudnn_convolution_descriptor</code><a class="headerlink" href="#_CPPv228cudnn_convolution_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv224_cudnn_tensor_descriptor">
+<span id="_cudnn_tensor_descriptor"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor"></span><em class="property">struct </em><code class="descname">_cudnn_tensor_descriptor</code><a class="headerlink" href="#_CPPv224_cudnn_tensor_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor4descE">
+<span id="_cudnn_tensor_descriptor::desc__cudnnTensorDescriptor_t"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1a4846bba1f4bb6b7d8f9abd6ef3f99732"></span>cudnnTensorDescriptor_t <code class="descname">desc</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor4descE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor6formatE">
+<span id="_cudnn_tensor_descriptor::format__cudnnTensorFormat_t"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1ae89a67416913f78bcae4e3439c9196f6"></span>cudnnTensorFormat_t <code class="descname">format</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor6formatE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor9data_typeE">
+<span id="_cudnn_tensor_descriptor::data_type__cudnnDataType_t"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1a2fbe556caa9c265a5c0c3dd86c88d379"></span>cudnnDataType_t <code class="descname">data_type</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor9data_typeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor10batch_sizeE">
+<span id="_cudnn_tensor_descriptor::batch_size__i"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1ac95fc5b390748557ff57b845661907fe"></span>int <code class="descname">batch_size</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor10batch_sizeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor12feature_mapsE">
+<span id="_cudnn_tensor_descriptor::feature_maps__i"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1a6460e7a8569f3cb5b8ecd0252f11df57"></span>int <code class="descname">feature_maps</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor12feature_mapsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor6heightE">
+<span id="_cudnn_tensor_descriptor::height__i"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1a90971d849eb498b59d43da6c938e305c"></span>int <code class="descname">height</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor6heightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor5widthE">
+<span id="_cudnn_tensor_descriptor::width__i"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1aa715d6243ff0d388aeabfb9f45c4b30f"></span>int <code class="descname">width</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor5widthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv225_cudnn_pooling_descriptor">
+<span id="_cudnn_pooling_descriptor"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor"></span><em class="property">struct </em><code class="descname">_cudnn_pooling_descriptor</code><a class="headerlink" href="#_CPPv225_cudnn_pooling_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N25_cudnn_pooling_descriptor4descE">
+<span id="_cudnn_pooling_descriptor::desc__cudnnPoolingDescriptor_t"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor_1a31f6c941880c8e2f40052d241533bdd1"></span>cudnnPoolingDescriptor_t <code class="descname">desc</code><a class="headerlink" href="#_CPPv2N25_cudnn_pooling_descriptor4descE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N25_cudnn_pooling_descriptor4modeE">
+<span id="_cudnn_pooling_descriptor::mode__cudnnPoolingMode_t"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor_1a6bee776bf2d1d25a31aefeab088c81b7"></span>cudnnPoolingMode_t <code class="descname">mode</code><a class="headerlink" href="#_CPPv2N25_cudnn_pooling_descriptor4modeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N25_cudnn_pooling_descriptor13window_heightE">
+<span id="_cudnn_pooling_descriptor::window_height__i"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor_1afb666077c484bf19df0f622a3a942074"></span>int <code class="descname">window_height</code><a class="headerlink" href="#_CPPv2N25_cudnn_pooling_descriptor13window_heightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N25_cudnn_pooling_descriptor12window_widthE">
+<span id="_cudnn_pooling_descriptor::window_width__i"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor_1a8e496ed6e649530ea0ea907584c7f74c"></span>int <code class="descname">window_width</code><a class="headerlink" href="#_CPPv2N25_cudnn_pooling_descriptor12window_widthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N25_cudnn_pooling_descriptor13stride_heightE">
+<span id="_cudnn_pooling_descriptor::stride_height__i"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor_1af00e9c1d08c6e855606107d9582cd280"></span>int <code class="descname">stride_height</code><a class="headerlink" href="#_CPPv2N25_cudnn_pooling_descriptor13stride_heightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N25_cudnn_pooling_descriptor12stride_widthE">
+<span id="_cudnn_pooling_descriptor::stride_width__i"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor_1a12cc17e09a438c8308d8c2086994e3c4"></span>int <code class="descname">stride_width</code><a class="headerlink" href="#_CPPv2N25_cudnn_pooling_descriptor12stride_widthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv224_cudnn_filter_descriptor">
+<span id="_cudnn_filter_descriptor"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor"></span><em class="property">struct </em><code class="descname">_cudnn_filter_descriptor</code><a class="headerlink" href="#_CPPv224_cudnn_filter_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_filter_descriptor4descE">
+<span id="_cudnn_filter_descriptor::desc__cudnnFilterDescriptor_t"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor_1a570059f98b1c7b83bfc650aaa79ed817"></span>cudnnFilterDescriptor_t <code class="descname">desc</code><a class="headerlink" href="#_CPPv2N24_cudnn_filter_descriptor4descE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_filter_descriptor9data_typeE">
+<span id="_cudnn_filter_descriptor::data_type__cudnnDataType_t"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor_1a7e7aabcc5d5700590f01e0faba969eea"></span>cudnnDataType_t <code class="descname">data_type</code><a class="headerlink" href="#_CPPv2N24_cudnn_filter_descriptor9data_typeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_filter_descriptor19output_feature_mapsE">
+<span id="_cudnn_filter_descriptor::output_feature_maps__i"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor_1a1f4b2e2d0482c6c88336e709950bbb9e"></span>int <code class="descname">output_feature_maps</code><a class="headerlink" href="#_CPPv2N24_cudnn_filter_descriptor19output_feature_mapsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_filter_descriptor18input_feature_mapsE">
+<span id="_cudnn_filter_descriptor::input_feature_maps__i"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor_1a0b3a3665f7a095a76d010d0ae0fba281"></span>int <code class="descname">input_feature_maps</code><a class="headerlink" href="#_CPPv2N24_cudnn_filter_descriptor18input_feature_mapsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_filter_descriptor13filter_heightE">
+<span id="_cudnn_filter_descriptor::filter_height__i"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor_1a69bb3c6a688f2a638d3d75856b200864"></span>int <code class="descname">filter_height</code><a class="headerlink" href="#_CPPv2N24_cudnn_filter_descriptor13filter_heightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_filter_descriptor12filter_widthE">
+<span id="_cudnn_filter_descriptor::filter_width__i"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor_1ac43f7049100384036c68b65f1d1af994"></span>int <code class="descname">filter_width</code><a class="headerlink" href="#_CPPv2N24_cudnn_filter_descriptor12filter_widthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv229_cudnn_convolution_descriptor">
+<span id="_cudnn_convolution_descriptor"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor"></span><em class="property">struct </em><code class="descname">_cudnn_convolution_descriptor</code><a class="headerlink" href="#_CPPv229_cudnn_convolution_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor4descE">
+<span id="_cudnn_convolution_descriptor::desc__cudnnConvolutionDescriptor_t"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1a3087b08e2fdaba39fbea354224eb24cc"></span>cudnnConvolutionDescriptor_t <code class="descname">desc</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor4descE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor11input_imageE">
+<span id="_cudnn_convolution_descriptor::input_image__hl_tensor_descriptor"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1a3164eb48f55c64b86315f8c2373a3bc4"></span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <code class="descname">input_image</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor11input_imageE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor6filterE">
+<span id="_cudnn_convolution_descriptor::filter__hl_filter_descriptor"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1a3896c7a4346835d71c39238b8b4c89a6"></span><a class="reference internal" href="#_CPPv220hl_filter_descriptor" title="hl_filter_descriptor">hl_filter_descriptor</a> <code class="descname">filter</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor6filterE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor14padding_heightE">
+<span id="_cudnn_convolution_descriptor::padding_height__i"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1a966c70c01347a97cd8e255dcfb758a57"></span>int <code class="descname">padding_height</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor14padding_heightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor13padding_widthE">
+<span id="_cudnn_convolution_descriptor::padding_width__i"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1a45915ee2f8afb379beaf1a3310b0e5bf"></span>int <code class="descname">padding_width</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor13padding_widthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor13stride_heightE">
+<span id="_cudnn_convolution_descriptor::stride_height__i"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1abd68fb7979c541852ee0ed5856b6ccd5"></span>int <code class="descname">stride_height</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor13stride_heightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor12stride_widthE">
+<span id="_cudnn_convolution_descriptor::stride_width__i"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1ac7215348bab9bcf056bcee0945433e3d"></span>int <code class="descname">stride_width</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor12stride_widthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor8upscalexE">
+<span id="_cudnn_convolution_descriptor::upscalex__i"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1aebb269723341fe5f4ce9d1885eeca817"></span>int <code class="descname">upscalex</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor8upscalexE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor8upscaleyE">
+<span id="_cudnn_convolution_descriptor::upscaley__i"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1a1364c8764eb7efdd776975fb7af18616"></span>int <code class="descname">upscaley</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor8upscaleyE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor4modeE">
+<span id="_cudnn_convolution_descriptor::mode__cudnnConvolutionMode_t"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1abab3c0bd9fe05c09f6f78cb2cac86f87"></span>cudnnConvolutionMode_t <code class="descname">mode</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor4modeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Cuda</a><ul>
+<li><a class="reference internal" href="#dynamic-link-libs">Dynamic Link Libs</a><ul>
+<li><a class="reference internal" href="#hl-dso-loader-h">hl_dso_loader.h</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#gpu-resources">GPU Resources</a><ul>
+<li><a class="reference internal" href="#hl-cuda-ph">hl_cuda.ph</a></li>
+<li><a class="reference internal" href="#hl-cuda-h">hl_cuda.h</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#cuda-wrapper">CUDA Wrapper</a><ul>
+<li><a class="reference internal" href="#hl-cuda-cublas-h">hl_cuda_cublas.h</a></li>
+<li><a class="reference internal" href="#hl-cuda-cudnn-h">hl_cuda_cudnn.h</a></li>
+<li><a class="reference internal" href="#id1">hl_cuda_cudnn.h</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">CUDA</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../matrix/index.html"
+                        title="next chapter">Matrix</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/source/cuda/cuda/cuda.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../matrix/index.html" title="Matrix"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="CUDA"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >CUDA</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

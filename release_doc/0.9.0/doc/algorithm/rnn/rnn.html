@@ -1,0 +1,336 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Recurrent Neural Network Configuration &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="prev" title="Lock" href="../../source/utils/thread.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../source/utils/thread.html" title="Lock"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="recurrent-neural-network-configuration">
+<h1>Recurrent Neural Network Configuration<a class="headerlink" href="#recurrent-neural-network-configuration" title="Permalink to this headline">¶</a></h1>
+<p>This tutorial will guide you how to configure recurrent neural network in PaddlePaddle. PaddlePaddle supports highly flexible and efficient recurrent neural network configuration. In this tutorial, you will learn how to:</p>
+<ul class="simple">
+<li>prepare sequence data for learning recurrent neural networks.</li>
+<li>configure recurrent neural network architecture.</li>
+<li>generate sequence with learned recurrent neural network models.</li>
+</ul>
+<p>We will use vanilla recurrent neural network, and sequence to sequence model to guide you through these steps. The code of sequence to sequence model can be found at <code class="code docutils literal"><span class="pre">demo/seqToseq</span></code>.</p>
+<div class="section" id="prepare-sequence-data">
+<h2>Prepare Sequence Data<a class="headerlink" href="#prepare-sequence-data" title="Permalink to this headline">¶</a></h2>
+<p>PaddlePaddle does not need any preprocessing to sequence data, such as padding. The only thing that needs to be done is to set the type of the corresponding type to input. For example, the following code snippets defines three input. All of them are sequences, and the size of them are <code class="code docutils literal"><span class="pre">src_dict</span></code>, <code class="code docutils literal"><span class="pre">trg_dict</span></code>, and <code class="code docutils literal"><span class="pre">trg_dict</span></code>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">settings</span><span class="o">.</span><span class="n">slots</span> <span class="o">=</span> <span class="p">[</span>
+  <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">src_dict</span><span class="p">)),</span>
+  <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">trg_dict</span><span class="p">)),</span>
+  <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">trg_dict</span><span class="p">))]</span>
+</pre></div>
+</div>
+<p>Then at the <code class="code docutils literal"><span class="pre">process</span></code> function, each <code class="code docutils literal"><span class="pre">yield</span></code> function will return three integer lists. Each integer list is treated as a sequence of integers:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">yield</span> <span class="n">src_ids</span><span class="p">,</span> <span class="n">trg_ids</span><span class="p">,</span> <span class="n">trg_ids_next</span>
+</pre></div>
+</div>
+<p>For more details description of how to write a data provider, please refer to <a class="reference external" href="../../ui/data_provider/index.html">PyDataProvider2</a>. The full data provider file is located at <code class="code docutils literal"><span class="pre">demo/seqToseq/dataprovider.py</span></code>.</p>
+</div>
+<div class="section" id="configure-recurrent-neural-network-architecture">
+<h2>Configure Recurrent Neural Network Architecture<a class="headerlink" href="#configure-recurrent-neural-network-architecture" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="simple-gated-recurrent-neural-network">
+<h3>Simple Gated Recurrent Neural Network<a class="headerlink" href="#simple-gated-recurrent-neural-network" title="Permalink to this headline">¶</a></h3>
+<p>Recurrent neural network process a sequence at each time step sequentially. An example of the architecture of LSTM is listed below.</p>
+<img alt="../../_images/bi_lstm.jpg" class="align-center" src="../../_images/bi_lstm.jpg" />
+<p>Generally speaking, a recurrent network perform the following operations from <span class="math">\(t=1\)</span> to <span class="math">\(t=T\)</span>, or reversely from <span class="math">\(t=T\)</span> to <span class="math">\(t=1\)</span>.</p>
+<div class="math">
+\[x_{t+1} = f_x(x_t), y_t = f_y(x_t)\]</div>
+<p>where <span class="math">\(f_x(.)\)</span> is called <strong>step function</strong>, and <span class="math">\(f_y(.)\)</span> is called <strong>output function</strong>. In vanilla recurrent neural network, both of the step function and output function are very simple. However, PaddlePaddle supports the configuration of very complex architectures by modifying these two functions. We will use the sequence to sequence model with attention as an example to demonstrate how you can configure complex recurrent neural network models. In this section, we will use a simple vanilla recurrent neural network as an example of configuring simple recurrent neural network using <code class="code docutils literal"><span class="pre">recurrent_group</span></code>. Notice that if you only need to use simple RNN, GRU, or LSTM, then <code class="code docutils literal"><span class="pre">grumemory</span></code> and <code class="code docutils literal"><span class="pre">lstmemory</span></code> is recommended because they are more computationally efficient than <code class="code docutils literal"><span class="pre">recurrent_group</span></code>.</p>
+<p>For vanilla RNN, at each time step, the <strong>step function</strong> is:</p>
+<div class="math">
+\[x_{t+1} = W_x x_t + W_i I_t + b\]</div>
+<p>where <span class="math">\(x_t\)</span> is the RNN state, and <span class="math">\(I_t\)</span> is the input, <span class="math">\(W_x\)</span> and <span class="math">\(W_i\)</span> are transformation matrices for RNN states and inputs, respectively. <span class="math">\(b\)</span> is the bias.
+Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</span> as the output.</p>
+<p><code class="code docutils literal"><span class="pre">recurrent_group</span></code> is the most important tools for constructing recurrent neural networks. It defines the <strong>step function</strong>, <strong>output function</strong> and the inputs of the recurrent neural network. Notice that the <code class="code docutils literal"><span class="pre">step</span></code> argument of this function implements both the <code class="code docutils literal"><span class="pre">step</span> <span class="pre">function</span></code> and the <code class="code docutils literal"><span class="pre">output</span> <span class="pre">function</span></code>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">simple_rnn</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span>
+               <span class="n">size</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+               <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+               <span class="n">reverse</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+               <span class="n">rnn_bias_attr</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+               <span class="n">act</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+               <span class="n">rnn_layer_attr</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__rnn_step__</span><span class="p">(</span><span class="n">ipt</span><span class="p">):</span>
+       <span class="n">out_mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+       <span class="n">rnn_out</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">ipt</span><span class="p">),</span>
+                                      <span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">out_mem</span><span class="p">)],</span>
+                             <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="p">,</span>
+                             <span class="n">bias_attr</span> <span class="o">=</span> <span class="n">rnn_bias_attr</span><span class="p">,</span>
+                             <span class="n">act</span> <span class="o">=</span> <span class="n">act</span><span class="p">,</span>
+                             <span class="n">layer_attr</span> <span class="o">=</span> <span class="n">rnn_layer_attr</span><span class="p">,</span>
+                             <span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">)</span>
+       <span class="k">return</span> <span class="n">rnn_out</span>
+    <span class="k">return</span> <span class="n">recurrent_group</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_recurrent_group&#39;</span> <span class="o">%</span> <span class="n">name</span><span class="p">,</span>
+                           <span class="n">step</span><span class="o">=</span><span class="n">__rnn_step__</span><span class="p">,</span>
+                           <span class="n">reverse</span><span class="o">=</span><span class="n">reverse</span><span class="p">,</span>
+                           <span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>PaddlePaddle uses memory to construct step function. <strong>Memory</strong> is the most important concept when constructing recurrent neural networks in PaddlePaddle. A memory is a state that is used recurrently in step functions, such as <span class="math">\(x_{t+1} = f_x(x_t)\)</span>. One memory contains an <strong>output</strong> and a <strong>input</strong>. The output of memory at the current time step is utilized as the input of the memory at the next time step. A memory can also has a <strong>boot layer</strong>, whose output is utilized as the initial value of the memory. In our case, the output of the gated recurrent unit is employed as the output memory. Notice that the name of the layer <code class="code docutils literal"><span class="pre">rnn_out</span></code> is the same as the name of <code class="code docutils literal"><span class="pre">out_mem</span></code>. This means the output of the layer <code class="code docutils literal"><span class="pre">rnn_out</span></code> (<span class="math">\(x_{t+1}\)</span>) is utilized as the <strong>output</strong> of <code class="code docutils literal"><span class="pre">out_mem</span></code> memory.</p>
+<p>A memory can also be a sequence. In this case, at each time step, we have a sequence as the state of the recurrent neural network. This can be useful when constructing very complex recurrent neural network. Other advanced functions include defining multiple memories, and defining hierarchical recurrent neural network architecture using sub-sequence.</p>
+<p>We return <code class="code docutils literal"><span class="pre">rnn_out</span></code> at the end of the function. It means that the output of the layer <code class="code docutils literal"><span class="pre">rnn_out</span></code> is utilized as the <strong>output</strong> function of the gated recurrent neural network.</p>
+</div>
+<div class="section" id="sequence-to-sequence-model-with-attention">
+<h3>Sequence to Sequence Model with Attention<a class="headerlink" href="#sequence-to-sequence-model-with-attention" title="Permalink to this headline">¶</a></h3>
+<p>We will use the sequence to sequence model with attention as an example to demonstrate how you can configure complex recurrent neural network models. An illustration of the sequence to sequence model with attention is shown in the following figure.</p>
+<img alt="../../_images/encoder-decoder-attention-model.png" class="align-center" src="../../_images/encoder-decoder-attention-model.png" />
+<p>In this model, the source sequence <span class="math">\(S = \{s_1, \dots, s_T\}\)</span> is encoded with a bidirectional gated recurrent neural networks. The hidden states of the bidirectional gated recurrent neural network <span class="math">\(H_S = \{H_1, \dots, H_T\}\)</span> is called <em>encoder vector</em> The decoder is a gated recurrent neural network. When decoding each token <span class="math">\(y_t\)</span>, the gated recurrent neural network generates a set of weights <span class="math">\(W_S^t = \{W_1^t, \dots, W_T^t\}\)</span>, which are used to compute a weighted sum of the encoder vector. The weighted sum of the encoder vector is utilized to condition the generation of the token <span class="math">\(y_t\)</span>.</p>
+<p>The encoder part of the model is listed below. It calls <code class="code docutils literal"><span class="pre">grumemory</span></code> to represent gated recurrent neural network. It is the recommended way of using recurrent neural network if the network architecture is simple, because it is faster than <code class="code docutils literal"><span class="pre">recurrent_group</span></code>. We have implemented most of the commonly used recurrent neural network architectures, you can refer to <a class="reference external" href="../../ui/api/trainer_config_helpers/layers_index.html">Layers</a>  for more details.</p>
+<p>We also project the encoder vector to <code class="code docutils literal"><span class="pre">decoder_size</span></code> dimensional space, get the first instance of the backward recurrent network, and project it to <code class="code docutils literal"><span class="pre">decoder_size</span></code> dimensional space:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># Define the data layer of the source sentence.</span>
+<span class="n">src_word_id</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;source_language_word&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">source_dict_dim</span><span class="p">)</span>
+<span class="c1"># Calculate the word embedding of each word.</span>
+<span class="n">src_embedding</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span>
+    <span class="nb">input</span><span class="o">=</span><span class="n">src_word_id</span><span class="p">,</span>
+    <span class="n">size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">,</span>
+    <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;_source_language_embedding&#39;</span><span class="p">))</span>
+<span class="c1"># Apply forward recurrent neural network.</span>
+<span class="n">src_forward</span> <span class="o">=</span> <span class="n">grumemory</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">src_embedding</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">encoder_size</span><span class="p">)</span>
+<span class="c1"># Apply backward recurrent neural network. reverse=True means backward recurrent neural network.</span>
+<span class="n">src_backward</span> <span class="o">=</span> <span class="n">grumemory</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">src_embedding</span><span class="p">,</span>
+                          <span class="n">size</span><span class="o">=</span><span class="n">encoder_size</span><span class="p">,</span>
+                          <span class="n">reverse</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="c1"># Mix the forward and backward parts of the recurrent neural network together.</span>
+<span class="n">encoded_vector</span> <span class="o">=</span> <span class="n">concat_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">src_forward</span><span class="p">,</span> <span class="n">src_backward</span><span class="p">])</span>
+
+<span class="c1"># Project encoding vector to decoder_size.</span>
+<span class="n">encoder_proj</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">encoded_vector</span><span class="p">)],</span>
+                           <span class="n">size</span> <span class="o">=</span> <span class="n">decoder_size</span><span class="p">)</span>
+
+<span class="c1"># Compute the first instance of the backward RNN.</span>
+<span class="n">backward_first</span> <span class="o">=</span> <span class="n">first_seq</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">src_backward</span><span class="p">)</span>
+
+<span class="c1"># Project the first instance of backward RNN to decoder size.</span>
+<span class="n">decoder_boot</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">backward_first</span><span class="p">)],</span> <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>The decoder uses <code class="code docutils literal"><span class="pre">recurrent_group</span></code> to define the recurrent neural network. The step and output functions are defined in <code class="code docutils literal"><span class="pre">gru_decoder_with_attention</span></code>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">group_inputs</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_vector</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
+              <span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_proj</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">)]</span>
+<span class="n">trg_embedding</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span>
+    <span class="nb">input</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;target_language_word&#39;</span><span class="p">,</span>
+                     <span class="n">size</span><span class="o">=</span><span class="n">target_dict_dim</span><span class="p">),</span>
+    <span class="n">size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">,</span>
+    <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;_target_language_embedding&#39;</span><span class="p">))</span>
+<span class="n">group_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trg_embedding</span><span class="p">)</span>
+
+<span class="c1"># For decoder equipped with attention mechanism, in training,</span>
+<span class="c1"># target embedding (the groudtruth) is the data input,</span>
+<span class="c1"># while encoded source sequence is accessed to as an unbounded memory.</span>
+<span class="c1"># StaticInput means the same value is utilized at different time steps.</span>
+<span class="c1"># Otherwise, it is a sequence input. Inputs at different time steps are different.</span>
+<span class="c1"># All sequence inputs should have the same length.</span>
+<span class="n">decoder</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">decoder_group_name</span><span class="p">,</span>
+                          <span class="n">step</span><span class="o">=</span><span class="n">gru_decoder_with_attention</span><span class="p">,</span>
+                          <span class="nb">input</span><span class="o">=</span><span class="n">group_inputs</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The implementation of the step function is listed as below. First, it defines the <strong>memory</strong> of the decoder network. Then it defines attention, gated recurrent unit step function, and the output function:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">gru_decoder_with_attention</span><span class="p">(</span><span class="n">enc_vec</span><span class="p">,</span> <span class="n">enc_proj</span><span class="p">,</span> <span class="n">current_word</span><span class="p">):</span>
+    <span class="c1"># Defines the memory of the decoder.</span>
+    <span class="c1"># The output of this memory is defined in gru_step.</span>
+    <span class="c1"># Notice that the name of gru_step should be the same as the name of this memory.</span>
+    <span class="n">decoder_mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;gru_decoder&#39;</span><span class="p">,</span>
+                         <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span><span class="p">,</span>
+                         <span class="n">boot_layer</span><span class="o">=</span><span class="n">decoder_boot</span><span class="p">)</span>
+    <span class="c1"># Compute attention weighted encoder vector.</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="n">simple_attention</span><span class="p">(</span><span class="n">encoded_sequence</span><span class="o">=</span><span class="n">enc_vec</span><span class="p">,</span>
+                               <span class="n">encoded_proj</span><span class="o">=</span><span class="n">enc_proj</span><span class="p">,</span>
+                               <span class="n">decoder_state</span><span class="o">=</span><span class="n">decoder_mem</span><span class="p">)</span>
+    <span class="c1"># Mix the current word embedding and the attention weighted encoder vector.</span>
+    <span class="n">decoder_inputs</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">context</span><span class="p">),</span>
+                                           <span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">current_word</span><span class="p">)],</span>
+                                 <span class="n">size</span> <span class="o">=</span> <span class="n">decoder_size</span> <span class="o">*</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="c1"># Define Gated recurrent unit recurrent neural network step function.</span>
+    <span class="n">gru_step</span> <span class="o">=</span> <span class="n">gru_step_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;gru_decoder&#39;</span><span class="p">,</span>
+                              <span class="nb">input</span><span class="o">=</span><span class="n">decoder_inputs</span><span class="p">,</span>
+                              <span class="n">output_mem</span><span class="o">=</span><span class="n">decoder_mem</span><span class="p">,</span>
+                              <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span><span class="p">)</span>
+    <span class="c1"># Defines the output function.</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">gru_step</span><span class="p">)],</span>
+                      <span class="n">size</span><span class="o">=</span><span class="n">target_dict_dim</span><span class="p">,</span>
+                      <span class="n">bias_attr</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                      <span class="n">act</span><span class="o">=</span><span class="n">SoftmaxActivation</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">out</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="generate-sequence">
+<h2>Generate Sequence<a class="headerlink" href="#generate-sequence" title="Permalink to this headline">¶</a></h2>
+<p>After training the model, we can use it to generate sequences. A common practice is to use <strong>beam search</strong> to generate sequences. The following code snippets defines a beam search algorithm. Notice that <code class="code docutils literal"><span class="pre">beam_search</span></code> function assumes the output function of the <code class="code docutils literal"><span class="pre">step</span></code> returns a softmax normalized probability vector of the next token. We made the following changes to the model.</p>
+<ul class="simple">
+<li>use <code class="code docutils literal"><span class="pre">GeneratedInput</span></code> for trg_embedding. <code class="code docutils literal"><span class="pre">GeneratedInput</span></code> computes the embedding of the generated token at the last time step for the input at the current time step.</li>
+<li>use <code class="code docutils literal"><span class="pre">beam_search</span></code> function. This function needs to set:<ul>
+<li><code class="code docutils literal"><span class="pre">bos_id</span></code>: the start token. Every sentence starts with the start token.</li>
+<li><code class="code docutils literal"><span class="pre">eos_id</span></code>: the end token. Every sentence ends with the end token.</li>
+<li><code class="code docutils literal"><span class="pre">beam_size</span></code>: the beam size used in beam search.</li>
+<li><code class="code docutils literal"><span class="pre">max_length</span></code>: the maximum length of the generated sentences.</li>
+</ul>
+</li>
+<li>use <code class="code docutils literal"><span class="pre">seqtext_printer_evaluator</span></code> to print text according to index matrix and dictionary. This function needs to set:<ul>
+<li><code class="code docutils literal"><span class="pre">id_input</span></code>: the integer ID of the data, used to identify the corresponding output in the generated files.</li>
+<li><code class="code docutils literal"><span class="pre">dict_file</span></code>: the dictionary file for converting word id to word.</li>
+<li><code class="code docutils literal"><span class="pre">result_file</span></code>: the path of the generation result file.</li>
+</ul>
+</li>
+</ul>
+<p>The code is listed below:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">group_inputs</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_vector</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
+              <span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_proj</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">)]</span>
+<span class="c1"># In generation, decoder predicts a next target word based on</span>
+<span class="c1"># the encoded source sequence and the last generated target word.</span>
+<span class="c1"># The encoded source sequence (encoder&#39;s output) must be specified by</span>
+<span class="c1"># StaticInput which is a read-only memory.</span>
+<span class="c1"># Here, GeneratedInputs automatically fetchs the last generated word,</span>
+<span class="c1"># which is initialized by a start mark, such as &lt;s&gt;.</span>
+<span class="n">trg_embedding</span> <span class="o">=</span> <span class="n">GeneratedInput</span><span class="p">(</span>
+    <span class="n">size</span><span class="o">=</span><span class="n">target_dict_dim</span><span class="p">,</span>
+    <span class="n">embedding_name</span><span class="o">=</span><span class="s1">&#39;_target_language_embedding&#39;</span><span class="p">,</span>
+    <span class="n">embedding_size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">)</span>
+<span class="n">group_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trg_embedding</span><span class="p">)</span>
+<span class="n">beam_gen</span> <span class="o">=</span> <span class="n">beam_search</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">decoder_group_name</span><span class="p">,</span>
+                       <span class="n">step</span><span class="o">=</span><span class="n">gru_decoder_with_attention</span><span class="p">,</span>
+                       <span class="nb">input</span><span class="o">=</span><span class="n">group_inputs</span><span class="p">,</span>
+                       <span class="n">bos_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># Beginnning token.</span>
+                       <span class="n">eos_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="c1"># End of sentence token.</span>
+                       <span class="n">beam_size</span><span class="o">=</span><span class="n">beam_size</span><span class="p">,</span>
+                       <span class="n">max_length</span><span class="o">=</span><span class="n">max_length</span><span class="p">)</span>
+
+<span class="n">seqtext_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">beam_gen</span><span class="p">,</span>
+                          <span class="n">id_input</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;sent_id&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                          <span class="n">dict_file</span><span class="o">=</span><span class="n">trg_dict_path</span><span class="p">,</span>
+                          <span class="n">result_file</span><span class="o">=</span><span class="n">gen_trans_file</span><span class="p">)</span>
+<span class="n">outputs</span><span class="p">(</span><span class="n">beam_gen</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to <a class="reference external" href="../../demo/semantic_role_labeling/index.html">Semantic Role Labeling Demo</a> for more details.</p>
+<p>The full configuration file is located at <code class="code docutils literal"><span class="pre">demo/seqToseq/seqToseq_net.py</span></code>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Recurrent Neural Network Configuration</a><ul>
+<li><a class="reference internal" href="#prepare-sequence-data">Prepare Sequence Data</a></li>
+<li><a class="reference internal" href="#configure-recurrent-neural-network-architecture">Configure Recurrent Neural Network Architecture</a><ul>
+<li><a class="reference internal" href="#simple-gated-recurrent-neural-network">Simple Gated Recurrent Neural Network</a></li>
+<li><a class="reference internal" href="#sequence-to-sequence-model-with-attention">Sequence to Sequence Model with Attention</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#generate-sequence">Generate Sequence</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../../source/utils/thread.html"
+                        title="previous chapter">Lock</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/algorithm/rnn/rnn.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../source/utils/thread.html" title="Lock"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

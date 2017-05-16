@@ -1,0 +1,146 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Debian Package installation guide &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../index.html" />
+    <link rel="up" title="Build And Install PaddlePaddle" href="index.html" />
+    <link rel="next" title="Installing from Sources" href="build_from_source.html" />
+    <link rel="prev" title="Docker installation guide" href="docker_install.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="build_from_source.html" title="Installing from Sources"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="docker_install.html" title="Docker installation guide"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Build And Install PaddlePaddle</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="debian-package-installation-guide">
+<h1>Debian Package installation guide<a class="headerlink" href="#debian-package-installation-guide" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle supports <code class="code docutils literal"><span class="pre">deb</span></code> pacakge. The installation of this <code class="code docutils literal"><span class="pre">deb</span></code> package is tested in ubuntu 14.04, but it should be support other debian based linux, too.</p>
+<p>There are four versions of debian package, <code class="code docutils literal"><span class="pre">cpu</span></code>, <code class="code docutils literal"><span class="pre">gpu</span></code>, <code class="code docutils literal"><span class="pre">cpu-noavx</span></code>, <code class="code docutils literal"><span class="pre">gpu-noavx</span></code>. And <code class="code docutils literal"><span class="pre">noavx</span></code> version is used to support CPU which does not contain <code class="code docutils literal"><span class="pre">AVX</span></code> instructions. The download url of <code class="code docutils literal"><span class="pre">deb</span></code> package is : <a class="reference external" href="https://github.com/baidu/Paddle/releases/">https://github.com/baidu/Paddle/releases/</a></p>
+<p>After downloading PaddlePaddle deb packages, you can use <code class="code docutils literal"><span class="pre">gdebi</span></code> install.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>gdebi paddle-*.deb
+</pre></div>
+</div>
+<p>If <code class="code docutils literal"><span class="pre">gdebi</span></code> is not installed, you can use <code class="code docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">gdebi</span></code> to install it.</p>
+<p>Or you can use following commands to install PaddlePaddle.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>dpkg -i paddle-*.deb
+apt-get install -f
+</pre></div>
+</div>
+<p>And if you use GPU version deb package, you need to install CUDA toolkit and cuDNN, and set related environment variables(such as LD_LIBRARY_PATH) first. It is normal when <cite>dpkg -i</cite> get errors. <cite>apt-get install -f</cite> will continue install paddle, and install dependences.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="docker_install.html"
+                        title="previous chapter">Docker installation guide</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="build_from_source.html"
+                        title="next chapter">Installing from Sources</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/build/ubuntu_install.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="build_from_source.html" title="Installing from Sources"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="docker_install.html" title="Docker installation guide"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Build And Install PaddlePaddle</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

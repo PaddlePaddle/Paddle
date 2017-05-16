@@ -1,0 +1,681 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Network &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Network Documents" href="index.html" />
+    <link rel="next" title="Server Documents" href="../server/index.html" />
+    <link rel="prev" title="Network Documents" href="index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../server/index.html" title="Server Documents"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Network Documents"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Network Documents</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="network">
+<h1>Network<a class="headerlink" href="#network" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="socket-server">
+<h2>Socket Server<a class="headerlink" href="#socket-server" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle12SocketServerE">
+<span id="paddle::SocketServer"></span><span class="target" id="paddleclasspaddle_1_1SocketServer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SocketServer</code><a class="headerlink" href="#_CPPv2N6paddle12SocketServerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>class for holding all parameters processing for current port </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>each parameter server inherits from one socket server, each server contains serveral woker threads which are to parallelize the processing of computation, but share some common datas stored in child class of socketserver. </dd>
+</dl>
+</p>
+<p>Inherits from <a class="reference internal" href="../../utils/lock.html#paddleclasspaddle_1_1Thread"><span class="std std-ref">paddle::Thread</span></a></p>
+<p>Subclassed by <a class="reference internal" href="../server/server.html#paddleclasspaddle_1_1ProtoServer"><span class="std std-ref">paddle::ProtoServer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Types</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle12SocketServer16ResponseCallbackE">
+<span id="paddle::SocketServer::ResponseCallback"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a0696d2bda6e0e3890fdaedad9e3f423f"></span><em class="property">typedef </em>std::function&lt;void<span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;iovec&gt; &amp;outputIovs<span class="sig-paren">)</span>&gt; <code class="descname">ResponseCallback</code><a class="headerlink" href="#_CPPv2N6paddle12SocketServer16ResponseCallbackE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketServer12SocketServerERKNSt6stringEii">
+<span id="paddle::SocketServer::SocketServer__ssCR.i.i"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1ab9048916a170534c7e4fb106949f52dd"></span><code class="descname">SocketServer</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>addr</em>, int <em>port</em>, int <em>rdmaCpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketServer12SocketServerERKNSt6stringEii" title="Permalink to this definition">¶</a></dt>
+<dd><p>class constructor for <a class="reference internal" href="#paddleclasspaddle_1_1SocketServer"><span class="std std-ref">SocketServer</span></a> </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>start one socket server which hosts parameter server process. rdmaCpu is passed to rdma deamon for better performance, and start tcp socket instead of rdma socket if rdmaCpu is equal to -1. Each trainer process starts one connection to one socket server, and use ports_num to build more connections to harness fat communication channel if necessary. each connection is controlled by single thread with blocking read and write. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">addr</span></code>: sock bind address </li>
+<li><code class="docutils literal"><span class="pre">port</span></code>: sock bind port </li>
+<li><code class="docutils literal"><span class="pre">rdmaCpu</span></code>: rdma sock bind cpu core</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketServerD0Ev">
+<span id="paddle::SocketServer::~SocketServer"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a512b515f10bf8a010c34c524b502557f"></span><code class="descname">~SocketServer</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketServerD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketServer3runEv">
+<span id="paddle::SocketServer::run"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a3f9fa3100ae9b74df24277ba813c82a5"></span>void <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketServer3runEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start a socket server </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>framework for starting socket server </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketServer13handleRequestENSt10unique_ptrI9MsgReaderEE16ResponseCallback">
+<span id="paddle::SocketServer::handleRequest__std::unique_ptr:MsgReader:.ResponseCallback"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a09530527313cf73033dc5f285fbb6179"></span><em class="property">virtual</em> void <code class="descname">handleRequest</code><span class="sig-paren">(</span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle9MsgReaderE" title="paddle::MsgReader">MsgReader</a>&gt; <em>msgReader</em>, <a class="reference internal" href="#_CPPv2N6paddle12SocketServer16ResponseCallbackE" title="paddle::SocketServer::ResponseCallback">ResponseCallback</a> <em>callback</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle12SocketServer13handleRequestENSt10unique_ptrI9MsgReaderEE16ResponseCallback" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketServer13createChannelEiRKNSt6stringE">
+<span id="paddle::SocketServer::createChannel__i.ssCR"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a1580000b6e8680185cc57316ddb7247b"></span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle13SocketChannelE" title="paddle::SocketChannel">SocketChannel</a>&gt; <code class="descname">createChannel</code><span class="sig-paren">(</span>int <em>sock</em>, <em class="property">const</em> std::string &amp;<em>peerName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketServer13createChannelEiRKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketServer13createChannelEP8sxi_sockRKNSt6stringE">
+<span id="paddle::SocketServer::createChannel__sxi_sockP.ssCR"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a60745d9d1ee1139b7718c1ce4c5aea8c"></span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle13SocketChannelE" title="paddle::SocketChannel">SocketChannel</a>&gt; <code class="descname">createChannel</code><span class="sig-paren">(</span><em class="property">struct</em> sxi_sock *<em>sock</em>, <em class="property">const</em> std::string &amp;<em>peerName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketServer13createChannelEP8sxi_sockRKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketServer8tcpRdma_E">
+<span id="paddle::SocketServer::tcpRdma___ChannelType"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a9cde1fd78b0daa464b9ab3ade1b99b71"></span>ChannelType <code class="descname">tcpRdma_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketServer8tcpRdma_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketServer8rdmaCpu_E">
+<span id="paddle::SocketServer::rdmaCpu___i"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1ac63706d3e813879b275679e2354a4453"></span>int <code class="descname">rdmaCpu_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketServer8rdmaCpu_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketServer8rdmaUri_E">
+<span id="paddle::SocketServer::rdmaUri___ss"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1accf738989b6f1e93dc9948b10f391d1e"></span>std::string <code class="descname">rdmaUri_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketServer8rdmaUri_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketServer11rdmaSocket_E">
+<span id="paddle::SocketServer::rdmaSocket___sxi_socketP"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1aa446bbdd114421b7be0a7705a8a62a03"></span>sxi_socket *<code class="descname">rdmaSocket_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketServer11rdmaSocket_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketServer5port_E">
+<span id="paddle::SocketServer::port___i"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1af709a30306a8d03ed920a00747099492"></span>int <code class="descname">port_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketServer5port_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketServer5addr_E">
+<span id="paddle::SocketServer::addr___ss"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a82d6ed7c8236f3b68a21834883bf9406"></span>std::string <code class="descname">addr_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketServer5addr_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketServer7socket_E">
+<span id="paddle::SocketServer::socket___i"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a1643e3730f91634bababb674d7fa0257"></span>int <code class="descname">socket_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketServer7socket_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketServer22maxPendingConnections_E">
+<span id="paddle::SocketServer::maxPendingConnections___i"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a0ae4d7a8363032104a10a777ec89d838"></span>int <code class="descname">maxPendingConnections_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketServer22maxPendingConnections_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketServer9stopping_E">
+<span id="paddle::SocketServer::stopping___b"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1ad86b03e08f1735fefa32eaf50dacd0e2"></span>bool <code class="descname">stopping_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketServer9stopping_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketServer10rdmaServerEv">
+<span id="paddle::SocketServer::rdmaServer"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a01717325bf92f2dbdfd27f87e0369bbc"></span>void <code class="descname">rdmaServer</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketServer10rdmaServerEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start one rdma server which hosts parameter server </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>do rdma bind and listen, which calling self-defined socket like rdma library. it will spawn one thread for each connection </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketServer9tcpServerEv">
+<span id="paddle::SocketServer::tcpServer"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1acd9853b7a3a5d39a3ff7693271cd6fcf"></span>void <code class="descname">tcpServer</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketServer9tcpServerEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start one tcp server which hosts parameter server </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>do tcp socket bind and listen. it will spawn one thread for each connection </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketServer6detachEv">
+<span id="paddle::SocketServer::detach"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a762c63be3d1b5165cfdbb509fd00ea05"></span>void <code class="descname">detach</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketServer6detachEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Friends</p>
+<dl class="function">
+<dt>
+<span class="target" id="paddleclasspaddle_1_1SocketServer_1ab8d9a9ccaa3dba38247c74241df6754f"></span><em class="property">friend </em><code class="descname">paddle::SocketServer::SocketWorker</code></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="socket-worker">
+<h2>Socket Worker<a class="headerlink" href="#socket-worker" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle12SocketWorkerE">
+<span id="paddle::SocketWorker"></span><span class="target" id="paddleclasspaddle_1_1SocketWorker"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SocketWorker</code><a class="headerlink" href="#_CPPv2N6paddle12SocketWorkerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>class for holding one connection from one trainer </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>all parameter processing will run in the context of this worker </dd>
+</dl>
+</p>
+<p>Inherits from <a class="reference internal" href="../../utils/lock.html#paddleclasspaddle_1_1Thread"><span class="std std-ref">paddle::Thread</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketWorker12SocketWorkerERRNSt10unique_ptrI13SocketChannelEEP12SocketServer">
+<span id="paddle::SocketWorker::SocketWorker__std::unique_ptr:SocketChannel:RR.SocketServerP"></span><span class="target" id="paddleclasspaddle_1_1SocketWorker_1aec6ca64b36a8555fb2f084a0be3e01c1"></span><code class="descname">SocketWorker</code><span class="sig-paren">(</span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle13SocketChannelE" title="paddle::SocketChannel">SocketChannel</a>&gt; &amp;&amp;<em>channel</em>, <a class="reference internal" href="#_CPPv2N6paddle12SocketServerE" title="paddle::SocketServer">SocketServer</a> *<em>server</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketWorker12SocketWorkerERRNSt10unique_ptrI13SocketChannelEEP12SocketServer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketWorkerD0Ev">
+<span id="paddle::SocketWorker::~SocketWorker"></span><span class="target" id="paddleclasspaddle_1_1SocketWorker_1ae39a37b2018b921e30cbc7bc919e8f8a"></span><em class="property">virtual</em> <code class="descname">~SocketWorker</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketWorkerD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketWorker3runEv">
+<span id="paddle::SocketWorker::run"></span><span class="target" id="paddleclasspaddle_1_1SocketWorker_1a380d9acd081babcaabc35594f95f0b94"></span>void <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketWorker3runEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>worker thread main context </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>each connection from client(trainer) is controlled by single worker thread, which is for handling all parameter server requests </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketWorker8channel_E">
+<span id="paddle::SocketWorker::channel___std::unique_ptr:SocketChannel:"></span><span class="target" id="paddleclasspaddle_1_1SocketWorker_1a4c0f77cf9e1f62ef06b75131affc803f"></span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle13SocketChannelE" title="paddle::SocketChannel">SocketChannel</a>&gt; <code class="descname">channel_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketWorker8channel_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketWorker7server_E">
+<span id="paddle::SocketWorker::server___SocketServerP"></span><span class="target" id="paddleclasspaddle_1_1SocketWorker_1addfec85f1c4bedf9343338d25a68a0e5"></span><a class="reference internal" href="#_CPPv2N6paddle12SocketServerE" title="paddle::SocketServer">SocketServer</a> *<code class="descname">server_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketWorker7server_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketWorker8tcpRdma_E">
+<span id="paddle::SocketWorker::tcpRdma___ChannelType"></span><span class="target" id="paddleclasspaddle_1_1SocketWorker_1abc1b231084292a17a37fbe261055823d"></span>ChannelType <code class="descname">tcpRdma_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketWorker8tcpRdma_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="socket-client">
+<h2>Socket Client<a class="headerlink" href="#socket-client" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle12SocketClientE">
+<span id="paddle::SocketClient"></span><span class="target" id="paddleclasspaddle_1_1SocketClient"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SocketClient</code><a class="headerlink" href="#_CPPv2N6paddle12SocketClientE" title="Permalink to this definition">¶</a></dt>
+<dd><p>management for client connection which are from trainers </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>it contains one channel descriptor which used to write and read data </dd>
+</dl>
+</p>
+<p>Subclassed by paddle::ProtoClient</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketClient12SocketClientERKNSt6stringEi11ChannelType">
+<span id="paddle::SocketClient::SocketClient__ssCR.i.ChannelType"></span><span class="target" id="paddleclasspaddle_1_1SocketClient_1a5b2b40728685ed7f88e1bdcd99fb699e"></span><code class="descname">SocketClient</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>serverAddr</em>, int <em>serverPort</em>, <em class="property">enum</em> ChannelType <em>channelType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketClient12SocketClientERKNSt6stringEi11ChannelType" title="Permalink to this definition">¶</a></dt>
+<dd><p>class constructor </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>responsible for building one connection to specified pserver port </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">serverAddr</span></code>: pserver ip address </li>
+<li><code class="docutils literal"><span class="pre">serverPort</span></code>: pserver port </li>
+<li><code class="docutils literal"><span class="pre">ChannelType</span></code>: F_TCP or F_RDMA</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketClient10getChannelEv">
+<span id="paddle::SocketClient::getChannel"></span><span class="target" id="paddleclasspaddle_1_1SocketClient_1a434ff6890e7041965f5ff5d38b171b54"></span><a class="reference internal" href="#_CPPv2N6paddle13SocketChannelE" title="paddle::SocketChannel">SocketChannel</a> *<code class="descname">getChannel</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketClient10getChannelEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketClient8channel_E">
+<span id="paddle::SocketClient::channel___std::unique_ptr:SocketChannel:"></span><span class="target" id="paddleclasspaddle_1_1SocketClient_1a7d9623ab215e422e642bfc9c7501cb76"></span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle13SocketChannelE" title="paddle::SocketChannel">SocketChannel</a>&gt; <code class="descname">channel_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketClient8channel_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketClient13socketDaemon_E">
+<span id="paddle::SocketClient::socketDaemon___sxi_socketP"></span><span class="target" id="paddleclasspaddle_1_1SocketClient_1ac7a4f0c845f14e40ca4cf02560db7357"></span><em class="property">struct</em> sxi_socket *<code class="descname">socketDaemon_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketClient13socketDaemon_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12SocketClient8tcpRdma_E">
+<span id="paddle::SocketClient::tcpRdma___ChannelType"></span><span class="target" id="paddleclasspaddle_1_1SocketClient_1a02c4a9d65a906c8a7db0432868ce7ee3"></span>ChannelType <code class="descname">tcpRdma_</code><a class="headerlink" href="#_CPPv2N6paddle12SocketClient8tcpRdma_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketClient10RdmaClientERKNSt6stringEi">
+<span id="paddle::SocketClient::RdmaClient__ssCR.i"></span><span class="target" id="paddleclasspaddle_1_1SocketClient_1ac119bdedca0afe0961033f4562fe2cd9"></span>void <code class="descname">RdmaClient</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>serverAddr</em>, int <em>serverPort</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketClient10RdmaClientERKNSt6stringEi" title="Permalink to this definition">¶</a></dt>
+<dd><p>start one RDMA connection to rdma server </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>each object contains one channel which accept byte stream for rdma, low level sock also provide byte stream api. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">serverAddr</span></code>: rdma server ip </li>
+<li><code class="docutils literal"><span class="pre">serverPort</span></code>: rdma server port</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SocketClient9TcpClientERKNSt6stringEi">
+<span id="paddle::SocketClient::TcpClient__ssCR.i"></span><span class="target" id="paddleclasspaddle_1_1SocketClient_1a8121678900ecbc61e6418bde8ac0e75b"></span>void <code class="descname">TcpClient</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>serverAddr</em>, int <em>serverPort</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketClient9TcpClientERKNSt6stringEi" title="Permalink to this definition">¶</a></dt>
+<dd><p>start one tcp connection to tcp server </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>each object contains one channel which accept byte stream </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">serverAddr</span></code>: tcp server ip </li>
+<li><code class="docutils literal"><span class="pre">serverPort</span></code>: tcp server port</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="socket-channel">
+<h2>Socket Channel<a class="headerlink" href="#socket-channel" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle13SocketChannelE">
+<span id="paddle::SocketChannel"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SocketChannel</code><a class="headerlink" href="#_CPPv2N6paddle13SocketChannelE" title="Permalink to this definition">¶</a></dt>
+<dd><p>APIs for reading and writing byte stream data or naive iov data from the APIs both RDMA and TCP exhibits byte stream style </p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle13SocketChannel13SocketChannelEiRKNSt6stringE">
+<span id="paddle::SocketChannel::SocketChannel__i.ssCR"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1a39adc4da6a8a083cde11baa589a4ccae"></span><code class="descname">SocketChannel</code><span class="sig-paren">(</span>int <em>socket</em>, <em class="property">const</em> std::string &amp;<em>peerName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel13SocketChannelEiRKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SocketChannel13SocketChannelEP8sxi_sockRKNSt6stringE">
+<span id="paddle::SocketChannel::SocketChannel__sxi_sockP.ssCR"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1a39bb32983296f037b8645c72c7a19d12"></span><code class="descname">SocketChannel</code><span class="sig-paren">(</span><em class="property">struct</em> sxi_sock *<em>socket</em>, <em class="property">const</em> std::string &amp;<em>peerName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel13SocketChannelEP8sxi_sockRKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SocketChannelD0Ev">
+<span id="paddle::SocketChannel::~SocketChannel"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1ac5e997641185c92dc8a15f3bf77e2f52"></span><code class="descname">~SocketChannel</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SocketChannelD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle13SocketChannel11getPeerNameEv">
+<span id="paddle::SocketChannel::getPeerNameC"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1ad5c59c9f88d9a94f61e4a15401ddd525"></span><em class="property">const</em> std::string &amp;<code class="descname">getPeerName</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle13SocketChannel11getPeerNameEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SocketChannel4readEPv6size_t">
+<span id="paddle::SocketChannel::read__voidP.s"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1a415797ef7ebd05db4e886f38f0285c23"></span>size_t <code class="descname">read</code><span class="sig-paren">(</span>void *<em>buf</em>, size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel4readEPv6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>read size bytes. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>keep reading until getting size bytes or sock is closed is closed </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SocketChannel5writeEPKv6size_t">
+<span id="paddle::SocketChannel::write__voidCP.s"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1af4030f22f641882433279fe36765284b"></span>size_t <code class="descname">write</code><span class="sig-paren">(</span><em class="property">const</em> void *<em>buf</em>, size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel5writeEPKv6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>write size bytes. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>keep writing until writing size bytes or sock is closed </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SocketChannel6writevERKNSt6vectorI5iovecEE">
+<span id="paddle::SocketChannel::writev__std::vector:iovec:CR"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1a3849589e6f6571c09140acdde783c1e7"></span>size_t <code class="descname">writev</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<em class="property">struct</em> iovec&gt; &amp;<em>iov</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel6writevERKNSt6vectorI5iovecEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>write a set of buffers. </p>
+<p>
+rdma::readv and rdma::writev can take advantage of RDMA blocking offload transfering <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>keep writing until all buffers are written or sock is closed</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SocketChannel5readvEPNSt6vectorI5iovecEE">
+<span id="paddle::SocketChannel::readv__std::vector:iovec:P"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1a4ac54569d208398da7a5955efbe8d9e7"></span>size_t <code class="descname">readv</code><span class="sig-paren">(</span>std::vector&lt;<em class="property">struct</em> iovec&gt; *<em>iov</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel5readvEPNSt6vectorI5iovecEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>read a set of buffers. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>keep reading until all buffers are full or sock is closed. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SocketChannel12writeMessageERKNSt6vectorI5iovecEE">
+<span id="paddle::SocketChannel::writeMessage__std::vector:iovec:CR"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1a001655861cb0a853e849f24db141e05e"></span>void <code class="descname">writeMessage</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<em class="property">struct</em> iovec&gt; &amp;<em>iov</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel12writeMessageERKNSt6vectorI5iovecEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>write a set of buffers. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>keep writing until all buffers are passed or sock is closed </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SocketChannel11readMessageEv">
+<span id="paddle::SocketChannel::readMessage"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1a27bbbe7e27258cffce26494bf8fa8236"></span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle9MsgReaderE" title="paddle::MsgReader">MsgReader</a>&gt; <code class="descname">readMessage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel11readMessageEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>return null to indicate socket is closed </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle13SocketChannel10tcpSocket_E">
+<span id="paddle::SocketChannel::tcpSocket___i"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1adcd9e559a0d821793fc8ef77eb25adf4"></span>int <code class="descname">tcpSocket_</code><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel10tcpSocket_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle13SocketChannel11rdmaSocket_E">
+<span id="paddle::SocketChannel::rdmaSocket___sxi_sockP"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1a332b6f7acc80d6c1ce0dd60fe3986f20"></span><em class="property">struct</em> sxi_sock *<code class="descname">rdmaSocket_</code><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel11rdmaSocket_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle13SocketChannel9peerName_E">
+<span id="paddle::SocketChannel::peerName___ssC"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1ae7d5f1a93c06beba23b2acae8c7e7e5e"></span><em class="property">const</em> std::string <code class="descname">peerName_</code><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel9peerName_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle13SocketChannel8tcpRdma_E">
+<span id="paddle::SocketChannel::tcpRdma___ChannelType"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1a0e0f8525c9c789e910fa67aacb91df1b"></span>ChannelType <code class="descname">tcpRdma_</code><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel8tcpRdma_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle13SocketChannel13MessageHeaderE">
+<span id="paddle::SocketChannel::MessageHeader"></span><span class="target" id="paddlestructpaddle_1_1SocketChannel_1_1MessageHeader"></span><em class="property">struct </em><code class="descname">MessageHeader</code><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel13MessageHeaderE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle13SocketChannel13MessageHeader11totalLengthE">
+<span id="paddle::SocketChannel::MessageHeader::totalLength__int64_t"></span><span class="target" id="paddlestructpaddle_1_1SocketChannel_1_1MessageHeader_1afdc6ae1bcc082de32d8e9f36dd5eafe6"></span>int64_t <code class="descname">totalLength</code><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel13MessageHeader11totalLengthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle13SocketChannel13MessageHeader7numIovsE">
+<span id="paddle::SocketChannel::MessageHeader::numIovs__int64_t"></span><span class="target" id="paddlestructpaddle_1_1SocketChannel_1_1MessageHeader_1a67592a68a2f82d00f467ac14a2448d4c"></span>int64_t <code class="descname">numIovs</code><a class="headerlink" href="#_CPPv2N6paddle13SocketChannel13MessageHeader7numIovsE" title="Permalink to this definition">¶</a></dt>
+<dd><p>include the header </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle13SocketChannel13MessageHeader10iovLengthsE">
+<span id="paddle::SocketChannel::MessageHeader::iovLengths__int64_tA"></span><span class="target" id="paddlestructpaddle_1_1SocketChannel_1_1MessageHeader_1a4f57840ff8ab2d5228df3c9f01cc0394"></span>int64_t <code class="descname">iovLengths</code>[0]<a class="headerlink" href="#_CPPv2N6paddle13SocketChannel13MessageHeader10iovLengthsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="message-reader">
+<h2>Message Reader<a class="headerlink" href="#message-reader" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle9MsgReaderE">
+<span id="paddle::MsgReader"></span><span class="target" id="paddleclasspaddle_1_1MsgReader"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">MsgReader</code><a class="headerlink" href="#_CPPv2N6paddle9MsgReaderE" title="Permalink to this definition">¶</a></dt>
+<dd><p>reading a set of blocks of data from <a class="reference internal" href="#paddleclasspaddle_1_1SocketChannel"><span class="std std-ref">SocketChannel</span></a>. </p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle9MsgReader9MsgReaderEP13SocketChannel6size_t">
+<span id="paddle::MsgReader::MsgReader__SocketChannelP.s"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1a2dd9c08776babc387b60df34b30dfeac"></span><code class="descname">MsgReader</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle13SocketChannelE" title="paddle::SocketChannel">SocketChannel</a> *<em>channel</em>, size_t <em>numIovs</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9MsgReader9MsgReaderEP13SocketChannel6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9MsgReaderD0Ev">
+<span id="paddle::MsgReader::~MsgReader"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1ab2608fe0d1380d9703f33efda8215725"></span><code class="descname">~MsgReader</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9MsgReaderD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9MsgReader12getNumBlocksEv">
+<span id="paddle::MsgReader::getNumBlocksC"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1ab34a0898615917940cbb09897586604d"></span>size_t <code class="descname">getNumBlocks</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9MsgReader12getNumBlocksEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>number of remaining parts </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9MsgReader18getNextBlockLengthEv">
+<span id="paddle::MsgReader::getNextBlockLengthC"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1a0f4502133e2c0120e130986bf7bfc6fb"></span>size_t <code class="descname">getNextBlockLength</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9MsgReader18getNextBlockLengthEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>lenght of next block </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9MsgReader14getTotalLengthEv">
+<span id="paddle::MsgReader::getTotalLengthC"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1a430cdc68dfe4b8e52e52593e754ce595"></span>size_t <code class="descname">getTotalLength</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9MsgReader14getTotalLengthEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>get the total length of all the remaining blocks </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9MsgReader14getBlockLengthE6size_t">
+<span id="paddle::MsgReader::getBlockLength__sC"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1a7f968e5ca780459def979eb5c26c09e2"></span>size_t <code class="descname">getBlockLength</code><span class="sig-paren">(</span>size_t <em>i</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9MsgReader14getBlockLengthE6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the length for block currentBlockIndex + i. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9MsgReader10readBlocksERKNSt6vectorIPvEE">
+<span id="paddle::MsgReader::readBlocks__std::vector:voidP:CR"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1ad86ac1f57d4a882f95f4edd3f0f59a8d"></span>void <code class="descname">readBlocks</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;void *&gt; &amp;<em>bufs</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9MsgReader10readBlocksERKNSt6vectorIPvEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>read blocks data and store it to buf </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9MsgReader13readNextBlockEPv">
+<span id="paddle::MsgReader::readNextBlock__voidP"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1aa515f6edbb6d847fc9c0214ea163d821"></span>void <code class="descname">readNextBlock</code><span class="sig-paren">(</span>void *<em>buf</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9MsgReader13readNextBlockEPv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle9MsgReader8channel_E">
+<span id="paddle::MsgReader::channel___SocketChannelP"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1a1511822ae241ff0ca7a5b531826bc19a"></span><a class="reference internal" href="#_CPPv2N6paddle13SocketChannelE" title="paddle::SocketChannel">SocketChannel</a> *<code class="descname">channel_</code><a class="headerlink" href="#_CPPv2N6paddle9MsgReader8channel_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9MsgReader13blockLengths_E">
+<span id="paddle::MsgReader::blockLengths___std::vector:s:"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1a66673a17451046b57808f46b7b8c8b9c"></span>std::vector&lt;size_t&gt; <code class="descname">blockLengths_</code><a class="headerlink" href="#_CPPv2N6paddle9MsgReader13blockLengths_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9MsgReader18currentBlockIndex_E">
+<span id="paddle::MsgReader::currentBlockIndex___s"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1ae73ac7957a9c5a2067c038a039c24659"></span>size_t <code class="descname">currentBlockIndex_</code><a class="headerlink" href="#_CPPv2N6paddle9MsgReader18currentBlockIndex_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Network</a><ul>
+<li><a class="reference internal" href="#socket-server">Socket Server</a></li>
+<li><a class="reference internal" href="#socket-worker">Socket Worker</a></li>
+<li><a class="reference internal" href="#socket-client">Socket Client</a></li>
+<li><a class="reference internal" href="#socket-channel">Socket Channel</a></li>
+<li><a class="reference internal" href="#message-reader">Message Reader</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Network Documents</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../server/index.html"
+                        title="next chapter">Server Documents</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/source/pserver/network/network.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../server/index.html" title="Server Documents"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Network Documents"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Network Documents</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>
