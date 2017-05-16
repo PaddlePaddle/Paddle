@@ -2916,6 +2916,8 @@ def memory(name,
         boot_bias = ParamAttr.to_bias(boot_bias)
 
     assert boot_layer is None or isinstance(boot_layer, LayerOutput)
+    if is_seq == True:
+        assert isinstance(boot_layer, LayerOutput)
     if name is not None:
         memory_name = None
 
