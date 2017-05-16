@@ -223,7 +223,6 @@ BEGIN_REGISTER_FUNCTION(cosBwd, cosBackward, CosSimAttribute)
         out->setSequenceType(ins[2 + i]->sequenceType());
         out->setDataType(ins[2 + i]->dataType());
       }
-
       return Error();
     });
 
