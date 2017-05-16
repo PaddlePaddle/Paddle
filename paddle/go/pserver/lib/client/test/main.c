@@ -51,6 +51,11 @@ int main() {
     panic();
   }
 
+  // get parameters again by reusing the allocated parameter buffers.
+  if (!paddle_get_params(c, names, params, 2)) {
+    panic();
+  }
+
   paddle_release_param(params[0]);
   paddle_release_param(params[1]);
 
