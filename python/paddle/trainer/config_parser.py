@@ -138,14 +138,7 @@ def init_config_environment(
         g_root_submodel=None,
         g_submodel_map={},
         g_submodel_stack=[],
-        g_add_submodel_suffix=False,
-
-        # Whether current layer needs to pass the image height and width.
-        # Default value is true, but if it encounters recurrent_layer_group,
-        # it will be false. The reason is that image is converted to be sequence,
-        # image height will be sequence length, and image width will be feature
-        # length of each timestep.
-        g_pass_height_width=True, ):
+        g_add_submodel_suffix=False, ):
 
     for k, v in locals().iteritems():
         globals()[k] = copy.deepcopy(v)
@@ -1436,12 +1429,6 @@ class LayerBase(object):
         g_layer_map[name] = self.config
 
         g_current_submodel.layer_names.append(self.config.name)
-
-        if self.config.type != 'data' and g_pass_height_width:
-            height = self.get_input_layer(0).height
-            width = self.get_input_layer(0).width
-            if height and width:
-                self.set_layer_height_width(height, width)
 
     def get_input_layer(self, input_index):
         return g_layer_map[self.config.inputs[input_index].input_layer_name]
@@ -3164,8 +3151,6 @@ class WarpCTCLayer(LayerBase):
 @config_layer('recurrent_layer_group')
 class RecurrentLayerGroup(LayerBase):
     def __init__(self, name, device=None):
-        global g_pass_height_width
-        g_pass_height_width = False
         super(RecurrentLayerGroup, self).__init__(
             name, 'recurrent_layer_group', 0, inputs=[], device=device)
 
