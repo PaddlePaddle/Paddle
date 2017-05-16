@@ -3765,7 +3765,7 @@ def __cost_input__(input, label, weight=None):
 
 @wrap_name_default()
 @layer_support()
-def mse_cost(input, label, weight=None, name=None, layer_attr=None):
+def mse_cost(input, label, weight=None, name=None, coeff=1.0, layer_attr=None):
     """
     mean squared error cost:
 
@@ -3782,6 +3782,8 @@ def mse_cost(input, label, weight=None, name=None, layer_attr=None):
     :param weight: The weight affects the cost, namely the scale of cost.
                    It is an optional argument.
     :type weight: LayerOutput
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
@@ -3793,6 +3795,7 @@ def mse_cost(input, label, weight=None, name=None, layer_attr=None):
         inputs=ipts,
         type="square_error",
         name=name,
+        coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(name, LayerType.COST, parents=parents, size=1)
 
@@ -4798,6 +4801,7 @@ def crf_layer(input,
               weight=None,
               param_attr=None,
               name=None,
+              coeff=1.0,
               layer_attr=None):
     """
     A layer for calculating the cost of sequential conditional random
@@ -4824,6 +4828,8 @@ def crf_layer(input,
     :type param_attr: ParameterAttribute
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float
     :param layer_attr: Extra Layer config.
     :type layer_attr: ExtraLayerAttribute|None
     :return: LayerOutput object.
@@ -4848,6 +4854,7 @@ def crf_layer(input,
         type=LayerType.CRF_LAYER,
         size=size,
         inputs=ipts,
+        coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     parents = [input, label]
     if weight is not None:
@@ -4921,12 +4928,14 @@ def crf_decoding_layer(input,
 
 @wrap_act_default(act=SigmoidActivation())
 @wrap_bias_attr_default(has_bias=True)
+@wrap_param_attr_default()
 @wrap_name_default()
 @layer_support()
 def nce_layer(input,
               label,
-              num_classes,
+              num_classes=None,
               act=None,
+              param_attr=None,
               weight=None,
               num_neg_samples=10,
               neg_distribution=None,
@@ -4942,7 +4951,8 @@ def nce_layer(input,
 
     .. code-block:: python
 
-       cost = nce_layer(input=layer1, label=layer2, weight=layer3,
+       cost = nce_layer(input=[layer1, layer2], label=layer2,
+                        param_attr=[attr1, attr2], weight=layer3,
                         num_classes=3, neg_distribution=[0.1,0.3,0.6])
 
     :param name: layer name
@@ -4957,6 +4967,8 @@ def nce_layer(input,
     :type num_classes: int
     :param act: Activation, default is Sigmoid.
     :type act: BaseActivation
+    :param param_attr: The Parameter Attribute|list.
+    :type param_attr: ParameterAttribute
     :param num_neg_samples: number of negative samples. Default is 10.
     :type num_neg_samples: int
     :param neg_distribution: The distribution for generating the random negative labels.
@@ -4972,9 +4984,20 @@ def nce_layer(input,
     """
     if isinstance(input, LayerOutput):
         input = [input]
+        assert not isinstance(param_attr, collections.Sequence)
+        param_attr = [param_attr]
+    else:
+        if isinstance(param_attr, collections.Sequence):
+            assert len(input) == len(param_attr)
+        else:
+            param_attr = [copy.deepcopy(param_attr) for _ in range(len(input))]
+
     assert isinstance(input, collections.Sequence)
+
     assert isinstance(label, LayerOutput)
     assert label.layer_type == LayerType.DATA
+    if num_classes is None:
+        num_classes = label.size
     if neg_distribution is not None:
         assert isinstance(neg_distribution, collections.Sequence)
         assert len(neg_distribution) == num_classes
@@ -4984,9 +5007,9 @@ def nce_layer(input,
 
     ipts_for_layer = []
     parents = []
-    for each_input in input:
+    for each_input, attr in zip(input, param_attr):
         assert isinstance(each_input, LayerOutput)
-        ipts_for_layer.append(each_input.name)
+        ipts_for_layer.append(Input(each_input.name, **attr.attr))
         parents.append(each_input)
     ipts_for_layer.append(label.name)
     parents.append(label)
@@ -5363,7 +5386,7 @@ def multi_binary_label_cross_entropy(input,
 
 @wrap_name_default()
 @layer_support()
-def smooth_l1_cost(input, label, name=None, layer_attr=None):
+def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
     """
     This is a L1 loss but more smooth. It requires that the
     size of input and label are equal. The formula is as follows,
@@ -5392,6 +5415,8 @@ def smooth_l1_cost(input, label, name=None, layer_attr=None):
     :type input: LayerOutput
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
@@ -5405,6 +5430,7 @@ def smooth_l1_cost(input, label, name=None, layer_attr=None):
         name=name,
         type=LayerType.SMOOTH_L1,
         inputs=[input.name, label.name],
+        coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name, LayerType.SMOOTH_L1, parents=[input, label], size=1)
