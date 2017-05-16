@@ -192,7 +192,7 @@ func paddle_get_params(client C.client, names **C.char, dst **C.paddle_parameter
 		} else {
 			if unsafe.Pointer(param.name) != nullPtr {
 				if n := C.GoString(param.name); n != p.Name {
-					log.Println("warning: pre-allocated parameter name not match parameter name, pre-allocated parameter name will be freed.", n, p.Name)
+					log.Println("Warning: the pre-allocated parameter name does not match the parameter name, it will be freed.", n, p.Name)
 					C.free(unsafe.Pointer(param.name))
 				} else {
 					nameReady = true
@@ -203,7 +203,7 @@ func paddle_get_params(client C.client, names **C.char, dst **C.paddle_parameter
 				if int(param.content_len) == len(p.Content) {
 					contentAllocated = true
 				} else {
-					log.Println("warning: pre-allocated content len does not match parameter content len, pre-allocated content will be freed.", param.content_len, len(p.Content))
+					log.Println("Warning: the pre-allocated content len does not match parameter content len, the pre-allocated content will be freed.", param.content_len, len(p.Content))
 					C.free(unsafe.Pointer(param.content))
 				}
 			}
