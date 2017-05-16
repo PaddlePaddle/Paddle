@@ -15,9 +15,23 @@ typedef enum {
 typedef struct {
   char*               name;
   paddle_element_type element_type;
-  void*               content;
+  char*               content;
   int                 content_len;
 } paddle_parameter, paddle_gradient;
+
+static inline void paddle_release_param(paddle_parameter* param) {
+  if (param != NULL) {
+    if (param->name != NULL) {
+      free(param->name);
+    }
+
+    if (param->content != NULL) {
+      free(param->content);
+    }
+
+    free(param);
+  }
+}
 
 typedef int client;
 */
@@ -185,12 +199,12 @@ func paddle_get_params(client C.client, names **C.char, dst **C.paddle_parameter
 				}
 			}
 
-			if param.content != nullPtr {
+			if unsafe.Pointer(param.content) != nullPtr {
 				if int(param.content_len) == len(p.Content) {
 					contentAllocated = true
 				} else {
 					log.Println("warning: pre-allocated content len does not match parameter content len, pre-allocated content will be freed.", param.content_len, len(p.Content))
-					C.free(param.content)
+					C.free(unsafe.Pointer(param.content))
 				}
 			}
 		}
@@ -199,9 +213,9 @@ func paddle_get_params(client C.client, names **C.char, dst **C.paddle_parameter
 			param.name = C.CString(p.Name)
 		}
 		if !contentAllocated {
-			param.content = C.malloc(C.size_t(len(p.Content)))
+			param.content = (*C.char)(C.malloc(C.size_t(len(p.Content))))
 		}
-		C.memcpy(param.content, unsafe.Pointer(&p.Content[0]), C.size_t(len(p.Content)))
+		C.memcpy(unsafe.Pointer(param.content), unsafe.Pointer(&p.Content[0]), C.size_t(len(p.Content)))
 		param.content_len = C.int(len(p.Content))
 		param.element_type = C.paddle_element_type(p.ElementType)
 	}
