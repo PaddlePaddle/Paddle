@@ -85,6 +85,14 @@ addTensor<INPUT>(2);
 addTensor<OUTPUT>(/*shape = */ {topology::meta::kTensorShape_BATCH_SIZE, 1},
                   /*arg_type*/ ASSIGN_TO);
 
+/// TODO(yuyang18): Complete documentation.
+setDescription(R"DOC(Cosine similarity forward function.
+
+There are two inputs of this function. The first matrix is a [h*w] matrix the
+second input is a [h*w] matrix or a [1*w] matrix. the output matrix will be a
+[h*1] matrix.
+)DOC");
+
 setShapeInferer([](std::vector<topology::TensorPtr>& ins,
                    std::vector<topology::TensorPtr>& outs) {
   auto& shape0 = ins[0]->shape();
@@ -199,6 +207,10 @@ Error cosBackward(const BufferArgs& ins,
 }
 
 BEGIN_REGISTER_FUNCTION(cosBwd, cosBackward, CosSimAttribute)
+/// TODO(yuyang18): Complete documentation.
+setDescription(R"DOC(Cosine similarity backward function.
+)DOC");
+
 addTensor<INPUT>({topology::meta::kTensorShape_BATCH_SIZE, 1});
 addTensor<INPUT>({topology::meta::kTensorShape_BATCH_SIZE, 1});
 addTensor<INPUT>(2);

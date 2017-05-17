@@ -28,19 +28,45 @@ public:
   }
 
 protected:
-  typedef topology::meta::FunctionMeta::TenserShapeInferer TenserShapeInferer;
+  typedef topology::meta::FunctionMeta::TensorShapeInferer TensorShapeInferer;
   typedef topology::meta::FunctionTensorType FunctionTensorType;
+  typedef topology::meta::FunctionMeta::TensorShapeInfererWithAttrs
+      TensorShapeInfererWithAttrs;
+
   static constexpr FunctionTensorType INPUT =
       topology::meta::FunctionTensorType::INPUT;
   static constexpr FunctionTensorType OUTPUT =
       topology::meta::FunctionTensorType::OUTPUT;
 
-  void setShapeInferer(TenserShapeInferer inferer) {
+  void setDescription(const std::string& description) {
+    func_->metaAttributes_.set("description", description).check();
+  }
+
+  void setShapeInferer(TensorShapeInferer inferer) {
     func_->metaAttributes_.set("shapeInferer", inferer).check();
   }
 
+  template <typename T>
+  void setShapeInferer(std::function<Error(std::vector<topology::TensorPtr>&,
+                                           std::vector<topology::TensorPtr>&,
+                                           const T&)> inferer) {
+    paddle::topology::meta::FunctionMetaPtr func = func_;
+    func_->metaAttributes_
+        .set<TensorShapeInfererWithAttrs>(
+            "shapeInferer",
+            [inferer, func](std::vector<topology::TensorPtr>& in,
+                            std::vector<topology::TensorPtr>& out,
+                            const topology::AttributeMap& attrs) {
+              T val;
+              auto err = func->parseAttribute(attrs, &val);
+              if (!err.isOK()) return err;
+              return inferer(in, out, val);
+            })
+        .check();
+  }
+
   template <FunctionTensorType type>
-  void addTensor(
+  topology::meta::TensorMetaPtr& addTensor(
       size_t dim,
       int argType = -1,
       const Set<int>& dataTypes = {topology::DataType::DENSE},
@@ -50,10 +76,11 @@ protected:
         .supportSequenceTypes(seqTypes)
         .setShapeDimension(dim);
     if (argType != -1) meta->supportArgType(argType);
+    return meta;
   }
 
   template <FunctionTensorType type>
-  void addTensor(
+  topology::meta::TensorMetaPtr& addTensor(
       const std::vector<size_t>& shape,
       int argType = -1,
       const Set<int>& dataTypes = {topology::DataType::DENSE},
@@ -62,6 +89,7 @@ protected:
     meta->supportDataTypes(dataTypes).supportSequenceTypes(seqTypes);
     meta->setShape(shape);
     if (argType != -1) meta->supportArgType(argType);
+    return meta;
   }
 
   template <DeviceType devType>
@@ -71,23 +99,15 @@ protected:
                           const AttributeType& attrs)> kernel) {
     auto meta = func_;
     auto key = devType == DEVICE_TYPE_CPU ? "CPUKernel" : "GPUKernel";
-    auto inited = std::make_shared<bool>(false);
-    auto tmp = std::make_shared<AttributeType>();
-    details::FunctionWithAttrs fn = [kernel, meta, inited, tmp](
+
+    details::FunctionWithAttrs fn = [kernel, meta](
         const BufferArgs& ins,
         const BufferArgs& outs,
         const topology::AttributeMap& attrs) {
-      bool& init = *inited;
-      if (!init) {
-        auto parserFunction =
-            meta->metaAttributes_.template get<std::function<Error(
-                const topology::AttributeMap&, topology::Attribute*)>>(
-                "attribute_parser");
-        auto err = parserFunction(attrs, tmp.get());
-        if (!err.isOK()) return err;
-        init = true;
-      }
-      return kernel(ins, outs, *tmp);
+      AttributeType tmp;
+      auto err = meta->parseAttribute(attrs, &tmp);
+      if (!err.isOK()) return err;
+      return kernel(ins, outs, tmp);
     };
     return func_->metaAttributes_.set(key, fn);
   }

@@ -54,6 +54,7 @@ Error AttributeMeta::validate(any* attr, bool alreadySet) const {
    * Only following types are supported as an attribute.
    */
   CHECK_HELPER(int);
+  CHECK_HELPER(size_t);
   CHECK_HELPER(double);
   CHECK_HELPER(std::vector<size_t>);
   CHECK_HELPER(bool);

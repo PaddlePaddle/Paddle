@@ -722,8 +722,7 @@ void testLayerGradKernel(TestConfig testConf,
                    &maxDiff,
                    testLayer,
                    dataLayers);
-  EXPECT_LE(fabs(maxDiff), epsilon);
-
+  CHECK_LE(fabs(maxDiff), epsilon);
   if (testConf.testState) {
     testState(testLayer, dataLayers, datas);
   }

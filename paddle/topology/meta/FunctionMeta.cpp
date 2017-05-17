@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "FunctionMeta.h"
-
+#include "../Attribute.h"
 namespace paddle {
 namespace topology {
 namespace meta {
@@ -35,10 +35,12 @@ FunctionMetaPtr FunctionMeta::get(const std::string &name) {
   }
 }
 
-FunctionMeta::TenserShapeInferer FunctionMeta::getShapeInferer() const {
-  const TenserShapeInferer *func;
-  metaAttributes_.get("shapeInferer", &func).check();
-  return *func;
+Error FunctionMeta::parseAttribute(const AttributeMap &attrs,
+                                   Attribute *out) const {
+  auto parserFunction = metaAttributes_.template get<
+      std::function<Error(const topology::AttributeMap &, Attribute *)>>(
+      "attribute_parser");
+  return parserFunction(attrs, out);
 }
 
 }  // namespace meta

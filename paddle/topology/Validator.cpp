@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Validator.h"
+#include <numeric>
 #include <string>
 #include "meta/FunctionMeta.h"
 #include "meta/TypeDefs.h"
@@ -70,19 +71,38 @@ Error validateAndInferShape(Function& func) {
   auto& inMetas = meta->inputs();
   auto& outMetas = meta->outputs();
 
-  if (inMetas.size() != func.inputs.size()) {
+  auto inputSize = std::accumulate(
+      inMetas.begin(),
+      inMetas.end(),
+      (size_t)0,
+      [](size_t init, const meta::TensorMetaPtr& tensorMeta) -> size_t {
+        return (tensorMeta->isOptional() ? 0 : 1) + init;
+      });
+
+  if (inputSize > func.inputs.size() || func.inputs.size() > inMetas.size()) {
     return Error("Input size mismatch");
   }
   if (outMetas.size() != func.outputs.size()) {
     return Error("Output size mismatch");
   }
-  for (size_t i = 0; i < inMetas.size(); ++i) {
+  for (size_t i = 0; i < func.inputs.size(); ++i) {
     err = validate(*inMetas[i], func.inputs[i]->attributes);
     if (!err.isOK()) return Error("Input %d error %s", i, err.msg());
   }
 
-  err = meta->getShapeInferer()(func.inputs, func.outputs);
-  if (!err.isOK()) return err;
+  any* shapeInferer = &meta->metaAttributes_.at("shapeInferer");
+  if (shapeInferer->type() == typeid(meta::FunctionMeta::TensorShapeInferer)) {
+    err = any_cast<meta::FunctionMeta::TensorShapeInferer>(*shapeInferer)(
+        func.inputs, func.outputs);
+  } else if (shapeInferer->type() ==
+             typeid(meta::FunctionMeta::TensorShapeInfererWithAttrs)) {
+    err = any_cast<meta::FunctionMeta::TensorShapeInfererWithAttrs>(
+        *shapeInferer)(func.inputs, func.outputs, func.attributes);
+  } else {
+    err = Error("Not support shape inferer type, %s",
+                shapeInferer->type().name());
+  }
+  if (!err.isOK()) return Error("shape inferer error %s", err.msg());
   for (size_t i = 0; i < outMetas.size(); ++i) {
     err = validate(*outMetas[i], func.outputs[i]->attributes);
     if (!err.isOK()) return Error("Output %d error %s", i, err.msg());

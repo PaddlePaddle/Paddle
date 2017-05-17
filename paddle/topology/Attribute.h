@@ -72,18 +72,35 @@ protected:
     regAttr(&Attribute::useGPU, "useGPU", "Use GPU or not").mustSet();
   }
 };
+#define __INIT_SCOPE__()                                         \
+  paddle::topology::details::FunctionMetaScope* scope = nullptr; \
+  if (withScope)                                                 \
+    scope = new paddle::topology::details::FunctionMetaScope(metaPtr.get());
 
 /**
  * Register a function attribute class.
  * See Attribute's document for details
  */
-#define REGISTER_FUNC_ATTRIBUTE()                                      \
-  static void registerFunctionAttribute(                               \
-      const paddle::topology::meta::FunctionMetaPtr metaPtr) {         \
-    paddle::topology::details::FunctionMetaScope scope(metaPtr.get()); \
-    parentRegAttrs();                                                  \
-    registerFunctionAttribute__impl__();                               \
-  }                                                                    \
+#define REGISTER_FUNC_ATTRIBUTE()                            \
+  static void registerFunctionAttribute(                     \
+      const paddle::topology::meta::FunctionMetaPtr metaPtr, \
+      bool withScope = true) {                               \
+    __INIT_SCOPE__()                                         \
+    parentRegAttrs();                                        \
+    registerFunctionAttribute__impl__();                     \
+    delete scope;                                            \
+  }                                                          \
+  static void registerFunctionAttribute__impl__()
+
+#define REGISTER_FUNC_ATTRIBUTE_EXTENDS(CLASS)               \
+  static void registerFunctionAttribute(                     \
+      const paddle::topology::meta::FunctionMetaPtr metaPtr, \
+      bool withScope = true) {                               \
+    __INIT_SCOPE__()                                         \
+    CLASS::registerFunctionAttribute(metaPtr, false);        \
+    registerFunctionAttribute__impl__();                     \
+    delete scope;                                            \
+  }                                                          \
   static void registerFunctionAttribute__impl__()
 
 }  // namespace topology

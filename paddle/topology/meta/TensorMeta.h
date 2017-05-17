@@ -26,6 +26,7 @@ enum SequenceType { NO_SEQUENCE = 0, SEQUENCE, NESTED_SEQUENCE };
 extern const Set<int> DefaultSequenceType;
 
 const size_t kTensorShape_BATCH_SIZE = -1UL;
+const size_t kTensorShape_NOT_SPECIFIC = -2UL;
 
 /**
  * @brief A tensor meta save the meta information of a input/output of a layer

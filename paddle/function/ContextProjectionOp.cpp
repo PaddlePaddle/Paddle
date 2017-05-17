@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "ContextProjectionOp.h"
+#include "Register.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/Vector.h"
+#include "paddle/topology/Attribute.h"
 namespace paddle {
 /**
  * Context Projection Forward with CPU Matrix Device.
@@ -71,85 +73,103 @@ void ContextProjectionForward<DEVICE_TYPE_CPU>(CpuMatrix& out_mat,
   }
 }
 
-/**
- * Paddle Function for Context Projection Forward.
- * Calculate the output layer value sequence after context projection.
- *
- * What is Context Projection for a sequence?
- * For example, assumed input (x) has 4 words and the dimension of each word
- * representation is 2. If we use zero to pad instead of learned weight to pad,
- * and the context_lenth is 3, the output (y) is:
- *
- * @code
- *  x = [a1, a2;
- *       b1, b2;
- *       c1, c2;
- *       d1, d2]
- *  y = [0,  0,  a1, a2, b1, b2;
- *       a1, a2, b1, b2, c1, c2;
- *       b1, b2, c1, c2, d1, d2;
- *       c1, c2, d1, d2, 0,  0]
- * @endcode
- *
- * \param outputs[0].matrix   output layer value, n * (d * l)
- * \param outputs[0].vector   start position sequence, n * 1
- * \param inputs[0].matrix    input layer value, n * d
- * \param inputs[0].vector    start position sequence, n * 1
- * \param inputs[1].matrix    input layer weight, pad * d
- */
-template <DeviceType Device>
-class ContextProjectionForwardFunc : public FunctionBase {
-public:
-  void init(const function::Config& config) override {
-    context_length_ = config.get<size_t>("context_length");
-    context_start_ = config.get<int>("context_start");
-    begin_pad_ = config.get<size_t>("begin_pad");
+struct ContextProjectionAttribute : public topology::Attribute {
+  size_t contextLength;
+  int contextStart;
+  size_t beginPad;
+
+  REGISTER_FUNC_ATTRIBUTE() {
+    regAttr(&ContextProjectionAttribute::contextLength,
+            "context_length",
+            "The length of context projection window")
+        .mustSet()
+        .largerThan(1);
+    regAttr(&ContextProjectionAttribute::contextStart,
+            "context_start",
+            "The start position of context projection")
+        .defaultValue(0);
+    regAttr(&ContextProjectionAttribute::beginPad,
+            "begin_pad",
+            "number of extra timesteps added at the beginning")
+        .defaultValue(0)
+        .largerThan(0);
   }
-
-  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK(1UL == inputs.size() || 2UL == inputs.size());
-    CHECK_EQ(1UL, outputs.size());
-    CHECK(inputs[0].isSequenceArg() && outputs[0].isSequenceArg())
-        << "SequenceArg required here";
-    const auto val_seqs = dynamic_cast<const SequenceArg&>(inputs[0]);
-    auto out_seq = dynamic_cast<const SequenceArg&>(outputs[0]);
-
-    CHECK(out_seq.data() && val_seqs.data() && val_seqs.getSequenceId().data());
-    CHECK_EQ(out_seq.shape().ndims(), 2UL);
-    CHECK_EQ(val_seqs.shape().ndims(), 2UL);
-    /// dim of output = dim of input * context_length
-    CHECK_EQ(out_seq.shape()[1], val_seqs.shape()[1] * context_length_);
-    /// input and output has the same batch_size
-    CHECK_EQ(val_seqs.shape()[0], out_seq.shape()[0]);
-    if (2UL == inputs.size()) {
-      CHECK_EQ(inputs[1].shape().ndims(), 2UL);
-      /// dim of input == dim of weight
-      CHECK_EQ(val_seqs.shape()[1], inputs[1].shape()[1]);
-    }
-
-    CHECK_EQ(out_seq.getArgType(), ADD_TO);
-    auto out_mat = out_seq.matrix<Device>();
-    const auto in_mat = val_seqs.matrix<Device>();
-    const auto w_mat =
-        (2UL == inputs.size() && inputs[1].data())
-            ? inputs[1].matrix<Device>()
-            : typename Tensor<real, Device>::Matrix(nullptr, 0, 0);
-    const auto seq_vec = val_seqs.getSequenceId().vector<int, Device>();
-
-    ContextProjectionForward<Device>(out_mat,
-                                     in_mat,
-                                     w_mat,
-                                     seq_vec,
-                                     context_length_,
-                                     context_start_,
-                                     begin_pad_);
-  }
-
-private:
-  size_t context_length_;
-  int context_start_;
-  size_t begin_pad_;
 };
+
+template <DeviceType Device>
+Error contextProjFwd(const BufferArgs& in,
+                     const BufferArgs& out,
+                     const ContextProjectionAttribute& attr) {
+  const auto val_seqs = dynamic_cast<const SequenceArg&>(in[0]);
+  auto out_seq = dynamic_cast<const SequenceArg&>(out[0]);
+  auto out_mat = out_seq.matrix<Device>();
+  const auto in_mat = val_seqs.matrix<Device>();
+  const auto w_mat = (2UL == in.size() && in[1].data())
+                         ? in[1].matrix<Device>()
+                         : typename Tensor<real, Device>::Matrix(nullptr, 0, 0);
+  const auto seq_vec = val_seqs.getSequenceId().vector<int, Device>();
+
+  ContextProjectionForward<Device>(out_mat,
+                                   in_mat,
+                                   w_mat,
+                                   seq_vec,
+                                   attr.contextLength,
+                                   attr.contextStart,
+                                   attr.beginPad);
+  return Error();
+}
+
+BEGIN_REGISTER_FUNCTION(ctxProjFwd, contextProjFwd, ContextProjectionAttribute)
+setDescription(R"DOC(Paddle Function for Context Projection Forward.
+Calculate the output layer value sequence after context projection.
+
+What is Context Projection for a sequence?
+For example, assumed input (x) has 4 words and the dimension of each word
+representation is 2. If we use zero to pad instead of learned weight to
+pad, and the context_lenth is 3, the output (y) is:
+
+@code
+ x = [a1, a2;
+      b1, b2;
+      c1, c2;
+      d1, d2]
+ y = [0,  0,  a1, a2, b1, b2;
+      a1, a2, b1, b2, c1, c2;
+      b1, b2, c1, c2, d1, d2;
+      c1, c2, d1, d2, 0,  0]
+@endcode
+)DOC");
+addTensor<INPUT>(2,
+                 UNSPECIFIED,
+                 {topology::DataType::DENSE,
+                  topology::DataType::SPARSE,
+                  topology::DataType::SPARSE_INTEGER,
+                  topology::DataType::INTEGER},
+                 {topology::SequenceType::SEQUENCE,
+                  topology::SequenceType::NESTED_SEQUENCE});
+addTensor<INPUT>(2)->setOptional();
+addTensor<OUTPUT>(2,
+                  ADD_TO,
+                  {topology::DataType::DENSE},
+                  {topology::SequenceType::NESTED_SEQUENCE,
+                   topology::SequenceType::SEQUENCE});
+setShapeInferer<ContextProjectionAttribute>(
+    [](std::vector<topology::TensorPtr>& ins,
+       std::vector<topology::TensorPtr>& outs,
+       const ContextProjectionAttribute& attrs) -> Error {
+      outs[0]->setDataType(ins[0]->dataType());
+      outs[0]->setSequenceType(ins[0]->sequenceType());
+      auto& shape = ins[0]->shape();
+      outs[0]->setShape({shape[0], shape[1] * attrs.contextLength});
+      if (ins.size() == 2) {
+        if (ins[0]->shape()[1] != ins[1]->shape()[1]) {
+          return Error("Context Project's Dim of input == dim of weight");
+        }
+      }
+      return Error();
+    });
+
+END_REGISTER_FUNCTION(ctxProjFwd)
 
 /**
  * Context Projection Backward with CPU Matrix Device.
@@ -210,80 +230,94 @@ void ContextProjectionBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad_mat,
   }
 }
 
-/**
- * Context Projection Backward Function.
- * Update the weight gradient and input layer gradient with backprop
- *
- * \param inputs[0].matrix          output layer grad, n * (d * l)
- * \param inputs[0].vector          start position sequence, n * 1
- * \param outputs[0].matrix         input layer grad, n * d
- * \param outputs[0].vector         start position sequence, n * 1
- * \param outputs[1]                weight grad, pad * d
- */
-template <DeviceType Device>
-class ContextProjectionBackwardFunc : public FunctionBase {
-public:
-  void init(const function::Config& config) override {
-    context_length_ = config.get<size_t>("context_length");
-    context_start_ = config.get<int>("context_start");
-    begin_pad_ = config.get<size_t>("begin_pad");
-    is_padding_ = config.get<bool>("is_padding");
-    total_pad_ = config.get<size_t>("total_pad");
+struct ContextProjBackwardAttribute : public ContextProjectionAttribute {
+  bool isPadding;
+  size_t totalPad;
+
+  REGISTER_FUNC_ATTRIBUTE_EXTENDS(ContextProjectionAttribute) {
+    regAttr<bool>(&ContextProjBackwardAttribute::isPadding,
+                  "is_padding",
+                  "Padding the context projection or not")
+        .mustSet();
+
+    regAttr<size_t>(&ContextProjBackwardAttribute::totalPad,
+                    "total_pad",
+                    "total padding length")
+        .defaultValue(0)
+        .largerThan(0);
   }
-
-  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(1UL, inputs.size());
-    CHECK(1UL == outputs.size() || 2UL == outputs.size());
-    CHECK(inputs[0].isSequenceArg() && outputs[0].isSequenceArg())
-        << "SequenceArg required here";
-    const auto in_seq = dynamic_cast<const SequenceArg&>(inputs[0]);
-    auto out_seq = dynamic_cast<const SequenceArg&>(outputs[0]);
-    CHECK(in_seq.data() && in_seq.getSequenceId().data());
-    CHECK_EQ(in_seq.shape().ndims(), 2UL);
-    CHECK_EQ(out_seq.shape().ndims(), 2UL);
-    CHECK_EQ(out_seq.getSequenceId().shape().ndims(), 1UL);
-
-    /// input and output grad has the same batch_size
-    CHECK_EQ(out_seq.shape()[0], in_seq.shape()[0]);
-    /// dim of output grad = dim of input grad * context_length
-    CHECK_EQ(in_seq.shape()[1], out_seq.shape()[1] * context_length_);
-    CHECK_EQ(out_seq.getArgType(), ADD_TO);
-
-    if (2UL == outputs.size()) {
-      CHECK_EQ(outputs[1].shape().ndims(), 2UL);
-      /// dim of input grad == dim of weight
-      CHECK_EQ(out_seq.shape()[1], outputs[1].shape()[1]);
-      CHECK_EQ(outputs[1].getArgType(), ADD_TO);
-    }
-
-    const auto seq_vec = in_seq.getSequenceId().vector<int, Device>();
-    const auto out_grad_mat = in_seq.matrix<Device>();
-    auto in_grad_mat =
-        !out_seq.data() ? typename Tensor<real, Device>::Matrix(nullptr, 0, 0)
-                        : out_seq.matrix<Device>();
-    auto w_grad_mat =
-        (2UL == outputs.size() && outputs[1].data())
-            ? outputs[1].matrix<Device>()
-            : typename Tensor<real, Device>::Matrix(nullptr, 0, 0);
-
-    ContextProjectionBackward<Device>(out_grad_mat,
-                                      in_grad_mat,
-                                      w_grad_mat,
-                                      seq_vec,
-                                      context_length_,
-                                      context_start_,
-                                      begin_pad_,
-                                      is_padding_,
-                                      total_pad_);
-  }
-
-private:
-  size_t context_length_;
-  int context_start_;
-  size_t begin_pad_;
-  bool is_padding_;
-  size_t total_pad_;
 };
+
+template <DeviceType Device>
+Error ContextBwd(const BufferArgs& in,
+                 const BufferArgs& out,
+                 const ContextProjBackwardAttribute& attrs) {
+  const auto in_seq = dynamic_cast<const SequenceArg&>(in[0]);
+  auto out_seq = dynamic_cast<const SequenceArg&>(out[0]);
+  const auto seq_vec = in_seq.getSequenceId().vector<int, Device>();
+  const auto out_grad_mat = in_seq.matrix<Device>();
+  auto in_grad_mat = !out_seq.data()
+                         ? typename Tensor<real, Device>::Matrix(nullptr, 0, 0)
+                         : out_seq.matrix<Device>();
+  auto w_grad_mat = (2UL == out.size() && out[1].data())
+                        ? out[1].matrix<Device>()
+                        : typename Tensor<real, Device>::Matrix(nullptr, 0, 0);
+
+  ContextProjectionBackward<Device>(out_grad_mat,
+                                    in_grad_mat,
+                                    w_grad_mat,
+                                    seq_vec,
+                                    attrs.contextLength,
+                                    attrs.contextStart,
+                                    attrs.beginPad,
+                                    attrs.isPadding,
+                                    attrs.totalPad);
+  return Error();
+}
+
+BEGIN_REGISTER_FUNCTION(ctxProjBwd, ContextBwd, ContextProjBackwardAttribute)
+setDescription(R"DOC(Context Projection Backward Function.
+Update the weight gradient and input layer gradient with backprop
+)DOC");
+addTensor<INPUT>(2,
+                 -1,
+                 {topology::DataType::DENSE,
+                  topology::DataType::SPARSE,
+                  topology::DataType::SPARSE_INTEGER},
+                 {topology::SequenceType::NESTED_SEQUENCE,
+                  topology::SequenceType::SEQUENCE});
+
+addTensor<OUTPUT>(2,
+                  ADD_TO,
+                  {topology::DataType::DENSE},
+                  {topology::SequenceType::NESTED_SEQUENCE,
+                   topology::SequenceType::SEQUENCE});
+
+addTensor<OUTPUT>(2,
+                  ADD_TO,
+                  {topology::DataType::DENSE},
+                  {topology::SequenceType::NO_SEQUENCE})
+    ->setOptional();
+
+setShapeInferer<ContextProjBackwardAttribute>(
+    [](std::vector<topology::TensorPtr>& ins,
+       std::vector<topology::TensorPtr>& outs,
+       const ContextProjBackwardAttribute& attrs) -> Error {
+      outs[0]->setDataType(ins[0]->dataType());
+      outs[0]->setSequenceType(ins[0]->sequenceType());
+      outs[0]->setShape(
+          {ins[0]->shape()[0], ins[0]->shape()[1] / attrs.contextLength});
+
+      if (outs.size() == 2) {
+        outs[1]->setDataType(topology::DataType::DENSE);
+        outs[1]->setSequenceType(topology::SequenceType::NO_SEQUENCE);
+        outs[1]->setShape(
+            {topology::meta::kTensorShape_NOT_SPECIFIC, outs[0]->shape()[1]});
+      }
+      return Error();
+    });
+
+END_REGISTER_FUNCTION(ctxProjBwd)
 
 /**
  * Context Projection Backward Data Function
@@ -293,8 +327,8 @@ private:
  *
  * \param outputs[0].matrix              input layer grad, n * d
  * \param outputs[0].vector              start position sequence, n * 1
- * \param inputs[0].matrix               output layer grad, n * (d * l)
- * \param inputs[0].vector               start positon sequence, n * 1
+ * \param inputs[0].matrixoutput layer grad, n * (d * l)
+ * \param inputs[0].vectorstart positon sequence, n * 1
  */
 template <DeviceType Device>
 class ContextProjectionBackwardDataFunc : public FunctionBase {
@@ -341,7 +375,7 @@ private:
  * input:  sequence of output layer grad
  * output: weight grad
  *
- * \param outputs[0]                   weight grad, pad * d
+ * \param outputs[0]    weight grad, pad * d
  * \param inputs[0].matrix             output layer grad, n * (d * l)
  * \param inputs[0].vecotr             start positon sequence, n * 1
  */
@@ -388,19 +422,7 @@ private:
   size_t total_pad_;
 };
 
-REGISTER_TYPED_FUNC(ContextProjectionForward,
-                    CPU,
-                    ContextProjectionForwardFunc);
-REGISTER_TYPED_FUNC(ContextProjectionBackward,
-                    CPU,
-                    ContextProjectionBackwardFunc);
 #ifndef PADDLE_ONLY_CPU
-REGISTER_TYPED_FUNC(ContextProjectionForward,
-                    GPU,
-                    ContextProjectionForwardFunc);
-REGISTER_TYPED_FUNC(ContextProjectionBackward,
-                    GPU,
-                    ContextProjectionBackwardFunc);
 REGISTER_TYPED_FUNC(ContextProjectionBackwardData,
                     GPU,
                     ContextProjectionBackwardDataFunc);

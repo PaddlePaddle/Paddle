@@ -16,6 +16,7 @@ limitations under the License. */
 #include <iterator>
 #include <sstream>
 #include "paddle/topology/Validator.h"
+#include "paddle/topology/meta/TensorMeta.h"
 
 namespace paddle {
 namespace function {
@@ -93,7 +94,10 @@ private:
       return Error("Tensor dimension mismatch");
     for (size_t i = 0; i < tensorShape.size(); ++i) {
       if (tensorShape[i] !=
-          std::remove_reference<decltype(tensorShape[i])>::type(argShape[i])) {
+              std::remove_reference<decltype(tensorShape[i])>::type(
+                  argShape[i]) &&
+          tensorShape[i] != topology::meta::kTensorShape_BATCH_SIZE &&
+          tensorShape[i] != topology::meta::kTensorShape_NOT_SPECIFIC) {
         std::ostringstream sout;
         sout << "Tensor shape mismatch: Tensor (";
         std::copy(tensorShape.begin(),

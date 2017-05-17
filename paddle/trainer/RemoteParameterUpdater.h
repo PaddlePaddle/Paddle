@@ -97,7 +97,6 @@ public:
     parameterClient_->setForwardbackwardTime(delta);
   }
 #endif
-
   virtual void apply();
   virtual void restore();
 

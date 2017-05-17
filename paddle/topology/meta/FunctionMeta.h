@@ -23,6 +23,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace topology {
+class Attribute;
+
 namespace meta {
 namespace details {
 enum FunctionTensorType { INPUT = 0, OUTPUT };
@@ -50,7 +52,11 @@ class FunctionMeta : public AttributeMetaMap {
 public:
   typedef std::vector<TensorMetaPtr> TensorMetas;
   typedef std::function<Error(std::vector<TensorPtr>&, std::vector<TensorPtr>&)>
-      TenserShapeInferer;
+      TensorShapeInferer;
+  typedef std::function<Error(std::vector<TensorPtr>&,
+                              std::vector<TensorPtr>&,
+                              const AttributeMap& attrs)>
+      TensorShapeInfererWithAttrs;
 
 private:
   std::string name_;
@@ -84,10 +90,10 @@ public:
     return arr->back();
   }
 
-  TenserShapeInferer getShapeInferer() const;
-
   const std::vector<TensorMetaPtr>& inputs() const { return inputs_; }
   const std::vector<TensorMetaPtr>& outputs() const { return outputs_; }
+
+  Error parseAttribute(const AttributeMap& attrs, Attribute* out) const;
 
   AttributeMap metaAttributes_;
 };

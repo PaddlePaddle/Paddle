@@ -33,7 +33,8 @@ TensorMeta &TensorMeta::setShape(const std::vector<size_t> &shape) {
   this->setShapeDimension(shape.size(), &ptr);
   ptr->addConstraint([shape](std::vector<size_t> *attr, bool) {
     for (size_t i = 0; i < shape.size(); ++i) {
-      if (shape[i] != kTensorShape_BATCH_SIZE) {
+      if (shape[i] != kTensorShape_BATCH_SIZE &&
+          shape[i] != kTensorShape_NOT_SPECIFIC) {
         if (shape[i] != attr->at(i)) {
           return Error("Shape mismatch %d, expect %d, actual %d",
                        i,

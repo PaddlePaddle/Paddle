@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "ContextProjection.h"
+#include "paddle/function/Register.h"
+#include "paddle/topology/Function.h"
 #include "paddle/utils/Stat.h"
 namespace paddle {
 
@@ -47,20 +49,23 @@ bool ContextProjection::init() {
   bool is_padding = config_.trainable_padding();
   size_t total_pad = is_padding ? beginPad_ + endPad_ : 0;
 
-  forward_.add("ContextProjectionForward",
-               function::Config()
-                   .set("context_length", context_length)
-                   .set("context_start", context_start)
-                   .set("begin_pad", beginPad_),
-               useGpu_);
-  backward_.add("ContextProjectionBackward",
-                function::Config()
-                    .set("context_length", context_length)
-                    .set("context_start", context_start)
-                    .set("begin_pad", beginPad_)
-                    .set("is_padding", is_padding)
-                    .set("total_pad", total_pad),
-                useGpu_);
+  topology::Function func;
+  func.type = "ctxProjFwd";
+  func.setUseGPU(useGpu_);
+  func.attributes["context_length"] = context_length;
+  func.attributes["context_start"] = context_start;
+  func.attributes["begin_pad"] = beginPad_;
+  forward_.push_back(function::createFunction(func));
+
+  topology::Function ctxProjBwd;
+  ctxProjBwd.type = "ctxProjBwd";
+  ctxProjBwd.setUseGPU(useGpu_);
+  ctxProjBwd.attributes["context_length"] = context_length;
+  ctxProjBwd.attributes["context_start"] = context_start;
+  ctxProjBwd.attributes["begin_pad"] = beginPad_;
+  ctxProjBwd.attributes["is_padding"] = is_padding;
+  ctxProjBwd.attributes["total_pad"] = total_pad;
+  backward_.push_back(function::createFunction(ctxProjBwd));
 
   return true;
 }
@@ -126,7 +131,7 @@ void ContextProjection::forward() {
                   *start_pos);
   }
   outputs.addArg(*out_->value, *start_pos, ADD_TO);
-  forward_[0](inputs, outputs);
+  forward_[0](inputs, outputs).check();
 
   if (state_ && config_.context_start() < 0) {
     CHECK_EQ(1, in_->getNumSequences());
@@ -174,7 +179,7 @@ void ContextProjection::backward(const UpdateCallback& callback) {
                            w_ptr ? w_ptr->getHeight() : 0,
                            input_dim),
                  ADD_TO);
-  backward_[0](inputs, outputs);
+  backward_[0](inputs, outputs).check();
 
   if (config_.trainable_padding()) {
     weight_->getParameterPtr()->incUpdate(callback);
