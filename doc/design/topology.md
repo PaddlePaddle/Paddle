@@ -10,28 +10,46 @@ The topology is not only an API level concept but also how we organize the compu
 Alan is a professional developer in CPU and GPU. He can write kernel functions of a new `Layer` with the best performance. However, he is not a familiar with Paddle API language, Python. Alan just needs to write the kernel function and register them in Paddle, and then Paddle should generate the user-side APIs for these kernel functions without any codes written by Alan.
 
 ```cpp
+struct CosSimAttribute : public topology::Attribute {
+  double scale;
+  REGISTER_FUNC_ATTRIBUTE() {
+    regAttr(&CosSimAttribute::scale, "scale", "the scale of cosine operator").defaultValue(1.0).largerThan(0.0);
+  }
+};
+
 template <DeviceType devType>
-void cos_kernel(std::vector<Tensor>& ins, std::vector<Tensor>& outs,  double scale) {
+void cos_kernel(std::vector<Tensor>& ins, std::vector<Tensor>& outs, const CosSimAttribute& attr) {
     // implemetation here.
 }
 
-BEGIN_REGISTER_FUNCTION(cos, cos_kernel)
-// The parameter of cos function. 
-func.addAttribute("scale", "The scale of cos layer").defaultValue(1.0).largerThan(0.0);
+BEGIN_REGISTER_FUNCTION(cosFwd, cosineForward, CosSimAttribute)
+addTensor<INPUT>(/*dim*/ 2);
+addTensor<INPUT>(/*dim*/ 2);
+addTensor<OUTPUT>(/*shape = */ {topology::meta::kTensorShape_BATCH_SIZE, 1},
+                  /*arg_type*/ ASSIGN_TO);
 
-// Two inputs
-func.addInput().dataType(Dense).dimension(2).supportSeqType();
-func.addInput().dataType(Dense).dimension(2).supportSeqType();
+setDescription(R"DOC(Cosine similarity forward function.
+There are two inputs of this function. The first matrix is a [h*w] matrix the
+second input is a [h*w] matrix or a [1*w] matrix. the output matrix will be a
+[h*1] matrix.
+)DOC");
 
-// One outputs
-func.addOutput().dataType(Dense).dimension(2).supportSeqType();
+setShapeInferer([](std::vector<topology::TensorPtr>& ins,
+                   std::vector<topology::TensorPtr>& outs) {
+  auto& shape0 = ins[0]->shape();
+  auto& shape1 = ins[1]->shape();
 
-// Tell Paddle how to inference the output shape?
-func.setShapeInferer([](std::vector<Dims>& ins, std::vector<Dims>& outs){
-    outs[0] = {ins[0][0], 1};  // output dimension = batch_size * 1
+  if (shape0 != shape1 && (shape0[1] != shape1[1] || shape1[0] != 1))
+    return Error(
+        "Input shape should be same, or the second height should be 1");
+  if (ins[0]->sequenceType() != ins[1]->sequenceType())
+    return Error("Input sequence type should be same");
+  outs[0]->setShape({ins[0]->shape()[0], 1});
+  outs[0]->setSequenceType(ins[0]->sequenceType());
+  outs[0]->setDataType(ins[0]->dataType());
+  return Error();
 });
-
-END_REGISTER_FUNCTION()
+END_REGISTER_FUNCTION(cosFwd);
 ```
 
 ### QA Developers
