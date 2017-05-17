@@ -9,7 +9,7 @@ add_subdirectory(pserver)
 add_subdirectory(trainer)
 add_subdirectory(scripts)
 
-if(${CMAKE_Go_COMPILER})
+if(CMAKE_Go_COMPILER)
   add_subdirectory(go)
 endif()
 

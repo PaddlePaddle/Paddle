@@ -163,8 +163,9 @@ function(go_library TARGET_NAME)
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
   add_custom_target(${TARGET_NAME}_lib ALL DEPENDS ${TARGET_NAME}_timestamp ${go_library_DEPS})
   add_library(${TARGET_NAME} STATIC IMPORTED)
-  set_target_properties(${TARGET_NAME} PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME})
+  set_property(TARGET ${TARGET_NAME} PROPERTY
+    IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}")
+  add_dependencies(${TARGET_NAME} ${TARGET_NAME}_lib)
 endfunction(go_library)
 
 function(go_binary TARGET_NAME)

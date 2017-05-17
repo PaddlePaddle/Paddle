@@ -28,10 +28,12 @@ if(NOT CMAKE_Go_COMPILER)
       NAMES go
       PATHS ${Go_BIN_PATH}
     )
-    EXEC_PROGRAM(${CMAKE_Go_COMPILER} ARGS version OUTPUT_VARIABLE GOLANG_VERSION)
-    STRING(REGEX MATCH "go[0-9]+.[0-9]+.[0-9]+[ /A-Za-z0-9]*" VERSION "${GOLANG_VERSION}")
-    message("-- The Golang compiler identification is ${VERSION}")
-    message("-- Check for working Golang compiler: ${CMAKE_Go_COMPILER}")
+    if(CMAKE_Go_COMPILER)
+      EXEC_PROGRAM(${CMAKE_Go_COMPILER} ARGS version OUTPUT_VARIABLE GOLANG_VERSION)
+      STRING(REGEX MATCH "go[0-9]+[.0-9]*[ /A-Za-z0-9]*" VERSION "${GOLANG_VERSION}")
+      message("-- The Golang compiler identification is ${VERSION}")
+      message("-- Check for working Golang compiler: ${CMAKE_Go_COMPILER}")
+    endif()
   endif()
 
 endif()
