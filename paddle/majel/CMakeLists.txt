@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-if(GTEST_INCLUDE_DIR AND GTEST_LIBRARIES)
-    message("-- Found gtest (include: ${GTEST_INCLUDE_DIR}, library: ${GTEST_LIBRARIES})")
-else()
+if(${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
     # find #include <majel/xx.h>
     get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
     include_directories(${PARENT_DIR})
@@ -11,6 +9,13 @@ else()
     get_filename_component(PARENT_DIR ${PARENT_DIR} DIRECTORY)
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PARENT_DIR}/cmake")
 
+    # enable boost
+    find_package(Boost REQUIRED)
+    if(NOT Boost_FOUND)
+        message(FATAL "Cannot find Boost library.")
+    endif()
+    include_directories(${Boost_INCLUDE_DIRS})
+
     # enable c++11
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
@@ -18,6 +23,8 @@ else()
     set(THIRD_PARTY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
     set(WITH_TESTING ON)
     include(external/gtest)
+else()
+    message("-- Found gtest (include: ${GTEST_INCLUDE_DIR}, library: ${GTEST_LIBRARIES})")
 endif()
 
 ########################### Build Majel #############################
@@ -29,6 +36,9 @@ if(CUDA_FOUND)
 else()
     add_library(majel ${MAJEL_CXX_FILES})
 endif()
+add_dependencies(majel ${external_project_dependencies})
 #####################################################################
 
-add_subdirectory(test)
+if(WITH_TESTING)
+    add_subdirectory(test)
+endif()
