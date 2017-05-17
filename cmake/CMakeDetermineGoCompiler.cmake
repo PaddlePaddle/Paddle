@@ -15,7 +15,7 @@ if(NOT CMAKE_Go_COMPILER)
   set(Go_BIN_PATH
     $ENV{GOPATH}
     $ENV{GOROOT}
-    $ENV{GOROOT}/../bin
+    $ENV{GOROOT}/bin
     $ENV{GO_COMPILER}
     /usr/bin
     /usr/local/bin
