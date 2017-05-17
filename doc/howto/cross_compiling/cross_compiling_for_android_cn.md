@@ -35,7 +35,7 @@ CMake系统对交叉编译提供了支持[cmake-toolchains](https://cmake.org/cm
 
 Android平台可选配置参数：
 
-- `ANDROID_STANDALONE_TOOLCHAIN`，独立工具链所在的绝对路径，或者相对构建目录的相对路径。PaddlePaddle的CMake系统将根据该值自动推导和设置需要使用的交叉编译器、sysroot、以及Android API级别；否则，用户需要在cmake时自动设置这些值。无默认值。
+- `ANDROID_STANDALONE_TOOLCHAIN`，独立工具链所在的绝对路径，或者相对于构建目录的相对路径。PaddlePaddle的CMake系统将根据该值自动推导和设置需要使用的交叉编译器、sysroot、以及Android API级别；否则，用户需要在cmake时手动设置这些值。无默认值。
 - `ANDROID_ABI`，目标架构ABI。目前只支持`armeabi-v7a`，默认值为`armeabi-v7a`。
 - `ANDROID_NATIVE_API_LEVEL`，工具链的Android API级别。若没有显式设置，PaddlePaddle将根据`ANDROID_STANDALONE_TOOLCHAIN`的值自动推导得到。
 - `ANROID_ARM_MODE`，是否使用ARM模式。可设置`ON/OFF`，默认值为`ON`。
@@ -43,7 +43,7 @@ Android平台可选配置参数：
 
 其他配置参数：
 
-- `HOST_C/CXX_COMPILER`，CMake编译的宿主平台的C/C++编译器。在编译宿主机版protoc可执行文件和目标机版OpenBLAS时需要用到。
+- `HOST_C/CXX_COMPILER`，宿主机的C/C++编译器。在编译宿主机版protoc可执行文件和目标机版OpenBLAS库时需要用到。默认设置成环境变量`CC`的值；若环境变量`CC`没有设置，则设置成`cc`编译器。
 
 一种常用的cmake配置如下：
 
@@ -59,11 +59,11 @@ cmake -DCMAKE_SYSTEM_NAME=Android \
       ..
 ```
 
-用户还可根据自己的需求设置其他编译参数。比如希望最小化生成的库的大小，可以设置`CMAKE_BUILD_TYPE`为`MinSizeRel`；若希望最快的执行速度，则可设置`CMAKE_BUILD_TYPE`为`Release`。
+用户还可根据自己的需求设置其他编译参数。比如希望最小化生成的库的大小，可以设置`CMAKE_BUILD_TYPE`为`MinSizeRel`；若希望最快的执行速度，则可设置`CMAKE_BUILD_TYPE`为`Release`。亦可以通过手动设置`CMAKE_C/CXX_FLAGS_MINSIZEREL/RELEASE`来影响PaddlePaddle的编译过程。
 
 ## 编译和安装
 
-CMake配置完成后，执行以下命令，PaddlePaddle将自动下载和编译所有所需要的第三方依赖库、编译和安装PaddlePaddle预测库。
+CMake配置完成后，执行以下命令，PaddlePaddle将自动下载和编译所有第三方依赖库、编译和安装PaddlePaddle预测库。
 
 ```bash
 make
@@ -72,5 +72,5 @@ make install
 
 注意：如果你曾经在源码目录下编译过其他平台的PaddlePaddle库，请先使用`rm -rf`命令删除`third_party`目录和`build`目录，以确保所有的第三方依赖库和PaddlePaddle代码都是针对新的CMake配置重新编译的。
 
-执行完安装命令后，`your/path/to/install`目录会中包含`include`和`lib`目录，其中`include`中包含C-API的头文件，`lib`中包含一个Android版本的库。自此，PaddlePaddle的已经安装完成，用户可将`your/path/to/install`目录下的生成文件用于深度学习相关Android App中，调用方法见C-API文档。
+执行完安装命令后，`your/path/to/install`目录中会包含`include`和`lib`目录，其中`include`中包含C-API的头文件，`lib`中包含一个Android版本的库。自此，PaddlePaddle的已经安装完成，用户可将`your/path/to/install`目录下的生成文件用于深度学习相关Android App中，调用方法见C-API文档。
 
