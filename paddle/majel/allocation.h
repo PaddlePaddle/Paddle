@@ -2,6 +2,8 @@
 #include <memory>
 
 #include <majel/place.h>
+#include "hl_gpu.h"
+#include "paddle/utils/Logging.h"
 
 namespace majel {
 

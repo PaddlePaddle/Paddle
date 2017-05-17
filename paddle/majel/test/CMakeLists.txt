@@ -5,6 +5,8 @@ add_dependencies(majel_tests majel)
 target_link_libraries(majel_tests     
                       ${GTEST_LIBRARIES}
                       ${GTEST_MAIN_LIBRARIES}
+                      ${GLOG_LIBRARIES}
+                      ${GFLAGS_LIBRARIES}
                       majel
                      )
 add_test(majel_tests majel_tests)
