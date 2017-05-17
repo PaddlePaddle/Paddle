@@ -1,4 +1,7 @@
-language: cpp
+language: go
+go:
+  - 1.8
+
 cache:
   directories:
     - $HOME/third_party
