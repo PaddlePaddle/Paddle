@@ -1,7 +1,5 @@
-#include "libadder.h"
 #include <iostream>
 #include "gtest/gtest.h"
+#include "libadder.h"
 
-TEST(Cgo, Invoke) {
-  EXPECT_EQ(GoAdder(30, 12), 42);
-}
+TEST(Cgo, Invoke) { EXPECT_EQ(GoAdder(30, 12), 42); }
