@@ -28,6 +28,105 @@
 # cmake_parse_arguments can help us to achieve this goal.
 # https://cmake.org/cmake/help/v3.0/module/CMakeParseArguments.html
 
+# cc_library parses tensor.cc and figures out that target also depend on tensor.h.
+# cc_library(tensor
+#   SRCS
+#   tensor.cc
+#   DEPS
+#   variant)
+function(cc_library TARGET_NAME)
+  set(options OPTIONAL)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  if (${cc_library_OPTIONAL} STREQUAL "SHARED")
+    add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
+  else()
+    add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
+  endif()
+  add_dependencies(${TARGET_NAME} ${cc_library_DEPS} ${external_project_dependencies})
+endfunction(cc_library)
+
+# cc_binary parses tensor.cc and figures out that target also depend on tensor.h.
+# cc_binary(tensor
+#   SRCS
+#   tensor.cc)
+function(cc_binary TARGET_NAME)
+  set(options OPTIONAL)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(cc_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  add_executable(${TARGET_NAME} ${cc_binary_SRCS})
+  add_dependencies(${TARGET_NAME} ${cc_binary_DEPS} ${external_project_dependencies})
+  target_link_libraries(${TARGET_NAME} ${cc_binary_DEPS})
+endfunction(cc_binary)
+
+# The dependency to target tensor implies that if any of
+# tensor{.h,.cc,_test.cc} is changed, tensor_test need to be re-built.
+# cc_test(tensor_test
+#   SRCS
+#   tensor_test.cc
+#   DEPS
+#   tensor)
+function(cc_test TARGET_NAME)
+  set(options "")
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  add_executable(${TARGET_NAME} ${cc_test_SRCS})
+  add_dependencies(${TARGET_NAME} ${cc_test_DEPS} ${external_project_dependencies})
+  target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} ${GTEST_MAIN_LIBRARIES} ${GTEST_LIBRARIES})
+  add_test(${TARGET_NAME} ${TARGET_NAME})
+endfunction(cc_test)
+
+# Suppose that ops.cu includes global functions that take Tensor as
+# their parameters, so ops depend on tensor. This implies that if
+# any of tensor.{h.cc}, ops.{h,cu} is changed, ops need to be re-built.
+# nv_library(ops
+#   SRCS
+#   ops.cu
+#   DEPS
+#   tensor)
+function(nv_library TARGET_NAME)
+  set(options OPTIONAL)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(nv_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  if (${nv_library_OPTIONAL} STREQUAL "SHARED")
+    cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
+  else()
+    cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
+  endif()
+  add_dependencies(${TARGET_NAME} ${nv_library_DEPS} ${external_project_dependencies})
+endfunction(nv_library)
+
+function(nv_binary TARGET_NAME)
+  set(options "")
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(nv_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  cuda_add_executable(${TARGET_NAME} ${nv_binary_SRCS})
+  add_dependencies(${TARGET_NAME} ${nv_binary_DEPS} ${external_project_dependencies})
+  target_link_libraries(${TARGET_NAME} ${nv_binary_DEPS})
+endfunction(nv_binary)
+
+# The dependency to target tensor implies that if any of
+# ops{.h,.cu,_test.cu} is changed, ops_test need to be re-built.
+# nv_test(ops_test
+#   SRCS
+#   ops_test.cu
+#   DEPS
+#   ops)
+function(nv_test TARGET_NAME)
+  set(options "")
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
+  add_dependencies(${TARGET_NAME} ${nv_test_DEPS} ${external_project_dependencies})
+  target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} ${GTEST_MAIN_LIBRARIES} ${GTEST_LIBRARIES})
+  add_test(${TARGET_NAME} ${TARGET_NAME})
+endfunction(nv_test)
 
 set(GOPATH "${CMAKE_CURRENT_BINARY_DIR}/go")
 file(MAKE_DIRECTORY ${GOPATH})
