@@ -112,11 +112,97 @@ For example, the cosine layer should have two inputs, and the two inputs should 
 All these meta information should be written in namespace `paddle::topology::meta`. There are several basic classes in this namespace.
 
 * Constraints:  It is a function list which stores the constraints of one attribute. It used to validate user input must be correct.
+    ```cpp
+    template <typename T>  // T is attribute type
+    class Constraints {
+    private:
+      // (T* attr, bool alreadySet) -> Error
+      // attr is an inout parameter for attribute.
+      // alreadySet means if this attribute is set by user or previous callbacks.
+      // return Error if the attribute is not valid.
+      std::vector<std::function<Error(T*, bool)>> callbacks_;
+    public:
+
+      // Each constraint function will add a check function to callbacks_;
+      Constraints<T>& mustSet();
+      Constraints<T>& defaultValue(const T& val);
+      Constraints<T>& largerThan(const T& val);
+
+      // More constraint function below.
+    };
+    ```
+
 * AttributeMeta:  It represent a meta information of an attribute, e.g. `scale`. It contains the attribute name,  description, type information and `Constraints`.
-* TensorMeta: Tensor is the input/output of the Layer or Function. It contains a vector of `AttributeMeta`. The data type, sequence type is just an attribute of the tensor.
-* FunctionMeta: It represent a meta information of a paddle::Function. It contains two vectors of TensorMeta, and they are inputs and outputs. The FunctionMeta also contains a vector of AttributeMeta, that kernel developers can add the attributes used by their kernel.
+    ```cpp
+    class AttributeMeta {
+    public:
+      std::string name;         // e.g. "scale"
+      std::string description;  // e.g. "the scale of cosine operator"
+      const std::type_info& type;  // e.g. type_id(double)
+
+      std::any constraints;  // the contraints of this attribute. When implementation, 
+                             // using `std::any` to get rid of template argument.
+                             // But it is actually Constraints<T> actually, while T's type
+                             // is store in the `type` field.
+    };
+    typedef std::shared_ptr<AttributeMeta> AttributeMetaPtr;
+    ```
+* AttributeMetaMap: The attribute meta map contains many AttributeMeta. Each Layer, FunctionMeta, TensorMeta is a AttributeMetaMap. User can addAttribute to an AttributeMetaMap.
+    ```cpp
+    class AttributeMetaMap: public std::unordered_map<std::string, AttributeMetaPtr> {
+    public:
+
+      /// Add attribute to map, returns constraints object, which user can add constraints.
+      /// @code
+      ///   attr_map.addAttribute("scale", "the scale of cosine operator").defaultValue(1.0).largerThan(0.0);
+      /// @endcode
+      template <typename T>
+      Constraints<T>& addAttribute(const std::string& name, const std::string& description);
+    };
+    ```
+
+* AttributeMap: The attribute map is the data structure which save attributes. The AttributeMap is not only used by user defined topology information, but also used by some meta information, which make meta information can store any type of Attributes, and be decoupled with upper invoker.
+    ```cpp
+    typedef std::unordered_map<std::string, std::any> AttributeMap;
+    ```
+
+* TensorMeta: Tensor is the input/output of the Layer or Function. It is an vector `AttributeMetaMap`. The data type, sequence type is just an attribute of the tensor.
+    ```cpp
+    enum DataType {DENSE, SPARSE, ...};
+    enum SequenceType {NO_SEQUENCE, SEQUENCE, ...};
+    class TensorMeta: public AttributeMetaMap {
+    public:
+      TensorMeta& setValidDataType(std::set<DataType> dataType);
+      TensorMeta& setValidSeqType(std::set<SeqType> seqType);
+      TensorMeta& setShapeDim(size_t dim);
+
+    private:
+      // nothing! TensorMeta just a AttributeMetaMap, but add some helper functions.
+    };
+    ```
+
+* FunctionMeta: It represent a meta information of a paddle::Function. It contains two vectors of TensorMeta, and they are inputs and outputs. The FunctionMeta is a AttributeMetaMap. that kernel developers can add the attributes used by their kernel.
+    ```cpp
+    class FunctionMeta : public AttributeMetaMap {
+    public:
+      std::vector<TensorMetaPtr> inputs;
+      std::vector<TensorMetaPtr> outputs;
+
+      /// `cpuKernel` `gpuKernel` `shapeInferer`, `estimateFlops` just store into metaAttrs. 
+      /// The invoker of function meta will decide which type and name should be.
+      /// Also each field could be many types.
+      /// For example,
+      ///   shapeInferer is a function from `std::vector<Tensor>& in` to `std::vector<Tensor>& out`.
+      ///   but different function could use different Attribute class.
+      ///   cosine layer's shapeInferer could be
+      ///   (std::vector<Tensor>& in, std::vector<Tensor>& out, const CosSimAttribute& attr) {...}
+      AttributeMap metaAttrs;
+    };
+    ```
+
 * LayerMeta: A similar concept like FunctionMeta, but used to represent `Layer'.
 * TopologyMeta: A topology meta contains a vector of `AttributeMeta`, which represent the attributes can be set globally in a topology.
+
 
 ### Topology information
 
