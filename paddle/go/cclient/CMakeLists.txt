@@ -10,7 +10,6 @@ else()
   # find cmake directory modules
   get_filename_component(PARENT_DIR ${PARENT_DIR} DIRECTORY)
   get_filename_component(PARENT_DIR ${PARENT_DIR} DIRECTORY)
-  get_filename_component(PARENT_DIR ${PARENT_DIR} DIRECTORY)
 
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PARENT_DIR}/cmake")
 
@@ -30,4 +29,6 @@ project(cxx_go CXX C Go)
 include(cmake/golang.cmake)
 include(cmake/flags.cmake)
 
-add_subdirectory(client)
+ExternalGoProject_Add(pserver github.com/PaddlePaddle/Paddle/paddle/go/pserver)
+add_go_library(client STATIC pserver)
+add_subdirectory(test)
