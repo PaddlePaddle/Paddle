@@ -15,7 +15,7 @@ typedef enum {
 typedef struct {
   char*               name;
   paddle_element_type element_type;
-  char*               content;
+  unsigned char*      content;
   int                 content_len;
 } paddle_parameter, paddle_gradient;
 
@@ -213,7 +213,7 @@ func paddle_get_params(client C.client, names **C.char, dst **C.paddle_parameter
 			param.name = C.CString(p.Name)
 		}
 		if !contentAllocated {
-			param.content = (*C.char)(C.malloc(C.size_t(len(p.Content))))
+			param.content = (*C.uchar)(C.malloc(C.size_t(len(p.Content))))
 		}
 		C.memcpy(unsafe.Pointer(param.content), unsafe.Pointer(&p.Content[0]), C.size_t(len(p.Content)))
 		param.content_len = C.int(len(p.Content))
