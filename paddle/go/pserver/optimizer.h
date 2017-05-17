@@ -10,10 +10,9 @@ typedef enum {
   PADDLE_ELEMENT_TYPE_FLOAT64 = 5,
 } paddle_element_type;
 
-typedef struct paddle_optimizer paddle_optimizer;
-
-paddle_optimizer* paddle_create_SGD_optimizer(double learning_rate);
-void paddle_release_optimizer(paddle_optimizer* o);
-int paddle_update_parameter(paddle_optimizer* o, void *buffer, paddle_element_type datatype, const void* gradient, int num_bytes);
+struct paddle_optimizer;
+struct paddle_optimizer* paddle_create_SGD_optimizer(double learning_rate);
+void paddle_release_optimizer(struct paddle_optimizer* o);
+int paddle_update_parameter(struct paddle_optimizer* o, void *buffer, paddle_element_type element_type, const void* gradient, int num_bytes);
 
 #endif /* PADDLE_PSERVER_OPTIMIZER_H */

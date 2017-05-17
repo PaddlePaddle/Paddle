@@ -18,7 +18,7 @@ const (
 var nullPtr = unsafe.Pointer(uintptr(0))
 
 type optimizer struct {
-	opt *C.paddle_optimizer
+	opt *C.struct_paddle_optimizer
 }
 
 func newOptimizer(t optimizerType, learning_rate float64) *optimizer {
@@ -46,6 +46,6 @@ func (o *optimizer) UpdateParameter(p Parameter, g Gradient) error {
 func (o *optimizer) Cleanup() {
 	if unsafe.Pointer(o.opt) != nullPtr {
 		C.paddle_release_optimizer(o.opt)
-		o.opt = (*C.paddle_optimizer)(nullPtr)
+		o.opt = (*C.struct_paddle_optimizer)(nullPtr)
 	}
 }
