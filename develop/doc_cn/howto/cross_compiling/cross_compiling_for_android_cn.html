@@ -1,0 +1,310 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>构建Android平台上的PaddlePaddle库 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/evaluators.html">Evaluators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>构建Android平台上的PaddlePaddle库</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="androidpaddlepaddle">
+<span id="androidpaddlepaddle"></span><h1>构建Android平台上的PaddlePaddle库<a class="headerlink" href="#androidpaddlepaddle" title="永久链接至标题">¶</a></h1>
+<p>用户可通过交叉编译的方式，在用户熟悉的开发平台（Linux，Mac OS X和Windows）上编译Android平台上适用的PaddlePaddle库。
+本文档将以Linux x86-64平台为例，介绍交叉编译Android平台上适用的PaddlePaddle库的方法和步骤。</p>
+<div class="section" id="">
+<span id="id1"></span><h2>准备交叉编译环境<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>从源码交叉编译PaddlePaddle，用户需要提前准备好交叉编译环境。Android平台上使用的C/C++交叉编译工具链为<a class="reference external" href="https://developer.android.com/ndk/downloads/index.html?hl=zh-cn">Android NDK</a>，用户可自行前往下载预编译好的版本，也可通过以下命令获取：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>wget -q https://dl.google.com/android/repository/android-ndk-r14b-linux-x86_64.zip
+unzip -q android-ndk-r14b-linux-x86_64.zip
+</pre></div>
+</div>
+<p>Android NDK中包含了所有Android API级别、所有架构（arm/arm64/x86/mips）需要用到的编译工具和系统库。用户可根据自己的编译目标架构、所需支持的最低Android API级别，构建<a class="reference external" href="https://developer.android.google.cn/ndk/guides/standalone_toolchain.html?hl=zh-cn">独立工具链</a>。
+比如：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh <span class="se">\</span>
+        --arch<span class="o">=</span>arm --platform<span class="o">=</span>android-21 --install-dir<span class="o">=</span>your/path/to/my_standalone_toolchain
+</pre></div>
+</div>
+<p>此命令将在your/path/to/my_standalone_toolchain目录生成一套编译工具链，面向架构为32位ARM架构，支持的最小的Android API级别为21，使用的编译器为arm-linux-androideabi-gcc (GCC) 4.9。</p>
+<p>注意：<strong>PaddlePaddle要求使用的编译工具链所支持的Andoid API级别不小于21</strong>。</p>
+</div>
+<div class="section" id="">
+<span id="id2"></span><h2>配置交叉编译参数<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>CMake系统对交叉编译提供了支持<a class="reference external" href="https://cmake.org/cmake/help/v3.0/manual/cmake-toolchains.7.html#cross-compiling">cmake-toolchains</a>。为了简化cmake配置，PaddlePaddle为交叉编译提供了工具链配置文档<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/cmake/cross_compiling/android.cmake">cmake/cross_compiling/android.cmake</a>，以提供一些默认的编译器和编译参数相关配置。注意，从CMake 3.7版本开始，CMake官方对Android平台的交叉编译提供了通用的支持。PaddlePaddle若检测到用户使用的CMake版本不低于3.7时，将会将用户传进来的配置参数传递CMake系统，交由CMake系统本身来处理。有关参数配置的详细说明见<a class="reference external" href="https://cmake.org/cmake/help/v3.7/manual/cmake-toolchains.7.html#cross-compiling">cmake-toolchains</a>。</p>
+<p>交叉编译Android版本的PaddlePaddle库时，有一些必须配置的参数：</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">CMAKE_SYSTEM_NAME</span></code>，CMake编译的目标平台，必须设置为<code class="docutils literal"><span class="pre">Android</span></code>。在设置<code class="docutils literal"><span class="pre">CMAKE_SYSTEM_NAME=Android</span></code>后，PaddlePaddle的CMake系统才认为是在交叉编译Android系统的版本，并自动编译宿主机版protoc可执行文件、目标机版protobuf库、以及Android所需<code class="docutils literal"><span class="pre">arm_soft_fp_abi</span></code>分支的目标机版OpenBLAS库。此外，还会强制设置一些PaddlePaddle参数的值（<code class="docutils literal"><span class="pre">WITH_GPU=OFF</span></code>、<code class="docutils literal"><span class="pre">WITH_AVX=OFF</span></code>、<code class="docutils literal"><span class="pre">WITH_PYTHON=OFF</span></code>、<code class="docutils literal"><span class="pre">WITH_RDMA=OFF</span></code>）。</li>
+<li><code class="docutils literal"><span class="pre">WITH_C_API</span></code>，必须设置为<code class="docutils literal"><span class="pre">ON</span></code>。在Android平台上只支持使用C-API来预测。</li>
+<li><code class="docutils literal"><span class="pre">WITH_SWIG_PY</span></code>，必须设置为<code class="docutils literal"><span class="pre">OFF</span></code>。在Android平台上不支持通过swig调用来训练或者预测。</li>
+</ul>
+<p>Android平台可选配置参数：</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">ANDROID_STANDALONE_TOOLCHAIN</span></code>，独立工具链所在的绝对路径，或者相对于构建目录的相对路径。PaddlePaddle的CMake系统将根据该值自动推导和设置需要使用的交叉编译器、sysroot、以及Android API级别；否则，用户需要在cmake时手动设置这些值。无默认值。</li>
+<li><code class="docutils literal"><span class="pre">ANDROID_ABI</span></code>，目标架构ABI。目前只支持<code class="docutils literal"><span class="pre">armeabi-v7a</span></code>，默认值为<code class="docutils literal"><span class="pre">armeabi-v7a</span></code>。</li>
+<li><code class="docutils literal"><span class="pre">ANDROID_NATIVE_API_LEVEL</span></code>，工具链的Android API级别。若没有显式设置，PaddlePaddle将根据<code class="docutils literal"><span class="pre">ANDROID_STANDALONE_TOOLCHAIN</span></code>的值自动推导得到。</li>
+<li><code class="docutils literal"><span class="pre">ANROID_ARM_MODE</span></code>，是否使用ARM模式。可设置<code class="docutils literal"><span class="pre">ON/OFF</span></code>，默认值为<code class="docutils literal"><span class="pre">ON</span></code>。</li>
+<li><code class="docutils literal"><span class="pre">ANDROID_ARM_NEON</span></code>，是否使用NEON指令。目前必须设置成<code class="docutils literal"><span class="pre">ON</span></code>，默认值为<code class="docutils literal"><span class="pre">ON</span></code>。</li>
+</ul>
+<p>其他配置参数：</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">HOST_C/CXX_COMPILER</span></code>，宿主机的C/C++编译器。在编译宿主机版protoc可执行文件和目标机版OpenBLAS库时需要用到。默认设置成环境变量<code class="docutils literal"><span class="pre">CC</span></code>的值；若环境变量<code class="docutils literal"><span class="pre">CC</span></code>没有设置，则设置成<code class="docutils literal"><span class="pre">cc</span></code>编译器。</li>
+</ul>
+<p>一种常用的cmake配置如下：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake -DCMAKE_SYSTEM_NAME<span class="o">=</span>Android <span class="se">\</span>
+      -DANDROID_STANDALONE_TOOLCHAIN<span class="o">=</span>your/path/to/my_standalone_toolchain <span class="se">\</span>
+      -DANDROID_ABI<span class="o">=</span>armeabi-v7a <span class="se">\</span>
+      -DANDROID_ARM_NEON<span class="o">=</span>ON <span class="se">\</span>
+      -DANDROID_ARM_MODE<span class="o">=</span>ON <span class="se">\</span>
+      -DCMAKE_INSTALL_PREFIX<span class="o">=</span>your/path/to/install <span class="se">\</span>
+      -DWITH_C_API<span class="o">=</span>ON <span class="se">\</span>
+      -DWITH_SWIG_PY<span class="o">=</span>OFF <span class="se">\</span>
+      ..
+</pre></div>
+</div>
+<p>用户还可根据自己的需求设置其他编译参数。比如希望最小化生成的库的大小，可以设置<code class="docutils literal"><span class="pre">CMAKE_BUILD_TYPE</span></code>为<code class="docutils literal"><span class="pre">MinSizeRel</span></code>；若希望最快的执行速度，则可设置<code class="docutils literal"><span class="pre">CMAKE_BUILD_TYPE</span></code>为<code class="docutils literal"><span class="pre">Release</span></code>。亦可以通过手动设置<code class="docutils literal"><span class="pre">CMAKE_C/CXX_FLAGS_MINSIZEREL/RELEASE</span></code>来影响PaddlePaddle的编译过程。</p>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h2>编译和安装<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>CMake配置完成后，执行以下命令，PaddlePaddle将自动下载和编译所有第三方依赖库、编译和安装PaddlePaddle预测库。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>make
+make install
+</pre></div>
+</div>
+<p>注意：如果你曾经在源码目录下编译过其他平台的PaddlePaddle库，请先使用<code class="docutils literal"><span class="pre">rm</span> <span class="pre">-rf</span></code>命令删除<code class="docutils literal"><span class="pre">third_party</span></code>目录和<code class="docutils literal"><span class="pre">build</span></code>目录，以确保所有的第三方依赖库和PaddlePaddle代码都是针对新的CMake配置重新编译的。</p>
+<p>执行完安装命令后，<code class="docutils literal"><span class="pre">your/path/to/install</span></code>目录中会包含<code class="docutils literal"><span class="pre">include</span></code>和<code class="docutils literal"><span class="pre">lib</span></code>目录，其中<code class="docutils literal"><span class="pre">include</span></code>中包含C-API的头文件，<code class="docutils literal"><span class="pre">lib</span></code>中包含一个Android版本的库。自此，PaddlePaddle的已经安装完成，用户可将<code class="docutils literal"><span class="pre">your/path/to/install</span></code>目录下的生成文件用于深度学习相关Android App中，调用方法见C-API文档。</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

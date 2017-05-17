@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>如何构建Raspberry pi下运行的PaddlePaddle &mdash; PaddlePaddle  文档</title>
+  <title>构建Raspberry Pi平台上的PaddlePaddle库 &mdash; PaddlePaddle  文档</title>
   
 
   
@@ -174,7 +174,7 @@
 <div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
       
-    <li>如何构建Raspberry pi下运行的PaddlePaddle</li>
+    <li>构建Raspberry Pi平台上的PaddlePaddle库</li>
   </ul>
 </div>
       
@@ -184,54 +184,58 @@
            <div itemprop="articleBody">
             
   <div class="section" id="raspberry-pipaddlepaddle">
-<span id="raspberry-pipaddlepaddle"></span><h1>如何构建Raspberry pi下运行的PaddlePaddle<a class="headerlink" href="#raspberry-pipaddlepaddle" title="永久链接至标题">¶</a></h1>
-<p>这里考虑的是交叉编译方式，即在Linux-x86环境下构建Raspberry pi下可运行的PaddlePaddle。</p>
+<span id="raspberry-pipaddlepaddle"></span><h1>构建Raspberry Pi平台上的PaddlePaddle库<a class="headerlink" href="#raspberry-pipaddlepaddle" title="永久链接至标题">¶</a></h1>
+<p>对于Rasspberry Pi系统，用户可通过ssh等方式登录到Raspberry Pi系统上，按照<a class="reference external" href="http://www.paddlepaddle.org/doc_cn/getstarted/build_and_install/cmake/build_from_source_cn.html">源码编译PaddlePaddle</a>相关文档所述，直接编译Raspberry Pi平台上适用的PaddlePaddle库。</p>
+<p>用户也可以在自己熟悉的开发平台上，通过交叉编译的方式来编译。这篇文档将以Linux x86-64平台为例，介绍交叉编译Raspberry Pi平台上适用的PaddlePaddle的方法和步骤。</p>
 <div class="section" id="">
-<span id="id1"></span><h2>下载交叉编译环境<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">raspberrypi</span><span class="o">/</span><span class="n">tools</span>
+<span id="id1"></span><h2>准备交叉编译环境<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>从源码交叉编译PaddlePaddle，用户需要提前准备好交叉编译环境。用户可自行前往<a class="reference external" href="https://github.com/raspberrypi/tools">github</a>下载Raspberry Pi平台使用的C/C++交叉编译工具链，也可通过以下命令获取：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>git clone https://github.com/raspberrypi/tools.git
 </pre></div>
 </div>
-<p>如果host是x86-64环境，选用<code class="docutils literal"><span class="pre">arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64</span></code>下的作为编译工具。注意，需要系统glibc支持2.14以上。</p>
+<p>该github仓库中包含若干个预编译好的、针对不同平台的编译工具。宿主机是Linux x86-64环境，则需选用<code class="docutils literal"><span class="pre">arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64</span></code>下的作为编译工具，所使用的编译器为arm-linux-gnueabihf-gcc 4.8.3。</p>
+<p>注意，该编译工具链需要系统glibc支持2.14以上。</p>
 </div>
 <div class="section" id="">
-<span id="id2"></span><h2>编译第三方库<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
-<p>cmake编译PaddlePaddle时候会自动下载编译依赖的第三方库，不过openblas和protobuf最好还是在编译PaddlePaddle之前先编译好，这样可以保证编译PaddlePaddle的时候更加顺畅。</p>
-<div class="section" id="openblas">
-<span id="openblas"></span><h3>编译OpenBLAS<a class="headerlink" href="#openblas" title="永久链接至标题">¶</a></h3>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">xianyi</span><span class="o">/</span><span class="n">OpenBLAS</span><span class="o">.</span><span class="n">git</span>
-<span class="n">make</span> <span class="n">TARGET</span><span class="o">=</span><span class="n">ARMV7</span> <span class="n">HOSTCC</span><span class="o">=</span><span class="n">gcc</span> <span class="n">CC</span><span class="o">=</span><span class="n">arm</span><span class="o">-</span><span class="n">linux</span><span class="o">-</span><span class="n">gnueabihf</span><span class="o">-</span><span class="n">gcc</span> <span class="n">NOFORTRAN</span><span class="o">=</span><span class="mi">1</span> <span class="n">USE_THREAD</span><span class="o">=</span><span class="mi">0</span>
+<span id="id2"></span><h2>配置交叉编译参数<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>CMake系统对交叉编译提供了支持<a class="reference external" href="https://cmake.org/cmake/help/v3.0/manual/cmake-toolchains.7.html#cross-compiling">cmake-toolchains</a>。为了简化cmake配置，PaddlePaddle为交叉编译提供了工具链配置文档<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/cmake/cross_compiling/raspberry_pi.cmake">cmake/cross_compiling/raspberry_pi.cmake</a>，以提供一些默认的编译器和编译参数相关配置。</p>
+<p>交叉编译Raspberry Pi版本PaddlePaddle库时，有一些必须配置的参数：</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">CMAKE_SYSTEM_NAME</span></code>，CMake编译的目标平台，必须配置为<code class="docutils literal"><span class="pre">RPi</span></code>。在设置<code class="docutils literal"><span class="pre">CMAKE_SYSTEM_NAME=RPi</span></code>后，PaddlePaddle的CMake系统才认为在是在交叉编译Raspberry Pi系统的版本，并自动编译宿主机版protoc可执行文件、目标机版protobuf库、以及目标机版OpenBLAS库。</li>
+</ul>
+<p>Raspberry Pi平台可选配置参数：</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">RPI_TOOLCHAIN</span></code>，编译工具链所在的绝对路径，或者相对于构建目录的相对路径。PaddlePaddle的CMake系统将根据该值自动设置需要使用的交叉编译器；否则，用户需要在cmake时手动设置这些值。无默认值。</li>
+<li><code class="docutils literal"><span class="pre">RPI_ARM_NEON</span></code>，是否使用NEON指令。目前必须设置成<code class="docutils literal"><span class="pre">ON</span></code>，默认值为<code class="docutils literal"><span class="pre">ON</span></code>。</li>
+</ul>
+<p>其他配置参数：</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">HOST_C/CXX_COMPILER</span></code>，宿主机的C/C++编译器。在编译宿主机版protoc可执行文件和目标机版OpenBLAS库时需要用到。默认设置成环境变量<code class="docutils literal"><span class="pre">CC</span></code>的值；若环境变量<code class="docutils literal"><span class="pre">CC</span></code>没有设置，则设置成<code class="docutils literal"><span class="pre">cc</span></code>编译器。</li>
+</ul>
+<p>cmake参数如下；</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">-</span><span class="n">DCMAKE_SYSTEM_NAME</span><span class="o">=</span><span class="n">RPi</span> \
+      <span class="o">-</span><span class="n">DRPI_TOOLCHAIN</span><span class="o">=</span><span class="n">your</span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">arm</span><span class="o">-</span><span class="n">bcm2708</span><span class="o">/</span><span class="n">gcc</span><span class="o">-</span><span class="n">linaro</span><span class="o">-</span><span class="n">arm</span><span class="o">-</span><span class="n">linux</span><span class="o">-</span><span class="n">gnueabihf</span><span class="o">-</span><span class="n">raspbian</span><span class="o">-</span><span class="n">x64</span> \
+      <span class="o">-</span><span class="n">DRPI_ARM_NEON</span><span class="o">=</span><span class="n">ON</span> \
+      <span class="o">-</span><span class="n">DCMAKE_INSTALL_PREFIX</span><span class="o">=</span><span class="n">your</span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">install</span> \
+      <span class="o">-</span><span class="n">DWITH_GPU</span><span class="o">=</span><span class="n">OFF</span> \
+      <span class="o">-</span><span class="n">DWITH_C_API</span><span class="o">=</span><span class="n">ON</span> \
+      <span class="o">-</span><span class="n">DWITH_PYTHON</span><span class="o">=</span><span class="n">OFF</span> \
+      <span class="o">-</span><span class="n">DWITH_SWIG_PY</span><span class="o">=</span><span class="n">OFF</span> \
+      <span class="o">..</span>
 </pre></div>
 </div>
+<p>用户还可根据自己的需求设置其他编译参数。比如希望最小化生成的库的大小，可以设置<code class="docutils literal"><span class="pre">CMAKE_BUILD_TYPE</span></code>为<code class="docutils literal"><span class="pre">MinSizeRel</span></code>；若希望最快的执行速度，则可设置<code class="docutils literal"><span class="pre">CMAKE_BUILD_TYPE</span></code>为<code class="docutils literal"><span class="pre">Release</span></code>。亦可以通过手动设置<code class="docutils literal"><span class="pre">CMAKE_C/CXX_FLAGS_MINSIZEREL/RELEASE</span></code>来影响PaddlePaddle的编译过程。</p>
 </div>
-<div class="section" id="protobuf">
-<span id="protobuf"></span><h3>编译protobuf<a class="headerlink" href="#protobuf" title="永久链接至标题">¶</a></h3>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">google</span><span class="o">/</span><span class="n">protobuf</span><span class="o">.</span><span class="n">git</span>
-<span class="n">git</span> <span class="n">checkout</span> <span class="mi">9</span><span class="n">f75c5aa851cd877fb0d93ccc31b8567a6706546</span>
-<span class="n">cmake</span> <span class="o">../</span><span class="n">protobuf</span><span class="o">/</span><span class="n">cmake</span> \
-<span class="o">-</span><span class="n">Dprotobuf_BUILD_TESTS</span><span class="o">=</span><span class="n">OFF</span> \
-<span class="o">-</span><span class="n">DCMAKE_CXX_COMPILER</span><span class="o">=</span><span class="n">arm</span><span class="o">-</span><span class="n">linux</span><span class="o">-</span><span class="n">gnueabihf</span><span class="o">-</span><span class="n">g</span><span class="o">++</span> \
-<span class="o">-</span><span class="n">DCMAKE_C_COMPILER</span><span class="o">=</span><span class="n">arm</span><span class="o">-</span><span class="n">linux</span><span class="o">-</span><span class="n">gnueabihf</span><span class="o">-</span><span class="n">gcc</span> \
-<span class="o">-</span><span class="n">DCMAKE_POSITION_INDEPENDENT_CODE</span><span class="o">=</span><span class="n">ON</span> \
-<span class="o">-</span><span class="n">DCMAKE_BUILD_TYPE</span><span class="o">=</span><span class="n">Release</span> \
-<span class="o">-</span><span class="n">DCMAKE_INSTALL_LIBDIR</span><span class="o">=</span><span class="n">lib</span>
+<div class="section" id="">
+<span id="id3"></span><h2>编译和安装<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>CMake配置完成后，执行以下命令，PaddlePaddle将自动下载和编译所有第三方依赖库、编译和安装PaddlePaddle。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>make
+make install
 </pre></div>
 </div>
-<p>注意：这样编译出来的<code class="docutils literal"><span class="pre">libprotobuf.a</span></code>和<code class="docutils literal"><span class="pre">protoc</span></code>都是ARM版本的，而我们需要的是一个x86-64版本的<code class="docutils literal"><span class="pre">protoc</span></code>，所以需要用host gcc再编译一遍protobuf然后使用其中的<code class="docutils literal"><span class="pre">protoc</span></code>。</p>
-</div>
-</div>
-<div class="section" id="paddlepaddle">
-<span id="paddlepaddle"></span><h2>编译PaddlePaddle<a class="headerlink" href="#paddlepaddle" title="永久链接至标题">¶</a></h2>
-<p>cmake参数如下；其中<code class="docutils literal"><span class="pre">WITH_C_API</span></code>设置为ON，编译输出的output目录会中包含<code class="docutils literal"><span class="pre">include</span></code>和<code class="docutils literal"><span class="pre">lib</span></code>目录，其中<code class="docutils literal"><span class="pre">include</span></code>中包含CAPI的头文件，<code class="docutils literal"><span class="pre">lib</span></code>中包含一个ARM版本的库。另外，<code class="docutils literal"><span class="pre">CMAKE_BUILD_TYPE</span></code>设置为<code class="docutils literal"><span class="pre">MinSizeRel</span></code>可以减小编译的库的大小。</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">..</span> <span class="o">-</span><span class="n">DWITH_GPU</span><span class="o">=</span><span class="n">OFF</span> <span class="o">-</span><span class="n">DWITH_C_API</span><span class="o">=</span><span class="n">ON</span> <span class="o">-</span><span class="n">DWITH_PYTHON</span><span class="o">=</span><span class="n">OFF</span> <span class="o">-</span><span class="n">DWITH_SWIG_PY</span><span class="o">=</span><span class="n">OFF</span> \
-<span class="o">-</span><span class="n">DCMAKE_CXX_COMPILER</span><span class="p">:</span><span class="n">FILEPATH</span><span class="o">=</span><span class="n">arm</span><span class="o">-</span><span class="n">linux</span><span class="o">-</span><span class="n">gnueabihf</span><span class="o">-</span><span class="n">g</span><span class="o">++</span> \
-<span class="o">-</span><span class="n">DCMAKE_C_COMPILER</span><span class="p">:</span><span class="n">FILEPATH</span><span class="o">=</span><span class="n">arm</span><span class="o">-</span><span class="n">linux</span><span class="o">-</span><span class="n">gnueabihf</span><span class="o">-</span><span class="n">gcc</span> \
-<span class="o">-</span><span class="n">DCMAKE_C_FLAGS</span><span class="o">=</span><span class="s2">&quot;-mfpu=neon&quot;</span> \
-<span class="o">-</span><span class="n">DCMAKE_CXX_FLAGS</span><span class="o">=</span><span class="s2">&quot;-mfpu=neon&quot;</span> \
-<span class="o">-</span><span class="n">DOPENBLAS_ROOT</span><span class="o">=</span><span class="n">openblas</span> \
-<span class="o">-</span><span class="n">DCMAKE_PREFIX_PATH</span><span class="o">=</span><span class="n">protobuf</span> \
-<span class="o">-</span><span class="n">DCMAKE_BUILD_TYPE</span><span class="o">=</span><span class="n">MinSizeRel</span>
-</pre></div>
-</div>
+<p>注意：如果你曾经在源码目录下编译过其他平台的PaddlePaddle库，请先使用<code class="docutils literal"><span class="pre">rm</span> <span class="pre">-rf</span></code>命令删除<code class="docutils literal"><span class="pre">third_party</span></code>目录和<code class="docutils literal"><span class="pre">build</span></code>目录，以确保所有的第三方依赖库和PaddlePaddle代码都是针对新的CMake配置重新编译的。</p>
+<p>执行完安装命令后，由于上一步cmake配置中<code class="docutils literal"><span class="pre">WITH_C_API</span></code>设置为<code class="docutils literal"><span class="pre">ON</span></code>，<code class="docutils literal"><span class="pre">your/path/to/install</span></code>目录中会包含<code class="docutils literal"><span class="pre">include</span></code>和<code class="docutils literal"><span class="pre">lib</span></code>目录，其中<code class="docutils literal"><span class="pre">include</span></code>中包含C-API的头文件，<code class="docutils literal"><span class="pre">lib</span></code>中包含一个Raspberry Pi版本的库。</p>
+<p>更多的编译配置见<a class="reference external" href="http://www.paddlepaddle.org/doc_cn/getstarted/build_and_install/cmake/build_from_source_cn.html">源码编译PaddlePaddle</a>相关文档。</p>
 </div>
 </div>
 
