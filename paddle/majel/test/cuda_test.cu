@@ -5,9 +5,9 @@
 #define CHECK_ERR(x)                                    \
   if (x != cudaSuccess) {                               \
     fprintf(stderr,"%s in %s at line %d\n",             \
-        cudaGetErrorString(err),__FILE__,__LINE__);	    \
-    exit(-1);											\
-  }                                                     \
+        cudaGetErrorString(err),__FILE__,__LINE__);     \
+    exit(-1);                                           \
+  }
 
 __global__ void vecAdd (float* d_A, float* d_B, float* d_C, int n) {
   int i = blockDim.x * blockIdx.x + threadIdx.x;
