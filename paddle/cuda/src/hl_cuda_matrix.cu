@@ -279,6 +279,10 @@ __global__ void KeMatrixMultiBinaryCrossEntropy(real* output,
     int *row_col = col + row[index];
     int col_num = row[index + 1] - row[index];
     for (int i = 0; i < col_num; i ++) {
+      if (row_col[i] >= dimN) {
+        printf("Error: col_num=%d, i=%d, row_col[i]=%d\n",
+            col_num, i, row_col[i]);
+      }
       real o = output[index * dimN + row_col[i]];
       entropy[index] -= log(o / (1 - o));
     }
