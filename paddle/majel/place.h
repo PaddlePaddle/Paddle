@@ -14,33 +14,24 @@ struct CpuPlace {
 };
 
 struct GpuPlace {
-  GpuPlace(int d) : device(d) {}
+  GpuPlace() {}
 
   // needed for variant equality comparison
-  inline bool operator==(const GpuPlace& o) const { return device == o.device; }
+  inline bool operator==(const GpuPlace&) const { return true; }
 
-  inline bool operator!=(const GpuPlace& o) const { return !(*this == o); }
-
-  GpuPlace() : GpuPlace(0) {}
-  int device;
+  inline bool operator!=(const GpuPlace&) const { return false; }
 };
 
 class IsGpuPlace : public boost::static_visitor<bool> {
 public:
   bool operator()(const CpuPlace&) const { return false; }
 
-  bool operator()(const GpuPlace& gpu) const { return true; }
+  bool operator()(const GpuPlace&) const { return true; }
 };
 
-typedef boost::variant<GpuPlace, CpuPlace> Place;
-
-void set_place(const Place&);
+typedef boost::variant<CpuPlace, GpuPlace> Place;
 
 const Place& get_place();
-
-const GpuPlace default_gpu();
-const CpuPlace default_cpu();
-
 bool is_gpu_place(const Place&);
 bool is_cpu_place(const Place&);
 bool places_are_same_class(const Place&, const Place&);

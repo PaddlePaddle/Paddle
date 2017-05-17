@@ -13,21 +13,14 @@ public:
 
   void operator()(const CpuPlace&) { os_ << "CpuPlace"; }
 
-  void operator()(const GpuPlace& p) { os_ << "GpuPlace(" << p.device << ")"; }
+  void operator()(const GpuPlace&) { os_ << "GpuPlace"; }
 };
 
-}  // namespace majel
+}  // namespace detail
 
 static Place the_default_place;
 
-void set_place(const Place& place) { the_default_place = place; }
-
 const Place& get_place() { return the_default_place; }
-
-const GpuPlace default_gpu() { return GpuPlace(0); }
-
-const CpuPlace default_cpu() { return CpuPlace(); }
-
 bool is_gpu_place(const Place& p) {
   return boost::apply_visitor(IsGpuPlace(), p);
 }
