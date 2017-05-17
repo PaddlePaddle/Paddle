@@ -93,6 +93,19 @@ typedef boost::variant<
 
 Because `variant` may be thought of as "multi-type, single value", we can utilize it to implement unified interfaces for PaddlePaddle.
 
+`DDim` plays two kinds of roles in Majel. First, it is used to indicate the size of a tensor. For example, we can construct a new `DArray` by following way:
+ 
+ ```c++
+ DArray arr = make_darray(make_ddim({2,3}), 0.0f);
+ ```
+ It means that `arr` will be a two-dimension tensor, or a matrix. The size of its first dimension is 2 and the second is 3. All the element value of `arr` will be initialized as 0.0 .
+ 
+ The second meaning of `DDim` is tensor index. For example, if we want to access the value in the 1st row and 2nd column of `arr` and set it to 1.0, we can do like this:
+
+ ```c++
+ arr[make_ddim({0, 1})] = 1.0；
+ ```
+
 ## Implement Tensor in Paddle
 
 We want to create a Tensor class to replace Vector and Matrix, and to support high-dimensional data. The operations on Tensor are implemented in both CPU and GPU. We also want to make sure that the Tensor interface is friendly to its callers.
@@ -141,8 +154,6 @@ You must appoint the type and dimension of a Array, whereas DArray can represent
 
 
 Please reference the section of `Learn from Majel` for more details.
-
-
 
 ### ArrayView
 
