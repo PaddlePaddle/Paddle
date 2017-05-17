@@ -6,9 +6,6 @@ import paddle.v2.dataset.conll05 as conll05
 import paddle.v2.evaluator as evaluator
 import paddle.v2 as paddle
 
-logger = logging.getLogger('paddle')
-logger.setLevel(logging.WARN)
-
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
 label_dict_len = len(label_dict)
@@ -155,11 +152,6 @@ def main(is_predict=False):
         label=target,
         param_attr=paddle.attr.Param(name='crfw'))
     evaluator.sum(input=crf_dec)
-    evaluator.chunk(
-        input=crf_dec,
-        label=target,
-        chunk_scheme="IOB",
-        num_chunk_types=label_dict_len / 2)
 
     # create parameters
     parameters = paddle.parameters.create(crf_cost)
@@ -250,4 +242,4 @@ def main(is_predict=False):
 
 
 if __name__ == '__main__':
-    main(is_predict=True)
+    main(is_predict=False)
