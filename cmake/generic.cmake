@@ -22,8 +22,12 @@
 # -------------------------------------------
 # cc_library	 nv_library	  go_library
 # cc_binary  	 nv_binary	  go_binary
-# cc_test	     nv_test	  go_test
+# cc_test        nv_test	  go_test
 # -------------------------------------------
+#
+# cmake_parse_arguments can help us to achieve this goal.
+# https://cmake.org/cmake/help/v3.0/module/CMakeParseArguments.html
+
 
 # cc_binary parses tensor.cc and figures out that target also depend on tensor.h.
 # cc_binary(tensor
