@@ -195,3 +195,10 @@ function(go_test TARGET_NAME)
   add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_test_DEPS})  
   add_test(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
 endfunction(go_test)
+
+# go_extern will download extern go project.
+# go_extern(target_name extern_source)
+# go_extern(go_redis github.com/hoisie/redis)
+function(go_extern TARGET_NAME)
+  add_custom_target(${TARGET_NAME} env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get ${ARGN})
+endfunction(go_extern)
