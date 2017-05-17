@@ -23,7 +23,7 @@ TEST(Cuda, Equality) {
   float h_B[10] = { 0.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0 };
   float h_C[10];
   float *d_A, *d_B, *d_C;
-
+  cudaError_t err;
   // Memory allocation for d_A, d_B and d_C (in the device)
   err = cudaMalloc((void **) &d_A, sizeof(float)*n);
   CHECK_ERR(err);
@@ -48,9 +48,9 @@ TEST(Cuda, Equality) {
   err = cudaMemcpy(h_C, d_C, sizeof(float)*n, cudaMemcpyDeviceToHost);
   CHECK_ERR(err);
   
-  EXPECT_EQ(h_C[1], 1.0);
-  for (size_t i = 1; i < n - 1; ++i) {
+  EXPECT_EQ(h_C[0], 1.0);
+  for (int i = 1; i < n - 1; ++i) {
     EXPECT_EQ(h_C[i], 11.0);
   }
-  EXPECT_EQ(h_C[0], 1.0);
+  EXPECT_EQ(h_C[9], 1.0);
 }
