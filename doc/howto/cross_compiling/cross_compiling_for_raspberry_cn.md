@@ -1,4 +1,4 @@
-# 如何构建Raspberry pi下运行的PaddlePaddle
+# 如何构建Raspberry Pi下运行的PaddlePaddle
 
 这里考虑的是交叉编译方式，即在Linux-x86环境下构建Raspberry pi下可运行的PaddlePaddle。
 
@@ -34,7 +34,9 @@ cmake ../protobuf/cmake \
 
 
 ## 编译PaddlePaddle
+
 cmake参数如下；其中`WITH_C_API`设置为ON，编译输出的output目录会中包含`include`和`lib`目录，其中`include`中包含CAPI的头文件，`lib`中包含一个ARM版本的库。另外，`CMAKE_BUILD_TYPE`设置为`MinSizeRel`可以减小编译的库的大小。
+
 ```
 cmake .. -DWITH_GPU=OFF -DWITH_C_API=ON -DWITH_PYTHON=OFF -DWITH_SWIG_PY=OFF \
 -DCMAKE_CXX_COMPILER:FILEPATH=arm-linux-gnueabihf-g++ \
