@@ -73,4 +73,3 @@ make install
 注意：如果你曾经在源码目录下编译过其他平台的PaddlePaddle库，请先使用`rm -rf`命令删除`third_party`目录和`build`目录，以确保所有的第三方依赖库和PaddlePaddle代码都是针对新的CMake配置重新编译的。
 
 执行完安装命令后，`your/path/to/install`目录中会包含`include`和`lib`目录，其中`include`中包含C-API的头文件，`lib`中包含一个Android版本的库。自此，PaddlePaddle的已经安装完成，用户可将`your/path/to/install`目录下的生成文件用于深度学习相关Android App中，调用方法见C-API文档。
-

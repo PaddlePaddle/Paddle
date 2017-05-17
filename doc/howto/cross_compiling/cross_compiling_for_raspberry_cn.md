@@ -1,6 +1,6 @@
 # 构建Raspberry Pi平台上的PaddlePaddle库
 
-对于Rasspberry Pi系统，用户可通过ssh等方式登录到Raspberry Pi系统上，按照[源码编译PaddlePaddle](http://www.paddlepaddle.org/doc_cn/getstarted/build_and_install/cmake/build_from_source_cn.html)相关文档所述，直接编译Raspberry Pi平台上适用的PaddlePaddle库。 
+对于Rasspberry Pi系统，用户可通过ssh等方式登录到Raspberry Pi系统上，按照[源码编译PaddlePaddle](http://www.paddlepaddle.org/doc_cn/getstarted/build_and_install/cmake/build_from_source_cn.html)相关文档所述，直接编译Raspberry Pi平台上适用的PaddlePaddle库。
 
 用户也可以在自己熟悉的开发平台上，通过交叉编译的方式来编译。这篇文档将以Linux x86-64平台为例，介绍交叉编译Raspberry Pi平台上适用的PaddlePaddle的方法和步骤。
 
