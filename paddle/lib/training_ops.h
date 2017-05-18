@@ -1,5 +1,5 @@
-#ifndef __PADDLE_TRAINING_OPS_H__
-#define __PADDLE_TRAINING_OPS_H__
+#ifndef PADDLE_LIB_TRAINING_OPS_H_
+#define PADDLE_LIB_TRAINING_OPS_H_
 /*! \brief this file contains the optimizer algorithnm as ops
   name convention. applyXXX  e.g applyGradientDescent
  */

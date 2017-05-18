@@ -1,12 +1,12 @@
-#ifndef __PADDLE_OPTIMIZER_PRIVATE_H__
-#define __PADDLE_OPTIMIZER_PRIVATE_H__
+#ifndef PADDLE_OPTIMIZER_PRIVATE_H_
+#define PADDLE_OPTIMIZER_PRIVATE_H_
 
 // #include "math/Tensor.h" 
 #include "optimizer.h"
 #include "Tensor.h"
 
 
-struct Coptimizer {
+struct paddle_optimizer {
   /*! \brief optmizer in C++ side */ 
   ParameterOptimzier *impl;
 };

@@ -6,11 +6,13 @@
 // #include <math/Tensor.h>
 #include "Tensor.h"
 
+namespace paddle {
+namespace lib {
 
 class ParameterOptimizer {
 public:
   /*! \brief update hook for algorithm need to traverse parameter more
-   than once.
+    than once.
   */
   typedef std::function<void(Tensor&, const Tensor&)> UpdateHook;
 
@@ -20,11 +22,14 @@ public:
   ~ParameterOptimzier(){}
 
 private:
-  std::string _name;
   double learning_rate;
   /*! \brief indicate if use L1, L2 regularizer */ 
   bool applyDecay;
-  
+  bool useGpu;
 };
+
+}
+}
+
 
 #endif

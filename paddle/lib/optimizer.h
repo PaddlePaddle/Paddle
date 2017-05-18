@@ -1,5 +1,5 @@
-#ifndef __PADDLE_LIB_C_API_H__
-#define __PADDLE_LIB_C_API_H__
+#ifndef PADDLE_LIB_OPTIMIZER_H_
+#define PADDLE_LIB_OPTIMIZER_H_
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -32,30 +32,24 @@ extern "C" {
   const int32_t LIB_WARNING = 1;
   const int32_t LIB_ERROR   = 2;
 
-  /*! \brief optimizer id, exported to Go */ 
-  typedef enum {
-    SGD =  0, 
-    Adagrad = 1,
-    Adam = 2,
-    // ...
-  } optimizer_identifier;
 
   typedef void* parameter;
   typedef void* gradient;
-  typedef void* optimizer;
+  typedef struct paddle_optimizer paddle_optimizer;
 /*!
  *  \brief create optimizer function
  *  \param [optimizer] create instance of optimizer
  *  \param [optimizer_identifier] identifier of optimizer method
  *  \return return status code
  */
-  int32_t paddle_create_optimizer(optimizer* optimizer, optimizer_identifier identifier);
+  // int32_t paddle_create_XXXOptimizer(paddle_optimizer* optimizer, optimizer_identifier identifier);
+  int32_t paddle_create_SGDOptimizer(paddle_optimizer* optimizer, double learning_rate);
 /*!
  *  \brief release optimizer
  *  \param [optimizer] the optimizer instance 
  *  \return return status code
  */
-  int32_t paddle_release_optimizer(optimizer* optimizer);
+  int32_t paddle_release_optimizer(paddle_optimizer* optimizer);
 /*!
  *  \brief this should be thread safe. update parameter with gradient, through the optimizer
  *  \param [param] parameter need to update
@@ -64,7 +58,7 @@ extern "C" {
  *  \param [learning_rate] set learning_rate by the caller
  *  \return return status code
  */
-  int32_t paddle_update_parameter(optimizer* optimizer, parameter* param, const gradient* grad,
+  int32_t paddle_update_parameter(paddle_optimizer* optimizer, parameter* param, const gradient* grad,
                                   paddle_element_type type, uint32_t num_bytes, double learning_rate);
 
 #ifdef __cplusplus

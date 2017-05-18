@@ -1,5 +1,5 @@
-#ifndef _FAKE_TENSOR_H_
-#define _FAKE_TENSOR_H_
+#ifndef PADDLE_FAKE_TENSOR_H_
+#define PADDLE_FAKE_TENSOR_H_
 /*! \brief fake tensor for testing */
 
 #include "math/BaseMatrix.h"

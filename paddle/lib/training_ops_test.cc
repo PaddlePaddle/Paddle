@@ -9,6 +9,5 @@ private:
 };
 
 void  applyGradientDescent_TEST() {
-  OpitmizerTests.
 }
 
