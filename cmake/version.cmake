@@ -1,19 +1,21 @@
 # Get the latest git tag.
 set(PADDLE_VERSION $ENV{PADDLE_VERSION})
-set(tmp_version "HEAD")
 while ("${PADDLE_VERSION}" STREQUAL "")
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0 ${tmp_version}
-    WORKING_DIRECTORY ${PROJ_ROOT}
-    OUTPUT_VARIABLE GIT_TAG_NAME
-    RESULT_VARIABLE GIT_RESULT
-    ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+      COMMAND ${GIT_EXECUTABLE} rev-list --tags --max-count=1
+      OUTPUT_VARIABLE COMMIT_HASH
+      ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  execute_process(
+      COMMAND ${GIT_EXECUTABLE} describe --tags ${COMMIT_HASH}
+      OUTPUT_VARIABLE GIT_TAG_NAME
+      RESULT_VARIABLE GIT_RESULT
+      ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
   if (NOT ${GIT_RESULT})
     # Check the tag is a correct version
     if (${GIT_TAG_NAME} MATCHES "v[0-9]+\\.[0-9]+\\.[0-9]+(\\.(a|b|rc)\\.[0-9]+)?")
       string(REPLACE "v" "" PADDLE_VERSION ${GIT_TAG_NAME})
-    else()  # otherwise, get the previous git tag name.
-      set(tmp_version "${GIT_TAG_NAME}~1")
     endif()
   else()
     set(PADDLE_VERSION "0.0.0")
