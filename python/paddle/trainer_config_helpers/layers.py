@@ -226,17 +226,17 @@ class LayerType(object):
 
 class AggregateLevel(object):
     """
-    As PaddlePaddle supports three sequence types:
+    PaddlePaddle supports three sequence types:
 
     - :code:`SequenceType.NO_SEQUENCE` means the sample is not a sequence.
     - :code:`SequenceType.SEQUENCE` means the sample is a sequence.
-    - :code:`SequenceType.SUB_SEQUENCE` means it is a nested sequence, that 
-      each timestep of the input sequence is also a sequence.
+    - :code:`SequenceType.SUB_SEQUENCE` means the sample is a nested sequence,
+      each timestep of which is also a sequence.
 
-    Thus, AggregateLevel supports two modes:
+    Accordingly, AggregateLevel supports two modes:
 
     - :code:`AggregateLevel.EACH_TIMESTEP` means the aggregation acts on each
-      timestep of sequence, both :code:`SUB_SEQUENCE` and :code:`SEQUENCE` will
+      timestep of a sequence, both :code:`SUB_SEQUENCE` and :code:`SEQUENCE` will
       be aggregated to :code:`NO_SEQUENCE`.
 
     - :code:`AggregateLevel.EACH_SEQUENCE` means the aggregation acts on each
