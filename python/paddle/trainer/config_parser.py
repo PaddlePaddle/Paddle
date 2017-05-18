@@ -2320,6 +2320,9 @@ def Memory(name,
         memory_name = name + "+delay1"
     agent_name = memory_name
     if is_sequence:
+        config_assert(
+            boot_layer is not None,
+            "there must be boot_layer in network when is_sequence = True")
         agent_layer = SequenceAgentLayer(agent_name, size)
     else:
         agent_layer = AgentLayer(agent_name, size)

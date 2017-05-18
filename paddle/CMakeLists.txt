@@ -10,7 +10,7 @@ add_subdirectory(pserver)
 add_subdirectory(trainer)
 add_subdirectory(scripts)
 
-find_package(boost QUIET)
+find_package(Boost QUIET)
 
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})

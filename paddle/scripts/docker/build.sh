@@ -131,8 +131,6 @@ cat > /paddle/build/Dockerfile <<EOF
 FROM ${BASE_IMAGE}
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 ENV HOME /root
-ENV LANG en_US.UTF-8
-# Use Fix locales to en_US.UTF-8
 EOF
 
 if [[ -n ${APT_MIRROR} ]]; then
@@ -153,6 +151,7 @@ RUN apt-get update &&\
     paddle version
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
+
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]
 EOF
