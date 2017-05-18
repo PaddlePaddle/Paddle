@@ -110,7 +110,7 @@ func (s *Service) SendGrads(grads []Gradient, dummy *int) error {
 	}
 
 	s.mu.Lock()
-	s.mu.Unlock()
+	defer s.mu.Unlock()
 
 	for _, g := range grads {
 		if _, ok := s.paramMap[g.Name]; !ok {
@@ -134,7 +134,7 @@ func (s *Service) SendGrads(grads []Gradient, dummy *int) error {
 func (s *Service) GetParams(names []string, parameters *[]Parameter) error {
 	<-s.initialized
 	s.mu.Lock()
-	s.mu.Unlock()
+	defer s.mu.Unlock()
 
 	for _, n := range names {
 		if _, ok := s.paramMap[n]; !ok {
