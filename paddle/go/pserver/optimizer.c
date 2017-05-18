@@ -36,11 +36,11 @@ void release_SGD(void *optimizer) {
 }
 
 paddle_optimizer* paddle_create_SGD_optimizer(double learning_rate) {
-  SGD_optimizer* o = (SGD_optimizer*)malloc(sizeof(SGD_optimizer));
-  o->learning_rate = learning_rate;
-  paddle_optimizer* container = (paddle_optimizer*)malloc(sizeof(paddle_optimizer));
-  container->update = update_SGD;
-  container->release = release_SGD;
-  container->optimizer = o;
-  return container;
+  SGD_optimizer* impl = (SGD_optimizer*)malloc(sizeof(SGD_optimizer));
+  impl->learning_rate = learning_rate;
+  paddle_optimizer* opt = (paddle_optimizer*)malloc(sizeof(paddle_optimizer));
+  opt->update = update_SGD;
+  opt->release = release_SGD;
+  opt->optimizer = impl;
+  return opt;
 }
