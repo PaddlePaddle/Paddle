@@ -4,14 +4,9 @@
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
-/*
-#ifdef __CUDACC__
-    #include <host_defines.h>
-#endif
-*/
 
-#include "hostdevice.h"
-#include "paddle/utils/Logging.h"
+#include "majel/hostdevice.h"
+#include "majel/util.h"
 
 namespace majel {
 
@@ -79,7 +74,7 @@ struct Dim<1> {
       throw std::invalid_argument("Index out of range.");
     }
 #else
-    CHECK(idx < size.head);
+    MAJEL_ASSERT(idx < size.head);
 #endif
   }
 
@@ -136,7 +131,7 @@ HOSTDEVICE int& indexer(Dim<D>& dim, int idx) {
     throw std::invalid_argument("Tried to access a negative dimension");
   }
 #else
-  CHECK(idx >= 0);
+  MAJEL_ASSERT(idx >= 0);
 #endif
   if (idx == 0) {
     return dim.head;
@@ -151,7 +146,7 @@ HOSTDEVICE int& indexer<1>(Dim<1>& dim, int idx) {
     throw std::invalid_argument("Invalid index");
   }
 #else
-  CHECK(idx == 0);
+  MAJEL_ASSERT(idx == 0);
 #endif
   return dim.head;
 }
@@ -163,7 +158,7 @@ HOSTDEVICE int indexer(const Dim<D>& dim, int idx) {
     throw std::invalid_argument("Tried to access a negative dimension");
   }
 #else
-  CHECK(idx >= 0);
+  MAJEL_ASSERT(idx >= 0);
 #endif
   if (idx == 0) {
     return dim.head;
@@ -178,7 +173,7 @@ HOSTDEVICE int indexer<1>(const Dim<1>& dim, int idx) {
     throw std::invalid_argument("Invalid index");
   }
 #else
-  CHECK(idx == 0);
+  MAJEL_ASSERT(idx == 0);
 #endif
   return dim.head;
 }

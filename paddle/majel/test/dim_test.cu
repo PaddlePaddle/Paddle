@@ -1,7 +1,7 @@
 #include <thrust/device_vector.h>
 #include <sstream>
-#include "majel/dim.h"
 
+#include "majel/dim.h"
 #include "gtest/gtest.h"
 
 __global__ void test(majel::Dim<2>* o) {
@@ -16,22 +16,22 @@ __global__ void dyn_idx_gpu(int* o) {
 TEST(Dim, Equality) {
     // construct a Dim on the CPU
     auto a = majel::make_dim(3, 4);
-    EXPECT_EQ(get<0>(a), 3);
-    EXPECT_EQ(get<1>(a), 4);
+    EXPECT_EQ(majel::get<0>(a), 3);
+    EXPECT_EQ(majel::get<1>(a), 4);
 
     // construct a Dim on the GPU
     thrust::device_vector<majel::Dim<2>> t(2);
     test<<<1,1>>>(thrust::raw_pointer_cast(t.data()));
     a = t[0];
-    EXPECT_EQ(get<0>(a), 5);
-    EXPECT_EQ(get<1>(a), 6);
+    EXPECT_EQ(majel::get<0>(a), 5);
+    EXPECT_EQ(majel::get<1>(a), 6);
 
     // linearization
-    auto b = make_dim(7, 8);
-    EXPECT_EQ(linearize(a, b), 83);
+    auto b = majel::make_dim(7, 8);
+    EXPECT_EQ(majel::linearize(a, b), 83);
 
     // product
-    EXPECT_EQ(product(a), 30);
+    EXPECT_EQ(majel::product(a), 30);
 
     // mutate a Dim
     majel::get<1>(b) = 10;
@@ -53,7 +53,7 @@ TEST(Dim, Equality) {
     EXPECT_EQ(res, 6);
 
     // ex_prefix_mul
-    majel::Dim<3> c = majel::ex_prefix_mul(Dim<3>(3, 4, 5));
+    majel::Dim<3> c = majel::ex_prefix_mul(majel::Dim<3>(3, 4, 5));
     EXPECT_EQ(majel::get<0>(c), 1);
     EXPECT_EQ(majel::get<1>(c), 3);
     EXPECT_EQ(majel::get<2>(c), 12);
