@@ -38,7 +38,7 @@ func (o *optimizer) UpdateParameter(p Parameter, g Gradient) error {
 
 	r := C.paddle_update_parameter(o.opt, unsafe.Pointer(&p.Content[0]), C.paddle_element_type(p.ElementType), unsafe.Pointer(&g.Content[0]), C.int(len(g.Content)))
 	if r != 0 {
-		return fmt.Errorf("optimier returned error code: %d", r)
+		return fmt.Errorf("optimizer update returned error code: %d", r)
 	}
 	return nil
 }
