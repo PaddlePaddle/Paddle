@@ -157,11 +157,11 @@ Please reference the section of `Learn from Majel` for more details.
 
 ### ArrayView
 
-`ViewIterator` is a class template which implements basic iterator operation, including increment(++), decrement(--), dereference(*), equalit comparisons(==) and so on.
+`ViewIterator` is a class template which implements basic iterator operation, including increment(++), decrement(--), dereference(*), equality comparisons(==) and so on.
 
-`ArrayView` is an encapsulation of `Array`， which introduces extra iterator menthods, such as `begin()` and `end()`. The `begin()` method returns an iterator pointing to the first element in the ArrayView. And the `end()` method returns an iterator pointing to the pass-the-end element in the ArrayView.
+`ArrayView` is an encapsulation of `Array`， which introduces extra iterator methods, such as `begin()` and `end()`. The `begin()` method returns an iterator pointing to the first element in the ArrayView. And the `end()` method returns an iterator pointing to the pass-the-end element in the ArrayView.
 
-`ArrayView` make the visting and manipulating an array more efficently, flexibly and safely.
+`ArrayView` make the visting and manipulating an array more efficiently, flexibly and safely.
 
 
 A global function `make_view` is provided to transform an array to corresponding arrayview.
@@ -186,4 +186,4 @@ ViewIterator<ArrayView<T, D>> make_iterator(const Array<T, D>& in, Dim<D> idx) {
 
 The operations that manipulate DArray are defined as global functions, such as `ones`, `zeros`, `reshape`, `gemm` and so on.
 
-An array will be trasformed into an arrayview and then passed to the operation launching on a specific deviec(CPU/GPU).
+An array will be trasformed into an arrayview and then passed to the operation launching on a specific device(CPU/GPU).
