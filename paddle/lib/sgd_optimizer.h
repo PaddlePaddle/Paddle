@@ -12,8 +12,6 @@ class SGDOptimizer : public ParameterOptimizer {
               double learning_rate) {
     applyGradientDescent(parameter, gradient, learning_rate);
   }
-
-private:
 };
 
 class MomentumOptimizer : public ParameterOptimizer {

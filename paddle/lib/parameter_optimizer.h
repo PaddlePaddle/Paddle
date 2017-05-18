@@ -1,5 +1,5 @@
-#ifndef __PADDLE_LIB_OPTIMIZER_BASE_H__
-#define __PADDLE_LIB_OPTIMIZER_BASE_H__
+#ifndef PADDLE_LIB_OPTIMIZER_BASE_H_
+#define PADDLE_LIB_OPTIMIZER_BASE_H_
 
 #include <string>
 #include <functional>

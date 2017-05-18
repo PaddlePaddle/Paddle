@@ -10,8 +10,8 @@ void applyGradientDescent(Tensor<T> &parameter,
                           double learning_rate) {
   /*! \brief TODO(will replace with matrix dot) */
   for(size_t i=0; i < parameter.size(); ++i) {
-    parameter[i] -= gradient[i] * learning
-    }
+    parameter[i] -= gradient[i] * learning_rate;
+  }
 }
 
 template<typename T>
