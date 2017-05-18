@@ -65,7 +65,8 @@ func TestFull(t *testing.T) {
 		t.FailNow()
 	}
 
-	// we don't care the content, since it's already optimized with gradient
+	// don't compare content, since it's already changed by
+	// gradient update.
 	params1[0].Content = nil
 	params1[0].Content = nil
 	p.Content = nil
