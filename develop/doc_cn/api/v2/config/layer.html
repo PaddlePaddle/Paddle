@@ -1800,6 +1800,30 @@ The simply usage is:</p>
 </div>
 <div class="section" id="aggregate-layers">
 <h2>Aggregate Layers<a class="headerlink" href="#aggregate-layers" title="永久链接至标题">¶</a></h2>
+<div class="section" id="aggregatelevel">
+<h3>AggregateLevel<a class="headerlink" href="#aggregatelevel" title="永久链接至标题">¶</a></h3>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">AggregateLevel</code></dt>
+<dd><p>PaddlePaddle supports three sequence types:</p>
+<ul class="simple">
+<li><code class="code docutils literal"><span class="pre">SequenceType.NO_SEQUENCE</span></code> means the sample is not a sequence.</li>
+<li><code class="code docutils literal"><span class="pre">SequenceType.SEQUENCE</span></code> means the sample is a sequence.</li>
+<li><code class="code docutils literal"><span class="pre">SequenceType.SUB_SEQUENCE</span></code> means the sample is a nested sequence,
+each timestep of which is also a sequence.</li>
+</ul>
+<p>Accordingly, AggregateLevel supports two modes:</p>
+<ul class="simple">
+<li><code class="code docutils literal"><span class="pre">AggregateLevel.EACH_TIMESTEP</span></code> means the aggregation acts on each
+timestep of a sequence, both <code class="code docutils literal"><span class="pre">SUB_SEQUENCE</span></code> and <code class="code docutils literal"><span class="pre">SEQUENCE</span></code> will
+be aggregated to <code class="code docutils literal"><span class="pre">NO_SEQUENCE</span></code>.</li>
+<li><code class="code docutils literal"><span class="pre">AggregateLevel.EACH_SEQUENCE</span></code> means the aggregation acts on each
+sequence of a nested sequence, <code class="code docutils literal"><span class="pre">SUB_SEQUENCE</span></code> will be aggregated to
+<code class="code docutils literal"><span class="pre">SEQUENCE</span></code>.</li>
+</ul>
+</dd></dl>
+
+</div>
 <div class="section" id="api-v2-layer-pooling">
 <span id="id1"></span><h3>pooling<a class="headerlink" href="#api-v2-layer-pooling" title="永久链接至标题">¶</a></h3>
 <dl class="class">
@@ -2057,8 +2081,26 @@ convolution neural network, and before recurrent neural network.</p>
 </dd></dl>
 
 </div>
+<div class="section" id="expandlevel">
+<span id="api-v2-layer-expand"></span><h3>ExpandLevel<a class="headerlink" href="#expandlevel" title="永久链接至标题">¶</a></h3>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">ExpandLevel</code></dt>
+<dd><p>Please refer to AggregateLevel first.</p>
+<p>ExpandLevel supports two modes:</p>
+<ul class="simple">
+<li><code class="code docutils literal"><span class="pre">ExpandLevel.FROM_TIMESTEP</span></code> means the expandation acts on each
+timestep of a sequence, <code class="code docutils literal"><span class="pre">NO_SEQUENCE</span></code> will be expanded to
+<code class="code docutils literal"><span class="pre">SEQUENCE</span></code> or <code class="code docutils literal"><span class="pre">SUB_SEQUENCE</span></code>.</li>
+<li><code class="code docutils literal"><span class="pre">ExpandLevel.FROM_SEQUENCE</span></code> means the expandation acts on each
+sequence of a nested sequence, <code class="code docutils literal"><span class="pre">SEQUENCE</span></code> will be expanded to
+<code class="code docutils literal"><span class="pre">SUB_SEQUENCE</span></code>.</li>
+</ul>
+</dd></dl>
+
+</div>
 <div class="section" id="expand">
-<span id="api-v2-layer-expand"></span><h3>expand<a class="headerlink" href="#expand" title="永久链接至标题">¶</a></h3>
+<h3>expand<a class="headerlink" href="#expand" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">expand</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
