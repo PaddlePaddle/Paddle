@@ -26,10 +26,7 @@ FILE(GLOB PY_PADDLE_PYTHON_FILES ${PROJ_ROOT}/paddle/py_paddle/*.py)
 SET_SOURCE_FILES_PROPERTIES(Paddle.i PROPERTIES CPLUSPLUS ON)
 
 SET(CMAKE_SWIG_OUTDIR ${CMAKE_CURRENT_BINARY_DIR})
-SET(CMAKE_CXX_FLAGS "-std=c++11 -fPIC -Wall")
-IF(WITH_COVERAGE)
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
-ENDIF(WITH_COVERAGE)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-parentheses-equality -Wno-missing-field-initializers -Wno-self-assign")
 
 SET(SWIG_MODULE_swig_paddle_EXTRA_DEPS
     paddle_parameter
@@ -92,7 +89,9 @@ add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so
 # TODO(yuyang18) : make wheel name calculated by cmake
 add_custom_target(python_api_wheel ALL DEPENDS ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so)
 
-install(DIRECTORY ${PROJ_ROOT}/paddle/dist/ DESTINATION opt/paddle/share/wheels)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/dist/
+    DESTINATION opt/paddle/share/wheels
+)
 
 if(WITH_TESTING)
     IF(NOT PY_PIP_FOUND)

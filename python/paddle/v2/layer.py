@@ -404,8 +404,8 @@ class RecurrentLayerOutput(Layer):
 LayerV2 = Layer
 data = DataLayerV2
 data.__name__ = 'data'
-AggregateLevel = conf_helps.layers.AggregateLevel
-ExpandLevel = conf_helps.layers.ExpandLevel
+AggregateLevel = conf_helps.AggregateLevel
+ExpandLevel = conf_helps.ExpandLevel
 memory = MemoryV2
 memory.__name__ = 'memory'
 memory.__doc__ = conf_helps.memory.__doc__

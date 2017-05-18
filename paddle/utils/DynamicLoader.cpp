@@ -104,20 +104,9 @@ static inline void GetDsoHandleFromSearchPath(const std::string& search_root,
   CHECK(nullptr != *dso_handle) << "Failed to find dynamic library: " << dlPath
                                 << " (" << dlerror() << ") \n"
                                 << "Please specify its path correctly using "
-                                   "one of the following ways: \n"
+                                   "following ways: \n"
 
-                                << "Method 1. set cuda and cudnn lib path at "
-                                   "runtime. "
-                                << "http://www.paddlepaddle.org/doc/ui/"
-                                   "cmd_argument/"
-                                   "argument_outline.html \n"
-                                << "For instance, issue command: paddle train "
-                                   "--use_gpu=1 "
-                                << "--cuda_dir=/usr/local/cuda/lib64 "
-                                   "--cudnn_dir=/usr/local/cudnn/lib "
-                                   "...\n"
-
-                                << "Method 2. set environment variable "
+                                << "Method. set environment variable "
                                    "LD_LIBRARY_PATH on Linux or "
                                 << "DYLD_LIBRARY_PATH on Mac OS. \n"
                                 << "For instance, issue command: export "
@@ -126,9 +115,7 @@ static inline void GetDsoHandleFromSearchPath(const std::string& search_root,
                                 << "Note: After Mac OS 10.11, using the "
                                    "DYLD_LIBRARY_PATH is impossible "
                                 << "unless System Integrity Protection (SIP) "
-                                   "is disabled. However, "
-                                   "method 1 "
-                                << "always work well.";
+                                   "is disabled.";
 }
 
 void GetCublasDsoHandle(void** dso_handle) {
