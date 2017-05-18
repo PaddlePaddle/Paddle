@@ -9,15 +9,10 @@ ENV HOME=/root \
     ANDROID_STANDALONE_TOOLCHAIN=/opt/android-toolchain-gcc
 
 RUN apt-get update && \
-    apt-get install -y git python-dev python-pip python-numpy && \
-    apt-get install -y wget curl tar unzip && \
-    apt-get install -y gcc g++ locales swig && \
+    apt-get install -y \
+    git python-dev python-pip python-numpy \
+    wget curl tar unzip gcc g++ locales clang-format-3.8 swig cmake && \
     apt-get clean -y
-
-RUN pip install --upgrade pip && \
-    pip install -U 'protobuf==3.1.0' && \
-    pip install -U wheel sphinx && \
-    pip install pre-commit
 
 # git credential to skip password typing
 RUN git config --global credential.helper store
@@ -25,9 +20,10 @@ RUN git config --global credential.helper store
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
-RUN curl -sSL https://cmake.org/files/v3.2/cmake-3.2.2.tar.gz | tar -xz && \
-    cd cmake-3.2.2 && ./bootstrap && make -j `nproc` && make install && \
-    cd .. && rm -rf cmake-3.2.2
+RUN pip install --upgrade pip && \
+    pip install -U 'protobuf==3.1.0' && \
+    pip install -U wheel sphinx && \
+    pip install pre-commit
 
 # Android NDK
 RUN mkdir /opt/android-ndk-tmp && \
