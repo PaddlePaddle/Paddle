@@ -75,7 +75,7 @@ function(cc_test TARGET_NAME)
   cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   add_executable(${TARGET_NAME} ${cc_test_SRCS})
   add_dependencies(${TARGET_NAME} ${cc_test_DEPS} ${external_project_dependencies})
-  target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} ${GTEST_MAIN_LIBRARIES} ${GTEST_LIBRARIES})
+  target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_cuda paddle_utils ${GLOG_LIBRARIES} ${GFLAGS_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${GTEST_MAIN_LIBRARIES} ${GTEST_LIBRARIES})
   add_test(${TARGET_NAME} ${TARGET_NAME})
 endfunction(cc_test)
 
