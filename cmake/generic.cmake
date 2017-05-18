@@ -58,7 +58,7 @@ function(cc_binary TARGET_NAME)
   cmake_parse_arguments(cc_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   add_executable(${TARGET_NAME} ${cc_binary_SRCS})
   add_dependencies(${TARGET_NAME} ${cc_binary_DEPS} ${external_project_dependencies})
-  target_link_libraries(${TARGET_NAME} ${cc_binary_DEPS})
+  target_link_libraries(${TARGET_NAME} ${cc_binary_DEPS} ${CMAKE_THREAD_LIBS_INIT})
 endfunction(cc_binary)
 
 # The dependency to target tensor implies that if any of
@@ -75,7 +75,11 @@ function(cc_test TARGET_NAME)
   cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   add_executable(${TARGET_NAME} ${cc_test_SRCS})
   add_dependencies(${TARGET_NAME} ${cc_test_DEPS} ${external_project_dependencies})
-  target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} ${GTEST_MAIN_LIBRARIES} ${GTEST_LIBRARIES})
+  target_link_libraries(${TARGET_NAME}
+    ${cc_test_DEPS}
+    ${GTEST_MAIN_LIBRARIES}
+    ${GTEST_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT})
   add_test(${TARGET_NAME} ${TARGET_NAME})
 endfunction(cc_test)
 
@@ -107,7 +111,7 @@ function(nv_binary TARGET_NAME)
   cmake_parse_arguments(nv_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   cuda_add_executable(${TARGET_NAME} ${nv_binary_SRCS})
   add_dependencies(${TARGET_NAME} ${nv_binary_DEPS} ${external_project_dependencies})
-  target_link_libraries(${TARGET_NAME} ${nv_binary_DEPS})
+  target_link_libraries(${TARGET_NAME} ${nv_binary_DEPS} ${CMAKE_THREAD_LIBS_INIT})
 endfunction(nv_binary)
 
 # The dependency to target tensor implies that if any of
@@ -124,7 +128,11 @@ function(nv_test TARGET_NAME)
   cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
   add_dependencies(${TARGET_NAME} ${nv_test_DEPS} ${external_project_dependencies})
-  target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} ${GTEST_MAIN_LIBRARIES} ${GTEST_LIBRARIES})
+  target_link_libraries(${TARGET_NAME}
+    ${nv_test_DEPS}
+    ${GTEST_MAIN_LIBRARIES}
+    ${GTEST_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT})
   add_test(${TARGET_NAME} ${TARGET_NAME})
 endfunction(nv_test)
 
