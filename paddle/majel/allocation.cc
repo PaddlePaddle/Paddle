@@ -31,16 +31,14 @@ public:
   Deallocator(void* ptr) : ptr_(ptr) {}
 
   void operator()(CpuPlace p) const {
-    void* ptr = ptr_;
-    if (ptr) {
-      ::free(ptr);
+    if (ptr_) {
+      ::free(ptr_);
     }
   }
 
   void operator()(GpuPlace p) const {
-    void* ptr = ptr_;
-    if (ptr) {
-      hl_free_mem_device(ptr);
+    if (ptr_) {
+      hl_free_mem_device(ptr_);
     }
   }
 
