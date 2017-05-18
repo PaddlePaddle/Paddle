@@ -11,7 +11,7 @@ void panic() {
 int main() {
   char addr[] = "localhost:3000";
   client c = paddle_new_pserver_client(addr);
- retry:
+retry:
   if (paddle_begin_init_params(c, NULL, 0)) {
     paddle_parameter param;
     char name_a[] = "param_a";
@@ -39,14 +39,16 @@ int main() {
   }
 
   char content[] = {0x00, 0x11, 0x22};
-  paddle_gradient grads[2] = {{"param_a", PADDLE_ELEMENT_TYPE_INT32, content, 3}, {"param_b", PADDLE_ELEMENT_TYPE_FLOAT32, content, 3}};
+  paddle_gradient grads[2] = {
+      {"param_a", PADDLE_ELEMENT_TYPE_INT32, content, 3},
+      {"param_b", PADDLE_ELEMENT_TYPE_FLOAT32, content, 3}};
 
   if (!paddle_send_grads(c, grads, 2)) {
     panic();
   }
 
   paddle_parameter* params[2] = {NULL, NULL};
-  char* names[]={"param_a", "param_b"};
+  char* names[] = {"param_a", "param_b"};
   if (!paddle_get_params(c, names, params, 2)) {
     panic();
   }
