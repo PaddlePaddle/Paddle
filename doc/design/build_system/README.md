@@ -20,7 +20,7 @@ The difference between `nv_` functions and `cc_` functions is that the former us
 
 Both `nv_` and `cc_` functions enables C++11 (-std=c++11).
 
-In addition,
+Also,
 
 - to describe external dependencies, we need `external_library`.
 - to build shared libraries, we need `shared_library`.
@@ -104,7 +104,4 @@ shared_library(api
 
 ### Implementation
 
-As above example CMakeLists.txt executes, each function invocation
-adds "nodes" to a dependency graph.  It also use this graph to
-generate CMake commands including `add_executable`,
-`add_dependencies`, `target_link_libraries`, and `add_test`.
+As above example CMakeLists.txt executes, each function invocation adds "nodes" to a dependency graph.  It also use this graph to generate CMake commands including `add_executable`, `add_dependencies`, `target_link_libraries`, and `add_test`.
