@@ -98,21 +98,12 @@ func TestMultipleInit(t *testing.T) {
 	}
 
 	err = s.FinishInitParams(0, &dummy)
-	if err != pserver.ErrAlreadyIntialized {
+	if err != pserver.ErrAlreadyInitialized {
 		t.FailNow()
 	}
 
 	err = s.BeginInitParams(nil, &dummy)
-	if err != pserver.ErrAlreadyIntialized {
-		t.FailNow()
-	}
-}
-
-func TestUninitialized(t *testing.T) {
-	s := pserver.NewService()
-	var dummy int
-	err := s.SendGrads(nil, &dummy)
-	if err != pserver.ErrUnintialized {
+	if err != pserver.ErrAlreadyInitialized {
 		t.FailNow()
 	}
 }
@@ -134,6 +125,16 @@ func TestBlockUntilInitialized(t *testing.T) {
 	go func() {
 		var dummy int
 		err := s.SaveModel("", &dummy)
+		if err != nil {
+			t.FailNow()
+		}
+		wg.Done()
+	}()
+
+	wg.Add(1)
+	go func() {
+		var dummy int
+		err := s.SendGrads(nil, &dummy)
 		if err != nil {
 			t.FailNow()
 		}
