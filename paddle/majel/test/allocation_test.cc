@@ -1,4 +1,4 @@
-#include "majel/allocation.h"
+#include "paddle/majel/allocation.h"
 #include "gtest/gtest.h"
 
 TEST(Allocation, malloc) {

@@ -44,7 +44,10 @@ function(cc_library TARGET_NAME)
   else()
     add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
   endif()
-  add_dependencies(${TARGET_NAME} ${cc_library_DEPS} ${external_project_dependencies})
+  if(cc_library_DEPS)
+    target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
+    add_dependencies(${TARGET_NAME} ${cc_library_DEPS} ${external_project_dependencies})
+  endif()
 endfunction(cc_library)
 
 # cc_binary parses tensor.cc and figures out that target also depend on tensor.h.
