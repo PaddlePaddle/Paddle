@@ -98,6 +98,15 @@ public:
     return *this;
   }
 
+  TensorMeta& setDescription(const std::string& doc) {
+    metaAttributes_.set("description", doc).check();
+    return *this;
+  }
+
+  const std::string& description() const {
+    return metaAttributes_.get<std::string>("description");
+  }
+
 private:
   AttributeMap metaAttributes_;
 };

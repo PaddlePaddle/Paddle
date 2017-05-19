@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "NormProjectionLayer.h"
+#include "paddle/function/Register.h"
+#include "paddle/topology/Function.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
@@ -45,12 +47,13 @@ bool CMRProjectionNormLayer::init(const LayerMap& layerMap,
   /* the size of inputs for norm-layer is 1 */
   CHECK_EQ(config_.inputs_size(), 1);
 
-  this->forward_.add("CrossMapNormal",
-                     function::Config()
-                         .set("size", size_)
-                         .set("scale", scale_)
-                         .set("pow", pow_),
-                     useGpu_);
+  topology::Function fwd;
+  fwd.type = "CrossMapNormalFwd";
+  fwd.setUseGPU(useGpu_);
+  fwd.attributes["size"] = size_;
+  fwd.attributes["scale"] = (double)scale_;
+  fwd.attributes["pow"] = (double)pow_;
+  this->forward_.push_back(function::createFunction(fwd));
   this->backward_.add("CrossMapNormalGrad",
                       function::Config()
                           .set("size", size_)
@@ -81,7 +84,7 @@ void CMRProjectionNormLayer::forward(PassType passType) {
   outputs.addArg(*getOutputValue(), shape_, ASSIGN_TO);
   outputs.addArg(*denoms_, shape_, ASSIGN_TO);
 
-  forward_[0](inputs, outputs);
+  forward_[0](inputs, outputs).check();
 }
 
 void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {

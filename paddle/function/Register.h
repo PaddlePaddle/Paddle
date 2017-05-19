@@ -65,6 +65,38 @@ protected:
         .check();
   }
 
+  void setFlopsEstimator(std::function<Error(std::vector<topology::TensorPtr>&,
+                                             std::vector<topology::TensorPtr>&,
+                                             uint64_t* flops)> estimator) {
+    func_->metaAttributes_.set("flopsEstimator", estimator).check();
+  }
+
+  template <typename T>
+  void setFlopsEstimator(
+      std::function<Error(std::vector<topology::TensorPtr>& in,
+                          std::vector<topology::TensorPtr>& out,
+                          const T& attrs,
+                          uint64_t* flops)> estimator) {
+    auto func = func_;
+
+    std::function<Error(std::vector<topology::TensorPtr> & ins,
+                        std::vector<topology::TensorPtr> & outs,
+                        const topology::AttributeMap& attrs,
+                        uint64_t* flops)>
+        estimatorImpl =
+            [estimator, func](std::vector<topology::TensorPtr>& ins,
+                              std::vector<topology::TensorPtr>& outs,
+                              const topology::AttributeMap& attrs,
+                              uint64_t* flops) -> Error {
+      T val;
+      auto err = func->parseAttribute(attrs, &val);
+      if (!err.isOK()) return err;
+      return estimator(ins, outs, val, flops);
+    };
+
+    func_->metaAttributes_.set("flopsEstimator", estimatorImpl).check();
+  }
+
   template <FunctionTensorType type>
   topology::meta::TensorMetaPtr& addTensor(
       size_t dim,

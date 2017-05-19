@@ -26,6 +26,9 @@ private:
   static Function getKernel(topology::Function* topo,
                             const std::string& kernelMethodName) {
     auto meta = topology::meta::FunctionMeta::get(topo->type);
+    //! FunctionMeta should be found, if not found, is developer code error. So
+    //! we should just failed.
+    CHECK(meta != nullptr) << "Function " << topo->type << "cannot be found.";
     const Function* kernel = nullptr;
     auto err = meta->metaAttributes_.get<Function>(kernelMethodName, &kernel);
     if (err.isOK()) return *kernel;

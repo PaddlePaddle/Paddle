@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "CrossMapNormalOp.h"
+#include "Register.h"
 #include "paddle/math/Vector.h"
+#include "paddle/topology/Attribute.h"
 
 namespace paddle {
 
@@ -111,120 +113,112 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
   }
 }
 
-/**
- * \brief Normalization with across maps.
- *
- * This Function comes from the paper
- * "ImageNet Classification with Deep Convolutional Neural Networks".
- *
- * The original formula is:
- *
- *                                Input(i, x, y)
- * Output(i, x, y) = ----------------------------------------------
- *                                 -- upper
- *                    (k + alpha * >  (Input(j, x, y))^2) ^ (beta)
- *                                 -- j = lower
- *
- * upper is `min(C, c + N/2)`
- * lower if `max(0, c - N/2)`
- *
- * Function implementation:
- *
- * inputs and outpus is NCHW format, while input.shape.ndims() is equal 4.
- * And the meaning of each dimension(0-3) is respectively batch size,
- * feature maps, rows and columns.
- *
- * Input and Output in the above formula is for each map(i) of one image, and
- * Input(i, x, y), Output(i, x, y) represents an element in an image.
- *
- * C is the number of feature maps of one image, and N is a hyper-parameters
- * is configured when Function is initialized. The sum in the denominator
- * is the sum of the same position in the neighboring maps.
- *
- * In the implementation of Function, k is equal to 1,
- * so Function has no argument for k.
- *
- * Function Arguments:
- *
- * \param size_      represent N
- * \param scale_     represent alpha
- * \param pow_       represent beta
- * \param inputs[0]  represent Input
- * \param outputs[0] represent Output
- * \param outputs[1] represent The denominator in the formula(except beta)
- *
- * Note:
- * Save output[1] is to simplify the backward calculation.
- * TODO, if only consider the forward calculation, we can optimize to
- * remove the output[1].
- */
-template <DeviceType Device>
-class CrossMapNormalFunc : public FunctionBase {
-public:
-  void init(const function::Config& config) override {
-    // function arguments
-    size_ = config.get<size_t>("size");
-    scale_ = config.get<real>("scale");
-    pow_ = config.get<real>("pow");
+struct CrossMapNormalAttribute : public topology::Attribute {
+  size_t size;
+  double scale;
+  double pow;
 
-    // number of inputs and outputs
-    numInputs_ = 1;
-    numOutputs_ = 2;
+  REGISTER_FUNC_ATTRIBUTE() {
+    regAttr(&CrossMapNormalAttribute::size, "size", "represent N in formula")
+        .mustSet()
+        .largerThan(0);
+
+    regAttr(
+        &CrossMapNormalAttribute::scale, "scale", "represent alpha in formula")
+        .defaultValue(1.0)
+        .largerThan(0.0);
+
+    regAttr(&CrossMapNormalAttribute::pow, "pow", "represent beta in formula")
+        .mustSet();
   }
-
-  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    check(inputs, outputs);
-    // ArgType check still on here,
-    // not sure whether it is better to put inside the check.
-    CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
-    CHECK_EQ(outputs[1].getArgType(), ASSIGN_TO);
-    size_t batchSize = inputs[0].shape()[0];
-    size_t maps = inputs[0].shape()[1];
-    size_t rows = inputs[0].shape()[2];
-    size_t columns = inputs[0].shape()[3];
-
-    CrossMapNormal<Device>(outputs[0].data<real>(),
-                           outputs[1].data<real>(),
-                           inputs[0].data<real>(),
-                           batchSize,
-                           maps,
-                           rows,
-                           columns,
-                           size_,
-                           scale_,
-                           pow_);
-  }
-
-  void check(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(numInputs_, inputs.size());
-    CHECK_EQ(numOutputs_, outputs.size());
-
-    CHECK_EQ(inputs[0].shape().ndims(), (size_t)4);
-    CHECK(inputs[0].shape() == outputs[0].shape());
-    CHECK(inputs[0].shape() == outputs[1].shape());
-  }
-
-  // Only need the shape of the input, can calculate the
-  // floating-point operation.
-  size_t ops(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ((size_t)numInputs_, inputs.size());
-    size_t batchSize = inputs[0].shape()[0];
-    size_t maps = inputs[0].shape()[1];
-    size_t rows = inputs[0].shape()[2];
-    size_t columns = inputs[0].shape()[3];
-
-    // number of floating-point operations
-    // an approximate value
-    size_t ops = batchSize * maps * rows * columns * (size_ * 2 + 3);
-
-    return ops;
-  }
-
-private:
-  size_t size_;
-  real scale_;
-  real pow_;
 };
+
+template <DeviceType Device>
+static Error forward(const BufferArgs& ins,
+                     const BufferArgs& outs,
+                     const CrossMapNormalAttribute& attrs) {
+  size_t batchSize = ins[0].shape()[0];
+  size_t maps = ins[0].shape()[1];
+  size_t rows = ins[0].shape()[2];
+  size_t columns = ins[0].shape()[3];
+
+  CrossMapNormal<Device>(outs[0].data<real>(),
+                         outs[1].data<real>(),
+                         ins[0].data<real>(),
+                         batchSize,
+                         maps,
+                         rows,
+                         columns,
+                         attrs.size,
+                         attrs.scale,
+                         attrs.pow);
+  return Error();
+}
+
+BEGIN_REGISTER_FUNCTION(CrossMapNormalFwd, forward, CrossMapNormalAttribute)
+setDescription(R"DOC(Normalization with across maps Forward functions.
+
+This Function comes from the paper "ImageNet Classification with Deep
+Convolutional Neural Networks"
+
+The original formula is
+
+  b_{x,y}^i = \frac{a_{x,y}^i}{ k + \left ( \alpha
+                  \sum_{j=max(0, c-N/2)}^{j=min(C, c+N/2)}
+                  \left ( a_{x,y}^j \right )^\beta \right )}
+
+Where a is the Input, b is the Output. The {x,y} is the {height, width} of the
+image. The i is the channel of the image.
+
+The input and output of this funciton is NCHW format, while the dimension of
+input.shape is 4: `batch size`, `channels(feature maps)`, `height(rows)`,
+`width(columns)`.
+
+C is the number of feature maps of one images, and N is a hyper-parameter, which
+configured when Function is initialized. The sum in the denominator is the sum
+of the same position in the neighboring maps.
+
+In the implementation of Function, k is equal to 1, so Function has no argument
+for k.
+)DOC");
+
+addTensor<INPUT>(/*dim=*/4)->setDescription(
+    "Input Image of cross map normalization");
+addTensor<OUTPUT>(/*dim=*/4, ASSIGN_TO)
+    ->setDescription("Output image of cross map normalization");
+addTensor<OUTPUT>(4, ASSIGN_TO)
+    ->setDescription(
+        "Second output is to simplify the backward calculation. which has same "
+        "shape of input");
+
+setShapeInferer([](std::vector<topology::TensorPtr>& ins,
+                   std::vector<topology::TensorPtr>& outs) -> Error {
+  outs[0]
+      ->setShape(ins[0]->shape())
+      .setDataType(topology::DataType::DENSE)
+      .setSequenceType(ins[0]->sequenceType());
+  outs[1]
+      ->setShape(ins[0]->shape())
+      .setDataType(topology::DataType::DENSE)
+      .setSequenceType(ins[0]->sequenceType());
+  return Error();
+});
+
+setFlopsEstimator<CrossMapNormalAttribute>(
+    [](std::vector<topology::TensorPtr>& ins,
+       std::vector<topology::TensorPtr>&,
+       const CrossMapNormalAttribute& attrs,
+       uint64_t* flops) -> Error {
+      auto shape = ins[0]->shape();
+      auto shapeAccum = std::accumulate(
+          shape.begin(), shape.end(), (size_t)1, std::multiplies<size_t>());
+
+      *flops = shapeAccum * (attrs.size * 2 + 3);
+
+      return Error();
+    });
+
+END_REGISTER_FUNCTION(CrossMapNormalFwd)
 
 /**
  * \brief Backward calculation for normalization with across maps.
@@ -334,10 +328,8 @@ private:
   real pow_;
 };
 
-REGISTER_TYPED_FUNC(CrossMapNormal, CPU, CrossMapNormalFunc);
 REGISTER_TYPED_FUNC(CrossMapNormalGrad, CPU, CrossMapNormalGradFunc);
 #ifndef PADDLE_ONLY_CPU
-REGISTER_TYPED_FUNC(CrossMapNormal, GPU, CrossMapNormalFunc);
 REGISTER_TYPED_FUNC(CrossMapNormalGrad, GPU, CrossMapNormalGradFunc);
 #endif
 
