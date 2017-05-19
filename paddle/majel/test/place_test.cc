@@ -1,6 +1,7 @@
-#include "majel/place.h"
+#include "paddle/majel/place.h"
 #include <sstream>
 #include "gtest/gtest.h"
+#include "paddle/utils/Logging.h"
 
 TEST(Place, Equality) {
   majel::CpuPlace cpu;
@@ -37,4 +38,5 @@ TEST(Place, Print) {
     ss << majel::CpuPlace();
     EXPECT_EQ("CpuPlace", ss.str());
   }
+  LOG(INFO) << "\n[----------] Done \n";
 }

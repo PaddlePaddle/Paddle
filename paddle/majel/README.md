@@ -106,34 +106,84 @@ Because `variant` may be thought of as "multi-type, single value", we can utiliz
  arr[make_ddim({0, 1})] = 1.0；
  ```
 
-## implement Tensor in Paddle
+## Implement Tensor in Paddle
+
+We want to create a Tensor class to replace Vector and Matrix, and to support high-dimensional data. The operations on Tensor are implemented in both CPU and GPU. We also want to make sure that the Tensor interface is friendly to its callers.
+
+Tensor is only responsible for describing computing. It will not take charge of memory allocation policy, handles of some CUDA library context(e.g. cublasHandle, cudnnHandle), and dispatching CUDA kernels. Paddle has realize the initialization and resources management of hardware.
 
 Before writing code, please make sure you already look through Majel Source Code and grabbed the design philosophy of `DArray` in Majel.
 
-To assign subtasks to our colleagues, we have to discuss how to divide it to independent subtasks.
 
-- [ ] 1. First, we need to consider the third-party dependencies in Majel.
+### Memory Management
+`Allocation` manages a block of memory in device(CPU/GPU). We use `Place` to decribe memory location. The details of memory allocation and deallocation are implememted in `Allocator` and `DeAllocator`. Related low-level API such as `hl_malloc_device()` and `hl_malloc_host()` are provided by Paddle.
 
-    Majel heavily use `boost.variant`, but we don't want to integrate `boost` into PaddlePaddle. It's better to replace boost using the lightweight implementation. https://github.com/mapbox/variant Mapbox variant has the same speedy performance of `boost::variant `but is faster to compile, results in smaller binaries, and has no dependencies.
+### Dim and Array
+#### Dim
 
-> @gangliao
+`Dim` decribes the dimension information of an array.
 
-- [ ] 2. Re-implement `Place` and `Allocation/Memory`
+`DDimVar` is an alias of a specializd class of boost.variant class template.
 
-    I found @wangkuiyi submitted a pull request includes `Place`. @gangliao and @qijun could re-implement `Allocation`, because we have the GPU development experience before joining Paddle team.
+`DDim` is introduced to represent a dynamically sized dimension.
 
-> @wangkuiyi @gangliao @qijun
+For example:
 
-- [ ] 3. Re-implement `Dim`.
+```
+Dim<2> d1 = make_dim(3, 3);
+DDim d2 = make_ddim({1, 2, 3});
+```
 
-    `Dim` is an excellent implementation in Majel.
+You must appoint a concrete sized dimension to Dim, whereas DDim can represent a dynamically sized dimension.
+#### Array
 
-> ???
+`Array` represents for a tensor with specific type and size.
 
-- [ ] 4. Re-implement `Array/Tensor`.
+`DArrarVar` is an alias of a specialized class of boost.variant class template.
 
-> Prerequisites: 1 - 3
+`DArray` is introduced to represent a dynamically typed array.
 
-- [ ] 5. Re-implement fundamental operators for `Array/Tensor`.
+For example:
 
-> Prerequisites: 1 - 4
+```
+Array<float, 2> a1(Dim<2>(2, 2));
+DArray a2 = make_darray(make_ddim({3, 4}), 0.0, CpuPlace());
+```
+
+You must appoint the type and dimension of a Array, whereas DArray can represent a dynanmically typed array.
+
+
+Please reference the section of `Learn from Majel` for more details.
+
+### ArrayView
+
+`ViewIterator` is a class template which implements basic iterator operation, including increment(++), decrement(--), dereference(*), equality comparisons(==) and so on.
+
+`ArrayView` is an encapsulation of `Array`， which introduces extra iterator methods, such as `begin()` and `end()`. The `begin()` method returns an iterator pointing to the first element in the ArrayView. And the `end()` method returns an iterator pointing to the pass-the-end element in the ArrayView.
+
+`ArrayView` make the visting and manipulating an array more efficiently, flexibly and safely.
+
+
+A global function `make_view` is provided to transform an array to corresponding arrayview.
+
+```
+template<typename T, int D>
+ArrayView<T, D> make_view(const Array<T, D>& in) {
+    return in;
+}
+```
+
+A global function `make_iterator` is provided to make iterator of an array.
+
+```
+template<typename T, int D>
+ViewIterator<ArrayView<T, D>> make_iterator(const Array<T, D>& in, Dim<D> idx) {
+    return make_iterator(make_view(in), idx);
+}
+```
+
+### Basic Operations
+
+The operations that manipulate DArray are defined as global functions, such as `ones`, `zeros`, `reshape`, `gemm` and so on.
+
+An array will be trasformed into an arrayview and then passed to the operation launching on a specific device(CPU/GPU).
