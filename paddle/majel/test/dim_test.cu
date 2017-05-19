@@ -1,7 +1,7 @@
 #include <thrust/device_vector.h>
 #include <sstream>
 
-#include "majel/dim.h"
+#include "paddle/majel/dim.h"
 #include "gtest/gtest.h"
 
 __global__ void test(majel::Dim<2>* o) {

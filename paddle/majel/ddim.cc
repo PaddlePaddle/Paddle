@@ -1,4 +1,4 @@
-#include <majel/ddim.h>
+#include "paddle/majel/ddim.h"
 
 namespace majel {
 

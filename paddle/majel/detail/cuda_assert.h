@@ -30,10 +30,3 @@
 #define MAJEL_ASSERT(e) assert(e)
 #define MAJEL_ASSERT_MSG(e, m) assert((e) && (m))
 #endif
-
-namespace majel {
-namespace detail {
-
-inline int div_up(int x, int y) { return (x + y - 1) / y; }
-}
-}

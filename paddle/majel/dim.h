@@ -5,8 +5,8 @@
 #include <stdexcept>
 #include <type_traits>
 
-#include "majel/hostdevice.h"
-#include "majel/util.h"
+#include "paddle/majel/detail/hostdevice.h"
+#include "paddle/majel/detail/util.h"
 
 namespace majel {
 

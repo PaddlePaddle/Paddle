@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "majel/ddim.h"
+#include "paddle/majel/ddim.h"
 
 TEST(DDim, Equality) {
   // construct a DDim from an initialization list

@@ -1,4 +1,4 @@
-#include <majel/place.h>
+#include "paddle/majel/place.h"
 
 namespace majel {
 
@@ -16,7 +16,7 @@ public:
   void operator()(const GpuPlace& p) { os_ << "GpuPlace(" << p.device << ")"; }
 };
 
-}  // namespace majel
+}  // namespace detail
 
 static Place the_default_place;
 
