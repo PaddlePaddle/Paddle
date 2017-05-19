@@ -17,6 +17,7 @@ import collections
 import swig_paddle
 import numpy
 import itertools
+from functools import reduce
 
 __all__ = ['DataProviderConverter']
 
@@ -59,12 +60,14 @@ class IScanner(object):
         """
         pass
 
-    def finish_pre_scan(self, argument):
+    def finish_pre_scan(self, argument, dat=None):
         """
         Finish first scan pass. Allocate the memory.
 
         :param argument: Output arguments object.
         :type argument: swig_paddle.Arguments
+        :param dat: Output arguments object.
+        :type dat: The Python object, numpy.array or List.
         :return:
         """
         pass
@@ -95,17 +98,27 @@ class DenseScanner(IScanner):
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
         self.__mat__ = None
+        self.__shape__ = None
         self.__height__ = 0
 
     def pre_scan(self, dat):
         self.__height__ += 1
 
-    def finish_pre_scan(self, argument):
+    def finish_pre_scan(self, argument, dat=None):
+        self.__shape__ = numpy.array(dat).shape
+        if len(self.__shape__) > 3:
+            raise ValueError("The dimension of input is greater than 3.")
+        dim = reduce(lambda x, y: x * y, self.__shape__)
+        if len(self.__shape__) == 1:
+            assert dim == self.input_type.dim
         self.__mat__ = numpy.ndarray(
-            shape=(self.__height__, self.input_type.dim), dtype=numpy.float32)
+            shape=(self.__height__, dim), dtype=numpy.float32)
         self.__height__ = 0
 
     def scan(self, dat):
+        if isinstance(dat, numpy.ndarray):
+            assert self.__shape__ == dat.shape
+            dat = dat.flatten()
         self.__mat__[self.__height__] = dat
         self.__height__ += 1
 
@@ -116,6 +129,13 @@ class DenseScanner(IScanner):
         m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__, True,
                                                     self.data_in_gpu)
         argument.setSlotValue(self.pos, m)
+        if len(self.__shape__) > 1:
+            # The last-two dimenstions are the frame height and width.
+            # For example, the layout is CHW for 3-D feature of image.
+            # The H and W are the fram height and width.
+            h, w = self.__shape__[-2:]
+            argument.setSlotFrameHeight(self.pos, h)
+            argument.setSlotFrameWidth(self.pos, w)
 
 
 class SparseBinaryScanner(IScanner):
@@ -166,7 +186,7 @@ class IndexScanner(IScanner):
     def pre_scan(self, dat):
         self.__idx__ += 1
 
-    def finish_pre_scan(self, argument):
+    def finish_pre_scan(self, argument, dat=None):
         self.__ids__ = [0] * self.__idx__
         self.__idx__ = 0
 
@@ -191,8 +211,8 @@ class SequenceScanner(IScanner):
         for each in dat:
             self.__inner_scanner__.pre_scan(each)
 
-    def finish_pre_scan(self, argument):
-        self.__inner_scanner__.finish_pre_scan(argument)
+    def finish_pre_scan(self, argument, dat=None):
+        self.__inner_scanner__.finish_pre_scan(argument, dat)
 
     def scan(self, dat):
         self.__seq__.append(self.__seq__[-1] + self.get_size(dat))
@@ -233,8 +253,11 @@ class DataProviderConverter(object):
             for each_step, scanner in itertools.izip(each_sample, scanners):
                 scanner.pre_scan(each_step)
 
-        for scanner in scanners:
-            scanner.finish_pre_scan(argument)
+        # Some scanners, like dense scanner, pre-allocate memory for mini-batch
+        # in finish_pre_scan function. The dat[0] is used to calculate the size
+        # of input data.
+        for scanner, each_feature in itertools.izip(scanners, dat[0]):
+            scanner.finish_pre_scan(argument, each_feature)
 
         for each_sample in dat:
             for each_step, scanner in itertools.izip(each_sample, scanners):
