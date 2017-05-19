@@ -103,7 +103,7 @@ def stacked_lstm_net(input_dim,
 
 if __name__ == '__main__':
     # init
-    paddle.init(use_gpu=False, log_clipping=True)
+    paddle.init(use_gpu=False)
 
     #data
     print 'load dictionary...'
@@ -131,7 +131,6 @@ if __name__ == '__main__':
     # create optimizer
     adam_optimizer = paddle.optimizer.Adam(
         learning_rate=2e-3,
-        gradient_clipping_threshold=0.003,
         regularization=paddle.optimizer.L2Regularization(rate=8e-4),
         model_average=paddle.optimizer.ModelAverage(average_window=0.5))
 
