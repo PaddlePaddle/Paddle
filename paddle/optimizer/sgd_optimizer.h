@@ -4,8 +4,11 @@
 #include "parameter_optimizer.h"
 #include "training_ops.h"
 
+namespace paddle {
+namespace optimizer {
+
 class SGDOptimizer : public ParameterOptimizer {
-  public:
+public:
   /*! \brief call the applySGD for example  */
   void update(Tensor<T> &parameter,
               const Tensor<T> &gradient,
@@ -27,7 +30,8 @@ public:
     applyMomentum(parameter, gradient, momentum, learning_rate, mu, weight_decay);
   }
   
+};
+
 }
-
-
+}
 #endif

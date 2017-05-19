@@ -1,5 +1,8 @@
-#ifndef __PADDLE_LIB_REGULARIZER_H
-#define __PADDLE_LIB_REGULARIZER_H
+#ifndef PADDLE_LIB_REGULARIZER_H_
+#define PADDLE_LIB_REGULARIZER_H_
+
+namespace paddle {
+namespace optimizer {
 
 
 /*! \brief regularizer for L1, L2 */
@@ -31,5 +34,7 @@ private:
   
 };
 
+}
+}
 
 #endif

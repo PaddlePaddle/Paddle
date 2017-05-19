@@ -1,5 +1,8 @@
 #include "training_ops.h"
 
+namespace paddle {
+
+template<class T>
 class OpitmizerTests {
 
 private:
@@ -10,4 +13,4 @@ private:
 void  applyGradientDescent_TEST() {
   
 }
-
+}

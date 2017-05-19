@@ -28,9 +28,8 @@ extern "C" {
   } paddle_element_type;
 
   /*! \brief execute status code */ 
-  const int32_t LIB_SUCCESS = 0;
-  const int32_t LIB_WARNING = 1;
-  const int32_t LIB_ERROR   = 2;
+  const int32_t PADDLE_SUCCESS = 0;
+  const int32_t PADDLE_ERROR   = -1;
 
 
   typedef void* parameter;

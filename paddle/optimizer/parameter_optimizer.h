@@ -7,7 +7,7 @@
 #include "Tensor.h"
 
 namespace paddle {
-namespace lib {
+namespace optimizer {
 
 class ParameterOptimizer {
 public:

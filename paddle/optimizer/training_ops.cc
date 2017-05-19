@@ -1,8 +1,11 @@
 #include "training_ops.h"
 
+namespace paddle {
+namespace optimizer {
+
 /*! \brief implement different update method
-e.g. applyGradientDescentAvx
- */
+  e.g. applyGradientDescentAvx
+*/
 
 template<typename T>
 void applyGradientDescent(Tensor<T> &parameter,
@@ -27,4 +30,6 @@ void applyMomentum(Tensor<T> &parameter,
     momentum[i] = mu * momentum[i] - learning_rate * gradient[i] - weight_decay * parameter[i];
     parameter[i] += momentum[i];
   }
+}
+}
 }

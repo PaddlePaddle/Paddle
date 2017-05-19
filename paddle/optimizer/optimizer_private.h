@@ -8,5 +8,5 @@
 
 struct paddle_optimizer {
   /*! \brief optmizer in C++ side */ 
-  ParameterOptimzier *impl;
+  paddle::optimizer::ParameterOptimzier *impl;
 };
