@@ -1,0 +1,338 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Required CMake Function &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/evaluators.html">Evaluators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Required CMake Function</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <p>A few months ago when we were trying to replace CMake with Bazel, &#64;emailweixu suggested that we rewrite those handy Bazel functions using CMake. Now it seems that it&#8217;s the right time to get this done, as we are facing problems from the porting of Majel and the development of new the parameter server using Go and C++.</p>
+<p>Here are some initial thoughts. Your comments are welcome!</p>
+<div class="section" id="required-cmake-function">
+<span id="required-cmake-function"></span><h1>Required CMake Function<a class="headerlink" href="#required-cmake-function" title="Permalink to this headline">¶</a></h1>
+<p>I think we need only the following few CMake functions to make a project description mean and clean:</p>
+<p>| C++ | CUDA C++ | Go |
+|&#8212;|&#8212;|&#8212;|
+| cc_library | nv_library | go_library |
+| cc_binary | nv_binary | go_binary |
+| cc_test | nv_test | go_test |</p>
+<ul class="simple">
+<li>The <code class="docutils literal"><span class="pre">_library</span></code> functions generate  .a files from source code.</li>
+<li>The <code class="docutils literal"><span class="pre">_binary</span></code> functions generate executable binary files.</li>
+<li>The <code class="docutils literal"><span class="pre">_test</span></code> functions generate executable unit test files. They work like <code class="docutils literal"><span class="pre">_binary</span></code> but links <code class="docutils literal"><span class="pre">-lgtest</span></code> and <code class="docutils literal"><span class="pre">-lgtest_main</span></code>.</li>
+</ul>
+<p>The difference between <code class="docutils literal"><span class="pre">nv_</span></code> functions and <code class="docutils literal"><span class="pre">cc_</span></code> functions is that the former use <code class="docutils literal"><span class="pre">nvcc</span></code> instead of the system-default C++ compiler.</p>
+<p>Both <code class="docutils literal"><span class="pre">nv_</span></code> and <code class="docutils literal"><span class="pre">cc_</span></code> functions enables C++11 (-std=c++11).</p>
+<p>Also,</p>
+<ul class="simple">
+<li>to describe external dependencies, we need <code class="docutils literal"><span class="pre">external_library</span></code>.</li>
+<li>to build shared libraries, we need <code class="docutils literal"><span class="pre">shared_library</span></code>.</li>
+</ul>
+</div>
+<div class="section" id="an-example-project">
+<span id="an-example-project"></span><h1>An Example Project<a class="headerlink" href="#an-example-project" title="Permalink to this headline">¶</a></h1>
+<p>Suppose that we have aforementioned functions defined in our <code class="docutils literal"><span class="pre">/cmake</span></code> directory.  The following example <code class="docutils literal"><span class="pre">CMakeLists.txt</span></code> describes a project including the following source files:</p>
+<ul class="simple">
+<li>tensor.h</li>
+<li>tensor.cc</li>
+<li>tensor_test.cc</li>
+<li>ops.h</li>
+<li>ops.cu</li>
+<li>ops_test.cu</li>
+<li>api.go</li>
+<li>api_test.go</li>
+</ul>
+<p>Suppose that ops.cu depends on CUDNN.</p>
+<div class="highlight-cmake"><div class="highlight"><pre><span></span><span class="c"># cc_binary parses tensor.cc and figures out that target also depend</span>
+<span class="c"># on tensor.h.</span>
+<span class="nb">cc_binary</span><span class="p">(</span><span class="s">tensor</span>
+  <span class="s">SRCS</span>
+  <span class="s">tensor.cc</span><span class="p">)</span>
+
+<span class="c"># The dependency to target tensor implies that if any of</span>
+<span class="c"># tensor{.h,.cc,_test.cc} is changed, tensor_test need to be re-built.</span>
+<span class="nb">cc_test</span><span class="p">(</span><span class="s">tensor_test</span>
+  <span class="s">SRCS</span>
+  <span class="s">tensor_test.cc</span>
+  <span class="s">DEPS</span>
+  <span class="s">tensor</span><span class="p">)</span>
+
+<span class="c"># I don&#39;t have a clear idea what parameters external_library need to</span>
+<span class="c"># have.  @gangliao as a CMake expert would have better ideas.</span>
+<span class="nb">external_library</span><span class="p">(</span><span class="s">cudnn</span>
+  <span class="s">....</span><span class="p">)</span>
+
+<span class="c"># Suppose that ops.cu depends on external target CUDNN.  Also, ops.cu</span>
+<span class="c"># include global functions that take Tensor as their parameters, so</span>
+<span class="c"># ops depend on tensor.  This implies that if any of tensor.{h.cc},</span>
+<span class="c"># ops.{h,cu} is changed, ops need to be re-built.</span>
+<span class="nb">nv_library</span><span class="p">(</span><span class="s">ops</span>
+  <span class="s">SRCS</span>
+  <span class="s">ops.cu</span>
+  <span class="s">DEPS</span>
+  <span class="s">tensor</span>
+  <span class="s">cudnn</span><span class="p">)</span>  <span class="c"># cudnn is defined later.</span>
+
+<span class="nb">nv_test</span><span class="p">(</span><span class="s">ops_test</span>
+  <span class="s">SRCS</span>
+  <span class="s">ops_test.cu</span>
+  <span class="s">DEPS</span>
+  <span class="s">ops</span><span class="p">)</span>
+
+<span class="c"># Because api.go defines a GO wrapper to ops and tensor, it depends on</span>
+<span class="c"># both.  This implies that if any of tensor.{h,cc}, ops.{h,cu}, or</span>
+<span class="c"># api.go is changed, api need to be re-built.</span>
+<span class="nb">go_library</span><span class="p">(</span><span class="s">api</span>
+  <span class="s">SRCS</span>
+  <span class="s">api.go</span>
+  <span class="s">DEPS</span>
+  <span class="s">tensor</span> <span class="c"># Because ops depend on tensor, this line is optional.</span>
+  <span class="s">ops</span><span class="p">)</span>
+
+<span class="nb">go_test</span><span class="p">(</span><span class="s">api_test</span>
+  <span class="s">SRCS</span>
+  <span class="s">api_test.go</span>
+  <span class="s">DEPS</span>
+  <span class="s">api</span><span class="p">)</span>
+
+
+<span class="c"># This builds libapi.so.  shared_library might use CMake target</span>
+<span class="c"># api_shared so to distinguish it from above target api.</span>
+<span class="nb">shared_library</span><span class="p">(</span><span class="s">api</span>
+  <span class="s">DEPS</span>
+  <span class="s">api</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="implementation">
+<span id="implementation"></span><h1>Implementation<a class="headerlink" href="#implementation" title="Permalink to this headline">¶</a></h1>
+<p>As above example CMakeLists.txt executes, each function invocation adds &#8220;nodes&#8221; to a dependency graph.  It also use this graph to generate CMake commands including <code class="docutils literal"><span class="pre">add_executable</span></code>, <code class="docutils literal"><span class="pre">add_dependencies</span></code>, <code class="docutils literal"><span class="pre">target_link_libraries</span></code>, and <code class="docutils literal"><span class="pre">add_test</span></code>.</p>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

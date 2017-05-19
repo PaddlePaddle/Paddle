@@ -204,7 +204,7 @@
 <span id="id4"></span><h2>训练数据存储<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
 <p>我们选择<a class="reference external" href="http://docs.ceph.com/docs/master/cephfs/">CephFS</a>作为存储系统。</p>
 <ul class="simple">
-<li>无论是从<a class="reference external" href="design/file_manager/README.md">PFSClient</a>的角度，还是从<a class="reference external" href="https://kubernetes.io/docs/concepts/workloads/pods/pod/">Pod</a>中运行任务的角度，统一用<code class="docutils literal"><span class="pre">/pfs/$DATACENTER/home/$USER</span></code>来访问用户自己的数据。</li>
+<li>无论是从<a class="reference internal" href="../file_manager/README.html"><span class="doc">PFSClient</span></a>的角度，还是从<a class="reference external" href="https://kubernetes.io/docs/concepts/workloads/pods/pod/">Pod</a>中运行任务的角度，统一用<code class="docutils literal"><span class="pre">/pfs/$DATACENTER/home/$USER</span></code>来访问用户自己的数据。</li>
 <li><code class="docutils literal"><span class="pre">/pfs/$DATACENTER/common</span></code>下存放公共数据集合<ul>
 <li>做只读挂载</li>
 </ul>

@@ -207,6 +207,11 @@ trans_full_matrix_projection
 Aggregate Layers
 ================
 
+AggregateLevel
+--------------
+..  autoclass:: paddle.v2.layer.AggregateLevel
+    :noindex:
+
 ..  _api_v2.layer_pooling:
 
 pooling
@@ -247,6 +252,11 @@ block_expand
     :noindex:
 
 ..  _api_v2.layer_expand:
+
+ExpandLevel
+-----------
+..  autoclass:: paddle.v2.layer.ExpandLevel
+    :noindex:
 
 expand
 ------
