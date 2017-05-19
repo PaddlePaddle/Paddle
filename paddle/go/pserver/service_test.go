@@ -108,9 +108,18 @@ func TestMultipleInit(t *testing.T) {
 	}
 }
 
+func TestUninitialized(t *testing.T) {
+	s := pserver.NewService()
+	var dummy int
+	err := s.SendGrads(nil, &dummy)
+	if err != pserver.ErrUninitialized {
+		t.FailNow()
+	}
+}
+
 func TestBlockUntilInitialized(t *testing.T) {
 	s := pserver.NewService()
-	ch := make(chan struct{}, 3)
+	ch := make(chan struct{}, 2)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -127,17 +136,6 @@ func TestBlockUntilInitialized(t *testing.T) {
 	go func() {
 		var dummy int
 		err := s.Save("", &dummy)
-		if err != nil {
-			t.FailNow()
-		}
-		wg.Done()
-		ch <- struct{}{}
-	}()
-
-	wg.Add(1)
-	go func() {
-		var dummy int
-		err := s.SendGrads(nil, &dummy)
 		if err != nil {
 			t.FailNow()
 		}

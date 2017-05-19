@@ -10,6 +10,7 @@ import (
 type ElementType int
 
 var ErrAlreadyInitialized = errors.New("pserver already initialized")
+var ErrUninitialized = errors.New("pserver not fully initialized")
 
 // Supported element types
 const (
@@ -111,7 +112,11 @@ func (s *Service) FinishInitParams(dummy0 int, dummy1 *int) error {
 // SendGrads sends gradients to parameter servers for parameter
 // optimization.
 func (s *Service) SendGrads(grads []Gradient, dummy *int) error {
-	<-s.initialized
+	select {
+	case <-s.initialized:
+	default:
+		return ErrUninitialized
+	}
 
 	count := len(grads)
 	if count == 0 {
