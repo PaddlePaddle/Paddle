@@ -1,6 +1,8 @@
 #include <boost/variant.hpp>
 
-#include <majel/allocation.h>
+#include "allocation.h"
+#include "hl_cuda.h"
+#include "paddle/utils/Logging.h"
 
 namespace majel {
 namespace detail {
