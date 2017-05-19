@@ -124,7 +124,7 @@ func TestBlockUntilInitialized(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		var dummy int
-		err := s.SaveModel("", &dummy)
+		err := s.Save("", &dummy)
 		if err != nil {
 			t.FailNow()
 		}
