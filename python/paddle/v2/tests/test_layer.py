@@ -73,7 +73,7 @@ class AggregateLayerTest(unittest.TestCase):
         pool = layer.pooling(
             input=pixel,
             pooling_type=pooling.Avg(),
-            agg_level=layer.AggregateLevel.EACH_SEQUENCE)
+            agg_level=layer.AggregateLevel.TO_SEQUENCE)
         last_seq = layer.last_seq(input=pixel)
         first_seq = layer.first_seq(input=pixel)
         concat = layer.concat(input=[last_seq, first_seq])
