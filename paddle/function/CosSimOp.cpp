@@ -80,13 +80,25 @@ Error cosineForward(const BufferArgs& inputs,
 }
 
 BEGIN_REGISTER_FUNCTION(cosFwd, cosineForward, CosSimAttribute)
-addTensor<INPUT>(2);
-addTensor<INPUT>(2);
+addTensor<INPUT>(2)->setDescription(
+    "The first argument of cosine similarity. It is a [h*w] matrix. The A "
+    "matrix in equation.");
+addTensor<INPUT>(2)->setDescription(
+    "The second argument of consine similarity. It is a [h*w] matrix or a "
+    "[1*w] matrix. The B matrix in equation. If B is a [h*w] matrix, it is just"
+    " like the equation described. If B is a [1*w] vector, the each of "
+    "similarity is the similarity of each row of A matrix and the B vector.");
 addTensor<OUTPUT>(/*shape = */ {topology::meta::kTensorShape_BATCH_SIZE, 1},
-                  /*arg_type*/ ASSIGN_TO);
+                  /*arg_type*/ ASSIGN_TO)
+    ->setDescription(
+        "The output simiarity matrix, It is a [h*1] matrix, which height is "
+        "same as the height of A matrix.");
 
-/// TODO(yuyang18): Complete documentation.
 setDescription(R"DOC(Cosine similarity forward function.
+
+The equation is:
+  similarity = cos(\theta)=\frac{A\cdot B}{\left \| A \right \|_2
+                                           \left \| B \right \|_2}
 
 There are two inputs of this function. The first matrix is a [h*w] matrix the
 second input is a [h*w] matrix or a [1*w] matrix. the output matrix will be a

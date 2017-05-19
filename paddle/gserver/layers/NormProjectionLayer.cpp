@@ -54,12 +54,14 @@ bool CMRProjectionNormLayer::init(const LayerMap& layerMap,
   fwd.attributes["scale"] = (double)scale_;
   fwd.attributes["pow"] = (double)pow_;
   this->forward_.push_back(function::createFunction(fwd));
-  this->backward_.add("CrossMapNormalGrad",
-                      function::Config()
-                          .set("size", size_)
-                          .set("scale", scale_)
-                          .set("pow", pow_),
-                      useGpu_);
+
+  topology::Function bwd;
+  bwd.type = "CrossMapNormalBwd";
+  bwd.setUseGPU(useGpu_);
+  bwd.attributes["size"] = size_;
+  bwd.attributes["scale"] = (double)scale_;
+  bwd.attributes["pow"] = (double)pow_;
+  this->backward_.push_back(function::createFunction(bwd));
 
   return true;
 }
@@ -103,6 +105,6 @@ void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
   inputs.addArg(*denoms_, shape_);
   outputs.addArg(*getInputGrad(0), shape_, ADD_TO);
 
-  backward_[0](inputs, outputs);
+  backward_[0](inputs, outputs).check();
 }
 }  // namespace paddle

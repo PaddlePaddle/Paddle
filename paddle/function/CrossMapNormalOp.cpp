@@ -189,7 +189,7 @@ addTensor<OUTPUT>(/*dim=*/4, ASSIGN_TO)
 addTensor<OUTPUT>(4, ASSIGN_TO)
     ->setDescription(
         "Second output is to simplify the backward calculation. which has same "
-        "shape of input");
+        "shape of input. It is the denominator in the equation.");
 
 setShapeInferer([](std::vector<topology::TensorPtr>& ins,
                    std::vector<topology::TensorPtr>& outs) -> Error {
@@ -220,117 +220,93 @@ setFlopsEstimator<CrossMapNormalAttribute>(
 
 END_REGISTER_FUNCTION(CrossMapNormalFwd)
 
-/**
- * \brief Backward calculation for normalization with across maps.
- *
- * Function implementation:
- *
- * The implementation of this Function is derived from the
- * CrossMapNormalFunc implementation.
- *
- * InputGrad = OutputGrad * denoms ^ (-beta)
- *    -- upper
- *  + > (OutputGrad * OutputValue * (-2 * alpha * beta) / denoms) * InputValue
- *    -- lower
- *
- * The data of inputs/outputs format is the same as the forward interface
- * and is NCHW.
- *
- * The upper and lower is the same as forward. The logic of the sum
- * is also the same as forward.
- *
- * Function Arguments:
- *
- * \param size_      represent N
- * \param scale_     represent alpha
- * \param pow_       represent beta
- * \param inputs[0]  represent InputValue, inputs[0] of CrossMapNormalFunc
- * \param inputs[1]  represent OutputValue, outputs[0] of CrossMapNormalFunc
- * \param inputs[2]  represent OutputGrad
- * \param inputs[3]  represent denoms, outputs[1] of CrossMapNormalFunc
- *                   This is the intermediate result that is
- *                   preserved in the forward calculation.
- * \param outputs[0] represent InputGrad
- */
 template <DeviceType Device>
-class CrossMapNormalGradFunc : public FunctionBase {
-public:
-  void init(const function::Config& config) override {
-    // function arguments
-    size_ = config.get<size_t>("size");
-    scale_ = config.get<real>("scale");
-    pow_ = config.get<real>("pow");
-
-    // number of inputs and outputs
-    numInputs_ = 4;
-    numOutputs_ = 1;
+static Error backward(const BufferArgs& inputs,
+                      const BufferArgs& outputs,
+                      const CrossMapNormalAttribute& attrs) {
+  if (outputs[0].getArgType() != ADD_TO) {
+    // Currently, some algorithm implementations are ASSIGN_TO mode,
+    // if need to support the ADD_TO calculation, need to clear the output.
+    typename Tensor<real, Device>::Vector tmp(outputs[0].shape().getElements(),
+                                              outputs[0].data<real>());
+    tmp.zero();
   }
 
-  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    check(inputs, outputs);
-    if (outputs[0].getArgType() != ADD_TO) {
-      // Currently, some algorithm implementations are ASSIGN_TO mode,
-      // if need to support the ADD_TO calculation, need to clear the output.
-      typename Tensor<real, Device>::Vector tmp(
-          outputs[0].shape().getElements(), outputs[0].data<real>());
-      tmp.zero();
-    }
+  size_t batchSize = inputs[0].shape()[0];
+  size_t maps = inputs[0].shape()[1];
+  size_t rows = inputs[0].shape()[2];
+  size_t columns = inputs[0].shape()[3];
 
-    size_t batchSize = inputs[0].shape()[0];
-    size_t maps = inputs[0].shape()[1];
-    size_t rows = inputs[0].shape()[2];
-    size_t columns = inputs[0].shape()[3];
+  CrossMapNormalGrad<Device>(outputs[0].data<real>(),
+                             inputs[0].data<real>(),
+                             inputs[1].data<real>(),
+                             inputs[2].data<real>(),
+                             inputs[3].data<real>(),
+                             batchSize,
+                             maps,
+                             rows,
+                             columns,
+                             attrs.size,
+                             attrs.scale,
+                             attrs.scale);
+  return Error();
+}
 
-    CrossMapNormalGrad<Device>(outputs[0].data<real>(),
-                               inputs[0].data<real>(),
-                               inputs[1].data<real>(),
-                               inputs[2].data<real>(),
-                               inputs[3].data<real>(),
-                               batchSize,
-                               maps,
-                               rows,
-                               columns,
-                               size_,
-                               scale_,
-                               pow_);
+BEGIN_REGISTER_FUNCTION(CrossMapNormalBwd, backward, CrossMapNormalAttribute)
+setDescription(R"DOC(Backward calculation for normalization with across maps.
+
+The equation is
+  InputGrad = OutputGrad * Denominator ^{-\beta} +
+               \sum_{j=max(0, c-N/2)}^{j=min(C, c+N/2)}
+      (OutputGrad * OutputValue * (-2 *\alpha *\beta)/ denominator) * InputValue
+
+The data of inputs/outputs format is the same as the forward interface and is
+NCHW.
+
+The upper and lower is the same as forward. The logic of the sum is also the
+same as forward.
+)DOC");
+
+addTensor<INPUT>(4)->setDescription("InputValue in the equation.");
+addTensor<INPUT>(4)->setDescription(
+    "OutputValue in the equation. The output[0] of CrossMapNormalFwd "
+    "function.");
+addTensor<INPUT>(4)->setDescription("OutputGrad in the equation.");
+addTensor<INPUT>(4)->setDescription(
+    "Denominator in the equation. The output[1] of CrossMapNormalFwd "
+    "function.");
+
+// CMR OP supports ADD_TO and ASSIGN_TO
+addTensor<OUTPUT>(4)
+    ->setDescription("The input grad")
+    .supportArgType(ADD_TO, {ADD_TO, ASSIGN_TO});
+
+setShapeInferer([](std::vector<topology::TensorPtr>& ins,
+                   std::vector<topology::TensorPtr>& outs) -> Error {
+  auto shape = ins[0]->shape();
+  for (size_t i = 1; i < ins.size(); ++i) {
+    if (shape != ins[i]->shape())
+      return Error("Input shape must be same in CMR Projection");
   }
+  outs[0]
+      ->setShape(shape)
+      .setDataType(topology::DataType::DENSE)
+      .setSequenceType(ins[0]->sequenceType());
 
-  void check(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(numInputs_, inputs.size());
-    CHECK_EQ(numOutputs_, outputs.size());
+  return Error();
+});
 
-    CHECK_EQ(inputs[0].shape().ndims(), (size_t)4);
-    CHECK(inputs[0].shape() == inputs[1].shape());
-    CHECK(inputs[0].shape() == inputs[2].shape());
-    CHECK(inputs[0].shape() == inputs[3].shape());
-    CHECK(inputs[0].shape() == outputs[0].shape());
-  }
+setFlopsEstimator<CrossMapNormalAttribute>(
+    [](std::vector<topology::TensorPtr>& ins,
+       std::vector<topology::TensorPtr>&,
+       const CrossMapNormalAttribute& attrs,
+       uint64_t* flops) -> Error {
+      auto shape = ins[0]->shape();
+      *flops = std::accumulate(
+                   shape.begin(), shape.end(), 1, std::multiplies<size_t>()) *
+               (attrs.size * 4 + 2);
+      return Error();
+    });
 
-  // Only need the shape of one input, can calculate the
-  // floating-point operation.
-  size_t ops(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_LT((size_t)1, inputs.size());
-    size_t batchSize = inputs[0].shape()[0];
-    size_t maps = inputs[0].shape()[1];
-    size_t rows = inputs[0].shape()[2];
-    size_t columns = inputs[0].shape()[3];
-
-    // number of floating-point operations
-    // an approximate value
-    size_t ops = batchSize * maps * rows * columns * (size_ * 4 + 2);
-
-    return ops;
-  }
-
-private:
-  size_t size_;
-  real scale_;
-  real pow_;
-};
-
-REGISTER_TYPED_FUNC(CrossMapNormalGrad, CPU, CrossMapNormalGradFunc);
-#ifndef PADDLE_ONLY_CPU
-REGISTER_TYPED_FUNC(CrossMapNormalGrad, GPU, CrossMapNormalGradFunc);
-#endif
-
+END_REGISTER_FUNCTION(CrossMapNormalBwd)
 }  // namespace paddle
