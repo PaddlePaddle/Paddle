@@ -5,8 +5,8 @@
 #include <stdexcept>
 #include <type_traits>
 
+#include "paddle/majel/detail/cuda_assert.h"
 #include "paddle/majel/detail/hostdevice.h"
-#include "paddle/majel/detail/util.h"
 
 namespace majel {
 
