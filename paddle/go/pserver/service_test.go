@@ -110,6 +110,7 @@ func TestMultipleInit(t *testing.T) {
 
 func TestBlockUntilInitialized(t *testing.T) {
 	s := pserver.NewService()
+	ch := make(chan struct{}, 3)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -119,6 +120,7 @@ func TestBlockUntilInitialized(t *testing.T) {
 			t.FailNow()
 		}
 		wg.Done()
+		ch <- struct{}{}
 	}()
 
 	wg.Add(1)
@@ -129,6 +131,7 @@ func TestBlockUntilInitialized(t *testing.T) {
 			t.FailNow()
 		}
 		wg.Done()
+		ch <- struct{}{}
 	}()
 
 	wg.Add(1)
@@ -139,12 +142,20 @@ func TestBlockUntilInitialized(t *testing.T) {
 			t.FailNow()
 		}
 		wg.Done()
+		ch <- struct{}{}
 	}()
 
 	var dummy int
 	err := s.BeginInitParams(nil, &dummy)
 	if err != nil {
 		t.FailNow()
+	}
+
+	select {
+	case <-ch:
+		// some function returned before initialization is completed.
+		t.FailNow()
+	default:
 	}
 
 	err = s.FinishInitParams(0, &dummy)
