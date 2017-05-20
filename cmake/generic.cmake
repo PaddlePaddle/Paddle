@@ -27,6 +27,7 @@
 #
 # cmake_parse_arguments can help us to achieve this goal.
 # https://cmake.org/cmake/help/v3.0/module/CMakeParseArguments.html
+#
 
 # cc_library parses tensor.cc and figures out that target also depend on tensor.h.
 # cc_library(tensor
