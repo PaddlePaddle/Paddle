@@ -147,12 +147,20 @@ protected:
 #define REGISTER_FUNCTION_META_INFO(CLASS) \
   static paddle::InitFunction __init_##CLASS##_instance__([] { CLASS inst; });
 
+#ifdef PADDLE_ONLY_CPU
+#define _REG_KERNEL_(__func__) \
+  registerKernel<DEVICE_TYPE_CPU>(__func__<DEVICE_TYPE_CPU>)
+#else
+#define _REG_KERNEL_(__func__)                                \
+  registerKernel<DEVICE_TYPE_CPU>(__func__<DEVICE_TYPE_CPU>); \
+  registerKernel<DEVICE_TYPE_GPU>(__func__<DEVICE_TYPE_GPU>)
+#endif
+
 #define BEGIN_REGISTER_FUNCTION(cls, __func__, __attr_type__)            \
   class cls : public paddle::function::MetaInfoRegister<__attr_type__> { \
   public:                                                                \
     cls() : paddle::function::MetaInfoRegister<__attr_type__>(#cls) {    \
-      registerKernel<DEVICE_TYPE_CPU>(__func__<DEVICE_TYPE_CPU>);        \
-      registerKernel<DEVICE_TYPE_GPU>(__func__<DEVICE_TYPE_GPU>);
+      _REG_KERNEL_(__func__);
 
 #define END_REGISTER_FUNCTION(cls) \
   }                                \
