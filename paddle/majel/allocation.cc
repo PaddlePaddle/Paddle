@@ -1,8 +1,6 @@
-#include <boost/variant.hpp>
-
 #include "allocation.h"
-#include "hl_cuda.h"
-#include "paddle/utils/Logging.h"
+#include <boost/variant.hpp>
+#include "malloc.h"
 
 namespace majel {
 namespace detail {
@@ -12,15 +10,12 @@ public:
   Allocator(size_t size) : size_(size) {}
 
   void* operator()(const CpuPlace& p) const {
-    void* address;
-    CHECK_EQ(posix_memalign(&address, 32ul, size_), 0);
-    CHECK(address) << "Fail to allocate CPU memory: size=" << size_;
+    void* address = majel::malloc::malloc(p, size_);
     return address;
   }
 
   void* operator()(const GpuPlace& p) const {
-    void* address = hl_malloc_device(size_);
-    CHECK(address) << "Fail to allocate GPU memory " << size_ << " bytes";
+    void* address = majel::malloc::malloc(p, size_);
     return address;
   }
 
@@ -34,13 +29,13 @@ public:
 
   void operator()(CpuPlace p) const {
     if (ptr_) {
-      ::free(ptr_);
+      majel::malloc::free(p, ptr_);
     }
   }
 
   void operator()(GpuPlace p) const {
     if (ptr_) {
-      hl_free_mem_device(ptr_);
+      majel::malloc::free(p, ptr_);
     }
   }
 
