@@ -294,26 +294,62 @@ label for ctc</li>
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">chunk</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Chunk evaluator is used to evaluate segment labelling accuracy for a
-sequence. It calculates the chunk detection F1 score.</p>
-<p>A chunk is correctly detected if its beginning, end and type are correct.
-Other chunk type is ignored.</p>
-<p>For each label in the label sequence, we have:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">tagType</span> <span class="o">=</span> <span class="n">label</span> <span class="o">%</span> <span class="n">numTagType</span>
-<span class="n">chunkType</span> <span class="o">=</span> <span class="n">label</span> <span class="o">/</span> <span class="n">numTagType</span>
-<span class="n">otherChunkType</span> <span class="o">=</span> <span class="n">numChunkTypes</span>
+sequence. It calculates precision, recall and F1 scores for the chunk detection.</p>
+<p>To use chunk evaluator, several concepts need to be clarified firstly.</p>
+<ul class="simple">
+<li><strong>Chunk type</strong> is the type of the whole chunk and a chunk consists of one or several words.  (For example in NER, ORG for organization name, PER for person name etc.)</li>
+<li><strong>Tag type</strong> indicates the position of a word in a chunk. (B for begin, I for inside, E for end, S for single)</li>
+</ul>
+<p>We can name a label by combining tag type and chunk type. (ie. B-ORG for begining of an organization name)</p>
+<p>The construction of label dictionary should obey the following rules:</p>
+<ul class="simple">
+<li>Use one of the listed labelling schemes. These schemes differ in ways indicating chunk boundry.</li>
+</ul>
+<div class="highlight-text"><div class="highlight"><pre><span></span>Scheme    Description
+plain    Use the same label for the whole chunk.
+IOB      Two labels for chunk type X, B-X for chunk begining and I-X for chunk inside.
+IOE      Two labels for chunk type X, E-X for chunk ending and I-X for chunk inside.
+IOBES    Four labels for chunk type X, B-X for chunk begining, I-X for chunk inside, E-X for chunk end and S-X for single word chunk.
 </pre></div>
 </div>
-<p>The total number of different labels is numTagType*numChunkTypes+1.
-We support 4 labelling scheme.
-The tag type for each of the scheme is shown as follows:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">Scheme</span> <span class="n">Begin</span> <span class="n">Inside</span> <span class="n">End</span>   <span class="n">Single</span>
-<span class="n">plain</span>  <span class="mi">0</span>     <span class="o">-</span>      <span class="o">-</span>     <span class="o">-</span>
-<span class="n">IOB</span>    <span class="mi">0</span>     <span class="mi">1</span>      <span class="o">-</span>     <span class="o">-</span>
-<span class="n">IOE</span>    <span class="o">-</span>     <span class="mi">0</span>      <span class="mi">1</span>     <span class="o">-</span>
-<span class="n">IOBES</span>  <span class="mi">0</span>     <span class="mi">1</span>      <span class="mi">2</span>     <span class="mi">3</span>
+<p>To make it clear, let&#8217;s illustrate by an NER example.
+Assuming that there are three named entity types including ORG, PER and LOC which are called &#8216;chunk type&#8217; here,
+if &#8216;IOB&#8217; scheme were used, the label set will be extended to a set including B-ORG, I-ORG, B-PER, I-PER, B-LOC, I-LOC and O,
+in which B-ORG for begining of ORG and I-ORG for inside of ORG.
+Prefixes which are called &#8216;tag type&#8217; here are added to chunk types and there are two tag types including B and I.
+Of course, the training data should be labeled accordingly.</p>
+<ul class="simple">
+<li>Mapping is done correctly by the listed equations and assigning protocol.</li>
+</ul>
+<p>The following table are equations to extract tag type and chunk type from a label.</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>tagType = label % numTagType
+chunkType = label / numTagType
+otherChunkType = numChunkTypes
 </pre></div>
 </div>
-<p>&#8216;plain&#8217; means the whole chunk must contain exactly the same chunk label.</p>
+<p>The following table shows the mapping rule between tagType and tag type in each scheme.</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>Scheme Begin Inside End   Single
+plain  0     -      -     -
+IOB    0     1      -     -
+IOE    -     0      1     -
+IOBES  0     1      2     3
+</pre></div>
+</div>
+<p>Continue the NER example, and the label dict should look like this to satify above equations:</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>B-ORG  0
+I-ORG  1
+B-PER  2
+I-PER  3
+B-LOC  4
+I-LOC  5
+O      6
+</pre></div>
+</div>
+<p>In this example, chunkType has three values: 0 for ORG, 1 for PER, 2 for LOC, because the scheme is
+&#8220;IOB&#8221; so tagType has two values: 0 for B and 1 for I.
+Here we will use I-LOC to explain the above mapping rules in detail.
+For I-LOC, the label id is 5, so we can get tagType=1 and chunkType=2, which means I-LOC is a part of NER chunk LOC
+and the tag is I.</p>
 <p>The simple usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">chunk_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">chunk_scheme</span><span class="p">,</span> <span class="n">num_chunk_types</span><span class="p">)</span>
 </pre></div>
