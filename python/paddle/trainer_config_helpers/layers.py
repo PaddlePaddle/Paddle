@@ -225,6 +225,24 @@ class LayerType(object):
 
 
 class AggregateLevel(object):
+    """
+    PaddlePaddle supports three sequence types:
+
+    - :code:`SequenceType.NO_SEQUENCE` means the sample is not a sequence.
+    - :code:`SequenceType.SEQUENCE` means the sample is a sequence.
+    - :code:`SequenceType.SUB_SEQUENCE` means the sample is a nested sequence,
+      each timestep of which is also a sequence.
+
+    Accordingly, AggregateLevel supports two modes:
+
+    - :code:`AggregateLevel.EACH_TIMESTEP` means the aggregation acts on each
+      timestep of a sequence, both :code:`SUB_SEQUENCE` and :code:`SEQUENCE` will
+      be aggregated to :code:`NO_SEQUENCE`.
+
+    - :code:`AggregateLevel.EACH_SEQUENCE` means the aggregation acts on each
+      sequence of a nested sequence, :code:`SUB_SEQUENCE` will be aggregated to
+      :code:`SEQUENCE`.
+    """
     EACH_TIMESTEP = 'non-seq'
     EACH_SEQUENCE = 'seq'
 
@@ -1454,6 +1472,19 @@ def first_seq(input,
 
 
 class ExpandLevel(object):
+    """
+    Please refer to AggregateLevel first.
+
+    ExpandLevel supports two modes:
+
+    - :code:`ExpandLevel.FROM_TIMESTEP` means the expandation acts on each
+      timestep of a sequence, :code:`NO_SEQUENCE` will be expanded to
+      :code:`SEQUENCE` or :code:`SUB_SEQUENCE`.
+
+    - :code:`ExpandLevel.FROM_SEQUENCE` means the expandation acts on each
+      sequence of a nested sequence, :code:`SEQUENCE` will be expanded to
+      :code:`SUB_SEQUENCE`.
+    """
     FROM_TIMESTEP = AggregateLevel.EACH_TIMESTEP
     FROM_SEQUENCE = AggregateLevel.EACH_SEQUENCE
 
