@@ -29,7 +29,7 @@ TEST(CrossMapNormal, real) {
 
             // init Test object
             FunctionCompare test("CrossMapNormal",
-                                 FuncConfig()
+                                 function::Config()
                                      .set("size", size)
                                      .set("scale", (real)1.5)
                                      .set("pow", (real)0.5));
@@ -58,7 +58,7 @@ TEST(CrossMapNormalGrad, real) {
                     << " size=" << size;
 
             FunctionCompare test("CrossMapNormalGrad",
-                                 FuncConfig()
+                                 function::Config()
                                      .set("size", size)
                                      .set("scale", (real)1.5)
                                      .set("pow", (real)0.5));

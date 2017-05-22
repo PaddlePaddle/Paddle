@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "FuncConfig.h"
 #include "Function.h"
+#include "FunctionList.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
 #include "paddle/math/tests/TensorCheck.h"
@@ -47,11 +49,11 @@ typedef std::shared_ptr<BufferArg> BufferArgPtr;
  */
 class FunctionCompare {
 public:
-  FunctionCompare(const std::string& name, const FuncConfig& config)
-      : cpuFunc_(FunctionBase::funcRegistrar_.createByType(name + "-CPU")),
-        gpuFunc_(FunctionBase::funcRegistrar_.createByType(name + "-GPU")) {
-    cpuFunc_->init(config);
-    gpuFunc_->init(config);
+  FunctionCompare(const std::string& name, const function::Config& config) {
+    flist_.add(name, config, false);
+    flist_.add(name, config, true);
+    cpuFunc_ = flist_[0];
+    gpuFunc_ = flist_[1];
   }
 
   ~FunctionCompare() {}
@@ -222,7 +224,7 @@ public:
 
     initOutputs();
     // function calculate
-    auto callFunction = [](FunctionBase* function,
+    auto callFunction = [](function::Function function,
                            std::vector<BufferArgPtr>& inputs,
                            std::vector<BufferArgPtr>& outputs) {
       BufferArgs inArgs;
@@ -233,19 +235,15 @@ public:
       for (auto arg : outputs) {
         outArgs.addArg(*arg);
       }
-      function->calc(inArgs, outArgs);
+      function(inArgs, outArgs);
     };
 
-    callFunction(cpuFunc_.get(), cpuInputs_, cpuOutputs_);
-    callFunction(gpuFunc_.get(), gpuInputs_, gpuOutputs_);
+    callFunction(cpuFunc_, cpuInputs_, cpuOutputs_);
+    callFunction(gpuFunc_, gpuInputs_, gpuOutputs_);
 
     // check outputs
     compareOutputs();
   }
-
-  std::shared_ptr<FunctionBase> getCpuFunction() const { return cpuFunc_; }
-
-  std::shared_ptr<FunctionBase> getGpuFunction() const { return gpuFunc_; }
 
 protected:
   // only init cpu argument, gpu argument copy from cpu argument.
@@ -331,8 +329,10 @@ protected:
   }
 
 protected:
-  std::shared_ptr<FunctionBase> cpuFunc_;
-  std::shared_ptr<FunctionBase> gpuFunc_;
+  function::Function cpuFunc_;
+  function::Function gpuFunc_;
+  function::FunctionList flist_;
+
   std::vector<CpuMemHandlePtr> cpuMemory_;
   std::vector<GpuMemHandlePtr> gpuMemory_;
   std::vector<BufferArgPtr> cpuInputs_;

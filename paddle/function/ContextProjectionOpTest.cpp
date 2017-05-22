@@ -30,7 +30,7 @@ void testMatrixProjectionForward(int context_start,
 
   FunctionCompare test(
       "ContextProjectionForward",
-      FuncConfig()
+      function::Config()
           .set("context_length", context_length)
           .set("context_start", context_start)
           .set("begin_pad", (size_t)std::max(0, -context_start)));
@@ -62,7 +62,7 @@ void testMatrixProjectionBackward(int context_start,
 
   FunctionCompare test(
       "ContextProjectionBackward",
-      FuncConfig()
+      function::Config()
           .set("context_length", context_length)
           .set("context_start", context_start)
           .set("begin_pad", (size_t)std::max(0, -context_start))

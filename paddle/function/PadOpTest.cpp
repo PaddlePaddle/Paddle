@@ -27,7 +27,7 @@ TEST(Pad, real) {
           for (bool test_grad : {false, true}) {
             FunctionCompare compare(
                 test_grad ? "PadGrad" : "Pad",
-                FuncConfig()
+                function::Config()
                     .set<std::vector<uint32_t>>("channel", {2, 3})
                     .set<std::vector<uint32_t>>("height", {1, 2})
                     .set<std::vector<uint32_t>>("width", {3, 2}));
