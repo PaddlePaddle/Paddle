@@ -170,9 +170,6 @@ public:
 
   real getLearningRate() const { return learningRate_; }
 
-  // real getGradientClippingThreshold() const {return
-  // gradientClippingThreshold_;}
-
   virtual void setNoDecay() { applyDecay_ = false; }
 
   static ParameterOptimizer* create(const OptimizationConfig& optConfig,
@@ -205,11 +202,6 @@ protected:
    * so, if lr change in StartBatch, please assign to learningRate_
    */
   real learningRate_;
-
-  /**
-   * global threshold for gradient clipping,
-   * init value is opt_config.gradient_clipping_thresholod
-   */
 
   std::unique_ptr<LearningRateScheduler> learningRateScheduler_;
   int64_t pass_;  // current training pass (starting from 0)
