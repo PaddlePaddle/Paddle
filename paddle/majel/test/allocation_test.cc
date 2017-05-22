@@ -1,5 +1,5 @@
 #include "paddle/majel/allocation.h"
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 TEST(Allocation, malloc) {
   majel::CpuPlace cpu;

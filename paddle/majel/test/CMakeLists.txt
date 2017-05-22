@@ -8,7 +8,7 @@ cc_test(ddim_test
 
 cc_test(allocation_test
     SRCS allocation_test.cc
-    DEPS place malloc allocation)
+    DEPS allocation malloc place)
 
 if(WITH_GPU)
     nv_test(cuda_test SRCS cuda_test.cu)
