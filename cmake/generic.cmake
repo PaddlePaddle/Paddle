@@ -27,6 +27,7 @@
 #
 # cmake_parse_arguments can help us to achieve this goal.
 # https://cmake.org/cmake/help/v3.0/module/CMakeParseArguments.html
+#
 
 # cc_library parses tensor.cc and figures out that target also depend on tensor.h.
 # cc_library(tensor
@@ -142,3 +143,78 @@ function(nv_test TARGET_NAME)
   endif()
   add_test(${TARGET_NAME} ${TARGET_NAME})
 endfunction(nv_test)
+
+set(GOPATH "${CMAKE_CURRENT_BINARY_DIR}/go")
+file(MAKE_DIRECTORY ${GOPATH})
+
+# Because api.go defines a GO wrapper to ops and tensor, it depends on
+# both.  This implies that if any of tensor.{h,cc}, ops.{h,cu}, or
+# api.go is changed, api need to be re-built.
+# go_library(api
+#   SRCS
+#   api.go
+#   DEPS
+#   tensor # Because ops depend on tensor, this line is optional.
+#   ops)
+function(go_library TARGET_NAME)
+  set(options OPTIONAL)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(go_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  if (${go_library_OPTIONAL} STREQUAL "SHARED")
+    set(BUILD_MODE "-buildmode=c-shared")
+    if(APPLE)
+      set(LIB_NAME "lib${TARGET_NAME}.dylib")
+    else()
+      set(LIB_NAME "lib${TARGET_NAME}.so")
+    endif()  
+  else()
+    set(BUILD_MODE "-buildmode=c-archive")
+    set(LIB_NAME "lib${TARGET_NAME}.a")
+  endif()
+  add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
+    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
+    -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
+    ${go_library_SRCS}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
+  add_custom_target(${TARGET_NAME}_lib ALL DEPENDS ${TARGET_NAME}_timestamp ${go_library_DEPS})
+  add_library(${TARGET_NAME} STATIC IMPORTED)
+  set_property(TARGET ${TARGET_NAME} PROPERTY
+    IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}")
+  add_dependencies(${TARGET_NAME} ${TARGET_NAME}_lib)
+endfunction(go_library)
+
+function(go_binary TARGET_NAME)
+  set(options OPTIONAL)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(go_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
+    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
+    -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
+    ${go_library_SRCS}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})  
+  add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_binary_DEPS})  
+  install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME} DESTINATION bin)
+endfunction(go_binary)
+
+function(go_test TARGET_NAME)
+  set(options OPTIONAL)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(go_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
+    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} test
+    -c -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
+    ${go_test_SRCS}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})  
+  add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_test_DEPS})  
+  add_test(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
+endfunction(go_test)
+
+# go_extern will download extern go project.
+# go_extern(target_name extern_source)
+# go_extern(go_redis github.com/hoisie/redis)
+function(go_extern TARGET_NAME)
+  add_custom_target(${TARGET_NAME} env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get ${ARGN})
+endfunction(go_extern)
