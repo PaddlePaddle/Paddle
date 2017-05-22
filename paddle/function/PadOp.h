@@ -15,16 +15,35 @@ limitations under the License. */
 #pragma once
 
 #include "Function.h"
+#include "Register.h"
 
 namespace paddle {
 
-struct PadConf {
+struct PadConf : public topology::Attribute {
   /// how many values to add before/after the data along channel dimension.
   std::vector<uint32_t> channel;
   /// how many values to add before/after the data along height dimension.
   std::vector<uint32_t> height;
   /// how many values to add before/after the data along width dimension.
   std::vector<uint32_t> width;
+
+  REGISTER_FUNC_ATTRIBUTE() {
+    regAttr(&PadConf::channel,
+            "channel",
+            "how many values to add before/after the data along channel "
+            "dimension.")
+        .mustSet();
+    regAttr(
+        &PadConf::height,
+        "height",
+        "how many values to add before/after the data along height dimension.")
+        .mustSet();
+    regAttr(
+        &PadConf::width,
+        "width",
+        "how many values to add before/after the data along width dimension.")
+        .mustSet();
+  }
 };
 
 /**

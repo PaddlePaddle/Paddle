@@ -25,14 +25,22 @@ namespace meta {
 class AttributeMap : public Map<std::string, any> {
 public:
   template <typename T>
-  Error __must_check set(const std::string& name,
-                         const T& val,
-                         bool overwrite = false) {
+  Error __must_check setWithError(const std::string& name,
+                                  const T& val,
+                                  bool overwrite = false) {
     if (!overwrite && find(name) != end()) {
       return Error("Attribute %s has been set", name.c_str());
     }
     (*this)[name] = val;
     return Error();
+  }
+
+  template <typename T>
+  AttributeMap& set(const std::string& name,
+                    const T& val,
+                    bool overwrite = false) {
+    this->setWithError(name, val, overwrite).check();
+    return *this;
   }
 
   template <typename T>

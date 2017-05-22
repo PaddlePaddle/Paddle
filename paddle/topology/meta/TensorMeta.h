@@ -94,12 +94,12 @@ public:
    * @return *this;
    */
   TensorMeta& setOptional(bool optional = true) {
-    metaAttributes_.set<bool>("optional", optional, /*overwrite*/ true).check();
+    metaAttributes_.set<bool>("optional", optional, /*overwrite*/ true);
     return *this;
   }
 
   TensorMeta& setDescription(const std::string& doc) {
-    metaAttributes_.set("description", doc).check();
+    metaAttributes_.set("description", doc);
     return *this;
   }
 

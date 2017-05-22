@@ -47,21 +47,15 @@ bool CMRProjectionNormLayer::init(const LayerMap& layerMap,
   /* the size of inputs for norm-layer is 1 */
   CHECK_EQ(config_.inputs_size(), 1);
 
-  topology::Function fwd;
-  fwd.type = "CrossMapNormalFwd";
-  fwd.setUseGPU(useGpu_);
-  fwd.attributes["size"] = size_;
-  fwd.attributes["scale"] = (double)scale_;
-  fwd.attributes["pow"] = (double)pow_;
-  this->forward_.push_back(function::createFunction(fwd));
+  this->forward_.add("CrossMapNormalFwd", useGpu_)
+      .set("size", size_)
+      .set<double>("scale", scale_)
+      .set<double>("pow", pow_);
 
-  topology::Function bwd;
-  bwd.type = "CrossMapNormalBwd";
-  bwd.setUseGPU(useGpu_);
-  bwd.attributes["size"] = size_;
-  bwd.attributes["scale"] = (double)scale_;
-  bwd.attributes["pow"] = (double)pow_;
-  this->backward_.push_back(function::createFunction(bwd));
+  this->backward_.add("CrossMapNormalBwd", useGpu_)
+      .set("size", size_)
+      .set<double>("scale", scale_)
+      .set<double>("pow", pow_);
 
   return true;
 }

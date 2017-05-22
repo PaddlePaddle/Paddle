@@ -39,11 +39,11 @@ protected:
       topology::meta::FunctionTensorType::OUTPUT;
 
   void setDescription(const std::string& description) {
-    func_->metaAttributes_.set("description", description).check();
+    func_->metaAttributes_.set("description", description);
   }
 
   void setShapeInferer(TensorShapeInferer inferer) {
-    func_->metaAttributes_.set("shapeInferer", inferer).check();
+    func_->metaAttributes_.set("shapeInferer", inferer);
   }
 
   template <typename T>
@@ -51,24 +51,22 @@ protected:
                                            std::vector<topology::TensorPtr>&,
                                            const T&)> inferer) {
     paddle::topology::meta::FunctionMetaPtr func = func_;
-    func_->metaAttributes_
-        .set<TensorShapeInfererWithAttrs>(
-            "shapeInferer",
-            [inferer, func](std::vector<topology::TensorPtr>& in,
-                            std::vector<topology::TensorPtr>& out,
-                            const topology::AttributeMap& attrs) {
-              T val;
-              auto err = func->parseAttribute(attrs, &val);
-              if (!err.isOK()) return err;
-              return inferer(in, out, val);
-            })
-        .check();
+    func_->metaAttributes_.set<TensorShapeInfererWithAttrs>(
+        "shapeInferer",
+        [inferer, func](std::vector<topology::TensorPtr>& in,
+                        std::vector<topology::TensorPtr>& out,
+                        const topology::AttributeMap& attrs) {
+          T val;
+          auto err = func->parseAttribute(attrs, &val);
+          if (!err.isOK()) return err;
+          return inferer(in, out, val);
+        });
   }
 
   void setFlopsEstimator(std::function<Error(std::vector<topology::TensorPtr>&,
                                              std::vector<topology::TensorPtr>&,
                                              uint64_t* flops)> estimator) {
-    func_->metaAttributes_.set("flopsEstimator", estimator).check();
+    func_->metaAttributes_.set("flopsEstimator", estimator);
   }
 
   template <typename T>
@@ -94,7 +92,7 @@ protected:
       return estimator(ins, outs, val, flops);
     };
 
-    func_->metaAttributes_.set("flopsEstimator", estimatorImpl).check();
+    func_->metaAttributes_.set("flopsEstimator", estimatorImpl);
   }
 
   template <FunctionTensorType type>
@@ -125,10 +123,9 @@ protected:
   }
 
   template <DeviceType devType>
-  paddle::Error registerKernel(
-      std::function<Error(const BufferArgs& ins,
-                          const BufferArgs& outs,
-                          const AttributeType& attrs)> kernel) {
+  void registerKernel(std::function<Error(const BufferArgs& ins,
+                                          const BufferArgs& outs,
+                                          const AttributeType& attrs)> kernel) {
     auto meta = func_;
     auto key = devType == DEVICE_TYPE_CPU ? "CPUKernel" : "GPUKernel";
 
@@ -141,7 +138,7 @@ protected:
       if (!err.isOK()) return err;
       return kernel(ins, outs, tmp);
     };
-    return func_->metaAttributes_.set(key, fn);
+    func_->metaAttributes_.set(key, fn);
   }
 
   paddle::topology::meta::FunctionMetaPtr func_;

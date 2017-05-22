@@ -72,9 +72,11 @@ void PadGrad<DEVICE_TYPE_CPU>(real* inGrad,
 }
 
 static inline PadConf castToPadConf(const function::Config& conf) {
-  return {conf.get<std::vector<uint32_t>>("channel"),
-          conf.get<std::vector<uint32_t>>("height"),
-          conf.get<std::vector<uint32_t>>("width")};
+  PadConf padConf;
+  padConf.channel = conf.get<std::vector<uint32_t>>("channel");
+  padConf.height = conf.get<std::vector<uint32_t>>("height");
+  padConf.width = conf.get<std::vector<uint32_t>>("width");
+  return padConf;
 }
 
 /**
@@ -129,6 +131,48 @@ static inline PadConf castToPadConf(const function::Config& conf) {
  *                       [[0,0,0], [3,8,9], [2,3,5], [0,0,0]] ],
  *                   ] # the shape is (2,2,4,3)
  */
+
+template <DeviceType Device>
+static Error forward(const BufferArgs& ins,
+                     const BufferArgs& outs,
+                     const PadConf& attrs) {
+  size_t num = ins[0].shape()[0];
+  size_t inC = ins[0].shape()[1];
+  size_t inH = ins[0].shape()[2];
+  size_t inW = ins[0].shape()[3];
+  typename Tensor<real, Device>::Vector vec(outs[0].shape().getElements(),
+                                            outs[0].data<real>());
+  vec.zero();
+
+  Pad<Device>(
+      outs[0].data<real>(), ins[0].data<real>(), num, inC, inH, inW, attrs);
+  return Error();
+}
+
+static size_t accumulate(const std::vector<uint32_t>& container) {
+  return std::accumulate(container.begin(), container.end(), 0);
+}
+
+BEGIN_REGISTER_FUNCTION(PadFwd, forward, PadConf)
+addTensor<INPUT>(4);
+addTensor<OUTPUT>(4, ASSIGN_TO);
+setShapeInferer<PadConf>([](std::vector<topology::TensorPtr>& ins,
+                            std::vector<topology::TensorPtr>& outs,
+                            const PadConf& attrs) -> Error {
+
+  auto shape = ins[0]->shape();
+  shape[1] += accumulate(attrs.channel);
+  shape[2] += accumulate(attrs.height);
+  shape[3] += accumulate(attrs.width);
+
+  outs[0]
+      ->setShape(shape)
+      .setDataType(ins[0]->dataType())
+      .setSequenceType(ins[0]->sequenceType());
+  return Error();
+});
+
+END_REGISTER_FUNCTION(PadFwd)
 
 template <DeviceType Device>
 class PadFunc : public FunctionBase {

@@ -49,23 +49,17 @@ bool ContextProjection::init() {
   bool is_padding = config_.trainable_padding();
   size_t total_pad = is_padding ? beginPad_ + endPad_ : 0;
 
-  topology::Function func;
-  func.type = "ctxProjFwd";
-  func.setUseGPU(useGpu_);
-  func.attributes["context_length"] = context_length;
-  func.attributes["context_start"] = context_start;
-  func.attributes["begin_pad"] = beginPad_;
-  forward_.push_back(function::createFunction(func));
+  forward_.add("ctxProjFwd", useGpu_)
+      .set("context_length", context_length)
+      .set("context_start", context_start)
+      .set("begin_pad", beginPad_);
 
-  topology::Function ctxProjBwd;
-  ctxProjBwd.type = "ctxProjBwd";
-  ctxProjBwd.setUseGPU(useGpu_);
-  ctxProjBwd.attributes["context_length"] = context_length;
-  ctxProjBwd.attributes["context_start"] = context_start;
-  ctxProjBwd.attributes["begin_pad"] = beginPad_;
-  ctxProjBwd.attributes["is_padding"] = is_padding;
-  ctxProjBwd.attributes["total_pad"] = total_pad;
-  backward_.push_back(function::createFunction(ctxProjBwd));
+  backward_.add("ctxProjBwd", useGpu_)
+      .set("context_length", context_length)
+      .set("context_start", context_start)
+      .set("begin_pad", beginPad_)
+      .set("is_padding", is_padding)
+      .set("total_pad", total_pad);
 
   return true;
 }

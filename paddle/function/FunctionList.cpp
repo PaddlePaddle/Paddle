@@ -14,8 +14,17 @@ limitations under the License. */
 
 #include "FunctionList.h"
 #include "Function.h"
+#include "Register.h"
+#include "paddle/topology/Function.h"
+
 namespace paddle {
 namespace function {
+
+class FunctionAttributeSetterPrivate {
+public:
+  FunctionList *self;
+  topology::Function func;
+};
 
 void FunctionList::add(const std::string &name,
                        const Config &config,
@@ -33,6 +42,35 @@ void FunctionList::add(const std::string &name,
     return paddle::Error();
   });
 }
+
+FunctionAttributeSetter FunctionList::add(const std::string &name,
+                                          bool useGPU) {
+  FunctionAttributeSetter setter;
+  setter.m->func.type = name;
+  setter.m->func.setUseGPU(useGPU);
+  setter.m->self = this;
+  return setter;
+}
+
+FunctionAttributeSetter::FunctionAttributeSetter()
+    : m(new FunctionAttributeSetterPrivate()) {}
+
+paddle::topology::meta::AttributeMap &FunctionAttributeSetter::attrs() {
+  return m->func.attributes;
+}
+
+FunctionAttributeSetter::~FunctionAttributeSetter() {
+  if (m != nullptr) {
+    m->self->push_back(createFunction(m->func));
+    delete m;
+  }
+}
+
+FunctionAttributeSetter::FunctionAttributeSetter(FunctionAttributeSetter &o) {
+  m = o.m;
+  o.m = nullptr;
+}
+
 }  // namespace function
 
 }  // namespace paddle

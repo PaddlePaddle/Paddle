@@ -31,8 +31,7 @@ FunctionMetaScope::~FunctionMetaScope() {
                    paddle::topology::Attribute *instance) -> Error {
     return (*parser)(instance, attrs);
   };
-  gCurFuncMeta->metaAttributes_.set("attribute_parser", parserFunction, false)
-      .check();
+  gCurFuncMeta->metaAttributes_.set("attribute_parser", parserFunction, false);
   gCurFuncMeta = nullptr;
 }
 

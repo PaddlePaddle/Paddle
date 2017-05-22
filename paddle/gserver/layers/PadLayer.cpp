@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "PadLayer.h"
+#include "paddle/function/Register.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -43,12 +44,11 @@ bool PadLayer::init(const LayerMap& layerMap,
   outDims_ = TensorShape(4);
   setOutDims(0);
 
-  forward_.add("Pad",
-               function::Config()
-                   .set("channel", padc_)
-                   .set("height", padh_)
-                   .set("width", padw_),
-               useGpu_);
+  forward_.add("PadFwd", useGpu_)
+      .set("channel", padc_)
+      .set("height", padh_)
+      .set("width", padw_);
+
   backward_.add("PadGrad",
                 function::Config()
                     .set("channel", padc_)
@@ -90,7 +90,7 @@ void PadLayer::forward(PassType passType) {
   BufferArgs outputs;
   inputs.addArg(*getInputValue(0), inDims_);
   outputs.addArg(*getOutputValue(), outDims_, ASSIGN_TO);
-  forward_[0](inputs, outputs);
+  forward_[0](inputs, outputs).check();
 }
 
 void PadLayer::backward(const UpdateCallback& callback) {

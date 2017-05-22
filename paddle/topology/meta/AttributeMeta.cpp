@@ -58,6 +58,7 @@ Error AttributeMeta::validate(any* attr, bool alreadySet) const {
   CHECK_HELPER(double);
   CHECK_HELPER(std::vector<size_t>);
   CHECK_HELPER(bool);
+  CHECK_HELPER(std::vector<uint32_t>);
   return paddle::Error("Unsupported attribute type %s", attr->type().name());
 }
 

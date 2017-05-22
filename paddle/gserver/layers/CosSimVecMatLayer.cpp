@@ -101,17 +101,8 @@ bool CosSimVecMatLayer::init(const LayerMap& layerMap,
 
   CHECK(tmpRow0 && tmpRow1 && tmpRow2 && tmpRow3 && tmpMtx0 && tmpMtx1);
 
-  topology::Function fwd;
-  fwd.type = "cosFwd";
-  fwd.setUseGPU(useGpu_);
-  fwd.attributes["scale"] = (double)config_.cos_scale();
-  forward_.push_back(function::createFunction(fwd));
-
-  topology::Function bwd;
-  bwd.type = "cosBwd";
-  bwd.setUseGPU(useGpu_);
-  bwd.attributes["scale"] = (double)config_.cos_scale();
-  backward_.push_back(function::createFunction(bwd));
+  forward_.add("cosFwd", useGpu_).set<double>("scale", config_.cos_scale());
+  backward_.add("cosBwd", useGpu_).set<double>("scale", config_.cos_scale());
 
   return true;
 }

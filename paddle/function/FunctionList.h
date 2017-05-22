@@ -17,7 +17,6 @@ limitations under the License. */
 #include "BufferArgs.h"
 #include "FuncConfig.h"
 #include "paddle/topology/AttributeMap.h"
-#include "paddle/utils/Error.h"
 namespace paddle {
 namespace function {
 
@@ -27,11 +26,46 @@ typedef std::function<Error(const BufferArgs& inputs,
                             const BufferArgs& outputs)>
     Function;
 
+class FunctionList;
+
+class FunctionAttributeSetterPrivate;
+/**
+ * This is a setter class for function list. When deconstruction
+ * FunctionAttributeSetter, a function will push back to FunctionList.
+ */
+class FunctionAttributeSetter {
+private:
+  FunctionAttributeSetter();
+  topology::AttributeMap& attrs();
+
+public:
+  ~FunctionAttributeSetter();
+  FunctionAttributeSetter(FunctionAttributeSetter& o);
+  FunctionAttributeSetter& operator=(const FunctionAttributeSetter& o) = delete;
+
+  template <typename T>
+  FunctionAttributeSetter& set(const std::string& name, const T& attr) {
+    topology::AttributeMap& attrs = this->attrs();
+    attrs.template set<T>(name, attr);
+    return *this;
+  }
+
+private:
+  FunctionAttributeSetterPrivate* m;
+  friend class FunctionList;
+};
+
 class FunctionList : public std::vector<Function> {
 public:
   void add(const std::string& name,
            const function::Config& config,
            bool useGPU);
+
+  FunctionAttributeSetter add(const std::string& name, bool useGPU);
+
+private:
+  friend class FunctionAttributeSetter;
+  using std::vector<Function>::push_back;
 };
 
 }  // namespace function
