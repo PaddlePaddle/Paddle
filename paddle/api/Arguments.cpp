@@ -151,4 +151,24 @@ int64_t Arguments::getBatchSize(size_t idx) const throw(RangeError) {
   return a.getBatchSize();
 }
 
+void Arguments::setSlotFrameHeight(size_t idx, size_t h) throw(RangeError) {
+  auto& a = m->getArg(idx);
+  a.setFrameHeight(h);
+}
+
+void Arguments::setSlotFrameWidth(size_t idx, size_t w) throw(RangeError) {
+  auto& a = m->getArg(idx);
+  a.setFrameWidth(w);
+}
+
+size_t Arguments::getSlotFrameHeight(size_t idx) const throw(RangeError) {
+  auto& a = m->getArg(idx);
+  return a.getFrameHeight();
+}
+
+size_t Arguments::getSlotFrameWidth(size_t idx) const throw(RangeError) {
+  auto& a = m->getArg(idx);
+  return a.getFrameWidth();
+}
+
 void* Arguments::getInternalArgumentsPtr() const { return &m->outputs; }
