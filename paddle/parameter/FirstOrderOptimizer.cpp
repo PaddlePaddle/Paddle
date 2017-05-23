@@ -305,21 +305,22 @@ void AdamaxParameterOptimizer::update(const VectorPtr vecs[],
 void OptimizerWithGradientClipping::update(const VectorPtr vecs[],
                                            const ParameterConfig& config,
                                            size_t sparseId) const {
-  real global_thres_ = optConfig_.gradient_clipping_threshold();
-  real local_thres_ = config.gradient_clipping_threshold();
+  real globalThreshold = optConfig_.gradient_clipping_threshold();
+  real localThreshold = config.gradient_clipping_threshold();
 
   real threshold;
   std::string field;
   // Get the minimum of local and global threshold
   // as the real threshold for clipping
-  if (global_thres_ > 0.0f && local_thres_ > 0.0f) {
-    threshold = global_thres_ < local_thres_ ? global_thres_ : local_thres_;
-    field = global_thres_ < local_thres_ ? "global" : "local";
-  } else if (global_thres_ > 0.0f) {
-    threshold = global_thres_;
+  if (globalThreshold > 0.0f && localThreshold > 0.0f) {
+    threshold =
+        globalThreshold < localThreshold ? globalThreshold : localThreshold;
+    field = globalThreshold < localThreshold ? "global" : "local";
+  } else if (globalThreshold > 0.0f) {
+    threshold = globalThreshold;
     field = "global";
   } else {
-    threshold = local_thres_;
+    threshold = localThreshold;
     field = "local";
   }
 
