@@ -100,7 +100,7 @@ func (l lister) List() []pserver.Server {
 }
 
 //export paddle_new_pserver_client
-func paddle_new_pserver_client(addrs *C.char, selected bool) C.client {
+func paddle_new_pserver_client(addrs *C.char, selected int) C.client {
 	a := C.GoString(addrs)
 	as := strings.Split(a, ",")
 	servers := make([]pserver.Server, len(as))
@@ -108,7 +108,7 @@ func paddle_new_pserver_client(addrs *C.char, selected bool) C.client {
 		servers[i].Index = i
 		servers[i].Addr = as[i]
 	}
-	c := pserver.NewClient(lister(servers), len(as), selector(selected))
+	c := pserver.NewClient(lister(servers), len(as), selector(selected != 0))
 	return add(c)
 }
 
