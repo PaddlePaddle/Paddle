@@ -33,6 +33,15 @@ RUN apt-get update && \
     clang-3.8 llvm-3.8 libclang-3.8-dev && \
     apt-get clean -y
 
+# Install Go
+RUN wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go.tgz && \
+    mkdir /root/gopath && \
+    rm go.tgz
+ENV GOROOT=/usr/local/go GOPATH=/root/gopath
+# should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
+ENV PATH=${PATH}:${GOROOT}/bin
+
 # git credential to skip password typing
 RUN git config --global credential.helper store
 
