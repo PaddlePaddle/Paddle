@@ -29,8 +29,7 @@ bool PadLayer::init(const LayerMap& layerMap,
   auto& img_conf = pad_conf.image_conf();
   CHECK_EQ(config_.inputs_size(), 1);
   inDims_ = TensorShape(
-      {0,
-       img_conf.channels(),
+      {0, img_conf.channels(),
        img_conf.has_img_size_y() ? img_conf.img_size_y() : img_conf.img_size(),
        img_conf.img_size()});
 
@@ -49,19 +48,16 @@ bool PadLayer::init(const LayerMap& layerMap,
       .set("height", padh_)
       .set("width", padw_);
 
-  backward_.add("PadGrad",
-                function::Config()
-                    .set("channel", padc_)
-                    .set("height", padh_)
-                    .set("width", padw_),
-                useGpu_);
+  backward_.add("PadBwd", useGpu_)
+      .set("channel", padc_)
+      .set("height", padh_)
+      .set("width", padw_);
 
   return true;
 }
 
 void PadLayer::setOutDims(const size_t batchSize) {
-  outDims_.reshape({batchSize,
-                    inDims_[1] + padc_[0] + padc_[1],
+  outDims_.reshape({batchSize, inDims_[1] + padc_[0] + padc_[1],
                     inDims_[2] + padh_[0] + padh_[1],
                     inDims_[3] + padw_[0] + padw_[1]});
 }
@@ -101,6 +97,6 @@ void PadLayer::backward(const UpdateCallback& callback) {
   BufferArgs outputs;
   inputs.addArg(*getOutputGrad(), outDims_);
   outputs.addArg(*getInputGrad(0), inDims_, ADD_TO);
-  backward_[0](inputs, outputs);
+  backward_[0](inputs, outputs).check();
 }
 }  // namespace paddle

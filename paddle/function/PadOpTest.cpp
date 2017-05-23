@@ -25,15 +25,16 @@ TEST(Pad, real) {
           VLOG(3) << " numSamples=" << numSamples << " channels=" << channels
                   << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW;
           for (bool test_grad : {false, true}) {
-            FunctionCompare compare(
-                test_grad ? "PadGrad" : "Pad",
-                function::Config()
-                    .set<std::vector<uint32_t>>("channel", {2, 3})
-                    .set<std::vector<uint32_t>>("height", {1, 2})
-                    .set<std::vector<uint32_t>>("width", {3, 2}));
+            topology::Function conf;
+            conf.type = test_grad ? "PadBwd" : "PadFwd";
+            conf.attributes.set<std::vector<uint32_t>>("channel", {2, 3})
+                .set<std::vector<uint32_t>>("height", {1, 2})
+                .set<std::vector<uint32_t>>("width", {3, 2});
+
+            FunctionCompare compare(conf);
             TensorShape inDims{numSamples, channels, imgSizeH, imgSizeW};
-            TensorShape outDims{
-                numSamples, channels + 5, imgSizeH + 3, imgSizeW + 5};
+            TensorShape outDims{numSamples, channels + 5, imgSizeH + 3,
+                                imgSizeW + 5};
             compare.addInputs(
                 BufferArg(VALUE_TYPE_FLOAT, test_grad ? outDims : inDims));
             compare.addOutputs(BufferArg(

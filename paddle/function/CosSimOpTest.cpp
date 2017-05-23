@@ -22,7 +22,10 @@ void testCosSimForward(size_t height_x,
                        size_t height_y,
                        size_t width,
                        real scale) {
-  FunctionCompare test("CosSimForward", function::Config().set("scale", scale));
+  topology::Function cosFwdConfig;
+  cosFwdConfig.type = "cosFwd";
+  cosFwdConfig.attributes.set<double>("scale", scale);
+  FunctionCompare test(cosFwdConfig);
   // prepare input arguments
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{height_x, width}));
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{height_y, width}));
@@ -36,8 +39,10 @@ void testCosSimBackward(size_t height_x,
                         size_t height_y,
                         size_t width,
                         real scale) {
-  FunctionCompare test("CosSimBackward",
-                       function::Config().set("scale", scale));
+  topology::Function cosBwdConfig;
+  cosBwdConfig.type = "cosBwd";
+  cosBwdConfig.attributes.set<double>("scale", scale);
+  FunctionCompare test(cosBwdConfig);
   // prepare input arguments
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{height_x, 1}));
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{height_x, 1}));

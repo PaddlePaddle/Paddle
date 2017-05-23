@@ -15,10 +15,12 @@ limitations under the License. */
 #include "FuncConfig.h"
 #include "Function.h"
 #include "FunctionList.h"
+#include "paddle/function/Register.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
 #include "paddle/math/tests/TensorCheck.h"
 #include "paddle/testing/TestUtil.h"
+#include "paddle/topology/Function.h"
 
 namespace paddle {
 
@@ -48,12 +50,19 @@ typedef std::shared_ptr<BufferArg> BufferArgPtr;
  *  test.run();
  */
 class FunctionCompare {
-public:
+ public:
   FunctionCompare(const std::string& name, const function::Config& config) {
     flist_.add(name, config, false);
     flist_.add(name, config, true);
     cpuFunc_ = flist_[0];
     gpuFunc_ = flist_[1];
+  }
+
+  FunctionCompare(topology::Function topology) {
+    topology.setUseGPU(false);
+    cpuFunc_ = function::createFunction(topology);
+    topology.setUseGPU(true);
+    gpuFunc_ = function::createFunction(topology);
   }
 
   ~FunctionCompare() {}
@@ -107,16 +116,12 @@ public:
     gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
 
     /// SequenceArg
-    cpuInputs_.emplace_back(
-        std::make_shared<SequenceArg>(cpuMemory_.back()->getBuf(),
-                                      input.valueType(),
-                                      input.shape(),
-                                      *cpuSeq_));
-    gpuInputs_.emplace_back(
-        std::make_shared<SequenceArg>(gpuMemory_.back()->getBuf(),
-                                      input.valueType(),
-                                      input.shape(),
-                                      *gpuSeq_));
+    cpuInputs_.emplace_back(std::make_shared<SequenceArg>(
+        cpuMemory_.back()->getBuf(), input.valueType(), input.shape(),
+        *cpuSeq_));
+    gpuInputs_.emplace_back(std::make_shared<SequenceArg>(
+        gpuMemory_.back()->getBuf(), input.valueType(), input.shape(),
+        *gpuSeq_));
   }
 
   // output need only contains shape, do not contains data.
@@ -126,31 +131,23 @@ public:
     cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
     gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
 
-    cpuOutputs_.emplace_back(
-        std::make_shared<BufferArg>(cpuMemory_.back()->getBuf(),
-                                    output.valueType(),
-                                    output.shape(),
-                                    argType));
-    gpuOutputs_.emplace_back(
-        std::make_shared<BufferArg>(gpuMemory_.back()->getBuf(),
-                                    output.valueType(),
-                                    output.shape(),
-                                    argType));
+    cpuOutputs_.emplace_back(std::make_shared<BufferArg>(
+        cpuMemory_.back()->getBuf(), output.valueType(), output.shape(),
+        argType));
+    gpuOutputs_.emplace_back(std::make_shared<BufferArg>(
+        gpuMemory_.back()->getBuf(), output.valueType(), output.shape(),
+        argType));
   }
 
   /// add and init output sparse matrix
   void addOutputs(const SparseMatrixArg& output, ArgType argType = ASSIGN_TO) {
     cpuSparse_ = std::make_shared<CpuSparseMatrix>(
-        output.shape()[0],
-        output.shape()[1],
-        output.nnz(),
+        output.shape()[0], output.shape()[1], output.nnz(),
         static_cast<SparseValueType>(output.dataType()),
         static_cast<SparseFormat>(output.dataFormat()));
 
     gpuSparse_ = std::make_shared<GpuSparseMatrix>(
-        output.shape()[0],
-        output.shape()[1],
-        output.nnz(),
+        output.shape()[0], output.shape()[1], output.nnz(),
         static_cast<SparseValueType>(output.dataType()),
         static_cast<SparseFormat>(output.dataFormat()));
 
@@ -179,32 +176,22 @@ public:
     gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
 
     /// SequenceArg
-    cpuOutputs_.emplace_back(
-        std::make_shared<SequenceArg>(cpuMemory_.back()->getBuf(),
-                                      output.valueType(),
-                                      output.shape(),
-                                      *cpuSeq_,
-                                      argType));
-    gpuOutputs_.emplace_back(
-        std::make_shared<SequenceArg>(gpuMemory_.back()->getBuf(),
-                                      output.valueType(),
-                                      output.shape(),
-                                      *gpuSeq_,
-                                      argType));
+    cpuOutputs_.emplace_back(std::make_shared<SequenceArg>(
+        cpuMemory_.back()->getBuf(), output.valueType(), output.shape(),
+        *cpuSeq_, argType));
+    gpuOutputs_.emplace_back(std::make_shared<SequenceArg>(
+        gpuMemory_.back()->getBuf(), output.valueType(), output.shape(),
+        *gpuSeq_, argType));
   }
 
   void addInputs(const SparseMatrixArg& input) {
     cpuSparse_ = std::make_shared<CpuSparseMatrix>(
-        input.shape()[0],
-        input.shape()[1],
-        input.nnz(),
+        input.shape()[0], input.shape()[1], input.nnz(),
         static_cast<SparseValueType>(input.dataType()),
         static_cast<SparseFormat>(input.dataFormat()));
 
     gpuSparse_ = std::make_shared<GpuSparseMatrix>(
-        input.shape()[0],
-        input.shape()[1],
-        input.nnz(),
+        input.shape()[0], input.shape()[1], input.nnz(),
         static_cast<SparseValueType>(input.dataType()),
         static_cast<SparseFormat>(input.dataFormat()));
 
@@ -235,7 +222,8 @@ public:
       for (auto arg : outputs) {
         outArgs.addArg(*arg);
       }
-      function(inArgs, outArgs);
+      auto err = function(inArgs, outArgs);
+      ASSERT_TRUE(err.isOK());
     };
 
     callFunction(cpuFunc_, cpuInputs_, cpuOutputs_);
@@ -245,7 +233,7 @@ public:
     compareOutputs();
   }
 
-protected:
+ protected:
   // only init cpu argument, gpu argument copy from cpu argument.
   void initArg(BufferArg& arg) {
     CpuVector vector(arg.shape().getElements(), (real*)arg.data());
@@ -328,7 +316,7 @@ protected:
     }
   }
 
-protected:
+ protected:
   function::Function cpuFunc_;
   function::Function gpuFunc_;
   function::FunctionList flist_;

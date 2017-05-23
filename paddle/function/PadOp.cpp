@@ -18,12 +18,8 @@ limitations under the License. */
 namespace paddle {
 
 template <>
-void Pad<DEVICE_TYPE_CPU>(real* outputs,
-                          const real* inputs,
-                          const int num,
-                          const int inC,
-                          const int inH,
-                          const int inW,
+void Pad<DEVICE_TYPE_CPU>(real* outputs, const real* inputs, const int num,
+                          const int inC, const int inH, const int inW,
                           const PadConf& pad) {
   int cstart = pad.channel[0], cend = pad.channel[1];
   int hstart = pad.height[0], hend = pad.height[1];
@@ -44,12 +40,8 @@ void Pad<DEVICE_TYPE_CPU>(real* outputs,
 }
 
 template <>
-void PadGrad<DEVICE_TYPE_CPU>(real* inGrad,
-                              const real* outGrad,
-                              const int num,
-                              const int inC,
-                              const int inH,
-                              const int inW,
+void PadGrad<DEVICE_TYPE_CPU>(real* inGrad, const real* outGrad, const int num,
+                              const int inC, const int inH, const int inW,
                               const PadConf& pad) {
   int cstart = pad.channel[0], cend = pad.channel[1];
   int hstart = pad.height[0], hend = pad.height[1];
@@ -69,14 +61,6 @@ void PadGrad<DEVICE_TYPE_CPU>(real* inGrad,
       }
     }
   }
-}
-
-static inline PadConf castToPadConf(const function::Config& conf) {
-  PadConf padConf;
-  padConf.channel = conf.get<std::vector<uint32_t>>("channel");
-  padConf.height = conf.get<std::vector<uint32_t>>("height");
-  padConf.width = conf.get<std::vector<uint32_t>>("width");
-  return padConf;
 }
 
 /**
@@ -133,8 +117,7 @@ static inline PadConf castToPadConf(const function::Config& conf) {
  */
 
 template <DeviceType Device>
-static Error forward(const BufferArgs& ins,
-                     const BufferArgs& outs,
+static Error forward(const BufferArgs& ins, const BufferArgs& outs,
                      const PadConf& attrs) {
   size_t num = ins[0].shape()[0];
   size_t inC = ins[0].shape()[1];
@@ -144,8 +127,8 @@ static Error forward(const BufferArgs& ins,
                                             outs[0].data<real>());
   vec.zero();
 
-  Pad<Device>(
-      outs[0].data<real>(), ins[0].data<real>(), num, inC, inH, inW, attrs);
+  Pad<Device>(outs[0].data<real>(), ins[0].data<real>(), num, inC, inH, inW,
+              attrs);
   return Error();
 }
 
@@ -174,39 +157,6 @@ setShapeInferer<PadConf>([](std::vector<topology::TensorPtr>& ins,
 
 END_REGISTER_FUNCTION(PadFwd)
 
-template <DeviceType Device>
-class PadFunc : public FunctionBase {
-public:
-  void init(const function::Config& config) override {
-    pad_ = castToPadConf(config);
-  }
-
-  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(1UL, inputs.size());
-    CHECK_EQ(1UL, outputs.size());
-    CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
-
-    size_t num = inputs[0].shape()[0];
-    size_t inC = inputs[0].shape()[1];
-    size_t inH = inputs[0].shape()[2];
-    size_t inW = inputs[0].shape()[3];
-    typename Tensor<real, Device>::Vector vec(outputs[0].shape().getElements(),
-                                              outputs[0].data<real>());
-    vec.zero();
-
-    Pad<Device>(outputs[0].data<real>(),
-                inputs[0].data<real>(),
-                num,
-                inC,
-                inH,
-                inW,
-                pad_);
-  }
-
-private:
-  PadConf pad_;
-};
-
 /**
  * \brief The backward propagation of padding Function. Remove the elements
  *        in the padding positions of forward.
@@ -218,46 +168,42 @@ private:
  */
 
 template <DeviceType Device>
-class PadGradFunc : public FunctionBase {
-public:
-  void init(const function::Config& config) override {
-    pad_ = castToPadConf(config);
+static Error backward(const BufferArgs& inputs, const BufferArgs& outputs,
+                      const PadConf& attrs) {
+  size_t num = outputs[0].shape()[0];
+  size_t inC = outputs[0].shape()[1];
+  size_t inH = outputs[0].shape()[2];
+  size_t inW = outputs[0].shape()[3];
+
+  if (outputs[0].getArgType() != ADD_TO) {
+    // for unit test
+    typename Tensor<real, Device>::Vector tmp(outputs[0].shape().getElements(),
+                                              outputs[0].data<real>());
+    tmp.zero();
   }
 
-  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(1UL, inputs.size());
-    CHECK_EQ(1UL, outputs.size());
+  PadGrad<Device>(outputs[0].data<real>(), inputs[0].data<real>(), num, inC,
+                  inH, inW, attrs);
+  return Error();
+}
 
-    size_t num = outputs[0].shape()[0];
-    size_t inC = outputs[0].shape()[1];
-    size_t inH = outputs[0].shape()[2];
-    size_t inW = outputs[0].shape()[3];
+BEGIN_REGISTER_FUNCTION(PadBwd, backward, PadConf)
 
-    if (outputs[0].getArgType() != ADD_TO) {
-      // for unit test
-      typename Tensor<real, Device>::Vector tmp(
-          outputs[0].shape().getElements(), outputs[0].data<real>());
-      tmp.zero();
-    }
+addTensor<INPUT>(4);
+addTensor<OUTPUT>(4)->supportArgType(ADD_TO, {ADD_TO, ASSIGN_TO});
+setShapeInferer<PadConf>([](std::vector<topology::TensorPtr>& ins,
+                            std::vector<topology::TensorPtr>& outs,
+                            const PadConf& attr) -> Error {
+  auto shape = ins[0]->shape();
+  shape[1] -= accumulate(attr.channel);
+  shape[2] -= accumulate(attr.height);
+  shape[3] -= accumulate(attr.width);
+  outs[0]->setShape(shape);
+  outs[0]->setDataType(ins[0]->dataType());
+  outs[0]->setSequenceType(ins[0]->sequenceType());
+  return Error();
+});
 
-    PadGrad<Device>(outputs[0].data<real>(),
-                    inputs[0].data<real>(),
-                    num,
-                    inC,
-                    inH,
-                    inW,
-                    pad_);
-  }
-
-private:
-  PadConf pad_;
-};
-
-REGISTER_TYPED_FUNC(Pad, CPU, PadFunc);
-REGISTER_TYPED_FUNC(PadGrad, CPU, PadGradFunc);
-#ifndef PADDLE_ONLY_CPU
-REGISTER_TYPED_FUNC(Pad, GPU, PadFunc);
-REGISTER_TYPED_FUNC(PadGrad, GPU, PadGradFunc);
-#endif
+END_REGISTER_FUNCTION(PadBwd)
 
 }  // namespace paddle

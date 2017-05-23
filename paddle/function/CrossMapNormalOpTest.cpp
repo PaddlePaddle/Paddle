@@ -26,13 +26,11 @@ TEST(CrossMapNormal, real) {
             VLOG(3) << " numSamples=" << numSamples << " channels=" << channels
                     << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW
                     << " size=" << size;
+            topology::Function config;
+            config.type= "CrossMapNormalFwd";
+            config.attributes.set("size", size).set<double>("scale", 1.5).set<double>("pow", 0.5);
+            FunctionCompare test(config);
 
-            // init Test object
-            FunctionCompare test("CrossMapNormal",
-                                 function::Config()
-                                     .set("size", size)
-                                     .set("scale", (real)1.5)
-                                     .set("pow", (real)0.5));
             // prepare input arguments
             TensorShape shape{numSamples, channels, imgSizeH, imgSizeW};
             test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape));
@@ -57,11 +55,11 @@ TEST(CrossMapNormalGrad, real) {
                     << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW
                     << " size=" << size;
 
-            FunctionCompare test("CrossMapNormalGrad",
-                                 function::Config()
-                                     .set("size", size)
-                                     .set("scale", (real)1.5)
-                                     .set("pow", (real)0.5));
+            topology::Function config;
+            config.type= "CrossMapNormalBwd";
+            config.attributes.set("size", size).set<double>("scale", 1.5).set<double>("pow", 0.5);
+            FunctionCompare test(config);
+
             TensorShape shape{numSamples, channels, imgSizeH, imgSizeW};
             test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape));
             test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape));
