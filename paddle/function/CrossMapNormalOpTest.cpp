@@ -27,8 +27,10 @@ TEST(CrossMapNormal, real) {
                     << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW
                     << " size=" << size;
             topology::Function config;
-            config.type= "CrossMapNormalFwd";
-            config.attributes.set("size", size).set<double>("scale", 1.5).set<double>("pow", 0.5);
+            config.type = "CrossMapNormalFwd";
+            config.attributes.set("size", size)
+                .set<double>("scale", 1.5)
+                .set<double>("pow", 0.5);
             FunctionCompare test(config);
 
             // prepare input arguments
@@ -56,8 +58,10 @@ TEST(CrossMapNormalGrad, real) {
                     << " size=" << size;
 
             topology::Function config;
-            config.type= "CrossMapNormalBwd";
-            config.attributes.set("size", size).set<double>("scale", 1.5).set<double>("pow", 0.5);
+            config.type = "CrossMapNormalBwd";
+            config.attributes.set("size", size)
+                .set<double>("scale", 1.5)
+                .set<double>("pow", 0.5);
             FunctionCompare test(config);
 
             TensorShape shape{numSamples, channels, imgSizeH, imgSizeW};

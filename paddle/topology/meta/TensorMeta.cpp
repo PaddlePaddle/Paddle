@@ -61,9 +61,19 @@ TensorMeta &TensorMeta::supportSequenceTypes(const Set<int> &supportedTypes,
 }
 
 TensorMeta &TensorMeta::supportDataTypes(const Set<int> &supportedTypes) {
+  Set<int> types;
+  for (auto it = supportedTypes.begin(); it != supportedTypes.end(); ++it) {
+    if (*it == DataType::SPARSE || *it == DataType::SPARSE_INTEGER) {
+      types.insert(*it | SparseDataFormat::SPARSE_CSC);
+      types.insert(*it | SparseDataFormat::SPARSE_CSR);
+    } else {
+      types.insert(*it);
+    }
+  }
+
   addAttribute<int>("data_type", "The data types of tensor")
       .mustSet()
-      .in(supportedTypes);
+      .in(types);
   return *this;
 }
 

@@ -19,8 +19,10 @@ limitations under the License. */
 
 using namespace paddle;  // NOLINT
 
-void testMatrixProjectionForward(int context_start, size_t context_length,
-                                 bool is_padding, size_t batch_size,
+void testMatrixProjectionForward(int context_start,
+                                 size_t context_length,
+                                 bool is_padding,
+                                 size_t batch_size,
                                  size_t input_dim) {
   size_t pad = std::max(0, -context_start) +
                std::max(0, (int)(context_start + context_length - 1));
@@ -49,8 +51,10 @@ void testMatrixProjectionForward(int context_start, size_t context_length,
   test.run();
 }
 
-void testMatrixProjectionBackward(int context_start, size_t context_length,
-                                  bool is_padding, size_t batch_size,
+void testMatrixProjectionBackward(int context_start,
+                                  size_t context_length,
+                                  bool is_padding,
+                                  size_t batch_size,
                                   size_t input_dim) {
   size_t pad = std::max(0, -context_start) +
                std::max(0, (int)(context_start + context_length - 1));
@@ -92,11 +96,15 @@ TEST(ContextProjection, Projection) {
                     << " trainable_padding=" << trainable_padding
                     << " batch_size=" << batch_size
                     << " input_dim=" << input_dim;
-            testMatrixProjectionForward(context_start, context_length,
-                                        trainable_padding, batch_size,
+            testMatrixProjectionForward(context_start,
+                                        context_length,
+                                        trainable_padding,
+                                        batch_size,
                                         input_dim);
-            testMatrixProjectionBackward(context_start, context_length,
-                                         trainable_padding, batch_size,
+            testMatrixProjectionBackward(context_start,
+                                         context_length,
+                                         trainable_padding,
+                                         batch_size,
                                          input_dim);
           }
         }

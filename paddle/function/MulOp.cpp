@@ -15,8 +15,10 @@ limitations under the License. */
 #include "MulOp.h"
 /// todo(tianbing), delete it
 #include <iostream>
+#include "Register.h"
 #include "paddle/math/MathFunctions.h"
 #include "paddle/math/SIMDFunctions.h"
+#include "paddle/topology/Attribute.h"
 #include "paddle/utils/ThreadLocal.h"
 
 #ifndef PADDLE_TYPE_DOUBLE
@@ -346,6 +348,148 @@ private:
   bool aTrans_;
   bool bTrans_;
 };
+
+struct MulAttribute : public topology::Attribute {
+  bool aTrans;
+  bool bTrans;
+
+  REGISTER_FUNC_ATTRIBUTE() {
+    regAttr(&MulAttribute::aTrans, "aTrans", "Matrix A is transposed or not");
+    regAttr(&MulAttribute::bTrans, "bTrans", "Matrix B is transposed or not");
+  }
+};
+
+template <DeviceType Device>
+static Error mul(const BufferArgs& inputs,
+                 const BufferArgs& outputs,
+                 const MulAttribute& attr) {
+  real scaleT = (outputs[0].getArgType() == ADD_TO) ? 1.0 : 0.0;
+  auto outMat = outputs[0].matrix<Device>();
+  /// dense matrix = dense matrix * dense matrix
+  if (!inputs[0].isSparseArg() && !inputs[1].isSparseArg() &&
+      !outputs[0].isSparseArg()) {
+    MulOp<Device>(outMat,
+                  inputs[0].matrix<Device>(),
+                  inputs[1].matrix<Device>(),
+                  1.0,  // scaleAB
+                  scaleT,
+                  attr.aTrans,
+                  attr.bTrans);
+  }
+
+  /// dense matrix = dense matrix * sparse matrix
+  if (!inputs[0].isSparseArg() && inputs[1].isSparseArg() &&
+      !outputs[0].isSparseArg()) {
+    MulOp<Device>(outMat,
+                  inputs[0].matrix<Device>(),
+                  inputs[1].sparse().SparseMatrix<Device>(),
+                  1.0,  // scaleAB
+                  scaleT,
+                  attr.aTrans,
+                  attr.bTrans);
+  }
+
+  /// dense matrix = sparse matrix * dense matrix
+  if (inputs[0].isSparseArg() && !inputs[1].isSparseArg() &&
+      !outputs[0].isSparseArg()) {
+    MulOp<Device>(outMat,
+                  inputs[0].sparse().SparseMatrix<Device>(),
+                  inputs[1].matrix<Device>(),
+                  1.0,  // scaleAB
+                  scaleT,
+                  attr.aTrans,
+                  attr.bTrans);
+  }
+  return Error();
+}
+
+static Error MatrixShape(const std::vector<size_t>& a,
+                         const std::vector<size_t>& b,
+                         const MulAttribute& attr,
+                         topology::Tensor& out) {
+  size_t aRow, aCol, bRow, bCol;
+  if (attr.aTrans) {
+    aRow = a[1];
+    aCol = a[0];
+  } else {
+    aRow = a[0];
+    aCol = a[1];
+  }
+  if (attr.bTrans) {
+    bRow = b[1];
+    bCol = b[0];
+  } else {
+    bRow = b[0];
+    bCol = b[1];
+  }
+
+  if (aCol != bRow) {
+    return Error(
+        "Matrix shape mismatch [%d, %d]x[%d, %d]", aRow, aCol, bRow, bCol);
+  }
+  out.setShape({aRow, bCol});
+  return Error();
+}
+
+BEGIN_REGISTER_FUNCTION(Mul, mul, MulAttribute)
+addTensor<INPUT>(2,
+                 -1,
+                 {topology::DataType::DENSE,
+                  topology::DataType::SPARSE_INTEGER,
+                  topology::DataType::SPARSE});
+addTensor<INPUT>(2,
+                 -1,
+                 {topology::DataType::DENSE,
+                  topology::DataType::SPARSE_INTEGER,
+                  topology::DataType::SPARSE});
+addTensor<OUTPUT>(2)->supportArgType(ADD_TO, {ASSIGN_TO, ADD_TO});
+
+setShapeInferer<MulAttribute>([](std::vector<topology::TensorPtr>& ins,
+                                 std::vector<topology::TensorPtr>& outs,
+                                 const MulAttribute& attr) -> Error {
+  topology::TensorPtr& in0 = ins[0];
+  topology::TensorPtr& in1 = ins[1];
+  topology::TensorPtr& out = outs[0];
+
+  auto err = MatrixShape(in0->shape(), in1->shape(), attr, *out);
+  if (!err.isOK()) return err;
+  out->setDataType(topology::DataType::DENSE);
+  out->setSequenceType(ins[0]->sequenceType());
+
+  constexpr uint8_t kSparse = 0x01;
+  constexpr uint8_t kDense = 0x02;
+
+  uint8_t in0Type =
+      in0->dataType() == topology::DataType::DENSE ? kDense : kSparse;
+  uint8_t in1Type =
+      in1->dataType() == topology::DataType::DENSE ? kDense : kSparse;
+  uint8_t inputType = (in0Type << 4) | in1Type;
+
+  if (inputType ==
+      ((kSparse << 4) | kSparse)) {  // sparse matrix * sparse matrix
+    return Error("Not support sparse*sparse matrix");
+  } else if (inputType == ((kDense << 4) | kDense)) {
+    // dense matrix * dense matrix
+    return Error();
+  } else if (inputType == ((kDense << 4) | kSparse)) {
+    if (attr.aTrans) {
+      return Error("dense*sparse not support Matrix A is transpose");
+    }
+    return Error();
+  } else if (inputType == ((kSparse << 4) | kDense)) {
+    if (attr.bTrans) {
+      return Error("sparse*dense not support Matrix B is transpose");
+    }
+    if (in0->sparseFormatType() != topology::SparseDataFormat::SPARSE_CSR) {
+      return Error("sparse*dense only supported SPARSE_CSR format");
+    }
+    return Error();
+  } else {
+    return Error("Unexpected branch.");
+  }
+});
+
+END_REGISTER_FUNCTION(Mul)
 
 REGISTER_TYPED_FUNC(MulOp, CPU, MulFunc);
 #ifndef PADDLE_ONLY_CPU

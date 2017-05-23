@@ -18,8 +18,12 @@ limitations under the License. */
 namespace paddle {
 
 template <>
-void Pad<DEVICE_TYPE_CPU>(real* outputs, const real* inputs, const int num,
-                          const int inC, const int inH, const int inW,
+void Pad<DEVICE_TYPE_CPU>(real* outputs,
+                          const real* inputs,
+                          const int num,
+                          const int inC,
+                          const int inH,
+                          const int inW,
                           const PadConf& pad) {
   int cstart = pad.channel[0], cend = pad.channel[1];
   int hstart = pad.height[0], hend = pad.height[1];
@@ -40,8 +44,12 @@ void Pad<DEVICE_TYPE_CPU>(real* outputs, const real* inputs, const int num,
 }
 
 template <>
-void PadGrad<DEVICE_TYPE_CPU>(real* inGrad, const real* outGrad, const int num,
-                              const int inC, const int inH, const int inW,
+void PadGrad<DEVICE_TYPE_CPU>(real* inGrad,
+                              const real* outGrad,
+                              const int num,
+                              const int inC,
+                              const int inH,
+                              const int inW,
                               const PadConf& pad) {
   int cstart = pad.channel[0], cend = pad.channel[1];
   int hstart = pad.height[0], hend = pad.height[1];
@@ -117,7 +125,8 @@ void PadGrad<DEVICE_TYPE_CPU>(real* inGrad, const real* outGrad, const int num,
  */
 
 template <DeviceType Device>
-static Error forward(const BufferArgs& ins, const BufferArgs& outs,
+static Error forward(const BufferArgs& ins,
+                     const BufferArgs& outs,
                      const PadConf& attrs) {
   size_t num = ins[0].shape()[0];
   size_t inC = ins[0].shape()[1];
@@ -127,8 +136,8 @@ static Error forward(const BufferArgs& ins, const BufferArgs& outs,
                                             outs[0].data<real>());
   vec.zero();
 
-  Pad<Device>(outs[0].data<real>(), ins[0].data<real>(), num, inC, inH, inW,
-              attrs);
+  Pad<Device>(
+      outs[0].data<real>(), ins[0].data<real>(), num, inC, inH, inW, attrs);
   return Error();
 }
 
@@ -168,7 +177,8 @@ END_REGISTER_FUNCTION(PadFwd)
  */
 
 template <DeviceType Device>
-static Error backward(const BufferArgs& inputs, const BufferArgs& outputs,
+static Error backward(const BufferArgs& inputs,
+                      const BufferArgs& outputs,
                       const PadConf& attrs) {
   size_t num = outputs[0].shape()[0];
   size_t inC = outputs[0].shape()[1];
@@ -182,8 +192,13 @@ static Error backward(const BufferArgs& inputs, const BufferArgs& outputs,
     tmp.zero();
   }
 
-  PadGrad<Device>(outputs[0].data<real>(), inputs[0].data<real>(), num, inC,
-                  inH, inW, attrs);
+  PadGrad<Device>(outputs[0].data<real>(),
+                  inputs[0].data<real>(),
+                  num,
+                  inC,
+                  inH,
+                  inW,
+                  attrs);
   return Error();
 }
 

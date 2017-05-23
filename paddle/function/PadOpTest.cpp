@@ -33,8 +33,8 @@ TEST(Pad, real) {
 
             FunctionCompare compare(conf);
             TensorShape inDims{numSamples, channels, imgSizeH, imgSizeW};
-            TensorShape outDims{numSamples, channels + 5, imgSizeH + 3,
-                                imgSizeW + 5};
+            TensorShape outDims{
+                numSamples, channels + 5, imgSizeH + 3, imgSizeW + 5};
             compare.addInputs(
                 BufferArg(VALUE_TYPE_FLOAT, test_grad ? outDims : inDims));
             compare.addOutputs(BufferArg(

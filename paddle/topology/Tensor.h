@@ -18,6 +18,7 @@ namespace paddle {
 namespace topology {
 using meta::DataType;
 using meta::SequenceType;
+using meta::SparseDataFormat;
 
 class Tensor {
 public:
@@ -27,6 +28,7 @@ public:
   std::vector<size_t>& shape();
   SequenceType sequenceType() const;
   DataType dataType() const;
+  SparseDataFormat sparseFormatType() const;
 
 public:
   AttributeMap attributes;

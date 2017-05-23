@@ -20,7 +20,13 @@ namespace paddle {
 namespace topology {
 namespace meta {
 
-enum DataType { DENSE = 0, SPARSE_INTEGER, SPARSE, INTEGER };
+enum DataType {
+  DENSE = 0x00,
+  INTEGER = 0x10,
+  SPARSE_INTEGER = 0x20,
+  SPARSE = 0x30,
+};
+enum SparseDataFormat { SPARSE_CSR = 0x01, SPARSE_CSC = 0x02 };
 enum SequenceType { NO_SEQUENCE = 0, SEQUENCE, NESTED_SEQUENCE };
 
 extern const Set<int> DefaultSequenceType;

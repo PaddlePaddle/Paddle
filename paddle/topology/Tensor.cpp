@@ -12,10 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "Tensor.h"
+
 namespace paddle {
 namespace topology {
 
 Tensor &Tensor::setDataType(int type) {
+  if (type == DataType::SPARSE || type == DataType::SPARSE_INTEGER) {
+    type |= SparseDataFormat::SPARSE_CSR;  // default sparse type is CSR.
+  }
   attributes["data_type"] = type;
   return *this;
 }
@@ -38,7 +42,15 @@ SequenceType Tensor::sequenceType() const {
 }
 
 DataType Tensor::dataType() const {
-  return (DataType)attributes.get<int>("data_type");
+  auto dataType = attributes.get<int>("data_type");
+  dataType &= 0xF0;
+  return (DataType)dataType;
+}
+
+SparseDataFormat Tensor::sparseFormatType() const {
+  auto dataType = attributes.get<int>("data_type");
+  dataType &= 0x0F;
+  return (SparseDataFormat)dataType;
 }
 
 }  // namespace topology
