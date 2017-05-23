@@ -35,6 +35,7 @@ SET(SWIG_MODULE_swig_paddle_EXTRA_DEPS
     paddle_utils
     paddle_gserver
     paddle_pserver
+    paddle_topology
     paddle_api
     paddle_cuda
     paddle_trainer_lib
@@ -61,6 +62,7 @@ SWIG_LINK_LIBRARIES(swig_paddle
     paddle_function
     ${METRIC_LIBS}
     ${ARCHIVE_END}
+    paddle_topology
     paddle_pserver
     paddle_trainer_lib
     paddle_network
