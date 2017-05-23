@@ -57,9 +57,6 @@ Allocation::Allocation(size_t size, Place place)
   if (size > 0) {
     majel::detail::Allocator allocator(size_);
     ptr_ = boost::apply_visitor(allocator, place_);
-    if (ptr_ == nullptr) {
-      throw std::bad_alloc();
-    }
   } else {
     ptr_ = nullptr;
   }
