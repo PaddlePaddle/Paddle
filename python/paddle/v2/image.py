@@ -1,14 +1,14 @@
 import numpy as np
 try:
     import cv2
-except:
-    print(
-        "import cv2 error, please install opencv-python: pip install opencv-python"
-    )
+except ImportError:
+    cv2 = None
+
+from cv2 import resize
 
 __all__ = [
-    "load_image", "resize_short", "to_chw", "center_crop", "random_crop",
-    "left_right_flip", "simple_transform", "load_and_transform"
+    "load_image_bytes", "load_image", "resize_short", "to_chw", "center_crop",
+    "random_crop", "left_right_flip", "simple_transform", "load_and_transform"
 ]
 """
 This file contains some common interfaces for image preprocess.
@@ -26,6 +26,28 @@ the image layout as follows.
   formats can be used for training. Noted that, the format should
   be keep consistent between the training and inference peroid.
 """
+
+
+def load_image_bytes(bytes, is_color=True):
+    """
+    Load an color or gray image from bytes array.
+
+    Example usage:
+    
+    .. code-block:: python
+        with open('cat.jpg') as f:
+            im = load_image(f.read())
+
+    :param bytes: the input image bytes array.
+    :type file: str
+    :param is_color: If set is_color True, it will load and
+                     return a color image. Otherwise, it will
+                     load and return a gray image.
+    """
+    flag = 1 if is_color else 0
+    file_bytes = np.asarray(bytearray(bytes), dtype=np.uint8)
+    img = cv2.imdecode(file_bytes, flag)
+    return img
 
 
 def load_image(file, is_color=True):
@@ -76,7 +98,7 @@ def resize_short(im, size):
         h_new = size * h / w
     else:
         w_new = size * w / h
-    im = cv2.resize(im, (h_new, w_new), interpolation=cv2.INTER_CUBIC)
+    im = resize(im, (h_new, w_new), interpolation=cv2.INTER_CUBIC)
     return im
 
 

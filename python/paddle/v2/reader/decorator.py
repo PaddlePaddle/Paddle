@@ -14,13 +14,15 @@
 
 __all__ = [
     'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned', 'firstn'
+    'ComposeNotAligned', 'firstn', 'xmap'
 ]
 
 import itertools
 import random
 from Queue import Queue
 from threading import Thread
+from multiprocessing import Queue as MQueue
+from multiprocessing import Process
 
 
 def map_readers(func, *readers):
@@ -224,3 +226,74 @@ def firstn(reader, n):
             yield item
 
     return firstn_reader
+
+
+class XmapEndSignal():
+    pass
+
+
+def xmap(mapper, reader, process_num, buffer_size):
+    """
+    Use multiprocess to map samples from reader by a mapper defined by user.
+    And this function contains a buffered decorator.
+    :param mapper:  a function to map sample.
+    :type mapper: callable
+    :param reader: the data reader to read from
+    :type reader: callable
+    :param process_num: process number to handle original sample 
+    :type process_num: int
+    :param buffer_size: max buffer size
+    :type buffer_size: int
+    :return: the decarated reader
+    :rtype: callable
+    """
+    end = XmapEndSignal()
+    in_queue = MQueue(buffer_size)
+    out_queue = MQueue(buffer_size)
+
+    # define a worker to read samples from reader to in_queue
+    def read_worker(reader, in_queue):
+        for i in reader():
+            in_queue.put(i)
+        in_queue.put(end)
+
+    # start a read worker in a thread
+    t = Thread(target=read_worker, args=(reader, in_queue))
+    t.daemon = True
+    t.start()
+
+    # define a worker to handle samples from in_queue by mapper
+    # and put mapped samples into out_queue
+    def handle_worker(in_queue, out_queue, mapper):
+        sample = in_queue.get()
+        while not isinstance(sample, XmapEndSignal):
+            r = mapper(sample)
+            out_queue.put(r)
+            sample = in_queue.get()
+        in_queue.put(end)
+        out_queue.put(end)
+
+    # start several handle_workers
+    workers = []
+    for i in xrange(process_num):
+        worker = Process(
+            target=handle_worker, args=(in_queue, out_queue, mapper))
+        worker.daemon = True
+        workers.append(worker)
+    for w in workers:
+        w.start()
+
+    def xreader():
+        sample = out_queue.get()
+        while not isinstance(sample, XmapEndSignal):
+            yield sample
+            sample = out_queue.get()
+        finish = 1
+        while finish < process_num:
+            sample = out_queue.get()
+            if isinstance(sample, XmapEndSignal):
+                finish += 1
+            else:
+                yield sample
+
+    return xreader
