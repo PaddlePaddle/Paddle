@@ -310,18 +310,14 @@ void OptimizerWithGradientClipping::update(const VectorPtr vecs[],
 
   real threshold;
   std::string field;
-  // Get the minimum of local and global threshold
-  // as the real threshold for clipping
-  if (globalThreshold > 0.0f && localThreshold > 0.0f) {
-    threshold =
-        globalThreshold < localThreshold ? globalThreshold : localThreshold;
-    field = globalThreshold < localThreshold ? "global" : "local";
-  } else if (globalThreshold > 0.0f) {
-    threshold = globalThreshold;
-    field = "global";
-  } else {
+  // Use local gradient clipping threshold if it's enabled,
+  // otherwise using the global one.
+  if (localThreshold > 0.0f) {
     threshold = localThreshold;
     field = "local";
+  } else {
+    threshold = globalThreshold;
+    field = "global";
   }
 
   real maxAbsGrad = vecs[PARAMETER_GRADIENT]->getAbsMax();
