@@ -181,8 +181,10 @@ void testFuncSparseDDMatrix(
     size_t dimM, size_t dimN, size_t dimK, size_t nnz, SparseFormat FORMAT) {
   real scaleT = 1.0;
   // init Test object
-  FunctionCompare test(
-      "MulOp", function::Config().set("aTrans", false).set("bTrans", false));
+  topology::Function config;
+  config.type = "MulToSparse";
+  config.attributes.set("aTrans", false).set("bTrans", false);
+  FunctionCompare test(config);
   // prepare input arguments
   /// matrix A : M * K
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{dimM, dimK}));

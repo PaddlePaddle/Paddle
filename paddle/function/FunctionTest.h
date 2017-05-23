@@ -245,7 +245,8 @@ public:
         outArgs.addArg(*arg);
       }
       auto err = function(inArgs, outArgs);
-      ASSERT_TRUE(err.isOK());
+      err.check();
+      //      ASSERT_TRUE(err.isOK());
     };
 
     callFunction(cpuFunc_, cpuInputs_, cpuOutputs_);

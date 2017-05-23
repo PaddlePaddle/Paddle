@@ -218,137 +218,6 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
   }
 }
 
-/**
- * mul operator
- * out = scaleT * out + scaleAB * (A * B)
- * here, scaleT in {0, 1}, scaleAB == 1,
- * out = A * B, ASSIGN_TO
- * out += A * B, ADD_TO
- *
- *
- * \param outputs[0]      output matrix (out), M * N,
- *                        could be either Sparse or Dense Matrix
- *                        M is num of rows, N is num of columns
- * \param inputs[0]       first input matrix (A),  M * K (if non-trans)
- *                        could be either Sparse or Dense Matrix
- *                        M is num of rows, K is num of columns
- * \param inputs[1]       second input matrix (B), K * N (if non-trans)
- *                        could be either Sparse or Dense Matrix
- *                        K is num of rows, N is num of columns
- *
- * Support eight Mul operators, with both GPU and CPU devices
- * For each device, four Mul operators are supported:
- * 1. dense (out) = dense (A) * dense (B)
- * 2. dense (out) = sparse (A) * dense (B)
- *    sparse matrix only support SPARSE_CSR format
- * 3. dense (out) = dense (A) * sparse (B)
- *    sparse matrix support SPARSE_CSC and SPARSE_CSR formats
- * 4. sparse (out) = dense (A) * dense (B)
- *    sparse matrix support SPARSE_CSC and SPARSE_CSR formats
- *
- */
-template <DeviceType Device>
-class MulFunc : public FunctionBase {
-public:
-  void init(const function::Config& config) override {
-    aTrans_ = config.get<bool>("aTrans");
-    bTrans_ = config.get<bool>("bTrans");
-  }
-
-  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK(!aTrans_ || !bTrans_)
-        << "Not support both a and b are transpose matrices";
-
-    CHECK_EQ((size_t)2, inputs.size());
-    CHECK_EQ((size_t)1, outputs.size());
-    CHECK(inputs[0].data() && inputs[1].data() && outputs[0].data());
-    CHECK_EQ(inputs[0].shape().ndims(), (size_t)2);
-    CHECK_EQ(inputs[1].shape().ndims(), (size_t)2);
-    CHECK_EQ(outputs[0].shape().ndims(), (size_t)2);
-
-    size_t aRow = !aTrans_ ? inputs[0].shape()[0] : inputs[0].shape()[1];
-    size_t aCol = !aTrans_ ? inputs[0].shape()[1] : inputs[0].shape()[0];
-    size_t bRow = !bTrans_ ? inputs[1].shape()[0] : inputs[1].shape()[1];
-    size_t bCol = !bTrans_ ? inputs[1].shape()[1] : inputs[1].shape()[0];
-    /// C = A * B, or C += A * B, for matrix format
-    CHECK_EQ(aCol, bRow);
-    CHECK_EQ(aRow, outputs[0].shape()[0]);
-    CHECK_EQ(bCol, outputs[0].shape()[1]);
-
-    /// only support C = A * B (ASSIGN_TO) or C += A * B (ADD_TO)
-    real scaleT = (outputs[0].getArgType() == ADD_TO) ? 1.0 : 0.0;
-
-    /// support dense = not both sparse * sparse
-    /// or sparse = dense * dense
-    CHECK((!outputs[0].isSparseArg() &&
-           !(inputs[0].isSparseArg() && inputs[1].isSparseArg())) ||
-          (outputs[0].isSparseArg() && !inputs[0].isSparseArg() &&
-           !inputs[1].isSparseArg()));
-
-    auto outMat = outputs[0].matrix<Device>();
-    /// dense matrix = dense matrix * dense matrix
-    if (!inputs[0].isSparseArg() && !inputs[1].isSparseArg() &&
-        !outputs[0].isSparseArg()) {
-      MulOp<Device>(outMat,
-                    inputs[0].matrix<Device>(),
-                    inputs[1].matrix<Device>(),
-                    1.0,  // scaleAB
-                    scaleT,
-                    aTrans_,
-                    bTrans_);
-      return;
-    }
-
-    /// dense matrix = dense matrix * sparse matrix
-    if (!inputs[0].isSparseArg() && inputs[1].isSparseArg() &&
-        !outputs[0].isSparseArg()) {
-      CHECK(!aTrans_) << "Not supported a transpose";
-      MulOp<Device>(outMat,
-                    inputs[0].matrix<Device>(),
-                    inputs[1].sparse().SparseMatrix<Device>(),
-                    1.0,  // scaleAB
-                    scaleT,
-                    aTrans_,
-                    bTrans_);
-      return;
-    }
-
-    /// dense matrix = sparse matrix * dense matrix
-    if (inputs[0].isSparseArg() && !inputs[1].isSparseArg() &&
-        !outputs[0].isSparseArg()) {
-      CHECK(!bTrans_) << "Not supported b transpose";
-      CHECK_EQ(inputs[0].sparse().dataFormat(), T_SPARSE_CSR)
-          << "Only supported SPARSE_CSR format for sparse matrix a";
-      MulOp<Device>(outMat,
-                    inputs[0].sparse().SparseMatrix<Device>(),
-                    inputs[1].matrix<Device>(),
-                    1.0,  // scaleAB
-                    scaleT,
-                    aTrans_,
-                    bTrans_);
-      return;
-    }
-
-    /// sparse matrix = dense matrix * dense matrix
-    auto outSparseMat = outputs[0].sparse().SparseMatrix<Device>();
-    if (!inputs[0].isSparseArg() && !inputs[1].isSparseArg() &&
-        outputs[0].isSparseArg()) {
-      MulOp<Device>(outSparseMat,
-                    inputs[0].matrix<Device>(),
-                    inputs[1].matrix<Device>(),
-                    1.0,  // scaleAB
-                    scaleT,
-                    aTrans_,
-                    bTrans_);
-      return;
-    }
-  }
-
-private:
-  bool aTrans_;
-  bool bTrans_;
-};
-
 struct MulAttribute : public topology::Attribute {
   bool aTrans;
   bool bTrans;
@@ -491,8 +360,43 @@ setShapeInferer<MulAttribute>([](std::vector<topology::TensorPtr>& ins,
 
 END_REGISTER_FUNCTION(Mul)
 
-REGISTER_TYPED_FUNC(MulOp, CPU, MulFunc);
-#ifndef PADDLE_ONLY_CPU
-REGISTER_TYPED_FUNC(MulOp, GPU, MulFunc);
-#endif
+template <DeviceType Device>
+static Error mulToSparse(const BufferArgs& inputs,
+                         const BufferArgs& outputs,
+                         const MulAttribute& attr) {
+  real scaleT = (outputs[0].getArgType() == ADD_TO) ? 1.0 : 0.0;
+  /// sparse matrix = dense matrix * dense matrix
+  auto outSparseMat = outputs[0].sparse().SparseMatrix<Device>();
+  if (!inputs[0].isSparseArg() && !inputs[1].isSparseArg() &&
+      outputs[0].isSparseArg()) {
+    MulOp<Device>(outSparseMat,
+                  inputs[0].matrix<Device>(),
+                  inputs[1].matrix<Device>(),
+                  1.0,  // scaleAB
+                  scaleT,
+                  attr.aTrans,
+                  attr.bTrans);
+  }
+  return Error();
+}
+
+BEGIN_REGISTER_FUNCTION(MulToSparse, mulToSparse, MulAttribute)
+addTensor<INPUT>(2);
+addTensor<INPUT>(2);
+addTensor<OUTPUT>(2, -1, {topology::DataType::SPARSE})
+    ->supportArgType(ADD_TO, {ASSIGN_TO, ADD_TO});
+setShapeInferer<MulAttribute>([](std::vector<topology::TensorPtr>& ins,
+                                 std::vector<topology::TensorPtr>& outs,
+                                 const MulAttribute& attr) -> Error {
+  topology::TensorPtr& in0 = ins[0];
+  topology::TensorPtr& in1 = ins[1];
+  topology::TensorPtr& out = outs[0];
+
+  auto err = MatrixShape(in0->shape(), in1->shape(), attr, *out);
+  if (!err.isOK()) return err;
+  out->setSequenceType(in0->sequenceType());
+  out->setDataType(topology::DataType::SPARSE);
+  return Error();
+});
+END_REGISTER_FUNCTION(MulToSparse)
 }  // namespace paddle
