@@ -109,7 +109,7 @@ class ReshapeLayerTest(unittest.TestCase):
         expand = layer.expand(
             input=weight,
             expand_as=pixel,
-            expand_level=layer.ExpandLevel.FROM_TIMESTEP)
+            expand_level=layer.ExpandLevel.FROM_NO_SEQUENCE)
         repeat = layer.repeat(input=pixel, num_repeats=4)
         reshape = layer.seq_reshape(input=pixel, reshape_size=4)
         rotate = layer.rotate(input=pixel, height=16, width=49)
