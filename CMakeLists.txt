@@ -91,6 +91,7 @@ include(external/openblas)  # download, build, install openblas
 include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
 include(external/any)       # download libn::any
+include(external/nlohmann_json)  # download json
 
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
