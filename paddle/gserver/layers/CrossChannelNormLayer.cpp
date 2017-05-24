@@ -61,9 +61,7 @@ void CrossChannelNormLayer::forward(PassType passType) {
   Matrix::resizeOrCreate(dataBuffer_, batchSize, dataDim, false, useGpu_);
   Matrix::resizeOrCreate(spatialBuffer_, 1, spatialDim, false, useGpu_);
   Matrix::resizeOrCreate(normBuffer_, batchSize, spatialDim, false, useGpu_);
-  normBuffer_->zeroMem();
-  // add eps to avoid overflow
-  normBuffer_->addScalar(*normBuffer_, 1e-6);
+
   inV->square2(*dataBuffer_);
   for (size_t i = 0; i < batchSize; i++) {
     const MatrixPtr inVTmp = createSampleMatrix(inV, i, spatialDim);
@@ -73,7 +71,8 @@ void CrossChannelNormLayer::forward(PassType passType) {
 
     // compute norm.
     spatialBuffer_->sumCols(*dataTmp, 1, 0);
-    spatialBuffer_->add(*normTmp);
+    // add eps to avoid overflow
+    spatialBuffer_->add(1e-6);
     spatialBuffer_->sqrt2(*spatialBuffer_);
     normTmp->copyFrom(*spatialBuffer_);
     outVTmp->copyFrom(*inVTmp);

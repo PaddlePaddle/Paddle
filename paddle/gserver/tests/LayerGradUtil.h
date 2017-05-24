@@ -134,8 +134,8 @@ struct TestConfig {
   bool testBatchState;
   TestConfig()
       : biasSize(0),
-        paramInitialMean(0),
-        paramInitialStd(1),
+        paramInitialMean(0.0),
+        paramInitialStd(1.0),
         hasParamInitialValue(false),
         testAccumulate(true),
         testState(false),
