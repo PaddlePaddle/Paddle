@@ -7,7 +7,7 @@ if(WITH_TESTING)
 
     if(WITH_GPU)
         nv_test(cuda_test SRCS cuda_test/cuda_test.cu)
-        nv_test(dim_test SRCS ddim/dim_test.cu DPES ddim)
+        nv_test(dim_test SRCS ddim/dim_test.cu DEPS ddim)
     endif()
 
 endif()
