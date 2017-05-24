@@ -257,7 +257,7 @@ public:
    * contains meta information of attributes.
    * @param errTag: A tag for readable error message.
    */
-  explicit AttributeMetaMap(const std::string& errTag) : errTag_(errTag) {}
+  explicit AttributeMetaMap(const std::string& errTag = "") : errTag_(errTag) {}
 
   const Map<std::string, AttributeMetaPtr>& getAttributes() const {
     return attributeMetas_;
