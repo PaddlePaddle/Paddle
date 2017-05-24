@@ -125,12 +125,18 @@ struct TestConfig {
   LayerConfig layerConfig;
   std::vector<InputDef> inputDefs;
   size_t biasSize;
+  real paramInitialMean;
+  real paramInitialStd;
+  bool hasParamInitialValue;
   bool testAccumulate;
   bool testState;
   bool staticBias;
   bool testBatchState;
   TestConfig()
       : biasSize(0),
+        paramInitialMean(0),
+        paramInitialStd(1),
+        hasParamInitialValue(false),
         testAccumulate(true),
         testState(false),
         staticBias(false),

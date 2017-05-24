@@ -465,7 +465,6 @@ void initTestLayer(TestConfig testConf,
                            ParameterConfig paraConfig) {
     paraConfig.set_name(paraName);
     paraConfig.set_size(paraSize);
-    paraConfig.set_initial_std(1);
     paraConfig.set_is_static(isStatic);
     auto para =
         std::make_shared<Parameter>(paraConfig, FLAGS_use_gpu, initialize);
@@ -498,6 +497,12 @@ void initTestLayer(TestConfig testConf,
       if (sparse) {
         paraConfig.add_dims((*layerMap)[input.input_layer_name()]->getSize());
         paraConfig.add_dims(testConf.layerConfig.size());
+      }
+      if (testConf.hasParamInitialValue) {
+        paraConfig.set_initial_mean(testConf.paramInitialMean);
+        paraConfig.set_initial_std(testConf.paramInitialStd);
+      } else {
+        paraConfig.set_initial_std(1);
       }
       initParameter(paraName, paraSize, inputDef.isStatic, false, paraConfig);
     }
