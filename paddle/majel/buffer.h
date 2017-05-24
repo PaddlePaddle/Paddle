@@ -1,7 +1,7 @@
 #pragma once
 
-#include "allocation.h"
-#include "place.h"
+#include "paddle/majel/allocation.h"
+#include "paddle/majel/place.h"
 
 namespace majel {
 

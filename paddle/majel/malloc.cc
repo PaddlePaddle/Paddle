@@ -1,5 +1,6 @@
-#include "malloc.h"
+#include "paddle/majel/malloc.h"
 #include <glog/logging.h>
+#include <memory>
 
 #ifndef PADDLE_ONLY_CPU
 #include <cuda_runtime.h>
@@ -16,16 +17,16 @@ namespace majel {
 namespace malloc {
 namespace detail {
 #ifndef PADDLE_ONLY_CPU
-const char* get_device_error_string() {
+const char* get_cuda_error_string() {
   cudaError_t err = cudaGetLastError();
   return cudaGetErrorString(err);
 }
 
-const char* get_device_error_string(size_t err) {
+const char* get_cuda_error_string(size_t err) {
   return cudaGetErrorString((cudaError_t)err);
 }
 
-void* malloc_device(size_t size) {
+void* malloc_cuda(size_t size) {
   void* dest_d;
 
   CHECK(size) << __func__ << ": the size for device memory is 0, please check.";
@@ -34,12 +35,12 @@ void* malloc_device(size_t size) {
   return dest_d;
 }
 
-void free_mem_device(void* dest_d) {
+void free_cuda(void* dest_d) {
   CHECK_NOTNULL(dest_d);
 
   cudaError_t err = cudaFree(dest_d);
   CHECK(cudaSuccess == err || cudaErrorCudartUnloading == err)
-      << get_device_error_string();
+      << get_cuda_error_string();
 }
 #endif
 
@@ -63,7 +64,7 @@ public:
 
 #ifndef PADDLE_ONLY_CPU
   void* operator()(majel::GpuPlace p) {
-    void* address = malloc_device(size_);
+    void* address = malloc_cuda(size_);
     CHECK(address) << "Fail to allocate GPU memory " << size_ << " bytes";
     return address;
   }
@@ -90,7 +91,7 @@ public:
 #ifndef PADDLE_ONLY_CPU
   void operator()(majel::GpuPlace p) {
     if (ptr_) {
-      free_mem_device(ptr_);
+      free_cuda(ptr_);
     }
   }
 

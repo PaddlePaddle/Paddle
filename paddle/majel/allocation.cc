@@ -1,6 +1,6 @@
-#include "allocation.h"
+#include "paddle/majel/allocation.h"
 #include <boost/variant.hpp>
-#include "malloc.h"
+#include "paddle/majel/malloc.h"
 
 namespace majel {
 namespace detail {
