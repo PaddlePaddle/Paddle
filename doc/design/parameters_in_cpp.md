@@ -2,7 +2,7 @@
 
 `Parameters` is a concept we designed in Paddle V2 API. `Parameters` is a container of parameters, and make Paddle can shared parameter between topologies. We described usages of `Parameter` in [api.md](./api.md).
 
-We used Python to implement Parameters when disigning V2 API before. There are several defects for current implementation:
+We used Python to implement Parameters when designing V2 API before. There are several defects for current implementation:
 * We just use `memcpy` to share Parameters between topologies, but this is very inefficient. 
 * We did not implement share Parameters while training. We just trigger `memcpy` when start training.
 
