@@ -13,7 +13,7 @@ DOCKERFILE_GPU_ENV=""
 DOCKERFILE_CUDNN_DSO=""
 if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
     DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
-    DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/lib/x86_64-linux-gnu/libcudnn.so"
+    DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/lib/libcudnn.so"
 fi
 
 mkdir -p /paddle/build
