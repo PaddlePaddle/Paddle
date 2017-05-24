@@ -6,7 +6,7 @@ We used Python to implement Parameters when disigning V2 API before. There are s
 * We just use `memcpy` to share Parameters between topologies, but this is very inefficient. 
 * We did not implement share Parameters while training. We just trigger `memcpy` when start training.
 
-It is necessary that we implement Parameters in CPP side. However, it could be a refactorization for Paddle, because Paddle was designed for training only one topology before, i.e., each GradientMachine contains its Parameter as a data member. In current Paddle implementation, there are three concepts associated with `Parameters`:
+It is necessary that we implement Parameters in CPP side. However, it could be a code refactoring for Paddle, because Paddle was designed for training only one topology before, i.e., each GradientMachine contains its Parameter as a data member. In current Paddle implementation, there are three concepts associated with `Parameters`:
 
 1. `paddle::Parameter`. A `Parameters` is a container for `paddle::Parameter`.
 It is evident that we should use `paddle::Parameter` when developing `Parameters`.
@@ -36,4 +36,4 @@ Because we need share `Parameters` between topologies, it is `Parameters`'s resp
 
 4. Make `Parameters` as an argument for `forward/backward` function, not a data member for `GradientMachine`. For example, `forward` could be `forward(const Parameters& params, ...)` and `backward` could be `backward(Parameters* params, ...)`. After this step, Paddle could share `Parameters` between topologies.
 
-5. `ParameterUpdater` is invoked by `GradientMachine` and `Trainer`, but it updates `Parameters`. In the end of this refactorization, we could change `ParameterUpdater` directly uses `Parameters` to make `ParameterUpdater`'s implementation clear.
+5. `ParameterUpdater` is invoked by `GradientMachine` and `Trainer`, but it updates `Parameters`. In the end of this code refactoring, we could change `ParameterUpdater` directly uses `Parameters` to make `ParameterUpdater`'s implementation clear.
