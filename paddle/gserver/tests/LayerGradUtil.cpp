@@ -403,9 +403,6 @@ void initDataLayer(TestConfig testConf,
         fillData(trans, layer->getSize(), pos);
         data.value->randomizeUniform();
         data.value->add(-0.5);
-        if (testLayerName != "prelu") {
-          data.value->sigmoid(*data.value);
-        }
         data.grad->zeroMem();
         break;
       }
