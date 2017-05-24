@@ -16,3 +16,4 @@ third_party/
 *~
 bazel-*
 third_party/
+dist
