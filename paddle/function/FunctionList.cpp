@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "FunctionList.h"
-#include "Function.h"
 #include "Register.h"
 #include "paddle/topology/Function.h"
 
@@ -25,23 +24,6 @@ public:
   FunctionList *self;
   topology::Function func;
 };
-
-void FunctionList::add(const std::string &name,
-                       const Config &config,
-                       bool useGPU) {
-  std::shared_ptr<FunctionBase> func;
-  if (useGPU) {
-    func.reset(FunctionBase::funcRegistrar_.createByType(name + "-GPU"));
-  } else {
-    func.reset(FunctionBase::funcRegistrar_.createByType(name + "-CPU"));
-  }
-  func->init(config);
-  this->push_back([func](const BufferArgs &inputs, const BufferArgs &outputs) {
-    func->calc(inputs, outputs);
-    //! TODO(yuyang18): Make FunctionBase::calc return paddle::Error.
-    return paddle::Error();
-  });
-}
 
 FunctionAttributeSetter FunctionList::add(const std::string &name,
                                           bool useGPU) {

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "Function.h"
+#include "BufferArg.h"
 
 namespace paddle {
 

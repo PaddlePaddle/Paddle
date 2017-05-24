@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 #include <functional>
 #include "BufferArgs.h"
-#include "FuncConfig.h"
 #include "paddle/topology/AttributeMap.h"
 namespace paddle {
 namespace function {
@@ -57,10 +56,6 @@ private:
 
 class FunctionList : public std::vector<Function> {
 public:
-  void add(const std::string& name,
-           const function::Config& config,
-           bool useGPU);
-
   FunctionAttributeSetter add(const std::string& name, bool useGPU);
 
 private:
