@@ -24,6 +24,8 @@ PYTHON=$1; shift
 if [ $USE_VIRTUALENV_FOR_TEST -ne 0 ]; then
    rm -rf .test_env
    virtualenv .test_env
+   unset PYTHONHOME
+   unset PYTHONPATH
    source .test_env/bin/activate
    PYTHON=python
 fi
@@ -32,6 +34,8 @@ $PYTHON -m pip install $SCRIPTPATH/../dist/*.whl
 
 if [ "X${PADDLE_PACKAGE_DIR}" != "X" ]; then
    $PYTHON -m pip install ${PADDLE_PACKAGE_DIR}/*.whl
+else
+   export PYTHONPATH=$SCRIPTPATH/../../python/
 fi
 
 $PYTHON -m pip install ipython==5.3
