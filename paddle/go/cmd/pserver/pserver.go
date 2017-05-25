@@ -1,17 +1,18 @@
 package main
 
 import (
-	"flag"
 	"net"
 	"net/http"
 	"net/rpc"
 	"strconv"
 
+	"github.com/namsral/flag"
+
 	"github.com/PaddlePaddle/Paddle/paddle/go/pserver"
 )
 
 func main() {
-	port := flag.Int("p", 0, "port of the pserver")
+	port := flag.Int("port", 0, "port of the pserver")
 	flag.Parse()
 
 	s := pserver.NewService()

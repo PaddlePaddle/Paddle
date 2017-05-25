@@ -1,40 +1,55 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"net"
 	"net/http"
 	"net/rpc"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/namsral/flag"
 
 	"github.com/PaddlePaddle/Paddle/paddle/go/master"
 	"github.com/PaddlePaddle/Paddle/paddle/go/recordio"
 )
 
-const (
-	taskTimeoutDur = 20 * time.Minute
-	taskTimeoutMax = 3
-)
-
 func main() {
-	port := flag.Int("p", 0, "port of the master server")
-	dataset := flag.String("d", "", "dataset: comma separated path to RecordIO files")
-	faultTolerant := flag.Bool("fault-tolerance", false, "enable fault tolerance (requires etcd).")
+	port := flag.Int("port", 8080, "port of the master server.")
+	dataset := flag.String("training_dataset", "", "dataset: comma separated path to RecordIO paths, supports golb patterns.")
+	faultTolerance := flag.Bool("fault_tolerance", false, "enable fault tolerance (requires etcd).")
+	taskTimeoutDur := flag.Duration("task_timout_dur", 20*time.Minute, "task timout duration.")
+	taskTimeoutMax := flag.Int("task_timeout_max", 3, "max timtout count for each task before it being declared failed task.")
+	chunkPerTask := flag.Int("chunk_per_task", 10, "chunk per task.")
 	flag.Parse()
 
 	if *dataset == "" {
 		panic("no dataset specified.")
 	}
 
-	if *faultTolerant {
-		panic("fault tolernat not implemented.")
+	if *faultTolerance {
+		panic("fault tolernance not implemented.")
 	}
 
 	var chunks []master.Chunk
-	paths := strings.Split(*dataset, ",")
+	var paths []string
+	ss := strings.Split(*dataset, ",")
+	fmt.Println(ss)
+	for _, s := range ss {
+		match, err := filepath.Glob(s)
+		if err != nil {
+			panic(err)
+		}
+		paths = append(paths, match...)
+	}
+
+	if len(paths) == 0 {
+		panic("no valid datset specified.")
+	}
+
 	idx := 0
 	for _, path := range paths {
 		f, err := os.Open(path)
@@ -59,7 +74,7 @@ func main() {
 		}
 	}
 
-	s := master.NewService(chunks, taskTimeoutDur, taskTimeoutMax)
+	s := master.NewService(chunks, *chunkPerTask, *taskTimeoutDur, *taskTimeoutMax)
 	err := rpc.Register(s)
 	if err != nil {
 		panic(err)

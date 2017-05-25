@@ -34,17 +34,16 @@ func Recover() (*Service, error) {
 	return nil, nil
 }
 
-func partition(chunks []Chunk, targetTaskCount int) []taskEntry {
+func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
 	id := 0
-	chunkPerTask := len(chunks) / targetTaskCount
-	if chunkPerTask <= 0 {
-		chunkPerTask = 1
+	if chunksPerTask <= 0 {
+		chunksPerTask = 1
 	}
 
 	var result []taskEntry
 	var cur taskEntry
 	for i, c := range chunks {
-		if i%chunkPerTask == 0 && len(cur.Task.Chunks) > 0 {
+		if i%chunksPerTask == 0 && len(cur.Task.Chunks) > 0 {
 			cur.Task.ID = id
 			id++
 			result = append(result, cur)
@@ -64,13 +63,13 @@ func partition(chunks []Chunk, targetTaskCount int) []taskEntry {
 }
 
 // NewService creates a new service.
-func NewService(chunks []Chunk, timeoutDur time.Duration, timeoutMax int) *Service {
+func NewService(chunks []Chunk, chunksPerTask int, timeoutDur time.Duration, timeoutMax int) *Service {
 	s := &Service{}
 	s.timeoutDur = timeoutDur
 	s.timeoutMax = timeoutMax
 	s.taskQueues = taskQueues{}
 	s.taskQueues.Pending = make(map[int]taskEntry)
-	s.taskQueues.Todo = partition(chunks, targetTaskCount)
+	s.taskQueues.Todo = partition(chunks, chunksPerTask)
 	return s
 }
 
