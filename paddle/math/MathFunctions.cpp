@@ -180,7 +180,6 @@ int getri<double>(const CBLAS_ORDER order,
                   const int lda,
                   const int* ipiv) {
   return dynload::PADDLE_DGETRI(order, N, A, lda, ipiv);
-  return 0;
 }
 
 template <>

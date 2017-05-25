@@ -3377,6 +3377,7 @@ settings = dict(
     algorithm='async_sgd',
     async_lagged_grad_discard_ratio=1.5,
     learning_method='momentum',
+    gradient_clipping_threshold=None,
     num_batches_per_send_parameter=None,
     num_batches_per_get_parameter=None,
     center_parameter_update_method=None,
