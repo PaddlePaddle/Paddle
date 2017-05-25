@@ -73,14 +73,20 @@ LayerOutput.__radd__ = add
 LayerOutput.__add__ = add
 
 
+def neg(layeroutput):
+    return slope_intercept_layer(input=layeroutput, slope=-1.0)
+
+
+LayerOutput.__neg__ = neg
+
+
 def sub(layeroutput, other):
     if is_compatible_with(other, float):
         return slope_intercept_layer(input=layeroutput, intercept=other)
     if not isinstance(other, LayerOutput):
         logger.fatal("LayerOutput can only be subtracted with"
                      " another Layeroutput or a number")
-    neg = slope_intercept_layer(input=other, slope=-1.0)
-    return add(layeroutput, neg)
+    return add(layeroutput, -other)
 
 
 LayerOutput.__sub__ = sub
