@@ -64,14 +64,14 @@ func partition(chunks []Chunk, targetTaskCount int) []taskEntry {
 }
 
 // NewService creates a new service.
-func NewService(chunks []Chunk, timeoutDur time.Duration, timeoutMax int) (*Service, error) {
+func NewService(chunks []Chunk, timeoutDur time.Duration, timeoutMax int) *Service {
 	s := &Service{}
 	s.timeoutDur = timeoutDur
 	s.timeoutMax = timeoutMax
 	s.taskQueues = taskQueues{}
 	s.taskQueues.Pending = make(map[int]taskEntry)
 	s.taskQueues.Todo = partition(chunks, targetTaskCount)
-	return s, nil
+	return s
 }
 
 // Chunk is a chunk of data consisted of several data instances.
