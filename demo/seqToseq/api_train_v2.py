@@ -21,9 +21,12 @@ def seqToseq_net(source_dict_dim, target_dict_dim, is_generating=False):
         size=word_vector_dim,
         param_attr=paddle.attr.ParamAttr(name='_source_language_embedding'))
     src_forward = paddle.networks.simple_gru(
-        input=src_embedding, size=encoder_size)
+        name='src_forward_gru', input=src_embedding, size=encoder_size)
     src_backward = paddle.networks.simple_gru(
-        input=src_embedding, size=encoder_size, reverse=True)
+        name='src_backward_gru',
+        input=src_embedding,
+        size=encoder_size,
+        reverse=True)
     encoded_vector = paddle.layer.concat(input=[src_forward, src_backward])
 
     #### Decoder
@@ -34,7 +37,9 @@ def seqToseq_net(source_dict_dim, target_dict_dim, is_generating=False):
     backward_first = paddle.layer.first_seq(input=src_backward)
 
     with paddle.layer.mixed(
-            size=decoder_size, act=paddle.activation.Tanh()) as decoder_boot:
+            name="decoder_boot_mixed",
+            size=decoder_size,
+            act=paddle.activation.Tanh()) as decoder_boot:
         decoder_boot += paddle.layer.full_matrix_projection(
             input=backward_first)
 
@@ -44,11 +49,17 @@ def seqToseq_net(source_dict_dim, target_dict_dim, is_generating=False):
             name='gru_decoder', size=decoder_size, boot_layer=decoder_boot)
 
         context = paddle.networks.simple_attention(
+            name="simple_attention",
             encoded_sequence=enc_vec,
             encoded_proj=enc_proj,
             decoder_state=decoder_mem)
 
-        with paddle.layer.mixed(size=decoder_size * 3) as decoder_inputs:
+        with paddle.layer.mixed(
+                name="input_recurrent",
+                size=decoder_size * 3,
+                # enable error clipping 
+                layer_attr=paddle.attr.ExtraAttr(
+                    error_clipping_threshold=100.0)) as decoder_inputs:
             decoder_inputs += paddle.layer.full_matrix_projection(input=context)
             decoder_inputs += paddle.layer.full_matrix_projection(
                 input=current_word)
@@ -57,9 +68,12 @@ def seqToseq_net(source_dict_dim, target_dict_dim, is_generating=False):
             name='gru_decoder',
             input=decoder_inputs,
             output_mem=decoder_mem,
+            # uncomment to enable local threshold for gradient clipping
+            # param_attr=paddle.attr.ParamAttr(gradient_clipping_threshold=9.9),
             size=decoder_size)
 
         with paddle.layer.mixed(
+                name="gru_step_output",
                 size=target_dict_dim,
                 bias_attr=True,
                 act=paddle.activation.Softmax()) as out:
@@ -125,7 +139,13 @@ def seqToseq_net(source_dict_dim, target_dict_dim, is_generating=False):
 
 
 def main():
-    paddle.init(use_gpu=False, trainer_count=1)
+    paddle.init(
+        use_gpu=False,
+        trainer_count=1,
+        # log gradient clipping info
+        log_clipping=True,
+        # log error clipping info
+        log_error_clipping=True)
     is_generating = False
 
     # source and target dict dim.
@@ -140,6 +160,8 @@ def main():
         # define optimize method and trainer
         optimizer = paddle.optimizer.Adam(
             learning_rate=5e-5,
+            # uncomment to enable global threshold for gradient clipping
+            # gradient_clipping_threshold=10.0,
             regularization=paddle.optimizer.L2Regularization(rate=8e-4))
         trainer = paddle.trainer.SGD(cost=cost,
                                      parameters=parameters,
