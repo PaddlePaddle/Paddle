@@ -137,9 +137,9 @@ func (c *Client) SendGrads(grads []Gradient) error {
 }
 
 type result struct {
-	idx int
-	p   Parameter
-	err error
+	idx   int
+	param Parameter
+	err   error
 }
 
 type results []result
@@ -164,7 +164,7 @@ func (c *Client) GetParams(names []string) ([]Parameter, error) {
 		go func(name string, idx int) {
 			var parameter Parameter
 			err := c.pservers[c.partition(name)].Call("Service.GetParam", name, &parameter)
-			rCh <- result{idx: idx, p: parameter, err: err}
+			rCh <- result{idx: idx, param: parameter, err: err}
 		}(name, idx)
 	}
 
@@ -185,7 +185,7 @@ func (c *Client) GetParams(names []string) ([]Parameter, error) {
 
 	ps := make([]Parameter, len(rs))
 	for i := range rs {
-		ps[i] = rs[i].p
+		ps[i] = rs[i].param
 	}
 
 	return ps, nil
