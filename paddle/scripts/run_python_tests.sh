@@ -28,8 +28,13 @@ if [ $USE_VIRTUALENV_FOR_TEST -ne 0 ]; then
    PYTHON=python
 fi
 
-export PYTHONPATH=$SCRIPTPATH/../../python/
-$PYTHON -m pip install $SCRIPTPATH/../dist/*.whl requests matplotlib opencv-python ipython==5.3
+$PYTHON -m pip install $SCRIPTPATH/../dist/*.whl
+
+if [ "X${PADDLE_PACKAGE_DIR}" != "X" ]; then
+   $PYTHON -m pip install ${PADDLE_PACKAGE_DIR}/*.whl
+fi
+
+$PYTHON -m pip install ipython==5.3
 
 for fn in "$@"
 do
