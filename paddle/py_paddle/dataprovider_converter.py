@@ -100,6 +100,7 @@ class DenseScanner(IScanner):
         self.__mat__ = None
         self.__shape__ = None
         self.__height__ = 0
+        self.__dim__ = 0
 
     def pre_scan(self, dat):
         self.__height__ += 1
@@ -108,24 +109,25 @@ class DenseScanner(IScanner):
             if len(self.__shape__) > 3:
                 raise ValueError(
                     "The dimension of input cannot be greater than 3.")
+            self.__dim__ = reduce(lambda x, y: x * y, self.__shape__)
+            if len(self.__shape__) == 1 and self.__dim__ != self.input_type.dim:
+                raise ValueError(
+                    "The data size must be equal to it in data layer.")
         else:
             if self.__shape__ != numpy.array(dat).shape:
                 raise ValueError(
                     "The data shape must be same in one mini-batch.")
 
     def finish_pre_scan(self, argument):
-        dim = reduce(lambda x, y: x * y, self.__shape__)
-        if len(self.__shape__) == 1 and dim != self.input_type.dim:
-            raise ValueError("The data size must be equal to it in data layer.")
         self.__mat__ = numpy.ndarray(
-            shape=(self.__height__, dim), dtype=numpy.float32)
+            shape=(self.__height__, self.__dim__), dtype=numpy.float32)
         self.__height__ = 0
 
     def scan(self, dat):
         # It's better to use NumPy array for speed.
-        d = numpy.array(dat)
-        d = d.flatten()
-        self.__mat__[self.__height__] = d
+        dat = numpy.array(dat)
+        dat = dat.flatten()
+        self.__mat__[self.__height__] = dat
         self.__height__ += 1
 
     def finish_scan(self, argument):
