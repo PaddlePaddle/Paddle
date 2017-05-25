@@ -12,30 +12,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef HL_MATRIX_TYPE_CUH_
-#define HL_MATRIX_TYPE_CUH_
+#ifndef HL_CPU_SCALAR_CUH_
+#define HL_CPU_SCALAR_CUH_
 
-#include "hl_base.h"
-
-#ifdef __CUDA_ARCH__
-#include <vector_types.h>
 #ifndef PADDLE_TYPE_DOUBLE
-typedef float4 vecType;
+/* size of float */
+#define VECTOR_SIZE     4
 #else
-typedef double2 vecType;
-#endif
-#elif defined(__SSE3__)
-#include "hl_cpu_simd_sse.cuh"
-#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
-#include "hl_cpu_simd_neon.cuh"
-#else
-#include "hl_cpu_scalar.cuh"
+/* size of double */
+#define VECTOR_SIZE     8
 #endif
 
-#ifdef __CUDA_ARCH__
-#define INLINE   __device__ inline
-#else
-#define INLINE   inline
-#endif
+typedef real vecType;
 
-#endif  // HL_MATRIX_TYPE_CUH_
+inline void set_zero(vecType &mm) { mm = (vecType) 0.0f; }
+
+/* Consider a real as a vector */
+#define VECTOR_LEN      1
+#define VECTOR_SET      set_zero
+
+template <class Agg>
+inline real hl_agg_op(Agg agg, vecType mm) {
+  return mm;
+}
+
+#endif  // HL_CPU_SCALAR_CUH_

@@ -52,7 +52,11 @@ public:
   }
 };
 
-#ifdef __CUDA_ARCH__
+#if defined(__SSE3__)
+#include "hl_matrix_base_sse.cuh"
+#elif (defined(__ARM__NEON__) || defined(__ARM_NEON))
+#include "hl_matrix_base_neon.cuh"
+#else
 typedef BaseOp SSESum;
 typedef BaseOp SSEMax;
 typedef BaseOp SSEMin;
@@ -66,10 +70,6 @@ typedef BaseOp SSESquaredDiff;
 typedef BaseOp SSEFirst;
 typedef BaseOp SSESecond;
 typedef BaseOp SSEClassificationError;
-#elif defined(__ARM__NEON__) || defined(__ARM_NEON)
-#include "hl_matrix_base_neon.cuh"
-#else
-#include "hl_matrix_base_sse.cuh"
 #endif
 
 namespace aggregate {
