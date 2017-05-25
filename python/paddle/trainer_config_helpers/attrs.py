@@ -110,15 +110,16 @@ class ParameterAttribute(object):
                  momentum=None,
                  gradient_clipping_threshold=None,
                  sparse_update=False):
-        # initialize strategy.
+        self.attr = {}
+
         if is_static:
-            self.attr = {'is_static': True}
-        elif initial_std is None and initial_mean is None and initial_max \
+            self.attr['is_static'] = True
+
+        if initial_std is None and initial_mean is None and initial_max \
                 is None and initial_min is None:
-            self.attr = {'initial_smart': True}
+            self.attr['initial_smart'] = True
         elif is_compatible_with(initial_std, float) or \
              is_compatible_with(initial_mean, float):
-            self.attr = dict()
             if initial_std is not None:
                 self.attr['initial_std'] = initial_std
             if initial_mean is not None:
@@ -131,7 +132,6 @@ class ParameterAttribute(object):
             assert initial_min < initial_max
             initial_mean = (initial_max + initial_min) / 2
             initial_std = initial_mean - initial_min
-            self.attr = dict()
             self.attr['initial_mean'] = initial_mean
             self.attr['initial_std'] = initial_std
             self.attr['initial_strategy'] = 1  # Uniform Random
