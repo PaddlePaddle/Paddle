@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/paddle/go/master"
-	"github.com/wangkuiyi/recordio"
+	"github.com/PaddlePaddle/Paddle/paddle/go/recordio"
 )
 
 const (
