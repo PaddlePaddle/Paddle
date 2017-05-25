@@ -94,7 +94,7 @@ public:
   /**
    * apply L1 to all sparse rows, should be apply after indices ready.
    */
-  void applyL1Decay(real learningRate, real decayRate);
+  virtual void applyL1(real learningRate, real decayRate);
 
   void clearIndices() { clearRows(); }
   void zeroMemThread(size_t tid, size_t numThreads);

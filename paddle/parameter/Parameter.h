@@ -209,14 +209,6 @@ public:
     intBufs_[pType] = iVec;
   }
 
-  SparsePrefetchRowCpuMatrix* getPrefetchMatrix();
-
-  float getLearnRate() const { return config_.learning_rate(); }
-
-  float getInitMean() const { return config_.initial_mean(); }
-
-  float getInitStandardDeviation() const { return config_.initial_std(); }
-
   void setValueUpdated() { updated_ = true; }
 
   void clearValueUpdated() { updated_ = false; }
@@ -356,8 +348,6 @@ protected:
   bool updated_;
   SparseFormat format_;
 
-  static ThreadLocal<std::vector<VectorPtr>> tlsTempBufs_;
-
   std::vector<std::shared_ptr<IParameterUpdaterHook>> updaterHooks_;
 
 public:
@@ -371,15 +361,6 @@ public:
   static const std::string kMissParameterFail;
   static const std::string kMissParameterRand;
   static const std::string kMissParameterZero;
-
-  static VectorPtr* getTlsTempBufs();
-
-  /**
-   * exec a func in single/multi thread.
-   * vecs is bufs_ of Parameter, as input of ExecFunc.
-   */
-  typedef std::function<void(const VectorPtr vecs[])> ExecFunc;
-  void exec(ExecFunc func);
 };
 
 typedef std::map<std::string, ParameterPtr> ParameterMap;

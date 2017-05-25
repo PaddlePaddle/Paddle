@@ -18,7 +18,6 @@ limitations under the License. */
 #include <fstream>
 
 #include "paddle/math/SIMDFunctions.h"
-
 #include "paddle/parameter/AverageOptimizer.h"
 #include "paddle/parameter/FirstOrderOptimizer.h"
 #include "paddle/parameter/OptimizerFunctions.h"
@@ -26,6 +25,7 @@ limitations under the License. */
 #include "paddle/parameter/ParameterOptimizer.h"
 #include "paddle/parameter/ParameterUpdateFunctions.h"
 #include "paddle/parameter/Regularizer.h"
+#include "paddle/parameter/ThreadLocalBuffer.h"
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/Stat.h"
@@ -618,7 +618,7 @@ void ParameterServer2::asyncSGD(const SendParameterRequest& request,
 
   bool commitGradient = asyncGrdientCommitCheckAndStat(request);
 
-  VectorPtr* vecs = Parameter::getTlsTempBufs();
+  VectorPtr* vecs = parameter::getThreadLocalBuffer();
   size_t bufferIndex = 0;
   for (const auto& block : request.blocks()) {
     int64_t offset = getBlockOffset(block);
@@ -1051,15 +1051,15 @@ void ParameterServer2::clearUnusedSegments(CpuVector* vec) {
 }
 
 void ParameterServer2::parallelExecForEachBlock(ExecFunc func) {
-  SyncThreadPool::execHelper(syncThreadPool_.get(),
-                             [&](int tid, size_t numThreads) {
-                               int64_t numBlocks = blockIdMap_.size();
-                               VectorPtr* vecs = Parameter::getTlsTempBufs();
-                               for (int64_t blockId = tid; blockId < numBlocks;
-                                    blockId += numThreads) {
-                                 func(blockId, vecs);
-                               }
-                             });
+  SyncThreadPool::execHelper(
+      syncThreadPool_.get(), [&](int tid, size_t numThreads) {
+        int64_t numBlocks = blockIdMap_.size();
+        VectorPtr* vecs = parameter::getThreadLocalBuffer();
+        for (int64_t blockId = tid; blockId < numBlocks;
+             blockId += numThreads) {
+          func(blockId, vecs);
+        }
+      });
 }
 
 void ParameterServer2::blockTraverse(
