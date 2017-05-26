@@ -1,0 +1,15 @@
+syntax = "proto2"
+ 
+option optimize_for = LITE_RUNTIME;
+
+package paddle
+
+
+message optimizer_config {
+  required string optimizer_name = 1;
+  required uint64 parameter_size = 2;
+  required double learning_rate = 3 [default = 1.0];
+  optional string lr_policy = 4;
+  optional double momentum = 5 [default = 0.0];
+  optional uint32 num_sample_passed = 6 [default = 0];
+}

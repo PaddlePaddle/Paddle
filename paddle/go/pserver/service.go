@@ -26,7 +26,8 @@ const (
 type Parameter struct {
 	Name        string
 	ElementType ElementType
-	Content     []byte
+	Size        uint32
+	// Content     []byte
 }
 
 // ParameterWithConfig contains the parameter and the configuration.
@@ -42,15 +43,16 @@ type Gradient Parameter
 type Service struct {
 	initialized chan struct{}
 
-	mu       sync.Mutex
-	opt      *optimizer
-	paramMap map[string]Parameter
+	mu           sync.Mutex
+	paramMap     map[string]Parameter
+	optimizerMap map[string]*optimizer // per parameter to optmizer
 }
 
 // NewService creates a new service.
 func NewService() *Service {
 	s := &Service{}
 	s.paramMap = make(map[string]Parameter)
+	s.optimizerMap = make(map[string]*optimizer)
 	s.initialized = make(chan struct{})
 	return s
 }
@@ -71,7 +73,8 @@ func (s *Service) BeginInitParams(config []byte, dummy *int) error {
 		s.opt.Cleanup()
 	}
 
-	// TODO(helin): parse learning rate from config
+	// TODO(h
+	// elin): parse learning rate from config
 	s.opt = newOptimizer(sgd, 0.01)
 	return nil
 }
@@ -135,7 +138,10 @@ func (s *Service) SendGrads(grads []Gradient, dummy *int) error {
 	errCh := make(chan error, count)
 	for _, g := range grads {
 		go func(p Parameter, g Gradient) {
-			err := s.opt.UpdateParameter(p, g)
+			opt, err := s.optimizerMap[p.Name]
+			if err != nil {
+				err := opt.UpdateParameter(p, g)
+			}
 			errCh <- err
 		}(s.paramMap[g.Name], g)
 	}
