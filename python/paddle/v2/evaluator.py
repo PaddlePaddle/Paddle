@@ -25,21 +25,9 @@ def initialize():
 
     for __ev_name__ in filter(lambda x: x.endswith('_evaluator'), evs.__all__):
         __ev__ = getattr(evs, __ev_name__)
-        if hasattr(__ev__, 'argspec'):
-            argspec = __ev__.argspec
-        else:
-            argspec = inspect.getargspec(__ev__)
-        parent_names = filter(lambda x: x in ['input', 'label', 'weight'],
-                              argspec.args)
-        v2_ev = __convert_to_v2__(
-            __ev_name__,
-            parent_names=parent_names,
-            is_default_name='name' in argspec.args,
-            attach_parent=True)
-
         __new_name__ = convert_to_new_name(__ev_name__)
 
-        globals()[__new_name__] = v2_ev
+        globals()[__new_name__] = __ev__
         globals()[__new_name__].__name__ = __new_name__
         __all__.append(__new_name__)
 

@@ -15,7 +15,7 @@
 import collections
 
 from paddle.proto.ModelConfig_pb2 import ModelConfig
-
+import paddle.trainer_config_helpers as conf_helps
 import layer as v2_layer
 
 __all__ = ['Topology']
@@ -94,31 +94,18 @@ class Topology(object):
         :param name:
         :return:
         """
-        result_layer = [None]
-
-        def __impl__(l):
-            if l.name == name:
-                result_layer[0] = l
-                return True  # break
-            return False
-
-        __bfs_travel__(__impl__, *self.layers)
-        if result_layer[0] is None:
-            raise ValueError("No such layer %s" % name)
-        return result_layer[0]
+        return v2_layer.get_layer(name)
 
     def data_layers(self):
         """
         get all data layer
         :return:
         """
-        data_layers = dict()
-
-        def __impl__(l):
-            if isinstance(l, v2_layer.DataLayerV2):
-                data_layers[l.name] = l
-
-        __bfs_travel__(__impl__, *self.layers)
+        data_layers = {}
+        for layer in self.proto().layers:
+            l = v2_layer.get_layer(layer.name)
+            if l and l.layer_type == conf_helps.LayerType.DATA:
+                data_layers[layer.name] = l
         return data_layers
 
     def data_type(self):
@@ -127,7 +114,7 @@ class Topology(object):
         [('image', dense_vector(768)), ('label', integer_value(10))]
         """
         data_layers = self.data_layers()
-        return [(nm, data_layers[nm].type)
+        return [(nm, data_layers[nm].data_type)
                 for nm in self.proto().input_layer_names]
 
     def get_layer_proto(self, name):

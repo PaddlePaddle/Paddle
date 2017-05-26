@@ -3371,7 +3371,7 @@ def make_importer(config_dir, config_args):
     return Import
 
 
-settings = dict(
+default_settings = dict(
     batch_size=None,
     mini_batch_size=None,
     algorithm='async_sgd',
@@ -3403,6 +3403,8 @@ settings = dict(
     adam_beta1=0.9,
     adam_beta2=0.999,
     adam_epsilon=1e-8, )
+
+settings = copy.deepcopy(default_settings)
 
 settings_deprecated = dict(usage_ratio=1., )
 
@@ -3544,10 +3546,8 @@ def update_g_config():
     return g_config
 
 
-def parse_config(trainer_config, config_arg_str):
+def begin_parse(config_arg_str=''):
     '''
-    @param trainer_config: can be a string of config file name or a function name
-    with config logic
     @param config_arg_str: a string of the form var1=val1,var2=val2. It will be
     passed to config script as a dictionary CONFIG_ARGS
     '''
@@ -3555,12 +3555,23 @@ def parse_config(trainer_config, config_arg_str):
     for hook in _parse_config_hooks:
         hook()
 
-    config_args = {}
-
     logger.findCaller = find_caller
     logger.fatal = my_fatal
 
     g_config.model_config.type = "nn"
+
+    global g_current_submodel, g_root_submodel
+    g_root_submodel = g_config.model_config.sub_models.add()
+    g_root_submodel.name = 'root'
+    g_root_submodel.is_recurrent_layer_group = False
+    g_current_submodel = g_root_submodel
+
+
+def parse_config(trainer_config, config_arg_str):
+    begin_parse(config_arg_str)
+
+    config_args = {}
+
     if config_arg_str:
         config_args = dict([f.split('=') for f in config_arg_str.split(',')])
 
@@ -3572,14 +3583,6 @@ def parse_config(trainer_config, config_arg_str):
         global g_extended_config_funcs
         extension_module = importlib(extension_module_name)
         g_extended_config_funcs = extension_module.get_config_funcs(g_config)
-
-    g_config.model_config.type = 'nn'
-
-    global g_current_submodel, g_root_submodel
-    g_root_submodel = g_config.model_config.sub_models.add()
-    g_root_submodel.name = 'root'
-    g_root_submodel.is_recurrent_layer_group = False
-    g_current_submodel = g_root_submodel
 
     if hasattr(trainer_config, '__call__'):
         trainer_config.func_globals.update(
