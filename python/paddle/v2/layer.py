@@ -56,7 +56,7 @@ from config_base import Layer, __convert_to_v2__
 __all__ = ['parse_network', 'data']
 
 
-def parse_network(output_layers, extra_layers=None):
+def parse_network(output_layers, extra_layers=None, debug=True):
     """
     Parse all layers in the neural network graph and
     then generate a ModelConfig object.
@@ -71,6 +71,8 @@ def parse_network(output_layers, extra_layers=None):
     :param extra_layers: Some layers in the neural network graph are not in the
                          path of output_layers.
     :type extra_layers: Layer
+    :param debug: The debug switch for printing neural network graph.
+    :type debug: bool
     :return: A ModelConfig object instance.
     :rtype: ModelConfig
     """
@@ -91,7 +93,7 @@ def parse_network(output_layers, extra_layers=None):
             extra_output = [
                 each.to_proto(context=context) for each in extra_layers
             ]
-        conf_helps.outputs(real_output)
+        conf_helps.outputs(real_output, debug=debug)
 
     return __parse__(__real_func__)
 
