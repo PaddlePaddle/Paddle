@@ -37,14 +37,16 @@ public:
                   size_t outputChannels,
                   size_t outputHeight,
                   size_t outputWidth,
-                  size_t padding,
-                  size_t stride) {
+                  size_t paddingH,
+                  size_t paddingW,
+                  size_t strideH,
+                  size_t strideW) {
     for (size_t batch = 0; batch < batchSize; batch++) {
       for (size_t outC = 0; outC < outputChannels; outC++) {
         for (size_t outH = 0; outH < outputHeight; outH++) {
           for (size_t outW = 0; outW < outputWidth; outW++) {
-            const int inStartH = (outH * stride) - padding;
-            const int inStartW = (outW * stride) - padding;
+            const int inStartH = (outH * strideH) - paddingH;
+            const int inStartW = (outW * strideW) - paddingW;
             T outValue = (T)0;
             for (size_t inC = 0; inC < inputChannels; inC++) {
               for (size_t fH = 0; fH < filterHeight; fH++) {
@@ -118,8 +120,10 @@ public:
          outputChannels,
          outputHeight,
          outputWidth,
-         padding_,
-         stride_);
+         paddingH(),
+         paddingW(),
+         strideH(),
+         strideW());
   }
 };
 

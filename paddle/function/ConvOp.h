@@ -36,8 +36,8 @@ class ConvFunctionBase : public FunctionBase {
 public:
   void init(const FuncConfig& config) override {
     // function arguments
-    stride_ = config.get<size_t>("stride");
-    padding_ = config.get<size_t>("padding");
+    strides_ = config.get<std::vector<size_t>>("strides");
+    paddings_ = config.get<std::vector<size_t>>("paddings");
 
     // number of inputs and outputs
     numInputs_ = 2;
@@ -60,8 +60,15 @@ public:
   }
 
 protected:
-  size_t padding_;
-  size_t stride_;
+  std::vector<size_t> strides_;
+  std::vector<size_t> paddings_;
+  inline int strideH() const { return strides_[0]; }
+
+  inline int strideW() const { return strides_[1]; }
+
+  inline int paddingH() const { return paddings_[0]; }
+
+  inline int paddingW() const { return paddings_[1]; }
 };
 
 }  // namespace paddle
