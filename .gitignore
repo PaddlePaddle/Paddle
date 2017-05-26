@@ -16,3 +16,9 @@ third_party/
 *~
 bazel-*
 third_party/
+
+*.#*
+./build
+*.pyc
+*.ycm*
+
