@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "ConvFunc.h"
+#include "ConvOp.h"
 
 namespace paddle {
 
@@ -102,10 +102,10 @@ public:
     size_t outputHeight = outputs[0].shape()[2];
     size_t outputWidth = outputs[0].shape()[3];
 
-    float* inputData = inputs[0].data<float>();
-    float* filterData = inputs[1].data<float>();
-    float* outputData = outputs[0].data<float>();
-    NaiveConvFunctor<float> conv;
+    real* inputData = inputs[0].data<real>();
+    real* filterData = inputs[1].data<real>();
+    real* outputData = outputs[0].data<real>();
+    NaiveConvFunctor<real> conv;
     conv(inputData,
          batchSize,
          inputChannels,
