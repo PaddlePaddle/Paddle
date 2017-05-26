@@ -38,7 +38,7 @@ typedef double2 vecType;
 #endif
 #elif defined(__SSE3__)
 #include "hl_cpu_simd_sse.cuh"
-#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+#elif (defined(__ARM_NEON) || defined(__ARM_NEON__)) && !defined(__NVCC__)
 #include "hl_cpu_simd_neon.cuh"
 #else
 #include "hl_cpu_scalar.cuh"
