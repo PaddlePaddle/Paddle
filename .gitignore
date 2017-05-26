@@ -16,3 +16,5 @@ third_party/
 *~
 bazel-*
 third_party/
+# for clion
+cmake-build-*
