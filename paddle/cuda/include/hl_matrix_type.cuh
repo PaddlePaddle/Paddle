@@ -18,6 +18,18 @@ limitations under the License. */
 #include "hl_base.h"
 
 #ifdef __CUDA_ARCH__
+/**
+ * CUDA kernel inline function
+ */
+#define INLINE   __device__ inline
+#else
+/**
+ * CPP inline function
+ */
+#define INLINE   inline
+#endif
+
+#ifdef __CUDA_ARCH__
 #include <vector_types.h>
 #ifndef PADDLE_TYPE_DOUBLE
 typedef float4 vecType;
@@ -30,12 +42,6 @@ typedef double2 vecType;
 #include "hl_cpu_simd_neon.cuh"
 #else
 #include "hl_cpu_scalar.cuh"
-#endif
-
-#ifdef __CUDA_ARCH__
-#define INLINE   __device__ inline
-#else
-#define INLINE   inline
 #endif
 
 #endif  // HL_MATRIX_TYPE_CUH_

@@ -17,15 +17,16 @@ limitations under the License. */
 
 #include <arm_neon.h>
 
-#define VECTOR_SIZE     16
+#define VECTOR_SIMD true
+#define VECTOR_SIZE 16
+#define VECTOR_SET  hl_vec_set
 
 #ifndef PADDLE_TYPE_DOUBLE
 
 typedef float32x4_t vecType;
 
 /* number of float in vector */
-#define VECTOR_LEN      4
-#define VECTOR_SET      vdupq_n_f32
+#define VECTOR_LEN  4
 
 template <class Agg>
 inline real hl_agg_op(Agg agg, vecType mm) {
@@ -39,19 +40,58 @@ inline real hl_agg_op(Agg agg, vecType mm) {
   return vgetq_lane_f32(ret, 0);
 }
 
+inline float32x4_t hl_vec_set(const real f) {
+  return vdupq_n_f32(f);
+}
+
+inline float32x4_t hl_vec_max(const float32x4_t a, const float32x4_t b) {
+  return vmaxq_f32(a, b);
+}
+
+inline float32x4_t hl_vec_min(const float32x4_t a, const float32x4_t b) {
+  return vminq_f32(a, b);
+}
+
+inline float32x4_t hl_vec_add(const float32x4_t a, const float32x4_t b) {
+  return vaddq_f32(a, b);
+}
+
+inline float32x4_t hl_vec_sub(const float32x4_t a, const float32x4_t b) {
+  return vsubq_f32(a, b);
+}
+
+inline float32x4_t hl_vec_mul(const float32x4_t a, const float32x4_t b) {
+  return vmulq_f32(a, b);
+}
+
+inline float32x4_t hl_vec_div(const float32x4_t a, const float32x4_t b) {
+  float32x4_t tmp = vrecpeq_f32(b);
+  return vmulq_f32(a, tmp);
+}
+
+inline float32x4_t hl_vec_classification_error(const float32x4_t a,
+                                               const float32x4_t b,
+                                               const float32x4_t p,
+                                               const float32x4_t r) {
+  uint32x4_t tmp1 = vcgtq_f32(a, p);
+  uint32x4_t tmp2 = vcgtq_f32(b, p);
+  uint32x4_t tmp3 = veorq_u32(tmp1, tmp2);
+  return vcvtq_f32_u32(vandq_u32(tmp3, vcvtq_u32_f32(r)));
+}
+
 #else
 
 #ifdef __aarch64__
 typedef float64x2_t vecType;
 
 /* number of float in vector */
-#define VECTOR_LEN      2
-#define VECTOR_SET      vdupq_n_f64
+#define VECTOR_LEN  2
+#define VECTOR_SET  vdupq_n_f64
 
 #error To be implemented
 #else
 #error NEON instructions does not support double precision
-#endif
+#endif  // __aarch64__
 
 #endif
 

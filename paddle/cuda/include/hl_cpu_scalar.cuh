@@ -15,25 +15,60 @@ limitations under the License. */
 #ifndef HL_CPU_SCALAR_CUH_
 #define HL_CPU_SCALAR_CUH_
 
+#define VECTOR_SIMD false
+#define VECTOR_SET  hl_vec_set
+
 #ifndef PADDLE_TYPE_DOUBLE
 /* size of float */
-#define VECTOR_SIZE     4
+#define VECTOR_SIZE 4
 #else
 /* size of double */
-#define VECTOR_SIZE     8
+#define VECTOR_SIZE 8
 #endif
 
 typedef real vecType;
 
-inline void set_zero(vecType &mm) { mm = (vecType) 0.0f; }
-
 /* Consider a real as a vector */
-#define VECTOR_LEN      1
-#define VECTOR_SET      set_zero
+#define VECTOR_LEN  1
 
 template <class Agg>
 inline real hl_agg_op(Agg agg, vecType mm) {
   return mm;
+}
+
+INLINE real hl_vec_set(const real r) {
+  return r;
+}
+
+INLINE real hl_vec_max(const real a, const real b) {
+  return a > b ? a : b;
+}
+
+INLINE real hl_vec_min(const real a, const real b) {
+  return a > b ? b : a;
+}
+
+INLINE real hl_vec_add(const real a, const real b) {
+  return a + b;
+}
+
+INLINE real hl_vec_sub(const real a, const real b) {
+  return a - b;
+}
+
+INLINE real hl_vec_mul(const real a, const real b) {
+  return a * b;
+}
+
+INLINE real hl_vec_div(const real a, const real b) {
+  return a / b;
+}
+
+INLINE real hl_vec_classification_error(const real a,
+                                        const real b,
+                                        const real p,
+                                        const real r) {
+  return ((a > p) == (b > p)) ? 0.0f : 1.0f;
 }
 
 #endif  // HL_CPU_SCALAR_CUH_
