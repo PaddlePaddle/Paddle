@@ -245,6 +245,9 @@ class AggregateLevel(object):
     """
     TO_NO_SEQUENCE = 'non-seq'
     TO_SEQUENCE = 'seq'
+    # compatible with previous configuration
+    EACH_TIMESTEP = TO_NO_SEQUENCE
+    EACH_SEQUENCE = TO_SEQUENCE
 
 
 class LayerOutput(object):
@@ -1487,6 +1490,8 @@ class ExpandLevel(object):
     """
     FROM_NO_SEQUENCE = AggregateLevel.TO_NO_SEQUENCE
     FROM_SEQUENCE = AggregateLevel.TO_SEQUENCE
+    # compatible with previous configuration
+    FROM_TIMESTEP = FROM_NO_SEQUENCE
 
 
 @wrap_name_default()
