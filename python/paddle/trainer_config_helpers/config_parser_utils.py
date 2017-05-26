@@ -15,7 +15,6 @@
 import copy
 import paddle.trainer.config_parser as config_parser
 from paddle.proto.TrainerConfig_pb2 import OptimizationConfig
-
 '''
 This file is a wrapper of formal config_parser. The main idea of this file is to
 separete different config logic into different function, such as network configuration
@@ -38,7 +37,7 @@ def parse_network_config(network_conf, config_arg_str=''):
 
 
 def parse_optimizer_config(optimizer_conf, config_arg_str=''):
-    config_parser.settings = copy.deepcopy(config_parser.default_settings)
+    config_parser.settings = copy.deepcopy(config_parser.DEFAULT_SETTING)
     optimizer_conf()
     opt_config = OptimizationConfig()
     for k, v in config_parser.settings.iteritems():

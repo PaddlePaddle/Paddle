@@ -32,6 +32,7 @@ class RNNTest(unittest.TestCase):
 
         def parse_old_rnn():
             reset_parser()
+
             def step(y):
                 mem = conf_helps.memory(name="rnn_state", size=hidden_dim)
                 out = conf_helps.fc_layer(
@@ -52,6 +53,7 @@ class RNNTest(unittest.TestCase):
 
         def parse_new_rnn():
             reset_parser()
+
             def new_step(y):
                 mem = layer.memory(name="rnn_state", size=hidden_dim)
                 out = layer.fc(input=[y, mem],
@@ -72,7 +74,6 @@ class RNNTest(unittest.TestCase):
                                     parse_new_rnn().splitlines(1))
         print ''.join(diff)
 
-
     def test_sequence_rnn_multi_input(self):
         dict_dim = 10
         word_dim = 8
@@ -81,6 +82,7 @@ class RNNTest(unittest.TestCase):
 
         def parse_old_rnn():
             reset_parser()
+
             def test():
                 data = conf_helps.data_layer(name="word", size=dict_dim)
                 label = conf_helps.data_layer(name="label", size=label_dim)

@@ -17,32 +17,9 @@ import collections
 from paddle.proto.ModelConfig_pb2 import ModelConfig
 import paddle.trainer_config_helpers as conf_helps
 import layer as v2_layer
+import config_base
 
 __all__ = ['Topology']
-
-
-def __flatten__(lis):
-    """
-    Given a list, possibly nested to any level, return it flattened.
-    """
-    new_lis = []
-    for item in lis:
-        if isinstance(item, collections.Sequence):
-            new_lis.extend(__flatten__(item))
-        else:
-            new_lis.append(item)
-    return new_lis
-
-
-def __bfs_travel__(callback, *layers):
-    layers = __flatten__(layers)
-    for each_layer in layers:
-        __break__ = callback(each_layer)
-        if __break__:
-            return
-        __layers__ = each_layer.__parent_layers__.values() + \
-                     each_layer.extra_parent()
-        __bfs_travel__(callback, *__layers__)
 
 
 class Topology(object):
@@ -125,5 +102,5 @@ class Topology(object):
 
 
 def __check_layer_type__(layer):
-    if not isinstance(layer, v2_layer.LayerV2):
-        raise ValueError('layer should have type paddle.layer.Layer')
+    if not isinstance(layer, config_base.Layer):
+        raise ValueError('layer should have type paddle.v2.config_base.Layer')

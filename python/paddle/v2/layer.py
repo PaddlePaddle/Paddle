@@ -33,26 +33,14 @@ The primary usage shows below.
 
 import collections
 import copy
+import re
 import paddle.trainer_config_helpers.layers as v1_layers
 import paddle.trainer.config_parser as cp
 from paddle.proto.ModelConfig_pb2 import ModelConfig, SubModelConfig
+from config_base import __convert_to_v2__
+import config_base
 
 __all__ = ['data', 'parse_network']
-__layer_map__ = {}
-
-
-def __wrap__(f):
-    def wrapped(*args, **xargs):
-        out = f(*args, **xargs)
-        outs = out
-        if not isinstance(out, collections.Sequence):
-            outs = [out]
-        for l in outs:
-            if isinstance(l, v1_layers.LayerOutput):
-                __layer_map__[l.full_name] = l
-        return out
-
-    return wrapped
 
 
 def __need_to_keep__(name):
@@ -90,7 +78,7 @@ for name in v1_layers.__all__:
         continue
     new_name = __convert_name__(name)
     if callable(obj) and __need_to_wrap__(name):
-        globals()[new_name] = __wrap__(obj)
+        globals()[new_name] = __convert_to_v2__(obj, new_name, __name__)
     else:
         globals()[new_name] = obj
     __all__.append(new_name)
@@ -102,9 +90,21 @@ def __data_layer__(name, type, **kwargs):
     return l
 
 
-data = __wrap__(__data_layer__)
+def __map_data_docstr__(doc):
+    doc = re.sub(r'(data = [^\)]+)\).*',
+                 "data = paddle.layer.data(name=\"input\", "
+                 "type=paddle.data_type.dense_vector(1000))", doc)
 
-LayerV2 = v1_layers.LayerOutput
+    doc = re.sub(r':param size:.*', ':param type: Data type of this data layer',
+                 doc)
+    doc = re.sub(r':type size:.*', ":type size: paddle.v2.data_type.InputType",
+                 doc)
+    return doc
+
+
+__data_layer__.__doc__ = __map_data_docstr__(v1_layers.data_layer.__doc__)
+
+data = __convert_to_v2__(__data_layer__, 'name', __name__)
 
 
 def __get_used_layers__(output_layers, extra_layers=None):
@@ -273,7 +273,7 @@ def parse_network(output_layers, extra_layers=None):
 
 
 def get_layer(name):
-    return __layer_map__.get(name)
+    return config_base.__layer_map__.get(name)
 
 
 cp.begin_parse()

@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle.trainer_config_helpers.evaluators as evs
-import inspect
 from config_base import __convert_to_v2__
+import inspect
 
 __all__ = []
 
@@ -27,7 +27,8 @@ def initialize():
         __ev__ = getattr(evs, __ev_name__)
         __new_name__ = convert_to_new_name(__ev_name__)
 
-        globals()[__new_name__] = __ev__
+        globals()[__new_name__] = __convert_to_v2__(__ev__, __new_name__,
+                                                    __name__)
         globals()[__new_name__].__name__ = __new_name__
         __all__.append(__new_name__)
 

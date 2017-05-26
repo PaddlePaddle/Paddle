@@ -3371,7 +3371,7 @@ def make_importer(config_dir, config_args):
     return Import
 
 
-default_settings = dict(
+DEFAULT_SETTING = dict(
     batch_size=None,
     mini_batch_size=None,
     algorithm='async_sgd',
@@ -3404,7 +3404,7 @@ default_settings = dict(
     adam_beta2=0.999,
     adam_epsilon=1e-8, )
 
-settings = copy.deepcopy(default_settings)
+settings = copy.deepcopy(DEFAULT_SETTING)
 
 settings_deprecated = dict(usage_ratio=1., )
 
