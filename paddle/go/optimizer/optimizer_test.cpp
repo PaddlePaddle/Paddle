@@ -1,6 +1,5 @@
-#include "training_ops.h"
-
-namespace paddle {
+#include "optimizer.h"
+#include "gtest/gtest.h"
 
 template <class T>
 class OpitmizerTests {
@@ -10,4 +9,3 @@ private:
 };
 
 void applyGradientDescent_TEST() {}
-}  // namespace paddle

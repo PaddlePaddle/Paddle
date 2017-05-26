@@ -1,4 +1,4 @@
-syntax = "proto2"
+syntax = "proto2";
  
 option optimize_for = LITE_RUNTIME;
 
@@ -10,8 +10,6 @@ message optimizer_config {
   required uint64 parameter_size = 2;
   required double learning_rate = 3 [default = 1.0];
   optional string lr_policy = 4;
-  required double decay_a = 3 [default = 1.0];
-  required double decay_b = 3 [default = 1.0];
   optional double momentum = 5 [default = 0.0];
   optional uint32 num_sample_passed = 6 [default = 0];
 }

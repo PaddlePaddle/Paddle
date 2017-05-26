@@ -20,8 +20,7 @@ public:
    */
   typedef std::function<void(Tensor &, const Tensor &)> UpdateHook;
   ParameterOptimizer = default;
-  ParameterOptimizer(const paddle::optimizer_config &config)
-      : config_(config){};
+  ParameterOptimizer(const optimizer_config &config) : config_(config){};
 
   static ParameterOptimizer *create(const std::string &config_proto);
   virtual void update(const Tensor &gradient) = 0;
@@ -32,7 +31,7 @@ public:
   ~ParameterOptimzier() {}
 
 private:
-  paddle::optimizer_config config_;
+  optimizer_config config_;
   std::shared_ptr<Tensor<T>> parameter_;
   /**
    * @brief indicate if use L1, L2 regularizer
