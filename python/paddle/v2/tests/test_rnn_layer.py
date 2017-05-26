@@ -42,7 +42,8 @@ class RNNTest(unittest.TestCase):
             def test():
                 data = conf_helps.data_layer(name="word", size=dict_dim)
                 embd = conf_helps.embedding_layer(input=data, size=word_dim)
-                conf_helps.recurrent_group(name="rnn", step=step, input=embd)
+                conf_helps.recurrent_group(
+                    name="rnn", step=step, input=embd, reverse=True)
 
             return str(parse_network(test))
 
@@ -60,7 +61,7 @@ class RNNTest(unittest.TestCase):
                 name="word", type=data_type.integer_value(dict_dim))
             embd = layer.embedding(input=data, size=word_dim)
             rnn_layer = layer.recurrent_group(
-                name="rnn", step=new_step, input=embd)
+                name="rnn", step=new_step, input=embd, reverse=True)
             return str(layer.parse_network(rnn_layer))
 
         diff = difflib.unified_diff(parse_old_rnn().splitlines(1),
