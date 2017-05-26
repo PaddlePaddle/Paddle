@@ -82,7 +82,7 @@ func cArrayToSlice(p unsafe.Pointer, len int) []byte {
 	// https://github.com/golang/go/wiki/cgo#turning-c-arrays-into-go-slices
 	//
 	// Go garbage collector will not interact with this data, need
-	// to be freed from C side.
+	// to be freed properly.
 	return (*[1 << 30]byte)(p)[:len:len]
 }
 
