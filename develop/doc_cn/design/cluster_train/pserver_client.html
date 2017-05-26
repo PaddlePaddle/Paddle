@@ -233,7 +233,7 @@ name:sparse-n-1
 <div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="nf">paddle_begin_init_params</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">config_proto</span><span class="p">);</span>
 </pre></div>
 </div>
-<p>The selected trainer&#8217;s call to <code class="docutils literal"><span class="pre">paddle_begin_init_params</span></code> will return with 1, and the other trainers&#8217; call to <code class="docutils literal"><span class="pre">paddle_begin_init_params</span></code> will block until initialization is done, and return 0. As illustrated below:</p>
+<p>The selected trainer&#8217;s call to <code class="docutils literal"><span class="pre">paddle_begin_init_params</span></code> will return with 1, and the other trainers&#8217; call to <code class="docutils literal"><span class="pre">paddle_begin_init_params</span></code> will return 0. <code class="docutils literal"><span class="pre">paddle_get_params</span></code> will be blocked until initialization is completed. As illustrated below:</p>
 <p><img src="./src/pserver_init.png"></p>
 </div>
 </div>
@@ -266,16 +266,13 @@ name:sparse-n-1
 <span class="cm"> *</span>
 <span class="cm"> * paddle_begin_init_params will be called from multiple trainers,</span>
 <span class="cm"> * only one trainer will be selected to initialize the parameters on</span>
-<span class="cm"> * parameter servers. Other trainers will be blocked until the</span>
-<span class="cm"> * initialization is done, and they need to get the initialized</span>
+<span class="cm"> * parameter servers. Other trainers need to get the initialized</span>
 <span class="cm"> * parameters from parameter servers using @paddle_get_params.</span>
 <span class="cm"> *</span>
-<span class="cm"> * @param pserver_config_proto serialized parameter server configuration in</span>
-<span class="cm"> * Protocol Buffers format.</span>
 <span class="cm"> * @return 1 if the trainer is selected to initialize parameter</span>
 <span class="cm"> * servers, otherwise 0.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">paddle_begin_init_params</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">pserver_config_proto</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">paddle_begin_init_params</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @brief paddle_init_param initializes the parameter on parameter</span>
@@ -283,12 +280,13 @@ name:sparse-n-1
 <span class="cm"> *</span>
 <span class="cm"> * @param param the parameter to initialize.</span>
 <span class="cm"> * @param param_config_proto the configuration for the parameter.</span>
+<span class="cm"> * @param config_len the length of param_config_proto</span>
 <span class="cm"> * @return 0 if successful, otherwise -1. On failure, the trainer</span>
 <span class="cm"> * needs to restart the entire initialization process (starting from</span>
 <span class="cm"> * @paddle_begin_init_param). Or simply exit the program and wait for</span>
 <span class="cm"> * the cluster management system to restart the trainer.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">paddle_init_param</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="n">paddle_parameter</span> <span class="n">params</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">param_config_proto</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">paddle_init_param</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="n">paddle_parameter</span> <span class="n">param</span><span class="p">,</span> <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">char</span><span class="o">*</span> <span class="n">param_config_proto</span><span class="p">,</span> <span class="kt">int</span> <span class="n">config_len</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @brief paddle_finish_init_params tells parameter servers client has</span>
