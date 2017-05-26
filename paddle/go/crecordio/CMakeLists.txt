@@ -8,5 +8,5 @@ project(cxx_go C Go)
 include(golang)
 include(flags)
 
-add_go_library(client STATIC)
+add_go_library(recordio STATIC)
 add_subdirectory(test)
