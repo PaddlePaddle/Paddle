@@ -28,7 +28,7 @@ void testMatrixProjectionForward(int context_start,
                std::max(0, (int)(context_start + context_length - 1));
   if (pad == 0) is_padding = false;
 
-  FunctionCompare test(
+  CpuGpuFuncCompare test(
       "ContextProjectionForward",
       FuncConfig()
           .set("context_length", context_length)
@@ -60,7 +60,7 @@ void testMatrixProjectionBackward(int context_start,
                std::max(0, (int)(context_start + context_length - 1));
   if (pad == 0) is_padding = false;
 
-  FunctionCompare test(
+  CpuGpuFuncCompare test(
       "ContextProjectionBackward",
       FuncConfig()
           .set("context_length", context_length)
