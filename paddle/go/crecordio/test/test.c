@@ -28,4 +28,5 @@ int main() {
     panic();
   }
   free(item);
+  paddle_reader_release(r);
 }
