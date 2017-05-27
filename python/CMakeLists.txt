@@ -24,15 +24,16 @@ add_custom_target(paddle_python ALL DEPENDS
     ${OUTPUT_DIR}/.timestamp)
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
-add_subdirectory(paddle/trainer_config_helpers/tests)
 
-if (WITH_SWIG_PY)
-  # enable v2 API unittest only when paddle swig api is compiled
-  add_subdirectory(paddle/v2/tests)
-  add_subdirectory(paddle/v2/reader/tests)
-  add_subdirectory(paddle/v2/plot/tests)
+if (WITH_TESTING)
+  add_subdirectory(paddle/trainer_config_helpers/tests)
+  if (WITH_SWIG_PY)
+    # enable v2 API unittest only when paddle swig api is compiled
+    add_subdirectory(paddle/v2/tests)
+    add_subdirectory(paddle/v2/reader/tests)
+    add_subdirectory(paddle/v2/plot/tests)
+  endif()
 endif()
-
 install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
     DESTINATION opt/paddle/share/wheels
 )

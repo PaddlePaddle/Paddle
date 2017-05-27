@@ -40,17 +40,6 @@ class Parameter;
 typedef std::function<void(Parameter* param)> UpdateCallback;
 typedef std::function<void(int paramId, Parameter* param)> ParamInitCallback;
 
-struct Segment {
-  int64_t beginDim;
-  int64_t endDim;
-
-  // We allow the possibility that the parameters are not stored at contiguous
-  // memory locations for speed reason (i.e. data alignemnt)
-  // This means that the dimenstion is not same as the position in the memroy
-  // buffer.
-  int64_t beginPos;  // beginning position in the local value or grad buffer
-};
-
 class Parameter;
 typedef std::shared_ptr<Parameter> ParameterPtr;
 
@@ -167,13 +156,6 @@ public:
     }
   }
 
-  void enableSharedType(ParameterType type, VectorPtr vec, MatType matType) {
-    if (!bufs_[type]) {
-      bufs_[type] = vec;
-      setMat(type, matType);
-    }
-  }
-
   /// for batchGradientMachine: blockNum is number of partitions of the matrix.
   bool isGradShared(size_t* blockNum = NULL);
 
@@ -203,20 +185,6 @@ public:
 
   const MatrixPtr& getMat(ParameterType pType) const { return mats_[pType]; }
 
-  const IVectorPtr& getIntBuf(ParameterType pType) { return intBufs_[pType]; }
-
-  void setIntBuf(ParameterType pType, const IVectorPtr& iVec) {
-    intBufs_[pType] = iVec;
-  }
-
-  SparsePrefetchRowCpuMatrix* getPrefetchMatrix();
-
-  float getLearnRate() const { return config_.learning_rate(); }
-
-  float getInitMean() const { return config_.initial_mean(); }
-
-  float getInitStandardDeviation() const { return config_.initial_std(); }
-
   void setValueUpdated() { updated_ = true; }
 
   void clearValueUpdated() { updated_ = false; }
@@ -242,8 +210,6 @@ public:
    * Load parameter from istream
    */
   bool load(std::istream& is);
-
-  std::vector<Segment>& getGradientSegments() { return gradSegments_; }
 
   void incShared() { sharedCount_++; }
 
@@ -351,35 +317,21 @@ protected:
 
   int sharedCount_;
   int updateCounter_;
-  std::vector<Segment> gradSegments_;  // segments of non-zero gradient
 
   bool updated_;
   SparseFormat format_;
 
-  static ThreadLocal<std::vector<VectorPtr>> tlsTempBufs_;
-
   std::vector<std::shared_ptr<IParameterUpdaterHook>> updaterHooks_;
 
 public:
-  void setSharedCount(int cnt) { sharedCount_ = cnt; }
   int getSharedCount() { return sharedCount_; }
 
-  void singleUpdate(void* data);
   bool isSparse() { return config_.is_sparse(); }
   SparseFormat getFormat() { return format_; }
 
   static const std::string kMissParameterFail;
   static const std::string kMissParameterRand;
   static const std::string kMissParameterZero;
-
-  static VectorPtr* getTlsTempBufs();
-
-  /**
-   * exec a func in single/multi thread.
-   * vecs is bufs_ of Parameter, as input of ExecFunc.
-   */
-  typedef std::function<void(const VectorPtr vecs[])> ExecFunc;
-  void exec(ExecFunc func);
 };
 
 typedef std::map<std::string, ParameterPtr> ParameterMap;
