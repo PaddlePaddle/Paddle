@@ -55,7 +55,7 @@ The trainer select process is encapsulated in the C API function:
 ```c
 int paddle_begin_init_params(paddle_pserver_client* client, const char* config_proto);
 ```
-The selected trainer's call to `paddle_begin_init_params` will return with 1, and the other trainers' call to `paddle_begin_init_params` will block until initialization is done, and return 0. As illustrated below:
+The selected trainer's call to `paddle_begin_init_params` will return with 1, and the other trainers' call to `paddle_begin_init_params` will return 0. `paddle_get_params` will be blocked until initialization is completed. As illustrated below:
 
 <img src="./src/pserver_init.png">
 
@@ -89,16 +89,13 @@ void paddle_pserver_client_release(paddle_pserver_client* client);
  *
  * paddle_begin_init_params will be called from multiple trainers,
  * only one trainer will be selected to initialize the parameters on
- * parameter servers. Other trainers will be blocked until the
- * initialization is done, and they need to get the initialized
+ * parameter servers. Other trainers need to get the initialized
  * parameters from parameter servers using @paddle_get_params.
  *
- * @param pserver_config_proto serialized parameter server configuration in
- * Protocol Buffers format.
  * @return 1 if the trainer is selected to initialize parameter
  * servers, otherwise 0.
  */
-int paddle_begin_init_params(paddle_pserver_client* client, const char* pserver_config_proto);
+int paddle_begin_init_params(paddle_pserver_client* client);
 
 /**
  * @brief paddle_init_param initializes the parameter on parameter
@@ -106,12 +103,13 @@ int paddle_begin_init_params(paddle_pserver_client* client, const char* pserver_
  *
  * @param param the parameter to initialize.
  * @param param_config_proto the configuration for the parameter.
+ * @param config_len the length of param_config_proto
  * @return 0 if successful, otherwise -1. On failure, the trainer
  * needs to restart the entire initialization process (starting from
  * @paddle_begin_init_param). Or simply exit the program and wait for
  * the cluster management system to restart the trainer.
  */
-int paddle_init_param(paddle_pserver_client* client, paddle_parameter params, const char* param_config_proto);
+int paddle_init_param(paddle_pserver_client* client, paddle_parameter param, const unsigned char* param_config_proto, int config_len);
 
 /**
  * @brief paddle_finish_init_params tells parameter servers client has
