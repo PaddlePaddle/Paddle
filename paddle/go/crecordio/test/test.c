@@ -1,5 +1,5 @@
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "librecordio.h"
 
@@ -22,7 +22,7 @@ int main() {
     panic();
   }
   free(item);
-  
+
   item = paddle_reader_next_item(r, &size);
   if (!strcmp(item, "hi") || size != 2) {
     panic();
