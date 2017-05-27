@@ -18,26 +18,6 @@ limitations under the License. */
 
 #include "hl_matrix_type.cuh"
 
-#ifdef __CUDA_ARCH__
-/**
- * CUDA kernel inline function
- */
-#define INLINE   __device__ inline
-#else
-/**
- * CPP inline function
- */
-#define INLINE   inline
-#endif
-
-#ifndef PADDLE_TYPE_DOUBLE
-#define     DEVICE_FMAX     fmaxf
-#define     DEVICE_FMIN     fminf
-#else
-#define     DEVICE_FMAX     fmax
-#define     DEVICE_FMIN     fmin
-#endif
-
 class BaseOp {
 public:
   static const bool sse = false;
@@ -66,10 +46,8 @@ typedef BaseOp SSESquaredDiff;
 typedef BaseOp SSEFirst;
 typedef BaseOp SSESecond;
 typedef BaseOp SSEClassificationError;
-#elif defined(__ARM__NEON__) || defined(__ARM_NEON)
-#include "hl_matrix_base_neon.cuh"
 #else
-#include "hl_matrix_base_sse.cuh"
+#include "hl_matrix_base_detail.cuh"
 #endif
 
 namespace aggregate {
@@ -124,7 +102,7 @@ public:
   add2(const real s1, const real s2)
     : SSEAdd2(s1, s2), p1(s1), p2(s2) {}
   INLINE real operator()(const real a, const real b) const {
-     return p1 * a + p2 * b;
+    return p1 * a + p2 * b;
   }
 };
 
