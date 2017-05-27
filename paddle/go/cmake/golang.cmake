@@ -31,11 +31,9 @@ function(ADD_GO_LIBRARY NAME BUILD_TYPE)
   # make a symlink that references Paddle inside $GOPATH, so go get
   # will use the local changes in Paddle rather than checkout Paddle
   # in github.
-  if(NOT EXISTS ${PADDLE_IN_GOPATH})
-      add_custom_target(copyPaddle
-	COMMAND ln -s ${PADDLE_DIR} ${PADDLE_IN_GOPATH})
-      add_dependencies(goGet copyPaddle)
-  endif()
+  add_custom_target(copyPaddle
+    COMMAND ln -sf ${PADDLE_DIR} ${PADDLE_IN_GOPATH})
+  add_dependencies(goGet copyPaddle)
 
   add_custom_command(OUTPUT ${OUTPUT_DIR}/.timestamp
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}

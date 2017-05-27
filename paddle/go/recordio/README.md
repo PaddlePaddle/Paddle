@@ -32,7 +32,7 @@ f.Close()
    for s.Scan() {
       fmt.Println(string(s.Record()))
    }
-   if s.Error() != nil && s.Error() != io.EOF {
+   if s.Err() != nil {
       log.Fatalf("Something wrong with scanning: %v", e)
    }
    f.Close()

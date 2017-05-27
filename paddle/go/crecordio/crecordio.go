@@ -9,10 +9,8 @@ typedef int writer;
 import "C"
 
 import (
-	"io"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"unsafe"
 
@@ -27,94 +25,7 @@ type writer struct {
 }
 
 type reader struct {
-	buffer chan []byte
-	cancel chan struct{}
-}
-
-func read(paths []string, buffer chan<- []byte, cancel chan struct{}) {
-	var curFile *os.File
-	var curScanner *recordio.Scanner
-	var pathIdx int
-
-	var nextFile func() bool
-	nextFile = func() bool {
-		if pathIdx >= len(paths) {
-			return false
-		}
-
-		path := paths[pathIdx]
-		pathIdx++
-		f, err := os.Open(path)
-		if err != nil {
-			return nextFile()
-		}
-
-		idx, err := recordio.LoadIndex(f)
-		if err != nil {
-			log.Println(err)
-			err = f.Close()
-			if err != nil {
-				log.Println(err)
-			}
-
-			return nextFile()
-		}
-
-		curFile = f
-		curScanner = recordio.NewScanner(f, idx, 0, -1)
-		return true
-	}
-
-	more := nextFile()
-	if !more {
-		close(buffer)
-		return
-	}
-
-	closeFile := func() {
-		err := curFile.Close()
-		if err != nil {
-			log.Println(err)
-		}
-		curFile = nil
-	}
-
-	for {
-		for curScanner.Scan() {
-			select {
-			case buffer <- curScanner.Record():
-			case <-cancel:
-				close(buffer)
-				closeFile()
-				return
-			}
-		}
-
-		if err := curScanner.Error(); err != nil && err != io.EOF {
-			log.Println(err)
-		}
-
-		closeFile()
-		more := nextFile()
-		if !more {
-			close(buffer)
-			return
-		}
-	}
-}
-
-//export paddle_new_writer
-func paddle_new_writer(path *C.char) C.writer {
-	p := C.GoString(path)
-	f, err := os.Create(p)
-	if err != nil {
-		log.Println(err)
-		return -1
-	}
-
-	w := recordio.NewWriter(f, -1, -1)
-	writer := &writer{f: f, w: w}
-	return addWriter(writer)
+	scanner *recordio.MultiScanner
 }
 
 func cArrayToSlice(p unsafe.Pointer, len int) []byte {
@@ -130,8 +41,22 @@ func cArrayToSlice(p unsafe.Pointer, len int) []byte {
 	return (*[1 << 30]byte)(p)[:len:len]
 }
 
-//export paddle_writer_write
-func paddle_writer_write(writer C.writer, buf *C.uchar, size C.int) int {
+//export create_recordio_writer
+func create_recordio_writer(path *C.char) C.writer {
+	p := C.GoString(path)
+	f, err := os.Create(p)
+	if err != nil {
+		log.Println(err)
+		return -1
+	}
+
+	w := recordio.NewWriter(f, -1, -1)
+	writer := &writer{f: f, w: w}
+	return addWriter(writer)
+}
+
+//export write_recordio
+func write_recordio(writer C.writer, buf *C.uchar, size C.int) int {
 	w := getWriter(writer)
 	b := cArrayToSlice(unsafe.Pointer(buf), int(size))
 	_, err := w.w.Write(b)
@@ -143,66 +68,50 @@ func paddle_writer_write(writer C.writer, buf *C.uchar, size C.int) int {
 	return 0
 }
 
-//export paddle_writer_release
-func paddle_writer_release(writer C.writer) {
+//export release_recordio
+func release_recordio(writer C.writer) {
 	w := removeWriter(writer)
 	w.w.Close()
 	w.f.Close()
 }
 
-//export paddle_new_reader
-func paddle_new_reader(path *C.char, bufferSize C.int) C.reader {
+//export create_recordio_reader
+func create_recordio_reader(path *C.char) C.reader {
 	p := C.GoString(path)
-	ss := strings.Split(p, ",")
-	var paths []string
-	for _, s := range ss {
-		match, err := filepath.Glob(s)
-		if err != nil {
-			log.Printf("error applying glob to %s: %v\n", s, err)
-			return -1
-		}
-
-		paths = append(paths, match...)
-	}
-
-	if len(paths) == 0 {
-		log.Println("no valid path provided.", p)
+	s, err := recordio.NewMultiScanner(strings.Split(p, ","))
+	if err != nil {
+		log.Println(err)
 		return -1
 	}
 
-	buffer := make(chan []byte, int(bufferSize))
-	cancel := make(chan struct{})
-	r := &reader{buffer: buffer, cancel: cancel}
-	go read(paths, buffer, cancel)
+	r := &reader{scanner: s}
 	return addReader(r)
 }
 
-//export paddle_reader_next_item
-func paddle_reader_next_item(reader C.reader, size *C.int) *C.uchar {
+//export read_next_item
+func read_next_item(reader C.reader, size *C.int) *C.uchar {
 	r := getReader(reader)
-	buf, ok := <-r.buffer
-	if !ok {
-		// channel closed and empty, reached EOF.
-		*size = -1
-		return (*C.uchar)(nullPtr)
+	if r.scanner.Scan() {
+		buf := r.scanner.Record()
+		*size = C.int(len(buf))
+
+		if len(buf) == 0 {
+			return (*C.uchar)(nullPtr)
+		}
+
+		ptr := C.malloc(C.size_t(len(buf)))
+		C.memcpy(ptr, unsafe.Pointer(&buf[0]), C.size_t(len(buf)))
+		return (*C.uchar)(ptr)
 	}
 
-	if len(buf) == 0 {
-		// empty item
-		*size = 0
-		return (*C.uchar)(nullPtr)
-	}
-
-	ptr := C.malloc(C.size_t(len(buf)))
-	C.memcpy(ptr, unsafe.Pointer(&buf[0]), C.size_t(len(buf)))
-	*size = C.int(len(buf))
-	return (*C.uchar)(ptr)
+	*size = -1
+	return (*C.uchar)(nullPtr)
 }
 
-//export paddle_reader_release
-func paddle_reader_release(reader C.reader) {
+//export release_recordio_reader
+func release_recordio_reader(reader C.reader) {
 	r := removeReader(reader)
-	close(r.cancel)
+	r.scanner.Close()
 }
 
 func main() {} // Required but ignored

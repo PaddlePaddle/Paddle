@@ -3,30 +3,55 @@
 
 #include "librecordio.h"
 
-void panic() {
+void fail() {
   // TODO(helin): fix: gtest using cmake is not working, using this
   // hacky way for now.
-  *(void*)0;
+  printf("test failed.\n");
+  exit(-1);
 }
 
 int main() {
-  writer w = paddle_new_writer("/tmp/test");
-  paddle_writer_write(w, "hello", 6);
-  paddle_writer_write(w, "hi", 3);
-  paddle_writer_release(w);
+  writer w = create_recordio_writer("/tmp/test_recordio_0");
+  write_recordio(w, "hello", 6);
+  write_recordio(w, "hi", 3);
+  release_recordio(w);
 
-  reader r = paddle_new_reader("/tmp/test", 10);
+  w = create_recordio_writer("/tmp/test_recordio_1");
+  write_recordio(w, "dog", 4);
+  write_recordio(w, "cat", 4);
+  release_recordio(w);
+
+  reader r = create_recordio_reader("/tmp/test_recordio_*");
   int size;
-  unsigned char* item = paddle_reader_next_item(r, &size);
-  if (!strcmp(item, "hello") || size != 6) {
-    panic();
+  unsigned char* item = read_next_item(r, &size);
+  if (strcmp(item, "hello") || size != 6) {
+    fail();
+  }
+
+  free(item);
+
+  item = read_next_item(r, &size);
+  if (strcmp(item, "hi") || size != 3) {
+    fail();
   }
   free(item);
 
-  item = paddle_reader_next_item(r, &size);
-  if (!strcmp(item, "hi") || size != 2) {
-    panic();
+  item = read_next_item(r, &size);
+  if (strcmp(item, "dog") || size != 4) {
+    fail();
   }
   free(item);
-  paddle_reader_release(r);
+
+  item = read_next_item(r, &size);
+  if (strcmp(item, "cat") || size != 4) {
+    fail();
+  }
+  free(item);
+
+  item = read_next_item(r, &size);
+  if (item != NULL || size != -1) {
+    fail();
+  }
+
+  release_recordio_reader(r);
 }
