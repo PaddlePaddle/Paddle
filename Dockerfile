@@ -33,6 +33,15 @@ RUN apt-get update && \
     clang-3.8 llvm-3.8 libclang-3.8-dev && \
     apt-get clean -y
 
+# Install Go
+RUN wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go.tgz && \
+    mkdir /root/gopath && \
+    rm go.tgz
+ENV GOROOT=/usr/local/go GOPATH=/root/gopath
+# should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
+ENV PATH=${PATH}:${GOROOT}/bin
+
 # git credential to skip password typing
 RUN git config --global credential.helper store
 
@@ -47,7 +56,8 @@ RUN pip install --upgrade pip && \
     pip install -U docopt PyYAML sphinx && \
     pip install -U sphinx-rtd-theme==0.1.9 recommonmark && \
     pip install pre-commit 'requests==2.9.2' 'ipython==5.3.0' && \
-    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0'
+    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \ 
+    pip install rarfile
 
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2

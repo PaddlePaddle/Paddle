@@ -1,34 +1,5 @@
 package pserver
 
-// ElementType is the type of elements of a Parameter.
-type ElementType int
-
-// Supported element types
-const (
-	Int32 ElementType = iota
-	UInt32
-	Int64
-	UInt64
-	Float32
-	Float64
-)
-
-// Parameter is a piece of data to sync with the parameter server.
-type Parameter struct {
-	Name        string
-	ElementType ElementType
-	Content     []byte
-}
-
-// ParameterWithConfig contains the parameter and the configuration.
-type ParameterWithConfig struct {
-	Param  Parameter
-	Config []byte // parameter configuration in Proto Buffer format
-}
-
-// Gradient is the gradient of the parameter.
-type Gradient Parameter
-
 // Client is the client to parameter servers.
 type Client struct {
 }

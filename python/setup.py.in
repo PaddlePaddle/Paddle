@@ -1,5 +1,6 @@
 from setuptools import setup
 
+
 packages=['paddle',
           'paddle.proto',
           'paddle.trainer',
@@ -18,6 +19,8 @@ setup(name='paddle',
           "numpy",
           "protobuf==${PROTOBUF_VERSION}",
           "matplotlib",
+          "opencv-python",
+          "rarfile"
       ],
       packages=packages,
       package_dir={
