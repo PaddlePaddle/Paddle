@@ -42,7 +42,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/PaddlePaddle/Paddle/paddle/go/pserver"
+	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
 
 var nullPtr = unsafe.Pointer(uintptr(0))

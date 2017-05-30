@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/PaddlePaddle/Paddle/paddle/go/recordio"
+	"github.com/PaddlePaddle/Paddle/go/recordio"
 )
 
 func TestWriteRead(t *testing.T) {

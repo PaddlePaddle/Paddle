@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/PaddlePaddle/Paddle/paddle/go/recordio"
+	"github.com/PaddlePaddle/Paddle/go/recordio"
 )
 
 const (

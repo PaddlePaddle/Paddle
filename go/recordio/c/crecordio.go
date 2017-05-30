@@ -14,7 +14,7 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/PaddlePaddle/Paddle/paddle/go/recordio"
+	"github.com/PaddlePaddle/Paddle/go/recordio"
 )
 
 var nullPtr = unsafe.Pointer(uintptr(0))
