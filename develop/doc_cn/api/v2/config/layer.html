@@ -196,35 +196,10 @@
 <h2>Data layer<a class="headerlink" href="#data-layer" title="永久链接至标题">¶</a></h2>
 <div class="section" id="data">
 <span id="api-v2-layer-data"></span><h3>data<a class="headerlink" href="#data" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="attribute">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">data</code><span class="sig-paren">(</span><em>name</em>, <em>type</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>Define DataLayer For NeuralNetwork.</p>
-<p>The example usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">data</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">data_type</span><span class="o">.</span><span class="n">dense_vector</span><span class="p">(</span><span class="mi">1000</span><span class="p">))</span>
-</pre></div>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
-<li><strong>name</strong> (<em>basestring</em>) &#8211; Name of this data layer.</li>
-<li><strong>type</strong> &#8211; Data type of this data layer</li>
-<li><strong>height</strong> (<em>int|None</em>) &#8211; Height of this data layer, used for image</li>
-<li><strong>width</strong> (<em>int|None</em>) &#8211; Width of this data layer, used for image</li>
-<li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; Extra Layer Attribute.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">paddle.v2.config_base.Layer object.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">paddle.v2.config_base.Layer</p>
-</td>
-</tr>
-</tbody>
-</table>
+<code class="descclassname">paddle.v2.layer.</code><code class="descname">data</code></dt>
+<dd><p><code class="xref py py-class docutils literal"><span class="pre">name</span></code> 的别名</p>
 </dd></dl>
 
 </div>
@@ -235,7 +210,7 @@
 <span id="api-v2-layer-fc"></span><h3>fc<a class="headerlink" href="#fc" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">fc</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">fc</code></dt>
 <dd><p>Helper for declare fully connected layer.</p>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">fc</span> <span class="o">=</span> <span class="n">fc</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
@@ -281,7 +256,7 @@ default Bias.</li>
 <h3>selective_fc<a class="headerlink" href="#selective-fc" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">selective_fc</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">selective_fc</code></dt>
 <dd><p>Selectived fully connected layer. Different from fc, the output
 of this layer maybe sparse. It requires an additional input to indicate
 several selected columns for output. If the selected columns is not
@@ -328,7 +303,7 @@ default Bias.</li>
 <h3>conv_operator<a class="headerlink" href="#conv-operator" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">conv_operator</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">conv_operator</code></dt>
 <dd><p>Different from img_conv, conv_op is an Operator, which can be used
 in mixed. And conv_op takes two inputs to perform convolution.
 The first input is the image and the second is filter kernel. It only
@@ -376,7 +351,7 @@ the filter&#8217;s shape can be (filter_size, filter_size_y).</li>
 <h3>conv_projection<a class="headerlink" href="#conv-projection" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">conv_projection</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">conv_projection</code></dt>
 <dd><p>Different from img_conv and conv_op, conv_projection is an Projection,
 which can be used in mixed and conat. It use cudnn to implement
 conv and only support GPU mode.</p>
@@ -424,7 +399,7 @@ the filter&#8217;s shape can be (filter_size, filter_size_y).</li>
 <h3>conv_shift<a class="headerlink" href="#conv-shift" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">conv_shift</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">conv_shift</code></dt>
 <dd><dl class="docutils">
 <dt>This layer performs cyclic convolution for two input. For example:</dt>
 <dd><ul class="first last simple">
@@ -477,7 +452,7 @@ the right size (which is the end of array) to the left.</li>
 <h3>img_conv<a class="headerlink" href="#img-conv" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">img_conv</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">img_conv</code></dt>
 <dd><p>Convolution layer for image. Paddle can support both square and non-square
 input currently.</p>
 <p>The details of convolution layer, please refer UFLDL&#8217;s <a class="reference external" href="http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/">convolution</a> .</p>
@@ -555,7 +530,7 @@ otherwise layer_type has to be either &#8220;exconv&#8221; or
 <span id="api-v2-layer-context-projection"></span><h3>context_projection<a class="headerlink" href="#context-projection" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">context_projection</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">context_projection</code></dt>
 <dd><p>Context Projection.</p>
 <p>It just simply reorganizes input sequence, combines &#8220;context_len&#8221; sequence
 to one context from context_start. &#8220;context_start&#8221; will be set to
@@ -598,7 +573,7 @@ parameter attribute is set by this parameter.</li>
 <h3>img_pool<a class="headerlink" href="#img-pool" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">img_pool</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">img_pool</code></dt>
 <dd><p>Image pooling Layer.</p>
 <p>The details of pooling layer, please refer ufldl&#8217;s <a class="reference external" href="http://ufldl.stanford.edu/tutorial/supervised/Pooling/">pooling</a> .</p>
 <ul class="simple">
@@ -662,7 +637,7 @@ Defalut is True. If set false, Otherwise use floor.</li>
 <h3>spp<a class="headerlink" href="#spp" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">spp</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">spp</code></dt>
 <dd><p>Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition.
 The details please refer to
 <a class="reference external" href="https://arxiv.org/abs/1406.4729">Kaiming He&#8217;s paper</a>.</p>
@@ -702,7 +677,7 @@ The details please refer to
 <h3>maxout<a class="headerlink" href="#maxout" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">maxout</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">maxout</code></dt>
 <dd><dl class="docutils">
 <dt>A layer to do max out on conv layer output.</dt>
 <dd><ul class="first last simple">
@@ -759,7 +734,7 @@ automatically from previous output.</li>
 <h3>img_cmrnorm<a class="headerlink" href="#img-cmrnorm" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">img_cmrnorm</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">img_cmrnorm</code></dt>
 <dd><p>Response normalization across feature maps.
 The details please refer to
 <a class="reference external" href="http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf">Alex&#8217;s paper</a>.</p>
@@ -798,7 +773,7 @@ num_channels is None, it will be set automatically.</li>
 <h3>batch_norm<a class="headerlink" href="#batch-norm" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">batch_norm</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">batch_norm</code></dt>
 <dd><p>Batch Normalization Layer. The notation of this layer as follow.</p>
 <p><span class="math">\(x\)</span> is the input features over a mini-batch.</p>
 <div class="math">
@@ -870,7 +845,7 @@ computation, referred to as facotr,
 <h3>sum_to_one_norm<a class="headerlink" href="#sum-to-one-norm" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">sum_to_one_norm</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">sum_to_one_norm</code></dt>
 <dd><p>A layer for sum-to-one normalization,
 which is used in NEURAL TURING MACHINE.</p>
 <div class="math">
@@ -907,7 +882,7 @@ and <span class="math">\(out\)</span> is a (batchSize x dataDim) output vector.<
 <h3>cross_channel_norm<a class="headerlink" href="#cross-channel-norm" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">cross_channel_norm</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">cross_channel_norm</code></dt>
 <dd><p>Normalize a layer&#8217;s output. This layer is necessary for ssd.
 This layer applys normalize across the channels of each sample to
 a conv layer&#8217;s output and scale the output by a group of trainable
@@ -938,7 +913,7 @@ factors which dimensions equal to the channel&#8217;s number.</p>
 <h3>recurrent<a class="headerlink" href="#recurrent" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">recurrent</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">recurrent</code></dt>
 <dd><p>Simple recurrent unit layer. It is just a fully connect layer through both
 time and neural network.</p>
 <p>For each sequence [start, end] it performs the following computation:</p>
@@ -978,7 +953,7 @@ out_{i} = act(in_{i} + out_{i+1} * W) \ \ \text{for} \ start &lt;= i &lt; end\en
 <h3>lstmemory<a class="headerlink" href="#lstmemory" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">lstmemory</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">lstmemory</code></dt>
 <dd><p>Long Short-term Memory Cell.</p>
 <p>The memory cell was implemented as follow equations.</p>
 <div class="math">
@@ -1027,7 +1002,7 @@ bias.</li>
 <h3>grumemory<a class="headerlink" href="#grumemory" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">grumemory</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">grumemory</code></dt>
 <dd><p>Gate Recurrent Unit Layer.</p>
 <p>The memory cell was implemented as follow equations.</p>
 <p>1. update gate <span class="math">\(z\)</span>: defines how much of the previous memory to
@@ -1099,7 +1074,7 @@ will get a warning.</li>
 <h3>memory<a class="headerlink" href="#memory" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">memory</code><span class="sig-paren">(</span><em>name</em>, <em>extra_input=None</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">memory</code></dt>
 <dd><p>The memory layers is a layer cross each time step. Reference this output
 as previous time step layer <code class="code docutils literal"><span class="pre">name</span></code> &#8216;s output.</p>
 <p>The default memory is zero in first time step, previous time step&#8217;s
@@ -1108,12 +1083,12 @@ output in the rest time steps.</p>
 with activation.</p>
 <p>If boot_with_const_id, then the first time stop is a IndexSlot, the
 Arguments.ids()[0] is this <code class="code docutils literal"><span class="pre">cost_id</span></code>.</p>
-<p>If boot_layer is not null, the memory is just the boot_layer&#8217;s output.
+<p>If boot is not null, the memory is just the boot&#8217;s output.
 Set <code class="code docutils literal"><span class="pre">is_seq</span></code> is true boot layer is sequence.</p>
 <p>The same name layer in recurrent group will set memory on each time
 step.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;state&#39;</span><span class="p">)</span>
-<span class="n">state</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">mem</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;state&#39;</span><span class="p">)</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">fc</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">mem</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;state&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>If you do not want to specify the name, you can equivalently use set_input()
@@ -1129,18 +1104,18 @@ name of the layer which this memory remembers.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; size of memory.</li>
 <li><strong>memory_name</strong> (<em>basestring</em>) &#8211; the name of the memory.
 It is ignored when name is provided.</li>
-<li><strong>is_seq</strong> (<em>bool</em>) &#8211; is sequence for boot_layer</li>
-<li><strong>boot_layer</strong> (<em>LayerOutput|None</em>) &#8211; boot layer of memory.</li>
-<li><strong>boot_bias</strong> (<em>ParameterAttribute|None</em>) &#8211; boot layer&#8217;s bias</li>
-<li><strong>boot_bias_active_type</strong> (<em>BaseActivation</em>) &#8211; boot layer&#8217;s active type.</li>
+<li><strong>is_seq</strong> (<em>bool</em>) &#8211; is sequence for boot</li>
+<li><strong>boot</strong> (<em>paddle.v2.config_base.Layer|None</em>) &#8211; boot layer of memory.</li>
+<li><strong>boot_bias</strong> (<em>paddle.v2.attr.ParameterAttribute|None</em>) &#8211; boot layer&#8217;s bias</li>
+<li><strong>boot_bias_active_type</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; boot layer&#8217;s active type.</li>
 <li><strong>boot_with_const_id</strong> (<em>int</em>) &#8211; boot layer&#8217;s id.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">LayerOutput object which is a memory.</p>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">paddle.v2.config_base.Layer object which is a memory.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">LayerOutput</p>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">paddle.v2.config_base.Layer</p>
 </td>
 </tr>
 </tbody>
@@ -1160,9 +1135,9 @@ sequence input. This is extremely usefull for attention based model, or
 Neural Turning Machine like models.</p>
 <p>The basic usage (time steps) is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
-    <span class="n">output</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">fc</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
                       <span class="n">size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
-                      <span class="n">act</span><span class="o">=</span><span class="n">LinearActivation</span><span class="p">(),</span>
+                      <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">Activation</span><span class="o">.</span><span class="n">Linear</span><span class="p">(),</span>
                       <span class="n">bias_attr</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">output</span>
 
@@ -1172,8 +1147,8 @@ Neural Turning Machine like models.</p>
 </div>
 <p>You can see following configs for further usages:</p>
 <ul class="simple">
-<li>time steps: lstmemory_group, paddle/gserver/tests/sequence_layer_group.conf,                   demo/seqToseq/seqToseq_net.py</li>
-<li>sequence steps: paddle/gserver/tests/sequence_nest_layer_group.conf</li>
+<li>time steps: lstmemory_group, paddle/gserver/tests/sequence_group.conf,                   demo/seqToseq/seqToseq_net.py</li>
+<li>sequence steps: paddle/gserver/tests/sequence_nest_group.conf</li>
 </ul>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1189,24 +1164,24 @@ a time step result. Then gather each time step of output into
 layer group&#8217;s output.</p>
 </li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; recurrent_group&#8217;s name.</li>
-<li><strong>input</strong> (<em>LayerOutput|StaticInput|SubsequenceInput|list|tuple</em>) &#8211; <p>Input links array.</p>
-<p>LayerOutput will be scattered into time steps.
+<li><strong>input</strong> (<em>paddle.v2.config_base.Layer|StaticInput|SubsequenceInput|list|tuple</em>) &#8211; <p>Input links array.</p>
+<p>paddle.v2.config_base.Layer will be scattered into time steps.
 SubsequenceInput will be scattered into sequence steps.
 StaticInput will be imported to each time step, and doesn&#8217;t change
 through time. It&#8217;s a mechanism to access layer outside step function.</p>
 </li>
 <li><strong>reverse</strong> (<em>bool</em>) &#8211; If reverse is set true, the recurrent unit will process the
 input sequence in a reverse order.</li>
-<li><strong>targetInlink</strong> (<em>LayerOutput|SubsequenceInput</em>) &#8211; <p>the input layer which share info with layer group&#8217;s output</p>
+<li><strong>targetInlink</strong> (<em>paddle.v2.config_base.Layer|SubsequenceInput</em>) &#8211; <p>the input layer which share info with layer group&#8217;s output</p>
 <p>Param input specifies multiple input layers. For
 SubsequenceInput inputs, config should assign one input
 layer that share info(the number of sentences and the number
 of words in each sentence) with all layer group&#8217;s outputs.
 targetInlink should be one of the layer group&#8217;s input.</p>
 </li>
-<li><strong>is_generating</strong> &#8211; If is generating, none of input type should be LayerOutput;
+<li><strong>is_generating</strong> &#8211; If is generating, none of input type should be paddle.v2.config_base.Layer;
 else, for training or testing, one of the input type must
-be LayerOutput.</li>
+be paddle.v2.config_base.Layer.</li>
 </ul>
 </td>
 </tr>
@@ -1217,9 +1192,9 @@ be LayerOutput.</li>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">LayerOutput object.</td>
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">paddle.v2.config_base.Layer object.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">LayerOutput</td>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">paddle.v2.config_base.Layer</td>
 </tr>
 </tbody>
 </table>
@@ -1230,7 +1205,7 @@ be LayerOutput.</li>
 <h3>lstm_step<a class="headerlink" href="#lstm-step" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">lstm_step</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">lstm_step</code></dt>
 <dd><p>LSTM Step Layer. It used in recurrent_group. The lstm equations are shown
 as follow.</p>
 <div class="math">
@@ -1280,7 +1255,7 @@ be sigmoid only.</li>
 <h3>gru_step<a class="headerlink" href="#gru-step" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">gru_step</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">gru_step</code></dt>
 <dd><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1321,7 +1296,7 @@ to maintain tractability.</p>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">rnn_step</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
     <span class="n">last_time_step_output</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;rnn&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
-    <span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rnn&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">simple_rnn</span><span class="p">:</span>
+    <span class="k">with</span> <span class="n">mixed</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rnn&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">simple_rnn</span><span class="p">:</span>
         <span class="n">simple_rnn</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
         <span class="n">simple_rnn</span> <span class="o">+=</span> <span class="n">last_time_step_output</span>
     <span class="k">return</span> <span class="n">simple_rnn</span>
@@ -1383,7 +1358,7 @@ beam size.</li>
 <tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">The generated word index.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">LayerOutput</p>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">paddle.v2.config_base.Layer</p>
 </td>
 </tr>
 </tbody>
@@ -1395,7 +1370,7 @@ beam size.</li>
 <h3>get_output<a class="headerlink" href="#get-output" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">get_output</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">get_output</code></dt>
 <dd><p>Get layer&#8217;s output by name. In PaddlePaddle, a layer might return multiple
 values, but returns one layer&#8217;s output. If the user wants to use another
 output besides the default one, please use get_output first to get
@@ -1436,17 +1411,17 @@ multiple outputs.</li>
 Each inputs is a projection or operator.</p>
 <p>There are two styles of usages.</p>
 <ol class="arabic simple">
-<li>When not set inputs parameter, use mixed_layer like this:</li>
+<li>When not set inputs parameter, use mixed like this:</li>
 </ol>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span> <span class="k">as</span> <span class="n">m</span><span class="p">:</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">mixed</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span> <span class="k">as</span> <span class="n">m</span><span class="p">:</span>
     <span class="n">m</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">)</span>
     <span class="n">m</span> <span class="o">+=</span> <span class="n">identity_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer2</span><span class="p">)</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="2">
-<li>You can also set all inputs when invoke mixed_layer as follows:</li>
+<li>You can also set all inputs when invoke mixed as follows:</li>
 </ol>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">m</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">m</span> <span class="o">=</span> <span class="n">mixed</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
                 <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">),</span>
                        <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer2</span><span class="p">)])</span>
 </pre></div>
@@ -1460,11 +1435,11 @@ Each inputs is a projection or operator.</p>
 <li><strong>size</strong> (<em>int</em>) &#8211; layer size.</li>
 <li><strong>input</strong> &#8211; inputs layer. It is an optional parameter. If set,
 then this function will just return layer&#8217;s name.</li>
-<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type.</li>
-<li><strong>bias_attr</strong> (<em>ParameterAttribute</em><em> or </em><em>None</em><em> or </em><em>bool</em>) &#8211; The Bias Attribute. If no bias, then pass False or
-something not type of ParameterAttribute. None will get a
+<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation Type.</li>
+<li><strong>bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em><em> or </em><em>None</em><em> or </em><em>bool</em>) &#8211; The Bias Attribute. If no bias, then pass False or
+something not type of paddle.v2.attr.ParameterAttribute. None will get a
 default Bias.</li>
-<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute</em>) &#8211; The extra layer config. Default is None.</li>
+<li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; The extra layer config. Default is None.</li>
 </ul>
 </td>
 </tr>
@@ -1483,7 +1458,7 @@ default Bias.</li>
 <span id="api-v2-layer-embedding"></span><h3>embedding<a class="headerlink" href="#embedding" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">embedding</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">embedding</code></dt>
 <dd><p>Define a embedding Layer.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1514,7 +1489,7 @@ for details.</li>
 <h3>scaling_projection<a class="headerlink" href="#scaling-projection" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">scaling_projection</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">scaling_projection</code></dt>
 <dd><p>scaling_projection multiplies the input with a scalar parameter and add to
 the output.</p>
 <div class="math">
@@ -1548,7 +1523,7 @@ the output.</p>
 <h3>dotmul_projection<a class="headerlink" href="#dotmul-projection" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">dotmul_projection</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">dotmul_projection</code></dt>
 <dd><p>DotMulProjection with a layer as input.
 It performs element-wise multiplication with weight.</p>
 <div class="math">
@@ -1583,7 +1558,7 @@ It performs element-wise multiplication with weight.</p>
 <h3>dotmul_operator<a class="headerlink" href="#dotmul-operator" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">dotmul_operator</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">dotmul_operator</code></dt>
 <dd><p>DotMulOperator takes two inputs and performs element-wise multiplication:</p>
 <div class="math">
 \[out.row[i] += scale * (a.row[i] .* b.row[i])\]</div>
@@ -1619,7 +1594,7 @@ scale is a config scalar, its default value is one.</p>
 <h3>full_matrix_projection<a class="headerlink" href="#full-matrix-projection" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">full_matrix_projection</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">full_matrix_projection</code></dt>
 <dd><p>Full Matrix Projection. It performs full matrix multiplication.</p>
 <div class="math">
 \[out.row[i] += in.row[i] * weight\]</div>
@@ -1665,7 +1640,7 @@ scale is a config scalar, its default value is one.</p>
 <h3>identity_projection<a class="headerlink" href="#identity-projection" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">identity_projection</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">identity_projection</code></dt>
 <dd><ol class="arabic simple">
 <li>IdentityProjection if offset=None. It performs:</li>
 </ol>
@@ -1711,7 +1686,7 @@ It select dimesions [offset, offset+layer_size) from input:</p>
 <h3>table_projection<a class="headerlink" href="#table-projection" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">table_projection</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">table_projection</code></dt>
 <dd><p>Table Projection. It selects rows from parameter where row_id
 is in input_ids.</p>
 <div class="math">
@@ -1760,7 +1735,7 @@ and <span class="math">\(i\)</span> is row_id.</p>
 <h3>trans_full_matrix_projection<a class="headerlink" href="#trans-full-matrix-projection" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">trans_full_matrix_projection</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">trans_full_matrix_projection</code></dt>
 <dd><p>Different from full_matrix_projection, this projection performs matrix
 multiplication, using transpose of weight.</p>
 <div class="math">
@@ -1828,7 +1803,7 @@ sequence of a nested sequence, <code class="code docutils literal"><span class="
 <span id="id1"></span><h3>pooling<a class="headerlink" href="#api-v2-layer-pooling" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">pooling</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">pooling</code></dt>
 <dd><p>Pooling layer for sequence inputs, not used for Image.</p>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">seq_pool</span> <span class="o">=</span> <span class="n">pooling</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
@@ -1867,7 +1842,7 @@ SumPooling, SquareRootNPooling.</li>
 <span id="api-v2-layer-last-seq"></span><h3>last_seq<a class="headerlink" href="#last-seq" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">last_seq</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">last_seq</code></dt>
 <dd><p>Get Last Timestamp Activation of a sequence.</p>
 <p>If stride &gt; 0, this layer slides a window whose size is determined by stride,
 and return the last value of the window as the output. Thus, a long sequence
@@ -1905,7 +1880,7 @@ of stride is -1.</p>
 <span id="api-v2-layer-first-seq"></span><h3>first_seq<a class="headerlink" href="#first-seq" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">first_seq</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">first_seq</code></dt>
 <dd><p>Get First Timestamp Activation of a sequence.</p>
 <p>If stride &gt; 0, this layer slides a window whose size is determined by stride,
 and return the first value of the window as the output. Thus, a long sequence
@@ -1943,7 +1918,7 @@ of stride is -1.</p>
 <h3>concat<a class="headerlink" href="#concat" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">concat</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">concat</code></dt>
 <dd><p>Concat all input vector into one huge vector.
 Inputs can be list of paddle.v2.config_base.Layer or list of projection.</p>
 <p>The example usage is:</p>
@@ -1977,7 +1952,7 @@ Inputs can be list of paddle.v2.config_base.Layer or list of projection.</p>
 <h3>seq_concat<a class="headerlink" href="#seq-concat" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">seq_concat</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">seq_concat</code></dt>
 <dd><p>Concat sequence a with sequence b.</p>
 <dl class="docutils">
 <dt>Inputs:</dt>
@@ -2027,7 +2002,7 @@ default Bias.</li>
 <h3>block_expand<a class="headerlink" href="#block-expand" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">block_expand</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">block_expand</code></dt>
 <dd><dl class="docutils">
 <dt>Expand feature map to minibatch matrix.</dt>
 <dd><ul class="first last simple">
@@ -2103,7 +2078,7 @@ sequence of a nested sequence, <code class="code docutils literal"><span class="
 <h3>expand<a class="headerlink" href="#expand" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">expand</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">expand</code></dt>
 <dd><p>A layer for &#8220;Expand Dense data or (sequence data where the length of each
 sequence is one) to sequence data.&#8221;</p>
 <p>The example usage is:</p>
@@ -2142,7 +2117,7 @@ bias.</li>
 <h3>repeat<a class="headerlink" href="#repeat" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">repeat</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">repeat</code></dt>
 <dd><p>A layer for repeating the input for num_repeats times. This is equivalent
 to apply concat() with num_repeats same input.</p>
 <div class="math">
@@ -2178,7 +2153,7 @@ to apply concat() with num_repeats same input.</p>
 <h3>rotate<a class="headerlink" href="#rotate" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">rotate</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">rotate</code></dt>
 <dd><p>A layer for rotating 90 degrees (clock-wise) for each feature channel,
 usually used when the input sample is some image or feature map.</p>
 <div class="math">
@@ -2217,7 +2192,7 @@ usually used when the input sample is some image or feature map.</p>
 <h3>seq_reshape<a class="headerlink" href="#seq-reshape" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">seq_reshape</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">seq_reshape</code></dt>
 <dd><p>A layer for reshaping the sequence. Assume the input sequence has T instances,
 the dimension of each instance is M, and the input reshape_size is N, then the
 output sequence has T*M/N instances, the dimension of each instance is N.</p>
@@ -2260,7 +2235,7 @@ default Bias.</li>
 <h3>addto<a class="headerlink" href="#addto" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">addto</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">addto</code></dt>
 <dd><p>AddtoLayer.</p>
 <div class="math">
 \[y = f(\sum_{i} x_i + b)\]</div>
@@ -2312,7 +2287,7 @@ bias.</li>
 <h3>linear_comb<a class="headerlink" href="#linear-comb" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">linear_comb</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">linear_comb</code></dt>
 <dd><dl class="docutils">
 <dt>A layer for weighted sum of vectors takes two inputs.</dt>
 <dd><ul class="first last simple">
@@ -2375,7 +2350,7 @@ processed in one batch.</p>
 <h3>interpolation<a class="headerlink" href="#interpolation" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">interpolation</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">interpolation</code></dt>
 <dd><p>This layer is for linear interpolation with two inputs,
 which is used in NEURAL TURING MACHINE.</p>
 <div class="math">
@@ -2414,7 +2389,7 @@ which is used in NEURAL TURING MACHINE.</p>
 <h3>bilinear_interp<a class="headerlink" href="#bilinear-interp" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">bilinear_interp</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">bilinear_interp</code></dt>
 <dd><p>This layer is to implement bilinear interpolation on conv layer output.</p>
 <p>Please refer to Wikipedia: <a class="reference external" href="https://en.wikipedia.org/wiki/Bilinear_interpolation">https://en.wikipedia.org/wiki/Bilinear_interpolation</a></p>
 <p>The simple usage is:</p>
@@ -2449,7 +2424,7 @@ which is used in NEURAL TURING MACHINE.</p>
 <h3>power<a class="headerlink" href="#power" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">power</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">power</code></dt>
 <dd><p>This layer applies a power function to a vector element-wise,
 which is used in NEURAL TURING MACHINE.</p>
 <div class="math">
@@ -2487,7 +2462,7 @@ and <span class="math">\(y\)</span> is a output vector.</p>
 <h3>scaling<a class="headerlink" href="#scaling" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">scaling</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">scaling</code></dt>
 <dd><p>A layer for multiplying input vector by weight scalar.</p>
 <div class="math">
 \[y  = w x\]</div>
@@ -2526,7 +2501,7 @@ processed in one batch.</p>
 <h3>slope_intercept<a class="headerlink" href="#slope-intercept" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">slope_intercept</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">slope_intercept</code></dt>
 <dd><p>This layer for applying a slope and an intercept to the input
 element-wise. There is no activation and weight.</p>
 <div class="math">
@@ -2563,7 +2538,7 @@ element-wise. There is no activation and weight.</p>
 <h3>tensor<a class="headerlink" href="#tensor" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">tensor</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">tensor</code></dt>
 <dd><p>This layer performs tensor operation for two input.
 For example, each sample:</p>
 <div class="math">
@@ -2616,7 +2591,7 @@ default Bias.</li>
 <span id="api-v2-layer-cos-sim"></span><h3>cos_sim<a class="headerlink" href="#cos-sim" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">cos_sim</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">cos_sim</code></dt>
 <dd><p>Cosine Similarity Layer. The cosine similarity equation is here.</p>
 <div class="math">
 \[similarity = cos(\theta) = {\mathbf{a} \cdot \mathbf{b}
@@ -2659,7 +2634,7 @@ processed in one batch.</p>
 <h3>trans<a class="headerlink" href="#trans" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">trans</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">trans</code></dt>
 <dd><p>A layer for transposing a minibatch matrix.</p>
 <div class="math">
 \[y = x^\mathrm{T}\]</div>
@@ -2697,7 +2672,7 @@ processed in one batch.</p>
 <h3>maxid<a class="headerlink" href="#maxid" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">max_id</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">max_id</code></dt>
 <dd><p>A layer for finding the id which has the maximal value for each sample.
 The result is stored in output.ids.</p>
 <p>The example usage is:</p>
@@ -2730,7 +2705,7 @@ The result is stored in output.ids.</p>
 <h3>sampling_id<a class="headerlink" href="#sampling-id" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">sampling_id</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">sampling_id</code></dt>
 <dd><p>A layer for sampling id from multinomial distribution from the input layer.
 Sampling one id for one sample.</p>
 <p>The simple usage is:</p>
@@ -2766,7 +2741,7 @@ Sampling one id for one sample.</p>
 <h3>pad<a class="headerlink" href="#pad" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">pad</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">pad</code></dt>
 <dd><p>This operation pads zeros to the input data according to pad_c,pad_h
 and pad_w. pad_c, pad_h, pad_w specifies the which dimension and size
 of padding. And the input data shape is NCHW.</p>
@@ -2835,7 +2810,7 @@ in width dimension.</p>
 <h3>cross_entropy_cost<a class="headerlink" href="#cross-entropy-cost" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">cross_entropy_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">cross_entropy_cost</code></dt>
 <dd><p>A loss layer for multi class entropy.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">cross_entropy</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                      <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
@@ -2873,7 +2848,7 @@ will not be calculated for weight.</li>
 <h3>cross_entropy_with_selfnorm_cost<a class="headerlink" href="#cross-entropy-with-selfnorm-cost" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">cross_entropy_with_selfnorm_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">cross_entropy_with_selfnorm_cost</code></dt>
 <dd><p>A loss layer for multi class entropy with selfnorm.
 Input should be a vector of positive numbers, without normalization.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">cross_entropy_with_selfnorm</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
@@ -2909,7 +2884,7 @@ Input should be a vector of positive numbers, without normalization.</p>
 <h3>multi_binary_label_cross_entropy_cost<a class="headerlink" href="#multi-binary-label-cross-entropy-cost" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">multi_binary_label_cross_entropy_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">multi_binary_label_cross_entropy_cost</code></dt>
 <dd><p>A loss layer for multi binary label cross entropy.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">multi_binary_label_cross_entropy</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                                         <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
@@ -2943,7 +2918,7 @@ Input should be a vector of positive numbers, without normalization.</p>
 <h3>huber_cost<a class="headerlink" href="#huber-cost" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">huber_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">huber_cost</code></dt>
 <dd><p>A loss layer for huber loss.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">huber_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                   <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
@@ -2977,7 +2952,7 @@ Input should be a vector of positive numbers, without normalization.</p>
 <h3>lambda_cost<a class="headerlink" href="#lambda-cost" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">lambda_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">lambda_cost</code></dt>
 <dd><p>lambdaCost for lambdaRank LTR approach.</p>
 <p>The simple usage:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">lambda_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
@@ -3023,7 +2998,7 @@ entire list of get gradient.</li>
 <h3>mse_cost<a class="headerlink" href="#mse-cost" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">mse_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">mse_cost</code></dt>
 <dd><blockquote>
 <div><p>mean squared error cost:</p>
 <div class="math">
@@ -3076,7 +3051,7 @@ It is an optional argument.</td>
 <h3>rank_cost<a class="headerlink" href="#rank-cost" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">rank_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">rank_cost</code></dt>
 <dd><p>A cost Layer for learning to rank using gradient descent. Details can refer
 to <a class="reference external" href="http://research.microsoft.com/en-us/um/people/cburges/papers/ICML_ranking.pdf">papers</a>.
 This layer contains at least three inputs. The weight is an optional
@@ -3131,7 +3106,7 @@ It is an optional argument.</li>
 <h3>sum_cost<a class="headerlink" href="#sum-cost" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">sum_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">sum_cost</code></dt>
 <dd><p>A loss layer which calculate the sum of the input as loss</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">sum_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">)</span>
 </pre></div>
@@ -3162,7 +3137,7 @@ It is an optional argument.</li>
 <h3>crf<a class="headerlink" href="#crf" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">crf</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">crf</code></dt>
 <dd><p>A layer for calculating the cost of sequential conditional random
 field model.</p>
 <p>The simple usage:</p>
@@ -3203,7 +3178,7 @@ optional argument.</li>
 <h3>crf_decoding<a class="headerlink" href="#crf-decoding" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">crf_decoding</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">crf_decoding</code></dt>
 <dd><p>A layer for calculating the decoding sequence of sequential conditional
 random field model. The decoding sequence is stored in output.ids.
 If a second input is provided, it is treated as the ground-truth label, and
@@ -3243,7 +3218,7 @@ decoding or 0 for correct decoding.</p>
 <h3>ctc<a class="headerlink" href="#ctc" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">ctc</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">ctc</code></dt>
 <dd><p>Connectionist Temporal Classification (CTC) is designed for temporal
 classication task. That is, for sequence labeling problems where the
 alignment between the inputs and the target labels is unknown.</p>
@@ -3294,7 +3269,7 @@ should also be num_classes + 1.</p>
 <h3>warp_ctc<a class="headerlink" href="#warp-ctc" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">warp_ctc</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">warp_ctc</code></dt>
 <dd><p>A layer intergrating the open-source <cite>warp-ctc
 &lt;https://github.com/baidu-research/warp-ctc&gt;</cite> library, which is used in
 <cite>Deep Speech 2: End-toEnd Speech Recognition in English and Mandarin
@@ -3354,7 +3329,7 @@ should be consistent as that used in your labels.</li>
 <h3>nce<a class="headerlink" href="#nce" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">nce</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">nce</code></dt>
 <dd><p>Noise-contrastive estimation.
 Implements the method in the following paper:
 A fast and simple algorithm for training neural probabilistic language models.</p>
@@ -3400,7 +3375,7 @@ If not None, its length must be equal to num_classes.</li>
 <h3>hsigmoid<a class="headerlink" href="#hsigmoid" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">hsigmoid</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">hsigmoid</code></dt>
 <dd><p>Organize the classes into a binary tree. At each node, a sigmoid function
 is used to calculate the probability of belonging to the right branch.
 This idea is from &#8220;F. Morin, Y. Bengio (AISTATS 05):
@@ -3442,7 +3417,7 @@ False means no bias.</li>
 <h3>smooth_l1_cost<a class="headerlink" href="#smooth-l1-cost" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">smooth_l1_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">smooth_l1_cost</code></dt>
 <dd><p>This is a L1 loss but more smooth. It requires that the
 size of input and label are equal. The formula is as follows,</p>
 <div class="math">
@@ -3486,7 +3461,7 @@ size of input and label are equal. The formula is as follows,</p>
 <h3>eos<a class="headerlink" href="#eos" title="永久链接至标题">¶</a></h3>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">eos</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">eos</code></dt>
 <dd><p>A layer for checking EOS for each sample:
 - output_id = (input_id == conf.eos_id)</p>
 <p>The result is stored in output_.ids.

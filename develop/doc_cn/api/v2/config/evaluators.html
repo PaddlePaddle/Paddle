@@ -196,15 +196,15 @@
 <h2>Classification<a class="headerlink" href="#classification" title="永久链接至标题">¶</a></h2>
 <div class="section" id="classification-error">
 <h3>classification_error<a class="headerlink" href="#classification-error" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">classification_error</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">classification_error</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Classification Error Evaluator. It will print error rate for classification.</p>
 <p>The classification error is:</p>
 <div class="math">
 \[classification\_error = \frac{NumOfWrongPredicts}{NumOfAllSamples}\]</div>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span>  <span class="n">classification_error_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">prob</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="n">lbl</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span>  <span class="n">classification_evaluator</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">prob</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="n">lbl</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -235,12 +235,12 @@ important this sample is.</li>
 </div>
 <div class="section" id="auc">
 <h3>auc<a class="headerlink" href="#auc" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">auc</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">auc</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Auc Evaluator which adapts to binary classification.</p>
 <p>The simple usage:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">auc_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">auc</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -263,12 +263,12 @@ important this sample is.</li>
 </div>
 <div class="section" id="ctc-error">
 <h3>ctc_error<a class="headerlink" href="#ctc-error" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">ctc_error</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">ctc_error</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>This evaluator is to calculate sequence-to-sequence edit distance.</p>
 <p>The simple usage is :</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">ctc_error_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">lbl</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">ctc_evaluator</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">lbl</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -290,9 +290,9 @@ label for ctc</li>
 </div>
 <div class="section" id="chunk">
 <h3>chunk<a class="headerlink" href="#chunk" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">chunk</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">chunk</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Chunk evaluator is used to evaluate segment labelling accuracy for a
 sequence. It calculates precision, recall and F1 scores for the chunk detection.</p>
 <p>To use chunk evaluator, several concepts need to be clarified firstly.</p>
@@ -351,7 +351,7 @@ Here we will use I-LOC to explain the above mapping rules in detail.
 For I-LOC, the label id is 5, so we can get tagType=1 and chunkType=2, which means I-LOC is a part of NER chunk LOC
 and the tag is I.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">chunk_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">chunk_scheme</span><span class="p">,</span> <span class="n">num_chunk_types</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">chunk_scheme</span><span class="p">,</span> <span class="n">num_chunk_types</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -376,9 +376,9 @@ and the tag is I.</p>
 </div>
 <div class="section" id="precision-recall">
 <h3>precision_recall<a class="headerlink" href="#precision-recall" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">precision_recall</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">precision_recall</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>An Evaluator to calculate precision and recall, F1-score.
 It is adapt to the task with multiple labels.</p>
 <ul class="simple">
@@ -388,7 +388,7 @@ F1-score of all labels.</li>
 F1-score of this label.</li>
 </ul>
 <p>The simple usage:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">precision_recall_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">precision_evaluator</span><span class="o">.</span><span class="n">recall</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -415,13 +415,13 @@ F1-score of this label.</li>
 <h2>Rank<a class="headerlink" href="#rank" title="永久链接至标题">¶</a></h2>
 <div class="section" id="pnpair">
 <h3>pnpair<a class="headerlink" href="#pnpair" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">pnpair</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">pnpair</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Positive-negative pair rate Evaluator which adapts to rank task like
 learning to rank. This evaluator must contain at least three layers.</p>
 <p>The simple usage:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">pnpair_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">pnpair</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -448,12 +448,12 @@ learning to rank. This evaluator must contain at least three layers.</p>
 <h2>Utils<a class="headerlink" href="#utils" title="永久链接至标题">¶</a></h2>
 <div class="section" id="sum">
 <h3>sum<a class="headerlink" href="#sum" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">sum</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">sum</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>An Evaluator to sum the result of input.</p>
 <p>The simple usage:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">sum_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -475,12 +475,12 @@ learning to rank. This evaluator must contain at least three layers.</p>
 </div>
 <div class="section" id="column-sum">
 <h3>column_sum<a class="headerlink" href="#column-sum" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">column_sum</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">column_sum</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>This Evaluator is used to sum the last column of input.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">column_sum_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">column_evaluator</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -503,12 +503,12 @@ learning to rank. This evaluator must contain at least three layers.</p>
 <h2>Print<a class="headerlink" href="#print" title="永久链接至标题">¶</a></h2>
 <div class="section" id="classification-error-printer">
 <h3>classification_error_printer<a class="headerlink" href="#classification-error-printer" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">classification_error_printer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">classification_error_printer</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>This Evaluator is used to print the classification error of each sample.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">classification_error_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">classification_error_evaluator</span><span class="o">.</span><span class="n">printer</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -529,13 +529,13 @@ learning to rank. This evaluator must contain at least three layers.</p>
 </div>
 <div class="section" id="gradient-printer">
 <h3>gradient_printer<a class="headerlink" href="#gradient-printer" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">gradient_printer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">gradient_printer</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>This Evaluator is used to print the gradient of input layers. It contains
 one or more input layers.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">gradient_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">gradient_evaluator</span><span class="o">.</span><span class="n">printer</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -555,14 +555,14 @@ one or more input layers.</p>
 </div>
 <div class="section" id="maxid-printer">
 <h3>maxid_printer<a class="headerlink" href="#maxid-printer" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">maxid_printer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">maxid_printer</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>This Evaluator is used to print maximum top k values and their indexes
 of each row of input layers. It contains one or more input layers.
 k is specified by num_results.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">maxid_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">maxid_evaluator</span><span class="o">.</span><span class="n">printer</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -584,9 +584,9 @@ It is 1 by default.</li>
 </div>
 <div class="section" id="maxframe-printer">
 <h3>maxframe_printer<a class="headerlink" href="#maxframe-printer" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">maxframe_printer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">maxframe_printer</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>This Evaluator is used to print the top k frames of each input layers.
 The input layers should contain sequences info or sequences type.
 k is specified by num_results.
@@ -596,7 +596,7 @@ It contains one or more input layers.</p>
 <p class="last">The width of each frame is 1.</p>
 </div>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">maxframe_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">maxframe_evaluator</span><span class="o">.</span><span class="n">printer</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -616,9 +616,9 @@ It contains one or more input layers.</p>
 </div>
 <div class="section" id="seqtext-printer">
 <h3>seqtext_printer<a class="headerlink" href="#seqtext-printer" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">seqtext_printer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">seqtext_printer</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Sequence text printer will print text according to index matrix and a
 dictionary. There can be multiple input to this layer:</p>
 <p>1. If there is no id_input, the input must be a matrix containing
@@ -650,7 +650,7 @@ the sequence of indices;</p>
 <p>Typically SequenceTextPrinter layer takes output of maxid or RecurrentGroup
 with maxid (when generating) as an input.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">seqtext_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">maxid</span><span class="p">,</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">seqtext_evaluator</span><span class="o">.</span><span class="n">printer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">maxid</span><span class="p">,</span>
                                  <span class="n">id_input</span><span class="o">=</span><span class="n">sample_id</span><span class="p">,</span>
                                  <span class="n">dict_file</span><span class="o">=</span><span class="n">dict_file</span><span class="p">,</span>
                                  <span class="n">result_file</span><span class="o">=</span><span class="n">result_file</span><span class="p">)</span>
@@ -690,13 +690,13 @@ Default is True. No space is added if set to False.</li>
 </div>
 <div class="section" id="value-printer">
 <h3>value_printer<a class="headerlink" href="#value-printer" title="永久链接至标题">¶</a></h3>
-<dl class="class">
+<dl class="function">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.evaluator.</code><code class="descname">value_printer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">value_printer</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
 <dd><p>This Evaluator is used to print the values of input layers. It contains
 one or more input layers.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">value_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">value_evaluator</span><span class="o">.</span><span class="n">printer</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
