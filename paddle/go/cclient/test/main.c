@@ -1,11 +1,12 @@
+#include <stdio.h>
+
 #include "libclient.h"
 
-//#include "gtest/gtest.h"
-
-void panic() {
+void fail() {
   // TODO(helin): fix: gtest using cmake is not working, using this
   // hacky way for now.
-  *(void*)0;
+  printf("test failed.\n");
+  exit(-1);
 }
 
 int main() {
@@ -35,7 +36,7 @@ retry:
       goto retry;
     }
   } else {
-    panic();
+    fail();
   }
 
   char content[] = {0x00, 0x11, 0x22};
@@ -44,25 +45,25 @@ retry:
       {"param_b", PADDLE_ELEMENT_TYPE_FLOAT32, content, 3}};
 
   if (!paddle_send_grads(c, grads, 2)) {
-    panic();
+    fail();
   }
 
   paddle_parameter* params[2] = {NULL, NULL};
   char* names[] = {"param_a", "param_b"};
   if (!paddle_get_params(c, names, params, 2)) {
-    panic();
+    fail();
   }
 
   // get parameters again by reusing the allocated parameter buffers.
   if (!paddle_get_params(c, names, params, 2)) {
-    panic();
+    fail();
   }
 
   paddle_release_param(params[0]);
   paddle_release_param(params[1]);
 
   if (!paddle_save_model(c, "/tmp/")) {
-    panic();
+    fail();
   }
 
   return 0;

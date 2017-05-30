@@ -68,7 +68,7 @@ func TestWriteAndRead(t *testing.T) {
 				2*4)}, // two record legnths
 		idx.chunkOffsets)
 
-	s := NewScanner(bytes.NewReader(buf.Bytes()), idx, -1, -1)
+	s := NewRangeScanner(bytes.NewReader(buf.Bytes()), idx, -1, -1)
 	i := 0
 	for s.Scan() {
 		assert.Equal(data[i], string(s.Record()))

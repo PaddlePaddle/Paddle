@@ -29,7 +29,7 @@ func TestWriteRead(t *testing.T) {
 		t.Fatal("num record does not match:", idx.NumRecords(), total)
 	}
 
-	s := recordio.NewScanner(bytes.NewReader(buf.Bytes()), idx, -1, -1)
+	s := recordio.NewRangeScanner(bytes.NewReader(buf.Bytes()), idx, -1, -1)
 	i := 0
 	for s.Scan() {
 		if !reflect.DeepEqual(s.Record(), make([]byte, i)) {
@@ -66,7 +66,7 @@ func TestChunkIndex(t *testing.T) {
 
 	for i := 0; i < total; i++ {
 		newIdx := idx.ChunkIndex(i)
-		s := recordio.NewScanner(bytes.NewReader(buf.Bytes()), newIdx, -1, -1)
+		s := recordio.NewRangeScanner(bytes.NewReader(buf.Bytes()), newIdx, -1, -1)
 		j := 0
 		for s.Scan() {
 			if !reflect.DeepEqual(s.Record(), make([]byte, i)) {

@@ -78,8 +78,11 @@ func cArrayToSlice(p unsafe.Pointer, len int) []byte {
 		return nil
 	}
 
-	// create a Go clice backed by a C array,
-	// reference: https://github.com/golang/go/wiki/cgo#turning-c-arrays-into-go-slices
+	// create a Go clice backed by a C array, reference:
+	// https://github.com/golang/go/wiki/cgo#turning-c-arrays-into-go-slices
+	//
+	// Go garbage collector will not interact with this data, need
+	// to be freed properly.
 	return (*[1 << 30]byte)(p)[:len:len]
 }
 
