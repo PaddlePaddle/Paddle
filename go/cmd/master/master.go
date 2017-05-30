@@ -13,8 +13,8 @@ import (
 
 	"github.com/namsral/flag"
 
-	"github.com/PaddlePaddle/Paddle/paddle/go/master"
-	"github.com/PaddlePaddle/Paddle/paddle/go/recordio"
+	"github.com/PaddlePaddle/Paddle/go/master"
+	"github.com/PaddlePaddle/Paddle/go/recordio"
 )
 
 func main() {

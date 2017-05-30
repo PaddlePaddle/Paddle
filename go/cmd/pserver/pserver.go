@@ -8,7 +8,7 @@ import (
 
 	"github.com/namsral/flag"
 
-	"github.com/PaddlePaddle/Paddle/paddle/go/pserver"
+	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
 
 func main() {
