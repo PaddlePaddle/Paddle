@@ -324,6 +324,7 @@ protected:
   std::vector<std::shared_ptr<IParameterUpdaterHook>> updaterHooks_;
 
 public:
+  void setSharedCount(int cnt) { sharedCount_ = cnt; }
   int getSharedCount() { return sharedCount_; }
 
   bool isSparse() { return config_.is_sparse(); }
