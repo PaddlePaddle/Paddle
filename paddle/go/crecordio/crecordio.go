@@ -25,7 +25,7 @@ type writer struct {
 }
 
 type reader struct {
-	scanner *recordio.MultiScanner
+	scanner *recordio.Scanner
 }
 
 func cArrayToSlice(p unsafe.Pointer, len int) []byte {
@@ -55,21 +55,21 @@ func create_recordio_writer(path *C.char) C.writer {
 	return addWriter(writer)
 }
 
-//export write_recordio
-func write_recordio(writer C.writer, buf *C.uchar, size C.int) int {
+//export recordio_write
+func recordio_write(writer C.writer, buf *C.uchar, size C.int) C.int {
 	w := getWriter(writer)
 	b := cArrayToSlice(unsafe.Pointer(buf), int(size))
-	_, err := w.w.Write(b)
+	c, err := w.w.Write(b)
 	if err != nil {
 		log.Println(err)
 		return -1
 	}
 
-	return 0
+	return C.int(c)
 }
 
-//export release_recordio
-func release_recordio(writer C.writer) {
+//export release_recordio_writer
+func release_recordio_writer(writer C.writer) {
 	w := removeWriter(writer)
 	w.w.Close()
 	w.f.Close()
@@ -78,7 +78,7 @@ func release_recordio(writer C.writer) {
 //export create_recordio_reader
 func create_recordio_reader(path *C.char) C.reader {
 	p := C.GoString(path)
-	s, err := recordio.NewMultiScanner(strings.Split(p, ","))
+	s, err := recordio.NewScanner(strings.Split(p, ",")...)
 	if err != nil {
 		log.Println(err)
 		return -1
@@ -88,24 +88,23 @@ func create_recordio_reader(path *C.char) C.reader {
 	return addReader(r)
 }
 
-//export read_next_item
-func read_next_item(reader C.reader, size *C.int) *C.uchar {
+//export recordio_read
+func recordio_read(reader C.reader, record **C.uchar) C.int {
 	r := getReader(reader)
 	if r.scanner.Scan() {
 		buf := r.scanner.Record()
-		*size = C.int(len(buf))
-
 		if len(buf) == 0 {
-			return (*C.uchar)(nullPtr)
+			*record = (*C.uchar)(nullPtr)
+			return 0
 		}
 
-		ptr := C.malloc(C.size_t(len(buf)))
-		C.memcpy(ptr, unsafe.Pointer(&buf[0]), C.size_t(len(buf)))
-		return (*C.uchar)(ptr)
+		size := C.int(len(buf))
+		*record = (*C.uchar)(C.malloc(C.size_t(len(buf))))
+		C.memcpy(unsafe.Pointer(*record), unsafe.Pointer(&buf[0]), C.size_t(len(buf)))
+		return size
 	}
 
-	*size = -1
-	return (*C.uchar)(nullPtr)
+	return -1
 }
 
 //export release_recordio_reader

@@ -74,8 +74,8 @@ func (r *Index) Locate(recordIndex int) (int, int) {
 	return -1, -1
 }
 
-// Scanner scans records in a specified range within [0, numRecords).
-type Scanner struct {
+// RangeScanner scans records in a specified range within [0, numRecords).
+type RangeScanner struct {
 	reader          io.ReadSeeker
 	index           *Index
 	start, end, cur int
@@ -84,10 +84,10 @@ type Scanner struct {
 	err             error
 }
 
-// NewScanner creates a scanner that sequencially reads records in the
+// NewRangeScanner creates a scanner that sequencially reads records in the
 // range [start, start+len).  If start < 0, it scans from the
 // beginning.  If len < 0, it scans till the end of file.
-func NewScanner(r io.ReadSeeker, index *Index, start, len int) *Scanner {
+func NewRangeScanner(r io.ReadSeeker, index *Index, start, len int) *RangeScanner {
 	if start < 0 {
 		start = 0
 	}
@@ -95,7 +95,7 @@ func NewScanner(r io.ReadSeeker, index *Index, start, len int) *Scanner {
 		len = index.NumRecords() - start
 	}
 
-	return &Scanner{
+	return &RangeScanner{
 		reader:     r,
 		index:      index,
 		start:      start,
@@ -108,7 +108,7 @@ func NewScanner(r io.ReadSeeker, index *Index, start, len int) *Scanner {
 
 // Scan moves the cursor forward for one record and loads the chunk
 // containing the record if not yet.
-func (s *Scanner) Scan() bool {
+func (s *RangeScanner) Scan() bool {
 	s.cur++
 
 	if s.cur >= s.end {
@@ -124,14 +124,14 @@ func (s *Scanner) Scan() bool {
 }
 
 // Record returns the record under the current cursor.
-func (s *Scanner) Record() []byte {
+func (s *RangeScanner) Record() []byte {
 	_, ri := s.index.Locate(s.cur)
 	return s.chunk.records[ri]
 }
 
 // Err returns the first non-EOF error that was encountered by the
 // Scanner.
-func (s *Scanner) Err() error {
+func (s *RangeScanner) Err() error {
 	if s.err == io.EOF {
 		return nil
 	}
