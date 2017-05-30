@@ -119,6 +119,7 @@ __all__ = [
     'eos_layer',
     'smooth_l1_cost',
     'layer_support',
+    'multiplex_layer',
 ]
 
 
@@ -185,6 +186,7 @@ class LayerType(object):
     MAXOUT = "maxout"
     SPP_LAYER = "spp"
     PAD_LAYER = "pad"
+    MULTIPLEX_LAYER = "multiplex"
 
     PRINT_LAYER = "print"
     PRIORBOX_LAYER = "priorbox"
@@ -5465,3 +5467,54 @@ def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name, LayerType.SMOOTH_L1, parents=[input, label], size=1)
+
+
+@wrap_name_default()
+def multiplex_layer(input, name=None, layer_attr=None):
+    """
+    This layer multiplex multiple layers according to the index,
+    which is provided by the first input layer.
+    inputs[0]: the index of the layer to output of size batchSize.
+    inputs[1:N]; the candidate output data.
+    For each index i from 0 to batchSize -1, the output is the i-th row of the
+    (index[i] + 1)-th layer.
+
+    For each i-th row of output:
+    .. math::
+        y[i][j] = x_{x_{0}[i] + 1}[i][j], j = 0,1, ... , (x_{1}.width - 1)
+
+    where, y is output. :math:`x_{k}` is the k-th input layer and
+    :math:`k = x_{0}[i] + 1`.
+
+    .. code-block:: python
+
+       maxid = multiplex_layer(input=layers)
+
+    :param input: Input layers.
+    :type input: list of LayerOutput
+    :param name: Layer name.
+    :type name: basestring
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert isinstance(input, collections.Sequence)
+    assert len(input) > 2, 'multiplex_layer should have more than 2 inputs'
+    for i in range(1, len(input)):
+        assert isinstance(input[i], LayerOutput)
+        assert input[i].size == input[1].size, \
+            "All the input layers except the first one should have the same size"
+
+    l = Layer(
+        name=name,
+        type='multiplex',
+        inputs=[x.name for x in input],
+        size=input[1].size,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.MULTIPLEX_LAYER,
+        parents=input,
+        size=l.config.size)
