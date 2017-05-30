@@ -70,7 +70,7 @@ before looking into the
 We provide [English](http://www.paddlepaddle.org/develop/doc/) and
 [Chinese](http://www.paddlepaddle.org/doc_cn/) documentation.
 
-- [Deep Learning 101](http://book.paddlepaddle.org/index.en.html)
+- [Deep Learning 101](http://book.paddlepaddle.org/index.html)
 
   You might want to start from the this online interactive book that can run in Jupyter Notebook.
 
