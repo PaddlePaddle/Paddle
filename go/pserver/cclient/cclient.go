@@ -39,6 +39,7 @@ import "C"
 
 import (
 	"log"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -86,29 +87,46 @@ func cArrayToSlice(p unsafe.Pointer, len int) []byte {
 	return (*[1 << 30]byte)(p)[:len:len]
 }
 
+type selector bool
+
+func (s selector) Select() bool {
+	return bool(s)
+}
+
+type lister []pserver.Server
+
+func (l lister) List() []pserver.Server {
+	return l
+}
+
 //export paddle_new_pserver_client
-func paddle_new_pserver_client(addr *C.char) C.client {
-	c := pserver.NewClient(C.GoString(addr))
+func paddle_new_pserver_client(addrs *C.char, selected int) C.client {
+	a := C.GoString(addrs)
+	as := strings.Split(a, ",")
+	servers := make([]pserver.Server, len(as))
+	for i := range as {
+		servers[i].Index = i
+		servers[i].Addr = as[i]
+	}
+	c := pserver.NewClient(lister(servers), len(as), selector(selected != 0))
 	return add(c)
+}
+
+//export paddle_new_etcd_pserver_client
+func paddle_new_etcd_pserver_client(etcd_addr *C.char) C.client {
+	// TODO(helin): fault tolerant pserver client using etcd.
+	panic("not implemented.")
 }
 
 //export paddle_pserver_client_release
 func paddle_pserver_client_release(client C.client) {
-	c := remove(client)
-	c.Cleanup()
+	remove(client)
 }
 
 //export paddle_begin_init_params
-func paddle_begin_init_params(client C.client, pserver_config unsafe.Pointer, config_len C.int) C.int {
+func paddle_begin_init_params(client C.client) C.int {
 	c := get(client)
-	b := cArrayToSlice(pserver_config, int(config_len))
-	selected, err := c.BeginInitParams(b)
-	if err != nil {
-		log.Println(err)
-		return -1
-	}
-
-	if selected {
+	if selected := c.BeginInitParams(); selected {
 		return 1
 	}
 	return 0
@@ -230,7 +248,7 @@ func paddle_get_params(client C.client, names **C.char, dst **C.paddle_parameter
 func paddle_save_model(client C.client, path *C.char) C.int {
 	p := C.GoString(path)
 	c := get(client)
-	err := c.SaveModel(p)
+	err := c.Save(p)
 	if err != nil {
 		log.Println(err)
 		return -1

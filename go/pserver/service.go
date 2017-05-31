@@ -49,31 +49,10 @@ type Service struct {
 
 // NewService creates a new service.
 func NewService() *Service {
-	s := &Service{}
+	s := &Service{opt: newOptimizer(sgd, 0.01)}
 	s.paramMap = make(map[string]Parameter)
 	s.initialized = make(chan struct{})
 	return s
-}
-
-// BeginInitParams tells the parameter server that the parameter
-// initialization has begun.
-func (s *Service) BeginInitParams(config []byte, dummy *int) error {
-	select {
-	case <-s.initialized:
-		return ErrAlreadyInitialized
-	default:
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.opt != nil {
-		s.opt.Cleanup()
-	}
-
-	// TODO(helin): parse learning rate from config
-	s.opt = newOptimizer(sgd, 0.01)
-	return nil
 }
 
 // InitParam initializes a parameter.
@@ -109,75 +88,45 @@ func (s *Service) FinishInitParams(dummy0 int, dummy1 *int) error {
 	return nil
 }
 
-// SendGrads sends gradients to parameter servers for parameter
+// SendGrad sends gradient to parameter servers for parameter
 // optimization.
-func (s *Service) SendGrads(grads []Gradient, dummy *int) error {
+func (s *Service) SendGrad(g Gradient, dummy *int) error {
 	select {
 	case <-s.initialized:
 	default:
 		return ErrUninitialized
 	}
 
-	count := len(grads)
-	if count == 0 {
-		return nil
-	}
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for _, g := range grads {
-		if _, ok := s.paramMap[g.Name]; !ok {
-			return fmt.Errorf("parameter: %s does not exist", g.Name)
-		}
+	p, ok := s.paramMap[g.Name]
+	if !ok {
+		return fmt.Errorf("parameter: %s does not exist", g.Name)
 	}
 
-	errCh := make(chan error, count)
-	for _, g := range grads {
-		go func(p Parameter, g Gradient) {
-			err := s.opt.UpdateParameter(p, g)
-			errCh <- err
-		}(s.paramMap[g.Name], g)
-	}
-
-	recv := 0
-	for err := range errCh {
-		if err != nil {
-			return err
-		}
-
-		recv++
-		if recv == count {
-			break
-		}
-	}
-	return nil
+	return s.opt.UpdateParameter(p, g)
 }
 
-// GetParams gets parameters from the parameter server.
-func (s *Service) GetParams(names []string, parameters *[]Parameter) error {
+// GetParam gets parameters from the parameter server.
+func (s *Service) GetParam(name string, parameter *Parameter) error {
 	<-s.initialized
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for _, n := range names {
-		if _, ok := s.paramMap[n]; !ok {
-			return fmt.Errorf("parameter: %s does not exist", n)
-		}
+	p, ok := s.paramMap[name]
+	if !ok {
+		return fmt.Errorf("parameter: %s does not exist", name)
 	}
 
-	*parameters = make([]Parameter, len(names))
-	for i, n := range names {
-		// The parameter content (a byte slice) may change
-		// during RPC serialization due to write from other
-		// goroutine, we allow it since mini-batch based deep
-		// learning optimization methods are stochastic in
-		// nature. This race condition is allowed deliberately
-		// to save the program from making a copy of the
-		// paramter content.
-		(*parameters)[i] = s.paramMap[n]
-	}
-
+	// The parameter content (a byte slice) may change
+	// during RPC serialization due to write from other
+	// goroutine, we allow it since mini-batch based deep
+	// learning optimization methods are stochastic in
+	// nature. This race condition is allowed deliberately
+	// to save the program from making a copy of the
+	// paramter content.
+	*parameter = p
 	return nil
 }
 

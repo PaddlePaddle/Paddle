@@ -4,23 +4,19 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
 
 func TestFull(t *testing.T) {
 	s := pserver.NewService()
-	var dummy int
-	err := s.BeginInitParams(nil, &dummy)
-	if err != nil {
-		t.FailNow()
-	}
-
 	var p pserver.Parameter
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
 	p.ElementType = pserver.Int32
-	err = s.InitParam(pserver.ParameterWithConfig{p, nil}, &dummy)
+	var dummy int
+	err := s.InitParam(pserver.ParameterWithConfig{p, nil}, &dummy)
 	if err != nil {
 		t.FailNow()
 	}
@@ -39,40 +35,39 @@ func TestFull(t *testing.T) {
 		t.FailNow()
 	}
 
-	var params []pserver.Parameter
-	err = s.GetParams([]string{"param_b", "param_a"}, &params)
+	var param pserver.Parameter
+	err = s.GetParam("param_b", &param)
 	if err != nil {
 		t.FailNow()
 	}
 
-	if len(params) != 2 || !reflect.DeepEqual(params[0], p1) || !reflect.DeepEqual(params[0], p1) {
+	if !reflect.DeepEqual(param, p1) {
 		t.FailNow()
 	}
 
-	grads := []pserver.Gradient{pserver.Gradient(p1), pserver.Gradient(p)}
-	err = s.SendGrads(grads, &dummy)
+	g1, g2 := pserver.Gradient(p1), pserver.Gradient(p)
+	err = s.SendGrad(g1, &dummy)
+	if err != nil {
+		t.FailNow()
+	}
+	err = s.SendGrad(g2, &dummy)
+
 	if err != nil {
 		t.FailNow()
 	}
 
-	var params1 []pserver.Parameter
-	err = s.GetParams([]string{"param_b", "param_a"}, &params1)
+	var param1 pserver.Parameter
+	err = s.GetParam("param_a", &param1)
 	if err != nil {
-		t.FailNow()
-	}
-
-	if len(params) != 2 {
 		t.FailNow()
 	}
 
 	// don't compare content, since it's already changed by
 	// gradient update.
-	params1[0].Content = nil
-	params1[0].Content = nil
+	param1.Content = nil
 	p.Content = nil
-	p1.Content = nil
 
-	if !reflect.DeepEqual(params1[0], p1) || !reflect.DeepEqual(params1[0], p1) {
+	if !reflect.DeepEqual(param1, p) {
 		t.FailNow()
 	}
 }
@@ -80,29 +75,12 @@ func TestFull(t *testing.T) {
 func TestMultipleInit(t *testing.T) {
 	s := pserver.NewService()
 	var dummy int
-	err := s.BeginInitParams(nil, &dummy)
-	if err != nil {
-		t.FailNow()
-	}
-
-	// this is fine, it's possible for client to call init
-	// multiple times.
-	err = s.BeginInitParams(nil, &dummy)
+	err := s.FinishInitParams(0, &dummy)
 	if err != nil {
 		t.FailNow()
 	}
 
 	err = s.FinishInitParams(0, &dummy)
-	if err != nil {
-		t.FailNow()
-	}
-
-	err = s.FinishInitParams(0, &dummy)
-	if err != pserver.ErrAlreadyInitialized {
-		t.FailNow()
-	}
-
-	err = s.BeginInitParams(nil, &dummy)
 	if err != pserver.ErrAlreadyInitialized {
 		t.FailNow()
 	}
@@ -111,7 +89,7 @@ func TestMultipleInit(t *testing.T) {
 func TestUninitialized(t *testing.T) {
 	s := pserver.NewService()
 	var dummy int
-	err := s.SendGrads(nil, &dummy)
+	err := s.SendGrad(pserver.Gradient{}, &dummy)
 	if err != pserver.ErrUninitialized {
 		t.FailNow()
 	}
@@ -123,8 +101,8 @@ func TestBlockUntilInitialized(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		var params []pserver.Parameter
-		err := s.GetParams(nil, &params)
+		var param pserver.Parameter
+		err := s.GetParam("param_a", &param)
 		if err != nil {
 			t.FailNow()
 		}
@@ -143,17 +121,23 @@ func TestBlockUntilInitialized(t *testing.T) {
 		ch <- struct{}{}
 	}()
 
-	var dummy int
-	err := s.BeginInitParams(nil, &dummy)
-	if err != nil {
-		t.FailNow()
-	}
+	time.Sleep(50 * time.Millisecond)
 
 	select {
 	case <-ch:
 		// some function returned before initialization is completed.
 		t.FailNow()
 	default:
+	}
+
+	var p pserver.Parameter
+	p.Name = "param_a"
+	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
+	p.ElementType = pserver.Int32
+	var dummy int
+	err := s.InitParam(pserver.ParameterWithConfig{p, nil}, &dummy)
+	if err != nil {
+		t.FailNow()
 	}
 
 	err = s.FinishInitParams(0, &dummy)
