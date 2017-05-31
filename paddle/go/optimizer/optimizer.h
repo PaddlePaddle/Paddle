@@ -30,12 +30,18 @@ const int32_t PADDLE_SUCCESS = 0;
 const int32_t PADDLE_ERROR = -1;
 
 typedef struct paddle_optimizer paddle_optimizer;
+/**
+ * this group interface called in order : 
+ * 1. create optimizer with config
+ * 2. set weights
+ * 3. update_parameter
+ * 4. get_weights
+ * 5. release optimizer
+ */
+
 
 paddle_optimizer* paddle_create_optimizer(const unsigned char* config_proto,
-                                          int config_proto_len,
-                                          paddle_element_type data_type,
-                                          const void* param_buffer,
-                                          int num_bytes);
+                                          int config_proto_len);
 
 int paddle_release_optimizer(paddle_optimizer* o);
 
@@ -44,7 +50,12 @@ int paddle_update_parameter(paddle_optimizer* o,
                             const void* gradient,
                             int num_bytes);
 
-const void* paddle_optimizer_param(paddle_optimizer* o);
+int paddle_optimizer_set_weights(paddle_optimizer* o,
+                                 paddle_element_type data_type,
+                                 void*param_buffer,
+                                 int num_bytes);
+
+const void* paddle_optimizer_get_weights(paddle_optimizer* o);
 
 // /*!
 //  *  \brief create optimizer function

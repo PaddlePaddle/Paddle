@@ -13,8 +13,6 @@ set(optimizer_Headers
   #  optimizer_private.h
     parameter_optimizer.h
     regularizer.h
-    regularizer_ops.h
-    training_ops.h
   )
 
 add_style_check_target(paddle_function ${optimizer_Headers})

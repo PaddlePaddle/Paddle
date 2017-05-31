@@ -2,11 +2,10 @@
 #define PADDLE_LIB_OPTIMIZER_BASE_H_
 
 #include <functional>
-#include <memory>
 #include <string>
 // #include <math/Tensor.h>
 #include "Tensor.h"
-#include "optimizer_config.pb.h"
+#include "OptimizerConfig.pb.h"
 
 namespace paddle {
 namespace optimizer {
@@ -18,25 +17,34 @@ public:
    * @brief  update hook for algorithm need to traverse parameter more than
    * once.
    */
-  typedef std::function<void(Tensor &, const Tensor &)> UpdateHook;
-  ParameterOptimizer = default;
-  ParameterOptimizer(const optimizer_config &config) : config_(config){};
+  ParameterOptimizer(const OptimizerConfig &config) : config_(config){};
 
   static ParameterOptimizer *create(const std::string &config_proto);
   virtual void update(const Tensor &gradient) = 0;
-  virtual void destory() = 0;
-  T *get_buffer() const;
-  std::string get_config_proto() const;
-  void set_buffer(const Tensor<T> *parameter);
-  ~ParameterOptimzier() {}
+  virtual void destroy() = 0;
+  virtual T *get_weight() const;
+  virtual char* get_config_proto();
+  virtual void set_weight(const Tensor<T> *parameter);
+  ~ParameterOptimzier() {
+    delete parameter_;
+  }
 
 private:
-  optimizer_config config_;
-  std::shared_ptr<Tensor<T>> parameter_;
+  bool config_valid(std::string &config) const;
+  OptimizerConfig config_;
+  Tensor<T> *parameter_;
+
+  uint32 num_sample_passed;
+  uint32 iterations;
+
+  ParameterOptimizer(const ParameterOptimizer&) = delete;
+  ParameterOptimizer& operator=(const ParameterOptimizer&) = delete;
   /**
    * @brief indicate if use L1, L2 regularizer
    */
 };
+
+
 
 }  // namespace optimizer
 }  // namespace paddle
