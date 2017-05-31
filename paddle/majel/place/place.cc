@@ -1,4 +1,4 @@
-#include "paddle/majel/place.h"
+#include "paddle/majel/place/place.h"
 
 namespace majel {
 

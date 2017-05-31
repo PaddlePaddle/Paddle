@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include "paddle/majel/dim.h"
+#include "paddle/majel/ddim/dim.h"
 
 namespace majel {
 

@@ -1,10 +1,8 @@
-//#include <stdexcept>
-//#include <unittest/unittest.h>
 #include <sstream>
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "paddle/majel/ddim.h"
+#include "paddle/majel/ddim/ddim.h"
 
 TEST(DDim, Equality) {
   // construct a DDim from an initialization list
