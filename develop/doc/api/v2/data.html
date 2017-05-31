@@ -187,10 +187,48 @@
 <h2>DataTypes<a class="headerlink" href="#datatypes" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">dense_array</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
+<dd><p>Dense Array. It means the input feature is dense array with float type.
+For example, if the input is an image with 28*28 pixels, the input of
+Paddle neural network could be a dense vector with dimension 784 or a
+numpy array with shape (28, 28).</p>
+<p>For the 2-D convolution operation, each sample in one mini-batch must have
+the similarly size in PaddlePaddle now. But, it supports variable-dimension
+feature across mini-batch. For the variable-dimension, the param dim is not
+used. While the data reader must yield numpy array and the data feeder will
+set the data shape correctly.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>dim</strong> (<em>int</em>) &#8211; dimension of this vector.</li>
+<li><strong>seq_type</strong> (<em>int</em>) &#8211; sequence type of input.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">An input type object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">InputType</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
 <code class="descclassname">paddle.v2.data_type.</code><code class="descname">dense_vector</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
-<dd><p>Dense Vector. It means the input feature is dense float vector. For example,
-if the input is an image with 28*28 pixels, the input of Paddle neural
-network should be a dense vector with dimension 784.</p>
+<dd><p>Dense Array. It means the input feature is dense array with float type.
+For example, if the input is an image with 28*28 pixels, the input of
+Paddle neural network could be a dense vector with dimension 784 or a
+numpy array with shape (28, 28).</p>
+<p>For the 2-D convolution operation, each sample in one mini-batch must have
+the similarly size in PaddlePaddle now. But, it supports variable-dimension
+feature across mini-batch. For the variable-dimension, the param dim is not
+used. While the data reader must yield numpy array and the data feeder will
+set the data shape correctly.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
