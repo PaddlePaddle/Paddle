@@ -1,0 +1,6 @@
+permalink: /:title
+
+title: www.paddlepaddle.org
+url: http://www.paddlepaddle.org/
+feed: /atom.xml
+author_info: <a href="http://www.paddlepaddle.org/">PaddlePaddle</a>
