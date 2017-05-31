@@ -36,9 +36,9 @@ def __map_docstr__(doc, name):
     # xxx_layer to xxx
     doc = re.sub(r"(?P<name>[a-z]+)_layer", r"\g<name>", doc)
 
-    # XxxxActivation to paddle.v2.Activation.Xxxx
+    # XxxxActivation to paddle.v2.activation.Xxxx
     doc = re.sub(r"(?P<name>[A-Z][a-zA-Z]+)Activation",
-                 r"paddle.v2.Activation.\g<name>", doc)
+                 r"paddle.v2.activation.\g<name>", doc)
 
     # xxx_evaluator to paddle.v2.evaluator.xxx
     doc = re.sub(r"(?P<name>[a-z]+)_evaluator", r"evaluator.\g<name>", doc)

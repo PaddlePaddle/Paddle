@@ -27,6 +27,7 @@ from . import dataset
 from . import reader
 from . import plot
 import attr
+import op
 import pooling
 import inference
 import networks
