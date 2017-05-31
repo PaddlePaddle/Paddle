@@ -18,6 +18,8 @@ set(OPITMIZER_Headers
 add_library(optimizer STATIC ${OPITMIZER_SRCS})
 add_dependencies(optimizer gen_proto_cpp)
 
+include_directories("/home/work/dongzhihong/github/Paddle/Paddle/third_party/install/glog/include")
+link_directories("/home/work/dongzhihong/github/Paddle/Paddle/third_party/install/glog/lib")
 add_executable(optimizer_test optimizer_test.cpp)
 add_dependencies(optimizer_test gen_proto_cpp gtest)
 add_test(NAME optimizer_test COMMAND optimzier_test)

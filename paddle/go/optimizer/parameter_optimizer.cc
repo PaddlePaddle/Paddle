@@ -25,7 +25,14 @@ ParameterOptimizer<T>* ParameterOptimizer<T>::create(
 
 template<class T>
 double ParameterOptimzier<T>::get_learning_rate() {
-  
+  if (config_.lr_type == paddle::OptimizerConfig_LearningRateType_Linear) {
+    learning_rate = std::max(learning_rate - lr_decay_a * num_sample_passed, lr_decay_b);
+
+  } else if (config_.lr_type == paddle::OptimizerConfig_LearningRateType_Exp) {
+    double decayRatio = (double)num_sample_passed / lr_decay_b;
+    learning_rate = learning_rate * std::pow(lr_decay_a, decayRatio);
+  }
+  return learning_rate;
 }
 
 template <class T>

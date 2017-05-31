@@ -9,6 +9,8 @@ SGDOptimizer<T>::SGDOptimizer(const OptimizerConfig &config) : ParameterOptimize
   momentum = config.momentum;
   decay = config.decay;
   nesterov = config.nesterov;
+  lr_decay_a = config.lr_decay_a;
+  lr_decay_b = config.lr_decay_b;
 }
 
 template<class T>
@@ -28,11 +30,12 @@ void SGDOptimizer<T>::set_weight(const Tensor<T> *p) {
 
 template<class T>
 void SGDOptimizer<T>::update(const Tensor<T> &gradient) {
-  learning_rate = applyLinearLearningRate(config_);
+  num_sample_passed += 1;
+  learning_rate = get_learning_rate();
   for(size_t i=0; i<parameter_.size(); ++i) {
     momentums_[i] = momentum * momentums_[i] - learning_rate*gradient[i] - decay*parameter_[i];
     if(nesterov) {
-      //TODO(zhihong) : fix nesterov
+      //TODO(zhihong) : fix nesterov updating
       parameter_[i] += momentums_[i];
     } else {
       parameter_[i] += momentums_[i];
@@ -50,6 +53,7 @@ char* SGDOptimizer<T>::get_config_proto() {
   return config.SerializeAsString().c_str();
 }
 
+
 template class SGDOptimizer<float>;
 template class SGDOptimizer<double>;
 template class AdagradOptimizer<float>;
@@ -58,25 +62,5 @@ template class AdadeltaOptimizer<float>;
 template class AdadeltaOptimizer<double>;
 template class AdamOptimizer<float>;
 template class AdamOptimizer<double>;
-
-
-
-// template<class T>
-// AdagradOptimizer(OptimizerConfig &config) : ParameterOptimizer(config) {
-//   learning_rate = config.learning_rate;
-//   momentum = config.momentum;
-//   decay = config.decay;
-//   nesterov = confg.nesterov;
-// }
-
-
-
-
-// template <class T>
-// MomentumOptimizer<T>::MomentumOptimizer(const paddle::optimizer_config &config)
-//     : ParameterOptimizer(config) {
-//   momentum = config.mometum;
-// }
-
 }  // namespace optimizer
 }  // namespace paddle

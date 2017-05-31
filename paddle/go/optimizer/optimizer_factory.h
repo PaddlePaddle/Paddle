@@ -6,32 +6,6 @@
 namespace paddle {
 namespace optimizer {
 
-static double applyLinearLearningRate(paddle::optimizer_config &config) {
-  config.learning_rate =
-      std::max(config.learning_rate - config.decay_a * config.samples_processed,
-               config.decay_b);
-  return config.learning_rate;
-}
-
-static double applyExpLearningRate(paddle::optimizer_config &config) {
-  double decayRatio = (double)config.samples_processed / config.decay_b;
-  config.learning_rate = config.learning_rate * std::pow(decay_a, decayRatio);
-}
-
-// double applyLearningRate(double learning_rate, uint32_t epoch);
-
-
-// double applyLinearLearningRate(double learning_rate, double decay_a, double
-// decay_b, uint64_t samples_processed);
-
-// double applyExpLearningRate(double learning_rate, double decay_a, double
-// decay_b, uint64_t samples_processed);
-
-// double applyPolyLearningRate(double learning_rate, double decay_a, double
-// decay_b, uint64_t samples_processed, uint32_t epoch);
-
-// double applyCaffePolyLearningRate(double learning_rate, double decay_a,
-// double decay_b, uint64_t samples_processed, uint32_t epoch);
 
 template <class T>
 class SGDOptimizer : public ParameterOptimizer<T> {
@@ -53,6 +27,8 @@ private:
   double momentum;
   double decay;
   bool nesterov;
+  double lr_decay_a;
+  double lr_decay_b;
 };
 
 template <class T>
@@ -61,7 +37,6 @@ public:
   void update(const Tensor<T> &gradient) {
   }
 private:
-  
 };
 
 template <class T>
@@ -69,12 +44,12 @@ class AdadeltaOptimizer : public ParameterOptimizer<T> {
 public:
   /*! \brief call the applySGD for example  */
   void update(const Tensor<T> &gradient) {
-    auto parameter = &(*parameter_.get());
-    learning_rate = applyLinearLearningRate(config_);
-    applyGradientDescent(parameter, gradient, learning_rate);
   }
 private:
-  
+  double learning_rate;
+  double rho;
+  double epsilon;
+  double decay;
 };
 
 template <class T>
@@ -82,12 +57,12 @@ class AdamOptimizer : public ParameterOptimizer<T> {
 public:
   /*! \brief call the applySGD for example  */
   void update(const Tensor<T> &gradient) {
-    auto parameter = &(*parameter_.get());
-    learning_rate = applyLinearLearningRate(config_);
-    applyGradientDescent(parameter, gradient, learning_rate);
   }
 private:
-  
+  double learning_rate ;
+  double beta_1;
+  double beta_2;
+  double epsilon;
 };
 
 // template <class T>

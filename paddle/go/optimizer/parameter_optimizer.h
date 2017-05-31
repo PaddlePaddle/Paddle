@@ -1,9 +1,9 @@
-#ifndef PADDLE_LIB_OPTIMIZER_BASE_H_
-#define PADDLE_LIB_OPTIMIZER_BASE_H_
+#ifndef PADDLE_PARAMETER_OPTIMIZER_H_
+#define PADDLE_PARAMETER_OPTIMIZER_H_
 
+#include <glog/logging.h>
 #include <functional>
 #include <string>
-// #include <math/Tensor.h>
 #include "Tensor.h"
 #include "OptimizerConfig.pb.h"
 
