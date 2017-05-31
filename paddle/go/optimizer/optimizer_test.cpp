@@ -2,7 +2,7 @@
 #include "gtest/gtest.h"
 
 template <class T>
-class OpitmizerTests {
+class Opitmizer_C_Test : public testing::Test {
 private:
   Tensor<T> parameter;
   Tensor<T> gradient;

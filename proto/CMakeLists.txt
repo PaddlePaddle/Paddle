@@ -36,6 +36,20 @@ foreach(filename ${proto_filenames})
         DEPENDS ${filename} ${external_project_dependencies})
 endforeach()
 
+# add protobuf go support
+set(GO_PROTO
+  OptimizerConfig.proto)
+get_filename_component(BASE_GO_PROTO ${GO_PROTO} NAME_WE)
+set(PROGO_GEN_GO
+  ${PROJ_ROOT}/paddle/go/${BASE_GO_PROTO}.go)
+
+add_custom_command(OUTPUT ${PROTO_GEN_GO}
+    COMMAND env ${py_env} ${PROTOBUF_PROTOC_EXECUTABLE} 
+              --go_out ${CMAKE_CURRENT_BINARY_DIR}
+      --proto_path ${PROJ_ROOT}/proto ${PROTO_GEN_GO}
+    DEPENDS ${GO_PROTO} ${external_project_dependencies})
+add_custom_target(gen_proto_cpp ALL DEPENDS ${PROTO_GEN_GO})
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/proto)
 
 add_custom_target(gen_proto_cpp ALL DEPENDS ${PROTO_GEN})

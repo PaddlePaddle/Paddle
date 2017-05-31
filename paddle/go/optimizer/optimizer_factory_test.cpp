@@ -2,6 +2,8 @@
 #include "optimizer_factory.h"
 #include "gtest/gtest.h"
 
+#define float TestType;
+
 class OptimizerTest : public testing::Test {
 public:
   virtual void SetUp() {
@@ -12,12 +14,15 @@ public:
     config.set_nesterov(false);
     config.set_lr_decay_a(0.9);
     config.set_lr_decay_b(0.1);
+
+    std::string config_proto = config.SerializeAsString();
+    ParameterOptimizer<TestType>::create(config_proto, )
   }
   virtual void TearDown() {
     
   }
 private:
-  ParameterOptimizer *o;
+  ParameterOptimizer<TestType> *o;
 };
 
 TEST_F(OptimizerTest, createOptimizer) {

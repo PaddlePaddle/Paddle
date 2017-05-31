@@ -4,6 +4,7 @@ package pserver
 #include "optimizer.h"
 */
 import "C"
+
 import (
 	"fmt"
 	"unsafe"
@@ -21,9 +22,10 @@ type optimizer struct {
 	opt *C.struct_paddle_optimizer
 }
 
-func newOptimizer(t optimizerType, learning_rate float64) *optimizer {
+func newOptimizer() *optimizer {
 	o := &optimizer{}
-	o.opt = C.paddle_create_SGD_optimizer(C.double(learning_rate))
+	OptimizerConfig config
+	o.opt = C.paddle_create_optimizer((*C.char)config, C.uint(config.size()))
 	return o
 }
 

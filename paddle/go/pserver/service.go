@@ -75,7 +75,7 @@ func (s *Service) BeginInitParams(config []byte, dummy *int) error {
 
 	// TODO(h
 	// elin): parse learning rate from config
-	s.opt = newOptimizer(sgd, 0.01)
+	s.opt = newOptimizer(config OptimizerConfig)
 	return nil
 }
 
