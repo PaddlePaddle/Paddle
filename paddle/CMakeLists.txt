@@ -8,10 +8,11 @@ add_subdirectory(gserver)
 add_subdirectory(pserver)
 add_subdirectory(trainer)
 add_subdirectory(scripts)
+add_subdirectory(go)
 
-if(CMAKE_Go_COMPILER)
-  add_subdirectory(go)
-endif()
+# if(CMAKE_Go_COMPILER)
+#   add_subdirectory(go)
+# endif()
 
 find_package(Boost QUIET)
 

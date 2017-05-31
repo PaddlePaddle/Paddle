@@ -68,30 +68,7 @@ o.set_weight(param);
 return PADDLE_SUCCESS;
 }
 
-const void* paddle_optimizer_get_weights(paddle_optimizer* o) {
-void* buffer = (void *)o->impl->get_weight();
+void* paddle_optimizer_get_weights(paddle_optimizer* o) {
+  void* buffer = (void *)o->impl->get_weight();
   return buffer;
 }
-
-// int32_t paddle_create_SGDOptimizer(paddle_optimizer* optimizer, double
-// learning_rate) {
-//   optimizer->impl->create_SGDOptimizer(learning_rate);
-//   return PADDLE_SUCCESS;
-// }
-
-// int32_t paddle_release_optimizer(paddle_optimizer* optimizer) {
-//   if (optimizer != nullptr)
-//     optimizer->impl->destory();
-//   return PADDLE_SUCCESS;
-// }
-
-// int32_t paddle_update_parameter(paddle_optimizer* optimizer, parameter*
-// param, const gradient* grad,
-//                                 paddle_element_type datatype, uint32_t
-//                                 num_bytes, double learning_rate) {
-//   Tensor<datatype> Parameter(param, num_bytes);
-//   Tensor<datatype> Gradient(grad, num_bytes);
-//   /*! \brief real update hook  */
-//   optimizer->impl->update(Parameter, Gradient, learning_rate);
-//   return PADDLE_SUCCESS;
-// }

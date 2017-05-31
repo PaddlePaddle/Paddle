@@ -2,7 +2,6 @@
 #define PADDLE_OPTIMIZER_FACTORY_H_
 
 #include "parameter_optimizer.h"
-#include "training_ops.h"
 
 namespace paddle {
 namespace optimizer {
@@ -35,10 +34,10 @@ static double applyExpLearningRate(paddle::optimizer_config &config) {
 // double decay_b, uint64_t samples_processed, uint32_t epoch);
 
 template <class T>
-class SGDOptimizer : public ParameterOptimizer {
+class SGDOptimizer : public ParameterOptimizer<T> {
 public:
   /*! \brief call the applySGD for example  */
-  SGDOptimizer(OptimizerConfig &config);
+  SGDOptimizer(const OptimizerConfig &config);
   void set_weight(const Tensor<T> *p);
   T* get_weight() const;
   void update(const Tensor<T> &gradient);
@@ -57,7 +56,7 @@ private:
 };
 
 template <class T>
-class AdagradOptimizer : public ParameterOptimizer {
+class AdagradOptimizer : public ParameterOptimizer<T> {
 public:
   void update(const Tensor<T> &gradient) {
   }
@@ -66,7 +65,7 @@ private:
 };
 
 template <class T>
-class AdadeltaOptimizer : public ParameterOptimizer {
+class AdadeltaOptimizer : public ParameterOptimizer<T> {
 public:
   /*! \brief call the applySGD for example  */
   void update(const Tensor<T> &gradient) {
@@ -79,7 +78,7 @@ private:
 };
 
 template <class T>
-class AdamOptimizer : public ParameterOptimizer {
+class AdamOptimizer : public ParameterOptimizer<T> {
 public:
   /*! \brief call the applySGD for example  */
   void update(const Tensor<T> &gradient) {

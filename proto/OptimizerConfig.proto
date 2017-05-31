@@ -14,6 +14,8 @@ message SGDConfig {
   optional double momentum = 21 [default = 0.0];
   optional double decay = 23;
   optional bool nesterov =24;
+  optional double lr_decay_a = 25;
+  optional double lr_decay_b = 26;
 }
 
 

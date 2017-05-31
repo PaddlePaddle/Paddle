@@ -55,7 +55,7 @@ int paddle_optimizer_set_weights(paddle_optimizer* o,
                                  void*param_buffer,
                                  int num_bytes);
 
-const void* paddle_optimizer_get_weights(paddle_optimizer* o);
+void* paddle_optimizer_get_weights(paddle_optimizer* o);
 
 // /*!
 //  *  \brief create optimizer function

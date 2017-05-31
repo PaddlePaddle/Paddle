@@ -28,6 +28,7 @@ public:
   ~ParameterOptimzier() {
     delete parameter_;
   }
+  double get_learning_rate();
 
 private:
   bool config_valid(std::string &config) const;

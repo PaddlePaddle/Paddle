@@ -4,7 +4,7 @@ namespace paddle {
 namespace optimizer {
 
 template<class T>
-SGDOptimizer(OptimizerConfig &config) : ParameterOptimizer(config) {
+SGDOptimizer<T>::SGDOptimizer(const OptimizerConfig &config) : ParameterOptimizer<T>(config) {
   learning_rate = config.learning_rate;
   momentum = config.momentum;
   decay = config.decay;
@@ -20,6 +20,7 @@ template<class T>
 void SGDOptimizer<T>::set_weight(const Tensor<T> *p) {
   ParameterOptimizer::set_weight(p);
   size_t size = p->height();
+  // TODO: fix it with align aware allocator bind to Tensor
   T* ptr = new T[size];
   momentum_ = Tensor<T>(ptr, size);
   
@@ -48,6 +49,17 @@ char* SGDOptimizer<T>::get_config_proto() {
   config.set_nesterov(nesterov);
   return config.SerializeAsString().c_str();
 }
+
+template class SGDOptimizer<float>;
+template class SGDOptimizer<double>;
+template class AdagradOptimizer<float>;
+template class AdagradOptimizer<double>;
+template class AdadeltaOptimizer<float>;
+template class AdadeltaOptimizer<double>;
+template class AdamOptimizer<float>;
+template class AdamOptimizer<double>;
+
+
 
 // template<class T>
 // AdagradOptimizer(OptimizerConfig &config) : ParameterOptimizer(config) {

@@ -1,36 +1,42 @@
-#ifndef PADDLE_LIB_REGULARIZER_H_
-#define PADDLE_LIB_REGULARIZER_H_
+#ifndef PADDLE_OPITMIZER_REGULARIZER_H_
+#define PADDLE_OPTIMIZER_REGULARIZER_H_
+
+#include "Tensor.h"
+#include "OptimizerConfig.pb.h"
 
 namespace paddle {
 namespace optimizer {
 
-/*! \brief regularizer for L1, L2 */
+/**
+ * @brief regularizer in L1, L2
+ */
 
+
+template<class T>
 class Regularizer {
 public:
-  /*!
-   *  \brief update interface
-   *  \param parameter need to update
-   *  \param pass_num, caller pass the pass_num to regularizer
-   *  \return void
+  /**
+   *  @brief regularizer update interface
+   *  @param param need to update
+   *  @return void
    */
-  virtual void update(Tensor<T> parameter,
-                      int32_t pass_num,
-                      double learning_rate) const = 0;
-  virtual ~Regularizer() {}
-
+  static Regularizer* create(const std::string& config);
+  virtual void update(Tensor<T> &parameter) = 0;
 private:
+  std::string regularizer_name;
+  OptimizerConfig config_;
 };
 
-class L1LrRegularizer : public Regularizer {
+template<class T>
+class L1Regularizer {
 public:
-  virtual void update(Tensor<T> parameter,
-                      int32_t pass_num,
-                      double learning_rate) {
-    applyL1(parameter, pass_num, learning_rate);
-  }
+  void update(Tensor<T> &parameter);
+};
 
-private:
+template<class T>
+class L2Regularizer {
+public:
+  void update(Tensor<T> &parameter);
 };
 
 }  // namespace optimizer

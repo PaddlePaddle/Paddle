@@ -1,12 +1,12 @@
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-set(optimizer_SRCS
+set(OPITMIZER_SRCS
     optimizer_factory.cc
     parameter_optimizer.cc
-    training_ops.cc
+    regularizer.cc
   )
 
-set(optimizer_Headers
+set(OPITMIZER_Headers
     optimizer.h
     Tensor.h
     optimizer_factory.h
@@ -15,16 +15,11 @@ set(optimizer_Headers
     regularizer.h
   )
 
-add_style_check_target(paddle_function ${optimizer_Headers})
-add_style_check_target(paddle_function ${optimizer_SRCS})
-
-add_library(optimizer SHARED optimizer.cc)
+add_library(optimizer STATIC ${OPITMIZER_SRCS})
 add_dependencies(optimizer gen_proto_cpp)
-add_simple_unittest(optimizer_test)
-add_simple_unittest(optimizer_factory_test)
-# cc_test(optimizer_test
-#   optimizer_SRCS
-#   optimizer_test.cc
-#   DEPS
-#   optimizer
-#   )
+
+add_executable(optimizer_test optimizer_test.cpp)
+add_dependencies(optimizer_test gen_proto_cpp gtest)
+add_test(NAME optimizer_test COMMAND optimzier_test)
+# add_simple_unittest(optimizer_test)
+# add_simple_unittest(optimizer_factory_test)

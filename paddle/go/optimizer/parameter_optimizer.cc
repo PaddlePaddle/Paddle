@@ -1,25 +1,31 @@
 #include "parameter_optimizer.h"
 #include "optimizer_factory.h"
+#include <glog/logging.h>
 
 namespace paddle {
 namespace optimizer {
 
 template <class T>
-static ParameterOptimizer<T>* ParameterOptimizer<T>::create(
-    const std::string &config_proto, Tensor<T> *parameter) {
+ParameterOptimizer<T>* ParameterOptimizer<T>::create(
+    const std::string &config_proto) {
   paddle::OptimizerConfig config;
   CHECK(config.ParseFromString(config_proto) == 0) << "error : optimizer config";
   CHECK(config_valid(config) == 0) << "error : invalid optimizer config ";
-  ParameterOptimizer *opt;
+  ParameterOptimizer<T> *opt = nullptr;
   switch (config.optimizer_name) {
-  case "SGD" : opt = new SGDOptimizer(config); break;
-  case "Adagrad" : opt = new AdagradOptimizer(config); break;
-  case "Adadelta" : opt = new AdadeltaOptimizer(config); break;
-  case "Adam" : opt = new AdamOptimizer(config); break;
+  case "SGD" : opt = new SGDOptimizer<T>(config); break;
+  case "Adagrad" : opt = new AdagradOptimizer<T>(config); break;
+  case "Adadelta" : opt = new AdadeltaOptimizer<T>(config); break;
+  case "Adam" : opt = new AdamOptimizer<T>(config); break;
   default:
-    opt = new SGDOptimizer(config);
+    opt = new SGDOptimizer<T>(config);
   }
   return opt;
+}
+
+template<class T>
+double ParameterOptimzier<T>::get_learning_rate() {
+  
 }
 
 template <class T>
@@ -46,6 +52,9 @@ bool ParameterOptimizer<T>::config_valid(const std::string &config) const{
   // TODO(zhihong) : add more value checker, failed ASAP
   return true;
 }
+
+template class ParameterOptimzier<float>;
+template class ParameterOptimzier<double>;
 
 }  // namespace optimizer
 }  // namespace paddle
