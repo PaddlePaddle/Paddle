@@ -55,6 +55,7 @@ public:
                                            FuncConfig()
                                                .set("paddings", paddings)
                                                .set("strides", strides)
+                                               .set("groups", (size_t)1)
                                                .set("algo", algo));
 
                   TensorShape shape0{

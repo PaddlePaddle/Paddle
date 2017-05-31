@@ -38,6 +38,7 @@ public:
     // function arguments
     strides_ = config.get<std::vector<size_t>>("strides");
     paddings_ = config.get<std::vector<size_t>>("paddings");
+    groups_ = config.get<size_t>("groups");
 
     // number of inputs and outputs
     numInputs_ = 2;
@@ -62,6 +63,11 @@ public:
 protected:
   std::vector<size_t> strides_;
   std::vector<size_t> paddings_;
+  /// Group size, refer to grouped convolution in
+  /// Alex Krizhevsky's paper: when group=2, the first half of the
+  /// filters are only connected to the first half of the input channels,
+  /// and the second half only connected to the second half.
+  size_t groups_;
   inline int strideH() const { return strides_[0]; }
 
   inline int strideW() const { return strides_[1]; }
