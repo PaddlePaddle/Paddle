@@ -524,7 +524,7 @@ public:
                                 const float32x4_t b) const {
     return vmaxq_f32(a, b);
   }
-}
+};
 #else
 #error To be implemented
 #endif  // PADDLE_TYPE_DOUBLE
