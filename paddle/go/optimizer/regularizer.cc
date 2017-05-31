@@ -7,7 +7,7 @@ template<class T>
 Regularizer<T>* Regularizer<T>::create(const std::string& config) {
   paddle::OptimizerConfig config;
   Regularizer<T>* r;
-  switch (config.regularizer_type) {
+  switch (config.regularizer_type()) {
   case paddle::OptimizerConfig_RegularizerType_L1:
     r = new L1Regularizer<T>(config); break;
   case paddle::OptimizerConfig_RegularizerType_L2:

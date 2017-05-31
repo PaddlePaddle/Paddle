@@ -19,7 +19,7 @@ public:
    */
   ParameterOptimizer(const OptimizerConfig &config) : config_(config){};
 
-  static ParameterOptimizer *create(const std::string &config_proto);
+  static ParameterOptimizer *create(const ::std::string &config_proto);
   virtual void update(const Tensor &gradient) = 0;
   virtual void destroy() = 0;
   virtual T *get_weight() const;
@@ -31,7 +31,7 @@ public:
   double get_learning_rate();
 
 private:
-  bool config_valid(std::string &config) const;
+  bool config_valid(::std::string &config) const;
   OptimizerConfig config_;
   Tensor<T> *parameter_;
 

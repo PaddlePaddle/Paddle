@@ -7,12 +7,12 @@ namespace optimizer {
 
 template <class T>
 ParameterOptimizer<T>* ParameterOptimizer<T>::create(
-    const std::string &config_proto) {
+    const ::std::string &config_proto) {
   paddle::OptimizerConfig config;
   CHECK(config.ParseFromString(config_proto) == 0) << "error : optimizer config";
   CHECK(config_valid(config) == 0) << "error : invalid optimizer config ";
   ParameterOptimizer<T> *opt = nullptr;
-  switch (config.optimizer_name) {
+  switch (config.optimizer_name()) {
   case "SGD" : opt = new SGDOptimizer<T>(config); break;
   case "Adagrad" : opt = new AdagradOptimizer<T>(config); break;
   case "Adadelta" : opt = new AdadeltaOptimizer<T>(config); break;
@@ -25,12 +25,12 @@ ParameterOptimizer<T>* ParameterOptimizer<T>::create(
 
 template<class T>
 double ParameterOptimzier<T>::get_learning_rate() {
-  if (config_.lr_type == paddle::OptimizerConfig_LearningRateType_Linear) {
-    learning_rate = std::max(learning_rate - lr_decay_a * num_sample_passed, lr_decay_b);
+  if (config_.lr_type() == paddle::OptimizerConfig_LearningRateType_Linear) {
+    learning_rate = ::std::max(learning_rate - lr_decay_a * num_sample_passed, lr_decay_b);
 
-  } else if (config_.lr_type == paddle::OptimizerConfig_LearningRateType_Exp) {
+  } else if (config_.lr_type() == paddle::OptimizerConfig_LearningRateType_Exp) {
     double decayRatio = (double)num_sample_passed / lr_decay_b;
-    learning_rate = learning_rate * std::pow(lr_decay_a, decayRatio);
+    learning_rate = learning_rate * ::std::pow(lr_decay_a, decayRatio);
   }
   return learning_rate;
 }
@@ -54,7 +54,7 @@ void ParameterOptimizer<T>::set_weight(const Tensor<T> *p) {
 }
 
 template<class T>
-bool ParameterOptimizer<T>::config_valid(const std::string &config) const{
+bool ParameterOptimizer<T>::config_valid(const ::std::string &config) const{
   
   // TODO(zhihong) : add more value checker, failed ASAP
   return true;

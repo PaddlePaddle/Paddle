@@ -11,7 +11,7 @@ template <class T>
 class SGDOptimizer : public ParameterOptimizer<T> {
 public:
   /*! \brief call the applySGD for example  */
-  SGDOptimizer(const OptimizerConfig &config);
+  SGDOptimizer(const ::paddle::OptimizerConfig &config);
   void set_weight(const Tensor<T> *p);
   T* get_weight() const;
   void update(const Tensor<T> &gradient);
