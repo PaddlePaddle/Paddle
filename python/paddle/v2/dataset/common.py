@@ -79,27 +79,27 @@ def fetch_all():
 
 def split(reader, line_count, suffix="%05d.pickle"):
     """
-    you can call the function as: 
-    
-    split(paddle.v2.dataset.cifar.train10(), line_count=1000, 
+    you can call the function as:
+
+    split(paddle.v2.dataset.cifar.train10(), line_count=1000,
         suffix="imikolov-train-%05d.pickle")
-    
+
     the output files as:
-    
+
     |-imikolov-train-00000.pickle
     |-imikolov-train-00001.pickle
     |- ...
     |-imikolov-train-00480.pickle
-    
+
     :param reader: the reader creator will be split
     :param line_count: line count for each file
-    :param suffix: the suffix for each file, 
+    :param suffix: the suffix for each file,
                     contain "%d" means the id for each file
     """
     lines = []
     indx_f = 0
     for i, d in enumerate(reader()):
-        lines.append(d) 
+        lines.append(d)
         if i >= line_count and i % line_count == 0:
             with open(suffix % indx_f, "w") as f:
                 pickle.dump(lines, f)
@@ -111,14 +111,14 @@ def split(reader, line_count, suffix="%05d.pickle"):
 
 def cluster_files_reader(files_pattern, trainers, trainer_id):
     """
-    Create a reader that yield element from the given files, select 
+    Create a reader that yield element from the given files, select
     a file set according trainer count and trainer_id
 
     :param files_pattern: the files which generating by split(...)
     :param trainers: total trainer count
     :param trainer_id: the trainer rank id
     """
-    def reader()
+    def reader():
         file_list = glob.glob(files_pattern)
         file_list.sort()
         my_file_list = []
