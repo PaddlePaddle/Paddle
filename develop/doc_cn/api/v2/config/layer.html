@@ -215,7 +215,7 @@
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">fc</span> <span class="o">=</span> <span class="n">fc</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
               <span class="n">size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
-              <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">Activation</span><span class="o">.</span><span class="n">Linear</span><span class="p">(),</span>
+              <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">activation</span><span class="o">.</span><span class="n">Linear</span><span class="p">(),</span>
               <span class="n">bias_attr</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -232,7 +232,7 @@
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer|list|tuple</em>) &#8211; The input layer. Could be a list/tuple of input layer.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; The layer dimension.</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation Type. Default is tanh.</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation Type. Default is tanh.</li>
 <li><strong>param_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em>) &#8211; The Parameter Attribute|list.</li>
 <li><strong>bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute|None|Any</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of paddle.v2.attr.ParameterAttribute. None will get a
@@ -262,7 +262,7 @@ of this layer maybe sparse. It requires an additional input to indicate
 several selected columns for output. If the selected columns is not
 specified, selective_fc acts exactly like fc.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">sel_fc</span> <span class="o">=</span> <span class="n">selective_fc</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">Activation</span><span class="o">.</span><span class="n">Tanh</span><span class="p">())</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">sel_fc</span> <span class="o">=</span> <span class="n">selective_fc</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">activation</span><span class="o">.</span><span class="n">Tanh</span><span class="p">())</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -276,7 +276,7 @@ specified, selective_fc acts exactly like fc.</p>
 sparse binary matrix, and treat as the mask of selective fc.
 If is None, acts exactly like fc.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; The layer dimension.</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation Type. Default is tanh.</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation Type. Default is tanh.</li>
 <li><strong>param_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em>) &#8211; The Parameter Attribute.</li>
 <li><strong>bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute|None|Any</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of paddle.v2.attr.ParameterAttribute. None will get a
@@ -476,7 +476,7 @@ rest channels will be processed by rest group of filters.</p>
                       <span class="n">num_channels</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
                       <span class="n">num_filters</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                       <span class="n">bias_attr</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
-                      <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">Activation</span><span class="o">.</span><span class="n">Relu</span><span class="p">())</span>
+                      <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">activation</span><span class="o">.</span><span class="n">Relu</span><span class="p">())</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -492,7 +492,7 @@ two image dimension.</li>
 currently supports rectangular filters, the filter&#8217;s
 shape will be (filter_size, filter_size_y).</li>
 <li><strong>num_filters</strong> &#8211; Each filter group&#8217;s number of filter</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation type. Default is tanh</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation type. Default is tanh</li>
 <li><strong>groups</strong> (<em>int</em>) &#8211; Group size of filters.</li>
 <li><strong>stride</strong> (<em>int|tuple|list</em>) &#8211; The x dimension of the stride. Or input a tuple for two image
 dimension.</li>
@@ -787,7 +787,7 @@ y_i &amp;\gets \gamma \hat{x_i} + \beta \qquad &amp;//\ scale\ and\ shift\end{sp
 <p>The details of batch normalization please refer to this
 <a class="reference external" href="http://arxiv.org/abs/1502.03167">paper</a>.</p>
 <p>The example usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">norm</span> <span class="o">=</span> <span class="n">batch_norm</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">net</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">Activation</span><span class="o">.</span><span class="n">Relu</span><span class="p">())</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">norm</span> <span class="o">=</span> <span class="n">batch_norm</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">net</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">activation</span><span class="o">.</span><span class="n">Relu</span><span class="p">())</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -807,7 +807,7 @@ automaticly select cudnn_batch_norm for GPU and
 batch_norm for CPU. Otherwise, select batch norm
 type based on the specified type. If you use cudnn_batch_norm,
 we suggested you use latest version, such as v5.1.</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation Type. Better be relu. Because batch
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation Type. Better be relu. Because batch
 normalization will normalize input near zero.</li>
 <li><strong>num_channels</strong> (<em>int</em>) &#8211; num of image channels or previous layer&#8217;s number of
 filters. None will automatically get from layer&#8217;s
@@ -930,7 +930,7 @@ out_{i} = act(in_{i} + out_{i+1} * W) \ \ \text{for} \ start &lt;= i &lt; end\en
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Input Layer</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; activation.</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; activation.</li>
 <li><strong>bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em>) &#8211; bias attribute.</li>
 <li><strong>param_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em>) &#8211; parameter attribute.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; name of the layer</li>
@@ -977,9 +977,9 @@ more details about LSTM.</p>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The lstmemory layer name.</li>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; input layer name.</li>
 <li><strong>reverse</strong> (<em>bool</em>) &#8211; is sequence process reversed or not.</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; activation type, paddle.v2.Activation.Tanh by default. <span class="math">\(h_t\)</span></li>
-<li><strong>gate_act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; gate activation type, paddle.v2.Activation.Sigmoid by default.</li>
-<li><strong>state_act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; state activation type, paddle.v2.Activation.Tanh by default.</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; activation type, paddle.v2.activation.Tanh by default. <span class="math">\(h_t\)</span></li>
+<li><strong>gate_act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; gate activation type, paddle.v2.activation.Sigmoid by default.</li>
+<li><strong>state_act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; state activation type, paddle.v2.activation.Tanh by default.</li>
 <li><strong>bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute|None|False</em>) &#8211; Bias attribute. None means default bias. False means no
 bias.</li>
 <li><strong>param_attr</strong> (<em>paddle.v2.attr.ParameterAttribute|None|False</em>) &#8211; Parameter Attribute.</li>
@@ -1042,9 +1042,9 @@ Recurrent Neural Networks on Sequence Modeling.</a></p>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The gru layer name.</li>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer.</em>) &#8211; input layer.</li>
 <li><strong>reverse</strong> (<em>bool</em>) &#8211; Whether sequence process is reversed or not.</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; activation type, paddle.v2.Activation.Tanh by default. This activation
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; activation type, paddle.v2.activation.Tanh by default. This activation
 affects the <span class="math">\({\tilde{h_t}}\)</span>.</li>
-<li><strong>gate_act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; gate activation type, paddle.v2.Activation.Sigmoid by default.
+<li><strong>gate_act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; gate activation type, paddle.v2.activation.Sigmoid by default.
 This activation affects the <span class="math">\(z_t\)</span> and <span class="math">\(r_t\)</span>. It is the
 <span class="math">\(\sigma\)</span> in the above formula.</li>
 <li><strong>bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute|None|False</em>) &#8211; Bias attribute. None means default bias. False means no
@@ -1107,7 +1107,7 @@ It is ignored when name is provided.</li>
 <li><strong>is_seq</strong> (<em>bool</em>) &#8211; is sequence for boot</li>
 <li><strong>boot</strong> (<em>paddle.v2.config_base.Layer|None</em>) &#8211; boot layer of memory.</li>
 <li><strong>boot_bias</strong> (<em>paddle.v2.attr.ParameterAttribute|None</em>) &#8211; boot layer&#8217;s bias</li>
-<li><strong>boot_bias_active_type</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; boot layer&#8217;s active type.</li>
+<li><strong>boot_bias_active_type</strong> (<em>paddle.v2.activation.Base</em>) &#8211; boot layer&#8217;s active type.</li>
 <li><strong>boot_with_const_id</strong> (<em>int</em>) &#8211; boot layer&#8217;s id.</li>
 </ul>
 </td>
@@ -1137,7 +1137,7 @@ Neural Turning Machine like models.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
     <span class="n">output</span> <span class="o">=</span> <span class="n">fc</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
                       <span class="n">size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
-                      <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">Activation</span><span class="o">.</span><span class="n">Linear</span><span class="p">(),</span>
+                      <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">activation</span><span class="o">.</span><span class="n">Linear</span><span class="p">(),</span>
                       <span class="n">bias_attr</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">output</span>
 
@@ -1230,10 +1230,10 @@ output is <span class="math">\(o_t\)</span>, which name is &#8216;state&#8217; a
 <code class="code docutils literal"><span class="pre">state.size</span></code>.</li>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; input layer. <span class="math">\(Wx_t + Wh_{t-1}\)</span></li>
 <li><strong>state</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; State Layer. <span class="math">\(c_{t-1}\)</span></li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation type. Default is tanh</li>
-<li><strong>gate_act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Gate Activation Type. Default is sigmoid, and should
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation type. Default is tanh</li>
+<li><strong>gate_act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Gate Activation Type. Default is sigmoid, and should
 be sigmoid only.</li>
-<li><strong>state_act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; State Activation Type. Default is sigmoid, and should
+<li><strong>state_act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; State Activation Type. Default is sigmoid, and should
 be sigmoid only.</li>
 <li><strong>bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em>) &#8211; Bias Attribute.</li>
 <li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; layer&#8217;s extra attribute.</li>
@@ -1435,7 +1435,7 @@ Each inputs is a projection or operator.</p>
 <li><strong>size</strong> (<em>int</em>) &#8211; layer size.</li>
 <li><strong>input</strong> &#8211; inputs layer. It is an optional parameter. If set,
 then this function will just return layer&#8217;s name.</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation Type.</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation Type.</li>
 <li><strong>bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em><em> or </em><em>None</em><em> or </em><em>bool</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of paddle.v2.attr.ParameterAttribute. None will get a
 default Bias.</li>
@@ -1932,7 +1932,7 @@ Inputs can be list of paddle.v2.config_base.Layer or list of projection.</p>
 <tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
 <li><strong>input</strong> (<em>list|tuple|collections.Sequence</em>) &#8211; input layers or projections</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation type.</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation type.</li>
 <li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
@@ -1976,7 +1976,7 @@ Inputs can be list of paddle.v2.config_base.Layer or list of projection.</p>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
 <li><strong>a</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; input sequence layer</li>
 <li><strong>b</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; input sequence layer</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation type.</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation type.</li>
 <li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; Extra Layer Attribute.</li>
 <li><strong>bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em><em> or </em><em>None</em><em> or </em><em>bool</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of paddle.v2.attr.ParameterAttribute. None will get a
@@ -2209,7 +2209,7 @@ output sequence has T*M/N instances, the dimension of each instance is N.</p>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Input layer.</li>
 <li><strong>reshape_size</strong> (<em>int</em>) &#8211; the size of reshaped sequence.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation type.</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation type.</li>
 <li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; extra layer attributes.</li>
 <li><strong>bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em><em> or </em><em>None</em><em> or </em><em>bool</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of paddle.v2.attr.ParameterAttribute. None will get a
@@ -2243,7 +2243,7 @@ default Bias.</li>
 and <span class="math">\(f\)</span> is activation function.</p>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">addto</span> <span class="o">=</span> <span class="n">addto</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">],</span>
-                    <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">Activation</span><span class="o">.</span><span class="n">Relu</span><span class="p">(),</span>
+                    <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">v2</span><span class="o">.</span><span class="n">activation</span><span class="o">.</span><span class="n">Relu</span><span class="p">(),</span>
                     <span class="n">bias_attr</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -2265,7 +2265,7 @@ Please refer to dropout for details.</p>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer|list|tuple</em>) &#8211; Input layers. It could be a paddle.v2.config_base.Layer or list/tuple of
 paddle.v2.config_base.Layer.</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation Type, default is tanh.</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation Type, default is tanh.</li>
 <li><strong>bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute|bool</em>) &#8211; Bias attribute. If False, means no bias. None is default
 bias.</li>
 <li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; Extra Layer attribute.</li>
@@ -2567,7 +2567,7 @@ For example, each sample:</p>
 <li><strong>a</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Input layer a.</li>
 <li><strong>b</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; input layer b.</li>
 <li><strong>size</strong> (<em>int.</em>) &#8211; the layer dimension.</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation Type. Default is tanh.</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation Type. Default is tanh.</li>
 <li><strong>param_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em>) &#8211; The Parameter Attribute.</li>
 <li><strong>bias_attr</strong> (<em>paddle.v2.attr.ParameterAttribute|None|Any</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of paddle.v2.attr.ParameterAttribute. None will get a
@@ -3349,7 +3349,7 @@ A fast and simple algorithm for training neural probabilistic language models.</
 <li><strong>label</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; label layer</li>
 <li><strong>weight</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; weight layer, can be None(default)</li>
 <li><strong>num_classes</strong> (<em>int</em>) &#8211; number of classes.</li>
-<li><strong>act</strong> (<em>paddle.v2.Activation.Base</em>) &#8211; Activation, default is Sigmoid.</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation, default is Sigmoid.</li>
 <li><strong>param_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em>) &#8211; The Parameter Attribute|list.</li>
 <li><strong>num_neg_samples</strong> (<em>int</em>) &#8211; number of negative samples. Default is 10.</li>
 <li><strong>neg_distribution</strong> (<em>list|tuple|collections.Sequence|None</em>) &#8211; The distribution for generating the random negative labels.
