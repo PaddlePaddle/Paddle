@@ -40,30 +40,6 @@ INLINE real hl_vec_set(const real r) {
   return r;
 }
 
-INLINE real hl_vec_max(const real a, const real b) {
-  return a > b ? a : b;
-}
-
-INLINE real hl_vec_min(const real a, const real b) {
-  return a > b ? b : a;
-}
-
-INLINE real hl_vec_add(const real a, const real b) {
-  return a + b;
-}
-
-INLINE real hl_vec_sub(const real a, const real b) {
-  return a - b;
-}
-
-INLINE real hl_vec_mul(const real a, const real b) {
-  return a * b;
-}
-
-INLINE real hl_vec_div(const real a, const real b) {
-  return a / b;
-}
-
 INLINE real hl_vec_classification_error(const real a,
                                         const real b,
                                         const real p,

@@ -16,13 +16,14 @@ limitations under the License. */
 #define HL_MATRIX_BASE_DETAIL_CUH_
 
 #include "hl_matrix_type.cuh"
+#include "hl_tensor_ops.h"
 
 namespace aggregate {
 class SSESum {
 public:
   static const bool sse = VECTOR_SIMD;
   INLINE vecType vecOp(const vecType a, const vecType b) const {
-    return hl_vec_add(a, b);
+    return hppl::binary::add<vecType>()(a, b);
   }
 };
 
@@ -30,7 +31,7 @@ class SSEMax {
 public:
   static const bool sse = VECTOR_SIMD;
   INLINE vecType vecOp(const vecType a, const vecType b) const {
-    return hl_vec_max(a, b);
+    return hppl::binary::max<vecType>()(a, b);
   }
 };
 
@@ -38,7 +39,7 @@ class SSEMin {
 public:
   static const bool sse = VECTOR_SIMD;
   INLINE vecType vecOp(const vecType a, const vecType b) const {
-    return hl_vec_min(a, b);
+    return hppl::binary::min<vecType>()(a, b);
   }
 };
 }  // namespace aggregate
@@ -59,7 +60,7 @@ class SSEAdd {
 public:
   static const bool sse = VECTOR_SIMD;
   INLINE vecType vecOp(const vecType a, const vecType b) const {
-    return hl_vec_add(a, b);
+    return hppl::binary::add<vecType>()(a, b);
   }
 };
 
@@ -77,7 +78,7 @@ public:
     mp2 = hl_vec_set(p2);
   }
   INLINE vecType vecOp(const vecType a, const vecType b) const {
-    return hl_vec_add(hl_vec_mul(mp1, a), hl_vec_mul(mp2, b));
+    return hppl::binary::add_scale<vecType>(mp1, mp2)(a, b);
   }
 };
 
@@ -85,7 +86,7 @@ class SSESub {
 public:
   static const bool sse = VECTOR_SIMD;
   INLINE vecType vecOp(const vecType a, const vecType b) const {
-    return hl_vec_sub(a, b);
+    return hppl::binary::sub<vecType>()(a, b);
   }
 };
 
@@ -93,7 +94,7 @@ class SSEMul {
 public:
   static const bool sse = VECTOR_SIMD;
   INLINE vecType vecOp(const vecType a, const vecType b) const {
-    return hl_vec_mul(a, b);
+    return hppl::binary::mul<vecType>()(a, b);
   }
 };
 
@@ -101,7 +102,7 @@ class SSEDiv {
 public:
   static const bool sse = VECTOR_SIMD;
   INLINE vecType vecOp(const vecType a, const vecType b) const {
-    return hl_vec_div(a, b);
+    return hppl::binary::div<vecType>()(a, b);
   }
 };
 
@@ -109,7 +110,8 @@ class SSESquaredDiff {
 public:
   static const bool sse = VECTOR_SIMD;
   INLINE vecType vecOp(const vecType a, const vecType b) const {
-    return hl_vec_mul(hl_vec_sub(a, b), hl_vec_sub(a, b));
+    vecType tmp = hppl::binary::sub<vecType>()(a, b);
+    return hppl::binary::mul<vecType>()(tmp, tmp);
   }
 };
 

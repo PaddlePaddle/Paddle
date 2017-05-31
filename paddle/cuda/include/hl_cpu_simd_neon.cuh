@@ -44,31 +44,6 @@ inline float32x4_t hl_vec_set(const real f) {
   return vdupq_n_f32(f);
 }
 
-inline float32x4_t hl_vec_max(const float32x4_t a, const float32x4_t b) {
-  return vmaxq_f32(a, b);
-}
-
-inline float32x4_t hl_vec_min(const float32x4_t a, const float32x4_t b) {
-  return vminq_f32(a, b);
-}
-
-inline float32x4_t hl_vec_add(const float32x4_t a, const float32x4_t b) {
-  return vaddq_f32(a, b);
-}
-
-inline float32x4_t hl_vec_sub(const float32x4_t a, const float32x4_t b) {
-  return vsubq_f32(a, b);
-}
-
-inline float32x4_t hl_vec_mul(const float32x4_t a, const float32x4_t b) {
-  return vmulq_f32(a, b);
-}
-
-inline float32x4_t hl_vec_div(const float32x4_t a, const float32x4_t b) {
-  float32x4_t tmp = vrecpeq_f32(b);
-  return vmulq_f32(a, tmp);
-}
-
 inline float32x4_t hl_vec_classification_error(const float32x4_t a,
                                                const float32x4_t b,
                                                const float32x4_t p,

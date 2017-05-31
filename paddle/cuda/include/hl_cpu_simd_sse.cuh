@@ -45,30 +45,6 @@ inline __m128 hl_vec_set(const real f) {
   return _mm_set_ps1(f);
 }
 
-inline __m128 hl_vec_max(const __m128 a, const __m128 b) {
-  return _mm_max_ps(a, b);
-}
-
-inline __m128 hl_vec_min(const __m128 a, const __m128 b) {
-  return _mm_min_ps(a, b);
-}
-
-inline __m128 hl_vec_add(const __m128 a, const __m128 b) {
-  return _mm_add_ps(a, b);
-}
-
-inline __m128 hl_vec_sub(const __m128 a, const __m128 b) {
-  return _mm_sub_ps(a, b);
-}
-
-inline __m128 hl_vec_mul(const __m128 a, const __m128 b) {
-  return _mm_mul_ps(a, b);
-}
-
-inline __m128 hl_vec_div(const __m128 a, const __m128 b) {
-  return _mm_div_ps(a, b);
-}
-
 inline __m128 hl_vec_classification_error(const __m128 a,
                                           const __m128 b,
                                           const __m128 p,
@@ -101,30 +77,6 @@ inline __m128d hl_vec_set(const real d) {
 #else
   return _mm_set_pd1(d);
 #endif
-}
-
-inline __m128d hl_vec_max(const __m128d a, const __m128d b) {
-  return _mm_max_pd(a, b);
-}
-
-inline __m128d hl_vec_min(const __m128d a, const __m128d b) {
-  return _mm_min_pd(a, b);
-}
-
-inline __m128d hl_vec_add(const __m128d a, const __m128d b) {
-  return _mm_add_pd(a, b);
-}
-
-inline __m128d hl_vec_sub(const __m128d a, const __m128d b) {
-  return _mm_sub_pd(a, b);
-}
-
-inline __m128d hl_vec_mul(const __m128d a, const __m128d b) {
-  return _mm_mul_pd(a, b);
-}
-
-inline __m128d hl_vec_div(const __m128d a, const __m128d b) {
-  return _mm_div_pd(a, b);
 }
 
 inline __m128d hl_vec_classification_error(const __m128d a,
