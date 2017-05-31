@@ -29,6 +29,11 @@
 # https://cmake.org/cmake/help/v3.0/module/CMakeParseArguments.html
 #
 
+# Because gflags depends on pthread, I copied the following snippet
+# from https://stackoverflow.com/a/29871891/724872.
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 # cc_library parses tensor.cc and figures out that target also depend on tensor.h.
 # cc_library(tensor
 #   SRCS
@@ -45,7 +50,9 @@ function(cc_library TARGET_NAME)
   else()
     add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
   endif()
-  add_dependencies(${TARGET_NAME} ${cc_library_DEPS} ${external_project_dependencies})
+  if (cc_library_DEPS)
+    add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
+  endif()
 endfunction(cc_library)
 
 # cc_binary parses tensor.cc and figures out that target also depend on tensor.h.
@@ -58,7 +65,6 @@ function(cc_binary TARGET_NAME)
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   add_executable(${TARGET_NAME} ${cc_binary_SRCS})
-  link_paddle_exe(${TARGET_NAME})
   if(cc_binary_DEPS)  
     target_link_libraries(${TARGET_NAME} ${cc_binary_DEPS})
     add_dependencies(${TARGET_NAME} ${cc_binary_DEPS})
@@ -78,11 +84,16 @@ function(cc_test TARGET_NAME)
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   add_executable(${TARGET_NAME} ${cc_test_SRCS})
-  link_paddle_test(${TARGET_NAME})
   if(cc_test_DEPS)
     target_link_libraries(${TARGET_NAME} ${cc_test_DEPS})
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS})
   endif()
+  target_link_libraries(${TARGET_NAME}
+    ${GTEST_LIBRARIES} ${GTEST_MAIN_LIBRARIES}
+    ${GLOG_LIBRARIES}
+    ${GFLAGS_LIBRARIES}
+    Threads::Threads)
+  add_dependencies(${TARGET_NAME} gtest glog gflags)
   add_test(${TARGET_NAME} ${TARGET_NAME})
 endfunction(cc_test)
 
@@ -104,7 +115,9 @@ function(nv_library TARGET_NAME)
   else()
     cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
   endif()
-  add_dependencies(${TARGET_NAME} ${nv_library_DEPS} ${external_project_dependencies})
+  if (nv_library_DEPS)
+    add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
+  endif()
 endfunction(nv_library)
 
 function(nv_binary TARGET_NAME)
@@ -113,7 +126,6 @@ function(nv_binary TARGET_NAME)
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(nv_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   cuda_add_executable(${TARGET_NAME} ${nv_binary_SRCS})
-  link_paddle_exe(${TARGET_NAME})  
   if(nv_binary_DEPS)
     target_link_libraries(${TARGET_NAME} ${nv_binary_DEPS})
     add_dependencies(${TARGET_NAME} ${nv_binary_DEPS})
@@ -133,11 +145,16 @@ function(nv_test TARGET_NAME)
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
-  link_paddle_test(${TARGET_NAME})  
   if(nv_test_DEPS)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS})
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS})
   endif()
+  target_link_libraries(${TARGET_NAME}
+    ${GTEST_LIBRARIES} ${GTEST_MAIN_LIBRARIES}
+    ${GLOG_LIBRARIES}
+    ${GFLAGS_LIBRARIES}
+    Threads::Threads)
+  add_dependencies(${TARGET_NAME} gtest glog gflags)
   add_test(${TARGET_NAME} ${TARGET_NAME})
 endfunction(nv_test)
 
