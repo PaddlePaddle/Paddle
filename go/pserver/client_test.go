@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/PaddlePaddle/Paddle/paddle/go/pserver"
+	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
 
 const numPserver = 10
