@@ -40,50 +40,52 @@ typedef struct paddle_optimizer paddle_optimizer;
  */
 
 
+/**
+ *  @brief create optimizer with proto_config
+ *  @param config_proto, optimizer protobuf, see OptimizerConfig.proto in detail
+ *  @return return optimizer instance
+ */
 paddle_optimizer* paddle_create_optimizer(const unsigned char* config_proto,
                                           int config_proto_len);
 
+/**
+ *  @brief release optimizer
+ *  @param optimizer
+ *  @return return exec status
+ */
 int paddle_release_optimizer(paddle_optimizer* o);
 
+/**
+ *  @brief optimizer instance
+ *  @param datatype of gradient and parameter
+ *  @param gradient, calculate by optimzizer caller.
+ *       TODO(zhihong): just pass loss to reduce communicate overhead.
+ *                     Project Adam Ms'14 paper for detail
+ *  @param num_bytes, gradient size
+ *  @return return exec status
+ */
 int paddle_update_parameter(paddle_optimizer* o,
-                            paddle_element_type datatype,
+                            paddle_element_type data_type,
                             const void* gradient,
                             int num_bytes);
 
+/**
+ *  @brief optimizer instance
+ *  @param data_type datatype of gradient
+ *  @param param_buffer, initilized parameter buffer
+ *  @param num_bytes, parameter size
+ *  @return return exec status
+ */
 int paddle_optimizer_set_weights(paddle_optimizer* o,
                                  paddle_element_type data_type,
-                                 void*param_buffer,
+                                 void* param_buffer,
                                  int num_bytes);
 
+/**
+ *  @brief optimizer instance
+ *  @return return content of parameter buffer in optimizer
+ */
 void* paddle_optimizer_get_weights(paddle_optimizer* o);
-
-// /*!
-//  *  \brief create optimizer function
-//  *  \param [optimizer] create instance of optimizer
-//  *  \param [optimizer_identifier] identifier of optimizer method
-//  *  \return return status code
-//  */
-//   // int32_t paddle_create_XXXOptimizer(paddle_optimizer* optimizer,
-//   optimizer_identifier identifier); int32_t
-//   paddle_create_SGDOptimizer(paddle_optimizer* optimizer, double
-//   learning_rate);
-// /*!
-//  *  \brief release optimizer
-//  *  \param [optimizer] the optimizer instance
-//  *  \return return status code
-//  */
-//   int32_t paddle_release_optimizer(paddle_optimizer* optimizer);
-// /*!
-//  *  \brief this should be thread safe. update parameter with gradient,
-//  through the optimizer *  \param [param] parameter need to update *  \param
-//  [grad] gradient caculate by caller *  \param [num_bytes] the
-//  parameter/gradient size *  \param [learning_rate] set learning_rate by the
-//  caller *  \return return status code
-//  */
-//   int32_t paddle_update_parameter(paddle_optimizer* optimizer, parameter*
-//   param, const gradient* grad,
-//                                   paddle_element_type type, uint32_t
-//                                   num_bytes, double learning_rate);
 
 #ifdef __cplusplus
 }

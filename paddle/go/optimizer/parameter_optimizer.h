@@ -23,8 +23,9 @@ public:
   virtual void update(const Tensor &gradient) = 0;
   virtual void destroy() = 0;
   virtual T *get_weight() const;
-  virtual char* get_config_proto();
   virtual void set_weight(const Tensor<T> *parameter);
+  // package optimizer config proto in runtime for saving checkpoint
+  virtual char* get_config_proto();
   ~ParameterOptimzier() {
     delete parameter_;
   }

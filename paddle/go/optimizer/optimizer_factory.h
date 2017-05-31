@@ -37,6 +37,9 @@ public:
   void update(const Tensor<T> &gradient) {
   }
 private:
+  double learning_rate;
+  double epsilon;
+  double decay;
 };
 
 template <class T>
@@ -65,20 +68,6 @@ private:
   double epsilon;
 };
 
-// template <class T>
-// class MomentumOptimizer : public ParameterOptimizer {
-// public:
-//   /*! \brief call the applyXX for example  */
-//   MomentumOptimizer(const paddle::optimizer_config &config);
-//   void update(const Tensor<T> &gradient) {
-//     learning_rate = applyExpLearningRate(config_);
-//     applyMomentum(
-//         parameter, gradient, momentum, learning_rate, mu, weight_decay);
-//   }
-
-// private:
-//   double momentum;
-// };
 
 }  // namespace optimizer
 }  // namespace paddle

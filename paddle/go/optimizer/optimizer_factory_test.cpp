@@ -1,15 +1,27 @@
-#include "Tensor.h"
+#include "parameter_optimizer.h"
+#include "optimizer_factory.h"
 #include "gtest/gtest.h"
 
-TEST(Tensor, testDot) {
-  int[] a = {1, 2, 3};
-  int[] b = {1, 2, 3};
-  int[] c = {2, 4, 6};
-  size_t size = 3;
-  paddle::Tensor<int> T1(&a, size);
-  paddle::Tensor<int> T2(&b, size);
-  auto T1 += T2;
-  // ASSERT_EQ(T1, T2);
+class OptimizerTest : public testing::Test {
+public:
+  virtual void SetUp() {
+    paddle::OptimizerConfig config;
+    config.set_learning_rate(0.01);
+    config.set_decay(0.0);
+    config.set_momentum(0.0);
+    config.set_nesterov(false);
+    config.set_lr_decay_a(0.9);
+    config.set_lr_decay_b(0.1);
+  }
+  virtual void TearDown() {
+    
+  }
+private:
+  ParameterOptimizer *o;
+};
+
+TEST_F(OptimizerTest, createOptimizer) {
+  
 }
 
 
