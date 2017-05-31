@@ -19,8 +19,10 @@ import shutil
 import sys
 import importlib
 import paddle.v2.dataset
+import pickle
+import glob
 
-__all__ = ['DATA_HOME', 'download', 'md5file']
+__all__ = ['DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader']
 
 DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
 
@@ -74,3 +76,59 @@ def fetch_all():
             getattr(
                 importlib.import_module("paddle.v2.dataset.%s" % module_name),
                 "fetch")()
+
+def split(reader, line_count, suffix="%05d.pickle"):
+    """
+    you can call the function as: 
+    
+    split(paddle.v2.dataset.cifar.train10(), line_count=1000, 
+        suffix="imikolov-train-%05d.pickle")
+    
+    the output files as:
+    
+    |-imikolov-train-00000.pickle
+    |-imikolov-train-00001.pickle
+    |- ...
+    |-imikolov-train-00480.pickle
+    
+    :param reader: the reader creator will be split
+    :param line_count: line count for each file
+    :param suffix: the suffix for each file, 
+                    contain "%d" means the id for each file
+    """
+    lines = []
+    indx_f = 0
+    for i, d in enumerate(reader()):
+        lines.append(d) 
+        if i >= line_count and i % line_count == 0:
+            with open(suffix % indx_f, "w") as f:
+                pickle.dump(lines, f)
+                lines = []
+                indx_f += 1
+    if not lines:
+        with open(suffix % indx_f, "w") as f:
+            pickle.dump(lines, f)
+
+def cluster_files_reader(files_pattern, trainers, trainer_id):
+    """
+    Create a reader that yield element from the given files, select 
+    a file set according trainer count and trainer_id
+
+    :param files_pattern: the files which generating by split(...)
+    :param trainers: total trainer count
+    :param trainer_id: the trainer rank id
+    """
+    def reader()
+        file_list = glob.glob(files_pattern)
+        file_list.sort()
+        my_file_list = []
+        for idx, f in enumerate(file_list):
+            if idx % trainers == trainer_id:
+                print "append file: %s" % f
+                my_file_list.append(f)
+        for fn in my_file_list:
+            with open(fn, "r") as f:
+                lines = pickle.load(f)
+                for line in lines:
+                    yield line
+    return reader
