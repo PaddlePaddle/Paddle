@@ -49,7 +49,8 @@ class TestCommon(unittest.TestCase):
         for x in xrange(5):
             with open(temp_path + '/%05d.test' % x) as f:
                 f.write('%d\n' % y)
-        reader = cluster_files_reader(temp_path + '/%05d.test', 5, 0)
+        reader = paddle.v2.dataset.common.cluster_files_reader(
+            temp_path + '/%05d.test', 5, 0)
         for idx, e in enumerate(reader()):
             self.assertEqual(e, str("0"))
 
