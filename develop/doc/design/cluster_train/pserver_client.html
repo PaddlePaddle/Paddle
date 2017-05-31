@@ -306,6 +306,9 @@ name:sparse-n-1
 <span class="cm">/**</span>
 <span class="cm"> * @brief paddle_get_params gets parameters from parameter servers.</span>
 <span class="cm"> *</span>
+<span class="cm"> * paddle_get_params will block until parameters are initialized on</span>
+<span class="cm"> * the parameter servers.</span>
+<span class="cm"> *</span>
 <span class="cm"> * @param names the array of names of the parameters to get.</span>
 <span class="cm"> * @param dst the destination array of parameters to save to.</span>
 <span class="cm"> * @param len the length of the names array and the paddle_parameter</span>

@@ -136,6 +136,9 @@ int paddle_send_grads(paddle_pserver_client* client, const paddle_gradient* grad
 /**
  * @brief paddle_get_params gets parameters from parameter servers.
  *
+ * paddle_get_params will block until parameters are initialized on
+ * the parameter servers.
+ *
  * @param names the array of names of the parameters to get.
  * @param dst the destination array of parameters to save to.
  * @param len the length of the names array and the paddle_parameter
