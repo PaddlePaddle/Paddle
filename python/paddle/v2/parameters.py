@@ -1,6 +1,7 @@
 import numpy as np
 import py_paddle.swig_paddle as api
 from paddle.proto.ParameterConfig_pb2 import ParameterConfig
+import paddle.trainer.config_parser as cp
 import struct
 import tarfile
 import cStringIO
@@ -18,8 +19,11 @@ def create(layers):
     """
     topology = Topology(layers)
     pool = Parameters()
+    initializers = cp.g_parameter_initializer_map
     for param in topology.proto().parameters:
         pool.__append_config__(param)
+        if param.name in initializers:
+            pool[param.name] = initializers[param.name](param.name)
     return pool
 
 
