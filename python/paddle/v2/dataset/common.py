@@ -110,7 +110,7 @@ def split(reader, line_count, suffix="%05d.pickle", dumper=cPickle.dump):
                 dumper(lines, f)
                 lines = []
                 indx_f += 1
-    if not lines:
+    if lines:
         with open(suffix % indx_f, "w") as f:
             dumper(lines, f)
 
