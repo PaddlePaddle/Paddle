@@ -237,16 +237,19 @@ class AggregateLevel(object):
 
     Accordingly, AggregateLevel supports two modes:
 
-    - :code:`AggregateLevel.EACH_TIMESTEP` means the aggregation acts on each
+    - :code:`AggregateLevel.TO_NO_SEQUENCE` means the aggregation acts on each
       timestep of a sequence, both :code:`SUB_SEQUENCE` and :code:`SEQUENCE` will
       be aggregated to :code:`NO_SEQUENCE`.
 
-    - :code:`AggregateLevel.EACH_SEQUENCE` means the aggregation acts on each
+    - :code:`AggregateLevel.TO_SEQUENCE` means the aggregation acts on each
       sequence of a nested sequence, :code:`SUB_SEQUENCE` will be aggregated to
       :code:`SEQUENCE`.
     """
-    EACH_TIMESTEP = 'non-seq'
-    EACH_SEQUENCE = 'seq'
+    TO_NO_SEQUENCE = 'non-seq'
+    TO_SEQUENCE = 'seq'
+    # compatible with previous configuration
+    EACH_TIMESTEP = TO_NO_SEQUENCE
+    EACH_SEQUENCE = TO_SEQUENCE
 
 
 class LayerOutput(object):
@@ -1083,7 +1086,7 @@ def pooling_layer(input,
                   pooling_type=None,
                   name=None,
                   bias_attr=None,
-                  agg_level=AggregateLevel.EACH_TIMESTEP,
+                  agg_level=AggregateLevel.TO_NO_SEQUENCE,
                   layer_attr=None):
     """
     Pooling layer for sequence inputs, not used for Image.
@@ -1094,10 +1097,10 @@ def pooling_layer(input,
 
        seq_pool = pooling_layer(input=layer,
                                 pooling_type=AvgPooling(),
-                                agg_level=AggregateLevel.EACH_SEQUENCE)
+                                agg_level=AggregateLevel.TO_NO_SEQUENCE)
 
-    :param agg_level: AggregateLevel.EACH_TIMESTEP or
-                      AggregateLevel.EACH_SEQUENCE
+    :param agg_level: AggregateLevel.TO_NO_SEQUENCE or
+                      AggregateLevel.TO_SEQUENCE
     :type agg_level: AggregateLevel
     :param name: layer name.
     :type name: basestring
@@ -1367,7 +1370,7 @@ def grumemory(input,
 @layer_support()
 def last_seq(input,
              name=None,
-             agg_level=AggregateLevel.EACH_TIMESTEP,
+             agg_level=AggregateLevel.TO_NO_SEQUENCE,
              stride=-1,
              layer_attr=None):
     """
@@ -1402,7 +1405,7 @@ def last_seq(input,
                        " series information at all. Maybe you want to use"
                        " first_seq instead.")
 
-    if agg_level == AggregateLevel.EACH_SEQUENCE:
+    if agg_level == AggregateLevel.TO_SEQUENCE:
         assert stride == -1
 
     Layer(
@@ -1423,7 +1426,7 @@ def last_seq(input,
 @layer_support()
 def first_seq(input,
               name=None,
-              agg_level=AggregateLevel.EACH_TIMESTEP,
+              agg_level=AggregateLevel.TO_NO_SEQUENCE,
               stride=-1,
               layer_attr=None):
     """
@@ -1459,7 +1462,7 @@ def first_seq(input,
                        ' time series information at all. Maybe you want to use'
                        ' last_seq instead.')
 
-    if agg_level == AggregateLevel.EACH_SEQUENCE:
+    if agg_level == AggregateLevel.TO_SEQUENCE:
         assert stride == -1
 
     Layer(
@@ -1482,16 +1485,18 @@ class ExpandLevel(object):
 
     ExpandLevel supports two modes:
 
-    - :code:`ExpandLevel.FROM_TIMESTEP` means the expandation acts on each
-      timestep of a sequence, :code:`NO_SEQUENCE` will be expanded to
+    - :code:`ExpandLevel.FROM_NO_SEQUENCE` means the expansion acts on
+      :code:`NO_SEQUENCE`, which will be expanded to
       :code:`SEQUENCE` or :code:`SUB_SEQUENCE`.
 
-    - :code:`ExpandLevel.FROM_SEQUENCE` means the expandation acts on each
-      sequence of a nested sequence, :code:`SEQUENCE` will be expanded to
+    - :code:`ExpandLevel.FROM_SEQUENCE` means the expansion acts on
+      :code:`SEQUENCE`, which will be expanded to
       :code:`SUB_SEQUENCE`.
     """
-    FROM_TIMESTEP = AggregateLevel.EACH_TIMESTEP
-    FROM_SEQUENCE = AggregateLevel.EACH_SEQUENCE
+    FROM_NO_SEQUENCE = AggregateLevel.TO_NO_SEQUENCE
+    FROM_SEQUENCE = AggregateLevel.TO_SEQUENCE
+    # compatible with previous configuration
+    FROM_TIMESTEP = FROM_NO_SEQUENCE
 
 
 @wrap_name_default()
@@ -1500,7 +1505,7 @@ def expand_layer(input,
                  expand_as,
                  name=None,
                  bias_attr=False,
-                 expand_level=ExpandLevel.FROM_TIMESTEP,
+                 expand_level=ExpandLevel.FROM_NO_SEQUENCE,
                  layer_attr=None):
     """
     A layer for "Expand Dense data or (sequence data where the length of each
@@ -1512,7 +1517,7 @@ def expand_layer(input,
 
        expand = expand_layer(input=layer1,
                              expand_as=layer2,
-                             expand_level=ExpandLevel.FROM_TIMESTEP)
+                             expand_level=ExpandLevel.FROM_NO_SEQUENCE)
 
     :param input: Input layer
     :type input: LayerOutput
