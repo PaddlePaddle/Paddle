@@ -38,5 +38,4 @@ TEST(Place, Print) {
     ss << majel::CpuPlace();
     EXPECT_EQ("CpuPlace", ss.str());
   }
-  LOG(INFO) << "\n[----------] Done \n";
 }
