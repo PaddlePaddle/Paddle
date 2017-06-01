@@ -2915,10 +2915,10 @@ def memory(name,
     to specify the layer needs to be remembered as the following:
 
     .. code-block:: python
+
        mem = memory(size=256)
        state = fc_layer(input=mem, size=256)
        mem.set_input(mem)
-
 
     :param name: the name of the layer which this memory remembers.
                  If name is None, user should call set_input() to specify the
@@ -3403,7 +3403,7 @@ def recurrent_group(step,
                           else, for training or testing, one of the input type must
                           be LayerOutput.
 
-    : type is_generating: bool
+    :type is_generating: bool
 
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -3810,7 +3810,7 @@ def mse_cost(input, label, weight=None, name=None, coeff=1.0, layer_attr=None):
 
     ..  math::
 
-        \frac{1}{N}\sum_{i=1}^N(t_i-y_i)^2
+        \\frac{1}{N}\sum_{i=1}^N(t_i-y_i)^2
 
     :param name: layer name.
     :type name: basestring
