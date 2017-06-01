@@ -43,7 +43,7 @@ ELSE()
 ENDIF()
 
 ExternalProject_Add(
-    warpctc
+    extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
     GIT_REPOSITORY  "https://github.com/gangliao/warp-ctc.git"
     PREFIX          ${WARPCTC_SOURCES_DIR}
@@ -64,5 +64,9 @@ ExternalProject_Add(
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                      -DCMAKE_INSTALL_PREFIX:PATH=${WARPCTC_INSTALL_DIR}
 )
+
+ADD_LIBRARY(warpctc STATIC IMPORTED)
+SET_PROPERTY(TARGET warpctc PROPERTY IMPORTED_LOCATION ${WARPCTC_LIBRARIES})
+ADD_DEPENDENCIES(warpctc extern_warpctc)
 
 LIST(APPEND external_project_dependencies warpctc)
