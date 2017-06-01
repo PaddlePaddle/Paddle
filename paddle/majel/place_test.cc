@@ -1,7 +1,6 @@
 #include "paddle/majel/place.h"
 #include <sstream>
 #include "gtest/gtest.h"
-#include "paddle/utils/Logging.h"
 
 TEST(Place, Equality) {
   majel::CpuPlace cpu;
