@@ -1,4 +1,4 @@
-#include "optimizer_factory.h"
+#include "sgd_optimizer.h"
 
 namespace paddle {
 namespace optimizer {
@@ -11,11 +11,6 @@ SGDOptimizer<T>::SGDOptimizer(const ::paddle::OptimizerConfig &config) : Paramet
   nesterov = config.nesterov();
   lr_decay_a = config.lr_decay_a();
   lr_decay_b = config.lr_decay_b();
-}
-
-template<class T>
-void SGDOptimizer<T>::destroy() {
-  ~SGDOptimizer();
 }
 
 template<class T>
@@ -53,14 +48,8 @@ char* SGDOptimizer<T>::get_config_proto() {
   return config.SerializeAsString().c_str();
 }
 
-
 template class SGDOptimizer<float>;
 template class SGDOptimizer<double>;
-template class AdagradOptimizer<float>;
-template class AdagradOptimizer<double>;
-template class AdadeltaOptimizer<float>;
-template class AdadeltaOptimizer<double>;
-template class AdamOptimizer<float>;
-template class AdamOptimizer<double>;
+
 }  // namespace optimizer
 }  // namespace paddle

@@ -42,7 +42,8 @@ paddle_optimizer* paddle_create_optimizer(const unsigned char* config_proto,
 }
 
 int paddle_release_optimizer(paddle_optimizer* o) {
-  if (o != nullptr) o->impl->destory();
+  if (o != nullptr)
+    delete o->impl;
   return PADDLE_SUCCESS;
 }
 
@@ -61,10 +62,10 @@ int paddle_optimizer_set_weights(paddle_optimizer* o,
                                    paddle_element_type data_type,
                                    void*param_buffer,
                                    int num_bytes) {
-auto type = EnumToType<data_type>::Type;
-paddle::Tensor<type>* param = new paddle::Tensor<type>(reinterpret_cast<t
-ype*>(param_buffer), num_bytes);
-o.set_weight(param);
+  auto type = EnumToType<data_type>::Type;
+  paddle::Tensor<type>* param =
+    new paddle::Tensor<type>(reinterpret_cast<type*>(param_buffer), num_bytes);
+  o->impl->set_weight(param);
 return PADDLE_SUCCESS;
 }
 
