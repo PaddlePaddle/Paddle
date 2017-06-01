@@ -27,7 +27,7 @@ ENDIF(WIN32)
 INCLUDE_DIRECTORIES(${GLOG_INCLUDE_DIR})
 
 ExternalProject_Add(
-    glog
+    extern_glog
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS gflags
     GIT_REPOSITORY  "https://github.com/google/glog.git"
@@ -47,5 +47,9 @@ ExternalProject_Add(
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                      -DCMAKE_BUILD_TYPE:STRING=Release
 )
+
+ADD_LIBRARY(glog STATIC IMPORTED)
+SET_PROPERTY(TARGET glog PROPERTY IMPORTED_LOCATION ${GLOG_LIBRARIES})
+ADD_DEPENDENCIES(glog extern_glog)
 
 LIST(APPEND external_project_dependencies glog)
