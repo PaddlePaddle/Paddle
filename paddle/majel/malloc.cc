@@ -22,8 +22,8 @@ const char* get_cuda_error_string(size_t err) {
 void* malloc_cuda(size_t size) {
   void* dest_d;
   cudaError_t result = cudaMalloc((void**)&dest_d, size);
-  if (result == cudaSucess) {
-    return ptr;
+  if (result == cudaSuccess) {
+    return dest_d;
   }
 
   cudaGetLastError();
