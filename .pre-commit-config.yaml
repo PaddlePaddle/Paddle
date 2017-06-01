@@ -3,8 +3,8 @@
     hooks:
     -   id: remove-crlf
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
--   repo: https://github.com/reyoung/mirrors-yapf.git
-    sha: v0.13.2
+-   repo: https://github.com/PaddlePaddle/mirrors-yapf.git
+    sha: 0d79c0c469bab64f7229c9aca2b1186ef47f0e37
     hooks:
     -   id: yapf
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
