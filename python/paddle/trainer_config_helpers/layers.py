@@ -111,6 +111,7 @@ __all__ = [
     'block_expand_layer',
     'maxout_layer',
     'out_prod_layer',
+    'printer_layer',
     'print_layer',
     'priorbox_layer',
     'cross_channel_norm_layer',
@@ -969,7 +970,7 @@ def fc_layer(input,
 
 
 @wrap_name_default("print")
-def print_layer(input, name=None):
+def printer_layer(input, name=None):
     """
     Print the output value of input layers. This layer is useful for debugging.
 
@@ -990,6 +991,13 @@ def print_layer(input, name=None):
         type=LayerType.PRINT_LAYER,
         inputs=[l.name for l in input], )
     # this layer don't return anything, can not be input of other layer.
+
+# Keep print_layer for compatibility with V1 API.
+# 'print_layer' does not work for V2 API because it will be changed to
+# 'print' for V2 API. But 'print' is a reserved key word in python.
+
+
+print_layer = printer_layer
 
 
 @wrap_name_default("priorbox")
