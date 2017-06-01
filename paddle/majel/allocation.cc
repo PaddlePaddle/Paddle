@@ -14,10 +14,12 @@ public:
     return address;
   }
 
+#ifndef PADDLE_ONLY_CPU
   void* operator()(const GpuPlace& p) const {
     void* address = majel::malloc::malloc(p, size_);
     return address;
   }
+#endif
 
 private:
   size_t size_;
@@ -32,13 +34,13 @@ public:
       majel::malloc::free(p, ptr_);
     }
   }
-
+#ifndef PADDLE_ONLY_CPU
   void operator()(GpuPlace p) const {
     if (ptr_) {
       majel::malloc::free(p, ptr_);
     }
   }
-
+#endif
 private:
   void* ptr_;
 };
@@ -57,6 +59,9 @@ Allocation::Allocation(size_t size, Place place)
   if (size > 0) {
     majel::detail::Allocator allocator(size_);
     ptr_ = boost::apply_visitor(allocator, place_);
+    if (ptr_ == nullptr) {
+      throw std::bad_alloc();
+    }
   } else {
     ptr_ = nullptr;
   }

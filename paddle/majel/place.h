@@ -29,7 +29,11 @@ public:
   bool operator()(const GpuPlace&) const { return true; }
 };
 
+#ifndef PADDLE_ONLY_CPU
 typedef boost::variant<CpuPlace, GpuPlace> Place;
+#else
+typedef boost::variant<CpuPlace> Place;
+#endif
 
 const Place& get_place();
 bool is_gpu_place(const Place&);

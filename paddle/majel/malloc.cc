@@ -6,13 +6,6 @@
 #include <cuda_runtime.h>
 #endif
 
-#define CHECK_CUDA(cudaFunc)                                         \
-  do {                                                               \
-    cudaError_t cudaStat = cudaFunc;                                 \
-    CHECK_EQ(cudaSuccess, cudaStat) << "Cuda Error: "                \
-                                    << cudaGetErrorString(cudaStat); \
-  } while (0)
-
 namespace majel {
 namespace malloc {
 namespace detail {
@@ -28,11 +21,13 @@ const char* get_cuda_error_string(size_t err) {
 
 void* malloc_cuda(size_t size) {
   void* dest_d;
+  cudaError_t result = cudaMalloc((void**)&dest_d, size);
+  if (result == cudaSucess) {
+    return ptr;
+  }
 
-  CHECK(size) << __func__ << ": the size for device memory is 0, please check.";
-  CHECK_CUDA(cudaMalloc((void**)&dest_d, size));
-
-  return dest_d;
+  cudaGetLastError();
+  return nullptr;
 }
 
 void free_cuda(void* dest_d) {
@@ -57,21 +52,14 @@ public:
 
   void* operator()(majel::CpuPlace p) {
     void* address;
-    CHECK_EQ(posix_memalign(&address, 32ul, size_), 0);
-    CHECK(address) << "Fail to allocate CPU memory: size=" << size_;
+    posix_memalign(&address, 32ul, size_);
     return address;
   }
 
 #ifndef PADDLE_ONLY_CPU
   void* operator()(majel::GpuPlace p) {
     void* address = malloc_cuda(size_);
-    CHECK(address) << "Fail to allocate GPU memory " << size_ << " bytes";
     return address;
-  }
-#else
-  void* operator()(majel::GpuPlace p) {
-    CHECK(majel::is_cpu_place(p)) << "GPU Place not supported";
-    return nullptr;
   }
 #endif
 
@@ -93,11 +81,6 @@ public:
     if (ptr_) {
       free_cuda(ptr_);
     }
-  }
-
-#else
-  void operator()(majel::GpuPlace p) {
-    CHECK(majel::is_cpu_place(p)) << "GPU Place not supported";
   }
 #endif
 
