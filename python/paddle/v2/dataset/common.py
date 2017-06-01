@@ -134,7 +134,7 @@ def cluster_files_reader(files_pattern, trainer_count, trainer_id,
         file_list.sort()
         my_file_list = []
         for idx, fn in enumerate(file_list):
-            if idx % trainers == trainer_id:
+            if idx % trainer_count == trainer_id:
                 print "append file: %s" % fn
                 my_file_list.append(fn)
         for fn in my_file_list:
