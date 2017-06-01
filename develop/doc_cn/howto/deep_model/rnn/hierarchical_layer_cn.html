@@ -221,18 +221,18 @@
 <p>pooling 的使用示例如下，详细见 <a class="reference internal" href="../../../api/v2/config/layer.html#api-v2-layer-pooling"><span class="std std-ref">pooling</span></a> 配置API。</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">seq_pool</span> <span class="o">=</span> pooling<span class="o">(</span><span class="nv">input</span><span class="o">=</span>layer,
                    <span class="nv">pooling_type</span><span class="o">=</span>pooling.Max<span class="o">()</span>,
-                   <span class="nv">agg_level</span><span class="o">=</span>AggregateLevel.EACH_SEQUENCE<span class="o">)</span>
+                   <span class="nv">agg_level</span><span class="o">=</span>AggregateLevel.TO_SEQUENCE<span class="o">)</span>
 </pre></div>
 </div>
 <ul class="simple">
 <li><cite>pooling_type</cite> 目前支持两种，分别是：pooling.Max()和pooling.Avg()。</li>
-<li><cite>agg_level=AggregateLevel.EACH_TIMESTEP</cite> 时（默认值）：<ul>
+<li><cite>agg_level=AggregateLevel.TO_NO_SEQUENCE</cite> 时（默认值）：<ul>
 <li>作用：双层序列经过运算变成一个0层序列，或单层序列经过运算变成一个0层序列</li>
 <li>输入：一个双层序列，或一个单层序列</li>
 <li>输出：一个0层序列，即整个输入序列（单层或双层）的平均值（或最大值）</li>
 </ul>
 </li>
-<li><cite>agg_level=AggregateLevel.EACH_SEQUENCE</cite> 时：<ul>
+<li><cite>agg_level=AggregateLevel.TO_SEQUENCE</cite> 时：<ul>
 <li>作用：一个双层序列经过运算变成一个单层序列</li>
 <li>输入：必须是一个双层序列</li>
 <li>输出：一个单层序列，序列的每个元素是原来双层序列每个subseq元素的平均值（或最大值）</li>
@@ -244,17 +244,17 @@
 <h2><a class="toc-backref" href="#id5">last_seq 和 first_seq</a><a class="headerlink" href="#last-seq-first-seq" title="永久链接至标题">¶</a></h2>
 <p>last_seq 的使用示例如下（ <a class="reference internal" href="../../../api/v2/config/layer.html#api-v2-layer-first-seq"><span class="std std-ref">first_seq</span></a> 类似），详细见 <a class="reference internal" href="../../../api/v2/config/layer.html#api-v2-layer-last-seq"><span class="std std-ref">last_seq</span></a> 配置API。</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">last</span> <span class="o">=</span> last_seq<span class="o">(</span><span class="nv">input</span><span class="o">=</span>layer,
-                <span class="nv">agg_level</span><span class="o">=</span>AggregateLevel.EACH_SEQUENCE<span class="o">)</span>
+                <span class="nv">agg_level</span><span class="o">=</span>AggregateLevel.TO_SEQUENCE<span class="o">)</span>
 </pre></div>
 </div>
 <ul class="simple">
-<li><cite>agg_level=AggregateLevel.EACH_TIMESTEP</cite> 时（默认值）：<ul>
+<li><cite>agg_level=AggregateLevel.TO_NO_SEQUENCE</cite> 时（默认值）：<ul>
 <li>作用：一个双层序列经过运算变成一个0层序列，或一个单层序列经过运算变成一个0层序列</li>
 <li>输入：一个双层序列或一个单层序列</li>
 <li>输出：一个0层序列，即整个输入序列（双层或者单层）最后一个，或第一个元素。</li>
 </ul>
 </li>
-<li><cite>agg_level=AggregateLevel.EACH_SEQUENCE</cite> 时：
+<li><cite>agg_level=AggregateLevel.TO_SEQUENCE</cite> 时：
 - 作用：一个双层序列经过运算变成一个单层序列
 - 输入：必须是一个双层序列
 - 输出：一个单层序列，其中每个元素是双层序列中每个subseq最后一个（或第一个）元素。</li>
@@ -265,11 +265,11 @@
 <p>expand 的使用示例如下，详细见 <a class="reference internal" href="../../../api/v2/config/layer.html#api-v2-layer-expand"><span class="std std-ref">ExpandLevel</span></a> 配置API。</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">ex</span> <span class="o">=</span> expand<span class="o">(</span><span class="nv">input</span><span class="o">=</span>layer1,
             <span class="nv">expand_as</span><span class="o">=</span>layer2,
-            <span class="nv">expand_level</span><span class="o">=</span>ExpandLevel.FROM_TIMESTEP<span class="o">)</span>
+            <span class="nv">expand_level</span><span class="o">=</span>ExpandLevel.FROM_NO_SEQUENCE<span class="o">)</span>
 </pre></div>
 </div>
 <ul class="simple">
-<li><cite>expand_level=ExpandLevel.FROM_TIMESTEP</cite> 时（默认值）：<ul>
+<li><cite>expand_level=ExpandLevel.FROM_NO_SEQUENCE</cite> 时（默认值）：<ul>
 <li>作用：一个0层序列经过运算扩展成一个单层序列，或者一个双层序列</li>
 <li>输入：layer1必须是一个0层序列，是待扩展的数据；layer2 可以是一个单层序列，或者是一个双层序列，提供扩展的长度信息</li>
 <li>输出：一个单层序列或一个双层序列，输出序列的类型（双层序列或单层序列）和序列中含有元素的数目同 layer2 一致。若输出是单层序列，单层序列的每个元素（0层序列），都是对layer1元素的拷贝；若输出是双层序列，双层序列每个subseq中每个元素（0层序列），都是对layer1元素的拷贝</li>

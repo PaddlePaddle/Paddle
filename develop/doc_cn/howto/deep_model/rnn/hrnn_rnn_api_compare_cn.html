@@ -419,7 +419,7 @@
 <li>在本例中，我们将原始数据的每一组，通过<code class="code docutils literal"><span class="pre">recurrent_group</span></code>进行拆解，拆解成的每一句话再通过一个LSTM网络。这和单层RNN的配置是等价的。</li>
 </ul>
 </li>
-<li>与单层RNN的配置类似，我们只需要使用LSTM encode成的最后一个向量。所以对<code class="code docutils literal"><span class="pre">recurrent_group</span></code>进行了<code class="code docutils literal"><span class="pre">last_seq</span></code>操作。但和单层RNN不同，我们是对每一个子序列取最后一个元素，因此<code class="code docutils literal"><span class="pre">agg_level=AggregateLevel.EACH_SEQUENCE</span></code>。</li>
+<li>与单层RNN的配置类似，我们只需要使用LSTM encode成的最后一个向量。所以对<code class="code docutils literal"><span class="pre">recurrent_group</span></code>进行了<code class="code docutils literal"><span class="pre">last_seq</span></code>操作。但和单层RNN不同，我们是对每一个子序列取最后一个元素，因此<code class="code docutils literal"><span class="pre">agg_level=AggregateLevel.TO_SEQUENCE</span></code>。</li>
 <li>至此，<code class="code docutils literal"><span class="pre">lstm_last</span></code>便和单层RNN配置中的<code class="code docutils literal"><span class="pre">lstm_last</span></code>具有相同的结果了。</li>
 </ul>
 <div class="highlight-python"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
@@ -472,7 +472,7 @@
 </span><span class="hll">    <span class="nb">input</span><span class="o">=</span><span class="n">SubsequenceInput</span><span class="p">(</span><span class="n">emb_group</span><span class="p">),</span> <span class="n">step</span><span class="o">=</span><span class="n">lstm_group</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;lstm_nest_group&quot;</span><span class="p">)</span>
 </span><span class="hll"><span class="c1"># hasSubseq -&gt;(seqlastins) seq</span>
 </span><span class="hll"><span class="n">lstm_last</span> <span class="o">=</span> <span class="n">last_seq</span><span class="p">(</span>
-</span><span class="hll">    <span class="nb">input</span><span class="o">=</span><span class="n">lstm_nest_group</span><span class="p">,</span> <span class="n">agg_level</span><span class="o">=</span><span class="n">AggregateLevel</span><span class="o">.</span><span class="n">EACH_SEQUENCE</span><span class="p">)</span>
+</span><span class="hll">    <span class="nb">input</span><span class="o">=</span><span class="n">lstm_nest_group</span><span class="p">,</span> <span class="n">agg_level</span><span class="o">=</span><span class="n">AggregateLevel</span><span class="o">.</span><span class="n">TO_SEQUENCE</span><span class="p">)</span>
 </span><span class="hll">
 </span><span class="c1"># seq -&gt;(expand) hasSubseq</span>
 </pre></div>

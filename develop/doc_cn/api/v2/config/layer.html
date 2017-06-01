@@ -1789,10 +1789,10 @@ each timestep of which is also a sequence.</li>
 </ul>
 <p>Accordingly, AggregateLevel supports two modes:</p>
 <ul class="simple">
-<li><code class="code docutils literal"><span class="pre">AggregateLevel.EACH_TIMESTEP</span></code> means the aggregation acts on each
+<li><code class="code docutils literal"><span class="pre">AggregateLevel.TO_NO_SEQUENCE</span></code> means the aggregation acts on each
 timestep of a sequence, both <code class="code docutils literal"><span class="pre">SUB_SEQUENCE</span></code> and <code class="code docutils literal"><span class="pre">SEQUENCE</span></code> will
 be aggregated to <code class="code docutils literal"><span class="pre">NO_SEQUENCE</span></code>.</li>
-<li><code class="code docutils literal"><span class="pre">AggregateLevel.EACH_SEQUENCE</span></code> means the aggregation acts on each
+<li><code class="code docutils literal"><span class="pre">AggregateLevel.TO_SEQUENCE</span></code> means the aggregation acts on each
 sequence of a nested sequence, <code class="code docutils literal"><span class="pre">SUB_SEQUENCE</span></code> will be aggregated to
 <code class="code docutils literal"><span class="pre">SEQUENCE</span></code>.</li>
 </ul>
@@ -1808,7 +1808,7 @@ sequence of a nested sequence, <code class="code docutils literal"><span class="
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">seq_pool</span> <span class="o">=</span> <span class="n">pooling</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
                          <span class="n">pooling_type</span><span class="o">=</span><span class="n">AvgPooling</span><span class="p">(),</span>
-                         <span class="n">agg_level</span><span class="o">=</span><span class="n">AggregateLevel</span><span class="o">.</span><span class="n">EACH_SEQUENCE</span><span class="p">)</span>
+                         <span class="n">agg_level</span><span class="o">=</span><span class="n">AggregateLevel</span><span class="o">.</span><span class="n">TO_NO_SEQUENCE</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1816,8 +1816,8 @@ sequence of a nested sequence, <code class="code docutils literal"><span class="
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
-<li><strong>agg_level</strong> (<em>AggregateLevel</em>) &#8211; AggregateLevel.EACH_TIMESTEP or
-AggregateLevel.EACH_SEQUENCE</li>
+<li><strong>agg_level</strong> (<em>AggregateLevel</em>) &#8211; AggregateLevel.TO_NO_SEQUENCE or
+AggregateLevel.TO_SEQUENCE</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; layer name.</li>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; input layer name.</li>
 <li><strong>pooling_type</strong> (<em>BasePoolingType|None</em>) &#8211; Type of pooling, MaxPooling(default), AvgPooling,
@@ -2064,11 +2064,11 @@ convolution neural network, and before recurrent neural network.</p>
 <dd><p>Please refer to AggregateLevel first.</p>
 <p>ExpandLevel supports two modes:</p>
 <ul class="simple">
-<li><code class="code docutils literal"><span class="pre">ExpandLevel.FROM_TIMESTEP</span></code> means the expandation acts on each
-timestep of a sequence, <code class="code docutils literal"><span class="pre">NO_SEQUENCE</span></code> will be expanded to
+<li><code class="code docutils literal"><span class="pre">ExpandLevel.FROM_NO_SEQUENCE</span></code> means the expansion acts on
+<code class="code docutils literal"><span class="pre">NO_SEQUENCE</span></code>, which will be expanded to
 <code class="code docutils literal"><span class="pre">SEQUENCE</span></code> or <code class="code docutils literal"><span class="pre">SUB_SEQUENCE</span></code>.</li>
-<li><code class="code docutils literal"><span class="pre">ExpandLevel.FROM_SEQUENCE</span></code> means the expandation acts on each
-sequence of a nested sequence, <code class="code docutils literal"><span class="pre">SEQUENCE</span></code> will be expanded to
+<li><code class="code docutils literal"><span class="pre">ExpandLevel.FROM_SEQUENCE</span></code> means the expansion acts on
+<code class="code docutils literal"><span class="pre">SEQUENCE</span></code>, which will be expanded to
 <code class="code docutils literal"><span class="pre">SUB_SEQUENCE</span></code>.</li>
 </ul>
 </dd></dl>
@@ -2084,7 +2084,7 @@ sequence is one) to sequence data.&#8221;</p>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">expand</span> <span class="o">=</span> <span class="n">expand</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span>
                       <span class="n">expand_as</span><span class="o">=</span><span class="n">layer2</span><span class="p">,</span>
-                      <span class="n">expand_level</span><span class="o">=</span><span class="n">ExpandLevel</span><span class="o">.</span><span class="n">FROM_TIMESTEP</span><span class="p">)</span>
+                      <span class="n">expand_level</span><span class="o">=</span><span class="n">ExpandLevel</span><span class="o">.</span><span class="n">FROM_NO_SEQUENCE</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
