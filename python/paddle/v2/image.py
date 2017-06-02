@@ -5,10 +5,14 @@ except ImportError:
     cv2 = None
 
 from cv2 import resize
+import os
+import tarfile
+import cPickle
 
 __all__ = [
     "load_image_bytes", "load_image", "resize_short", "to_chw", "center_crop",
-    "random_crop", "left_right_flip", "simple_transform", "load_and_transform"
+    "random_crop", "left_right_flip", "simple_transform", "load_and_transform",
+    "batch_images_from_tar"
 ]
 """
 This file contains some common interfaces for image preprocess.
@@ -28,6 +32,68 @@ the image layout as follows.
 """
 
 
+def batch_images_from_tar(data_file,
+                          dataset_name,
+                          img2label,
+                          num_per_batch=1024):
+    """
+    Read images from tar file and batch them into batch file.
+    param data_file: path of image tar file
+    type data_file: string
+    param dataset_name: 'train','test' or 'valid'
+    type dataset_name: string
+    param img2label: a dic with image file name as key 
+                    and image's label as value
+    type img2label: dic
+    param num_per_batch: image number per batch file
+    type num_per_batch: int
+    return: path of list file containing paths of batch file
+    rtype: string
+    """
+    batch_dir = data_file + "_batch"
+    out_path = "%s/%s" % (batch_dir, dataset_name)
+    meta_file = "%s/%s.txt" % (batch_dir, dataset_name)
+
+    if os.path.exists(out_path):
+        return meta_file
+    else:
+        os.makedirs(out_path)
+
+    tf = tarfile.open(data_file)
+    mems = tf.getmembers()
+    data = []
+    labels = []
+    file_id = 0
+    for mem in mems:
+        if mem.name in img2label:
+            data.append(tf.extractfile(mem).read())
+            labels.append(img2label[mem.name])
+            if len(data) == num_per_batch:
+                output = {}
+                output['label'] = labels
+                output['data'] = data
+                cPickle.dump(
+                    output,
+                    open('%s/batch_%d' % (out_path, file_id), 'w'),
+                    protocol=cPickle.HIGHEST_PROTOCOL)
+                file_id += 1
+                data = []
+                labels = []
+    if len(data) > 0:
+        output = {}
+        output['label'] = labels
+        output['data'] = data
+        cPickle.dump(
+            output,
+            open('%s/batch_%d' % (out_path, file_id), 'w'),
+            protocol=cPickle.HIGHEST_PROTOCOL)
+
+    with open(meta_file, 'a') as meta:
+        for file in os.listdir(out_path):
+            meta.write(os.path.abspath("%s/%s" % (out_path, file)) + "\n")
+    return meta_file
+
+
 def load_image_bytes(bytes, is_color=True):
     """
     Load an color or gray image from bytes array.
@@ -36,7 +102,7 @@ def load_image_bytes(bytes, is_color=True):
     
     .. code-block:: python
         with open('cat.jpg') as f:
-            im = load_image(f.read())
+            im = load_image_bytes(f.read())
 
     :param bytes: the input image bytes array.
     :type file: str

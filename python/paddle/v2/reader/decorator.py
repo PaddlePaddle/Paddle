@@ -21,8 +21,6 @@ import itertools
 import random
 from Queue import Queue
 from threading import Thread
-from multiprocessing import Queue as MQueue
-from multiprocessing import Process
 
 
 def map_readers(func, *readers):
@@ -248,8 +246,8 @@ def xmap(mapper, reader, process_num, buffer_size):
     :rtype: callable
     """
     end = XmapEndSignal()
-    in_queue = MQueue(buffer_size)
-    out_queue = MQueue(buffer_size)
+    in_queue = Queue(buffer_size)
+    out_queue = Queue(buffer_size)
 
     # define a worker to read samples from reader to in_queue
     def read_worker(reader, in_queue):
@@ -276,7 +274,7 @@ def xmap(mapper, reader, process_num, buffer_size):
     # start several handle_workers
     workers = []
     for i in xrange(process_num):
-        worker = Process(
+        worker = Thread(
             target=handle_worker, args=(in_queue, out_queue, mapper))
         worker.daemon = True
         workers.append(worker)
