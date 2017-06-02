@@ -83,9 +83,11 @@ TEST(Convolution, GEMM) {
                                                          "GemmConv-CPU");
 }
 
+#ifndef PADDLE_ONLY_CPU
 TEST(Convolution, GEMM2) {
   ConvolutionTest<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU> test("GemmConv-CPU",
                                                          "GemmConv-GPU");
 }
+#endif
 
 }  // namespace paddle

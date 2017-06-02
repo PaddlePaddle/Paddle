@@ -58,7 +58,7 @@ public:
     CHECK_EQ(outputs[0].shape().ndims(), (size_t)4);
 
     CHECK(inputs[0].shape()[0] == outputs[0].shape()[0]);
-    CHECK(inputs[0].shape()[1] == inputs[1].shape()[1]);
+    CHECK(inputs[0].shape()[1] / groups_ == inputs[1].shape()[1]);
     CHECK(outputs[0].shape()[1] == inputs[1].shape()[0]);
   }
 
