@@ -1,7 +1,0 @@
-run by:
-cd ./data
-sh get_data.sh
-cd ..
-sh train.sh
-sh predict.sh
-
