@@ -14,7 +14,8 @@
 
 from paddle.trainer.config_parser import *
 __all__ = [
-    'ParamAttr', 'ExtraAttr', 'ParameterAttribute', 'ExtraLayerAttribute'
+    'HookAttr', 'ParamAttr', 'ExtraAttr', 'ParameterAttribute',
+    'ExtraLayerAttribute'
 ]
 
 
@@ -53,6 +54,42 @@ def is_compatible_with(x, Type):
             return False
     except:
         return False
+
+
+class HookAttribute(object):
+    """
+    Hook Attribute object. The hook is an auxiliary operation that occurs 
+    during network propagation. Such as pruning operation, It will cut off 
+    redundant parameters in the network before training. More detail can see 
+    here paddle/parameter/ParameterUpdaterHook.cpp
+    NOTE: IT IS A HIGH LEVEL USER INTERFACE.
+		
+    :param  type: Hook type, eg: 'pruning', 'pruning_static'
+    :type type: string
+
+    :param mask_file: Must be specified if hook type is 'pruning_static', 
+					  the network reads the mask from the file to determine which parameters should be cut off
+    :type mask_file: string
+
+    :param sparsity_ratio: Must be specified if hook type is 'pruning',
+	                       the network will hold the sparsity_ratio maximum parameters, and cut off the rest. 
+    :type sparsity_ratio: float number between 0 and 1
+	
+    """
+
+    def __init__(self, type, mask_filename=None, sparsity_ratio=None):
+        self.type = type
+        self.mask_filename = mask_filename
+        self.sparsity_ratio = sparsity_ratio
+        assert is_compatible_with(self.sparsity_ratio,
+                                  float), 'sparisity_ratio must be float type'
+        assert self.sparsity_ratio <= 1 and self.sparsity_ratio >= 0, 'sparisity must be a flaot between [0, 1] '
+
+    def __call__(self):
+        return ParameterHook(
+            self.type,
+            mask_filename=self.mask_filename,
+            sparsity_ratio=self.sparsity_ratio)
 
 
 class ParameterAttribute(object):
@@ -109,7 +146,8 @@ class ParameterAttribute(object):
                  learning_rate=None,
                  momentum=None,
                  gradient_clipping_threshold=None,
-                 sparse_update=False):
+                 sparse_update=False,
+                 update_hooks=None):
         self.attr = {}
 
         if is_static:
@@ -161,6 +199,9 @@ class ParameterAttribute(object):
                 is_compatible_with(gradient_clipping_threshold, float):
             self.attr['gradient_clipping_threshold'] = \
                 gradient_clipping_threshold
+
+        if update_hooks:
+            self.attr['update_hooks'] = update_hooks
 
     def set_default_parameter_name(self, name):
         """
@@ -237,5 +278,6 @@ class ExtraLayerAttribute(object):
             return attr.attr
 
 
+HookAttr = HookAttribute
 ParamAttr = ParameterAttribute
 ExtraAttr = ExtraLayerAttribute

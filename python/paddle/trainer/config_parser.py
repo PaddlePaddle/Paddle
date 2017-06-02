@@ -3171,12 +3171,19 @@ def Layer(name, type, **xargs):
 
 @config_func
 def ParameterHook(type, **kwargs):
-    if type == 'pruning':
-        mask_filename = kwargs.get('mask_filename', None)
-        assert mask_filename is not None
+    if type == 'pruning_static':
         hook = ParameterUpdaterHookConfig()
         hook.type = type
-        hook.purning_mask_filename = mask_filename
+        mask_filename = kwargs.get('mask_filename', None)
+        assert mask_filename is not None
+        hook.pruning_mask_filename = mask_filename
+        return hook
+    elif type == 'pruning':
+        hook = ParameterUpdaterHookConfig()
+        hook.type = type
+        sparsity_ratio = kwargs.get('sparsity_ratio', None)
+        assert sparsity_ratio is not None
+        hook.sparsity_ratio = sparsity_ratio
         return hook
     else:
         return None
@@ -3283,13 +3290,13 @@ def Parameter(name,
 
     if update_hooks is not None:
         if hasattr(update_hooks, '__call__'):
-            update_hooks = update_hooks(para.name)
+            update_hooks = update_hooks()
 
         if isinstance(update_hooks, list):
             for hook in update_hooks:
                 para.update_hooks.extend([hook])
         else:
-            para.update_hooks.extend(update_hooks)
+            para.update_hooks.extend([update_hooks])
 
     g_parameter_map[name] = para
 
