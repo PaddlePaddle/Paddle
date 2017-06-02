@@ -21,7 +21,7 @@
 # -------------------------------------------
 # cc_library	 nv_library	  go_library
 # cc_binary  	 nv_binary	  go_binary
-# cc_test      nv_test      go_test
+# cc_test        nv_test      go_test
 # -------------------------------------------
 #
 # cmake_parse_arguments can help us to achieve this goal.
