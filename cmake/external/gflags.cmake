@@ -26,7 +26,7 @@ ENDIF(WIN32)
 INCLUDE_DIRECTORIES(${GFLAGS_INCLUDE_DIR})
 
 ExternalProject_Add(
-    gflags
+    extern_gflags
     ${EXTERNAL_PROJECT_LOG_ARGS}
     GIT_REPOSITORY  "https://github.com/gflags/gflags.git"
     PREFIX          ${GFLAGS_SOURCES_DIR}
@@ -43,5 +43,9 @@ ExternalProject_Add(
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                      -DCMAKE_BUILD_TYPE:STRING=Release
 )
+
+ADD_LIBRARY(gflags STATIC IMPORTED)
+SET_PROPERTY(TARGET gflags PROPERTY IMPORTED_LOCATION ${GFLAGS_LIBRARIES})
+ADD_DEPENDENCIES(gflags extern_gflags)
 
 LIST(APPEND external_project_dependencies gflags)

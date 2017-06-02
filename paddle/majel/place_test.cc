@@ -1,4 +1,4 @@
-#include "majel/place.h"
+#include "paddle/majel/place.h"
 #include <sstream>
 #include "gtest/gtest.h"
 

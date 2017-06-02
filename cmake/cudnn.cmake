@@ -11,11 +11,23 @@ find_path(CUDNN_INCLUDE_DIR cudnn.h
 
 get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
 
+if(NOT ${CMAKE_HOST_SYSTEM_PROCESSOR})
+    execute_process(
+        COMMAND uname -m COMMAND tr -d '\n'
+        OUTPUT_VARIABLE HOST_ARCH
+        RESULT_VARIABLE UNAME_RESULT)
+    if(${UNAME_RESULT})
+        set(HOST_ARCH "x86_64")
+    endif(${UNAME_RESULT})
+else(NOT ${CMAKE_HOST_SYSTEM_PROCESSOR})
+    set(HOST_ARCH ${CMAKE_HOST_SYSTEM_PROCESSOR})
+endif(NOT ${CMAKE_HOST_SYSTEM_PROCESSOR})
+
 list(APPEND CUDNN_CHECK_LIBRARY_DIRS
     ${CUDNN_ROOT}
     ${CUDNN_ROOT}/lib64
     ${CUDNN_ROOT}/lib
-    ${CUDNN_ROOT}/lib/x86_64-linux-gnu
+    ${CUDNN_ROOT}/lib/${HOST_ARCH}-linux-gnu
     $ENV{CUDNN_ROOT}
     $ENV{CUDNN_ROOT}/lib64
     $ENV{CUDNN_ROOT}/lib

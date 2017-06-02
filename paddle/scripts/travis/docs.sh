@@ -60,7 +60,6 @@ function deploy_docs() {
 
 deploy_docs "master" "." 
 deploy_docs "develop" "./develop/"
-deploy_docs "release/0.10.0" "./release/0.10.0/"
 
 # Check is there anything changed.
 set +e

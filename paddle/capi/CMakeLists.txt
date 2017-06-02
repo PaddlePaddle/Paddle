@@ -58,10 +58,16 @@ target_include_directories(paddle_capi_shared PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
 link_paddle_exe(paddle_capi_shared)
 
 # install library & headers.
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${capi_whole_library} DESTINATION lib)
 install(FILES ${CAPI_HEADERS} DESTINATION include/paddle)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h DESTINATION include/paddle)
-install(TARGETS paddle_capi_shared DESTINATION lib)
+if(ANDROID)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${capi_whole_library}
+          DESTINATION lib/${ANDROID_ABI})
+  install(TARGETS paddle_capi_shared DESTINATION lib/${ANDROID_ABI})
+else(ANDROID)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${capi_whole_library} DESTINATION lib)
+  install(TARGETS paddle_capi_shared DESTINATION lib)
+endif(ANDROID)
 
 # this variable used for unittest
 set(PADDLE_CAPI_INC_PATH

@@ -6,7 +6,7 @@ din = data_layer(name='data', size=30)
 
 seq_op = [first_seq, last_seq]
 
-agg_level = [AggregateLevel.EACH_SEQUENCE, AggregateLevel.EACH_TIMESTEP]
+agg_level = [AggregateLevel.TO_SEQUENCE, AggregateLevel.TO_NO_SEQUENCE]
 
 opts = []
 
@@ -15,6 +15,7 @@ for op in seq_op:
         opts.append(op(input=din, agg_level=al))
 
 for op in seq_op:
-    opts.append(op(input=din, agg_level=AggregateLevel.EACH_TIMESTEP, stride=5))
+    opts.append(
+        op(input=din, agg_level=AggregateLevel.TO_NO_SEQUENCE, stride=5))
 
 outputs(opts)
