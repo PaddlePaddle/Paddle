@@ -177,7 +177,7 @@ function(nv_library TARGET_NAME)
     if (nv_library_SHARED OR nv_library_shared) # build *.so
       cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS} ${__objs})
     else()
-      if (cc_library_OBJECT OR cc_library_object) # build *.o
+      if (nv_library_OBJECT OR nv_library_object) # build *.o
         cuda_compile(${TARGET_NAME} ${nv_library_SRCS} ${__objs})
       else() # default build *.a
         cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS} ${__objs})
