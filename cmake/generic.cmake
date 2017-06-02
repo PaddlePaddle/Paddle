@@ -119,6 +119,9 @@ function(cc_library TARGET_NAME)
     add_library(${TARGET_NAME} SHARED ${cc_library_SRCS} ${__objs})
   else()
     if (cc_library_OBJECT OR cc_library_object) # build *.o
+      if (__objs)
+        message(FATAL_ERROR "Cannot merge objects <${cc_library_OBJS}> to object ${TARGET_NAME}.")
+      endif(__objs)
       add_library(${TARGET_NAME} OBJECT ${cc_library_SRCS} ${__objs})
     else() # default build *.a
       add_library(${TARGET_NAME} ${cc_library_SRCS} ${__objs})
@@ -178,6 +181,9 @@ function(nv_library TARGET_NAME)
       cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS} ${__objs})
     else()
       if (nv_library_OBJECT OR nv_library_object) # build *.o
+        if (__objs)
+          message(FATAL_ERROR "Cannot merge objects <${nv_library_OBJS}> to object ${TARGET_NAME}.")
+        endif(__objs)
         cuda_compile(${TARGET_NAME} ${nv_library_SRCS} ${__objs})
       else() # default build *.a
         cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS} ${__objs})
