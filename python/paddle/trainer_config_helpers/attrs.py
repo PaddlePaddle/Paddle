@@ -64,12 +64,8 @@ class HookAttribute(object):
     here paddle/parameter/ParameterUpdaterHook.cpp
     NOTE: IT IS A HIGH LEVEL USER INTERFACE.
 		
-    :param  type: Hook type, eg: 'pruning', 'pruning_static'
+    :param  type: Hook type, eg: 'pruning'
     :type type: string
-
-    :param mask_file: Must be specified if hook type is 'pruning_static', 
-					  the network reads the mask from the file to determine which parameters should be cut off
-    :type mask_file: string
 
     :param sparsity_ratio: Must be specified if hook type is 'pruning',
 	                       the network will hold the sparsity_ratio maximum parameters, and cut off the rest. 
@@ -77,19 +73,15 @@ class HookAttribute(object):
 	
     """
 
-    def __init__(self, type, mask_filename=None, sparsity_ratio=None):
+    def __init__(self, type, sparsity_ratio=None):
         self.type = type
-        self.mask_filename = mask_filename
         self.sparsity_ratio = sparsity_ratio
         assert is_compatible_with(self.sparsity_ratio,
                                   float), 'sparisity_ratio must be float type'
         assert self.sparsity_ratio <= 1 and self.sparsity_ratio >= 0, 'sparisity must be a flaot between [0, 1] '
 
     def __call__(self):
-        return ParameterHook(
-            self.type,
-            mask_filename=self.mask_filename,
-            sparsity_ratio=self.sparsity_ratio)
+        return ParameterHook(self.type, sparsity_ratio=self.sparsity_ratio)
 
 
 class ParameterAttribute(object):
