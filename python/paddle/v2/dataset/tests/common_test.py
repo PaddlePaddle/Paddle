@@ -48,9 +48,9 @@ class TestCommon(unittest.TestCase):
         _, temp_path = tempfile.mkstemp()
         for x in xrange(5):
             with open(temp_path + '/%05d.test' % x) as f:
-                f.write('%d\n' % y)
+                f.write('%d\n' % x)
         reader = paddle.v2.dataset.common.cluster_files_reader(
-            temp_path + '/%05d.test', 5, 0)
+            temp_path + '/*.test', 5, 0)
         for idx, e in enumerate(reader()):
             self.assertEqual(e, str("0"))
 
