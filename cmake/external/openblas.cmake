@@ -37,11 +37,11 @@ IF(NOT ${CBLAS_FOUND})
         SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 USE_THREAD=0 libs)
     ELSE()
         SET(OPENBLAS_COMMIT "v0.2.19")
-        SET(OPENBLAS_ARGS DYNAMIC_ARCH=1 libs)
+        SET(OPTIONAL_ARGS DYNAMIC_ARCH=1 libs NUM_THREADS=64)
     ENDIF()
 
     ExternalProject_Add(
-        openblas
+        extern_openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
         GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
         GIT_TAG             ${OPENBLAS_COMMIT}
@@ -53,8 +53,14 @@ IF(NOT ${CBLAS_FOUND})
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
-    LIST(APPEND external_project_dependencies openblas)
 ENDIF(NOT ${CBLAS_FOUND})
 
 MESSAGE(STATUS "BLAS library: ${CBLAS_LIBRARIES}")
 INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
+
+ADD_LIBRARY(cblas STATIC IMPORTED)
+SET_PROPERTY(TARGET cblas PROPERTY IMPORTED_LOCATION ${CBLAS_LIBRARIES})
+IF(NOT ${CBLAS_FOUND})
+    ADD_DEPENDENCIES(cblas extern_openblas)
+    LIST(APPEND external_project_dependencies cblas)
+ENDIF(NOT ${CBLAS_FOUND})
