@@ -19,7 +19,6 @@ import getopt
 
 from paddle.trainer.config_parser import *
 
-
 def main(print_whole_config, globals, locals):
     '''
      this test will all test_config.py
@@ -35,12 +34,11 @@ def main(print_whole_config, globals, locals):
             functionstr = functionstr + "  " + line
 
     cmdstr = cmdstr + importstr + """def configs():\n""" + functionstr
-    #cmdstr = cmdstr + """def configs():\n""" + importstr + functionstr
 
     if print_whole_config:
-        cmdstr = cmdstr + """\nprint parse_config(configs, "")"""
+        cmdstr = cmdstr + """print parse_config(configs, "")"""
     else:
-        cmdstr = cmdstr + """\nprint parse_config(configs, "").model_config"""
+        cmdstr = cmdstr + """print parse_config(configs, "").model_config"""
 
     exec (cmdstr, globals, locals)
 
