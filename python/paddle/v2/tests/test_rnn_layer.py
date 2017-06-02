@@ -20,6 +20,8 @@ import paddle.v2.data_type as data_type
 import paddle.v2.layer as layer
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as parse_network
+from paddle.trainer_config_helpers.config_parser_utils import \
+    reset_parser
 
 
 class RNNTest(unittest.TestCase):
@@ -29,6 +31,8 @@ class RNNTest(unittest.TestCase):
         hidden_dim = 8
 
         def parse_old_rnn():
+            reset_parser()
+
             def step(y):
                 mem = conf_helps.memory(name="rnn_state", size=hidden_dim)
                 out = conf_helps.fc_layer(
@@ -48,6 +52,8 @@ class RNNTest(unittest.TestCase):
             return str(parse_network(test))
 
         def parse_new_rnn():
+            reset_parser()
+
             def new_step(y):
                 mem = layer.memory(name="rnn_state", size=hidden_dim)
                 out = layer.fc(input=[y, mem],
@@ -75,6 +81,8 @@ class RNNTest(unittest.TestCase):
         label_dim = 3
 
         def parse_old_rnn():
+            reset_parser()
+
             def test():
                 data = conf_helps.data_layer(name="word", size=dict_dim)
                 label = conf_helps.data_layer(name="label", size=label_dim)
@@ -114,6 +122,7 @@ class RNNTest(unittest.TestCase):
             return str(parse_network(test))
 
         def parse_new_rnn():
+            reset_parser()
             data = layer.data(
                 name="word", type=data_type.dense_vector(dict_dim))
             label = layer.data(
