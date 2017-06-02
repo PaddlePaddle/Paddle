@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
+#
 # To simplify the build process of PaddlePaddle, we defined couple of
 # fundamental abstractions, e.g., how to build library, binary and
 # test in C++, CUDA and Go.
@@ -22,11 +21,84 @@
 # -------------------------------------------
 # cc_library	 nv_library	  go_library
 # cc_binary  	 nv_binary	  go_binary
-# cc_test      nv_test	    go_test
+# cc_test      nv_test      go_test
 # -------------------------------------------
 #
 # cmake_parse_arguments can help us to achieve this goal.
 # https://cmake.org/cmake/help/v3.0/module/CMakeParseArguments.html
+#
+# cc_library|nv_library(<target_name>
+# [STATIC SHARED OBJECT]
+#   SRCS <file>...
+#   OBJS <objs>...
+#   DEPS <libs>...)
+#
+# cc_library and nv_library can generate *.o, *.a, or *.so
+# if the corresponding keyword OBJECT, STATIC or SHARED is specified.
+#
+# cc_binary|nv_binary(<target_name>
+#   SRCS <file>...
+#   OBJS <objs>...
+#   DEPS <libs>...)
+#
+# cc_binary and nv_binary can build souce code and link the dependent
+# libraries to generate a binary.
+#
+# cc_test|nv_test(<target_name>
+#   SRCS <file>...
+#   OBJS <objs>...
+#   DEPS <libs>...)
+#
+# cc_test and nv_test can build test code, link gtest and other dependent
+# libraries to generate test suite.
+#
+# For example, in one folder, it contains
+#   ddim{.h, .cc, _test.cc, _test.cu}
+#   place{.h, cc, _test.cc}
+#
+# We can add build script as follows: 
+# 
+# cc_library(place OBJECT
+#    SRCS place.cc)
+#
+# place.cc -> place.o
+# cc_library's OBJECT OPTION will generate place.o.
+#
+# cc_test(place_test
+#    SRCS place_test.cc
+#    OBJS place
+#    DEPS glog gflags)
+#
+# place_test.cc, place.o, glog, gflags -> place_test
+# cc_test will combine place_test.cc, place.o with libglog.a
+# and libgflags.a to generate place_test.
+#
+# cc_library(ddim OBJECT
+#    SRCS ddim.cc)
+#
+# ddim.cc -> ddim.o
+# cc_library's OBJECT OPTION will generate ddim.o.
+#
+# cc_test(ddim_test
+#    SRCS ddim_test.cc
+#    OBJS ddim)
+#
+# ddim_test.cc, ddim.o -> ddim_test
+# cc_test will build ddim_test.cc with ddim.o to generate ddim_test.
+#
+# nv_test(dim_test
+#    SRCS dim_test.cu
+#    OBJS ddim)
+#
+# dim_test.cu, ddim.o -> dim_test
+# nv_test will build dim_test.cu with ddim.o to generate dim_test.
+#
+# cc_library(majel
+#    OBJS place ddim)
+#
+# place.o, ddim.o -> libmajel.a
+# cc_library's default OPTION is STATIC. It will archive place.o
+# and ddim.o to generate libmajel.a.
 #
 
 if(NOT APPLE)
@@ -34,12 +106,6 @@ if(NOT APPLE)
     link_libraries(${CMAKE_THREAD_LIBS_INIT})
 endif(NOT APPLE)
 
-# cc_library parses tensor.cc and figures out that target also depend on tensor.h.
-# cc_library(tensor
-#   SRCS
-#   tensor.cc
-#   DEPS
-#   variant)
 function(cc_library TARGET_NAME)
   set(options STATIC static SHARED shared OBJECT object)
   set(oneValueArgs "")
@@ -63,10 +129,6 @@ function(cc_library TARGET_NAME)
   endif()
 endfunction(cc_library)
 
-# cc_binary parses tensor.cc and figures out that target also depend on tensor.h.
-# cc_binary(tensor
-#   SRCS
-#   tensor.cc)
 function(cc_binary TARGET_NAME)
   set(options "")
   set(oneValueArgs "")
@@ -85,13 +147,6 @@ function(cc_binary TARGET_NAME)
   endif()
 endfunction(cc_binary)
 
-# The dependency to target tensor implies that if any of
-# tensor{.h,.cc,_test.cc} is changed, tensor_test need to be re-built.
-# cc_test(tensor_test
-#   SRCS
-#   tensor_test.cc
-#   DEPS
-#   tensor)
 function(cc_test TARGET_NAME)
   if (WITH_TESTING)
     set(options "")
@@ -109,14 +164,6 @@ function(cc_test TARGET_NAME)
   endif(WITH_TESTING)
 endfunction(cc_test)
 
-# Suppose that ops.cu includes global functions that take Tensor as
-# their parameters, so ops depend on tensor. This implies that if
-# any of tensor.{h.cc}, ops.{h,cu} is changed, ops need to be re-built.
-# nv_library(ops
-#   SRCS
-#   ops.cu
-#   DEPS
-#   tensor)
 function(nv_library TARGET_NAME)
   if (WITH_GPU)
     set(options STATIC static SHARED shared OBJECT object)
@@ -162,13 +209,6 @@ function(nv_binary TARGET_NAME)
   endif(WITH_GPU)
 endfunction(nv_binary)
 
-# The dependency to target tensor implies that if any of
-# ops{.h,.cu,_test.cu} is changed, ops_test need to be re-built.
-# nv_test(ops_test
-#   SRCS
-#   ops_test.cu
-#   DEPS
-#   ops)
 function(nv_test TARGET_NAME)
   if (WITH_GPU AND WITH_TESTING)
     set(options "")
