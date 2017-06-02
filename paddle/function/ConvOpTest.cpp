@@ -19,8 +19,7 @@ limitations under the License. */
 
 namespace paddle {
 
-typedef Compare2Function<DEVICE_TYPE_CPU, DEVICE_TYPE_CPU> Compare2CpuFunction;
-
+template <DeviceType DType1, DeviceType DType2>
 class ConvolutionTest {
 public:
   ConvolutionTest(const std::string& conv1,
@@ -50,13 +49,14 @@ public:
 
                   std::vector<size_t> paddings = {padding, padding};
                   std::vector<size_t> strides = {stride, stride};
-                  Compare2CpuFunction test(conv1,
-                                           conv2,
-                                           FuncConfig()
-                                               .set("paddings", paddings)
-                                               .set("strides", strides)
-                                               .set("groups", (size_t)1)
-                                               .set("algo", algo));
+                  Compare2Function<DType1, DType2> test(
+                      conv1,
+                      conv2,
+                      FuncConfig()
+                          .set("paddings", paddings)
+                          .set("strides", strides)
+                          .set("groups", (size_t)1)
+                          .set("algo", algo));
 
                   TensorShape shape0{
                       batchSize, inputChannels, inputSize, inputSize};
@@ -79,7 +79,13 @@ public:
 };
 
 TEST(Convolution, GEMM) {
-  ConvolutionTest test("NaiveConv-CPU", "GemmConv-CPU");
+  ConvolutionTest<DEVICE_TYPE_CPU, DEVICE_TYPE_CPU> test("NaiveConv-CPU",
+                                                         "GemmConv-CPU");
+}
+
+TEST(Convolution, GEMM2) {
+  ConvolutionTest<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU> test("GemmConv-CPU",
+                                                         "GemmConv-GPU");
 }
 
 }  // namespace paddle

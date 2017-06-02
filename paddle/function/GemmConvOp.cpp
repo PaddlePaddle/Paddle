@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "ConvOp.h"
-#include "paddle/math/MathFunctions.h"
+#include "GemmConvOp.h"
+#include "GemmFunctor.h"
 #include "paddle/math/MemoryHandle.h"
 
 namespace paddle {
@@ -24,7 +24,7 @@ namespace paddle {
  *            output_height, output_width]
  */
 template <class T>
-class Im2ColFunctor {
+class Im2ColFunctor<DEVICE_TYPE_CPU, T> {
 public:
   void operator()(const T* imData,
                   int inputChannels,
@@ -112,7 +112,8 @@ public:
     resizeBuffer(size);
     real* colData = reinterpret_cast<real*>(memory_->getBuf());
 
-    Im2ColFunctor<real> im2col;
+    Im2ColFunctor<Device, real> im2col;
+    GemmFunctor<Device, real> gemm;
     size_t inputOffset = (inputChannels / groups_) * inputHeight * inputWidth;
     size_t outputOffset =
         (outputChannels / groups_) * outputHeight * outputWidth;
@@ -136,19 +137,17 @@ public:
         int M = outputChannels;
         int N = outputHeight * outputWidth;
         int K = inputChannels * filterHeight * filterWidth;
-        gemm<real>(CblasNoTrans,
-                   CblasNoTrans,
-                   M,
-                   N,
-                   K,
-                   1.0f,
-                   filterData + g * filterOffset,
-                   K,
-                   colData,
-                   N,
-                   0.0f,
-                   outputData + g * outputOffset,
-                   N);
+        gemm(M,
+             N,
+             K,
+             1.0f,
+             filterData + g * filterOffset,
+             K,
+             colData,
+             N,
+             0.0f,
+             outputData + g * outputOffset,
+             N);
         inputData += inputChannels * inputHeight * inputWidth;
         outputData += outputChannels * outputHeight * outputWidth;
       }
@@ -166,5 +165,6 @@ private:
 };
 
 REGISTER_TYPED_FUNC(GemmConv, CPU, GemmConvFunction);
+REGISTER_TYPED_FUNC(GemmConv, GPU, GemmConvFunction);
 
 }  // namespace paddle
