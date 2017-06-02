@@ -119,6 +119,7 @@ __all__ = [
     'eos_layer',
     'smooth_l1_cost',
     'layer_support',
+    'multiplex_layer',
 ]
 
 
@@ -185,6 +186,7 @@ class LayerType(object):
     MAXOUT = "maxout"
     SPP_LAYER = "spp"
     PAD_LAYER = "pad"
+    MULTIPLEX_LAYER = "multiplex"
 
     PRINT_LAYER = "print"
     PRIORBOX_LAYER = "priorbox"
@@ -235,16 +237,19 @@ class AggregateLevel(object):
 
     Accordingly, AggregateLevel supports two modes:
 
-    - :code:`AggregateLevel.EACH_TIMESTEP` means the aggregation acts on each
+    - :code:`AggregateLevel.TO_NO_SEQUENCE` means the aggregation acts on each
       timestep of a sequence, both :code:`SUB_SEQUENCE` and :code:`SEQUENCE` will
       be aggregated to :code:`NO_SEQUENCE`.
 
-    - :code:`AggregateLevel.EACH_SEQUENCE` means the aggregation acts on each
+    - :code:`AggregateLevel.TO_SEQUENCE` means the aggregation acts on each
       sequence of a nested sequence, :code:`SUB_SEQUENCE` will be aggregated to
       :code:`SEQUENCE`.
     """
-    EACH_TIMESTEP = 'non-seq'
-    EACH_SEQUENCE = 'seq'
+    TO_NO_SEQUENCE = 'non-seq'
+    TO_SEQUENCE = 'seq'
+    # compatible with previous configuration
+    EACH_TIMESTEP = TO_NO_SEQUENCE
+    EACH_SEQUENCE = TO_SEQUENCE
 
 
 class LayerOutput(object):
@@ -285,6 +290,7 @@ class LayerOutput(object):
         assert size is not None
         assert LayerType.is_layer_type(layer_type)
         self.name = name
+        self.full_name = MakeLayerNameInSubmodel(name)
         self.layer_type = layer_type
         if parents is not None and type(parents) != list:
             parents = [parents]
@@ -479,7 +485,7 @@ def table_projection(input, size=0, param_attr=None):
     return proj
 
 
-def identity_projection(input, offset=None):
+def identity_projection(input, offset=None, size=None):
     """
     1. IdentityProjection if offset=None. It performs:
 
@@ -520,8 +526,10 @@ def identity_projection(input, offset=None):
         proj = IdentityProjection(input_layer_name=input.name)
         proj.origin = input
     else:
+        if size is None:
+            size = input.size - offset
         proj = IdentityOffsetProjection(
-            input_layer_name=input.name, offset=offset)
+            input_layer_name=input.name, offset=offset, size=size)
         proj.origin = input
     return proj
 
@@ -1078,7 +1086,7 @@ def pooling_layer(input,
                   pooling_type=None,
                   name=None,
                   bias_attr=None,
-                  agg_level=AggregateLevel.EACH_TIMESTEP,
+                  agg_level=AggregateLevel.TO_NO_SEQUENCE,
                   layer_attr=None):
     """
     Pooling layer for sequence inputs, not used for Image.
@@ -1089,10 +1097,10 @@ def pooling_layer(input,
 
        seq_pool = pooling_layer(input=layer,
                                 pooling_type=AvgPooling(),
-                                agg_level=AggregateLevel.EACH_SEQUENCE)
+                                agg_level=AggregateLevel.TO_NO_SEQUENCE)
 
-    :param agg_level: AggregateLevel.EACH_TIMESTEP or
-                      AggregateLevel.EACH_SEQUENCE
+    :param agg_level: AggregateLevel.TO_NO_SEQUENCE or
+                      AggregateLevel.TO_SEQUENCE
     :type agg_level: AggregateLevel
     :param name: layer name.
     :type name: basestring
@@ -1362,7 +1370,7 @@ def grumemory(input,
 @layer_support()
 def last_seq(input,
              name=None,
-             agg_level=AggregateLevel.EACH_TIMESTEP,
+             agg_level=AggregateLevel.TO_NO_SEQUENCE,
              stride=-1,
              layer_attr=None):
     """
@@ -1397,7 +1405,7 @@ def last_seq(input,
                        " series information at all. Maybe you want to use"
                        " first_seq instead.")
 
-    if agg_level == AggregateLevel.EACH_SEQUENCE:
+    if agg_level == AggregateLevel.TO_SEQUENCE:
         assert stride == -1
 
     Layer(
@@ -1418,7 +1426,7 @@ def last_seq(input,
 @layer_support()
 def first_seq(input,
               name=None,
-              agg_level=AggregateLevel.EACH_TIMESTEP,
+              agg_level=AggregateLevel.TO_NO_SEQUENCE,
               stride=-1,
               layer_attr=None):
     """
@@ -1454,7 +1462,7 @@ def first_seq(input,
                        ' time series information at all. Maybe you want to use'
                        ' last_seq instead.')
 
-    if agg_level == AggregateLevel.EACH_SEQUENCE:
+    if agg_level == AggregateLevel.TO_SEQUENCE:
         assert stride == -1
 
     Layer(
@@ -1477,16 +1485,18 @@ class ExpandLevel(object):
 
     ExpandLevel supports two modes:
 
-    - :code:`ExpandLevel.FROM_TIMESTEP` means the expandation acts on each
-      timestep of a sequence, :code:`NO_SEQUENCE` will be expanded to
+    - :code:`ExpandLevel.FROM_NO_SEQUENCE` means the expansion acts on
+      :code:`NO_SEQUENCE`, which will be expanded to
       :code:`SEQUENCE` or :code:`SUB_SEQUENCE`.
 
-    - :code:`ExpandLevel.FROM_SEQUENCE` means the expandation acts on each
-      sequence of a nested sequence, :code:`SEQUENCE` will be expanded to
+    - :code:`ExpandLevel.FROM_SEQUENCE` means the expansion acts on
+      :code:`SEQUENCE`, which will be expanded to
       :code:`SUB_SEQUENCE`.
     """
-    FROM_TIMESTEP = AggregateLevel.EACH_TIMESTEP
-    FROM_SEQUENCE = AggregateLevel.EACH_SEQUENCE
+    FROM_NO_SEQUENCE = AggregateLevel.TO_NO_SEQUENCE
+    FROM_SEQUENCE = AggregateLevel.TO_SEQUENCE
+    # compatible with previous configuration
+    FROM_TIMESTEP = FROM_NO_SEQUENCE
 
 
 @wrap_name_default()
@@ -1495,7 +1505,7 @@ def expand_layer(input,
                  expand_as,
                  name=None,
                  bias_attr=False,
-                 expand_level=ExpandLevel.FROM_TIMESTEP,
+                 expand_level=ExpandLevel.FROM_NO_SEQUENCE,
                  layer_attr=None):
     """
     A layer for "Expand Dense data or (sequence data where the length of each
@@ -1507,7 +1517,7 @@ def expand_layer(input,
 
        expand = expand_layer(input=layer1,
                              expand_as=layer2,
-                             expand_level=ExpandLevel.FROM_TIMESTEP)
+                             expand_level=ExpandLevel.FROM_NO_SEQUENCE)
 
     :param input: Input layer
     :type input: LayerOutput
@@ -2794,7 +2804,7 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
     if layer_type == LayerType.CONCAT_LAYER:
         assert not bias_attr
 
-    Layer(
+    layer = Layer(
         name=name,
         type=layer_type,
         inputs=[x.name for x in input] if is_concat_layer else input,
@@ -2802,13 +2812,7 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
         bias=ParamAttr.to_bias(bias_attr),
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
-    sz = 0
-    for each_input in input:
-        if each_input.size is not None:
-            sz += each_input.size
-        else:
-            sz = None
-            break
+    sz = layer.config.size
 
     return LayerOutput(
         name,
@@ -2976,7 +2980,7 @@ def memory(name,
 @layer_support()
 def lstm_step_layer(input,
                     state,
-                    size,
+                    size=None,
                     act=None,
                     name=None,
                     gate_act=None,
@@ -3042,6 +3046,9 @@ def lstm_step_layer(input,
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
+
+    assert size is None or state.size == size
+    size = state.size
     Layer(
         name=name,
         type=LayerType.LSTM_STEP_LAYER,
@@ -3049,7 +3056,7 @@ def lstm_step_layer(input,
         active_gate_type=gate_act.name,
         active_state_type=state_act.name,
         bias=ParamAttr.to_bias(bias_attr),
-        size=size,
+        size=state.size,
         inputs=[input.name, state.name],
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
@@ -3488,6 +3495,11 @@ def recurrent_group(step,
             RecurrentLayerGroupSetOutLink(ot.name)
 
     RecurrentLayerGroupEnd(name=name)
+
+    for layer_out in layer_outs:
+        # Thee previous full_name is the name is the rnn group
+        # We need a full_name outside the rnn group
+        layer_out.full_name = MakeLayerNameInSubmodel(layer_out.name)
 
     if len(layer_outs) == 1:
         return layer_outs[0]
@@ -5465,3 +5477,54 @@ def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name, LayerType.SMOOTH_L1, parents=[input, label], size=1)
+
+
+@wrap_name_default()
+def multiplex_layer(input, name=None, layer_attr=None):
+    """
+    This layer multiplex multiple layers according to the index,
+    which is provided by the first input layer.
+    inputs[0]: the index of the layer to output of size batchSize.
+    inputs[1:N]; the candidate output data.
+    For each index i from 0 to batchSize -1, the output is the i-th row of the
+    (index[i] + 1)-th layer.
+
+    For each i-th row of output:
+    .. math::
+        y[i][j] = x_{x_{0}[i] + 1}[i][j], j = 0,1, ... , (x_{1}.width - 1)
+
+    where, y is output. :math:`x_{k}` is the k-th input layer and
+    :math:`k = x_{0}[i] + 1`.
+
+    .. code-block:: python
+
+       maxid = multiplex_layer(input=layers)
+
+    :param input: Input layers.
+    :type input: list of LayerOutput
+    :param name: Layer name.
+    :type name: basestring
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert isinstance(input, collections.Sequence)
+    assert len(input) > 2, 'multiplex_layer should have more than 2 inputs'
+    for i in range(1, len(input)):
+        assert isinstance(input[i], LayerOutput)
+        assert input[i].size == input[1].size, \
+            "All the input layers except the first one should have the same size"
+
+    l = Layer(
+        name=name,
+        type='multiplex',
+        inputs=[x.name for x in input],
+        size=input[1].size,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.MULTIPLEX_LAYER,
+        parents=input,
+        size=l.config.size)

@@ -6,7 +6,7 @@ din = data_layer(name='dat_in', size=100)
 
 POOL_TYPE = [MaxPooling, AvgPooling, SumPooling]
 
-AGG_LEVEL = [AggregateLevel.EACH_SEQUENCE, AggregateLevel.EACH_TIMESTEP]
+AGG_LEVEL = [AggregateLevel.TO_SEQUENCE, AggregateLevel.TO_NO_SEQUENCE]
 
 opts = []
 

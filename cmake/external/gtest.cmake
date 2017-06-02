@@ -35,7 +35,7 @@ IF(WITH_TESTING)
     ENDIF(WIN32)
 
     ExternalProject_Add(
-        gtest
+        extern_gtest
         ${EXTERNAL_PROJECT_LOG_ARGS}
         GIT_REPOSITORY  "https://github.com/google/googletest.git"
         GIT_TAG         "release-1.8.0"
@@ -55,5 +55,14 @@ IF(WITH_TESTING)
                          -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                          -DCMAKE_BUILD_TYPE:STRING=Release
     )
-    LIST(APPEND external_project_dependencies gtest)
+
+    ADD_LIBRARY(gtest STATIC IMPORTED)
+    SET_PROPERTY(TARGET gtest PROPERTY IMPORTED_LOCATION ${GTEST_LIBRARIES})
+    ADD_DEPENDENCIES(gtest extern_gtest)
+
+    ADD_LIBRARY(gtest_main STATIC IMPORTED)
+    SET_PROPERTY(TARGET gtest_main PROPERTY IMPORTED_LOCATION ${GTEST_MAIN_LIBRARIES})
+    ADD_DEPENDENCIES(gtest_main extern_gtest)
+
+    LIST(APPEND external_project_dependencies gtest gtest_main)
 ENDIF(WITH_TESTING)

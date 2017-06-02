@@ -347,32 +347,71 @@ def chunk_evaluator(
         excluded_chunk_types=None, ):
     """
     Chunk evaluator is used to evaluate segment labelling accuracy for a
-    sequence. It calculates the chunk detection F1 score.
+    sequence. It calculates precision, recall and F1 scores for the chunk detection.
 
-    A chunk is correctly detected if its beginning, end and type are correct.
-    Other chunk type is ignored.
+    To use chunk evaluator, several concepts need to be clarified firstly.
 
-    For each label in the label sequence, we have:
+    * **Chunk type** is the type of the whole chunk and a chunk consists of one or several words.  (For example in NER, ORG for organization name, PER for person name etc.)
 
-    .. code-block:: python
+    * **Tag type** indicates the position of a word in a chunk. (B for begin, I for inside, E for end, S for single)
+    We can name a label by combining tag type and chunk type. (ie. B-ORG for begining of an organization name)
 
-       tagType = label % numTagType
-       chunkType = label / numTagType
-       otherChunkType = numChunkTypes
+    The construction of label dictionary should obey the following rules:
 
-    The total number of different labels is numTagType*numChunkTypes+1.
-    We support 4 labelling scheme.
-    The tag type for each of the scheme is shown as follows:
+    - Use one of the listed labelling schemes. These schemes differ in ways indicating chunk boundry.
 
-    .. code-block:: python
+    .. code-block:: text
 
-       Scheme Begin Inside End   Single
-       plain  0     -      -     -
-       IOB    0     1      -     -
-       IOE    -     0      1     -
-       IOBES  0     1      2     3
+        Scheme    Description                                                                                  
+        plain    Use the same label for the whole chunk.
+        IOB      Two labels for chunk type X, B-X for chunk begining and I-X for chunk inside. 
+        IOE      Two labels for chunk type X, E-X for chunk ending and I-X for chunk inside.
+        IOBES    Four labels for chunk type X, B-X for chunk begining, I-X for chunk inside, E-X for chunk end and S-X for single word chunk. 
+   
+    To make it clear, let's illustrate by an NER example.
+    Assuming that there are three named entity types including ORG, PER and LOC which are called 'chunk type' here,
+    if 'IOB' scheme were used, the label set will be extended to a set including B-ORG, I-ORG, B-PER, I-PER, B-LOC, I-LOC and O,
+    in which B-ORG for begining of ORG and I-ORG for inside of ORG.
+    Prefixes which are called 'tag type' here are added to chunk types and there are two tag types including B and I.
+    Of course, the training data should be labeled accordingly.
 
-    'plain' means the whole chunk must contain exactly the same chunk label.
+    - Mapping is done correctly by the listed equations and assigning protocol.
+
+    The following table are equations to extract tag type and chunk type from a label.
+
+    .. code-block:: text
+
+        tagType = label % numTagType
+        chunkType = label / numTagType
+        otherChunkType = numChunkTypes
+    
+    The following table shows the mapping rule between tagType and tag type in each scheme.
+
+    .. code-block:: text
+
+        Scheme Begin Inside End   Single
+        plain  0     -      -     -
+        IOB    0     1      -     -
+        IOE    -     0      1     -
+        IOBES  0     1      2     3
+
+    Continue the NER example, and the label dict should look like this to satify above equations:
+
+    .. code-block:: text
+
+        B-ORG  0
+        I-ORG  1
+        B-PER  2
+        I-PER  3
+        B-LOC  4
+        I-LOC  5
+        O      6
+
+    In this example, chunkType has three values: 0 for ORG, 1 for PER, 2 for LOC, because the scheme is
+    "IOB" so tagType has two values: 0 for B and 1 for I. 
+    Here we will use I-LOC to explain the above mapping rules in detail.
+    For I-LOC, the label id is 5, so we can get tagType=1 and chunkType=2, which means I-LOC is a part of NER chunk LOC
+    and the tag is I.
 
     The simple usage is:
 
@@ -380,6 +419,7 @@ def chunk_evaluator(
 
        eval = chunk_evaluator(input, label, chunk_scheme, num_chunk_types)
 
+    
     :param input: The input layers.
     :type input: LayerOutput
     :param label: An input layer containing the ground truth label.
