@@ -200,13 +200,13 @@ PaddlePaddle需要的所有编译工具。把编译出来的PaddlePaddle也打�
 像，称为生产镜像，里面涵盖了PaddlePaddle运行所需的所有环境。每次
 PaddlePaddle发布新版本的时候都会发布对应版本的生产镜像以及开发镜像。运
 行镜像包括纯CPU版本和GPU版本以及其对应的非AVX版本。我们会在
-<a class="reference external" href="https://hub.docker.com/r/paddledev/paddle/">dockerhub.com</a> 提供最新
+<a class="reference external" href="https://hub.docker.com/r/paddlepaddle/paddle/tags/">dockerhub.com</a> 提供最新
 的Docker镜像，可以在&#8221;tags&#8221;标签下找到最新的Paddle镜像版本。为了方便在国
 内的开发者下载Docker镜像，我们提供了国内的镜像服务器供大家使用。如果您
 在国内，请把文档里命令中的paddlepaddle/paddle替换成
 docker.paddlepaddle.org/paddle。</p>
 <ol class="arabic">
-<li><p class="first">开发镜像：<code class="code docutils literal"><span class="pre">paddlepaddle/paddle:&lt;version&gt;-dev</span></code></p>
+<li><p class="first">开发镜像：<code class="code docutils literal"><span class="pre">paddlepaddle/paddle:0.10.0-dev</span></code></p>
 <p>这个镜像包含了Paddle相关的开发工具以及编译和运行环境。用户可以使用开发镜像代替配置本地环境，完成开发，编译，发布，
 文档编写等工作。由于不同的Paddle的版本可能需要不同的依赖和工具，所以如果需要自行配置开发环境需要考虑版本的因素。
 开发镜像包含了以下工具：</p>
@@ -221,11 +221,11 @@ docker.paddlepaddle.org/paddle。</p>
 <p>很多开发者会使用远程的安装有GPU的服务器工作，用户可以使用ssh登录到这台服务器上并执行 :code:<a href="#id2"><span class="problematic" id="id3">`</span></a>docker exec`进入开发镜像并开始工作，
 也可以在开发镜像中启动一个SSHD服务，方便开发者直接登录到镜像中进行开发:</p>
 <p>以交互容器方式运行开发镜像：</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it --rm paddlepaddle/paddle:&lt;version&gt;-dev /bin/bash
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it --rm paddlepaddle/paddle:0.10.0-dev /bin/bash
 </pre></div>
 </div>
 <p>或者，可以以后台进程方式运行容器：</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d -p <span class="m">2202</span>:22 -p <span class="m">8888</span>:8888 paddledev/paddle:&lt;version&gt;-dev
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d -p <span class="m">2202</span>:22 -p <span class="m">8888</span>:8888 paddledev/paddle:0.10.0-dev
 </pre></div>
 </div>
 <p>然后用密码 <code class="code docutils literal"><span class="pre">root</span></code> SSH进入容器：</p>
@@ -248,13 +248,13 @@ docker.paddlepaddle.org/paddle。</p>
 <p>如果输出是No，就需要选择使用no-AVX的镜像</p>
 <p>以上方法在GPU镜像里也能用，只是请不要忘记提前在物理机上安装GPU最新驱动。
 为了保证GPU驱动能够在镜像里面正常运行，我们推荐使用[nvidia-docker](<a class="reference external" href="https://github.com/NVIDIA/nvidia-docker">https://github.com/NVIDIA/nvidia-docker</a>)来运行镜像。</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run -it --rm paddledev/paddle:0.10.0rc1-gpu /bin/bash
+<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run -it --rm paddledev/paddle:0.10.0-gpu /bin/bash
 </pre></div>
 </div>
 <p>注意: 如果使用nvidia-docker存在问题，你也许可以尝试更老的方法，具体如下，但是我们并不推荐这种方法。：</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
 <span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
-docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:&lt;version&gt;-gpu
+docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:0.10.0-gpu
 </pre></div>
 </div>
 </li>
@@ -267,7 +267,7 @@ docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class=
 <div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run -it -v <span class="nv">$PWD</span>:/work paddle /work/a.py
 </pre></div>
 </div>
-<p>这里`a.py`包含的所有依赖假设都可以在Paddle的运行容器中。如果需要包含更多的依赖、或者需要发布您的应用的镜像，可以编写`Dockerfile`使用`FROM paddledev/paddle:&lt;version&gt;`
+<p>这里`a.py`包含的所有依赖假设都可以在Paddle的运行容器中。如果需要包含更多的依赖、或者需要发布您的应用的镜像，可以编写`Dockerfile`使用`FROM paddledev/paddle:0.10.0`
 创建和发布自己的AI程序镜像。</p>
 </li>
 </ol>
@@ -325,7 +325,7 @@ docker build -t paddle:dev .
 <h2>文档<a class="headerlink" href="#id4" title="永久链接至标题">¶</a></h2>
 <p>Paddle的Docker开发镜像带有一个通过 <a class="reference external" href="https://github.com/woboq/woboq_codebrowser">woboq code browser</a> 生成的HTML版本的C++源代码，便于用户浏览C++源码。</p>
 <p>只要在Docker里启动PaddlePaddle的时候给它一个名字，就可以再运行另一个Nginx Docker镜像来服务HTML代码：</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d --name paddle-cpu-doc paddle:&lt;version&gt;-dev
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -d --name paddle-cpu-doc paddle:0.10.0-dev
 docker run -d --volumes-from paddle-cpu-doc -p <span class="m">8088</span>:80 nginx
 </pre></div>
 </div>

@@ -199,7 +199,7 @@ of your hardware resource on Mac OS X and Windows.</p>
 </pre></div>
 </div>
 <p>to list all images in the system. We can also run</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker pull paddlepaddle/paddle:0.10.0rc2
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker pull paddlepaddle/paddle:0.10.0
 </pre></div>
 </div>
 <p>to download a Docker image, paddlepaddle/paddle in this example,
@@ -209,7 +209,7 @@ from Dockerhub.com.</p>
 &#8220;process&#8221; that runs the image. Indeed, a container is exactly an
 operating system process, but with a virtualized filesystem, network
 port space, and other virtualized environment. We can type</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run paddlepaddle/paddle:0.10.0rc2
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run paddlepaddle/paddle:0.10.0
 </pre></div>
 </div>
 <p>to start a container to run a Docker image, paddlepaddle/paddle in this example.</p>
@@ -235,7 +235,7 @@ Docker image as well, called the production image, it contains all
 runtime environment that running PaddlePaddle needs. For each version
 of PaddlePaddle, we release both of them. Production image includes
 CPU-only version and a CUDA GPU version and their no-AVX versions.</p>
-<p>We put the docker images on <a class="reference external" href="https://hub.docker.com/r/paddledev/paddle/">dockerhub.com</a>. You can find the
+<p>We put the docker images on <a class="reference external" href="https://hub.docker.com/r/paddlepaddle/paddle/tags/">dockerhub.com</a>. You can find the
 latest versions under &#8220;tags&#8221; tab at dockerhub.com. If you are in
 China, you can use our Docker image registry mirror to speed up the
 download process. To use it, please replace all paddlepaddle/paddle in
@@ -256,14 +256,14 @@ supports AVX:</p>
 </pre></div>
 </div>
 <p>To run the CPU-only image as an interactive container:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it --rm paddlepaddle/paddle:0.10.0rc2 /bin/bash
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it --rm paddlepaddle/paddle:0.10.0 /bin/bash
 </pre></div>
 </div>
 <p>Above method work with the GPU image too &#8211; the recommended way is
 using <a class="reference external" href="https://github.com/NVIDIA/nvidia-docker">nvidia-docker</a>.</p>
 <p>Please install nvidia-docker first following this <a class="reference external" href="https://github.com/NVIDIA/nvidia-docker#quick-start">tutorial</a>.</p>
 <p>Now you can run a GPU image:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run -it --rm paddlepaddle/paddle:0.10.0rc2-gpu /bin/bash
+<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run -it --rm paddlepaddle/paddle:0.10.0-gpu /bin/bash
 </pre></div>
 </div>
 </li>
@@ -304,11 +304,11 @@ programs. The typical workflow will be as follows:</p>
 </pre></div>
 </div>
 <p>Run the program using docker:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2 python /workspace/example.py
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0 python /workspace/example.py
 </pre></div>
 </div>
 <p>Or if you are using GPU for training:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2-gpu python /workspace/example.py
+<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0-gpu python /workspace/example.py
 </pre></div>
 </div>
 <p>Above commands will start a docker container by running <code class="code docutils literal"><span class="pre">python</span>
@@ -316,14 +316,14 @@ programs. The typical workflow will be as follows:</p>
 <span class="pre">/workspace/example.py</span></code> finishes.</p>
 <p>Another way is to tell docker to start a <code class="code docutils literal"><span class="pre">/bin/bash</span></code> session and
 run PaddlePaddle program interactively:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2 /bin/bash
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0 /bin/bash
 <span class="c1"># now we are inside docker container</span>
 <span class="nb">cd</span> /workspace
 python example.py
 </pre></div>
 </div>
 <p>Running with GPU is identical:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run -it -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2-gpu /bin/bash
+<div class="highlight-bash"><div class="highlight"><pre><span></span>nvidia-docker run -it -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0-gpu /bin/bash
 <span class="c1"># now we are inside docker container</span>
 <span class="nb">cd</span> /workspace
 python example.py
