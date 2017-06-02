@@ -77,6 +77,7 @@ def fetch_all():
                 importlib.import_module("paddle.v2.dataset.%s" % module_name),
                 "fetch")()
 
+
 def split(reader, line_count, suffix="%05d.pickle", dumper=cPickle.dump):
     """
     you can call the function as:
@@ -114,7 +115,10 @@ def split(reader, line_count, suffix="%05d.pickle", dumper=cPickle.dump):
         with open(suffix % indx_f, "w") as f:
             dumper(lines, f)
 
-def cluster_files_reader(files_pattern, trainer_count, trainer_id,
+
+def cluster_files_reader(files_pattern,
+                         trainer_count,
+                         trainer_id,
                          loader=cPickle.load):
     """
     Create a reader that yield element from the given files, select
@@ -127,6 +131,7 @@ def cluster_files_reader(files_pattern, trainer_count, trainer_id,
                 function will be called as loader(f) and f is a file object.
                 Default is cPickle.load
     """
+
     def reader():
         if not callable(loader):
             raise TypeError("loader should be callable.")
@@ -142,4 +147,5 @@ def cluster_files_reader(files_pattern, trainer_count, trainer_id,
                 lines = loader(f)
                 for line in lines:
                     yield line
+
     return reader

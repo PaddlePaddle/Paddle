@@ -17,6 +17,7 @@ import unittest
 import tempfile
 import glob
 
+
 class TestCommon(unittest.TestCase):
     def test_md5file(self):
         _, temp_path = tempfile.mkstemp()
@@ -37,10 +38,12 @@ class TestCommon(unittest.TestCase):
             def reader():
                 for x in xrange(10):
                     yield x
+
             return reader
+
         _, temp_path = tempfile.mkstemp()
-        paddle.v2.dataset.common.split(test_reader(), 4,
-            suffix=temp_path + '/test-%05d.pickle')
+        paddle.v2.dataset.common.split(
+            test_reader(), 4, suffix=temp_path + '/test-%05d.pickle')
         files = glob.glob(temp_path + '/test-%05d.pickle')
         self.assertEqual(len(files), 3)
 
@@ -53,6 +56,7 @@ class TestCommon(unittest.TestCase):
             temp_path + '/*.test', 5, 0)
         for idx, e in enumerate(reader()):
             self.assertEqual(e, str("0"))
+
 
 if __name__ == '__main__':
     unittest.main()
