@@ -1,0 +1,697 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>细节描述 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../../index.html"/>
+        <link rel="up" title="设置命令行参数" href="index_cn.html"/>
+        <link rel="next" title="运行分布式训练" href="../cluster/cluster_train_cn.html"/>
+        <link rel="prev" title="参数概述" href="arguments_cn.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">进阶指南</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index_cn.html">设置命令行参数</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../../index_cn.html">进阶指南</a> > </li>
+      
+        <li><a href="index_cn.html">设置命令行参数</a> > </li>
+      
+    <li>细节描述</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="">
+<span id="id1"></span><h1>细节描述<a class="headerlink" href="#" title="永久链接至标题">¶</a></h1>
+<div class="section" id="">
+<span id="id2"></span><h2>通用<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--job</span></code><ul>
+<li>工作模式，包括: <strong>train, test, checkgrad</strong>，其中checkgrad主要为开发者使用，使用者不需要关心。</li>
+<li>类型: string (默认: train)</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--config</span></code><ul>
+<li>用于指定网络配置文件。</li>
+<li>类型: string (默认: null).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--use_gpu</span></code><ul>
+<li>训练过程是否使用GPU，设置为true使用GPU模式，否则使用CPU模式。</li>
+<li>类型: bool (默认: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--local</span></code>
+&nbsp;- 训练过程是否为本地模式，设置为true使用本地训练或者使用集群上的一个节点，否则使用多机训练。<ul>
+<li>类型: bool (默认: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--trainer_count</span></code><ul>
+<li>指定一台机器上使用的线程数。例如，trainer_count = 4, 意思是在GPU模式下使用4个GPU，或者在CPU模式下使用4个线程。每个线程（或GPU）分配到当前数据块样本数的四分之一。也就是说，如果在训练配置中设置batch_size为512，每个线程分配到128个样本用于训练。</li>
+<li>类型: int32 (默认: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--num_passes</span></code><ul>
+<li>当模式为<code class="docutils literal"><span class="pre">--job=train</span></code>时, 该参数的意思是训练num_passes轮。每轮会将数据集中的所有训练样本使用一次。当模式为<code class="docutils literal"><span class="pre">--job=test</span></code>时，意思是使用第test_pass个模型到第 num_passes-1 个模型测试数据。</li>
+<li>类型: int32 (默认: 100).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--config_args</span></code><ul>
+<li>传递给配置文件的参数。格式: key1=value1,key2=value2.</li>
+<li>类型: string (默认: null).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--version</span></code><ul>
+<li>是否打印版本信息。</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--show_layer_stat</span></code><ul>
+<li>是否显示<strong>每个批次数据</strong>中每层的数值统计.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h2>训练<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--log_period</span></code><ul>
+<li>每log_period个批次打印日志进度.</li>
+<li>类型: int32 (默认: 100).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--dot_period</span></code><ul>
+<li>每dot_period个批次输出符号&#8217;.&#8217;.</li>
+<li>类型: int32 (默认: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--saving_period</span></code><ul>
+<li>每saving_period轮保存训练参数.</li>
+<li>类型: int32 (默认: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--save_dir</span></code><ul>
+<li>保存模型参数的目录，需要明确指定，但不需要提前创建。</li>
+<li>类型: string (默认: null).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--start_pass</span></code><ul>
+<li>从start_pass轮开始训练，会加载上一轮的参数。</li>
+<li>类型: int32 (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--show_parameter_stats_period</span></code><ul>
+<li>在训练过程中每show_parameter_stats_period个批次输出参数统计。默认不显示。</li>
+<li>类型: int32 (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--save_only_one</span></code><ul>
+<li>只保存最后一轮的参数，而之前的参数将会被删除。</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--load_missing_parameter_strategy</span></code><ul>
+<li>当模型参数不存在时，指定加载的方式。目前支持fail/rand/zero三种操作.<ul>
+<li><code class="docutils literal"><span class="pre">fail</span></code>: 程序直接退出.</li>
+<li><code class="docutils literal"><span class="pre">rand</span></code>: 根据网络配置中的<strong>initial_strategy</strong>采用均匀分布或者高斯分布初始化。均匀分布的范围是: <strong>[mean - std, mean + std]</strong>, 其中mean和std是训练配置中的参数.</li>
+<li><code class="docutils literal"><span class="pre">zero</span></code>: 所有参数置为零.</li>
+</ul>
+</li>
+<li>类型: string (默认: fail).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--init_model_path</span></code><ul>
+<li>初始化模型的路径。如果设置该参数，start_pass将不起作用。同样也可以在测试模式中指定模型路径。</li>
+<li>类型: string (默认: null).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--saving_period_by_batches</span></code><ul>
+<li>在一轮中每saving_period_by_batches个批次保存一次参数。</li>
+<li>类型: int32 (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--log_error_clipping</span></code><ul>
+<li>当在网络层配置中设置<strong>error_clipping_threshold</strong>时，该参数指示是否打印错误截断日志。如果为true，<strong>每批次</strong>的反向传播将会打印日志信息。该截断会影响<strong>输出的梯度</strong>.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--log_clipping</span></code><ul>
+<li>当在训练配置中设置<strong>gradient_clipping_threshold</strong>时，该参数指示是否打印日志截断信息。该截断会影响<strong>权重更新的梯度</strong>.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--use_old_updater</span></code><ul>
+<li>是否使用旧的RemoteParameterUpdater。 默认使用ConcurrentRemoteParameterUpdater，主要为开发者使用，使用者通常无需关心.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--enable_grad_share</span></code><ul>
+<li>启用梯度参数的阈值，在多CPU训练时共享该参数.</li>
+<li>类型: int32 (默认: 100 * 1024 * 1024).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--grad_share_block_num</span></code><ul>
+<li>梯度参数的分块数目，在多CPU训练时共享该参数.</li>
+<li>类型: int32 (默认: 64).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h2>测试<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--test_pass</span></code><ul>
+<li>加载test_pass轮的模型用于测试.</li>
+<li>类型: int32 (默认: -1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--test_period</span></code><ul>
+<li>如果为0，每轮结束时对所有测试数据进行测试；如果不为0，每test_period个批次对所有测试数据进行测试.</li>
+<li>类型: int32 (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--test_wait</span></code><ul>
+<li>指示当指定轮的测试模型不存在时，是否需要等待该轮模型参数。如果在训练期间同时发起另外一个进程进行测试，可以使用该参数.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--model_list</span></code><ul>
+<li>测试时指定的存储模型列表的文件.</li>
+<li>类型: string (默认: &#8220;&#8221;, null).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--predict_output_dir</span></code><ul>
+<li>保存网络层输出结果的目录。该参数在网络配置的Outputs()中指定，默认为null，意思是不保存结果。在测试阶段，如果你想要保存某些层的特征图，请指定该目录。需要注意的是，网络层的输出是经过激活函数之后的值.</li>
+<li>类型: string (默认: &#8220;&#8221;, null).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--average_test_period</span></code><ul>
+<li>使用<code class="docutils literal"><span class="pre">average_test_period</span></code>个批次的参数平均值进行测试。该参数必须能被FLAGS_log_period整除，默认为0，意思是不使用平均参数执行测试.</li>
+<li>类型: int32 (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--distribute_test</span></code><ul>
+<li>在分布式环境中测试，将多台机器的测试结果合并.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--predict_file</span></code><ul>
+<li>保存预测结果的文件名。该参数默认为null，意思是不保存结果。目前该参数仅用于AucValidationLayer和PnpairValidationLayer层，每轮都会保存预测结果.</li>
+<li>类型: string (默认: &#8220;&#8221;, null).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="gpu">
+<span id="gpu"></span><h2>GPU<a class="headerlink" href="#gpu" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--gpu_id</span></code><ul>
+<li>指示使用哪个GPU核.</li>
+<li>类型: int32 (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--allow_only_one_model_on_one_gpu</span></code><ul>
+<li>如果为true，一个GPU设备上不允许配置多个模型.</li>
+<li>类型: bool (默认: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--parallel_nn</span></code><ul>
+<li>指示是否使用多线程来计算一个神经网络。如果为false，设置gpu_id指定使用哪个GPU核（训练配置中的设备属性将会无效）。如果为true，GPU核在训练配置中指定（gpu_id无效）.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--cudnn_dir</span></code><ul>
+<li>选择路径来动态加载NVIDIA CuDNN库，例如，/usr/local/cuda/lib64. [默认]: LD_LIBRARY_PATH</li>
+<li>类型: string (默认: &#8220;&#8221;, null)</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--cuda_dir</span></code><ul>
+<li>选择路径来动态加载NVIDIA CUDA库，例如，/usr/local/cuda/lib64. [默认]: LD_LIBRARY_PATH</li>
+<li>类型: string (默认: &#8220;&#8221;, null)</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--cudnn_conv_workspace_limit_in_mb</span></code><ul>
+<li>指定cuDNN的最大工作空间容限，单位是MB，默认为4096MB=4GB.</li>
+<li>类型: int32 (默认: 4096MB=4GB)</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="nlp-rnn-lstm-gru">
+<span id="nlp-rnn-lstm-gru"></span><h2>自然语言处理(NLP): RNN/LSTM/GRU<a class="headerlink" href="#nlp-rnn-lstm-gru" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--rnn_use_batch</span></code><ul>
+<li>指示在简单的RecurrentLayer层的计算中是否使用批处理方法.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--prev_batch_state</span></code><ul>
+<li>标识是否为连续的batch计算.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--beam_size</span></code><ul>
+<li>集束搜索使用广度优先搜索的方式构建查找树。在树的每一层上，都会产生当前层状态的所有继承结果，按启发式损失的大小递增排序。然而，每层上只能保存固定数目个最好的状态，该数目是提前定义好的，称之为集束大小.</li>
+<li>类型: int32 (默认: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--diy_beam_search_prob_so</span></code>
+&nbsp;- 用户可以自定义beam search的方法，编译成动态库，供PaddlePaddle加载。 该参数用于指定动态库路径.<ul>
+<li>类型: string (默认: &#8220;&#8221;, null).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="dataprovider">
+<span id="dataprovider"></span><h2>数据支持(DataProvider)<a class="headerlink" href="#dataprovider" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--memory_threshold_on_load_data</span></code><ul>
+<li>内存容限阈值，当超过该阈值时，停止加载数据.</li>
+<li>类型: double (默认: 1.0).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h2>单元测试<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--checkgrad_eps</span></code><ul>
+<li>使用checkgrad模式时的参数变化大小.</li>
+<li>类型: double (默认: 1e-05).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id6"></span><h2>参数服务器和分布式通信<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--start_pserver</span></code><ul>
+<li>指示是否开启参数服务器(parameter server).</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--pservers</span></code><ul>
+<li>参数服务器的IP地址，以逗号间隔.</li>
+<li>类型: string (默认: &#8220;127.0.0.1&#8221;).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--port</span></code><ul>
+<li>参数服务器的监听端口.</li>
+<li>类型: int32 (默认: 20134).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--ports_num</span></code><ul>
+<li>发送参数的端口号，根据默认端口号递增.</li>
+<li>类型: int32 (默认: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--trainer_id</span></code>
+&nbsp;- 在分布式训练中，每个训练节点必须指定一个唯一的id号，从0到num_trainers-1。0号训练节点是主训练节点。使用者无需关心这个参数.<ul>
+<li>类型: int32 (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--num_gradient_servers</span></code><ul>
+<li>梯度服务器的数量，该参数在集群提交环境中自动设置.</li>
+<li>类型: int32 (默认: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--small_messages</span></code><ul>
+<li>如果消息数据太小，建议将该参数设为true，启动快速应答，无延迟.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--sock_send_buf_size</span></code><ul>
+<li>限制套接字发送缓冲区的大小。如果仔细设置的话，可以有效减小网络的阻塞.</li>
+<li>类型: int32 (默认: 1024 * 1024 * 40).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--sock_recv_buf_size</span></code><ul>
+<li>限制套接字接收缓冲区的大小.</li>
+<li>类型: int32 (默认: 1024 * 1024 * 40).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--parameter_block_size</span></code><ul>
+<li>参数服务器的参数分块大小。如果未设置，将会自动计算出一个合适的值.</li>
+<li>类型: int32 (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--parameter_block_size_for_sparse</span></code><ul>
+<li>参数服务器稀疏更新的参数分块大小。如果未设置，将会自动计算出一个合适的值.</li>
+<li>类型: int32 (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--log_period_server</span></code><ul>
+<li>在参数服务器终端每log_period_server个批次打印日志进度.</li>
+<li>类型: int32 (默认: 500).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--loadsave_parameters_in_pserver</span></code><ul>
+<li>在参数服务器上加载和保存参数，只有当设置了sparse_remote_update参数时才有效.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--pserver_num_threads</span></code><ul>
+<li>同步执行操作的线程数.</li>
+<li>类型: bool (默认: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--ports_num_for_sparse</span></code><ul>
+<li>发送参数的端口号，根据默认值递增(port + ports_num)，用于稀疏训练中.</li>
+<li>类型: int32 (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--nics</span></code><ul>
+<li>参数服务器的网络设备名称，已经在集群提交环境中完成设置.</li>
+<li>类型: string (默认: &#8220;xgbe0,xgbe1&#8221;).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--rdma_tcp</span></code><ul>
+<li>使用rdma还是tcp传输协议，该参数已经在集群提交环境中完成设置.</li>
+<li>类型: string (默认: &#8220;tcp&#8221;).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="async-sgd">
+<span id="async-sgd"></span><h2>异步随机梯度下降(Async SGD)<a class="headerlink" href="#async-sgd" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--async_count</span></code><ul>
+<li>定义异步训练的长度，如果为0，则使用同步训练.</li>
+<li>类型: int32 (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--async_lagged_ratio_min</span></code><ul>
+<li>控制<code class="docutils literal"><span class="pre">config_.async_lagged_grad_discard_ratio()</span></code>的最小值.</li>
+<li>类型: double (默认: 1.0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--async_lagged_ratio_default</span></code><ul>
+<li>如果在网络配置中未设置async_lagged_grad_discard_ratio，则使用该参数作为默认值.</li>
+<li>类型: double (默认: 1.5).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="performance-tuning">
+<span id="performance-tuning"></span><h2>性能调优(Performance Tuning)<a class="headerlink" href="#performance-tuning" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--log_barrier_abstract</span></code><ul>
+<li>如果为true，则显示阻隔性能的摘要信息.</li>
+<li>类型: bool (默认: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--log_barrier_show_log</span></code><ul>
+<li>如果为true，则总会显示阻隔摘要信息，即使间隔很小.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--log_barrier_lowest_nodes</span></code><ul>
+<li>最少显示多少个节点.</li>
+<li>类型: int32 (默认: 5).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--check_sparse_distribution_in_pserver</span></code><ul>
+<li>指示是否检查所有参数服务器上的稀疏参数的分布是均匀的.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--show_check_sparse_distribution_log</span></code><ul>
+<li>指示是否显示参数服务器上的稀疏参数分布的日志细节.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--check_sparse_distribution_batches</span></code><ul>
+<li>每运行多少个批次执行一次稀疏参数分布的检查.</li>
+<li>类型: int32 (默认: 100).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--check_sparse_distribution_ratio</span></code><ul>
+<li>如果检查到分配在不同参数服务器上的参数的分布不均匀次数大于check_sparse_distribution_ratio *  check_sparse_distribution_batches次，程序停止.</li>
+<li>类型: double (默认: 0.6).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--check_sparse_distribution_unbalance_degree</span></code><ul>
+<li>不同参数服务器上数据大小的最大值与最小值的比率.</li>
+<li>类型: double (默认: 2).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id7"></span><h2>矩阵/向量/随机数<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--enable_parallel_vector</span></code><ul>
+<li>启动并行向量的阈值.</li>
+<li>类型: int32 (默认: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--seed</span></code><ul>
+<li>随机数的种子。srand(time)的为0.</li>
+<li>类型: int32 (默认: 1)</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--thread_local_rand_use_global_seed</span></code><ul>
+<li>是否将全局种子应用于本地线程的随机数.</li>
+<li>类型: bool (默认: 0).</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../cluster/cluster_train_cn.html" class="btn btn-neutral float-right" title="运行分布式训练" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="arguments_cn.html" class="btn btn-neutral" title="参数概述" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

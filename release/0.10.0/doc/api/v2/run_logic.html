@@ -1,0 +1,599 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Training and Inference &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/>
+        <link rel="up" title="API" href="../index_en.html"/>
+        <link rel="next" title="ABOUT" href="../../about/index_en.html"/>
+        <link rel="prev" title="Data Reader Interface and DataSets" href="data.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">API</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../index_en.html">API</a> > </li>
+      
+    <li>Training and Inference</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="training-and-inference">
+<h1>Training and Inference<a class="headerlink" href="#training-and-inference" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.parameters.</code><code class="descname">Parameters</code></dt>
+<dd><p>Parameters is a dictionary contains Paddle&#8217;s parameter. The key of
+Parameters is the name of parameter. The value of Parameters is a plain
+<code class="code docutils literal"><span class="pre">numpy.ndarry</span></code> .</p>
+<p>Basically usage is</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">data</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="o">...</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">fc</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+
+<span class="n">parameters</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+
+<span class="n">parameter_names</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">names</span><span class="p">()</span>
+<span class="n">fc_mat</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;fc&#39;</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">fc_mat</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt>
+<code class="descname">keys</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>keys are the names of each parameter.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">list of parameter name</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">names</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>names of each parameter.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">list of parameter name</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">has_key</code><span class="sig-paren">(</span><em>key</em><span class="sig-paren">)</span></dt>
+<dd><p>has_key return true if there are such parameter name == key</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>key</strong> (<em>basestring</em>) &#8211; Parameter name</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">True if contains such key</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">get_shape</code><span class="sig-paren">(</span><em>key</em><span class="sig-paren">)</span></dt>
+<dd><p>get shape of the parameter.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>key</strong> (<em>basestring</em>) &#8211; parameter name</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">parameter&#8217;s shape</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">tuple</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">get</code><span class="sig-paren">(</span><em>parameter_name</em><span class="sig-paren">)</span></dt>
+<dd><p>Get parameter by parameter name.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Note:</th><td class="field-body">It will always copy the parameter from C++ side.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><strong>parameter_name</strong> (<em>basestring</em>) &#8211; parameter name</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">The parameter matrix.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">np.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">set</code><span class="sig-paren">(</span><em>parameter_name</em>, <em>value</em><span class="sig-paren">)</span></dt>
+<dd><p>Set parameter by parameter name &amp; matrix.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>parameter_name</strong> (<em>basestring</em>) &#8211; parameter name</li>
+<li><strong>value</strong> (<em>np.ndarray</em>) &#8211; parameter matrix</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Nothing.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">append_gradient_machine</code><span class="sig-paren">(</span><em>gradient_machine</em><span class="sig-paren">)</span></dt>
+<dd><p>append gradient machine to parameters. This method is used internally in
+Trainer.train.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>gradient_machine</strong> (<em>api.GradientMachine</em>) &#8211; Paddle C++ GradientMachine object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">serialize</code><span class="sig-paren">(</span><em>name</em>, <em>f</em><span class="sig-paren">)</span></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> &#8211; </li>
+<li><strong>f</strong> (<em>file</em>) &#8211; </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">deserialize</code><span class="sig-paren">(</span><em>name</em>, <em>f</em><span class="sig-paren">)</span></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> &#8211; </li>
+<li><strong>f</strong> (<em>file</em>) &#8211; </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="trainer">
+<h2>Trainer<a class="headerlink" href="#trainer" title="Permalink to this headline">¶</a></h2>
+<p>Module Trainer</p>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.trainer.</code><code class="descname">SGD</code><span class="sig-paren">(</span><em>cost</em>, <em>parameters</em>, <em>update_equation</em>, <em>extra_layers=None</em><span class="sig-paren">)</span></dt>
+<dd><p>Simple SGD Trainer.
+SGD Trainer combines data reader, network topolopy and update_equation together
+to train/test a neural network.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>update_equation</strong> (<em>paddle.v2.optimizer.Optimizer</em>) &#8211; The optimizer object.</li>
+<li><strong>cost</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Target cost that neural network should be optimized.</li>
+<li><strong>parameters</strong> (<em>paddle.v2.parameters.Parameters</em>) &#8211; The parameters dictionary.</li>
+<li><strong>extra_layers</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Some layers in the neural network graph are not
+in the path of cost layer.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt>
+<code class="descname">train</code><span class="sig-paren">(</span><em>reader</em>, <em>num_passes=1</em>, <em>event_handler=None</em>, <em>feeding=None</em><span class="sig-paren">)</span></dt>
+<dd><p>Training method. Will train num_passes of input data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>reader</strong> (<em>collections.Iterable</em>) &#8211; A reader that reads and yeilds data items. Usually we use a
+batched reader to do mini-batch training.</li>
+<li><strong>num_passes</strong> &#8211; The total train passes.</li>
+<li><strong>event_handler</strong> (<em>(</em><em>BaseEvent</em><em>) </em><em>=&gt; None</em>) &#8211; Event handler. A method will be invoked when event
+occurred.</li>
+<li><strong>feeding</strong> (<em>dict|list</em>) &#8211; Feeding is a map of neural network input name and array
+index that reader returns.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">test</code><span class="sig-paren">(</span><em>reader</em>, <em>feeding=None</em><span class="sig-paren">)</span></dt>
+<dd><p>Testing method. Will test input data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>reader</strong> (<em>collections.Iterable</em>) &#8211; A reader that reads and yeilds data items.</li>
+<li><strong>feeding</strong> (<em>dict</em>) &#8211; Feeding is a map of neural network input name and array
+index that reader returns.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="event">
+<h2>Event<a class="headerlink" href="#event" title="Permalink to this headline">¶</a></h2>
+<p>Testing and training events.</p>
+<p>There are:</p>
+<ul class="simple">
+<li>TestResult</li>
+<li>BeginIteration</li>
+<li>EndIteration</li>
+<li>BeginPass</li>
+<li>EndPass</li>
+</ul>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.event.</code><code class="descname">TestResult</code><span class="sig-paren">(</span><em>evaluator</em>, <em>cost</em><span class="sig-paren">)</span></dt>
+<dd><p>Result that trainer.test return.</p>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.event.</code><code class="descname">BeginPass</code><span class="sig-paren">(</span><em>pass_id</em><span class="sig-paren">)</span></dt>
+<dd><p>Event On One Pass Training Start.</p>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.event.</code><code class="descname">EndPass</code><span class="sig-paren">(</span><em>pass_id</em>, <em>evaluator</em><span class="sig-paren">)</span></dt>
+<dd><p>Event On One Pass Training Complete.</p>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.event.</code><code class="descname">BeginIteration</code><span class="sig-paren">(</span><em>pass_id</em>, <em>batch_id</em><span class="sig-paren">)</span></dt>
+<dd><p>Event On One Batch Training Start.</p>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.event.</code><code class="descname">EndIteration</code><span class="sig-paren">(</span><em>pass_id</em>, <em>batch_id</em>, <em>cost</em>, <em>evaluator</em><span class="sig-paren">)</span></dt>
+<dd><p>Event On One Batch Training Complete.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="inference">
+<h2>Inference<a class="headerlink" href="#inference" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.</code><code class="descname">infer</code><span class="sig-paren">(</span><em>output_layer</em>, <em>parameters</em>, <em>input</em>, <em>feeding=None</em>, <em>field='value'</em><span class="sig-paren">)</span></dt>
+<dd><p>Infer a neural network by given neural network output and parameters.  The
+user should pass either a batch of input data or reader method.</p>
+<p>Example usages:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="n">SomeData</span><span class="p">,</span>
+                      <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">result</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>output_layer</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; output of the neural network that would be inferred</li>
+<li><strong>parameters</strong> (<em>paddle.v2.parameters.Parameters</em>) &#8211; parameters of the neural network.</li>
+<li><strong>input</strong> (<em>collections.Iterable</em>) &#8211; input data batch. Should be a python iterable object, and each
+element is the data batch.</li>
+<li><strong>feeding</strong> &#8211; Reader dictionary. Default could generate from input
+value.</li>
+<li><strong>field</strong> (<em>str</em>) &#8211; The prediction field. It should in [<cite>value</cite>, <cite>id</cite>, <cite>prob</cite>].
+<cite>value</cite> and <cite>prob</cite> mean return the prediction probabilities,
+<cite>id</cite> means return the prediction labels. Default is <cite>value</cite>.
+Note that <cite>prob</cite> only used when output_layer is beam_search
+or max_id.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">a numpy array</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">numpy.ndarray</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../../about/index_en.html" class="btn btn-neutral float-right" title="ABOUT" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="data.html" class="btn btn-neutral" title="Data Reader Interface and DataSets" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

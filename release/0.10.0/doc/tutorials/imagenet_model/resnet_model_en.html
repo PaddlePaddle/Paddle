@@ -1,0 +1,492 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Model Zoo - ImageNet &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_en.html">HOW TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Model Zoo - ImageNet</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="model-zoo-imagenet">
+<span id="model-zoo-imagenet"></span><h1>Model Zoo - ImageNet<a class="headerlink" href="#model-zoo-imagenet" title="Permalink to this headline">¶</a></h1>
+<p><a class="reference external" href="http://www.image-net.org/">ImageNet</a> is a popular dataset for generic object classification. This tutorial provides convolutional neural network(CNN) models for ImageNet.</p>
+<div class="section" id="resnet-introduction">
+<span id="resnet-introduction"></span><h2>ResNet Introduction<a class="headerlink" href="#resnet-introduction" title="Permalink to this headline">¶</a></h2>
+<p>ResNets from paper <a class="reference external" href="http://arxiv.org/abs/1512.03385">Deep Residual Learning for Image Recognition</a> won the 1st place on the ILSVRC 2015 classification task. They present residual learning framework to ease the training of networks that are substantially deeper than those used previously. The residual connections are shown in following figure. The left building block is used in network of 34 layers and the right bottleneck building block is used in network of 50, 101, 152 layers .</p>
+<p><center><img alt="resnet_block" src="../../_images/resnet_block.jpg" /></center>
+<center>Figure 1. ResNet Block</center></p>
+<p>We present three ResNet models, which are converted from the models provided by the authors <a class="reference external" href="https://github.com/KaimingHe/deep-residual-networks">https://github.com/KaimingHe/deep-residual-networks</a>.  The classfication errors tested in PaddlePaddle on 50,000 ILSVRC validation set with input images channel order of <strong>BGR</strong> by single scale with the shorter side of 256 and single crop as following table.
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border">
+<colgroup>
+<col  class="left" />
+<col  class="left" />
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">ResNet</th>
+<th scope="col" class="left">Top-1</th>
+<th scope="col" class="left">Model Size</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">ResNet-50</td>
+<td class="left">24.9%</td>
+<td class="left">99M</td>
+</tr>
+<tr>
+<td class="left">ResNet-101</td>
+<td class="left">23.7%</td>
+<td class="left">173M</td>
+</tr>
+<tr>
+<td class="left">ResNet-152</td>
+<td class="left">23.2%</td>
+<td class="left">234M</td>
+</tr>
+</tbody></table></center>
+<br></div>
+<div class="section" id="resnet-model">
+<span id="resnet-model"></span><h2>ResNet Model<a class="headerlink" href="#resnet-model" title="Permalink to this headline">¶</a></h2>
+<p>See <code class="docutils literal"><span class="pre">demo/model_zoo/resnet/resnet.py</span></code>. This config contains network of 50, 101 and 152 layers. You can specify layer number by adding argument like <code class="docutils literal"><span class="pre">--config_args=layer_num=50</span></code> in command line arguments.</p>
+<div class="section" id="network-visualization">
+<span id="network-visualization"></span><h3>Network Visualization<a class="headerlink" href="#network-visualization" title="Permalink to this headline">¶</a></h3>
+<p>You can get a diagram of ResNet network by running the following commands. The script generates dot file and then converts dot file to PNG file, which needs to install graphviz to convert.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">model_zoo</span><span class="o">/</span><span class="n">resnet</span>
+<span class="o">./</span><span class="n">net_diagram</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="model-download">
+<span id="model-download"></span><h3>Model Download<a class="headerlink" href="#model-download" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">model_zoo</span><span class="o">/</span><span class="n">resnet</span>
+<span class="o">./</span><span class="n">get_model</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>You can run above command to download all models and mean file and save them in <code class="docutils literal"><span class="pre">demo/model_zoo/resnet/model</span></code> if downloading successfully.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">mean_meta_224</span>  <span class="n">resnet_101</span>  <span class="n">resnet_152</span>  <span class="n">resnet_50</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>resnet_50: model of 50 layers.</li>
+<li>resnet_101: model of 101 layers.</li>
+<li>resnet_152: model of 152 layers.</li>
+<li>mean_meta_224: mean file with 3 x 224 x 224 size in <strong>BGR</strong> order. You also can use three mean values: 103.939, 116.779, 123.68.</li>
+</ul>
+</div>
+<div class="section" id="parameter-info">
+<span id="parameter-info"></span><h3>Parameter Info<a class="headerlink" href="#parameter-info" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p class="first"><strong>Convolution Layer Weight</strong></p>
+<p>As batch normalization layer is connected after each convolution layer, there is no parameter of bias and only one weight in this layer.
+shape: <code class="docutils literal"><span class="pre">(Co,</span> <span class="pre">ky,</span> <span class="pre">kx,</span> <span class="pre">Ci)</span></code></p>
+<ul class="simple">
+<li>Co: channle number of output feature map.</li>
+<li>ky: filter size in vertical direction.</li>
+<li>kx: filter size in horizontal direction.</li>
+<li>Ci: channle number of input feature map.</li>
+</ul>
+<p>2-Dim matrix: (Co * ky * kx, Ci), saved in row-major order.</p>
+</li>
+<li><p class="first"><strong>Fully connected Layer Weight</strong></p>
+<p>2-Dim matrix: (input layer size, this layer size), saved in row-major order.</p>
+</li>
+<li><p class="first"><strong><a class="reference external" href="http://arxiv.org/abs/1502.03167">Batch Normalization</a> Layer Weight</strong></p>
+</li>
+</ul>
+<p>There are four parameters in this layer. In fact, only .w0 and .wbias are the learned parameters. The other two are therunning mean and variance respectively. They will be loaded in testing. Following table shows parameters of a batch normzalization layer.
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border">
+<colgroup>
+<col  class="left" />
+<col  class="left" />
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">Parameter Name</th>
+<th scope="col" class="left">Number</th>
+<th scope="col" class="left">Meaning</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">_res2_1_branch1_bn.w0</td>
+<td class="left">256</td>
+<td class="left">gamma, scale parameter</td>
+</tr>
+<tr>
+<td class="left">_res2_1_branch1_bn.w1</td>
+<td class="left">256</td>
+<td class="left">mean value of feature map</td>
+</tr>
+<tr>
+<td class="left">_res2_1_branch1_bn.w2</td>
+<td class="left">256</td>
+<td class="left">variance of feature map</td>
+</tr>
+<tr>
+<td class="left">_res2_1_branch1_bn.wbias</td>
+<td class="left">256</td>
+<td class="left">beta, shift parameter</td>
+</tr>
+</tbody></table></center>
+<br></div>
+<div class="section" id="parameter-observation">
+<span id="parameter-observation"></span><h3>Parameter Observation<a class="headerlink" href="#parameter-observation" title="Permalink to this headline">¶</a></h3>
+<p>Users who want to observe the parameters can use Python to read:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">file_name</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span> <span class="c1"># skip header for float type.</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span><span class="o">==</span><span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">weight</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>or simply use following shell command:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">od</span> <span class="o">-</span><span class="n">j</span> <span class="mi">16</span> <span class="o">-</span><span class="n">f</span> <span class="n">_res2_1_branch1_bn</span><span class="o">.</span><span class="n">w0</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="feature-extraction">
+<span id="feature-extraction"></span><h2>Feature Extraction<a class="headerlink" href="#feature-extraction" title="Permalink to this headline">¶</a></h2>
+<p>We provide both C++ and Python interfaces to extract features. The following examples use data in <code class="docutils literal"><span class="pre">demo/model_zoo/resnet/example</span></code> to show the extracting process in detail.</p>
+<div class="section" id="c-interface">
+<span id="c-interface"></span><h3>C++ Interface<a class="headerlink" href="#c-interface" title="Permalink to this headline">¶</a></h3>
+<p>First, specify image data list in <code class="docutils literal"><span class="pre">define_py_data_sources2</span></code> in the config, see example <code class="docutils literal"><span class="pre">demo/model_zoo/resnet/resnet.py</span></code>.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>    <span class="n">train_list</span> <span class="o">=</span> <span class="s1">&#39;train.list&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_test</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="c1"># mean.meta is mean file of ImageNet dataset.</span>
+    <span class="c1"># mean.meta size : 3 x 224 x 224.</span>
+    <span class="c1"># If you use three mean value, set like:</span>
+    <span class="c1"># &quot;mean_value:103.939,116.779,123.68;&quot;</span>
+    <span class="n">args</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;mean_meta&#39;</span><span class="p">:</span> <span class="s2">&quot;model/mean_meta_224/mean.meta&quot;</span><span class="p">,</span>
+        <span class="s1">&#39;image_size&#39;</span><span class="p">:</span> <span class="mi">224</span><span class="p">,</span> <span class="s1">&#39;crop_size&#39;</span><span class="p">:</span> <span class="mi">224</span><span class="p">,</span>
+        <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span><span class="s1">&#39;swap_channel:&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]}</span>
+    <span class="n">define_py_data_sources2</span><span class="p">(</span><span class="n">train_list</span><span class="p">,</span>
+                           <span class="s1">&#39;example/test.list&#39;</span><span class="p">,</span>
+                           <span class="n">module</span><span class="o">=</span><span class="s2">&quot;example.image_list_provider&quot;</span><span class="p">,</span>
+                           <span class="n">obj</span><span class="o">=</span><span class="s2">&quot;processData&quot;</span><span class="p">,</span>
+                           <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Second, specify layers to extract features in <code class="docutils literal"><span class="pre">Outputs()</span></code> of <code class="docutils literal"><span class="pre">resnet.py</span></code>. For example,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Outputs</span><span class="p">(</span><span class="s2">&quot;res5_3_branch2c_conv&quot;</span><span class="p">,</span> <span class="s2">&quot;res5_3_branch2c_bn&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Third, specify model path and output directory in <code class="docutils literal"><span class="pre">extract_fea_c++.sh</span></code>, and then run the following commands.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">model_zoo</span><span class="o">/</span><span class="n">resnet</span>
+<span class="o">./</span><span class="n">extract_fea_c</span><span class="o">++.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>If successful, features are saved in <code class="docutils literal"><span class="pre">fea_output/rank-00000</span></code> as follows. And you can use <code class="docutils literal"><span class="pre">load_feature_c</span></code> interface in <code class="docutils literal"><span class="pre">load_feature.py</span></code> to load such a file.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">-</span><span class="mf">0.115318</span> <span class="o">-</span><span class="mf">0.108358</span> <span class="o">...</span> <span class="o">-</span><span class="mf">0.087884</span><span class="p">;</span><span class="o">-</span><span class="mf">1.27664</span> <span class="o">...</span> <span class="o">-</span><span class="mf">1.11516</span> <span class="o">-</span><span class="mf">2.59123</span><span class="p">;</span>
+<span class="o">-</span><span class="mf">0.126383</span> <span class="o">-</span><span class="mf">0.116248</span> <span class="o">...</span> <span class="o">-</span><span class="mf">0.00534909</span><span class="p">;</span><span class="o">-</span><span class="mf">1.42593</span> <span class="o">...</span> <span class="o">-</span><span class="mf">1.04501</span> <span class="o">-</span><span class="mf">1.40769</span><span class="p">;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>Each line stores features of a sample. Here, the first line stores features of <code class="docutils literal"><span class="pre">example/dog.jpg</span></code> and second line stores features of <code class="docutils literal"><span class="pre">example/cat.jpg</span></code>.</li>
+<li>Features of different layers are splitted by <code class="docutils literal"><span class="pre">;</span></code>, and their order is consistent with the layer order in <code class="docutils literal"><span class="pre">Outputs()</span></code>. Here, the left features are <code class="docutils literal"><span class="pre">res5_3_branch2c_conv</span></code> layer and right features are <code class="docutils literal"><span class="pre">res5_3_branch2c_bn</span></code> layer.</li>
+</ul>
+</div>
+<div class="section" id="python-interface">
+<span id="python-interface"></span><h3>Python Interface<a class="headerlink" href="#python-interface" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">demo/model_zoo/resnet/classify.py</span></code> is an example to show how to use Python to extract features. Following example still uses data of <code class="docutils literal"><span class="pre">./example/test.list</span></code>. Command is as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">model_zoo</span><span class="o">/</span><span class="n">resnet</span>
+<span class="o">./</span><span class="n">extract_fea_py</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>extract_fea_py.sh:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">classify</span><span class="o">.</span><span class="n">py</span> \
+     <span class="o">--</span><span class="n">job</span><span class="o">=</span><span class="n">extract</span> \
+     <span class="o">--</span><span class="n">conf</span><span class="o">=</span><span class="n">resnet</span><span class="o">.</span><span class="n">py</span>\
+     <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span> \
+     <span class="o">--</span><span class="n">mean</span><span class="o">=</span><span class="n">model</span><span class="o">/</span><span class="n">mean_meta_224</span><span class="o">/</span><span class="n">mean</span><span class="o">.</span><span class="n">meta</span> \
+     <span class="o">--</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="o">/</span><span class="n">resnet_50</span> \
+     <span class="o">--</span><span class="n">data</span><span class="o">=./</span><span class="n">example</span><span class="o">/</span><span class="n">test</span><span class="o">.</span><span class="n">list</span> \
+     <span class="o">--</span><span class="n">output_layer</span><span class="o">=</span><span class="s2">&quot;res5_3_branch2c_conv,res5_3_branch2c_bn&quot;</span> \
+     <span class="o">--</span><span class="n">output_dir</span><span class="o">=</span><span class="n">features</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>--job=extract:              specify job mode to extract feature.</li>
+<li>--conf=resnet.py:           network configure.</li>
+<li>--use_gpu=1:             speficy GPU mode.</li>
+<li>--model=model/resnet_5:     model path.</li>
+<li>--data=./example/test.list: data list.</li>
+<li>--output_layer=&#8221;xxx,xxx&#8221;:   specify layers to extract features.</li>
+<li>--output_dir=features:      output diretcoty.</li>
+</ul>
+<p>If run successfully, you will see features saved in <code class="docutils literal"><span class="pre">features/batch_0</span></code>, this file is produced with cPickle. You can use <code class="docutils literal"><span class="pre">load_feature_py</span></code> interface in <code class="docutils literal"><span class="pre">load_feature.py</span></code> to open the file, and it returns a dictionary as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="s1">&#39;cat.jpg&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;res5_3_branch2c_conv&#39;</span><span class="p">:</span> <span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">0.12638293</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.116248</span>  <span class="p">,</span> <span class="o">-</span><span class="mf">0.11883899</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.00895038</span><span class="p">,</span> <span class="mf">0.01994277</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.00534909</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">),</span> <span class="s1">&#39;res5_3_branch2c_bn&#39;</span><span class="p">:</span> <span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">1.42593431</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.28918779</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.32414699</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.45933616</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.04501402</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.40769434</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">)},</span>
+<span class="s1">&#39;dog.jpg&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;res5_3_branch2c_conv&#39;</span><span class="p">:</span> <span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">0.11531784</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.10835785</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.08809858</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span><span class="mf">0.0055237</span><span class="p">,</span> <span class="mf">0.01505112</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.08788397</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">),</span> <span class="s1">&#39;res5_3_branch2c_bn&#39;</span><span class="p">:</span> <span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">1.27663755</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.18272924</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.90937918</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.25178063</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.11515927</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.59122872</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">)}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Observed carefully, these feature values are consistent with the above results extracted by C++ interface.</p>
+</div>
+</div>
+<div class="section" id="prediction">
+<span id="prediction"></span><h2>Prediction<a class="headerlink" href="#prediction" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal"><span class="pre">classify.py</span></code> also can be used to predict. We provide an example script <code class="docutils literal"><span class="pre">predict.sh</span></code> to predict data in <code class="docutils literal"><span class="pre">example/test.list</span></code> using a ResNet model with 50 layers.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">model_zoo</span><span class="o">/</span><span class="n">resnet</span>
+<span class="o">./</span><span class="n">predict</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>predict.sh calls the <code class="docutils literal"><span class="pre">classify.py</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">classify</span><span class="o">.</span><span class="n">py</span> \
+     <span class="o">--</span><span class="n">job</span><span class="o">=</span><span class="n">predict</span> \
+     <span class="o">--</span><span class="n">conf</span><span class="o">=</span><span class="n">resnet</span><span class="o">.</span><span class="n">py</span>\
+     <span class="o">--</span><span class="n">multi_crop</span> \
+     <span class="o">--</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="o">/</span><span class="n">resnet_50</span> \
+     <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span> \
+     <span class="o">--</span><span class="n">data</span><span class="o">=./</span><span class="n">example</span><span class="o">/</span><span class="n">test</span><span class="o">.</span><span class="n">list</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>--job=extract:              speficy job mode to predict.</li>
+<li>--conf=resnet.py:           network configure.</li>
+<li>--multi_crop:               use 10 crops and average predicting probability.</li>
+<li>--use_gpu=1:             speficy GPU mode.</li>
+<li>--model=model/resnet_50:    model path.</li>
+<li>--data=./example/test.list: data list.</li>
+</ul>
+<p>If run successfully, you will see following results, where 156 and 285 are labels of the images.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Label</span> <span class="n">of</span> <span class="n">example</span><span class="o">/</span><span class="n">dog</span><span class="o">.</span><span class="n">jpg</span> <span class="ow">is</span><span class="p">:</span> <span class="mi">156</span>
+<span class="n">Label</span> <span class="n">of</span> <span class="n">example</span><span class="o">/</span><span class="n">cat</span><span class="o">.</span><span class="n">jpg</span> <span class="ow">is</span><span class="p">:</span> <span class="mi">282</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

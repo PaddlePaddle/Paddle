@@ -1,0 +1,411 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>中文词向量模型的使用 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>中文词向量模型的使用</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="">
+<span id="id1"></span><h1>中文词向量模型的使用<a class="headerlink" href="#" title="永久链接至标题">¶</a></h1>
+<hr class="docutils" />
+<p>本文档介绍如何在PaddlePaddle平台上,使用预训练的标准格式词向量模型。</p>
+<p>在此感谢 &#64;lipeng 提出的代码需求，并给出的相关模型格式的定义。</p>
+<div class="section" id="">
+<span id="id2"></span><h2>介绍<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<div class="section" id="">
+<span id="id3"></span><h3>中文字典<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>我们的字典使用内部的分词工具对百度知道和百度百科的语料进行分词后产生。分词风格如下： &#8220;《红楼梦》&#8221;将被分为 &#8220;《&#8221;，&#8221;红楼梦&#8221;，&#8221;》&#8221;，和 &#8220;《红楼梦》&#8221;。字典采用UTF8编码，输出有2列：词本身和词频。字典共包含 3206326个词和4个特殊标记：</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">&lt;s&gt;</span></code>: 分词序列的开始</li>
+<li><code class="docutils literal"><span class="pre">&lt;e&gt;</span></code>: 分词序列的结束</li>
+<li><code class="docutils literal"><span class="pre">PALCEHOLDER_JUST_IGNORE_THE_EMBEDDING</span></code>: 占位符，没有实际意义</li>
+<li><code class="docutils literal"><span class="pre">&lt;unk&gt;</span></code>: 未知词</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h3>中文词向量的预训练模型<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>遵循文章 <a class="reference external" href="http://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf">A Neural Probabilistic Language Model</a>中介绍的方法，模型采用 n-gram 语言模型，结构如下图：6元上下文作为输入层-&gt;全连接层-&gt;softmax层 。对应于字典，我们预训练得到4种不同维度的词向量，分别为：32维、64维、128维和256维。
+<center><img alt="" src="../../_images/neural-n-gram-model.png" /></center>
+<center>Figure 1. neural-n-gram-model</center></p>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h3>下载和数据抽取<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>运行以下的命令下载和获取我们的字典和预训练模型：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/model_zoo/embedding
+./pre_DictAndModel.sh
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id6"></span><h2>中文短语改写的例子<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>以下示范如何使用预训练的中文字典和词向量进行短语改写。</p>
+<div class="section" id="">
+<span id="id7"></span><h3>数据的准备和预处理<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>首先，运行以下的命令下载数据集。该数据集（utf8编码）包含20个训练样例，5个测试样例和2个生成式样例。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/seqToseq/data
+./paraphrase_data.sh
+</pre></div>
+</div>
+<p>第二步，将数据处理成规范格式，在训练数集上训练生成词向量字典（数据将保存在 <code class="docutils literal"><span class="pre">$PADDLE_SOURCE_ROOT/demo/seqToseq/data/pre-paraphrase</span></code>）:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/seqToseq/
+python preprocess.py -i data/paraphrase [--mergeDict]
+</pre></div>
+</div>
+<ul class="simple">
+<li>其中，如果使用<code class="docutils literal"><span class="pre">--mergeDict</span></code>选项，源语言短语和目标语言短语的字典将被合并（源语言和目标语言共享相同的编码字典）。本实例中，源语言和目标语言都是相同的语言，因此可以使用该选项。</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id8"></span><h3>使用用户指定的词向量字典<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>使用如下命令，从预训练模型中，根据用户指定的字典，抽取对应的词向量构成新的词表:
+cd $PADDLE_ROOT/demo/model_zoo/embedding
+python extract_para.py &#8211;preModel PREMODEL &#8211;preDict PREDICT &#8211;usrModel USRMODEL&#8211;usrDict USRDICT -d DIM</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--preModel</span> <span class="pre">PREMODEL</span></code>: 预训练词向量字典模型的路径</li>
+<li><code class="docutils literal"><span class="pre">--preDict</span> <span class="pre">PREDICT</span></code>:  预训练模型使用的字典的路径</li>
+<li><code class="docutils literal"><span class="pre">--usrModel</span> <span class="pre">USRMODEL</span></code>: 抽取出的新词表的保存路径</li>
+<li><code class="docutils literal"><span class="pre">--usrDict</span> <span class="pre">USRDICT</span></code>: 用户指定新的字典的路径，用于构成新的词表</li>
+<li><code class="docutils literal"><span class="pre">-d</span> <span class="pre">DIM</span></code>: 参数（词向量）的维度</li>
+</ul>
+<p>此处，你也可以简单的运行以下的命令：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/seqToseq/data/
+./paraphrase_model.sh
+</pre></div>
+</div>
+<p>运行成功以后，你将会看到以下的模型结构：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paraphrase_model</span>
+<span class="o">|---</span> <span class="n">_source_language_embedding</span>
+<span class="o">|---</span> <span class="n">_target_language_embedding</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="paddlepaddle">
+<span id="paddlepaddle"></span><h3>在PaddlePaddle平台训练模型<a class="headerlink" href="#paddlepaddle" title="永久链接至标题">¶</a></h3>
+<p>首先，配置模型文件，配置如下（可以参考保存在 <code class="docutils literal"><span class="pre">demo/seqToseq/paraphrase/train.conf</span></code>的配置）:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">seqToseq_net</span> <span class="k">import</span> <span class="o">*</span>
+<span class="n">is_generating</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="c1">################## Data Definition #####################</span>
+<span class="n">train_conf</span> <span class="o">=</span> <span class="n">seq_to_seq_data</span><span class="p">(</span><span class="n">data_dir</span> <span class="o">=</span> <span class="s2">&quot;./data/pre-paraphrase&quot;</span><span class="p">,</span>
+                             <span class="n">job_mode</span> <span class="o">=</span> <span class="n">job_mode</span><span class="p">)</span>
+
+<span class="c1">############## Algorithm Configuration ##################</span>
+<span class="n">settings</span><span class="p">(</span>
+      <span class="n">learning_method</span> <span class="o">=</span> <span class="n">AdamOptimizer</span><span class="p">(),</span>
+      <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+      <span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">5e-4</span><span class="p">)</span>
+
+<span class="c1">################# Network configure #####################</span>
+<span class="n">gru_encoder_decoder</span><span class="p">(</span><span class="n">train_conf</span><span class="p">,</span> <span class="n">is_generating</span><span class="p">,</span> <span class="n">word_vector_dim</span> <span class="o">=</span> <span class="mi">32</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>这个配置与<code class="docutils literal"><span class="pre">demo/seqToseq/translation/train.conf</span></code> 基本相同</p>
+<p>然后，使用以下命令进行模型训练:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_SOURCE_ROOT/demo/seqToseq/paraphrase
+./train.sh
+</pre></div>
+</div>
+<p>其中，<code class="docutils literal"><span class="pre">train.sh</span></code> 与<code class="docutils literal"><span class="pre">demo/seqToseq/translation/train.sh</span></code> 基本相同，只有2个配置不一样:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--init_model_path</span></code>: 初始化模型的路径配置为<code class="docutils literal"><span class="pre">data/paraphrase_modeldata/paraphrase_model</span></code></li>
+<li><code class="docutils literal"><span class="pre">--load_missing_parameter_strategy</span></code>：如果参数模型文件缺失，除词向量模型外的参数将使用正态分布随机初始化</li>
+</ul>
+<p>如果用户想要了解详细的数据集的格式、模型的结构和训练过程，请查看 <a class="reference internal" href="../text_generation/index_cn.html"><span class="doc">Text generation Tutorial</span></a>.</p>
+</div>
+</div>
+<div class="section" id="">
+<span id="id9"></span><h2>可选功能<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<div class="section" id="">
+<span id="id10"></span><h3>观测词向量<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>PaddlePaddle 平台为想观测词向量的用户提供了将二进制词向量模型转换为文本模型的功能:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/model_zoo/embedding
+python paraconvert.py --b2t -i INPUT -o OUTPUT -d DIM
+</pre></div>
+</div>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">-i</span> <span class="pre">INPUT</span></code>: 输入的（二进制）词向量模型名称</li>
+<li><code class="docutils literal"><span class="pre">-o</span> <span class="pre">OUTPUT</span></code>: 输出的文本模型名称</li>
+<li><code class="docutils literal"><span class="pre">-d</span> <span class="pre">DIM</span></code>: （词向量）参数维度</li>
+</ul>
+<p>运行完以上命令，用户可以在输出的文本模型中看到:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">0</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">32156096</span>
+<span class="o">-</span><span class="mf">0.7845433</span><span class="p">,</span><span class="mf">1.1937413</span><span class="p">,</span><span class="o">-</span><span class="mf">0.1704215</span><span class="p">,</span><span class="mf">0.4154715</span><span class="p">,</span><span class="mf">0.9566584</span><span class="p">,</span><span class="o">-</span><span class="mf">0.5558153</span><span class="p">,</span><span class="o">-</span><span class="mf">0.2503305</span><span class="p">,</span> <span class="o">......</span>
+<span class="mf">0.0000909</span><span class="p">,</span><span class="mf">0.0009465</span><span class="p">,</span><span class="o">-</span><span class="mf">0.0008813</span><span class="p">,</span><span class="o">-</span><span class="mf">0.0008428</span><span class="p">,</span><span class="mf">0.0007879</span><span class="p">,</span><span class="mf">0.0000183</span><span class="p">,</span><span class="mf">0.0001984</span><span class="p">,</span> <span class="o">......</span>
+<span class="o">......</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>其中，第一行是<code class="docutils literal"><span class="pre">PaddlePaddle</span></code> 输出文件的格式说明，包含3个属性：:<ul>
+<li><code class="docutils literal"><span class="pre">PaddlePaddle</span></code>的版本号，本例中为0</li>
+<li>浮点数占用的字节数，本例中为4</li>
+<li>总计的参数个数，本例中为32,156,096</li>
+</ul>
+</li>
+<li>其余行是（词向量）参数行（假设词向量维度为32）<ul>
+<li>每行打印32个参数以&#8217;,&#8217;分隔</li>
+<li>共有32,156,096/32 = 1,004,877行，也就是说，模型共包含1,004,877个被向量化的词</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id11"></span><h3>词向量模型的修正<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">PaddlePaddle</span></code> 为想修正词向量模型的用户提供了将文本词向量模型转换为二进制模型的命令:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/model_zoo/embedding
+python paraconvert.py --t2b -i INPUT -o OUTPUT
+</pre></div>
+</div>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">-i</span> <span class="pre">INPUT</span></code>: 输入的文本词向量模型名称</li>
+<li><code class="docutils literal"><span class="pre">-o</span> <span class="pre">OUTPUT</span></code>: 输出的二进制词向量模型名称</li>
+</ul>
+<p>请注意，输入的文本格式如下:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">-</span><span class="mf">0.7845433</span><span class="p">,</span><span class="mf">1.1937413</span><span class="p">,</span><span class="o">-</span><span class="mf">0.1704215</span><span class="p">,</span><span class="mf">0.4154715</span><span class="p">,</span><span class="mf">0.9566584</span><span class="p">,</span><span class="o">-</span><span class="mf">0.5558153</span><span class="p">,</span><span class="o">-</span><span class="mf">0.2503305</span><span class="p">,</span> <span class="o">......</span>
+<span class="mf">0.0000909</span><span class="p">,</span><span class="mf">0.0009465</span><span class="p">,</span><span class="o">-</span><span class="mf">0.0008813</span><span class="p">,</span><span class="o">-</span><span class="mf">0.0008428</span><span class="p">,</span><span class="mf">0.0007879</span><span class="p">,</span><span class="mf">0.0000183</span><span class="p">,</span><span class="mf">0.0001984</span><span class="p">,</span> <span class="o">......</span>
+<span class="o">......</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>输入文本中没有头部（格式说明）行</li>
+<li>（输入文本）每行存储一个词，以逗号&#8217;,&#8217;分隔</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

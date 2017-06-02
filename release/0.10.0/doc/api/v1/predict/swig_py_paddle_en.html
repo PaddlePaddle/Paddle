@@ -1,0 +1,313 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Python Prediction &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../howto/index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../howto/index_en.html">HOW TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Python Prediction</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="python-prediction">
+<h1>Python Prediction<a class="headerlink" href="#python-prediction" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle offers a set of clean prediction interfaces for python with the help of
+SWIG. The main steps of predict values in python are:</p>
+<ul class="simple">
+<li>Parse training configurations</li>
+<li>Construct GradientMachine</li>
+<li>Prepare data</li>
+<li>Predict</li>
+</ul>
+<p>Here is a sample python script that shows the typical prediction process for the
+MNIST classification problem. A complete sample code could be found at
+<code class="code docutils literal"><span class="pre">src_root/doc/ui/predict/predict_sample.py</span></code>.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">py_paddle</span> <span class="kn">import</span> <span class="n">swig_paddle</span><span class="p">,</span> <span class="n">DataProviderConverter</span>
+<span class="kn">from</span> <span class="nn">paddle.trainer.PyDataProvider2</span> <span class="kn">import</span> <span class="n">dense_vector</span>
+<span class="kn">from</span> <span class="nn">paddle.trainer.config_parser</span> <span class="kn">import</span> <span class="n">parse_config</span>
+
+    <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.552941</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.211765</span><span class="p">,</span>
+    <span class="mf">0.878431</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.992157</span><span class="p">,</span> <span class="mf">0.701961</span><span class="p">,</span> <span class="mf">0.329412</span><span class="p">,</span> <span class="mf">0.109804</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.698039</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.913725</span><span class="p">,</span> <span class="mf">0.145098</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="mf">0.188235</span><span class="p">,</span> <span class="mf">0.890196</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.745098</span><span class="p">,</span> <span class="mf">0.047059</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.882353</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.568627</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span>
+    <span class="mf">0.933333</span><span class="p">,</span> <span class="mf">0.992157</span><span class="p">,</span> <span class="mf">0.992157</span><span class="p">,</span> <span class="mf">0.992157</span><span class="p">,</span> <span class="mf">0.447059</span><span class="p">,</span> <span class="mf">0.294118</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.447059</span><span class="p">,</span> <span class="mf">0.992157</span><span class="p">,</span> <span class="mf">0.768627</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="mf">0.623529</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.992157</span><span class="p">,</span> <span class="mf">0.47451</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.188235</span><span class="p">,</span> <span class="mf">0.933333</span><span class="p">,</span> <span class="mf">0.87451</span><span class="p">,</span> <span class="mf">0.509804</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.992157</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.937255</span><span class="p">,</span> <span class="mf">0.792157</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.894118</span><span class="p">,</span>
+    <span class="mf">0.082353</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.027451</span><span class="p">,</span> <span class="mf">0.647059</span><span class="p">,</span> <span class="mf">0.992157</span><span class="p">,</span> <span class="mf">0.654902</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.623529</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.913725</span><span class="p">,</span> <span class="mf">0.329412</span><span class="p">,</span> <span class="mf">0.376471</span><span class="p">,</span>
+    <span class="mf">0.184314</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.027451</span><span class="p">,</span> <span class="mf">0.513725</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.635294</span><span class="p">,</span>
+    <span class="mf">0.219608</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.196078</span><span class="p">,</span> <span class="mf">0.929412</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span>
+    <span class="mf">0.988235</span><span class="p">,</span> <span class="mf">0.741176</span><span class="p">,</span> <span class="mf">0.309804</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.529412</span><span class="p">,</span> <span class="mf">0.988235</span><span class="p">,</span>
+</pre></div>
+</div>
+<p>The module that does the most of the job is py_paddle.swig_paddle, it&#8217;s
+generated by SWIG and has complete documents, for more details you can use
+python&#8217;s <code class="code docutils literal"><span class="pre">help()</span></code> function. Let&#8217;s walk through the above python script:</p>
+<ul class="simple">
+<li>At the beginning, use <code class="code docutils literal"><span class="pre">swig_paddle.initPaddle()</span></code> to initialize
+PaddlePaddle with command line arguments, for more about command line arguments
+see <a class="reference internal" href="../../../howto/usage/cmd_parameter/detail_introduction_en.html#cmd-detail-introduction"><span class="std std-ref">Detail Description</span></a> .</li>
+<li>Parse the configuration file that is used in training with <code class="code docutils literal"><span class="pre">parse_config()</span></code>.
+Because data to predict with always have no label, and output of prediction work
+normally is the output layer rather than the cost layer, so you should modify
+the configuration file accordingly before using it in the prediction work.</li>
+<li>Create a neural network with
+<code class="code docutils literal"><span class="pre">swig_paddle.GradientMachine.createFromConfigproto()</span></code>, which takes the
+parsed configuration <code class="code docutils literal"><span class="pre">conf.model_config</span></code> as argument. Then load the
+trained parameters from the model with <code class="code docutils literal"><span class="pre">network.loadParameters()</span></code>.</li>
+<li><dl class="first docutils">
+<dt>Create a data converter object of utility class <code class="code docutils literal"><span class="pre">DataProviderConverter</span></code>.</dt>
+<dd><ul class="first last">
+<li>Note: As swig_paddle can only accept C++ matrices, we offer a utility
+class DataProviderConverter that can accept the same input data with
+PyDataProvider2, for more information please refer to document
+of <a class="reference internal" href="../data_provider/pydataprovider2_en.html#api-pydataprovider2"><span class="std std-ref">PyDataProvider2</span></a> .</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li>Do the prediction with <code class="code docutils literal"><span class="pre">forwardTest()</span></code>, which takes the converted
+input data and outputs the activations of the output layer.</li>
+</ul>
+<p>Here is a typical output:</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>[{&#39;id&#39;: None, &#39;value&#39;: array([[  5.53018653e-09,   1.12194102e-05,   1.96644767e-09,
+      1.43630644e-02,   1.51111044e-13,   9.85625684e-01,
+      2.08823112e-10,   2.32777140e-08,   2.00186201e-09,
+      1.15501715e-08],
+   [  9.99982715e-01,   1.27787406e-10,   1.72296313e-05,
+      1.49316648e-09,   1.36540484e-11,   6.93137714e-10,
+      2.70634608e-08,   3.48565123e-08,   5.25639710e-09,
+      4.48684503e-08]], dtype=float32)}]
+</pre></div>
+</div>
+<p><code class="code docutils literal"><span class="pre">value</span></code> is the output of the output layer, each row represents result of
+the corresponding row in the input data, each element represents activation of
+the corresponding neuron in the output layer.</p>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

@@ -1,0 +1,384 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Run Distributed Training &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html"/>
+        <link rel="up" title="HOW TO" href="../../index_en.html"/>
+        <link rel="next" title="Paddle On Kubernetes" href="../k8s/k8s_en.html"/>
+        <link rel="prev" title="Detail Description" href="../cmd_parameter/detail_introduction_en.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">HOW TO</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../../index_en.html">HOW TO</a> > </li>
+      
+    <li>Run Distributed Training</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="run-distributed-training">
+<span id="run-distributed-training"></span><h1>Run Distributed Training<a class="headerlink" href="#run-distributed-training" title="Permalink to this headline">¶</a></h1>
+<p>In this article, we explain how to run distributed Paddle training jobs on clusters.  We will create the distributed version of the single-process training example, <a class="reference external" href="https://github.com/baidu/Paddle/tree/develop/demo/recommendation">recommendation</a>.</p>
+<p><a class="reference external" href="https://github.com/baidu/Paddle/tree/develop/paddle/scripts/cluster_train">Scripts</a> used in this article launch distributed jobs via SSH.  They also work as a reference for users running more sophisticated cluster management systems like MPI and <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/k8s">Kubernetes</a>.</p>
+<div class="section" id="prerequisite">
+<span id="prerequisite"></span><h2>Prerequisite<a class="headerlink" href="#prerequisite" title="Permalink to this headline">¶</a></h2>
+<ol>
+<li><p class="first">Aforementioned scripts use a Python library <a class="reference external" href="http://www.fabfile.org/">fabric</a> to run SSH commands.  We can use <code class="docutils literal"><span class="pre">pip</span></code> to install fabric:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>pip install fabric
+</pre></div>
+</div>
+</li>
+<li><p class="first">We need to install PaddlePaddle on all nodes in the cluster.  To enable GPUs, we need to install CUDA in <code class="docutils literal"><span class="pre">/usr/local/cuda</span></code>; otherwise Paddle would report errors at runtime.</p>
+</li>
+<li><p class="first">Set the <code class="docutils literal"><span class="pre">ROOT_DIR</span></code> variable in [<code class="docutils literal"><span class="pre">cluster_train/conf.py</span></code>] on all nodes.  For convenience, we often create a Unix user <code class="docutils literal"><span class="pre">paddle</span></code> on all nodes and set <code class="docutils literal"><span class="pre">ROOT_DIR=/home/paddle</span></code>.  In this way, we can write public SSH keys into <code class="docutils literal"><span class="pre">/home/paddle/.ssh/authorized_keys</span></code> so that user <code class="docutils literal"><span class="pre">paddle</span></code> can SSH to all nodes without password.</p>
+</li>
+</ol>
+</div>
+<div class="section" id="prepare-job-workspace">
+<span id="prepare-job-workspace"></span><h2>Prepare Job Workspace<a class="headerlink" href="#prepare-job-workspace" title="Permalink to this headline">¶</a></h2>
+<p>We refer to the directory where we put dependent libraries, config files, etc., as <em>workspace</em>.</p>
+<p>These <code class="docutils literal"><span class="pre">train/test</span></code> data should be prepared before launching cluster job. To  satisfy the requirement that train/test data are placed in different directory from workspace, PADDLE refers train/test data according to index file named as <code class="docutils literal"><span class="pre">train.list/test.list</span></code> which are used in model config file. So the train/test data also contains train.list/test.list two list file. All local training demo already provides scripts to help you create these two files,  and all nodes in cluster job will handle files with same logical code in normal condition.</p>
+<p>Generally, you can use same model file from local training for cluster training. What you should have in mind that, the <code class="docutils literal"><span class="pre">batch_size</span></code> set in <code class="docutils literal"><span class="pre">setting</span></code> function in model file means batch size in <code class="docutils literal"><span class="pre">each</span></code> node of cluster job instead of total batch size if synchronization SGD was used.</p>
+<p>Following steps are based on <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/tree/develop/demo/recommendation">demo/recommendation</a> demo in demo directory.</p>
+<p>You just go through demo/recommendation tutorial doc until <code class="docutils literal"><span class="pre">Train</span></code> section, and at last you will get train/test data and model configuration file. Finaly, just use demo/recommendation as workspace for cluster training.</p>
+<p>At last your workspace should look like as follow:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>.
+|-- common_utils.py
+|-- data
+|   |-- config.json
+|   |-- config_generator.py
+|   |-- meta.bin
+|   |-- meta_config.json
+|   |-- meta_generator.py
+|   |-- ml-1m
+|   |-- ml_data.sh
+|   |-- ratings.dat.test
+|   |-- ratings.dat.train
+|   |-- split.py
+|   |-- test.list
+|   `-- train.list
+|-- dataprovider.py
+|-- evaluate.sh
+|-- prediction.py
+|-- preprocess.sh
+|-- requirements.txt
+|-- run.sh
+`-- trainer_config.py
+</pre></div>
+</div>
+<p>Not all of these files are needed for cluster training, but it&#8217;s not necessary to remove useless files.</p>
+<p><code class="docutils literal"><span class="pre">trainer_config.py</span></code>
+Indicates the model config file.</p>
+<p><code class="docutils literal"><span class="pre">train.list</span></code> and <code class="docutils literal"><span class="pre">test.list</span></code>
+File index. It stores all relative or absolute file paths of all train/test data at current node.</p>
+<p><code class="docutils literal"><span class="pre">dataprovider.py</span></code>
+used to read train/test samples. It&#8217;s same as local training.</p>
+<p><code class="docutils literal"><span class="pre">data</span></code>
+all files in data directory are refered by train.list/test.list which are refered by data provider.</p>
+</div>
+<div class="section" id="prepare-cluster-job-configuration">
+<span id="prepare-cluster-job-configuration"></span><h2>Prepare Cluster Job Configuration<a class="headerlink" href="#prepare-cluster-job-configuration" title="Permalink to this headline">¶</a></h2>
+<p>The options below must be carefully set in cluster_train/conf.py</p>
+<p><code class="docutils literal"><span class="pre">HOSTS</span></code>  all nodes hostname or ip that will run cluster job. You can also append user and ssh port with hostname, such as root&#64;192.168.100.17:9090.</p>
+<p><code class="docutils literal"><span class="pre">ROOT_DIR</span></code> workspace ROOT directory for placing JOB workspace directory</p>
+<p><code class="docutils literal"><span class="pre">PADDLE_NIC</span></code> the NIC(Network Interface Card) interface name for cluster communication channel, such as eth0 for ethternet, ib0 for infiniband.</p>
+<p><code class="docutils literal"><span class="pre">PADDLE_PORT</span></code> port number for cluster commnunication channel</p>
+<p><code class="docutils literal"><span class="pre">PADDLE_PORTS_NUM</span></code> the number of port used for cluster communication channle. if the number of cluster nodes is small(less than 5~6nodes), recommend you set it to larger, such as 2 ~ 8, for better network performance.</p>
+<p><code class="docutils literal"><span class="pre">PADDLE_PORTS_NUM_FOR_SPARSE</span></code> the number of port used for sparse updater cluster commnunication channel. if sparse remote update is used, set it like <code class="docutils literal"><span class="pre">PADDLE_PORTS_NUM</span></code></p>
+<p><code class="docutils literal"><span class="pre">LD_LIBRARY_PATH</span></code> set addtional LD_LIBRARY_PATH for cluster job. You can use it to set CUDA libraries path.</p>
+<p>Default Configuration as follow:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">HOSTS</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;root@192.168.100.17&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;root@192.168.100.18&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">workspace configuration</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="c1">#root dir for workspace</span>
+<span class="n">ROOT_DIR</span> <span class="o">=</span> <span class="s2">&quot;/home/paddle&quot;</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">network configuration</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="c1">#pserver nics</span>
+<span class="n">PADDLE_NIC</span> <span class="o">=</span> <span class="s2">&quot;eth0&quot;</span>
+<span class="c1">#pserver port</span>
+<span class="n">PADDLE_PORT</span> <span class="o">=</span> <span class="mi">7164</span>
+<span class="c1">#pserver ports num</span>
+<span class="n">PADDLE_PORTS_NUM</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="c1">#pserver sparse ports num</span>
+<span class="n">PADDLE_PORTS_NUM_FOR_SPARSE</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="c1">#environments setting for all processes in cluster job</span>
+<span class="n">LD_LIBRARY_PATH</span><span class="o">=</span><span class="s2">&quot;/usr/local/cuda/lib64:/usr/lib64&quot;</span>
+</pre></div>
+</div>
+<div class="section" id="launching-cluster-job">
+<span id="launching-cluster-job"></span><h3>Launching Cluster Job<a class="headerlink" href="#launching-cluster-job" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">paddle.py</span></code> provides automatical scripts to start all PaddlePaddle cluster processes in different nodes. By default, all command line options can set as <code class="docutils literal"><span class="pre">paddle.py</span></code> command options and <code class="docutils literal"><span class="pre">paddle.py</span></code> will transparently and automatically set these options to PaddlePaddle lower level processes.</p>
+<p><code class="docutils literal"><span class="pre">paddle.py</span></code>provides two distinguished command option for easy job launching.</p>
+<p><code class="docutils literal"><span class="pre">job_dispatch_package</span></code>  set it with local <code class="docutils literal"><span class="pre">workspace</span></code>directory, it will be dispatched to all nodes set in conf.py. It could be helpful for frequent hacking workspace files, otherwise frequent mulit-nodes workspace deployment could make your crazy.
+<code class="docutils literal"><span class="pre">job_workspace</span></code>  set it with already deployed workspace directory, <code class="docutils literal"><span class="pre">paddle.py</span></code> will skip dispatch stage to directly launch cluster job with all nodes. It could help to reduce heavy
+dispatch latency.</p>
+<p><code class="docutils literal"><span class="pre">cluster_train/run.sh</span></code> provides command line sample to run <code class="docutils literal"><span class="pre">demo/recommendation</span></code> cluster job, just modify <code class="docutils literal"><span class="pre">job_dispatch_package</span></code> and <code class="docutils literal"><span class="pre">job_workspace</span></code> with your defined directory, then:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">sh</span> <span class="n">run</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>The cluster Job will start in several seconds.</p>
+</div>
+<div class="section" id="kill-cluster-job">
+<span id="kill-cluster-job"></span><h3>Kill Cluster Job<a class="headerlink" href="#kill-cluster-job" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">paddle.py</span></code> can capture <code class="docutils literal"><span class="pre">Ctrl</span> <span class="pre">+</span> <span class="pre">C</span></code> SIGINT signal to automatically kill all processes launched by it. So just stop <code class="docutils literal"><span class="pre">paddle.py</span></code> to kill cluster job. You should mannally kill job if program crashed.</p>
+</div>
+<div class="section" id="check-cluster-training-result">
+<span id="check-cluster-training-result"></span><h3>Check Cluster Training Result<a class="headerlink" href="#check-cluster-training-result" title="Permalink to this headline">¶</a></h3>
+<p>Check log in $workspace/log for details, each node owns same log structure.</p>
+<p><code class="docutils literal"><span class="pre">paddle_trainer.INFO</span></code>
+It provides almost all interal output log for training,  same as local training. Check runtime model convergence here.</p>
+<p><code class="docutils literal"><span class="pre">paddle_pserver2.INFO</span></code>
+It provides pserver running log, which could help to diagnose distributed error.</p>
+<p><code class="docutils literal"><span class="pre">server.log</span></code>
+It provides stderr and stdout of pserver process. Check error log if training crashs.</p>
+<p><code class="docutils literal"><span class="pre">train.log</span></code>
+It provides stderr and stdout of trainer process. Check error log if training crashs.</p>
+</div>
+<div class="section" id="check-model-output">
+<span id="check-model-output"></span><h3>Check Model Output<a class="headerlink" href="#check-model-output" title="Permalink to this headline">¶</a></h3>
+<p>After one pass finished, model files will be writed in <code class="docutils literal"><span class="pre">output</span></code> directory in node 0.
+<code class="docutils literal"><span class="pre">nodefile</span></code> in workspace indicates the node id of current cluster job.</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../k8s/k8s_en.html" class="btn btn-neutral float-right" title="Paddle On Kubernetes" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../cmd_parameter/detail_introduction_en.html" class="btn btn-neutral" title="Detail Description" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

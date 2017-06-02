@@ -1,0 +1,443 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Paddle On Kubernetes &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html"/>
+        <link rel="up" title="HOW TO" href="../../index_en.html"/>
+        <link rel="next" title="Distributed PaddlePaddle Training on AWS with Kubernetes" href="k8s_aws_en.html"/>
+        <link rel="prev" title="Run Distributed Training" href="../cluster/cluster_train_en.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">HOW TO</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../../index_en.html">HOW TO</a> > </li>
+      
+    <li>Paddle On Kubernetes</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="paddle-on-kubernetes">
+<span id="paddle-on-kubernetes"></span><h1>Paddle On Kubernetes<a class="headerlink" href="#paddle-on-kubernetes" title="Permalink to this headline">¶</a></h1>
+<blockquote>
+<div>In this article, we will introduce how to run Paddle training job on single CPU machine using Kubernetes. In next article, we will introduce how to run Paddle training job on distributed cluster.</div></blockquote>
+<div class="section" id="build-docker-image">
+<span id="build-docker-image"></span><h2>Build Docker Image<a class="headerlink" href="#build-docker-image" title="Permalink to this headline">¶</a></h2>
+<p>In distributed Kubernetes cluster, we will use Ceph or other shared storage system for storing training related data so that all processes in Paddle training can retrieve data from Ceph. In this example, we will only demo training job on single machine. In order to simplify the requirement of the environment, we will directly put training data into Paddle&#8217;s Docker Image, so we need to create a Paddle Docker image that already includes the training data.</p>
+<p>Paddle&#8217;s <a class="reference external" href="http://www.paddlepaddle.org/doc/demo/quick_start/index_en.html">Quick Start Tutorial</a> introduces how to download and train data by using script from Paddle&#8217;s source code.
+And <code class="docutils literal"><span class="pre">paddledev/paddle:cpu-demo-latest</span></code> image has the Paddle source code and demo. (Caution: Default Paddle image <code class="docutils literal"><span class="pre">paddledev/paddle:cpu-latest</span></code> doesn&#8217;t include the source code, Paddle&#8217;s different versions of image can be referred here: <a class="reference external" href="http://www.paddlepaddle.org/doc/build/docker_install.html">Docker installation guide</a>), so we run this container and download the training data, and then commit the whole container to be a new Docker image.</p>
+<div class="section" id="run-docker-container">
+<span id="run-docker-container"></span><h3>Run Docker Container<a class="headerlink" href="#run-docker-container" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ docker run --name quick_start_data -it paddledev/paddle:cpu-demo-latest
+</pre></div>
+</div>
+</div>
+<div class="section" id="download-training-data">
+<span id="download-training-data"></span><h3>Download Training Data<a class="headerlink" href="#download-training-data" title="Permalink to this headline">¶</a></h3>
+<p>Getting into <code class="docutils literal"><span class="pre">/root/paddle/demo/quick_start/data</span></code> Directory，using <code class="docutils literal"><span class="pre">get_data.sh</span></code> to download training data.
+Then getting into <code class="docutils literal"><span class="pre">/root/paddle/demo/quick_start</span></code> Directory, using <code class="docutils literal"><span class="pre">preprocess.sh</span></code> to pre-process training data.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ root@fbd1f2bb71f4:~/paddle/demo/quick_start/data# ./get_data.sh
+
+Downloading Amazon Electronics reviews data...
+--2016-10-31 01:33:43--  http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Electronics_5.json.gz
+Resolving snap.stanford.edu (snap.stanford.edu)... 171.64.75.80
+Connecting to snap.stanford.edu (snap.stanford.edu)|171.64.75.80|:80... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 495854086 (473M) [application/x-gzip]
+Saving to: &#39;reviews_Electronics_5.json.gz&#39;
+
+ 10% [=======&gt;                                         ] 874,279     64.7KB/s  eta 2h 13m
+</pre></div>
+</div>
+</div>
+<div class="section" id="modify-startup-script">
+<span id="modify-startup-script"></span><h3>Modify Startup Script<a class="headerlink" href="#modify-startup-script" title="Permalink to this headline">¶</a></h3>
+<p>After downloading the data，modify <code class="docutils literal"><span class="pre">/root/paddle/demo/quick_start/train.sh</span></code> file contents are as follows (one more cd cmd):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>set -e
+cd /root/paddle/demo/quick_start
+cfg=trainer_config.lr.py
+#cfg=trainer_config.emb.py
+#cfg=trainer_config.cnn.py
+#cfg=trainer_config.lstm.py
+#cfg=trainer_config.bidi-lstm.py
+#cfg=trainer_config.db-lstm.py
+paddle train \
+  --config=$cfg \
+  --save_dir=./output \
+  --trainer_count=4 \
+  --log_period=20 \
+  --num_passes=15 \
+  --use_gpu=false \
+  --show_parameter_stats_period=100 \
+  --test_all_data_in_one_period=1 \
+  2&gt;&amp;1 | tee &#39;train.log&#39;
+</pre></div>
+</div>
+</div>
+<div class="section" id="commit-docker-image">
+<span id="commit-docker-image"></span><h3>Commit Docker Image<a class="headerlink" href="#commit-docker-image" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ docker commit quick_start_data mypaddle/paddle:quickstart
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="use-kubernetes-for-training">
+<span id="use-kubernetes-for-training"></span><h2>Use Kubernetes For Training<a class="headerlink" href="#use-kubernetes-for-training" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div>We will use Kubernetes job for training process, following steps shows how to do the training with Kubernetes.</div></blockquote>
+<div class="section" id="create-yaml-files">
+<span id="create-yaml-files"></span><h3>Create Yaml Files<a class="headerlink" href="#create-yaml-files" title="Permalink to this headline">¶</a></h3>
+<p>The output result in container will be demolished when job finished (container stopped running), so we need to mount the volume out to the local disk when creating the container to store the training result. Using our previously created image, we can create a <a class="reference external" href="http://kubernetes.io/docs/user-guide/jobs/#what-is-a-job">Kubernetes Job</a>, the yaml contents are as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">apiVersion</span><span class="p">:</span> <span class="n">batch</span><span class="o">/</span><span class="n">v1</span>
+<span class="n">kind</span><span class="p">:</span> <span class="n">Job</span>
+<span class="n">metadata</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span> <span class="n">quickstart</span>
+<span class="n">spec</span><span class="p">:</span>
+  <span class="n">parallelism</span><span class="p">:</span> <span class="mi">1</span>
+  <span class="n">completions</span><span class="p">:</span> <span class="mi">1</span>
+  <span class="n">template</span><span class="p">:</span>
+    <span class="n">metadata</span><span class="p">:</span>
+      <span class="n">name</span><span class="p">:</span> <span class="n">quickstart</span>
+    <span class="n">spec</span><span class="p">:</span>
+      <span class="n">volumes</span><span class="p">:</span>
+      <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">output</span>
+        <span class="n">hostPath</span><span class="p">:</span> 
+          <span class="n">path</span><span class="p">:</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">work</span><span class="o">/</span><span class="n">paddle_output</span>     
+      <span class="n">containers</span><span class="p">:</span>
+      <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">pi</span>
+        <span class="n">image</span><span class="p">:</span> <span class="n">mypaddle</span><span class="o">/</span><span class="n">paddle</span><span class="p">:</span><span class="n">quickstart</span>
+        <span class="n">command</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;bin/bash&quot;</span><span class="p">,</span>  <span class="s2">&quot;-c&quot;</span><span class="p">,</span> <span class="s2">&quot;/root/paddle/demo/quick_start/train.sh&quot;</span><span class="p">]</span>
+        <span class="n">volumeMounts</span><span class="p">:</span>
+        <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">output</span>
+          <span class="n">mountPath</span><span class="p">:</span> <span class="o">/</span><span class="n">root</span><span class="o">/</span><span class="n">paddle</span><span class="o">/</span><span class="n">demo</span><span class="o">/</span><span class="n">quick_start</span><span class="o">/</span><span class="n">output</span>
+      <span class="n">restartPolicy</span><span class="p">:</span> <span class="n">Never</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="start-paddle-job">
+<span id="start-paddle-job"></span><h3>Start Paddle Job<a class="headerlink" href="#start-paddle-job" title="Permalink to this headline">¶</a></h3>
+<p>Using the above yaml file to start the Kubernetes job.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ kubectl  create -f paddle.yaml
+</pre></div>
+</div>
+<p>Get the detailed status of the job:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ kubectl  get job
+NAME         DESIRED   SUCCESSFUL   AGE
+quickstart   1         0            58s
+
+$ kubectl  describe job quickstart
+Name:       quickstart
+Namespace:  default
+Image(s):   registry.baidu.com/public/paddle:cpu-demo-latest
+Selector:   controller-uid=f120da72-9f18-11e6-b363-448a5b355b84
+Parallelism:    1
+Completions:    1
+Start Time: Mon, 31 Oct 2016 11:20:16 +0800
+Labels:     controller-uid=f120da72-9f18-11e6-b363-448a5b355b84,job-name=quickstart
+Pods Statuses:  0 Running / 1 Succeeded / 0 Failed
+Volumes:
+  output:
+    Type:   HostPath (bare host directory volume)
+    Path:   /home/work/paddle_output
+Events:
+  FirstSeen LastSeen    Count   From            SubobjectPath   Type        Reason          Message
+  --------- --------    -----   ----            -------------   --------    ------          -------
+  1m        1m      1   {job-controller }           Normal      SuccessfulCreate    Created pod: quickstart-fa0wx
+</pre></div>
+</div>
+</div>
+<div class="section" id="get-training-result">
+<span id="get-training-result"></span><h3>Get Training Result<a class="headerlink" href="#get-training-result" title="Permalink to this headline">¶</a></h3>
+<p>We can use kubectl command to take a look at the status of related pod.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ kubectl  describe pod quickstart-fa0wx
+Name:       quickstart-fa0wx
+Namespace:  default
+Node:       paddle-demo-let02/10.206.202.44
+Start Time: Mon, 31 Oct 2016 11:20:17 +0800
+Labels:     controller-uid=f120da72-9f18-11e6-b363-448a5b355b84,job-name=quickstart
+Status:     Succeeded
+IP:     10.0.0.9
+Controllers:    Job/quickstart
+Containers:
+  quickstart:
+    Container ID:   docker://b8561f5c79193550d64fa47418a9e67ebdd71546186e840f88de5026b8097465
+    Image:      registry.baidu.com/public/paddle:cpu-demo-latest
+    Image ID:       docker://18e457ce3d362ff5f3febf8e7f85ffec852f70f3b629add10aed84f930a68750
+    Port:
+    Command:
+      bin/bash
+      -c
+      /root/paddle/demo/quick_start/train.sh
+    QoS Tier:
+      cpu:      BestEffort
+      memory:       BestEffort
+    State:      Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Mon, 31 Oct 2016 11:20:20 +0800
+      Finished:     Mon, 31 Oct 2016 11:21:46 +0800
+    Ready:      False
+    Restart Count:  0
+    Environment Variables:
+Conditions:
+  Type      Status
+  Ready     False
+Volumes:
+  output:
+    Type:   HostPath (bare host directory volume)
+    Path:   /home/work/paddle_output
+</pre></div>
+</div>
+<p>We can also ssh to Kubernetes node to take a look at the training result.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">root</span><span class="nd">@paddle</span><span class="o">-</span><span class="n">demo</span><span class="o">-</span><span class="n">let02</span> <span class="n">paddle_output</span><span class="p">]</span><span class="c1"># ll</span>
+<span class="n">total</span> <span class="mi">60</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">20</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00000</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">20</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00001</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">21</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00002</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">21</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00003</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">21</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00004</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">21</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00005</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">21</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00006</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">21</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00007</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">21</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00008</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">21</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00009</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">21</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00010</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">21</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00011</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">21</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00012</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">21</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00013</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span> <span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">21</span> <span class="k">pass</span><span class="o">-</span><span class="mi">00014</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="k8s_aws_en.html" class="btn btn-neutral float-right" title="Distributed PaddlePaddle Training on AWS with Kubernetes" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../cluster/cluster_train_en.html" class="btn btn-neutral" title="Run Distributed Training" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

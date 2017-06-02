@@ -1,0 +1,544 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Kubernetes分布式训练 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../../index.html"/>
+        <link rel="up" title="进阶指南" href="../../index_cn.html"/>
+        <link rel="next" title="如何贡献/修改文档" href="../../dev/write_docs_cn.html"/>
+        <link rel="prev" title="Kubernetes单机训练" href="k8s_cn.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">进阶指南</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../../index_cn.html">进阶指南</a> > </li>
+      
+    <li>Kubernetes分布式训练</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="kubernetes">
+<span id="kubernetes"></span><h1>Kubernetes分布式训练<a class="headerlink" href="#kubernetes" title="永久链接至标题">¶</a></h1>
+<p>前一篇文章介绍了如何在Kubernetes集群上启动一个单机PaddlePaddle训练作业 (Job)。在这篇文章里，我们介绍如何在Kubernetes集群上进行分布式PaddlePaddle训练作业。关于PaddlePaddle的分布式训练，文章 <a class="reference external" href="https://github.com/baidu/Paddle/blob/develop/doc/cluster/opensource/cluster_train.md">Cluster Training</a>介绍了一种通过SSH远程分发任务，进行分布式训练的方法，与此不同的是，本文将介绍在Kubernetes容器管理平台上快速构建PaddlePaddle容器集群，进行分布式训练的方案。</p>
+<p>有关Kubernetes相关概念以及如何搭建和配置Kubernetes集群，可以参考<a class="reference internal" href="k8s_basis_cn.html"><span class="doc">k8s</span></a>。</p>
+<div class="section" id="">
+<span id="id1"></span><h2>整体方案<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>在训练之前，用户将配置与训练数据切分好放在分布式文件系统预先分配好的目录中(不同的分布式文件系统，需要使用其制定的方式挂载后并导入数据)，训练时，程序从此目录拷贝文件到容器内进行训练，将结果保存到此目录里。整体的结构图如下：</p>
+<p><img alt="paddle on kubernetes结构图" src="../../../_images/k8s-paddle-arch.png" /></p>
+<p>上图描述了一个3节点的分布式训练场景，在每个Pod上都通过volume方式挂载分布式文件系统的一个目录用于保存训练数据和输出结果。Kubernetes为这次训练创建了3个pod并且调度到了3个node上运行，每个pod包含一个PaddlePaddle容器。在容器创建后，会启动pserver与trainer进程，读取volume中的数据进行这次分布式训练。</p>
+<p>根据前文的描述，要在已有的Kubernetes集群上进行PaddlePaddle的分布式训练，按照下面步骤即可：</p>
+<ol class="simple">
+<li><a class="reference external" href="#制作镜像">制作PaddlePaddle镜像</a></li>
+<li><a class="reference external" href="#上传训练文件">将训练文件与切分好的数据上传到共享存储</a></li>
+<li><a class="reference external" href="#创建Job">编写本次训练的YAML文件，创建一个Kubernetes job</a></li>
+<li><a class="reference external" href="#查看输出">训练结束后查看输出结果</a></li>
+</ol>
+<p>下面就根据这几个步骤分别介绍。</p>
+<div class="section" id="">
+<span id="id2"></span><h3>制作镜像<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>PaddlePaddle镜像需要提供<code class="docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code>与<code class="docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code>进程的运行环境，用这个镜像创建的容器需要有以下两个功能：</p>
+<ul class="simple">
+<li>拷贝训练文件到容器内</li>
+<li>生成<code class="docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code>与<code class="docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code>进程的启动参数，并且启动训练</li>
+</ul>
+<p>因为官方镜像 <code class="docutils literal"><span class="pre">paddledev/paddle:cpu-latest</span></code> 内已经包含PaddlePaddle的执行程序但是还没上述功能，所以我们可以在这个基础上，添加启动脚本，制作新镜像来完成以上的工作。参考镜像的<a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/usage/cluster/k8s/src/k8s_train/Dockerfile"><em>Dockerfile</em></a>。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ <span class="nb">cd</span> doc/howto/usage/k8s/src/k8s_train
+$ docker build -t <span class="o">[</span>YOUR_REPO<span class="o">]</span>/paddle:mypaddle .
+</pre></div>
+</div>
+<p>然后将构建成功的镜像上传到镜像仓库。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker push  <span class="o">[</span>YOUR_REPO<span class="o">]</span>/paddle:mypaddle
+</pre></div>
+</div>
+<p>注意上述命令中<code class="docutils literal"><span class="pre">[YOUR_REPO]</span></code>表示读者所使用的Docker镜像仓库地址，读者需要替换成自己使用的仓库地址。下文使用<code class="docutils literal"><span class="pre">[YOUR_REPO]/paddle:mypaddle</span></code>这个地址来表示此步骤所构建出的镜像。</p>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h3>准备训练数据<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>这里我们通过在Kubernetes集群上启动一个Job来下载并切割数据，也可以通过修改<a class="reference internal" href="src/k8s_train/README.html"><span class="doc">k8s</span></a>的内容来定制image.</p>
+<p>在启动Job之前，需要根据不同的分布式存储来绑定一个<a class="reference external" href="https://kubernetes.io/docs/user-guide/persistent-volumes/">persistentVolumeClaim</a>,生成的数据将会存储在这个volume下.</p>
+<div class="highlight-yaml"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">apiVersion</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">batch/v1</span>
+<span class="l l-Scalar l-Scalar-Plain">kind</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Job</span>
+<span class="l l-Scalar l-Scalar-Plain">metadata</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">paddle-data</span>
+<span class="l l-Scalar l-Scalar-Plain">spec</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">template</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">metadata</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">pi</span>
+    <span class="l l-Scalar l-Scalar-Plain">spec</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">hostNetwork</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
+      <span class="l l-Scalar l-Scalar-Plain">containers</span><span class="p p-Indicator">:</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">paddle-data</span>
+        <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">paddledev/paddle-tutorial:k8s_data</span>
+        <span class="l l-Scalar l-Scalar-Plain">imagePullPolicy</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Always</span>
+        <span class="l l-Scalar l-Scalar-Plain">volumeMounts</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">mountPath</span><span class="p p-Indicator">:</span> <span class="s">&quot;/mnt&quot;</span>
+          <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">nfs</span>
+        <span class="l l-Scalar l-Scalar-Plain">env</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">OUT_DIR</span>
+          <span class="l l-Scalar l-Scalar-Plain">value</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">/home/work/mfs/paddle-cluster-job</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">SPLIT_COUNT</span>
+          <span class="l l-Scalar l-Scalar-Plain">value</span><span class="p p-Indicator">:</span> <span class="s">&quot;3&quot;</span>
+      <span class="l l-Scalar l-Scalar-Plain">volumes</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">nfs</span>
+          <span class="l l-Scalar l-Scalar-Plain">persistentVolumeClaim</span><span class="p p-Indicator">:</span>
+            <span class="l l-Scalar l-Scalar-Plain">claimName</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">mfs</span>
+      <span class="l l-Scalar l-Scalar-Plain">restartPolicy</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Never</span>
+</pre></div>
+</div>
+<p>完成后volume中的文件内容大致如下：</p>
+<div class="highlight-base"><div class="highlight"><pre><span></span>[root@paddle-kubernetes-node0 nfsdir]$ tree -d
+.
+`-- paddle-cluster-job
+    |-- 0
+    |   `-- data
+    |-- 1
+    |   `-- data
+    |-- 2
+    |   `-- data
+    |-- output
+    |-- quick_start
+</pre></div>
+</div>
+<p>目录中paddle-cluster-job是本次训练对应的job name，本次训练要求有3个PaddlePaddle节点，在paddle-cluster-job/data目录中存放切分好的数据，文件夹0，1，2分别代表3个节点的trainer_id。recommendation文件夹内存放训练文件，output文件夹存放训练结果与日志。</p>
+</div>
+<div class="section" id="job">
+<span id="job"></span><h3>创建Job<a class="headerlink" href="#job" title="永久链接至标题">¶</a></h3>
+<p>Kubernetes可以通过YAML文件来创建相关对象，然后可以使用命令行工具创建job。</p>
+<p>Job YAML文件描述了这次训练使用的Docker镜像，需要启动的节点个数以及 <code class="docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code>与 <code class="docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code>进程启动的必要参数，也描述了容器需要使用的存储卷挂载的情况。YAML文件中各个字段的具体含义，可以查看<a class="reference external" href="http://kubernetes.io/docs/api-reference/batch/v1/definitions/#_v1_job">Kubernetes Job API</a>。例如，本次训练的YAML文件可以写成：</p>
+<div class="highlight-yaml"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">apiVersion</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">batch/v1</span>
+<span class="l l-Scalar l-Scalar-Plain">kind</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Job</span>
+<span class="l l-Scalar l-Scalar-Plain">metadata</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">paddle-cluster-job</span>
+<span class="l l-Scalar l-Scalar-Plain">spec</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">parallelism</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">3</span>
+  <span class="l l-Scalar l-Scalar-Plain">completions</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">3</span>
+  <span class="l l-Scalar l-Scalar-Plain">template</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">metadata</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">paddle-cluster-job</span>
+    <span class="l l-Scalar l-Scalar-Plain">spec</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">volumes</span><span class="p p-Indicator">:</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">jobpath</span>
+        <span class="l l-Scalar l-Scalar-Plain">hostPath</span><span class="p p-Indicator">:</span>
+          <span class="l l-Scalar l-Scalar-Plain">path</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">/home/work/mfs</span>
+      <span class="l l-Scalar l-Scalar-Plain">containers</span><span class="p p-Indicator">:</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">trainer</span>
+        <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="p p-Indicator">[</span><span class="nv">YOUR_REPO</span><span class="p p-Indicator">]</span><span class="l l-Scalar l-Scalar-Plain">/paddle:mypaddle</span>
+        <span class="l l-Scalar l-Scalar-Plain">command</span><span class="p p-Indicator">:</span> <span class="p p-Indicator">[</span><span class="s">&quot;bin/bash&quot;</span><span class="p p-Indicator">,</span>  <span class="s">&quot;-c&quot;</span><span class="p p-Indicator">,</span> <span class="s">&quot;/root/start.sh&quot;</span><span class="p p-Indicator">]</span>
+        <span class="l l-Scalar l-Scalar-Plain">env</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">JOB_NAME</span>
+          <span class="l l-Scalar l-Scalar-Plain">value</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">paddle-cluster-job</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">JOB_PATH</span>
+          <span class="l l-Scalar l-Scalar-Plain">value</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">/home/jobpath</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">JOB_NAMESPACE</span>
+          <span class="l l-Scalar l-Scalar-Plain">value</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">default</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">TRAIN_CONFIG_DIR</span>
+          <span class="l l-Scalar l-Scalar-Plain">value</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">recommendation</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">CONF_PADDLE_NIC</span>
+          <span class="l l-Scalar l-Scalar-Plain">value</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">eth0</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">CONF_PADDLE_PORT</span>
+          <span class="l l-Scalar l-Scalar-Plain">value</span><span class="p p-Indicator">:</span> <span class="s">&quot;7164&quot;</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">CONF_PADDLE_PORTS_NUM</span>
+          <span class="l l-Scalar l-Scalar-Plain">value</span><span class="p p-Indicator">:</span> <span class="s">&quot;2&quot;</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">CONF_PADDLE_PORTS_NUM_SPARSE</span>
+          <span class="l l-Scalar l-Scalar-Plain">value</span><span class="p p-Indicator">:</span> <span class="s">&quot;2&quot;</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">CONF_PADDLE_GRADIENT_NUM</span>
+          <span class="l l-Scalar l-Scalar-Plain">value</span><span class="p p-Indicator">:</span> <span class="s">&quot;3&quot;</span>
+        <span class="l l-Scalar l-Scalar-Plain">volumeMounts</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">jobpath</span>
+          <span class="l l-Scalar l-Scalar-Plain">mountPath</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">/home/jobpath</span>
+      <span class="l l-Scalar l-Scalar-Plain">restartPolicy</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Never</span>
+</pre></div>
+</div>
+<p>文件中，<code class="docutils literal"><span class="pre">metadata</span></code>下的<code class="docutils literal"><span class="pre">name</span></code>表示这个job的名字。<code class="docutils literal"><span class="pre">parallelism，completions</span></code>字段表示这个job会同时开启3个PaddlePaddle节点，成功训练且退出的pod数目为3时，这个job才算成功结束。然后申明一个存储卷<code class="docutils literal"><span class="pre">jobpath</span></code>，代表宿主机目录<code class="docutils literal"><span class="pre">/home/work/mfs</span></code>，在对容器的描述<code class="docutils literal"><span class="pre">containers</span></code>字段中，将此目录挂载为容器的<code class="docutils literal"><span class="pre">/home/jobpath</span></code>目录，这样容器的<code class="docutils literal"><span class="pre">/home/jobpath</span></code>目录就成为了共享存储，放在这个目录里的文件其实是保存到了MFS上。</p>
+<p><code class="docutils literal"><span class="pre">env</span></code>字段表示容器的环境变量，我们将<code class="docutils literal"><span class="pre">paddle</span></code>运行的一些参数通过这种方式传递到容器内。</p>
+<p>环境变量 | 说明
+&#8212; | &#8212;
+JOB_PATH | 共享存储挂在的路径
+JOB_NAME | Job的名字
+TRAIN_CONFIG_DIR | 本次训练文件所在目录，与JOB_PATH,JOB_NAME组合可以找到本次训练需要的文件路径
+CONF_PADDLE_NIC | <code class="docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code>进程需要的<code class="docutils literal"><span class="pre">--nics</span></code>参数，即网卡名
+CONF_PADDLE_PORT | <code class="docutils literal"><span class="pre">paddle</span> <span class="pre">paserver</span></code>的<code class="docutils literal"><span class="pre">--port</span></code>参数
+CONF_PADDLE_PORTS_NUM | 稠密更新的端口数量，即<code class="docutils literal"><span class="pre">--ports_num</span></code>参数
+CONF_PADDLE_PORTS_NUM_SPARSE | 稀疏更新的端口数量，即<code class="docutils literal"><span class="pre">--ports_num_for_sparse</span></code>参数
+CONF_PADDLE_GRADIENT_NUM | 训练节点数量，即<code class="docutils literal"><span class="pre">--num_gradient_servers参数</span></code></p>
+<p>这些参数的具体描述，读者可以查看<a class="reference external" href="http://www.paddlepaddle.org/doc/ui/cmd_argument/detail_introduction.html#parameter-server-and-distributed-communication">这里</a>。</p>
+<p>编写完YAML文件后，可以使用Kubernetes的命令行工具创建job。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>kubectl create -f job.yaml
+</pre></div>
+</div>
+<p>创建成功后，Kubernetes就会创建3个pod作为PaddlePaddle节点然后拉取镜像，启动容器开始训练。</p>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h3>查看输出<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>在训练过程中，可以在共享存储上查看输出的日志和模型，例如output目录下就存放了输出结果。注意node_0，node_1，node_2这几个目录表示PaddlePaddle节点与trainer_id，并不是Kubernetes中的node概念。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="o">[</span>root@paddle-kubernetes-node0 output<span class="o">]</span><span class="c1"># tree -d</span>
+.
+├── node_0
+│   ├── server.log
+│   └── train.log
+├── node_1
+│   ├── server.log
+│   └── train.log
+├── node_2
+......
+├── pass-00002
+│   ├── <span class="k">done</span>
+│   ├── ___embedding_0__.w0
+│   ├── ___embedding_1__.w0
+......
+</pre></div>
+</div>
+<p>我们可以通过日志查看容器训练的情况，例如：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="o">[</span>root@paddle-kubernetes-node0 node_0<span class="o">]</span><span class="c1"># cat train.log</span>
+I1116 <span class="m">09</span>:10:17.123121    <span class="m">50</span> Util.cpp:155<span class="o">]</span> commandline:
+ /usr/local/bin/../opt/paddle/bin/paddle_trainer
+    --nics<span class="o">=</span>eth0 --port<span class="o">=</span><span class="m">7164</span>
+    --ports_num<span class="o">=</span><span class="m">2</span> --comment<span class="o">=</span>paddle_process_by_paddle
+    --pservers<span class="o">=</span><span class="m">192</span>.168.129.66,192.168.223.143,192.168.129.71
+    --ports_num_for_sparse<span class="o">=</span><span class="m">2</span> --config<span class="o">=</span>./trainer_config.py
+    --trainer_count<span class="o">=</span><span class="m">4</span> --num_passes<span class="o">=</span><span class="m">10</span> --use_gpu<span class="o">=</span><span class="m">0</span>
+    --log_period<span class="o">=</span><span class="m">50</span> --dot_period<span class="o">=</span><span class="m">10</span> --saving_period<span class="o">=</span><span class="m">1</span>
+    --local<span class="o">=</span><span class="m">0</span> --trainer_id<span class="o">=</span><span class="m">0</span>
+    --save_dir<span class="o">=</span>/home/jobpath/paddle-cluster-job/output
+I1116 <span class="m">09</span>:10:17.123440    <span class="m">50</span> Util.cpp:130<span class="o">]</span> Calling runInitFunctions
+I1116 <span class="m">09</span>:10:17.123764    <span class="m">50</span> Util.cpp:143<span class="o">]</span> Call runInitFunctions <span class="k">done</span>.
+<span class="o">[</span>WARNING <span class="m">2016</span>-11-16 <span class="m">09</span>:10:17,227 default_decorators.py:40<span class="o">]</span> please use keyword arguments in paddle config.
+<span class="o">[</span>INFO <span class="m">2016</span>-11-16 <span class="m">09</span>:10:17,239 networks.py:1282<span class="o">]</span> The input order is <span class="o">[</span>movie_id, title, genres, user_id, gender, age, occupation, rating<span class="o">]</span>
+<span class="o">[</span>INFO <span class="m">2016</span>-11-16 <span class="m">09</span>:10:17,239 networks.py:1289<span class="o">]</span> The output order is <span class="o">[</span>__mse_cost_0__<span class="o">]</span>
+I1116 <span class="m">09</span>:10:17.392917    <span class="m">50</span> Trainer.cpp:170<span class="o">]</span> trainer mode: Normal
+I1116 <span class="m">09</span>:10:17.613910    <span class="m">50</span> PyDataProvider2.cpp:257<span class="o">]</span> loading dataprovider dataprovider::process
+I1116 <span class="m">09</span>:10:17.680917    <span class="m">50</span> PyDataProvider2.cpp:257<span class="o">]</span> loading dataprovider dataprovider::process
+I1116 <span class="m">09</span>:10:17.681543    <span class="m">50</span> GradientMachine.cpp:134<span class="o">]</span> Initing parameters..
+I1116 <span class="m">09</span>:10:18.012390    <span class="m">50</span> GradientMachine.cpp:141<span class="o">]</span> Init parameters <span class="k">done</span>.
+I1116 <span class="m">09</span>:10:18.018641    <span class="m">50</span> ParameterClient2.cpp:122<span class="o">]</span> pserver <span class="m">0</span> <span class="m">192</span>.168.129.66:7164
+I1116 <span class="m">09</span>:10:18.018950    <span class="m">50</span> ParameterClient2.cpp:122<span class="o">]</span> pserver <span class="m">1</span> <span class="m">192</span>.168.129.66:7165
+I1116 <span class="m">09</span>:10:18.019069    <span class="m">50</span> ParameterClient2.cpp:122<span class="o">]</span> pserver <span class="m">2</span> <span class="m">192</span>.168.223.143:7164
+I1116 <span class="m">09</span>:10:18.019492    <span class="m">50</span> ParameterClient2.cpp:122<span class="o">]</span> pserver <span class="m">3</span> <span class="m">192</span>.168.223.143:7165
+I1116 <span class="m">09</span>:10:18.019716    <span class="m">50</span> ParameterClient2.cpp:122<span class="o">]</span> pserver <span class="m">4</span> <span class="m">192</span>.168.129.71:7164
+I1116 <span class="m">09</span>:10:18.019836    <span class="m">50</span> ParameterClient2.cpp:122<span class="o">]</span> pserver <span class="m">5</span> <span class="m">192</span>.168.129.71:7165
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h2>一些细节的补充<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<div class="section" id="">
+<span id="id6"></span><h3>使用环境变量<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>使用容器方式运行训练任务的Kubernetes Job，通常会使用环境变量配置Job的配置信息<code class="docutils literal"><span class="pre">start_paddle.py</span></code>提供了一个启动脚本，将环境变量转换成paddle的命令行参数：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">API</span> <span class="o">=</span> <span class="s2">&quot;/api/v1/namespaces/&quot;</span>
+<span class="n">JOBSELECTOR</span> <span class="o">=</span> <span class="s2">&quot;labelSelector=job-name=&quot;</span>
+<span class="n">JOB_PATH</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;JOB_PATH&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;JOB_NAME&quot;</span><span class="p">)</span>
+<span class="n">JOB_PATH_OUTPUT</span> <span class="o">=</span> <span class="n">JOB_PATH</span> <span class="o">+</span> <span class="s2">&quot;/output&quot;</span>
+<span class="n">JOBNAME</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;JOB_NAME&quot;</span><span class="p">)</span>
+<span class="n">NAMESPACE</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;JOB_NAMESPACE&quot;</span><span class="p">)</span>
+<span class="n">PADDLE_NIC</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CONF_PADDLE_NIC&quot;</span><span class="p">)</span>
+<span class="n">PADDLE_PORT</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CONF_PADDLE_PORT&quot;</span><span class="p">)</span>
+<span class="n">PADDLE_PORTS_NUM</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CONF_PADDLE_PORTS_NUM&quot;</span><span class="p">)</span>
+<span class="n">PADDLE_PORTS_NUM_SPARSE</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CONF_PADDLE_PORTS_NUM_SPARSE&quot;</span><span class="p">)</span>
+<span class="n">PADDLE_SERVER_NUM</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CONF_PADDLE_GRADIENT_NUM&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="pod">
+<span id="pod"></span><h3>Pod间通信<a class="headerlink" href="#pod" title="永久链接至标题">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">start_paddle.py</span></code>脚本开始时，会先进行参数的初始化与解析。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">prog</span><span class="o">=</span><span class="s2">&quot;start_paddle.py&quot;</span><span class="p">,</span>
+                                     <span class="n">description</span><span class="o">=</span><span class="s1">&#39;simple tool for k8s&#39;</span><span class="p">)</span>
+    <span class="n">args</span><span class="p">,</span> <span class="n">train_args_list</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_known_args</span><span class="p">()</span>
+    <span class="n">train_args</span> <span class="o">=</span> <span class="n">refine_unknown_args</span><span class="p">(</span><span class="n">train_args_list</span><span class="p">)</span>
+    <span class="n">train_args_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">train_args</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">],</span> <span class="n">train_args</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]))</span>
+    <span class="n">podlist</span> <span class="o">=</span> <span class="n">getPodList</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>然后通过函数<code class="docutils literal"><span class="pre">getPodList()</span></code>访问Kubernetes的接口来查询此job对应的所有pod信息。当所有pod都处于running状态（容器运行都运行）时，再通过函数<code class="docutils literal"><span class="pre">getIdMap(podlist)</span></code>获取trainer_id。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>    <span class="n">podlist</span> <span class="o">=</span> <span class="n">getPodList</span><span class="p">()</span>
+    <span class="c1"># need to wait until all pods are running</span>
+    <span class="k">while</span> <span class="ow">not</span> <span class="n">isPodAllRunning</span><span class="p">(</span><span class="n">podlist</span><span class="p">):</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+        <span class="n">podlist</span> <span class="o">=</span> <span class="n">getPodList</span><span class="p">()</span>
+    <span class="n">idMap</span> <span class="o">=</span> <span class="n">getIdMap</span><span class="p">(</span><span class="n">podlist</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><em>注意</em>: <code class="docutils literal"><span class="pre">getPodList()</span></code>会获取当前namespace下的所有pod，如果已经有pod运行，可能会导致出错。这种集群节点管理方式会在将来使用<a class="reference external" href="https://kubernetes.io/docs/concepts/abstractions/controllers/statefulsets/">statfulsets</a>代替。</li>
+</ul>
+<p>在函数<code class="docutils literal"><span class="pre">getIdMap(podlist)</span></code>内部，我们通过读取<code class="docutils literal"><span class="pre">podlist</span></code>中每个pod的IP地址，将IP排序生成的序号作为trainer_id。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">getIdMap</span><span class="p">(</span><span class="n">podlist</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    generate tainer_id by ip</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">ips</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">pod</span> <span class="ow">in</span> <span class="n">podlist</span><span class="p">[</span><span class="s2">&quot;items&quot;</span><span class="p">]:</span>
+        <span class="n">ips</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pod</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">][</span><span class="s2">&quot;podIP&quot;</span><span class="p">])</span>
+    <span class="n">ips</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    <span class="n">idMap</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ips</span><span class="p">)):</span>
+        <span class="n">idMap</span><span class="p">[</span><span class="n">ips</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">i</span>
+    <span class="k">return</span> <span class="n">idMap</span>
+</pre></div>
+</div>
+<p>在得到<code class="docutils literal"><span class="pre">idMap</span></code>后，通过函数<code class="docutils literal"><span class="pre">startPaddle(idMap,</span> <span class="pre">train_args_dict)</span></code>构造<code class="docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code>与<code class="docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code>的启动参数并执行进程。</p>
+</div>
+<div class="section" id="">
+<span id="id7"></span><h3>启动任务<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>在函数<code class="docutils literal"><span class="pre">startPaddle</span></code>中，最主要的工作就是解析出<code class="docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code>与<code class="docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code>的启动参数。例如<code class="docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code>参数的解析，解析环境变量得到<code class="docutils literal"><span class="pre">PADDLE_NIC</span></code>，<code class="docutils literal"><span class="pre">PADDLE_PORT</span></code>，<code class="docutils literal"><span class="pre">PADDLE_PORTS_NUM</span></code>等参数，然后通过自身的IP地址在<code class="docutils literal"><span class="pre">idMap</span></code>中获取<code class="docutils literal"><span class="pre">trainerId</span></code>。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>    <span class="n">program</span> <span class="o">=</span> <span class="s1">&#39;paddle train&#39;</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="s2">&quot; --nics=&quot;</span> <span class="o">+</span> <span class="n">PADDLE_NIC</span>
+    <span class="n">args</span> <span class="o">+=</span> <span class="s2">&quot; --port=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">PADDLE_PORT</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">+=</span> <span class="s2">&quot; --ports_num=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">PADDLE_PORTS_NUM</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">+=</span> <span class="s2">&quot; --comment=&quot;</span> <span class="o">+</span> <span class="s2">&quot;paddle_process_by_paddle&quot;</span>
+    <span class="n">ip_string</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">idMap</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">ip_string</span> <span class="o">+=</span> <span class="p">(</span><span class="n">ip</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span><span class="p">)</span>
+    <span class="n">ip_string</span> <span class="o">=</span> <span class="n">ip_string</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">+=</span> <span class="s2">&quot; --pservers=&quot;</span> <span class="o">+</span> <span class="n">ip_string</span>
+    <span class="n">args_ext</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">train_args_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">args_ext</span> <span class="o">+=</span> <span class="p">(</span><span class="s1">&#39; --&#39;</span> <span class="o">+</span> <span class="n">key</span> <span class="o">+</span> <span class="s1">&#39;=&#39;</span> <span class="o">+</span> <span class="n">value</span><span class="p">)</span>
+    <span class="n">localIP</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gethostbyname</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">gethostname</span><span class="p">())</span>
+    <span class="n">trainerId</span> <span class="o">=</span> <span class="n">idMap</span><span class="p">[</span><span class="n">localIP</span><span class="p">]</span>
+    <span class="n">args</span> <span class="o">+=</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span> <span class="n">args_ext</span> <span class="o">+</span> <span class="s2">&quot; --trainer_id=&quot;</span> <span class="o">+</span> \
+        <span class="nb">str</span><span class="p">(</span><span class="n">trainerId</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; --save_dir=&quot;</span> <span class="o">+</span> <span class="n">JOB_PATH_OUTPUT</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../../dev/write_docs_cn.html" class="btn btn-neutral float-right" title="如何贡献/修改文档" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="k8s_cn.html" class="btn btn-neutral" title="Kubernetes单机训练" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

@@ -1,0 +1,505 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>基本使用概念 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/>
+        <link rel="up" title="新手入门" href="../index_cn.html"/>
+        <link rel="next" title="进阶指南" href="../../howto/index_cn.html"/>
+        <link rel="prev" title="PaddlePaddle的编译选项" href="../build_and_install/cmake/build_from_source_cn.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index_cn.html">新手入门</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../index_cn.html">新手入门</a> > </li>
+      
+    <li>基本使用概念</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="id1">
+<h1>基本使用概念<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h1>
+<p>PaddlePaddle是源于百度的一个深度学习平台。PaddlePaddle为深度学习研究人员提供了丰富的API，可以轻松地完成神经网络配置，模型训练等任务。
+这里将介绍PaddlePaddle的基本使用概念，并且展示了如何利用PaddlePaddle来解决一个经典的线性回归问题。
+在使用该文档之前，请参考 <a class="reference external" href="../build_and_install/index_cn.html">安装文档</a> 完成PaddlePaddle的安装。</p>
+<div class="section" id="id3">
+<h2>配置网络<a class="headerlink" href="#id3" title="永久链接至标题">¶</a></h2>
+<div class="section" id="paddlepaddle">
+<h3>加载PaddlePaddle<a class="headerlink" href="#paddlepaddle" title="永久链接至标题">¶</a></h3>
+<p>在进行网络配置之前，首先需要加载相应的Python库，并进行初始化操作。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>import paddle.v2 as paddle
+import numpy as np
+paddle.init<span class="o">(</span><span class="nv">use_gpu</span><span class="o">=</span>False<span class="o">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id4">
+<h3>搭建神经网络<a class="headerlink" href="#id4" title="永久链接至标题">¶</a></h3>
+<p>搭建神经网络就像使用积木搭建宝塔一样。在PaddlePaddle中，layer是我们的积木，而神经网络是我们要搭建的宝塔。我们使用不同的layer进行组合，来搭建神经网络。
+宝塔的底端需要坚实的基座来支撑，同样，神经网络也需要一些特定的layer作为输入接口，来完成网络的训练。</p>
+<p>例如，我们可以定义如下layer来描述神经网络的输入：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">x</span> <span class="o">=</span> paddle.layer.data<span class="o">(</span><span class="nv">name</span><span class="o">=</span><span class="s1">&#39;x&#39;</span>, <span class="nv">type</span><span class="o">=</span>paddle.data_type.dense_vector<span class="o">(</span><span class="m">2</span><span class="o">))</span>
+<span class="nv">y</span> <span class="o">=</span> paddle.layer.data<span class="o">(</span><span class="nv">name</span><span class="o">=</span><span class="s1">&#39;y&#39;</span>, <span class="nv">type</span><span class="o">=</span>paddle.data_type.dense_vector<span class="o">(</span><span class="m">1</span><span class="o">))</span>
+</pre></div>
+</div>
+<p>其中x表示输入数据是一个维度为2的稠密向量，y表示输入数据是一个维度为1的稠密向量。</p>
+<p>PaddlePaddle支持不同类型的输入数据，主要包括四种类型，和三种序列模式。</p>
+<p>四种数据类型：</p>
+<ul class="simple">
+<li>dense_vector：稠密的浮点数向量。</li>
+<li>sparse_binary_vector：稀疏的01向量，即大部分值为0，但有值的地方必须为1。</li>
+<li>sparse_float_vector：稀疏的向量，即大部分值为0，但有值的部分可以是任何浮点数。</li>
+<li>integer：整数标签。</li>
+</ul>
+<p>三种序列模式：</p>
+<ul class="simple">
+<li>SequenceType.NO_SEQUENCE：不是一条序列</li>
+<li>SequenceType.SEQUENCE：是一条时间序列</li>
+<li>SequenceType.SUB_SEQUENCE： 是一条时间序列，且序列的每一个元素还是一个时间序列。</li>
+</ul>
+<p>不同的数据类型和序列模式返回的格式不同，列表如下：</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="17%" />
+<col width="17%" />
+<col width="28%" />
+<col width="38%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">&#160;</th>
+<th class="head">NO_SEQUENCE</th>
+<th class="head">SEQUENCE</th>
+<th class="head">SUB_SEQUENCE</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>dense_vector</td>
+<td>[f, f, ...]</td>
+<td>[[f, ...], [f, ...], ...]</td>
+<td>[[[f, ...], ...], [[f, ...], ...],...]</td>
+</tr>
+<tr class="row-odd"><td>sparse_binary_vector</td>
+<td>[i, i, ...]</td>
+<td>[[i, ...], [i, ...], ...]</td>
+<td>[[[i, ...], ...], [[i, ...], ...],...]</td>
+</tr>
+<tr class="row-even"><td>sparse_float_vector</td>
+<td>[(i,f), (i,f), ...]</td>
+<td>[[(i,f), ...], [(i,f), ...], ...]</td>
+<td>[[[(i,f), ...], ...], [[(i,f), ...], ...],...]</td>
+</tr>
+<tr class="row-odd"><td>integer_value</td>
+<td>i</td>
+<td>[i, i, ...]</td>
+<td>[[i, ...], [i, ...], ...]</td>
+</tr>
+</tbody>
+</table>
+<p>其中，f代表一个浮点数，i代表一个整数。</p>
+<p>注意：对sparse_binary_vector和sparse_float_vector，PaddlePaddle存的是有值位置的索引。例如，</p>
+<ul class="simple">
+<li>对一个5维非序列的稀疏01向量 <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">1,</span> <span class="pre">1,</span> <span class="pre">0,</span> <span class="pre">0]</span></code> ，类型是sparse_binary_vector，返回的是 <code class="docutils literal"><span class="pre">[1,</span> <span class="pre">2]</span></code> 。</li>
+<li>对一个5维非序列的稀疏浮点向量 <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">0.5,</span> <span class="pre">0.7,</span> <span class="pre">0,</span> <span class="pre">0]</span></code> ，类型是sparse_float_vector，返回的是 <code class="docutils literal"><span class="pre">[(1,</span> <span class="pre">0.5),</span> <span class="pre">(2,</span> <span class="pre">0.7)]</span></code> 。</li>
+</ul>
+<p>在定义输入layer之后，我们可以使用其他layer进行组合。在组合时，需要指定layer的输入来源。</p>
+<p>例如，我们可以定义如下的layer组合：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">y_predict</span> <span class="o">=</span> paddle.layer.fc<span class="o">(</span><span class="nv">input</span><span class="o">=</span>x, <span class="nv">size</span><span class="o">=</span><span class="m">1</span>, <span class="nv">act</span><span class="o">=</span>paddle.activation.Linear<span class="o">())</span>
+<span class="nv">cost</span> <span class="o">=</span> paddle.layer.mse_cost<span class="o">(</span><span class="nv">input</span><span class="o">=</span>y_predict, <span class="nv">label</span><span class="o">=</span>y<span class="o">)</span>
+</pre></div>
+</div>
+<p>其中，x与y为之前描述的输入层；而y_predict是接收x作为输入，接上一个全连接层；cost接收y_predict与y作为输入，接上均方误差层。</p>
+<p>最后一层cost中记录了神经网络的所有拓扑结构，通过组合不同的layer，我们即可完成神经网络的搭建。</p>
+</div>
+</div>
+<div class="section" id="id5">
+<h2>训练模型<a class="headerlink" href="#id5" title="永久链接至标题">¶</a></h2>
+<p>在完成神经网络的搭建之后，我们首先需要根据神经网络结构来创建所需要优化的parameters，并创建optimizer。
+之后，我们可以创建trainer来对网络进行训练。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">parameters</span> <span class="o">=</span> paddle.parameters.create<span class="o">(</span>cost<span class="o">)</span>
+<span class="nv">optimizer</span> <span class="o">=</span> paddle.optimizer.Momentum<span class="o">(</span><span class="nv">momentum</span><span class="o">=</span><span class="m">0</span><span class="o">)</span>
+<span class="nv">trainer</span> <span class="o">=</span> paddle.trainer.SGD<span class="o">(</span><span class="nv">cost</span><span class="o">=</span>cost,
+                             <span class="nv">parameters</span><span class="o">=</span>parameters,
+                             <span class="nv">update_equation</span><span class="o">=</span>optimizer<span class="o">)</span>
+</pre></div>
+</div>
+<p>其中，trainer接收三个参数，包括神经网络拓扑结构、神经网络参数以及迭代方程。</p>
+<p>在搭建神经网络的过程中，我们仅仅对神经网络的输入进行了描述。而trainer需要读取训练数据进行训练，PaddlePaddle中通过reader来加载数据。</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># define training dataset reader</span>
+def train_reader<span class="o">()</span>:
+    <span class="nv">train_x</span> <span class="o">=</span> np.array<span class="o">([[</span><span class="m">1</span>, <span class="m">1</span><span class="o">]</span>, <span class="o">[</span><span class="m">1</span>, <span class="m">2</span><span class="o">]</span>, <span class="o">[</span><span class="m">3</span>, <span class="m">4</span><span class="o">]</span>, <span class="o">[</span><span class="m">5</span>, <span class="m">2</span><span class="o">]])</span>
+    <span class="nv">train_y</span> <span class="o">=</span> np.array<span class="o">([</span>-2, -3, -7, -7<span class="o">])</span>
+    def reader<span class="o">()</span>:
+        <span class="k">for</span> i in xrange<span class="o">(</span>train_y.shape<span class="o">[</span><span class="m">0</span><span class="o">])</span>:
+            yield train_x<span class="o">[</span>i<span class="o">]</span>, train_y<span class="o">[</span>i<span class="o">]</span>
+    <span class="k">return</span> reader
+</pre></div>
+</div>
+<p>最终我们可以调用trainer的train方法启动训练：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># define feeding map</span>
+<span class="nv">feeding</span> <span class="o">=</span> <span class="o">{</span><span class="s1">&#39;x&#39;</span>: <span class="m">0</span>, <span class="s1">&#39;y&#39;</span>: <span class="m">1</span><span class="o">}</span>
+
+<span class="c1"># event_handler to print training info</span>
+def event_handler<span class="o">(</span>event<span class="o">)</span>:
+    <span class="k">if</span> isinstance<span class="o">(</span>event, paddle.event.EndIteration<span class="o">)</span>:
+        <span class="k">if</span> event.batch_id % <span class="nv">1</span> <span class="o">==</span> <span class="m">0</span>:
+            print <span class="s2">&quot;Pass %d, Batch %d, Cost %f&quot;</span> % <span class="o">(</span>
+                event.pass_id, event.batch_id, event.cost<span class="o">)</span>
+<span class="c1"># training</span>
+trainer.train<span class="o">(</span>
+    <span class="nv">reader</span><span class="o">=</span>paddle.batch<span class="o">(</span>train_reader<span class="o">()</span>, <span class="nv">batch_size</span><span class="o">=</span><span class="m">1</span><span class="o">)</span>,
+    <span class="nv">feeding</span><span class="o">=</span>feeding,
+    <span class="nv">event_handler</span><span class="o">=</span>event_handler,
+    <span class="nv">num_passes</span><span class="o">=</span><span class="m">100</span><span class="o">)</span>
+</pre></div>
+</div>
+<p>关于PaddlePaddle的更多使用方法请参考 <a class="reference external" href="../../howto/index_cn.html">进阶指南</a>。</p>
+</div>
+<div class="section" id="id7">
+<h2>线性回归完整示例<a class="headerlink" href="#id7" title="永久链接至标题">¶</a></h2>
+<p>下面给出在三维空间中使用线性回归拟合一条直线的例子：</p>
+<div class="highlight-default"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">paddle.v2</span> <span class="k">as</span> <span class="nn">paddle</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="c1"># init paddle</span>
+<span class="n">paddle</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">use_gpu</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="c1"># network config</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">data</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">data_type</span><span class="o">.</span><span class="n">dense_vector</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+<span class="n">y_predict</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">fc</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">activation</span><span class="o">.</span><span class="n">Linear</span><span class="p">())</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">data</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">data_type</span><span class="o">.</span><span class="n">dense_vector</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">cost</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">mse_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">y_predict</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">y</span><span class="p">)</span>
+
+<span class="c1"># create parameters</span>
+<span class="n">parameters</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">cost</span><span class="p">)</span>
+<span class="c1"># create optimizer</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">Momentum</span><span class="p">(</span><span class="n">momentum</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="c1"># create trainer</span>
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="n">cost</span><span class="o">=</span><span class="n">cost</span><span class="p">,</span>
+                             <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
+                             <span class="n">update_equation</span><span class="o">=</span><span class="n">optimizer</span><span class="p">)</span>
+
+
+<span class="c1"># event_handler to print training info</span>
+<span class="k">def</span> <span class="nf">event_handler</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">paddle</span><span class="o">.</span><span class="n">event</span><span class="o">.</span><span class="n">EndIteration</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">batch_id</span> <span class="o">%</span> <span class="mi">1</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="s2">&quot;Pass </span><span class="si">%d</span><span class="s2">, Batch </span><span class="si">%d</span><span class="s2">, Cost </span><span class="si">%f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">pass_id</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">batch_id</span><span class="p">,</span>
+                                                  <span class="n">event</span><span class="o">.</span><span class="n">cost</span><span class="p">)</span>
+
+
+<span class="c1"># define training dataset reader</span>
+<span class="k">def</span> <span class="nf">train_reader</span><span class="p">():</span>
+    <span class="n">train_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">]])</span>
+    <span class="n">train_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">7</span><span class="p">,</span> <span class="o">-</span><span class="mi">7</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">reader</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">xrange</span><span class="p">(</span><span class="n">train_y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="k">yield</span> <span class="n">train_x</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">train_y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">reader</span>
+
+
+<span class="c1"># define feeding map</span>
+<span class="n">feeding</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+
+<span class="c1"># training</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span>
+    <span class="n">reader</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span>
+        <span class="n">train_reader</span><span class="p">(),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+    <span class="n">feeding</span><span class="o">=</span><span class="n">feeding</span><span class="p">,</span>
+    <span class="n">event_handler</span><span class="o">=</span><span class="n">event_handler</span><span class="p">,</span>
+    <span class="n">num_passes</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+</pre></div>
+</td></tr></table></div>
+<p>有关线性回归的实际应用，可以参考PaddlePaddle book的 <a class="reference external" href="http://book.paddlepaddle.org/index.html">第一章节</a>。</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../../howto/index_cn.html" class="btn btn-neutral float-right" title="进阶指南" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../build_and_install/cmake/build_from_source_cn.html" class="btn btn-neutral" title="PaddlePaddle的编译选项" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

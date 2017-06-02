@@ -1,0 +1,377 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>PaddlePaddle的编译选项 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../../index.html"/>
+        <link rel="up" title="安装与编译" href="../index_cn.html"/>
+        <link rel="next" title="基本使用概念" href="../../concepts/use_concepts_cn.html"/>
+        <link rel="prev" title="Ubuntu部署PaddlePaddle" href="../ubuntu_install_cn.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">新手入门</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index_cn.html">安装与编译</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../../index_cn.html">新手入门</a> > </li>
+      
+        <li><a href="../index_cn.html">安装与编译</a> > </li>
+      
+    <li>PaddlePaddle的编译选项</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="paddlepaddle">
+<h1>PaddlePaddle的编译选项<a class="headerlink" href="#paddlepaddle" title="永久链接至标题">¶</a></h1>
+<p>PaddlePaddle的编译选项，包括生成CPU/GPU二进制文件、链接何种BLAS库等。用户可在调用cmake的时候设置它们，详细的cmake使用方法可以参考 <a class="reference external" href="https://cmake.org/cmake-tutorial">官方文档</a> 。</p>
+<div class="section" id="bool">
+<h2>Bool型的编译选项<a class="headerlink" href="#bool" title="永久链接至标题">¶</a></h2>
+<p>用户可在cmake的命令行中，通过使用 <code class="docutils literal"><span class="pre">-D</span></code> 命令设置该类编译选项，例如</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake .. -DWITH_GPU<span class="o">=</span>OFF
+</pre></div>
+</div>
+<table border="1" class="colwidths-given docutils" id="id3">
+<caption><span class="caption-text">Bool型的编译选项</span><a class="headerlink" href="#id3" title="永久链接至表格">¶</a></caption>
+<colgroup>
+<col width="10%" />
+<col width="70%" />
+<col width="20%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>选项</td>
+<td>说明</td>
+<td>默认值</td>
+</tr>
+<tr class="row-even"><td>WITH_GPU</td>
+<td>是否支持GPU。</td>
+<td>取决于是否寻找到CUDA工具链</td>
+</tr>
+<tr class="row-odd"><td>WITH_DOUBLE</td>
+<td>是否使用双精度浮点数。</td>
+<td>否</td>
+</tr>
+<tr class="row-even"><td>WITH_DSO</td>
+<td>是否运行时动态加载CUDA动态库，而非静态加载CUDA动态库。</td>
+<td>是</td>
+</tr>
+<tr class="row-odd"><td>WITH_AVX</td>
+<td>是否编译含有AVX指令集的PaddlePaddle二进制文件</td>
+<td>是</td>
+</tr>
+<tr class="row-even"><td>WITH_PYTHON</td>
+<td>是否内嵌PYTHON解释器。方便今后的嵌入式移植工作。</td>
+<td>是</td>
+</tr>
+<tr class="row-odd"><td>WITH_STYLE_CHECK</td>
+<td>是否编译时进行代码风格检查</td>
+<td>是</td>
+</tr>
+<tr class="row-even"><td>WITH_RDMA</td>
+<td>是否开启RDMA</td>
+<td>否</td>
+</tr>
+<tr class="row-odd"><td>WITH_TIMER</td>
+<td>是否开启计时功能。如果开启会导致运行略慢，打印的日志变多，但是方便调试和测Benchmark</td>
+<td>否</td>
+</tr>
+<tr class="row-even"><td>WITH_TESTING</td>
+<td>是否开启单元测试</td>
+<td>取决于是否寻找到GTEST</td>
+</tr>
+<tr class="row-odd"><td>WITH_DOC</td>
+<td>是否编译中英文文档</td>
+<td>否</td>
+</tr>
+<tr class="row-even"><td>WITH_SWIG_PY</td>
+<td>是否编译PYTHON的SWIG接口，该接口可用于预测和定制化训练</td>
+<td>取决于是否寻找到SWIG</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="blas-cuda-cudnn">
+<h2>BLAS/CUDA/Cudnn的编译选项<a class="headerlink" href="#blas-cuda-cudnn" title="永久链接至标题">¶</a></h2>
+<div class="section" id="blas">
+<h3>BLAS<a class="headerlink" href="#blas" title="永久链接至标题">¶</a></h3>
+<p>PaddlePaddle支持以下任意一种BLAS库：<a class="reference external" href="https://software.intel.com/en-us/intel-mkl">MKL</a> ，<a class="reference external" href="http://math-atlas.sourceforge.net/">ATLAS</a> ，<a class="reference external" href="http://www.openblas.net/">OpenBlAS</a> 和 <a class="reference external" href="http://www.netlib.org/blas/">REFERENCE BLAS</a> 。</p>
+<table border="1" class="colwidths-given docutils" id="id4">
+<caption><span class="caption-text">BLAS路径相关的编译选项</span><a class="headerlink" href="#id4" title="永久链接至表格">¶</a></caption>
+<colgroup>
+<col width="10%" />
+<col width="20%" />
+<col width="70%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>编译选项</td>
+<td>描述</td>
+<td>注意</td>
+</tr>
+<tr class="row-even"><td>MKL_ROOT</td>
+<td>MKL的路径</td>
+<td>${MKL_ROOT}/include下需要包含mkl.h，${MKL_ROOT}/lib目录下需要包含mkl_core，mkl_sequential和mkl_intel_lp64三个库。</td>
+</tr>
+<tr class="row-odd"><td>ATLAS_ROOT</td>
+<td>ATLAS的路径</td>
+<td>${ATLAS_ROOT}/include下需要包含cblas.h，${ATLAS_ROOT}/lib下需要包含cblas和atlas两个库。</td>
+</tr>
+<tr class="row-even"><td>OPENBLAS_ROOT</td>
+<td>OpenBLAS的路径</td>
+<td>${OPENBLAS_ROOT}/include下需要包含cblas.h，${OPENBLAS_ROOT}/lib下需要包含openblas库。</td>
+</tr>
+<tr class="row-odd"><td>REFERENCE_CBLAS_ROOT</td>
+<td>REFERENCE BLAS的路径</td>
+<td>${REFERENCE_CBLAS_ROOT}/include下需要包含cblas.h，${REFERENCE_CBLAS_ROOT}/lib下需要包含cblas库。</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="cuda-cudnn">
+<h3>CUDA/Cudnn<a class="headerlink" href="#cuda-cudnn" title="永久链接至标题">¶</a></h3>
+<p>PaddlePaddle可以使用cudnn v2之后的任何一个版本来编译运行，但尽量请保持编译和运行使用的cudnn是同一个版本。 我们推荐使用最新版本的cudnn v5.1。</p>
+</div>
+<div class="section" id="id2">
+<h3>编译选项的设置<a class="headerlink" href="#id2" title="永久链接至标题">¶</a></h3>
+<p>PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/Cudnn库。cmake编译时，首先在系统路径(/usr/lib:/usr/local/lib)中搜索这几个库，同时也会读取相关路径变量来进行搜索。 通过使用 <code class="docutils literal"><span class="pre">-D</span></code> 命令可以设置，例如</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake .. -DMKL_ROOT<span class="o">=</span>/opt/mkl/ -DCUDNN_ROOT<span class="o">=</span>/opt/cudnnv5
+</pre></div>
+</div>
+<p>注意：这几个编译选项的设置，只在第一次cmake的时候有效。如果之后想要重新设置，推荐清理整个编译目录（<code class="docutils literal"><span class="pre">rm</span> <span class="pre">-rf</span></code>）后，再指定。</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../../concepts/use_concepts_cn.html" class="btn btn-neutral float-right" title="基本使用概念" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../ubuntu_install_cn.html" class="btn btn-neutral" title="Ubuntu部署PaddlePaddle" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

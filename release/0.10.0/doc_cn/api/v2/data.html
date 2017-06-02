@@ -1,0 +1,1331 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Data Reader Interface and DataSets &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/>
+        <link rel="up" title="API" href="../index_cn.html"/>
+        <link rel="next" title="Training and Inference" href="run_logic.html"/>
+        <link rel="prev" title="Parameter Attribute" href="config/attr.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index_cn.html">API</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../index_cn.html">API</a> > </li>
+      
+    <li>Data Reader Interface and DataSets</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="data-reader-interface-and-datasets">
+<h1>Data Reader Interface and DataSets<a class="headerlink" href="#data-reader-interface-and-datasets" title="永久链接至标题">¶</a></h1>
+<div class="section" id="datatypes">
+<h2>DataTypes<a class="headerlink" href="#datatypes" title="永久链接至标题">¶</a></h2>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">dense_vector</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
+<dd><p>Dense Vector. It means the input feature is dense float vector. For example,
+if the input is an image with 28*28 pixels, the input of Paddle neural
+network should be a dense vector with dimension 784.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>dim</strong> (<em>int</em>) &#8211; dimension of this vector.</li>
+<li><strong>seq_type</strong> (<em>int</em>) &#8211; sequence type of input.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">An input type object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">InputType</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">dense_vector_sequence</code><span class="sig-paren">(</span><em>dim</em><span class="sig-paren">)</span></dt>
+<dd><p>Data type of a sequence of dense vector.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><strong>dim</strong> (<em>int</em>) &#8211; dimension of dense vector.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body">An input type object</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body">InputType</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">integer_value</code><span class="sig-paren">(</span><em>value_range</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
+<dd><p>Data type of integer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>seq_type</strong> (<em>int</em>) &#8211; sequence type of this input.</li>
+<li><strong>value_range</strong> (<em>int</em>) &#8211; range of this integer.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">An input type object</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">InputType</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">integer_value_sequence</code><span class="sig-paren">(</span><em>value_range</em><span class="sig-paren">)</span></dt>
+<dd><p>Data type of a sequence of integer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><strong>value_range</strong> (<em>int</em>) &#8211; range of each element.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_binary_vector</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
+<dd><p>Sparse binary vector. It means the input feature is a sparse vector and the
+every element in this vector is either zero or one.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>dim</strong> (<em>int</em>) &#8211; dimension of this vector.</li>
+<li><strong>seq_type</strong> (<em>int</em>) &#8211; sequence type of this input.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">An input type object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">InputType</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_binary_vector_sequence</code><span class="sig-paren">(</span><em>dim</em><span class="sig-paren">)</span></dt>
+<dd><dl class="docutils">
+<dt>Data type of a sequence of sparse vector, which every element is either zero</dt>
+<dd>or one.</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><strong>dim</strong> (<em>int</em>) &#8211; dimension of sparse vector.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body">An input type object</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body">InputType</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_non_value_slot</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
+<dd><p>Sparse binary vector. It means the input feature is a sparse vector and the
+every element in this vector is either zero or one.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>dim</strong> (<em>int</em>) &#8211; dimension of this vector.</li>
+<li><strong>seq_type</strong> (<em>int</em>) &#8211; sequence type of this input.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">An input type object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">InputType</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_value_slot</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
+<dd><p>Sparse vector. It means the input feature is a sparse vector. Most of the
+elements in this vector are zero, others could be any float value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>dim</strong> (<em>int</em>) &#8211; dimension of this vector.</li>
+<li><strong>seq_type</strong> (<em>int</em>) &#8211; sequence type of this input.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">An input type object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">InputType</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_vector</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type=0</em><span class="sig-paren">)</span></dt>
+<dd><p>Sparse vector. It means the input feature is a sparse vector. Most of the
+elements in this vector are zero, others could be any float value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>dim</strong> (<em>int</em>) &#8211; dimension of this vector.</li>
+<li><strong>seq_type</strong> (<em>int</em>) &#8211; sequence type of this input.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">An input type object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">InputType</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.data_type.</code><code class="descname">sparse_vector_sequence</code><span class="sig-paren">(</span><em>dim</em><span class="sig-paren">)</span></dt>
+<dd><p>Data type of a sequence of sparse vector, which most elements are zero,
+others could be any float value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><strong>dim</strong> (<em>int</em>) &#8211; dimension of sparse vector.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body">An input type object</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body">InputType</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.data_type.</code><code class="descname">InputType</code><span class="sig-paren">(</span><em>dim</em>, <em>seq_type</em>, <em>tp</em><span class="sig-paren">)</span></dt>
+<dd><p>InputType is the base class for paddle input types.</p>
+<div class="admonition note">
+<p class="first admonition-title">注解</p>
+<p class="last">this is a base class, and should never be used by user.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dim</strong> (<em>int</em>) &#8211; dimension of input. If the input is an integer, it means the
+value range. Otherwise, it means the size of layer.</li>
+<li><strong>seq_type</strong> (<em>int</em>) &#8211; sequence type of input. 0 means it is not a sequence. 1
+means it is a variable length sequence. 2 means it is a
+nested sequence.</li>
+<li><strong>type</strong> (<em>int</em>) &#8211; data type of input.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="datafeeder">
+<h2>DataFeeder<a class="headerlink" href="#datafeeder" title="永久链接至标题">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.data_feeder.</code><code class="descname">DataFeeder</code><span class="sig-paren">(</span><em>data_types</em>, <em>feeding=None</em><span class="sig-paren">)</span></dt>
+<dd><p>DataFeeder converts the data returned by paddle.reader into a data structure
+of Arguments which is defined in the API. The paddle.reader usually returns
+a list of mini-batch data entries. Each data entry in the list is one sample.
+Each sample is a list or a tuple with one feature or multiple features.
+DataFeeder converts this mini-batch data entries into Arguments in order
+to feed it to C++ interface.</p>
+<p>The simple usage shows below</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">feeding</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="s1">&#39;label&#39;</span><span class="p">]</span>
+<span class="n">data_types</span> <span class="o">=</span> <span class="n">enumerate_data_types_of_data_layers</span><span class="p">(</span><span class="n">topology</span><span class="p">)</span>
+<span class="n">feeder</span> <span class="o">=</span> <span class="n">DataFeeder</span><span class="p">(</span><span class="n">data_types</span><span class="o">=</span><span class="n">data_types</span><span class="p">,</span> <span class="n">feeding</span><span class="o">=</span><span class="n">feeding</span><span class="p">)</span>
+
+<span class="n">minibatch_data</span> <span class="o">=</span> <span class="p">[([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="mi">5</span><span class="p">)]</span>
+
+<span class="n">arg</span> <span class="o">=</span> <span class="n">feeder</span><span class="p">(</span><span class="n">minibatch_data</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If mini-batch data and data layers are not one to one mapping, we
+could pass a dictionary to feeding parameter to represent the mapping
+relationship.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data_types</span> <span class="o">=</span> <span class="p">[(</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">paddle</span><span class="o">.</span><span class="n">data_type</span><span class="o">.</span><span class="n">dense_vector</span><span class="p">(</span><span class="mi">784</span><span class="p">)),</span>
+              <span class="p">(</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="n">paddle</span><span class="o">.</span><span class="n">data_type</span><span class="o">.</span><span class="n">integer_value</span><span class="p">(</span><span class="mi">10</span><span class="p">))]</span>
+<span class="n">feeding</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;image&#39;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;label&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">}</span>
+<span class="n">feeder</span> <span class="o">=</span> <span class="n">DataFeeder</span><span class="p">(</span><span class="n">data_types</span><span class="o">=</span><span class="n">data_types</span><span class="p">,</span> <span class="n">feeding</span><span class="o">=</span><span class="n">feeding</span><span class="p">)</span>
+<span class="n">minibatch_data</span> <span class="o">=</span> <span class="p">[</span>
+                   <span class="p">(</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span><span class="mf">2.0</span><span class="p">,</span><span class="mf">3.0</span><span class="p">,</span><span class="mf">4.0</span><span class="p">],</span> <span class="mi">5</span><span class="p">,</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">]</span> <span class="p">),</span>  <span class="c1"># first sample</span>
+                   <span class="p">(</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span><span class="mf">2.0</span><span class="p">,</span><span class="mf">3.0</span><span class="p">,</span><span class="mf">4.0</span><span class="p">],</span> <span class="mi">5</span><span class="p">,</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">]</span> <span class="p">)</span>   <span class="c1"># second sample</span>
+                 <span class="p">]</span>
+<span class="c1"># or minibatch_data = [</span>
+<span class="c1">#                       [ [1.0,2.0,3.0,4.0], 5, [6,7,8] ],  # first sample</span>
+<span class="c1">#                       [ [1.0,2.0,3.0,4.0], 5, [6,7,8] ]   # second sample</span>
+<span class="c1">#                     ]</span>
+<span class="n">arg</span> <span class="o">=</span> <span class="n">feeder</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="n">minibatch_data</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">注解</p>
+<p class="last">This module is for internal use only. Users should use the <cite>reader</cite>
+interface.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first last simple">
+<li><strong>data_types</strong> (<em>list</em>) &#8211; A list to specify data name and type. Each item is
+a tuple of (data_name, data_type).</li>
+<li><strong>feeding</strong> (<em>dict|collections.Sequence|None</em>) &#8211; A dictionary or a sequence to specify the position of each
+data in the input data.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt>
+<code class="descname">convert</code><span class="sig-paren">(</span><em>dat</em>, <em>argument=None</em><span class="sig-paren">)</span></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dat</strong> (<em>list</em>) &#8211; A list of mini-batch data. Each sample is a list or tuple
+one feature or multiple features.</li>
+<li><strong>argument</strong> (<em>py_paddle.swig_paddle.Arguments</em>) &#8211; An Arguments object contains this mini-batch data with
+one or multiple features. The Arguments definition is
+in the API.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="reader">
+<h2>Reader<a class="headerlink" href="#reader" title="永久链接至标题">¶</a></h2>
+<p>At training and testing time, PaddlePaddle programs need to read data. To ease
+the users&#8217; work to write data reading code, we define that</p>
+<ul class="simple">
+<li>A <em>reader</em> is a function that reads data (from file, network, random number
+generator, etc) and yields data items.</li>
+<li>A <em>reader creator</em> is a function that returns a reader function.</li>
+<li>A <em>reader decorator</em> is a function, which accepts one or more readers, and
+returns a reader.</li>
+<li>A <em>batch reader</em> is a function that reads data (from <em>reader</em>, file, network,
+random number generator, etc) and yields a batch of data items.</li>
+</ul>
+<div class="section" id="data-reader-interface">
+<h3>Data Reader Interface<a class="headerlink" href="#data-reader-interface" title="永久链接至标题">¶</a></h3>
+<p>Indeed, <em>data reader</em> doesn&#8217;t have to be a function that reads and yields data
+items. It can be any function with no parameter that creates a iterable
+(anything can be used in <code class="code docutils literal"><span class="pre">for</span> <span class="pre">x</span> <span class="pre">in</span> <span class="pre">iterable</span></code>):</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">iterable</span> <span class="o">=</span> <span class="n">data_reader</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Element produced from the iterable should be a <strong>single</strong> entry of data,
+<strong>not</strong> a mini batch. That entry of data could be a single item, or a tuple of
+items.
+Item should be of <a class="reference external" href="http://www.paddlepaddle.org/doc/ui/data_provider/pydataprovider2.html?highlight=dense_vector#input-types">supported type</a> (e.g., numpy 1d
+array of float32, int, list of int)</p>
+<p>An example implementation for single item data reader creator:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">reader_creator_random_image</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">reader</span><span class="p">():</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">width</span><span class="o">*</span><span class="n">height</span><span class="p">)</span>
+<span class="k">return</span> <span class="n">reader</span>
+</pre></div>
+</div>
+<p>An example implementation for multiple item data reader creator:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">reader_creator_random_image_and_label</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">reader</span><span class="p">():</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">width</span><span class="o">*</span><span class="n">height</span><span class="p">),</span> <span class="n">label</span>
+<span class="k">return</span> <span class="n">reader</span>
+</pre></div>
+</div>
+<p>TODO(yuyang18): Should we add whole design doc here?</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">map_readers</code><span class="sig-paren">(</span><em>func</em>, <em>*readers</em><span class="sig-paren">)</span></dt>
+<dd><p>Creates a data reader that outputs return value of function using
+output of each data readers as arguments.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>func</strong> &#8211; function to use. The type of func should be (Sample) =&gt; Sample</li>
+<li><strong>readers</strong> &#8211; readers whose outputs will be used as arguments of func.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body"><p class="first">callable</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body"><p class="first">the created data reader.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">callable</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">buffered</code><span class="sig-paren">(</span><em>reader</em>, <em>size</em><span class="sig-paren">)</span></dt>
+<dd><p>Creates a buffered data reader.</p>
+<p>The buffered data reader will read and save data entries into a
+buffer. Reading from the buffered data reader will proceed as long
+as the buffer is not empty.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>reader</strong> (<em>callable</em>) &#8211; the data reader to read from.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; max buffer size.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first last">the buffered data reader.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">compose</code><span class="sig-paren">(</span><em>*readers</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Creates a data reader whose output is the combination of input readers.</p>
+<p>If input readers output following data entries:
+(1, 2)    3    (4, 5)
+The composed reader will output:
+(1, 2, 3, 4, 5)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>readers</strong> &#8211; readers that will be composed together.</li>
+<li><strong>check_alignment</strong> (<em>bool</em>) &#8211; if True, will check if input readers are aligned
+correctly. If False, will not check alignment and trailing outputs
+will be discarded. Defaults to True.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">the new data reader.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">引发:</th><td class="field-body"><p class="first last"><strong>ComposeNotAligned</strong> &#8211; outputs of readers are not aligned.
+Will not raise when check_alignment is set to False.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">chain</code><span class="sig-paren">(</span><em>*readers</em><span class="sig-paren">)</span></dt>
+<dd><p>Creates a data reader whose output is the outputs of input data
+readers chained together.</p>
+<p>If input readers output following data entries:
+[0, 0, 0]
+[1, 1, 1]
+[2, 2, 2]
+The chained reader will output:
+[0, 0, 0, 1, 1, 1, 2, 2, 2]</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><strong>readers</strong> &#8211; input readers.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body">the new data reader.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">shuffle</code><span class="sig-paren">(</span><em>reader</em>, <em>buf_size</em><span class="sig-paren">)</span></dt>
+<dd><p>Creates a data reader whose data output is shuffled.</p>
+<p>Output from the iterator that created by original reader will be
+buffered into shuffle buffer, and then shuffled. The size of shuffle buffer
+is determined by argument buf_size.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>reader</strong> (<em>callable</em>) &#8211; the original reader whose output will be shuffled.</li>
+<li><strong>buf_size</strong> (<em>int</em>) &#8211; shuffle buffer size.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">the new reader whose output is shuffled.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">callable</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">firstn</code><span class="sig-paren">(</span><em>reader</em>, <em>n</em><span class="sig-paren">)</span></dt>
+<dd><p>Limit the max number of samples that reader could return.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>reader</strong> (<em>callable</em>) &#8211; the data reader to read from.</li>
+<li><strong>n</strong> (<em>int</em>) &#8211; the max number of samples that return.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">the decorated reader.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">callable</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<p>Creator package contains some simple reader creator, which could be used in user
+program.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.reader.creator.</code><code class="descname">np_array</code><span class="sig-paren">(</span><em>x</em><span class="sig-paren">)</span></dt>
+<dd><p>Creates a reader that yields elements of x, if it is a
+numpy vector. Or rows of x, if it is a numpy matrix.
+Or any sub-hyperplane indexed by the highest dimension.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><strong>x</strong> &#8211; the numpy array to create reader from.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body">data reader created from x.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.reader.creator.</code><code class="descname">text_file</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span></dt>
+<dd><p>Creates a data reader that outputs text line by line from given text file.
+Trailing new line (&#8216;\n&#8217;) of each line will be removed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Path:</th><td class="field-body">path of the text file.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body">data reader of text file</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="minibatch">
+<h2>minibatch<a class="headerlink" href="#minibatch" title="永久链接至标题">¶</a></h2>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.minibatch.</code><code class="descname">batch</code><span class="sig-paren">(</span><em>reader</em>, <em>batch_size</em><span class="sig-paren">)</span></dt>
+<dd><p>Create a batched reader.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>reader</strong> (<em>callable</em>) &#8211; the data reader to read from.</li>
+<li><strong>batch_size</strong> (<em>int</em>) &#8211; size of each mini-batch</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">the batched reader.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">callable</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="dataset">
+<h2>Dataset<a class="headerlink" href="#dataset" title="永久链接至标题">¶</a></h2>
+<p>Dataset package.</p>
+<div class="section" id="mnist">
+<h3>mnist<a class="headerlink" href="#mnist" title="永久链接至标题">¶</a></h3>
+<p>MNIST dataset.</p>
+<p>This module will download dataset from <a class="reference external" href="http://yann.lecun.com/exdb/mnist/">http://yann.lecun.com/exdb/mnist/</a> and
+parse training set and test set into paddle reader creators.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.mnist.</code><code class="descname">train</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>MNIST training set creator.</p>
+<p>It returns a reader creator, each sample in the reader is image pixels in
+[0, 1] and label in [0, 9].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.mnist.</code><code class="descname">test</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>MNIST test set cretor.</p>
+<p>It returns a reader creator, each sample in the reader is image pixels in
+[0, 1] and label in [0, 9].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Test reader creator.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="cifar">
+<h3>cifar<a class="headerlink" href="#cifar" title="永久链接至标题">¶</a></h3>
+<p>CIFAR dataset.</p>
+<p>This module will download dataset from
+<a class="reference external" href="https://www.cs.toronto.edu/~kriz/cifar.html">https://www.cs.toronto.edu/~kriz/cifar.html</a> and parse train/test set into
+paddle reader creators.</p>
+<p>The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes,
+with 6000 images per class. There are 50000 training images and 10000 test
+images.</p>
+<p>The CIFAR-100 dataset is just like the CIFAR-10, except it has 100 classes
+containing 600 images each. There are 500 training images and 100 testing
+images per class.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.cifar.</code><code class="descname">train100</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>CIFAR-100 training set creator.</p>
+<p>It returns a reader creator, each sample in the reader is image pixels in
+[0, 1] and label in [0, 99].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.cifar.</code><code class="descname">test100</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>CIFAR-100 test set cretor.</p>
+<p>It returns a reader creator, each sample in the reader is image pixels in
+[0, 1] and label in [0, 9].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Test reader creator.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.cifar.</code><code class="descname">train10</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>CIFAR-10 training set creator.</p>
+<p>It returns a reader creator, each sample in the reader is image pixels in
+[0, 1] and label in [0, 9].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.cifar.</code><code class="descname">test10</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>CIFAR-10 test set cretor.</p>
+<p>It returns a reader creator, each sample in the reader is image pixels in
+[0, 1] and label in [0, 9].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Test reader creator.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="conll05">
+<h3>conll05<a class="headerlink" href="#conll05" title="永久链接至标题">¶</a></h3>
+<p>Conll05 dataset.
+Paddle semantic role labeling Book and demo use this dataset as an example.
+Because Conll05 is not free in public, the default downloaded URL is test set
+of Conll05 (which is public). Users can change URL and MD5 to their Conll
+dataset. And a pre-trained word vector model based on Wikipedia corpus is used
+to initialize SRL model.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.conll05.</code><code class="descname">get_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get the word, verb and label dictionary of Wikipedia corpus.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.conll05.</code><code class="descname">get_embedding</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get the trained word vector based on Wikipedia corpus.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.conll05.</code><code class="descname">test</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Conll05 test set creator.</p>
+<p>Because the training dataset is not free, the test dataset is used for
+training. It returns a reader creator, each sample in the reader is nine
+features, including sentence sequence, predicate, predicate context,
+predicate context flag and tagged sequence.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="imdb">
+<h3>imdb<a class="headerlink" href="#imdb" title="永久链接至标题">¶</a></h3>
+<p>IMDB dataset.</p>
+<p>This module downloads IMDB dataset from
+<a class="reference external" href="http://ai.stanford.edu/%7Eamaas/data/sentiment/">http://ai.stanford.edu/%7Eamaas/data/sentiment/</a>. This dataset contains a set
+of 25,000 highly polar movie reviews for training, and 25,000 for testing.
+Besides, this module also provides API for building dictionary.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.imdb.</code><code class="descname">build_dict</code><span class="sig-paren">(</span><em>pattern</em>, <em>cutoff</em><span class="sig-paren">)</span></dt>
+<dd><p>Build a word dictionary from the corpus. Keys of the dictionary are words,
+and values are zero-based IDs of these words.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.imdb.</code><code class="descname">train</code><span class="sig-paren">(</span><em>word_idx</em><span class="sig-paren">)</span></dt>
+<dd><p>IMDB training set creator.</p>
+<p>It returns a reader creator, each sample in the reader is an zero-based ID
+sequence and label in [0, 1].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><strong>word_idx</strong> (<em>dict</em>) &#8211; word dictionary</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.imdb.</code><code class="descname">test</code><span class="sig-paren">(</span><em>word_idx</em><span class="sig-paren">)</span></dt>
+<dd><p>IMDB test set creator.</p>
+<p>It returns a reader creator, each sample in the reader is an zero-based ID
+sequence and label in [0, 1].</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><strong>word_idx</strong> (<em>dict</em>) &#8211; word dictionary</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body">Test reader creator</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="imikolov">
+<h3>imikolov<a class="headerlink" href="#imikolov" title="永久链接至标题">¶</a></h3>
+<p>imikolov&#8217;s simple dataset.</p>
+<p>This module will download dataset from
+<a class="reference external" href="http://www.fit.vutbr.cz/~imikolov/rnnlm/">http://www.fit.vutbr.cz/~imikolov/rnnlm/</a> and parse training set and test set
+into paddle reader creators.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.imikolov.</code><code class="descname">build_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Build a word dictionary from the corpus,  Keys of the dictionary are words,
+and values are zero-based IDs of these words.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.imikolov.</code><code class="descname">train</code><span class="sig-paren">(</span><em>word_idx</em>, <em>n</em><span class="sig-paren">)</span></dt>
+<dd><p>imikolov training set creator.</p>
+<p>It returns a reader creator, each sample in the reader is a word ID
+tuple.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>word_idx</strong> (<em>dict</em>) &#8211; word dictionary</li>
+<li><strong>n</strong> (<em>int</em>) &#8211; sliding window size</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">Training reader creator</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">callable</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.imikolov.</code><code class="descname">test</code><span class="sig-paren">(</span><em>word_idx</em>, <em>n</em><span class="sig-paren">)</span></dt>
+<dd><p>imikolov test set creator.</p>
+<p>It returns a reader creator, each sample in the reader is a word ID
+tuple.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
+<li><strong>word_idx</strong> (<em>dict</em>) &#8211; word dictionary</li>
+<li><strong>n</strong> (<em>int</em>) &#8211; sliding window size</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回:</th><td class="field-body"><p class="first">Test reader creator</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">返回类型:</th><td class="field-body"><p class="first last">callable</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="movielens">
+<h3>movielens<a class="headerlink" href="#movielens" title="永久链接至标题">¶</a></h3>
+<p>Movielens 1-M dataset.</p>
+<p>Movielens 1-M dataset contains 1 million ratings from 6000 users on 4000
+movies, which was collected by GroupLens Research. This module will download
+Movielens 1-M dataset from
+<a class="reference external" href="http://files.grouplens.org/datasets/movielens/ml-1m.zip">http://files.grouplens.org/datasets/movielens/ml-1m.zip</a> and parse training
+set and test set into paddle reader creators.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">get_movie_title_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get movie title dictionary.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">max_movie_id</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get the maximum value of movie id.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">max_user_id</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get the maximum value of user id.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">max_job_id</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get the maximum value of job id.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">movie_categories</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get movie categoriges dictionary.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">user_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get user info dictionary.</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">movie_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Get movie info dictionary.</p>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">MovieInfo</code><span class="sig-paren">(</span><em>index</em>, <em>categories</em>, <em>title</em><span class="sig-paren">)</span></dt>
+<dd><p>Movie id, title and categories information are stored in MovieInfo.</p>
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.dataset.movielens.</code><code class="descname">UserInfo</code><span class="sig-paren">(</span><em>index</em>, <em>gender</em>, <em>age</em>, <em>job_id</em><span class="sig-paren">)</span></dt>
+<dd><p>User id, gender, age, and job information are stored in UserInfo.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="sentiment">
+<h3>sentiment<a class="headerlink" href="#sentiment" title="永久链接至标题">¶</a></h3>
+<p>The script fetch and preprocess movie_reviews data set that provided by NLTK</p>
+<p>TODO(yuyang18): Complete dataset.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.sentiment.</code><code class="descname">get_word_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Sorted the words by the frequency of words which occur in sample
+:return:</p>
+<blockquote>
+<div>words_freq_sorted</div></blockquote>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.sentiment.</code><code class="descname">train</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Default training set reader creator</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.sentiment.</code><code class="descname">test</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Default test set reader creator</p>
+</dd></dl>
+
+</div>
+<div class="section" id="uci-housing">
+<h3>uci_housing<a class="headerlink" href="#uci-housing" title="永久链接至标题">¶</a></h3>
+<p>UCI Housing dataset.</p>
+<p>This module will download dataset from
+<a class="reference external" href="https://archive.ics.uci.edu/ml/machine-learning-databases/housing/">https://archive.ics.uci.edu/ml/machine-learning-databases/housing/</a> and
+parse training set and test set into paddle reader creators.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.uci_housing.</code><code class="descname">train</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>UCI_HOUSING training set creator.</p>
+<p>It returns a reader creator, each sample in the reader is features after
+normalization and price number.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.uci_housing.</code><code class="descname">test</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>UCI_HOUSING test set creator.</p>
+<p>It returns a reader creator, each sample in the reader is features after
+normalization and price number.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Test reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="wmt14">
+<h3>wmt14<a class="headerlink" href="#wmt14" title="永久链接至标题">¶</a></h3>
+<p>WMT14 dataset.
+The original WMT14 dataset is too large and a small set of data for set is
+provided. This module will download dataset from
+<a class="reference external" href="http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz">http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz</a> and
+parse training set and test set into paddle reader creators.</p>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.wmt14.</code><code class="descname">train</code><span class="sig-paren">(</span><em>dict_size</em><span class="sig-paren">)</span></dt>
+<dd><p>WMT14 training set creator.</p>
+<p>It returns a reader creator, each sample in the reader is source language
+word ID sequence, target language word ID sequence and next word ID
+sequence.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Training reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.dataset.wmt14.</code><code class="descname">test</code><span class="sig-paren">(</span><em>dict_size</em><span class="sig-paren">)</span></dt>
+<dd><p>WMT14 test set creator.</p>
+<p>It returns a reader creator, each sample in the reader is source language
+word ID sequence, target language word ID sequence and next word ID
+sequence.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">返回:</th><td class="field-body">Test reader creator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">返回类型:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="run_logic.html" class="btn btn-neutral float-right" title="Training and Inference" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="config/attr.html" class="btn btn-neutral" title="Parameter Attribute" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

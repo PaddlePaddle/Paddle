@@ -1,0 +1,332 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Kubernetes 简介 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../../index.html"/>
+        <link rel="up" title="进阶指南" href="../../index_cn.html"/>
+        <link rel="next" title="Kubernetes单机训练" href="k8s_cn.html"/>
+        <link rel="prev" title="运行分布式训练" href="../cluster/cluster_train_cn.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">进阶指南</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../../index_cn.html">进阶指南</a> > </li>
+      
+    <li>Kubernetes 简介</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="kubernetes">
+<span id="kubernetes"></span><h1>Kubernetes 简介<a class="headerlink" href="#kubernetes" title="永久链接至标题">¶</a></h1>
+<p><a class="reference external" href="http://kubernetes.io/"><em>Kubernetes</em></a>是Google开源的容器集群管理系统，其提供应用部署、维护、扩展机制等功能，利用Kubernetes能方便地管理跨机器运行容器化的应用。Kubernetes可以在物理机或虚拟机上运行，且支持部署到<a class="reference external" href="http://kubernetes.io/docs/getting-started-guides/aws">AWS</a>，<a class="reference external" href="http://kubernetes.io/docs/getting-started-guides/azure/">Azure</a>，<a class="reference external" href="http://kubernetes.io/docs/getting-started-guides/gce">GCE</a>等多种公有云环境。介绍分布式训练之前，需要对<a class="reference external" href="http://kubernetes.io/">Kubernetes</a>有一个基本的认识，下面先简要介绍一下本文用到的几个Kubernetes概念。</p>
+<ul class="simple">
+<li><a class="reference external" href="http://kubernetes.io/docs/admin/node/"><em>Node</em></a> 表示一个Kubernetes集群中的一个工作节点，这个节点可以是物理机或者虚拟机，Kubernetes集群就是由node节点与master节点组成的。</li>
+<li><a class="reference external" href="http://kubernetes.io/docs/user-guide/pods/"><em>Pod</em></a> 是一组(一个或多个)容器，pod是Kubernetes的最小调度单元，一个pod中的所有容器会被调度到同一个node上。Pod中的容器共享NET，PID，IPC，UTS等Linux namespace。由于容器之间共享NET namespace，所以它们使用同一个IP地址，可以通过<em>localhost</em>互相通信。不同pod之间可以通过IP地址访问。</li>
+<li><a class="reference external" href="http://kubernetes.io/docs/user-guide/jobs/"><em>Job</em></a> 描述Kubernetes上运行的作业，一次作业称为一个job，通常每个job包括一个或者多个pods，job启动后会创建这些pod并开始执行一个程序，等待这个程序执行成功并返回0则成功退出，如果执行失败，也可以配置不同的重试机制。</li>
+<li><a class="reference external" href="http://kubernetes.io/docs/user-guide/volumes/"><em>Volume</em></a> 存储卷，是pod内的容器都可以访问的共享目录，也是容器与node之间共享文件的方式，因为容器内的文件都是暂时存在的，当容器因为各种原因被销毁时，其内部的文件也会随之消失。通过volume，就可以将这些文件持久化存储。Kubernetes支持多种volume，例如hostPath(宿主机目录)，gcePersistentDisk，awsElasticBlockStore等。</li>
+<li><a class="reference external" href="https://kubernetes.io/docs/user-guide/namespaces/"><em>Namespaces</em></a> 命名空间，在kubernetes中创建的所有资源对象(例如上文的pod，job)等都属于一个命名空间，在同一个命名空间中，资源对象的名字是唯一的，不同空间的资源名可以重复，命名空间主要为了对象进行逻辑上的分组便于管理。本文只使用了默认命名空间。</li>
+<li><a class="reference external" href="https://kubernetes.io/docs/user-guide/persistent-volumes/"><em>PersistentVolume</em></a>: 和<a class="reference external" href="https://kubernetes.io/docs/user-guide/persistent-volumes/#persistentvolumeclaims"><em>PersistentVolumeClaim</em></a>结合，将外部的存储服务在Kubernetes中描述成为统一的资源形式，便于存储资源管理和Pod引用。</li>
+</ul>
+<div class="section" id="kubernetes">
+<span id="id1"></span><h2>部署Kubernetes集群<a class="headerlink" href="#kubernetes" title="永久链接至标题">¶</a></h2>
+<p>Kubernetes提供了多种集群部署的方案，本文档内不重复介绍。这里给出集中常见的部署方法：</p>
+<ul class="simple">
+<li><a class="reference external" href="https://kubernetes.io/docs/getting-started-guides/minikube/"><em>minikube</em></a>: 快速在本地启动一个单机的kubernetes服务器，便于本地验证和测试。</li>
+<li><a class="reference external" href="http://kubernetes.io/docs/getting-started-guides/kubeadm/"><em>kubeadm</em></a>: 在不同操作系统，不同主机(Bare-Metal, AWS, GCE)条件下，快速部署集群。</li>
+<li><a class="reference external" href="https://kubernetes.io/docs/getting-started-guides/aws/"><em>AWS EC2</em></a>: 在aws上快速部署集群。</li>
+<li><a class="reference external" href="https://kubernetes.io/docs/getting-started-guides/centos/centos_manual_config/"><em>Bare-Metal</em></a>: 在物理机上手动部署。</li>
+</ul>
+<p>可以参考<a class="reference external" href="https://kubernetes.io/docs/getting-started-guides/#table-of-solutions">这个表格</a>选择适合您的场景的合适方案。</p>
+</div>
+<div class="section" id="">
+<span id="id2"></span><h2>选择存储方案<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>容器不会保留在运行时生成的数据，job或者应用程序在容器中运行时生成的数据会在容器销毁时消失。为了完成分布式机器学习训练任务，需要有一个外部的存储服务来保存训练所需数据和训练输出。
+常见的可选存储服务包括：</p>
+<ul class="simple">
+<li><a class="reference external" href="https://github.com/kubernetes/kubernetes/tree/master/examples/volumes/nfs"><em>NFS</em></a>: 可以将磁盘上某个目录共享给网络中其他机器访问。部署和配置比较简单，可以用于小量数据的验证。不提供分布式存储，高可用，冗余等功能。NFS的部署方法可以参考<a class="reference external" href="http://www.tecmint.com/how-to-setup-nfs-server-in-linux/">这里</a>。</li>
+<li><a class="reference external" href="http://gluster.readthedocs.io/en/latest/Quick-Start-Guide/Quickstart/"><em>GlusterFS</em></a>: 网络分布式文件系统，可以在Kubernetes中按照<a class="reference external" href="https://github.com/kubernetes/kubernetes/tree/master/examples/volumes/glusterfs">这个</a>例子使用。</li>
+<li><a class="reference external" href="http://docs.ceph.com/docs/master/"><em>Ceph</em></a>: 分布式文件系统，支持rbd，POSIX API接口(ceph fs)和对象存储API，参考<a class="reference external" href="https://kubernetes.io/docs/user-guide/volumes/#rbd">这里</a>。</li>
+<li><a class="reference external" href="https://moosefs.com/documentation.html"><em>MooseFS</em></a>: 一个分布式的存储系统。需要先挂载到服务器Node上再通过kubernetes hostPath Volume挂载到容器中。</li>
+</ul>
+</div>
+<div class="section" id="kubectl">
+<span id="kubectl"></span><h2>配置kubectl<a class="headerlink" href="#kubectl" title="永久链接至标题">¶</a></h2>
+<div class="section" id="kubectl">
+<span id="id3"></span><h3>安装kubectl<a class="headerlink" href="#kubectl" title="永久链接至标题">¶</a></h3>
+<div class="highlight-default"><div class="highlight"><pre><span></span># OS X
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/darwin/amd64/kubectl
+
+# Linux
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+
+# Windows
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/windows/amd64/kubectl.exe
+</pre></div>
+</div>
+</div>
+<div class="section" id="kubectlkubernetes">
+<span id="kubectlkubernetes"></span><h3>配置kubectl访问你的kubernetes集群<a class="headerlink" href="#kubectlkubernetes" title="永久链接至标题">¶</a></h3>
+<p>编辑<code class="docutils literal"><span class="pre">~/.kube/config</span></code>这个配置文件，修改<code class="docutils literal"><span class="pre">Master-IP</span></code>的地址。如果使用SSL认证，则需要配置<code class="docutils literal"><span class="pre">certificate-authority</span></code>和<code class="docutils literal"><span class="pre">users</span></code>中的用户证书。如果是使用非SSL方式访问（比如通过8080端口），也可以去掉这些证书的配置。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">apiVersion</span><span class="p">:</span> <span class="n">v1</span>
+<span class="n">clusters</span><span class="p">:</span>
+<span class="o">-</span> <span class="n">cluster</span><span class="p">:</span>
+    <span class="n">certificate</span><span class="o">-</span><span class="n">authority</span><span class="p">:</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">ca</span><span class="o">.</span><span class="n">crt</span>
+    <span class="n">server</span><span class="p">:</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="p">[</span><span class="n">Master</span><span class="o">-</span><span class="n">IP</span><span class="p">]:</span><span class="mi">443</span>
+  <span class="n">name</span><span class="p">:</span> <span class="n">minikube</span>
+<span class="n">contexts</span><span class="p">:</span>
+<span class="o">-</span> <span class="n">context</span><span class="p">:</span>
+    <span class="n">cluster</span><span class="p">:</span> <span class="n">minikube</span>
+    <span class="n">user</span><span class="p">:</span> <span class="n">minikube</span>
+  <span class="n">name</span><span class="p">:</span> <span class="n">minikube</span>
+<span class="n">current</span><span class="o">-</span><span class="n">context</span><span class="p">:</span> <span class="n">minikube</span>
+<span class="n">kind</span><span class="p">:</span> <span class="n">Config</span>
+<span class="n">preferences</span><span class="p">:</span> <span class="p">{}</span>
+<span class="n">users</span><span class="p">:</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">minikube</span>
+  <span class="n">user</span><span class="p">:</span>
+    <span class="n">client</span><span class="o">-</span><span class="n">certificate</span><span class="p">:</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">apiserver</span><span class="o">.</span><span class="n">crt</span>
+    <span class="n">client</span><span class="o">-</span><span class="n">key</span><span class="p">:</span> <span class="o">/</span><span class="n">Users</span><span class="o">/</span><span class="n">wuyi</span><span class="o">/.</span><span class="n">minikube</span><span class="o">/</span><span class="n">apiserver</span><span class="o">.</span><span class="n">key</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="k8s_cn.html" class="btn btn-neutral float-right" title="Kubernetes单机训练" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../cluster/cluster_train_cn.html" class="btn btn-neutral" title="运行分布式训练" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

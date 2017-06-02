@@ -1,0 +1,439 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>使用案例 &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../../index.html"/>
+        <link rel="up" title="设置命令行参数" href="index_cn.html"/>
+        <link rel="next" title="参数概述" href="arguments_cn.html"/>
+        <link rel="prev" title="设置命令行参数" href="index_cn.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_cn.html">进阶指南</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index_cn.html">设置命令行参数</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../../index_cn.html">进阶指南</a> > </li>
+      
+        <li><a href="index_cn.html">设置命令行参数</a> > </li>
+      
+    <li>使用案例</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="">
+<span id="id1"></span><h1>使用案例<a class="headerlink" href="#" title="永久链接至标题">¶</a></h1>
+<div class="section" id="">
+<span id="id2"></span><h2>本地训练<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>本地训练的实验，诸如图像分类，自然语言处理等，通常都会使用下面这些命令行参数。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> \
+  <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">0</span> \                        <span class="c1">#1:GPU,0:CPU(默认为1)</span>
+  <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">network_config</span> \
+  <span class="o">--</span><span class="n">save_dir</span><span class="o">=</span><span class="n">output</span> \
+  <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span> \                <span class="c1">#(默认为1)</span>
+  <span class="o">--</span><span class="n">test_period</span><span class="o">=</span><span class="n">M</span> \                      <span class="c1">#(默认为0) </span>
+  <span class="o">--</span><span class="n">num_passes</span><span class="o">=</span><span class="n">N</span> \                       <span class="c1">#(默认为100)</span>
+  <span class="o">--</span><span class="n">log_period</span><span class="o">=</span><span class="n">K</span> \                       <span class="c1">#(默认为100)</span>
+  <span class="o">--</span><span class="n">dot_period</span><span class="o">=</span><span class="mi">1000</span> \                    <span class="c1">#(默认为1)</span>
+  <span class="c1">#[--show_parameter_stats_period=100] \ #(默认为0)</span>
+  <span class="c1">#[--saving_period_by_batches=200] \    #(默认为0)</span>
+</pre></div>
+</div>
+<p>根据你的任务，可以选择是否使用参数<code class="docutils literal"><span class="pre">show_parameter_stats_period</span></code>和<code class="docutils literal"><span class="pre">saving_period_by_batches</span></code>。</p>
+<div class="section" id="">
+<span id="id3"></span><h3>1) 将命令参数传给网络配置<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">config_args</span></code>是一个很有用的参数，用于将参数传递给网络配置。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">config_args</span><span class="o">=</span><span class="n">generating</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">beam_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">layer_num</span><span class="o">=</span><span class="mi">10</span> \
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">get_config_arg</span></code>可用于在网络配置中解析这些参数，如下所示：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">generating</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;generating&#39;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+<span class="n">beam_size</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;beam_size&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">layer_num</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;layer_num&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">get_config_arg</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">get_config_arg</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">default_value</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>name: <code class="docutils literal"><span class="pre">--config_args</span></code>中指定的名字</li>
+<li>type: 值类型，包括bool, int, str, float等</li>
+<li>default_value: 默认值</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h3>2) 使用模型初始化网络<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>增加如下参数：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">init_model_path</span><span class="o">=</span><span class="n">model_path</span>
+<span class="o">--</span><span class="n">load_missing_parameter_strategy</span><span class="o">=</span><span class="n">rand</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h2>本地测试<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>方法一：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">job</span><span class="o">=</span><span class="n">test</span> \
+             <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">0</span> \ 
+             <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">network_config</span> \
+             <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span> \ 
+             <span class="o">--</span><span class="n">init_model_path</span><span class="o">=</span><span class="n">model_path</span> \
+</pre></div>
+</div>
+<ul class="simple">
+<li>使用init_model_path指定测试的模型</li>
+<li>只能测试单个模型</li>
+</ul>
+<p>方法二：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">job</span><span class="o">=</span><span class="n">test</span> \
+             <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">0</span> \ 
+             <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">network_config</span> \
+             <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span> \ 
+             <span class="o">--</span><span class="n">model_list</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">list</span> \
+</pre></div>
+</div>
+<ul class="simple">
+<li>使用model_list指定测试的模型列表</li>
+<li>可以测试多个模型，文件model.list如下所示：</li>
+</ul>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">alexnet_pass1</span>
+<span class="o">./</span><span class="n">alexnet_pass2</span>
+</pre></div>
+</div>
+<p>方法三：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">job</span><span class="o">=</span><span class="n">test</span> \
+             <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">0</span> \
+             <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">network_config</span> \
+             <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span> \
+             <span class="o">--</span><span class="n">save_dir</span><span class="o">=</span><span class="n">model</span> \
+             <span class="o">--</span><span class="n">test_pass</span><span class="o">=</span><span class="n">M</span> \
+             <span class="o">--</span><span class="n">num_passes</span><span class="o">=</span><span class="n">N</span> \
+</pre></div>
+</div>
+<p>这种方式必须使用Paddle存储的模型路径格式，如：<code class="docutils literal"><span class="pre">model/pass-%5d</span></code>。测试的模型包括从第M轮到第N-1轮存储的所有模型。例如，M=12，N=14这种写法将会测试模型<code class="docutils literal"><span class="pre">model/pass-00012</span></code>和<code class="docutils literal"><span class="pre">model/pass-00013</span></code>。</p>
+</div>
+<div class="section" id="">
+<span id="id6"></span><h2>稀疏训练<a class="headerlink" href="#" title="永久链接至标题">¶</a></h2>
+<p>当输入是维度很高的稀疏数据时，通常使用稀疏训练来加速计算过程。例如，输入数据的字典维数是1百万，但是每个样本仅包含几个词。在Paddle中，稀疏矩阵的乘积应用于前向传播过程，而稀疏更新在反向传播之后的权重更新时进行。</p>
+<div class="section" id="">
+<span id="id7"></span><h3>1) 本地训练<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>用户需要在网络配置中指定<strong>sparse_update=True</strong>。请参照网络配置的文档了解更详细的信息。</p>
+</div>
+<div class="section" id="">
+<span id="id8"></span><h3>2) 集群训练<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>在集群上训练一个稀疏模型需要加上下面的参数。同时用户需要在网络配置中指定<strong>sparse_remote_update=True</strong>。请参照网络配置的文档了解更详细的信息。</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">ports_num_for_sparse</span><span class="o">=</span><span class="mi">1</span>    <span class="c1">#(默认为0)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="parallel-nn">
+<span id="parallel-nn"></span><h2>parallel_nn<a class="headerlink" href="#parallel-nn" title="永久链接至标题">¶</a></h2>
+<p>用户可以设置<code class="docutils literal"><span class="pre">parallel_nn</span></code>来混合使用GPU和CPU计算网络层的参数。也就是说，你可以将网络配置成某些层使用GPU计算，而其他层使用CPU计算。另一种方式是将网络层划分到不同的GPU上去计算，这样可以减小GPU内存，或者采用并行计算来加速某些层的更新。</p>
+<p>如果你想使用这些特性，你需要在网络配置中指定设备的ID号(表示为deviceId)，并且加上下面的命令行参数:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">parallel_nn</span><span class="o">=</span><span class="n">true</span>
+</pre></div>
+</div>
+<div class="section" id="gpucpu">
+<span id="gpucpu"></span><h3>案例一：GPU和CPU混合使用<a class="headerlink" href="#gpucpu" title="永久链接至标题">¶</a></h3>
+<p>请看下面的例子：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1">#command line:</span>
+<span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="n">true</span> <span class="o">--</span><span class="n">parallel_nn</span><span class="o">=</span><span class="n">true</span> <span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span>
+
+<span class="n">default_device</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="n">fc1</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">fc2</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">fc3</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="o">...</span><span class="p">,</span><span class="n">layer_attr</span><span class="o">=</span><span class="n">ExtraAttr</span><span class="p">(</span><span class="n">device</span><span class="o">=-</span><span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>default_device(0): 设置默认设备号为0。这意味着除了指定device=-1的层之外，其他所有层都会使用GPU计算，每层使用的GPU号依赖于参数trainer_count和gpu_id(默认为0)。在此，fc1和fc2层在GPU上计算。</li>
+<li>device=-1: fc3层使用CPU计算。</li>
+<li>trainer_count:<ul>
+<li>trainer_count=1: 如果未设置gpu_id，那么fc1和fc2层将会使用第1个GPU来计算。否则使用gpu_id指定的GPU。</li>
+<li>trainer_count&gt;1: 在trainer_count个GPU上使用数据并行来计算某一层。例如，trainer_count=2意味着0号和1号GPU将会使用数据并行来计算fc1和fc2层。</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="">
+<span id="id9"></span><h3>案例二：在不同设备上指定层<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1">#command line:</span>
+<span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="n">true</span> <span class="o">--</span><span class="n">parallel_nn</span><span class="o">=</span><span class="n">true</span> <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span>
+
+<span class="c1">#network:</span>
+<span class="n">fc2</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">l1</span><span class="p">,</span> <span class="n">layer_attr</span><span class="o">=</span><span class="n">ExtraAttr</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">fc3</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">l1</span><span class="p">,</span> <span class="n">layer_attr</span><span class="o">=</span><span class="n">ExtraAttr</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">fc4</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">fc2</span><span class="p">,</span> <span class="n">layer_attr</span><span class="o">=</span><span class="n">ExtraAttr</span><span class="p">(</span><span class="n">device</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>在本例中，我们假设一台机器上有4个GPU。</p>
+<ul class="simple">
+<li>trainer_count=1:<ul>
+<li>使用0号GPU计算fc2层。</li>
+<li>使用1号GPU计算fc3层。</li>
+<li>使用CPU计算fc4层。</li>
+</ul>
+</li>
+<li>trainer_count=2:<ul>
+<li>使用0号和1号GPU计算fc2层。</li>
+<li>使用2号和3号GPU计算fc3层。</li>
+<li>使用CPU两线程计算fc4层。</li>
+</ul>
+</li>
+<li>trainer_count=4:<ul>
+<li>运行失败（注意到我们已经假设机器上有4个GPU），因为参数<code class="docutils literal"><span class="pre">allow_only_one_model_on_one_gpu</span></code>默认设置为真。</li>
+</ul>
+</li>
+</ul>
+<p><strong>当<code class="docutils literal"><span class="pre">device!=-1</span></code>时设备ID号的分配：</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>(deviceId + gpu_id + threadId * numLogicalDevices_) % numDevices_
+
+deviceId:             在层中指定
+gpu_id:               默认为0
+threadId:             线程ID号，范围: 0,1,..., trainer_count-1
+numDevices_:          机器的设备(GPU)数目
+numLogicalDevices_:   min(max(deviceId + 1), numDevices_)
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="arguments_cn.html" class="btn btn-neutral float-right" title="参数概述" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index_cn.html" class="btn btn-neutral" title="设置命令行参数" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

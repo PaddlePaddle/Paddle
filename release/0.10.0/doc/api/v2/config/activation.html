@@ -1,0 +1,417 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Activation &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html"/>
+        <link rel="up" title="Model Configuration" href="../model_configs.html"/>
+        <link rel="next" title="Layers" href="layer.html"/>
+        <link rel="prev" title="Model Configuration" href="../model_configs.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../howto/index_en.html">HOW TO</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../howto/index_en.html">HOW TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../howto/usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/deep_model/rnn/index_en.html">RNN Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">API</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../model_configs.html">Model Configuration</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+        <li><a href="../../index_en.html">API</a> > </li>
+      
+        <li><a href="../model_configs.html">Model Configuration</a> > </li>
+      
+    <li>Activation</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="activation">
+<h1>Activation<a class="headerlink" href="#activation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="abs">
+<h2>Abs<a class="headerlink" href="#abs" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">Abs</code></dt>
+<dd><p>Abs Activation.</p>
+<p>Forward:    <span class="math">\(f(z) = abs(z)\)</span></p>
+<p>Derivative:</p>
+<div class="math">
+\[\begin{split}1 &amp;\quad if \quad z &gt; 0 \\
+-1 &amp;\quad if \quad z &lt; 0 \\
+0 &amp;\quad if \quad z = 0\end{split}\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="exp">
+<h2>Exp<a class="headerlink" href="#exp" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">Exp</code></dt>
+<dd><p>Exponential Activation.</p>
+<div class="math">
+\[f(z) = e^z.\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="identity">
+<h2>Identity<a class="headerlink" href="#identity" title="Permalink to this headline">¶</a></h2>
+<dl class="attribute">
+<dt>
+<code class="descclassname">paddle.v2.activation.</code><code class="descname">Identity</code></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">Linear</span></code></p>
+</dd></dl>
+
+</div>
+<div class="section" id="linear">
+<h2>Linear<a class="headerlink" href="#linear" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">Linear</code></dt>
+<dd><p>Identity Activation.</p>
+<p>Just do nothing for output both forward/backward.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="log">
+<h2>Log<a class="headerlink" href="#log" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">Log</code></dt>
+<dd><p>Logarithm Activation.</p>
+<div class="math">
+\[f(z) = log(z)\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="square">
+<h2>Square<a class="headerlink" href="#square" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">Square</code></dt>
+<dd><p>Square Activation.</p>
+<div class="math">
+\[f(z) = z^2.\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="sigmoid">
+<h2>Sigmoid<a class="headerlink" href="#sigmoid" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">Sigmoid</code></dt>
+<dd><p>Sigmoid activation.</p>
+<div class="math">
+\[f(z) = \frac{1}{1+exp(-z)}\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="softmax">
+<h2>Softmax<a class="headerlink" href="#softmax" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">Softmax</code></dt>
+<dd><p>Softmax activation for simple input</p>
+<div class="math">
+\[P(y=j|x) = \frac{e^{x_j}} {\sum^K_{k=1} e^{x_j} }\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="sequencesoftmax">
+<h2>SequenceSoftmax<a class="headerlink" href="#sequencesoftmax" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">SequenceSoftmax</code></dt>
+<dd><p>Softmax activation for one sequence. The dimension of input feature must be
+1 and a sequence.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">softmax</span><span class="p">(</span><span class="k">for</span> <span class="n">each_feature_vector</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">input_feature</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">each_time_step_output</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+    <span class="n">each_time_step_output</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="relu">
+<h2>Relu<a class="headerlink" href="#relu" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">Relu</code></dt>
+<dd><p>Relu activation.</p>
+<p>forward. <span class="math">\(y = max(0, z)\)</span></p>
+<p>derivative:</p>
+<div class="math">
+\[\begin{split}1  &amp;\quad if z &gt; 0 \\
+0  &amp;\quad\mathrm{otherwize}\end{split}\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="brelu">
+<h2>BRelu<a class="headerlink" href="#brelu" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">BRelu</code></dt>
+<dd><p>BRelu Activation.</p>
+<p>forward.  <span class="math">\(y = min(24, max(0, z))\)</span></p>
+<p>derivative:</p>
+<div class="math">
+\[\begin{split}1  &amp;\quad if 0 &lt; z &lt; 24 \\
+0  &amp;\quad \mathrm{otherwise}\end{split}\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="softrelu">
+<h2>SoftRelu<a class="headerlink" href="#softrelu" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">SoftRelu</code></dt>
+<dd><p>SoftRelu Activation.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="tanh">
+<h2>Tanh<a class="headerlink" href="#tanh" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">Tanh</code></dt>
+<dd><p>Tanh activation.</p>
+<div class="math">
+\[f(z)=tanh(z)=\frac{e^z-e^{-z}}{e^z+e^{-z}}\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="stanh">
+<h2>STanh<a class="headerlink" href="#stanh" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">STanh</code></dt>
+<dd><p>Scaled Tanh Activation.</p>
+<div class="math">
+\[f(z) = 1.7159 * tanh(2/3*z)\]</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="layer.html" class="btn btn-neutral float-right" title="Layers" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../model_configs.html" class="btn btn-neutral" title="Model Configuration" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>

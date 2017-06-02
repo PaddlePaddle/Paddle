@@ -1,0 +1,428 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Python Data Reader Design Doc &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Python Data Reader Design Doc</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="python-data-reader-design-doc">
+<span id="python-data-reader-design-doc"></span><h1>Python Data Reader Design Doc<a class="headerlink" href="#python-data-reader-design-doc" title="永久链接至标题">¶</a></h1>
+<p>At training and testing time, PaddlePaddle programs need to read data. To ease the users&#8217; work to write data reading code, we define that</p>
+<ul class="simple">
+<li>A <em>reader</em> is a function that reads data (from file, network, random number generator, etc) and yields data items.</li>
+<li>A <em>reader creator</em> is a function that returns a reader function.</li>
+<li>A <em>reader decorator</em> is a function, which accepts one or more readers, and returns a reader.</li>
+<li>A <em>batch reader</em> is a function that reads data (from <em>reader</em>, file, network, random number generator, etc) and yields a batch of data items.</li>
+</ul>
+<p>and provide function which converts reader to batch reader, frequently used reader creators and reader decorators.</p>
+<div class="section" id="data-reader-interface">
+<span id="data-reader-interface"></span><h2>Data Reader Interface<a class="headerlink" href="#data-reader-interface" title="永久链接至标题">¶</a></h2>
+<p>Indeed, <em>data reader</em> doesn&#8217;t have to be a function that reads and yields data items. It can be any function with no parameter that creates a iterable (anything can be used in <code class="docutils literal"><span class="pre">for</span> <span class="pre">x</span> <span class="pre">in</span> <span class="pre">iterable</span></code>):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">iterable</span> <span class="o">=</span> <span class="n">data_reader</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Element produced from the iterable should be a <strong>single</strong> entry of data, <strong>not</strong> a mini batch. That entry of data could be a single item, or a tuple of items. Item should be of <a class="reference external" href="http://www.paddlepaddle.org/doc/ui/data_provider/pydataprovider2.html?highlight=dense_vector#input-types">supported type</a> (e.g., numpy 1d array of float32, int, list of int)</p>
+<p>An example implementation for single item data reader creator:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">reader_creator_random_image</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">reader</span><span class="p">():</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">width</span><span class="o">*</span><span class="n">height</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">reader</span>
+</pre></div>
+</div>
+<p>An example implementation for multiple item data reader creator:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">reader_creator_random_image_and_label</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">reader</span><span class="p">():</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">width</span><span class="o">*</span><span class="n">height</span><span class="p">),</span> <span class="n">label</span>
+    <span class="k">return</span> <span class="n">reader</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="batch-reader-interface">
+<span id="batch-reader-interface"></span><h2>Batch Reader Interface<a class="headerlink" href="#batch-reader-interface" title="永久链接至标题">¶</a></h2>
+<p><em>batch reader</em> can be any function with no parameter that creates a iterable (anything can be used in <code class="docutils literal"><span class="pre">for</span> <span class="pre">x</span> <span class="pre">in</span> <span class="pre">iterable</span></code>). The output of the iterable should be a batch (list) of data items. Each item inside the list must be a tuple.</p>
+<p>Here are valid outputs:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># a mini batch of three data items. Each data item consist three columns of data, each of which is 1.</span>
+<span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
+
+<span class="c1"># a mini batch of three data items, each data item is a list (single column).</span>
+<span class="p">[([</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">],),</span>
+<span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">],),</span>
+<span class="p">([</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">],),</span>
+</pre></div>
+</div>
+<p>Please note that each item inside the list must be a tuple, below is an invalid output:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span> <span class="c1"># wrong, [1,1,1] needs to be inside a tuple: ([1,1,1],).</span>
+ <span class="c1"># Otherwise it&#39;s ambiguous whether [1,1,1] means a single column of data [1, 1, 1],</span>
+ <span class="c1"># or three column of datas, each of which is 1.</span>
+<span class="p">[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+<span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span>
+<span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">]]</span>
+</pre></div>
+</div>
+<p>It&#8217;s easy to convert from reader to batch reader:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">mnist_train</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">mnist</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+<span class="n">mnist_train_batch_reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">mnist_train</span><span class="p">,</span> <span class="mi">128</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Also easy to create custom batch reader:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">custom_batch_reader</span><span class="p">():</span>
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">batch</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">128</span><span class="p">):</span>
+            <span class="n">batch</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">28</span><span class="o">*</span><span class="mi">28</span><span class="p">),))</span> <span class="c1"># note that it&#39;s a tuple being appended.</span>
+        <span class="k">yield</span> <span class="n">batch</span>
+
+<span class="n">mnist_random_image_batch_reader</span> <span class="o">=</span> <span class="n">custom_batch_reader</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="usage">
+<span id="usage"></span><h2>Usage<a class="headerlink" href="#usage" title="永久链接至标题">¶</a></h2>
+<p>batch reader, mapping from item(s) read to data layer, batch size and number of total pass will be passed into <code class="docutils literal"><span class="pre">paddle.train</span></code>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># two data layer is created:</span>
+<span class="n">image_layer</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">data</span><span class="p">(</span><span class="s2">&quot;image&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">label_layer</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">data</span><span class="p">(</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+
+<span class="c1"># ...</span>
+<span class="n">batch_reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">mnist</span><span class="o">.</span><span class="n">train</span><span class="p">(),</span> <span class="mi">128</span><span class="p">)</span>
+<span class="n">paddle</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">batch_reader</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;label&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">},</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="data-reader-decorator">
+<span id="data-reader-decorator"></span><h2>Data Reader Decorator<a class="headerlink" href="#data-reader-decorator" title="永久链接至标题">¶</a></h2>
+<p><em>Data reader decorator</em> takes a single or multiple data reader, returns a new data reader. It is similar to a <a class="reference external" href="https://wiki.python.org/moin/PythonDecorators">python decorator</a>, but it does not use <code class="docutils literal"><span class="pre">&#64;</span></code> syntax.</p>
+<p>Since we have a strict interface for data readers (no parameter, return a single data item). Data reader can be used flexiable via data reader decorators. Following are a few examples:</p>
+<div class="section" id="prefetch-data">
+<span id="prefetch-data"></span><h3>Prefetch Data<a class="headerlink" href="#prefetch-data" title="永久链接至标题">¶</a></h3>
+<p>Since reading data may take time and training can not proceed without data. It is generally a good idea to prefetch data.</p>
+<p>Use <code class="docutils literal"><span class="pre">paddle.reader.buffered</span></code> to prefetch data:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">buffered_reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">buffered</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">mnist</span><span class="o">.</span><span class="n">train</span><span class="p">(),</span> <span class="mi">100</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">buffered_reader</span></code> will try to buffer (prefetch) <code class="docutils literal"><span class="pre">100</span></code> data entries.</p>
+</div>
+<div class="section" id="compose-multiple-data-readers">
+<span id="compose-multiple-data-readers"></span><h3>Compose Multiple Data Readers<a class="headerlink" href="#compose-multiple-data-readers" title="永久链接至标题">¶</a></h3>
+<p>For example, we want to use a source of real images (reusing mnist dataset), and a source of random images as input for <a class="reference external" href="https://arxiv.org/abs/1406.2661">Generative Adversarial Networks</a>.</p>
+<p>We can do:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">reader_creator_random_image</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">reader</span><span class="p">():</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">width</span><span class="o">*</span><span class="n">height</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">reader</span>
+
+<span class="k">def</span> <span class="nf">reader_creator_bool</span><span class="p">(</span><span class="n">t</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">reader</span><span class="p">:</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">t</span>
+    <span class="k">return</span> <span class="n">reader</span>
+
+<span class="n">true_reader</span> <span class="o">=</span> <span class="n">reader_creator_bool</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">false_reader</span> <span class="o">=</span> <span class="n">reader_creator_bool</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+
+<span class="n">reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">compose</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">mnist</span><span class="o">.</span><span class="n">train</span><span class="p">(),</span> <span class="n">data_reader_creator_random_image</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span> <span class="n">true_reader</span><span class="p">,</span> <span class="n">false_reader</span><span class="p">)</span>
+<span class="c1"># Skipped 1 because paddle.dataset.mnist.train() produces two items per data entry.</span>
+<span class="c1"># And we don&#39;t care second item at this time.</span>
+<span class="n">paddle</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">reader</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span> <span class="p">{</span><span class="s2">&quot;true_image&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;fake_image&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;true_label&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;false_label&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="shuffle">
+<span id="shuffle"></span><h3>Shuffle<a class="headerlink" href="#shuffle" title="永久链接至标题">¶</a></h3>
+<p>Given shuffle buffer size <code class="docutils literal"><span class="pre">n</span></code>, <code class="docutils literal"><span class="pre">paddle.reader.shuffle</span></code> will return a data reader that buffers <code class="docutils literal"><span class="pre">n</span></code> data entries and shuffle them before a data entry is read.</p>
+<p>Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">reader</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">mnist</span><span class="o">.</span><span class="n">train</span><span class="p">(),</span> <span class="mi">512</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="q-a">
+<span id="q-a"></span><h2>Q &amp; A<a class="headerlink" href="#q-a" title="永久链接至标题">¶</a></h2>
+<div class="section" id="why-reader-return-only-a-single-entry-but-not-a-mini-batch">
+<span id="why-reader-return-only-a-single-entry-but-not-a-mini-batch"></span><h3>Why reader return only a single entry, but not a mini batch?<a class="headerlink" href="#why-reader-return-only-a-single-entry-but-not-a-mini-batch" title="永久链接至标题">¶</a></h3>
+<p>Always returning a single entry make reusing existing data readers much easier (e.g., if existing reader return not a single entry but 3 entries, training code will be more complex because it need to handle cases like batch size 2).</p>
+<p>We provide function <code class="docutils literal"><span class="pre">paddle.batch</span></code> to turn (single entry) reader into batch reader.</p>
+</div>
+<div class="section" id="why-do-we-need-batch-reader-isn-t-train-take-reader-and-batch-size-as-arguments-sufficient">
+<span id="why-do-we-need-batch-reader-isn-t-train-take-reader-and-batch-size-as-arguments-sufficient"></span><h3>Why do we need batch reader, isn&#8217;t train take reader and batch_size as arguments sufficient?<a class="headerlink" href="#why-do-we-need-batch-reader-isn-t-train-take-reader-and-batch-size-as-arguments-sufficient" title="永久链接至标题">¶</a></h3>
+<p>In most of the case, train taking reader and batch_size as arguments would be sufficent. However sometimes user want to customize order of data entries inside a mini batch. Or even change batch size dynamically.</p>
+</div>
+<div class="section" id="why-use-a-dictionary-but-not-a-list-to-provide-mapping">
+<span id="why-use-a-dictionary-but-not-a-list-to-provide-mapping"></span><h3>Why use a dictionary but not a list to provide mapping?<a class="headerlink" href="#why-use-a-dictionary-but-not-a-list-to-provide-mapping" title="永久链接至标题">¶</a></h3>
+<p>We decided to use dictionary (<code class="docutils literal"><span class="pre">{&quot;image&quot;:0,</span> <span class="pre">&quot;label&quot;:1}</span></code>) instead of list (<code class="docutils literal"><span class="pre">[&quot;image&quot;,</span> <span class="pre">&quot;label&quot;]</span></code>) is because that user can easily resue item (e.g., using <code class="docutils literal"><span class="pre">{&quot;image_a&quot;:0,</span> <span class="pre">&quot;image_b&quot;:0,</span> <span class="pre">&quot;label&quot;:1}</span></code>) or skip item (e.g., using <code class="docutils literal"><span class="pre">{&quot;image_a&quot;:0,</span> <span class="pre">&quot;label&quot;:2}</span></code>).</p>
+</div>
+<div class="section" id="how-to-create-custom-data-reader-creator">
+<span id="how-to-create-custom-data-reader-creator"></span><h3>How to create custom data reader creator<a class="headerlink" href="#how-to-create-custom-data-reader-creator" title="永久链接至标题">¶</a></h3>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">image_reader_creator</span><span class="p">(</span><span class="n">image_path</span><span class="p">,</span> <span class="n">label_path</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">reader</span><span class="p">():</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">image_path</span><span class="p">)</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">label_path</span><span class="p">)</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span>
+            <span class="n">f</span><span class="p">,</span> <span class="s1">&#39;ubyte&#39;</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="n">n</span> <span class="o">*</span> <span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float32&#39;</span><span class="p">)</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="n">images</span> <span class="o">/</span> <span class="mf">255.0</span> <span class="o">*</span> <span class="mf">2.0</span> <span class="o">-</span> <span class="mf">1.0</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="s1">&#39;ubyte&#39;</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="n">n</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="n">images</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:],</span> <span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="c1"># a single entry of data is created each time</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">l</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">reader</span>
+
+<span class="c1"># images_reader_creator creates a reader</span>
+<span class="n">reader</span> <span class="o">=</span> <span class="n">image_reader_creator</span><span class="p">(</span><span class="s2">&quot;/path/to/image_file&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/label_file&quot;</span><span class="p">,</span> <span class="mi">1024</span><span class="p">)</span>
+<span class="n">paddle</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">reader</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span> <span class="p">{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;label&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">},</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="how-is-paddle-train-implemented">
+<span id="how-is-paddle-train-implemented"></span><h3>How is <code class="docutils literal"><span class="pre">paddle.train</span></code> implemented<a class="headerlink" href="#how-is-paddle-train-implemented" title="永久链接至标题">¶</a></h3>
+<p>An example implementation of paddle.train could be:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="n">batch_reader</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">total_pass</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">pass_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">total_pass</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">mini_batch</span> <span class="ow">in</span> <span class="n">batch_reader</span><span class="p">():</span> <span class="c1"># this loop will never end in online learning.</span>
+            <span class="n">do_forward_backward</span><span class="p">(</span><span class="n">mini_batch</span><span class="p">,</span> <span class="n">mapping</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>
