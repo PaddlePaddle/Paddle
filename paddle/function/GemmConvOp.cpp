@@ -96,7 +96,7 @@ public:
     size_t inputHeight = inputs[0].shape()[2];
     size_t inputWidth = inputs[0].shape()[3];
     size_t filterHeight = inputs[1].shape()[2];
-    size_t filterWidth = inputs[1].shape()[2];
+    size_t filterWidth = inputs[1].shape()[3];
     size_t outputChannels = outputs[0].shape()[1];
     size_t outputHeight = outputs[0].shape()[2];
     size_t outputWidth = outputs[0].shape()[3];
@@ -148,23 +148,29 @@ public:
              0.0f,
              outputData + g * outputOffset,
              N);
-        inputData += inputChannels * inputHeight * inputWidth;
-        outputData += outputChannels * outputHeight * outputWidth;
       }
+      inputData += inputChannels * inputHeight * inputWidth;
+      outputData += outputChannels * outputHeight * outputWidth;
     }
   }
 
   void resizeBuffer(size_t newSize) {
     if (!memory_ || newSize * sizeof(real) > memory_->getAllocSize()) {
-      memory_ = std::make_shared<CpuMemoryHandle>(newSize * sizeof(real));
+      if (Device == DEVICE_TYPE_CPU) {
+        memory_ = std::make_shared<CpuMemoryHandle>(newSize * sizeof(real));
+      } else {
+        memory_ = std::make_shared<GpuMemoryHandle>(newSize * sizeof(real));
+      }
     }
   }
 
 private:
-  CpuMemHandlePtr memory_;
+  MemoryHandlePtr memory_;
 };
 
 REGISTER_TYPED_FUNC(GemmConv, CPU, GemmConvFunction);
+#ifndef PADDLE_ONLY_CPU
 REGISTER_TYPED_FUNC(GemmConv, GPU, GemmConvFunction);
+#endif
 
 }  // namespace paddle
