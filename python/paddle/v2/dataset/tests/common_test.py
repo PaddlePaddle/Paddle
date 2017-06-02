@@ -15,6 +15,7 @@
 import paddle.v2.dataset.common
 import unittest
 import tempfile
+import glob
 
 
 class TestCommon(unittest.TestCase):
@@ -31,6 +32,30 @@ class TestCommon(unittest.TestCase):
             paddle.v2.dataset.common.DATA_HOME + '/test/1548775?v=3&s=460',
             paddle.v2.dataset.common.download(
                 yi_avatar, 'test', 'f75287202d6622414c706c36c16f8e0d'))
+
+    def test_split(self):
+        def test_reader():
+            def reader():
+                for x in xrange(10):
+                    yield x
+
+            return reader
+
+        _, temp_path = tempfile.mkstemp()
+        paddle.v2.dataset.common.split(
+            test_reader(), 4, suffix=temp_path + '/test-%05d.pickle')
+        files = glob.glob(temp_path + '/test-%05d.pickle')
+        self.assertEqual(len(files), 3)
+
+    def test_cluster_file_reader(self):
+        _, temp_path = tempfile.mkstemp()
+        for x in xrange(5):
+            with open(temp_path + '/%05d.test' % x) as f:
+                f.write('%d\n' % x)
+        reader = paddle.v2.dataset.common.cluster_files_reader(
+            temp_path + '/*.test', 5, 0)
+        for idx, e in enumerate(reader()):
+            self.assertEqual(e, str("0"))
 
 
 if __name__ == '__main__':
