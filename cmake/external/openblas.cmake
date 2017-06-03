@@ -41,7 +41,7 @@ IF(NOT ${CBLAS_FOUND})
     ENDIF()
 
     ExternalProject_Add(
-        openblas
+        extern_openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
         GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
         GIT_TAG             ${OPENBLAS_COMMIT}
@@ -53,8 +53,14 @@ IF(NOT ${CBLAS_FOUND})
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
-    LIST(APPEND external_project_dependencies openblas)
 ENDIF(NOT ${CBLAS_FOUND})
 
 MESSAGE(STATUS "BLAS library: ${CBLAS_LIBRARIES}")
 INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
+
+ADD_LIBRARY(cblas STATIC IMPORTED)
+SET_PROPERTY(TARGET cblas PROPERTY IMPORTED_LOCATION ${CBLAS_LIBRARIES})
+IF(NOT ${CBLAS_FOUND})
+    ADD_DEPENDENCIES(cblas extern_openblas)
+    LIST(APPEND external_project_dependencies cblas)
+ENDIF(NOT ${CBLAS_FOUND})

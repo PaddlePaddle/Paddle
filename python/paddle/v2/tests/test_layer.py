@@ -73,7 +73,7 @@ class AggregateLayerTest(unittest.TestCase):
         pool = layer.pooling(
             input=pixel,
             pooling_type=pooling.Avg(),
-            agg_level=layer.AggregateLevel.EACH_SEQUENCE)
+            agg_level=layer.AggregateLevel.TO_SEQUENCE)
         last_seq = layer.last_seq(input=pixel)
         first_seq = layer.first_seq(input=pixel)
         concat = layer.concat(input=[last_seq, first_seq])
@@ -109,7 +109,7 @@ class ReshapeLayerTest(unittest.TestCase):
         expand = layer.expand(
             input=weight,
             expand_as=pixel,
-            expand_level=layer.ExpandLevel.FROM_TIMESTEP)
+            expand_level=layer.ExpandLevel.FROM_NO_SEQUENCE)
         repeat = layer.repeat(input=pixel, num_repeats=4)
         reshape = layer.seq_reshape(input=pixel, reshape_size=4)
         rotate = layer.rotate(input=pixel, height=16, width=49)
