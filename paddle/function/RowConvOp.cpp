@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "RowConvOp.h"
+#include <iostream>
 #include "paddle/math/Vector.h"
 
 namespace paddle {
@@ -127,10 +128,8 @@ public:
     RowConv<Device>(outMat, inMat, wMat, seqId);
   }
 };
-
 /**
- * \brief The backward propagation of padding Function. Remove the elements
- *        in the padding positions of forward.
+ * \brief TODO(qingqing)
  *
  * Argument in this Function:
  */
@@ -158,7 +157,37 @@ public:
                      : typename Tensor<real, Device>::Matrix(nullptr, 0, 0);
     const auto seqId = in.getSequenceId().vector<int, Device>();
 
+    std::cout << "in:" << std::endl;
+    for (int i = 0; i < inMat.getHeight(); ++i) {
+      for (int j = 0; j < inMat.getWidth(); ++j) {
+        std::cout << outGMat.getElement(i, j) << " ";
+      }
+      std::cout << std::endl;
+    }
+
+    std::cout << "w:" << std::endl;
+    for (int i = 0; i < wMat.getHeight(); ++i) {
+      for (int j = 0; j < wMat.getWidth(); ++j) {
+        std::cout << wMat.getElement(i, j) << " ";
+      }
+      std::cout << std::endl;
+    }
+
+    std::cout << "w:" << std::endl;
+    for (int i = 0; i < seqId.getSize(); ++i) {
+      std::cout << seqId.getElement(i) << " ";
+    }
+    std::cout << std::endl;
+
     RowConvGrad<Device>(outGMat, inMat, wMat, inGMat, wGMat, seqId);
+
+    std::cout << std::endl << "out:" << std::endl;
+    for (int i = 0; i < inGMat.getHeight(); ++i) {
+      for (int j = 0; j < inGMat.getWidth(); ++j) {
+        std::cout << inGMat.getElement(i, j) << " ";
+      }
+      std::cout << std::endl;
+    }
   }
 };
 
@@ -166,7 +195,7 @@ REGISTER_TYPED_FUNC(RowConv, CPU, RowConvFunc);
 REGISTER_TYPED_FUNC(RowConvGrad, CPU, RowConvGradFunc);
 #ifndef PADDLE_ONLY_CPU
 REGISTER_TYPED_FUNC(RowConv, GPU, RowConvFunc);
-REGISTER_TYPED_FUNC(RowConvGrad, GPU, PadGradFunc);
+REGISTER_TYPED_FUNC(RowConvGrad, GPU, RowConvGradFunc);
 #endif
 
 }  // namespace paddle
