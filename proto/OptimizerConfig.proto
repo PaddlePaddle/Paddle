@@ -1,0 +1,99 @@
+syntax = "proto2";
+ 
+option optimize_for = LITE_RUNTIME;
+
+package paddle;
+
+message SGDConfig {
+  // SGD 
+  // momentum: float >= 0. Parameter updates momentum.
+  // decay: float >= 0. Learning rate decay over each update.
+  // nesterov: boolean. Whether to apply Nesterov momentum.
+  optional double momentum = 21 [default = 0.0];
+  optional double decay = 23 [default = 0.0];
+  optional bool nesterov =24 [default = false];
+
+
+
+message AdadeltaConfig {
+  // Adadelta
+  // It is recommended to leave it at the default value.
+  // rho: float >= 0.
+  // epsilon: float >= 0. Fuzz factor.
+  // decay: float >= 0. Learning rate decay over each update.
+
+  // reference : [Adadelta - an adaptive learning rate method](http://arxiv.org/abs/1212.5701)
+  optional double rho = 33 [default = 0.90];
+  optional double epsilon = 31 [default = 1e-5];
+  optional double decay = 32 [default = 0.0];
+
+}
+
+message AdagradConfig {
+// Adagrad
+// epsilon: float >= 0.
+// decay: float >= 0. Learning rate decay over each update.
+
+// reference : [Adaptive Subgradient Methods for Online Learning and Stochastic Optimization](http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
+  optional double epsilon = 41 [default = 1e-5];
+  optional double decay = 42 [default = 0.0];
+}
+
+message AdamConfig {
+  // Adaj
+  // beta_1: float, 0 < beta < 1. Generally close to 1.
+  // beta_2: float, 0 < beta < 1. Generally close to 1.
+  // epsilon: float >= 0. Fuzz factor.
+  // decay: float >= 0. Learning rate decay over each update.
+  // reference : [Adam - A Method for Stochastic Optimization](http://arxiv.org/abs/1412.6980v8)
+  optional double beta_1 = 41;
+  optional double beta_2 = 42;
+  optional double epsilon = 43;
+  optional double decay = 44;
+}
+
+message LearningRateConfig {
+  // learninRate Policy
+  required double learning_rate = 40 [default = 1.0];
+  optional double lr_decay_a = 25; 
+  optional double lr_decay_b = 26;
+}
+
+
+message OptimizerConfig {
+  // common config of optimizer
+  required string optimizer_name = 1;
+  // algorithm config
+  enum OptimizerType {
+    SGD = 1;
+    Adadelta = 2;
+    Adagrad = 3;
+    Adam = 4;
+  }
+  required OptimizerType optimizer_type = 2;
+  optional SGDConfig sgd = 3;
+  optional AdadeltaConfig adadelta = 4;
+  optional AdagradConfig adagrad = 5;
+  optional AdamConfig adam = 6;
+
+  // learning rate runtime policy config
+  //  lr_policy : string
+  //  ConstLr = 0;
+  //  LinearLr = 1;
+  required string lr_policy = 11;
+  required LearningRateConfig lr_config = 12;
+  optional uint64 num_sample_passed = 13 [default = 0];
+
+  // reqularizer config
+  enum RegularizerType {
+    L1 = 1;
+    L2 = 2;
+    L1L2 = 3;
+  }
+  optional RegularizerType regularizer_type = 21;
+  
+  // common config of optimizer
+  optional double clipnorm = 101;
+  optional double clipvalue = 102;
+
+}
