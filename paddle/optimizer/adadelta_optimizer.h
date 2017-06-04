@@ -9,16 +9,25 @@ namespace optimizer {
 template <class T>
 class AdadeltaOptimizer : public ParameterOptimizer<T> {
 public:
-  /*! \brief call the applySGD for example  */
-  void update(const Tensor<T> &gradient) {
+  AdadeltaOptimizer(const OptimizerConfig &config);
+  ~AdadeltaOptimizer(){
+    if(accum_gradient) delete accum_gradient;
+    if(accum_delta) delete accum_delta;
+    if(update_delta) delete update_delta;
   }
+  void update(const Tensor<T> &gradient);
+  void set_weight(const Tensor<T> *p);
+  T* get_weight() const;
+  
 private:
-  double learning_rate;
+  Tensor<T> *accum_gradient;
+  Tensor<T> *accum_delta;
+  Tensor<T> *update_delta;
+  
   double rho;
   double epsilon;
   double decay;
 };
-
 
 }
 }

@@ -20,19 +20,11 @@ ParameterOptimizer<T>* ParameterOptimizer<T>::create(
   default:
     opt = new SGDOptimizer<T>(config);
   }
-  return opt;
-}
 
-template<class T>
-double ParameterOptimzier<T>::get_learning_rate() {
-  if (config_.lr_type() == paddle::OptimizerConfig_LearningRateType_Linear) {
-    learning_rate = ::std::max(learning_rate - lr_decay_a * num_sample_passed, lr_decay_b);
-
-  } else if (config_.lr_type() == paddle::OptimizerConfig_LearningRateType_Exp) {
-    double decayRatio = (double)num_sample_passed / lr_decay_b;
-    learning_rate = learning_rate * ::std::pow(lr_decay_a, decayRatio);
+  switch(config.lr_policy()) {
+  case "ConstLr" : opt.lr_policy = new ConstLr(config); break;
   }
-  return learning_rate;
+  return opt;
 }
 
 template <class T>
@@ -43,6 +35,7 @@ T* ParameterOptimizer<T>::get_weight() const {
 template <class T>
 char* ParameterOptimizer<T>::get_config_proto() const {
   // set config dynamic value for save checkpoint
+  config_.lr_policy().set_learning_rate(lr_policy->get_learning_rate(num_sample_passed));
   config_.set_num_sample_passed(num_sample_passed);
   config_.set_iterations(iterations);
   return config_.SerializeAsString().c_str();

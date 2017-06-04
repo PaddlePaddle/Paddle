@@ -6,59 +6,57 @@ package paddle;
 
 message SGDConfig {
   // SGD 
-  // learning_rate: float >= 0. Learning rate.
   // momentum: float >= 0. Parameter updates momentum.
   // decay: float >= 0. Learning rate decay over each update.
   // nesterov: boolean. Whether to apply Nesterov momentum.
-  required double learning_rate = 20 [default = 1.0];
   optional double momentum = 21 [default = 0.0];
-  optional double decay = 23;
-  optional bool nesterov =24;
-  optional double lr_decay_a = 25;
-  optional double lr_decay_b = 26;
-}
+  optional double decay = 23 [default = 0.0];
+  optional bool nesterov =24 [default = false];
+
 
 
 message AdadeltaConfig {
-// Adadelta
-// learning_rate: float >= 0. Learning rate.
-// It is recommended to leave it at the default value.
-// rho: float >= 0.
-// epsilon: float >= 0. Fuzz factor.
-// decay: float >= 0. Learning rate decay over each update.
+  // Adadelta
+  // It is recommended to leave it at the default value.
+  // rho: float >= 0.
+  // epsilon: float >= 0. Fuzz factor.
+  // decay: float >= 0. Learning rate decay over each update.
 
-// reference : [Adadelta - an adaptive learning rate method](http://arxiv.org/abs/1212.5701)
-  required double learning_rate = 30 [default = 1.0];
-  optional double rho = 33;
-  optional double epsilon = 31;
-  optional double decay = 32;
+  // reference : [Adadelta - an adaptive learning rate method](http://arxiv.org/abs/1212.5701)
+  optional double rho = 33 [default = 0.90];
+  optional double epsilon = 31 [default = 1e-5];
+  optional double decay = 32 [default = 0.0];
 
 }
 
 message AdagradConfig {
 // Adagrad
-// learning_rate: float >= 0. Learning rate.
 // epsilon: float >= 0.
 // decay: float >= 0. Learning rate decay over each update.
 
 // reference : [Adaptive Subgradient Methods for Online Learning and Stochastic Optimization](http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
-  required double learning_rate = 30 [default = 1.0];
-  optional double epsilon = 31;
-  optional double decay = 32;
+  optional double epsilon = 41 [default = 1e-5];
+  optional double decay = 42 [default = 0.0];
 }
 
 message AdamConfig {
   // Adaj
-  // learning_rate: float >= 0. Learning rate.
   // beta_1: float, 0 < beta < 1. Generally close to 1.
   // beta_2: float, 0 < beta < 1. Generally close to 1.
   // epsilon: float >= 0. Fuzz factor.
   // decay: float >= 0. Learning rate decay over each update.
   // reference : [Adam - A Method for Stochastic Optimization](http://arxiv.org/abs/1412.6980v8)
-  required double learning_rate = 40 [default = 1.0];
   optional double beta_1 = 41;
   optional double beta_2 = 42;
   optional double epsilon = 43;
+  optional double decay = 44;
+}
+
+message LearningRateConfig {
+  // learninRate Policy
+  required double learning_rate = 40 [default = 1.0];
+  optional double lr_decay_a = 25; 
+  optional double lr_decay_b = 26;
 }
 
 
@@ -79,15 +77,12 @@ message OptimizerConfig {
   optional AdamConfig adam = 6;
 
   // learning rate runtime policy config
-  enum LearningRateType {
-    Linear = 1;
-    Exp = 2;
-    Poly = 3;
-    CaffePoly = 4;
-  }
-  required LearningRateType lr_type = 11;
-  optional uint32 num_sample_passed = 12 [default = 0];
-  optional uint32 iterations = 13;
+  //  lr_policy : string
+  //  ConstLr = 0;
+  //  LinearLr = 1;
+  required string lr_policy = 11;
+  required LearningRateConfig lr_config = 12;
+  optional uint64 num_sample_passed = 13 [default = 0];
 
   // reqularizer config
   enum RegularizerType {

@@ -10,10 +10,16 @@ namespace optimizer {
 template <class T>
 class AdagradOptimizer : public ParameterOptimizer<T> {
 public:
-  void update(const Tensor<T> &gradient) {
+  AdagradOptimizer(const OptimizerConfig &config);
+  ~AdagradOptimizer(){
+    if(accum_gradient) delete accum_gradient;
   }
+  void update(const Tensor<T> &gradient);
+  void set_weight(const Tensor<T> *p);
+  T* get_weight() const;
+  
 private:
-  double learning_rate;
+  Tensor<T> *accum_gradient;
   double epsilon;
   double decay;
 };

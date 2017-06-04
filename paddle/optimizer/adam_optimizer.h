@@ -10,14 +10,18 @@ namespace optimizer {
 template <class T>
 class AdamOptimizer : public ParameterOptimizer<T> {
 public:
-  /*! \brief call the applySGD for example  */
-  void update(const Tensor<T> &gradient) {
-  }
+  AdamOptimizer(const OptimizerConfig &config);
+  ~AdamOptimizer(){}
+  void update(const Tensor<T> &gradient);
+  void set_weight(const Tensor<T> *p);
+  T* get_weight() const;
 private:
-  double learning_rate ;
+  Tensor<T> *momentums_;
+  Tensor<T> *velocitys_;
   double beta_1;
   double beta_2;
   double epsilon;
+  double decay;
 };
 
 

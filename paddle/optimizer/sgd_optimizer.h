@@ -10,22 +10,20 @@ template <class T>
 class SGDOptimizer : public ParameterOptimizer<T> {
 public:
   SGDOptimizer(const ::paddle::OptimizerConfig &config);
-  void set_weight(const Tensor<T> *p);
-  T* get_weight() const;
-  void update(const Tensor<T> &gradient);
-  char* get_config_proto();
   ~SGDOptimizer() {
     // clear memory by Tensor library
     delete momentums_;
   }
+  void update(const Tensor<T> &gradient);
+  
+  void set_weight(const Tensor<T> *p);
+  T* get_weight() const;
+  char* get_config_proto();
 private:
   Tensor<T>* momentums_;
-  double learning_rate;
   double momentum;
   double decay;
   bool nesterov;
-  double lr_decay_a;
-  double lr_decay_b;
 };
 
 }

@@ -6,6 +6,7 @@
 #include <string>
 #include "Tensor.h"
 #include "OptimizerConfig.pb.h"
+#include "lr_policy.h"
 
 namespace paddle {
 namespace optimizer {
@@ -29,15 +30,15 @@ public:
   ~ParameterOptimzier() {
     delete parameter_;
   }
-  double get_learning_rate();
 
 private:
   bool config_valid(::std::string &config) const;
   OptimizerConfig config_;
   Tensor<T> *parameter_;
 
-  uint32 num_sample_passed;
-  uint32 iterations;
+  // learning rate policy
+  BaseLr *lr_policy;
+  uint64_t num_sample_passed;
 
   ParameterOptimizer(const ParameterOptimizer&) = delete;
   ParameterOptimizer& operator=(const ParameterOptimizer&) = delete;
