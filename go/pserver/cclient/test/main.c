@@ -17,7 +17,7 @@ retry:
     paddle_parameter param;
     char name_a[] = "param_a";
     char name_b[] = "param_b";
-    char content[] = {0x00, 0x11, 0x22};
+    unsigned char content[] = {0x00, 0x11, 0x22};
     param.element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
     param.name = name_a;
     param.content = content;
@@ -39,7 +39,7 @@ retry:
     fail();
   }
 
-  char content[] = {0x00, 0x11, 0x22};
+  unsigned char content[] = {0x00, 0x11, 0x22};
   paddle_gradient grads[2] = {
       {"param_a", PADDLE_ELEMENT_TYPE_INT32, content, 3},
       {"param_b", PADDLE_ELEMENT_TYPE_FLOAT32, content, 3}};
