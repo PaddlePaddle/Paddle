@@ -75,7 +75,7 @@ void RowConvLayer::backward(const UpdateCallback& callback) {
   BufferArgs outputs;
   inputs.addArg(*getOutputGrad(), *startPos);
   inputs.addArg(*getInputValue(0), *startPos);
-  inputs.addArg(*weight_->getW(), *startPos);
+  inputs.addArg(*weight_->getW(), wDims_);
 
   MatrixPtr inGrad = getInputGrad(0);
   MatrixPtr wGrad = weight_->getWGrad();

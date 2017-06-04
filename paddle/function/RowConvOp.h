@@ -19,7 +19,14 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * \brief TODO(qingqing)
+ * \brief The forward of row convolution.
+ *
+ * \param[out] out      The output data and shape is h x d. h is the sum of
+ *                      time steps of all samples in one mini-batch.
+ * \param[in]  in       The input data and shape is h x d.
+ * \param[in]  filter   The filter and shape is k x d. The lookahead step
+ *                      number plus one equals k.
+ * \param[in]  seq      The sequence start positions.
  *
  */
 template <DeviceType DType>
@@ -29,7 +36,14 @@ void RowConv(typename Tensor<real, DType>::Matrix& out,
              const typename Tensor<int, DType>::Vector& seq);
 
 /**
- * \brief  TODO(qingqing)
+ * \brief The backward of row convolution.
+ *
+ * \param[in]  outG     The gradient w.r.t output data.
+ * \param[in]  in       The input data.
+ * \param[in]  filter   The filter.
+ * \param[out] inG      The gradient w.r.t input data.
+ * \param[out] filterG  The gradient w.r.t filter.
+ * \param[in]  seq      The sequence start positions.
  *
  */
 template <DeviceType DType>

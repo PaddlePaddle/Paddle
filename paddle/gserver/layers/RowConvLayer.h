@@ -37,9 +37,7 @@ protected:
   // fan_out is the size of output feature.
   std::unique_ptr<Weight> weight_;
 
-  // std::unique_ptr<Weight> biases_;
-
-  // how many steps to look ahead
+  // The step number to look ahead plus one equals contexLength_.
   size_t contexLength_;
   TensorShape wDims_;
 };

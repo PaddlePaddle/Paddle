@@ -47,23 +47,16 @@ void testRowConvBw(size_t batchSize, size_t dim, size_t contextLength) {
 }
 
 TEST(RowConv, real) {
-  // for (size_t numSamples : {17, 129}) {
-  //   for (size_t dim : {16, 248}) {
-  //     for (size_t context: {3, 7, 65}) {
-  LOG(INFO) << "===========";
-  // for (size_t numSamples : {17}) {
-  //  for (size_t dim : {16}) {
-  //    for (size_t context: {3}) {
-  size_t numSamples = 17;
-  size_t dim = 16;
-  size_t context = 3;
-  LOG(INFO) << " numSamples=" << numSamples << " dim=" << dim
-            << " context length=" << context;
-  testRowConvFw(numSamples, dim, context);
-  // testRowConvBw(numSamples, dim, context);
-  //     }
-  //   }
-  // }
+  for (size_t numSamples : {17, 129, 2020}) {
+    for (size_t dim : {16, 512, 2560}) {
+      for (size_t context : {3, 19, 65}) {
+        VLOG(3) << " numSamples=" << numSamples << " dim=" << dim
+                << " context length=" << context;
+        testRowConvFw(numSamples, dim, context);
+        testRowConvBw(numSamples, dim, context);
+      }
+    }
+  }
 }
 
 }  // namespace paddle

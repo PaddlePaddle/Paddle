@@ -61,7 +61,7 @@ void RowConvGrad<DEVICE_TYPE_CPU>(const CpuMatrix& outG,
       size_t begin = starts[i];
       size_t end = starts[i + 1];
       size_t steps = end - begin;
-      for (size_t j = 0; j < contextLength; ++j) {
+      for (size_t j = 0; j < contextLength && (begin + j) < end; ++j) {
         MatrixPtr x =
             (const_cast<CpuMatrix&>(in)).subMatrix(begin + j, steps - j);
         MatrixPtr dy =
@@ -81,7 +81,7 @@ void RowConvGrad<DEVICE_TYPE_CPU>(const CpuMatrix& outG,
       for (size_t j = 0; j < steps; ++j) {
         MatrixPtr dx = inG.subMatrix(begin + j, 1);
         for (size_t t = 0; t < contextLength; ++t) {
-          if ((int(j) - int(t)) >= 0) {
+          if (int(j - t) >= 0) {
             MatrixPtr dy =
                 (const_cast<CpuMatrix&>(outG)).subMatrix(begin + j - t, 1);
             MatrixPtr w = (const_cast<CpuMatrix&>(filter)).subMatrix(t, 1);
@@ -94,8 +94,37 @@ void RowConvGrad<DEVICE_TYPE_CPU>(const CpuMatrix& outG,
 }
 
 /**
- * \brief TODO(qingqing)
+ * \brief The row convolution is called lookahead convolution. It is firstly
+ * introduced in deep-speech2 system. The bidirectional RNN that learns
+ * representation for a sequence by performing a forward and a backward pass
+ * through the entire sequence. However, unlike unidirectional RNNs,
+ * bidirectional RNNs are challenging to deploy in an online and low-latency
+ * setting. The lookahead convolution incorporates information from future
+ * subsequences in a computationally efficient manner to improve unidirectional
+ * recurrent neural networks.
  *
+ * The connection of row convolution is different form the 1D sequence
+ * convolution. Assumed that, the future context-length is k, that is to say,
+ * it can get the output at timestep t by using the the input feature from t-th
+ * timestep to (t+k)-th timestep. Assumed that the hidden dim of input
+ * activations are d, the activations r_t for the new layer at time-step t are:
+ *
+ *
+ *            -- k + 1
+ *  r(t,i) =  >       W(i,j) * h(t+j-1, i),  for (1 <= i <= d)
+ *            -- j = 1
+ *
+ *
+ * The weight shape is: (k + 1) x d
+ * Function Arguments:
+ *
+ * \param inputs[0]  The input activations.
+ * \param inputs[0]  The filter (or weight) and shape is (k+1) x d.
+ * \param outputs[1] The output activations.
+ *
+ * [1] Dario Amodei, etc. Deep Speech 2 : End-to-End Speech Recognition in
+ * English
+ *     and Mandarin. https://arxiv.org/abs/1512.02595
  */
 
 template <DeviceType Device>
@@ -128,10 +157,21 @@ public:
     RowConv<Device>(outMat, inMat, wMat, seqId);
   }
 };
+
 /**
- * \brief TODO(qingqing)
+ * \brief The backward of row convolution function. This function calculated
+ * the gradient w.r.t filter and the gradient w.r.t input activations(or data).
  *
  * Argument in this Function:
+ *
+ * \param inputs[0]  The gradient w.r.t output activations.
+ * \param inputs[1]  The input activations.
+ * \param inputs[2]  The filter (or weight) and shape is (k+1) x d.
+ * \param outputs[0] The gradient w.r.t input activations.
+ * \param outputs[1] The gradient w.r.r filter.
+ *
+ * Abbreviation:
+ * w.r.t: with respect to.
  */
 
 template <DeviceType Device>
@@ -140,11 +180,26 @@ public:
   void init(const FuncConfig& config) override {}
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    // check
+    CHECK_EQ(3UL, inputs.size());
+    CHECK_EQ(2UL, outputs.size());
+    CHECK_EQ(outputs[0].getArgType(), ADD_TO);
+    CHECK_EQ(outputs[1].getArgType(), ADD_TO);
+    CHECK(inputs[0].isSequenceArg() && inputs[1].isSequenceArg() &&
+          outputs[0].isSequenceArg())
+        << "SequenceArg required here.";
+
     const auto outGrad = dynamic_cast<const SequenceArg&>(inputs[0]);
     const auto in = dynamic_cast<const SequenceArg&>(inputs[1]);
     const auto w = inputs[2];
     auto inGrad = dynamic_cast<const SequenceArg&>(outputs[0]);
     auto wGrad = outputs[1];
+
+    CHECK_EQ(in.shape().ndims(), 2UL);
+    CHECK_EQ(outGrad.shape().ndims(), 2UL);
+    CHECK_EQ(in.shape()[1], outGrad.shape()[1]);
+    CHECK_EQ(in.shape()[0], outGrad.shape()[0]);
+    CHECK_EQ(wGrad.shape()[1], in.shape()[1]);
 
     const auto outGMat = outGrad.matrix<Device>();
     const auto inMat = in.matrix<Device>();
@@ -157,37 +212,7 @@ public:
                      : typename Tensor<real, Device>::Matrix(nullptr, 0, 0);
     const auto seqId = in.getSequenceId().vector<int, Device>();
 
-    std::cout << "in:" << std::endl;
-    for (int i = 0; i < inMat.getHeight(); ++i) {
-      for (int j = 0; j < inMat.getWidth(); ++j) {
-        std::cout << outGMat.getElement(i, j) << " ";
-      }
-      std::cout << std::endl;
-    }
-
-    std::cout << "w:" << std::endl;
-    for (int i = 0; i < wMat.getHeight(); ++i) {
-      for (int j = 0; j < wMat.getWidth(); ++j) {
-        std::cout << wMat.getElement(i, j) << " ";
-      }
-      std::cout << std::endl;
-    }
-
-    std::cout << "w:" << std::endl;
-    for (int i = 0; i < seqId.getSize(); ++i) {
-      std::cout << seqId.getElement(i) << " ";
-    }
-    std::cout << std::endl;
-
     RowConvGrad<Device>(outGMat, inMat, wMat, inGMat, wGMat, seqId);
-
-    std::cout << std::endl << "out:" << std::endl;
-    for (int i = 0; i < inGMat.getHeight(); ++i) {
-      for (int j = 0; j < inGMat.getWidth(); ++j) {
-        std::cout << inGMat.getElement(i, j) << " ";
-      }
-      std::cout << std::endl;
-    }
   }
 };
 
