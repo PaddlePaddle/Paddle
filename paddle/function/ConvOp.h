@@ -89,11 +89,13 @@ public:
 protected:
   std::vector<size_t> strides_;
   std::vector<size_t> paddings_;
+
   /// Group size, refer to grouped convolution in
   /// Alex Krizhevsky's paper: when group=2, the first half of the
   /// filters are only connected to the first half of the input channels,
   /// and the second half only connected to the second half.
   size_t groups_;
+
   inline int strideH() const { return strides_[0]; }
 
   inline int strideW() const { return strides_[1]; }
@@ -101,6 +103,20 @@ protected:
   inline int paddingH() const { return paddings_[0]; }
 
   inline int paddingW() const { return paddings_[1]; }
+
+  // A temporary memory in convolution calculation.
+  MemoryHandlePtr memory_;
+
+  template <DeviceType Device>
+  void resizeBuffer(size_t newSize) {
+    if (!memory_ || newSize * sizeof(real) > memory_->getAllocSize()) {
+      if (Device == DEVICE_TYPE_CPU) {
+        memory_ = std::make_shared<CpuMemoryHandle>(newSize * sizeof(real));
+      } else {
+        memory_ = std::make_shared<GpuMemoryHandle>(newSize * sizeof(real));
+      }
+    }
+  }
 };
 
 }  // namespace paddle

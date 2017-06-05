@@ -26,7 +26,9 @@ namespace paddle {
 template <DeviceType Device, class T>
 class GemmFunctor {
 public:
-  void operator()(const int M,
+  void operator()(const CBLAS_TRANSPOSE transA,
+                  const CBLAS_TRANSPOSE TransB,
+                  const int M,
                   const int N,
                   const int K,
                   const T alpha,
@@ -42,7 +44,9 @@ public:
 template <class T>
 class GemmFunctor<DEVICE_TYPE_CPU, T> {
 public:
-  void operator()(const int M,
+  void operator()(const CBLAS_TRANSPOSE transA,
+                  const CBLAS_TRANSPOSE TransB,
+                  const int M,
                   const int N,
                   const int K,
                   const T alpha,
@@ -53,26 +57,16 @@ public:
                   const T beta,
                   T* C,
                   const int ldc) {
-    gemm<T>(CblasNoTrans,
-            CblasNoTrans,
-            M,
-            N,
-            K,
-            alpha,
-            A,
-            lda,
-            B,
-            ldb,
-            beta,
-            C,
-            ldc);
+    gemm<T>(transA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
   }
 };
 
 template <class T>
 class GemmFunctor<DEVICE_TYPE_GPU, T> {
 public:
-  void operator()(const int M,
+  void operator()(const CBLAS_TRANSPOSE transA,
+                  const CBLAS_TRANSPOSE TransB,
+                  const int M,
                   const int N,
                   const int K,
                   const T alpha,
@@ -84,9 +78,9 @@ public:
                   T* C,
                   const int ldc) {
     hl_matrix_mul((T*)A,
-                  HPPL_OP_N,
+                  transA == CblasNoTrans ? HPPL_OP_N : HPPL_OP_T,
                   (T*)B,
-                  HPPL_OP_N,
+                  TransB == CblasNoTrans ? HPPL_OP_N : HPPL_OP_T,
                   C,
                   M,
                   N,
