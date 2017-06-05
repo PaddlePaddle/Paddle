@@ -81,8 +81,8 @@ def seqToseq_net(source_dict_dim, target_dict_dim, is_generating=False):
         return out
 
     decoder_group_name = "decoder_group"
-    group_input1 = paddle.layer.StaticInputV2(input=encoded_vector, is_seq=True)
-    group_input2 = paddle.layer.StaticInputV2(input=encoded_proj, is_seq=True)
+    group_input1 = paddle.layer.StaticInput(input=encoded_vector, is_seq=True)
+    group_input2 = paddle.layer.StaticInput(input=encoded_proj, is_seq=True)
     group_inputs = [group_input1, group_input2]
 
     if not is_generating:

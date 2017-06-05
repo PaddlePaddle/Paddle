@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 `paddle.v2.layer` is a part of model config packages in paddle.v2. In API v2,
-we want to make Paddle a plain Python package. The model config package defined
+we want to make Paddle a plain Python package. The model config package defines
 the way how to configure a neural network topology in Paddle Python code.
 
 The primary usage shows below.
@@ -75,8 +75,9 @@ def __convert_name__(inname):
 for name in v1_layers.__all__:
     obj = getattr(v1_layers, name)
     if not __need_to_keep__(name):
-        continue
-    new_name = __convert_name__(name)
+        new_name = name
+    else:
+        new_name = __convert_name__(name)
     if callable(obj) and __need_to_wrap__(name):
         globals()[new_name] = __convert_to_v2__(obj, new_name, __name__)
     else:
