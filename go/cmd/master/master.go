@@ -14,7 +14,7 @@ import (
 	"github.com/namsral/flag"
 
 	"github.com/PaddlePaddle/Paddle/go/master"
-	"github.com/PaddlePaddle/Paddle/go/recordio"
+	"github.com/PaddlePaddle/recordio"
 )
 
 func main() {
