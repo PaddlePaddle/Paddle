@@ -1,7 +1,7 @@
 #include <glog/logging.h>
-#include "adadelta_optimizer.h"
-#include "adagrad_optimizer.h"
-#include "adam_optimizer.h"
+// #include "adadelta_optimizer.h"
+// #include "adagrad_optimizer.h"
+// #include "adam_optimizer.h"
 #include "lr_policy.h"
 #include "sgd_optimizer.h"
 
@@ -36,20 +36,20 @@ ParameterOptimizer *ParameterOptimizer::create(
                               config.sgd().nesterov(),
                               lr);
     }
-    if (s == "Adadelta") {
-      return new AdagradOptimizer(
-          config.adagrad().epsilon(), config.adagrad().decay(), lr);
-    }
-    if (s == "Adagrad") {
-      return new AdagradOptimizer(
-          config.adagrad().epsilon(), config.adagrad().decay(), lr);
-    }
-    if (s == "Adam") {
-      return new AdadeltaOptimizer(config.adadelta().rho(),
-                                   config.adadelta().epsilon(),
-                                   config.adadelta().decay(),
-                                   lr);
-    }
+    // if (s == "Adadelta") {
+    //   return new AdagradOptimizer(
+    //       config.adagrad().epsilon(), config.adagrad().decay(), lr);
+    // }
+    // if (s == "Adagrad") {
+    //   return new AdagradOptimizer(
+    //       config.adagrad().epsilon(), config.adagrad().decay(), lr);
+    // }
+    // if (s == "Adam") {
+    //   return new AdadeltaOptimizer(config.adadelta().rho(),
+    //                                config.adadelta().epsilon(),
+    //                                config.adadelta().decay(),
+    //                                lr);
+    // }
     // default
     return new SGDOptimizer(config.sgd().momentum(),
                             config.sgd().decay(),

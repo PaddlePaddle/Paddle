@@ -2,6 +2,7 @@
 #include <string>
 
 #include "parameter_optimizer.h"
+using namespace paddle;
 using namespace paddle::optimizer;
 
 template <paddle_element_type VALUE>
@@ -50,8 +51,8 @@ int paddle_update_parameter(paddle_optimizer* o,
                             const void* grad_buffer,
                             int num_bytes) {
   // TOOD(zhihong): datatype not work. need to add the runtime datatype
-  auto grad = reinterpret_cast<const real*>(grad_buffer);
-  Tensor gradient(const_cast<real*>(grad), num_bytes);
+  auto grad_type = reinterpret_cast<const real*>(grad_buffer);
+  Tensor* gradient = new Tensor(const_cast<real*>(grad_type), num_bytes);
   o->impl->update(gradient);
   return PADDLE_SUCCESS;
 }

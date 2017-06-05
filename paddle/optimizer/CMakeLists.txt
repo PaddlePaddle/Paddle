@@ -27,3 +27,4 @@ add_dependencies(optimizer gen_proto_cpp)
 
 add_simple_unittest(optimizer_test)
 add_simple_unittest(optimizer_factory_test)
+add_simple_unittest(Tensor_test)

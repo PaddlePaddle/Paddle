@@ -5,34 +5,42 @@
  */
 
 #include <string.h>
-#include "paddle/math/BaseMatrix.h"
+#include "paddle/utils/Common.h"
+#include "paddle/utils/Logging.h"
 
 namespace paddle {
 namespace optimizer {
 
 template <class T>
-using TensorBase = BaseMatrixT<T>;
-
-template <class T>
-class TensorT : public TensorBase<T> {
+class TensorT {
 public:
-  TensorT(T* data, int size) : TensorBase<T>(1, size, 0, data, false, false) {}
+  TensorT(size_t h, size_t w, T* data) : height_(h), width_(w), data_(data_) {}
+  TensorT(T* data, int size) : height_(1), width_(size), data_(data) {}
   TensorT(const TensorT& t)
-      : TensorBase<T>(1, t.size(), 0, t.get_buffer(), false, false) {}
+      : TensorT(1, t.size(), 0, t.get_buffer(), false, false) {}
   TensorT& operator=(const TensorT& t) {
-    this->size_ = t.size();
+    this->width_ = t.size();
     this->data_ = t.get_buffer();
   }
   T* get_buffer() { return this->data_; }
   T& operator[](const int idx) {
     CHECK(idx >= 0 && idx < this->width_) << "out of index range";
-    return this->data_[idx];
+    return data_[idx];
+  }
+  T& operator[](const int idx) const {
+    CHECK(idx >= 0 && idx < this->width_) << "out of index range";
+    return data_[idx];
   }
   // TODO: replace with tensorshape
   size_t size() const { return this->width_; }
+
+protected:
+  size_t height_;
+  size_t width_;
+  T* data_;
 };
 
-// TODO(zhihong): design problem of dynamic datatype, need to fix
+// TODO(zhihong): design problem of dynamic datatype, need to fix it
 typedef TensorT<real> Tensor;
 
 }  // namespace optimizer
