@@ -188,9 +188,9 @@ workflow to merge your code.</p>
 <div class="section" id="code-requirements">
 <span id="code-requirements"></span><h2>Code Requirements<a class="headerlink" href="#code-requirements" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Your code must be fully documented by
-<a class="reference external" href="http://www.stack.nl/~dimitri/doxygen/">doxygen</a> style.</li>
-<li>Make sure the compiler option WITH_STYLE_CHECK is on and the compiler
+<li>Your code comments must be fully documented by
+<a class="reference external" href="http://www.stack.nl/~dimitri/doxygen/">Doxygen</a> style.</li>
+<li>Make sure the compiler option <code class="docutils literal"><span class="pre">WITH_STYLE_CHECK</span></code> is on and the compiler
 passes the code style check.</li>
 <li>All code must have unit test.</li>
 <li>Pass all unit tests.</li>
@@ -204,26 +204,20 @@ It&#8217;s just that simple.</p>
 </div>
 <div class="section" id="clone">
 <span id="clone"></span><h2>Clone<a class="headerlink" href="#clone" title="Permalink to this headline">¶</a></h2>
-<p>Paddle is currently using <a class="reference external" href="http://nvie.com/posts/a-successful-git-branching-model/">git-flow branching model</a>.
-The <strong>develop</strong> is the main branch, and other user&#8217;s branches are feature branches.</p>
-<p>Once you&#8217;ve created a fork, you can use your favorite git client to clone your
-repo or just head straight to the command line:</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># Clone your fork to your local machine</span>
-git clone --branch develop https://github.com/USERNAME/Paddle.git
+<p>Clone remote repository.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git clone https://github.com/USERNAME/Paddle
+➜  <span class="nb">cd</span> Paddle
 </pre></div>
 </div>
-<p>If your repository doesn&#8217;t contain <strong>develop</strong> branch, just create it by your own.</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>git clone https://github.com/USERNAME/Paddle.git Paddle
-<span class="nb">cd</span> Paddle
-git checkout -b develop  <span class="c1"># create develop branch.</span>
-git remote add upstream https://github.com/PaddlePaddle/Paddle.git  <span class="c1"># add upstream to baidu/Paddle</span>
-git pull upstream develop  <span class="c1"># update to upstream</span>
+</div>
+<div class="section" id="create-a-local-branch">
+<span id="create-a-local-branch"></span><h2>Create a local branch<a class="headerlink" href="#create-a-local-branch" title="Permalink to this headline">¶</a></h2>
+<p>Paddle is currently using <a class="reference external" href="http://nvie.com/posts/a-successful-git-branching-model/">Git-flow branching model</a>.</p>
+<p>All feature and bug fix development work should be done on a new branch, generally create new branch from <code class="docutils literal"><span class="pre">develop</span></code> branch .</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git checkout -b my-cool-stuff
 </pre></div>
 </div>
-<p>Then you can start to develop by making a local developement branch</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>git checkout -b MY_COOL_STUFF_BRANCH
-</pre></div>
-</div>
+<p>Before the checkout, you need to keep the current branch directory clean, otherwise the untracked file will be brought to the new branch, which can be inspected by <code class="docutils literal"><span class="pre">git</span> <span class="pre">status</span></code>.</p>
 </div>
 <div class="section" id="using-pre-commit-hook">
 <span id="using-pre-commit-hook"></span><h2>Using <code class="docutils literal"><span class="pre">pre-commit</span></code> hook<a class="headerlink" href="#using-pre-commit-hook" title="Permalink to this headline">¶</a></h2>
@@ -235,82 +229,140 @@ PR doesn&#8217;t fit hook can not be merged into Paddle.</p>
 <p>To use <a class="reference external" href="http://pre-commit.com/">pre-commit</a>, you should install it by
 <code class="docutils literal"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pre-commit</span></code>, and currently, Paddle uses <code class="docutils literal"><span class="pre">clang-format</span></code> to format
 c/cpp sources. Please make sure clang-format 3.8+ installed.</p>
-<p>Then just run <code class="docutils literal"><span class="pre">pre-commit</span> <span class="pre">install</span></code> in your Paddle clone directory. When you
-commit your code, the pre-commit hook will check the local code if there is
+<p>Install and run it as follow:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  pip install pre-commit
+➜  pre-commit install
+</pre></div>
+</div>
+<p>When you commit your code, the pre-commit hook will check the local code if there is
 anything not suitable to commit, and so on.</p>
+</div>
+<div class="section" id="start-to-develop">
+<span id="start-to-develop"></span><h2>Start to develop<a class="headerlink" href="#start-to-develop" title="Permalink to this headline">¶</a></h2>
+<p>In this tutorial, I delete a line in README.md and created a new file.</p>
+<p>We can use <code class="docutils literal"><span class="pre">git</span> <span class="pre">status</span></code> to inspect the changes of current directory, <code class="docutils literal"><span class="pre">git</span> <span class="pre">diff</span></code> to see difference.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git status
+On branch <span class="nb">test</span>
+Changes not staged <span class="k">for</span> commit:
+  <span class="o">(</span>use <span class="s2">&quot;git add &lt;file&gt;...&quot;</span> to update what will be committed<span class="o">)</span>
+  <span class="o">(</span>use <span class="s2">&quot;git checkout -- &lt;file&gt;...&quot;</span> to discard changes in working directory<span class="o">)</span>
+
+    modified:   README.md
+
+Untracked files:
+  <span class="o">(</span>use <span class="s2">&quot;git add &lt;file&gt;...&quot;</span> to include in what will be committed<span class="o">)</span>
+
+    <span class="nb">test</span>
+
+no changes added to commit <span class="o">(</span>use <span class="s2">&quot;git add&quot;</span> and/or <span class="s2">&quot;git commit -a&quot;</span><span class="o">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="build-and-test">
+<span id="build-and-test"></span><h2>Build and Test<a class="headerlink" href="#build-and-test" title="Permalink to this headline">¶</a></h2>
+<p>We package PaddlePaddle&#8217;s compile environment into a Docker image, called the develop image named <code class="docutils literal"><span class="pre">paddle:dev</span></code>, it contains all compiling tools that PaddlePaddle needs.</p>
+<p>If you want to build the develop image, just run:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker build -t paddle:dev .
+</pre></div>
+</div>
+<p>Then we can use the develop image to build PaddlePaddle source. For example:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker run -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/paddle -e <span class="s2">&quot;WITH_GPU=OFF&quot;</span> -e <span class="s2">&quot;WITH_AVX=ON&quot;</span> -e <span class="s2">&quot;WITH_TEST=ON&quot;</span> paddle:dev
+</pre></div>
+</div>
+<p>The above command will compile PaddlePaddle and create a Dockerfile for building production image. All the generated files are in the build directory. &#8220;WITH_GPU&#8221; controls if the generated production image supports GPU. &#8220;WITH_AVX&#8221; controls if the generated production image supports AVX. &#8220;WITH_TEST&#8221; controls if the unit test will be generated.</p>
+<p>Then we can generate the production image by copying the compiled PaddlePaddle program into the image by</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker build -t paddle:prod -f build/Dockerfile .
+</pre></div>
+</div>
+<p>Run unit test finally:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker run -it -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/paddle paddle:dev bash -c <span class="s2">&quot;cd /paddle/build &amp;&amp; ctest&quot;</span>
+</pre></div>
+</div>
+<p>For more details, you can read <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_en.rst">this doc</a>.</p>
 </div>
 <div class="section" id="commit">
 <span id="commit"></span><h2>Commit<a class="headerlink" href="#commit" title="Permalink to this headline">¶</a></h2>
-<p>Commit your changes by following command lines:</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># show the working tree status</span>
-git status
-<span class="c1"># add modified files</span>
-git add xx
-env <span class="nv">EDITOR</span><span class="o">=</span>vim git commit  <span class="c1"># You can write your comments by vim/nano/emacs.</span>
+<p>Next we cancel the changes to the README.md file and then commit our changes by following command lines:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git checkout -- README.md
+➜  git status
+On branch <span class="nb">test</span>
+Untracked files:
+  <span class="o">(</span>use <span class="s2">&quot;git add &lt;file&gt;...&quot;</span> to include in what will be committed<span class="o">)</span>
+
+    <span class="nb">test</span>
+
+nothing added to commit but untracked files present <span class="o">(</span>use <span class="s2">&quot;git add&quot;</span> to track<span class="o">)</span>
+➜  git add <span class="nb">test</span>
 </pre></div>
 </div>
-<p>The first line of commit infomation is the title. The second and later lines
-are the details if any.</p>
+<p>We should write a description of each commit by <code class="docutils literal"><span class="pre">git</span> <span class="pre">commit</span></code> to allow others to know
+the changes in these files.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git commit
+CRLF end-lines remover...............................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+yapf.................................................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+Check <span class="k">for</span> added large files..............................................Passed
+Check <span class="k">for</span> merge conflicts................................................Passed
+Check <span class="k">for</span> broken symlinks................................................Passed
+Detect Private Key...................................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+Fix End of Files.....................................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+clang-formater.......................................<span class="o">(</span>no files to check<span class="o">)</span>Skipped
+<span class="o">[</span>my-cool-stuff c703c041<span class="o">]</span> add <span class="nb">test</span> file
+ <span class="m">1</span> file changed, <span class="m">0</span> insertions<span class="o">(</span>+<span class="o">)</span>, <span class="m">0</span> deletions<span class="o">(</span>-<span class="o">)</span>
+ create mode <span class="m">100644</span> <span class="m">233</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="keeping-fork-up-to-date">
 <span id="keeping-fork-up-to-date"></span><h2>Keeping Fork Up to Date<a class="headerlink" href="#keeping-fork-up-to-date" title="Permalink to this headline">¶</a></h2>
 <p>Before pull your request, you should sync your code from the latest PaddlePaddle.
 To do this, you&#8217;ll need to add a remote at first:</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># see the current configured remote repository</span>
-git remote -v
-<span class="c1"># add upstream repository</span>
-git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-<span class="c1"># verify the new upstream</span>
-git remote -v
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git remote add upstream https://github.com/PaddlePaddle/Paddle
+➜  git remote
+origin
+upstream
 </pre></div>
 </div>
 <p>Update your fork with the latest upstream changes:</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>git pull --rebase upstream develop
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git fetch upstream
+➜  git pull upstream develop
 </pre></div>
 </div>
-<p>If there are no unique commits locally, git will simply perform a fast-forward.
-However, if you have been making changes (in the vast majority of cases you
-probably shouldn&#8217;t be), you may have to deal with conflicts.</p>
 <p>Now, your local master branch is up-to-date with everything modified upstream.</p>
 </div>
 <div class="section" id="push-to-github">
 <span id="push-to-github"></span><h2>Push to GitHub<a class="headerlink" href="#push-to-github" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># push to your repository in Github</span>
-git push -u origin MY_COOL_STUFF_BRANCH  <span class="c1"># create remote branch MY_COOL_STUFF_BRANCH to origin.</span>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># push to your repository in Github</span>
+➜  git push origin my-cool-stuff
 </pre></div>
 </div>
 </div>
-<div class="section" id="pull-request">
-<span id="pull-request"></span><h2>Pull Request<a class="headerlink" href="#pull-request" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="create-an-issue-and-a-pull-request">
+<span id="create-an-issue-and-a-pull-request"></span><h2>Create an issue and a Pull Request<a class="headerlink" href="#create-an-issue-and-a-pull-request" title="Permalink to this headline">¶</a></h2>
+<p>Create an Issue to describe the problem and record its number.</p>
 <p>Go to the page for your fork on GitHub, select your development branch,
-and click the <strong>pull request button</strong>.</p>
+and click the <code class="docutils literal"><span class="pre">New</span> <span class="pre">pull</span> <span class="pre">request</span></code>.</p>
+<p><img width="295" alt="screen shot 2017-04-26 at 9 09 28 pm" src="https://cloud.githubusercontent.com/assets/11692045/25436054/a6d98c66-2ac4-11e7-9cb1-18dd13150230.png"></p>
+<p>Then select the target branch:</p>
+<p><img width="750" alt="screen shot 2017-04-26 at 9 11 52 pm" src="https://cloud.githubusercontent.com/assets/11692045/25436139/f83b1e6c-2ac4-11e7-8c0e-add499023c46.png"></p>
+<p>We can add <code class="docutils literal"><span class="pre">resolve</span> <span class="pre">#Issue</span> <span class="pre">number</span></code> in PR description to close the issue automatically after the PR is merge. More details in <a class="reference external" href="https://help.github.com/articles/closing-issues-via-commit-messages/">https://help.github.com/articles/closing-issues-via-commit-messages/</a>.</p>
+<p>Then wait for review, if there need to modify, refer to the above steps to update the corresponding origin branch.</p>
 </div>
-<div class="section" id="update-your-pull-request-with-the-lastest-version">
-<span id="update-your-pull-request-with-the-lastest-version"></span><h2>Update your pull request with the lastest version<a class="headerlink" href="#update-your-pull-request-with-the-lastest-version" title="Permalink to this headline">¶</a></h2>
-<p>During the code review, your pull request may become stale because new commits in
-baidu/Paddle. GitHub allows autmotic update if there is no conflict. You can do this
-by clicking the &#8220;Update Branch&#8221; button in your pull request page. However, in the case
-of conflict, you need to do the update manually. You need to do the following on
-your local repository:</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>git checkout MY_COOL_STUFF_BRANCH
-git pull upstream develop
-<span class="c1"># You may need to resolve the conflict according to the git prompt.</span>
-<span class="c1"># Make and test your code.</span>
-git push origin MY_COOL_STUFF_BRANCH
+<div class="section" id="delete-origin-branch">
+<span id="delete-origin-branch"></span><h2>Delete origin branch<a class="headerlink" href="#delete-origin-branch" title="Permalink to this headline">¶</a></h2>
+<p>After the PR is merge into the main repository, we can delete the remote branch on the PR page.</p>
+<p><img width="775" alt="screen shot 2017-04-26 at 9 18 24 pm" src="https://cloud.githubusercontent.com/assets/11692045/25436457/e4cdd472-2ac5-11e7-9272-badc76c4a23e.png"></p>
+<p>Or just run:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git push origin :my-cool-stuff
 </pre></div>
 </div>
-<p>Now your Pull Request is updated with the latest version.</p>
 </div>
-<div class="section" id="revise-your-pull-request">
-<span id="revise-your-pull-request"></span><h2>Revise your pull request<a class="headerlink" href="#revise-your-pull-request" title="Permalink to this headline">¶</a></h2>
-<p>When you revise your pull request according to reviewer&#8217;s comments, please use &#8216;git commit&#8217; instead of &#8216;git commit &#8211;amend&#8217; to commit your changes so that the reviewers can see the difference between the new pull requrest and the old pull request.</p>
-<p>The possible commands are</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>git checkout MY_COOL_STUFF_BRANCH
-git pull upstream develop   <span class="c1"># update local to newest code base.</span>
-<span class="c1"># May be some conflicts will occured.</span>
-<span class="c1"># And develop your cool stuff</span>
-env <span class="nv">EDITOR</span><span class="o">=</span>vim git commit  <span class="c1"># add your revise log</span>
-git push origin MY_COOL_STUFF_BRANCH
+<div class="section" id="delete-local-branch">
+<span id="delete-local-branch"></span><h2>Delete local branch<a class="headerlink" href="#delete-local-branch" title="Permalink to this headline">¶</a></h2>
+<p>Finally, we delete local branch:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>➜  git checkout develop 
+
+<span class="c1"># delete my-cool-stuff branch</span>
+➜  git branch -D my-cool-stuff
 </pre></div>
 </div>
 </div>

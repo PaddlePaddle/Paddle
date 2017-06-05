@@ -262,7 +262,7 @@ no changes added to commit <span class="o">(</span>use <span class="s2">&quot;gi
 <div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker build -t paddle:dev .
 </pre></div>
 </div>
-<p>随后可以用这个开发镜像开build PaddlePaddle的源码。比如如果要build一个不依赖GPU，但是支持AVX指令集，并且包括unit tests的PaddlePaddle，可以：</p>
+<p>随后可以用这个开发镜像开始build PaddlePaddle的源码。比如如果要build一个不依赖GPU，但是支持AVX指令集，并且包括unit tests的PaddlePaddle，可以：</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>➜  docker run -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/paddle -e <span class="s2">&quot;WITH_GPU=OFF&quot;</span> -e <span class="s2">&quot;WITH_AVX=ON&quot;</span> -e <span class="s2">&quot;WITH_TEST=ON&quot;</span> paddle:dev
 </pre></div>
 </div>
