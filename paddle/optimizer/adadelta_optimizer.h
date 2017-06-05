@@ -19,7 +19,7 @@ public:
     if (accum_delta) delete accum_delta;
     if (update_delta) delete update_delta;
   }
-  void update(const Tensor &gradient);
+  void update(const Tensor *gradient);
   void set_weight(Tensor *p);
   real *get_weight() const;
 

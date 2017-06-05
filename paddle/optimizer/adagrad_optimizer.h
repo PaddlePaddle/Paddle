@@ -13,7 +13,7 @@ public:
   ~AdagradOptimizer() {
     if (accum_gradient) delete accum_gradient;
   }
-  void update(const Tensor &gradient);
+  void update(const Tensor *gradient);
   void set_weight(Tensor *p);
   real *get_weight() const;
 

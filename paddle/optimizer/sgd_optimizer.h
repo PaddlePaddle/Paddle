@@ -15,7 +15,7 @@ public:
   SGDOptimizer(double m, double d, bool n, BaseLr* lr)
       : ParameterOptimizer(lr), momentum(m), decay(d), nesterov(n) {}
   virtual ~SGDOptimizer() { delete momentums_; }
-  void update(const Tensor& gradient);
+  void update(const Tensor* gradient);
 
   void set_weight(Tensor* p);
   real* get_weight() const;

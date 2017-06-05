@@ -13,24 +13,25 @@ void SGDOptimizer::set_weight(Tensor *p) {
   }
 }
 
-void SGDOptimizer::update(const Tensor &gradient) {
+void SGDOptimizer::update(const Tensor *gradient) {
   num_sample_passed += 1;
   double learning_rate = lr_policy->get_learning_rate(num_sample_passed);
   real velocity = 0.0;
   Tensor &param = *parameter_;
-  for (size_t i = 0; i < parameter_->size(); ++i) {
+  const Tensor &grad = *gradient;
+  Tensor &m = *momentums_;
+  for (size_t i = 0; i < param.size(); ++i) {
     if (momentum == 0.0) {
-      velocity =
-          -learning_rate * gradient[i] - learning_rate * decay * parameter_[i];
+      velocity = -learning_rate * grad[i] - learning_rate * decay * param[i];
     } else {
-      momentums_[i] = momentum * momentums_[i] - learning_rate * gradient[i] -
-                      learning_rate * decay * parameter_[i];
-      velocity = momentums_[i];
+      m[i] = momentum * m[i] - learning_rate * grad[i] -
+             learning_rate * decay * param[i];
+      velocity = m[i];
     }
     if (nesterov) {
-      parameter_[i] += momentum * velocity - learning_rate * gradient[i];
+      param[i] += momentum * velocity - learning_rate * grad[i];
     } else {
-      parameter_[i] += velocity;
+      param[i] += velocity;
     }
   }
 }

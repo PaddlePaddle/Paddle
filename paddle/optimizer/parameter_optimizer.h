@@ -24,7 +24,7 @@ public:
   virtual ~ParameterOptimizer() { delete parameter_; };
 
   static ParameterOptimizer *create(const ::std::string &config_proto);
-  virtual void update(const Tensor &gradient) = 0;
+  virtual void update(const Tensor *gradient) = 0;
   virtual real *get_weight() const;
   virtual void set_weight(Tensor *parameter);
 

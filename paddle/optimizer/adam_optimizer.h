@@ -19,7 +19,7 @@ public:
     if (momentums_) delete momentums_;
     if (velocitys_) delete velocitys_;
   }
-  void update(const Tensor &gradient);
+  void update(const Tensor *gradient);
   void set_weight(Tensor *p);
   real *get_weight() const;
 
