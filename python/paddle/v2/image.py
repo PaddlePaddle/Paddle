@@ -3,8 +3,6 @@ try:
     import cv2
 except ImportError:
     cv2 = None
-
-from cv2 import resize
 import os
 import tarfile
 import cPickle
@@ -164,7 +162,7 @@ def resize_short(im, size):
         h_new = size * h / w
     else:
         w_new = size * w / h
-    im = resize(im, (h_new, w_new), interpolation=cv2.INTER_CUBIC)
+    im = cv2.resize(im, (h_new, w_new), interpolation=cv2.INTER_CUBIC)
     return im
 
 

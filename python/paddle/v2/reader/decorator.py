@@ -14,7 +14,7 @@
 
 __all__ = [
     'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned', 'firstn', 'xmap'
+    'ComposeNotAligned', 'firstn', 'xmap_readers'
 ]
 
 import itertools
@@ -230,7 +230,7 @@ class XmapEndSignal():
     pass
 
 
-def xmap(mapper, reader, process_num, buffer_size):
+def xmap_readers(mapper, reader, process_num, buffer_size):
     """
     Use multiprocess to map samples from reader by a mapper defined by user.
     And this function contains a buffered decorator.

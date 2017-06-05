@@ -105,7 +105,8 @@ def reader_creator(data_file,
             for sample, label in itertools.izip(data, batch['label']):
                 yield sample, int(label)
 
-    return paddle.reader.xmap(mapper, reader, cpu_count(), buffered_size)
+    return paddle.reader.xmap_readers(mapper, reader,
+                                      cpu_count(), buffered_size)
 
 
 def train(mapper=default_mapper, buffered_size=1024):
