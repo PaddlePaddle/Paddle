@@ -1086,6 +1086,11 @@ step.</p>
 </div>
 <p>If you do not want to specify the name, you can equivalently use set_input()
 to specify the layer needs to be remembered as the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">fc</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">mem</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+<span class="n">mem</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span><span class="n">mem</span><span class="p">)</span>
+</pre></div>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1147,7 +1152,7 @@ Neural Turning Machine like models.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>step</strong> (<em>callable</em>) &#8211; <p>recurrent one time step function.The input of this function is
 input of the group. The return of this function will be
 recurrent group&#8217;s return value.</p>
@@ -1172,22 +1177,17 @@ layer that share info(the number of sentences and the number
 of words in each sentence) with all layer group&#8217;s outputs.
 targetInlink should be one of the layer group&#8217;s input.</p>
 </li>
-<li><strong>is_generating</strong> &#8211; If is generating, none of input type should be paddle.v2.config_base.Layer;
+<li><strong>is_generating</strong> (<em>bool</em>) &#8211; If is generating, none of input type should be paddle.v2.config_base.Layer;
 else, for training or testing, one of the input type must
 be paddle.v2.config_base.Layer.</li>
 </ul>
 </td>
 </tr>
-</tbody>
-</table>
-<p>: type is_generating: bool</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">paddle.v2.config_base.Layer object.</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">paddle.v2.config_base.Layer object.</p>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">paddle.v2.config_base.Layer</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">paddle.v2.config_base.Layer</p>
+</td>
 </tr>
 </tbody>
 </table>
@@ -2992,51 +2992,32 @@ entire list of get gradient.</li>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">mse_cost</code></dt>
-<dd><blockquote>
-<div><p>mean squared error cost:</p>
+<dd><p>mean squared error cost:</p>
 <div class="math">
-\[\]</div>
-</div></blockquote>
-<p>rac{1}{N}sum_{i=1}^N(t_i-y_i)^2</p>
-<blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+\[\frac{1}{N}\sum_{i=1}^N(t_i-y_i)^2\]</div>
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">param name:</th><td class="field-body">layer name.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name.</li>
+<li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Network prediction.</li>
+<li><strong>label</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Data label.</li>
+<li><strong>weight</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; The weight affects the cost, namely the scale of cost.
+It is an optional argument.</li>
+<li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; layer&#8217;s extra attribute.</li>
+</ul>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">type name:</th><td class="field-body">basestring</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">paddle.v2.config_base.Layer object.</p>
+</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">param input:</th><td class="field-body">Network prediction.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">type input:</th><td class="field-body">paddle.v2.config_base.Layer</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">param label:</th><td class="field-body">Data label.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">type label:</th><td class="field-body">paddle.v2.config_base.Layer</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">param weight:</th><td class="field-body">The weight affects the cost, namely the scale of cost.
-It is an optional argument.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">type weight:</th><td class="field-body">paddle.v2.config_base.Layer</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">param coeff:</th><td class="field-body">The coefficient affects the gradient in the backward.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">type coeff:</th><td class="field-body">float</td>
-</tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">param layer_attr:</th></tr>
-<tr class="field-odd field"><td>&#160;</td><td class="field-body">layer&#8217;s extra attribute.</td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">type layer_attr:</th></tr>
-<tr class="field-even field"><td>&#160;</td><td class="field-body">paddle.v2.attr.ExtraAttribute</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">return:</th><td class="field-body">paddle.v2.config_base.Layer object.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">rtype:</th><td class="field-body">paddle.v2.config_base.Layer</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">paddle.v2.config_base.Layer</p>
+</td>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
 </dd></dl>
 
 </div>
@@ -3263,21 +3244,30 @@ should also be num_classes + 1.</p>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">warp_ctc</code></dt>
-<dd><p>A layer intergrating the open-source <cite>warp-ctc
-&lt;https://github.com/baidu-research/warp-ctc&gt;</cite> library, which is used in
-<cite>Deep Speech 2: End-toEnd Speech Recognition in English and Mandarin
-&lt;https://arxiv.org/pdf/1512.02595v1.pdf&gt;</cite>, to compute Connectionist Temporal
-Classification (CTC) loss.</p>
+<dd><p>A layer intergrating the open-source <a class="reference external" href="https://github.com/baidu-research/warp-ctc">warp-ctc</a> library, which is used in
+<a class="reference external" href="https://arxiv.org/pdf/1512.02595v1.pdf">Deep Speech 2: End-toEnd Speech Recognition in English and Mandarin</a>, to compute Connectionist Temporal
+Classification (CTC) loss. Besides, another <a class="reference external" href="https://github.com/gangliao/warp-ctc">warp-ctc</a> repository, which is forked from
+the official one, is maintained to enable more compiling options. During the
+building process, PaddlePaddle will clone the source codes, build and
+install it to <code class="code docutils literal"><span class="pre">third_party/install/warpctc</span></code> directory.</p>
+<p>To use warp_ctc layer, you need to specify the path of <code class="code docutils literal"><span class="pre">libwarpctc.so</span></code>,
+using following methods:</p>
+<p>1. Set it in <code class="code docutils literal"><span class="pre">paddle.init</span></code> (python api) or <code class="code docutils literal"><span class="pre">paddle_init</span></code> (c api),
+such as <code class="code docutils literal"><span class="pre">paddle.init(use_gpu=True,</span>
+<span class="pre">warpctc_dir=your_paddle_source_dir/third_party/install/warpctc/lib)</span></code>.</p>
+<p>2. Set environment variable LD_LIBRARY_PATH on Linux or DYLD_LIBRARY_PATH
+on Mac OS. For instance, <code class="code docutils literal"><span class="pre">export</span>
+<span class="pre">LD_LIBRARY_PATH=your_paddle_source_dir/third_party/install/warpctc/lib:$LD_LIBRARY_PATH</span></code>.</p>
 <p>More details of CTC can be found by referring to <a class="reference external" href="http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf">Connectionist Temporal
 Classification: Labelling Unsegmented Sequence Data with Recurrent
-Neural Networks</a></p>
+Neural Networks</a>.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <ul class="last simple">
 <li>Let num_classes represent the category number. Considering the &#8216;blank&#8217;
-label needed by CTC, you need to use (num_classes + 1) as the input
-size. Thus, the size of both warp_ctc and &#8216;input&#8217; layer should
-be set to num_classes + 1.</li>
+label needed by CTC, you need to use (num_classes + 1) as the input size.
+Thus, the size of both warp_ctc layer and &#8216;input&#8217; layer should be set to
+num_classes + 1.</li>
 <li>You can set &#8216;blank&#8217; to any value ranged in [0, num_classes], which
 should be consistent as that used in your labels.</li>
 <li>As a native &#8216;softmax&#8217; activation is interated to the warp-ctc library,
