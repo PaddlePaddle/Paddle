@@ -68,17 +68,7 @@ public:
 };
 
 /*
- * Function Arguments:
- *
- * \param inputs[0]  Input image data, is NCHW format, where N is batch size,
- *                   C is the number of channels, H and W is the height and
- *                   width of input image.
- * \param inputs[1]  Filter data, is MCHW, where M is the number of output
- *                   channels, C is the number of input channels, H and W
- *                   is height and width of filter.
- * \param outputs[0] Output image data, is NCHW format, where N is batch size,
-  *                  C is the number of channels, H and W is the height and
- *                   width of output image.
+ * \brief Forward calculation of convolution.
  */
 template <DeviceType Device>
 class GemmConvFunction : public ConvFunctionBase {
@@ -88,8 +78,21 @@ public:
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    check(inputs, outputs);
-    CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
+    CHECK_EQ(numInputs_, inputs.size());
+    CHECK_EQ(numOutputs_, outputs.size());
+    // TODO(hedaoyuan): Need to define some index macros,
+    // to avoid useing 0 and 1.
+    const TensorShape& input = inputs[0].shape();
+    const TensorShape& filter = inputs[1].shape();
+    const TensorShape& output = outputs[0].shape();
+    check(input, filter, output);
+
+    real beta;
+    if (outputs[0].getArgType() == ADD_TO) {
+      beta = 1.0;
+    } else {
+      beta = 0.0;
+    }
 
     size_t batchSize = inputs[0].shape()[0];
     size_t inputChannels = inputs[0].shape()[1];
@@ -143,7 +146,7 @@ public:
              K,
              colData,
              N,
-             0.0f,
+             beta,
              outputData + g * outputOffset,
              N);
       }
@@ -166,9 +169,53 @@ private:
   MemoryHandlePtr memory_;
 };
 
+/*
+ * \brief Backward input calculation of convolution.
+ */
+template <DeviceType Device>
+class GemmConvGradInputFunction : public ConvFunctionBase {
+public:
+  void init(const FuncConfig& config) override {
+    ConvFunctionBase::init(config);
+  }
+
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    CHECK_EQ(numInputs_, inputs.size());
+    CHECK_EQ(numOutputs_, outputs.size());
+    const TensorShape& outputGrad = inputs[0].shape();
+    const TensorShape& filter = inputs[1].shape();
+    const TensorShape& inputGrad = outputs[0].shape();
+    check(inputGrad, filter, outputGrad);
+  }
+};
+
+/*
+ * \brief Backward filter calculation of convolution.
+ */
+template <DeviceType Device>
+class GemmConvGradFilterFunction : public ConvFunctionBase {
+public:
+  void init(const FuncConfig& config) override {
+    ConvFunctionBase::init(config);
+  }
+
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    CHECK_EQ(numInputs_, inputs.size());
+    CHECK_EQ(numOutputs_, outputs.size());
+    const TensorShape& outputGrad = inputs[0].shape();
+    const TensorShape& input = inputs[1].shape();
+    const TensorShape& filterGrad = outputs[0].shape();
+    check(input, filterGrad, outputGrad);
+  }
+};
+
 REGISTER_TYPED_FUNC(GemmConv, CPU, GemmConvFunction);
+REGISTER_TYPED_FUNC(GemmConvGradInput, CPU, GemmConvGradInputFunction);
+REGISTER_TYPED_FUNC(GemmConvGradFilter, CPU, GemmConvGradFilterFunction);
 #ifndef PADDLE_ONLY_CPU
 REGISTER_TYPED_FUNC(GemmConv, GPU, GemmConvFunction);
+REGISTER_TYPED_FUNC(GemmConvGradInput, GPU, GemmConvGradInputFunction);
+REGISTER_TYPED_FUNC(GemmConvGradFilter, GPU, GemmConvGradFilterFunction);
 #endif
 
 }  // namespace paddle
