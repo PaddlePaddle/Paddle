@@ -25,9 +25,9 @@ enum ParameterInitStrategy {
 }
 
 message ParameterUpdaterHookConfig {
+  // hook type such as  'pruning'
   required string type = 1;
-  //hook type such as  'pruning'
-  optional double sparsity_ratio = 3;
+  optional double sparsity_ratio = 2 [default = 0.8];
 }
 
 message ParameterConfig {

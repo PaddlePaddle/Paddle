@@ -30,9 +30,9 @@ namespace paddle {
 
 /**
  * The static pruning hook
- * Static means user specific a sparsity_ratio map before training started. The
- * network will
- * hold the sparsity_ratio maximum numbers of parameters, and cut off the rest.
+ * Static means user specific a sparsity_ratio before training start, and the
+ * network will prune the parameters based on the sparsity_ratio. More deatils
+ * can see https://arxiv.org/pdf/1506.02626.pdf.
  */
 
 class StaticPruningHook : public IParameterUpdaterHook {

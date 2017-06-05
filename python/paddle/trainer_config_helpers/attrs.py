@@ -59,17 +59,14 @@ def is_compatible_with(x, Type):
 class HookAttribute(object):
     """
     Hook Attribute object. The hook is an auxiliary operation that occurs 
-    during network propagation. Such as pruning operation, It will cut off 
-    redundant parameters in the network before training. More detail can see 
-    here paddle/parameter/ParameterUpdaterHook.cpp
+    during network propagation.
     NOTE: IT IS A HIGH LEVEL USER INTERFACE.
-		
+
     :param  type: Hook type, eg: 'pruning'
     :type type: string
 
-    :param sparsity_ratio: Must be specified if hook type is 'pruning',
-	                       the network will hold the sparsity_ratio maximum parameters, and cut off the rest. 
-    :type sparsity_ratio: float number between 0 and 1
+    :param sparsity_ratio: Must be specified if hook type is 'pruning'
+    :type sparsity_ratio: float or None
 	
     """
 
