@@ -255,9 +255,9 @@ public:
              filterGrad + g * filterOffset,
              N);
       }
+      inputData += inputChannels * inputHeight * inputWidth;
+      outputGrad += outputChannels * outputHeight * outputWidth;
     }
-    inputData += inputChannels * inputHeight * inputWidth;
-    outputGrad += outputChannels * outputHeight * outputWidth;
   }
 };
 
