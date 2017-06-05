@@ -3546,11 +3546,7 @@ def update_g_config():
     return g_config
 
 
-def begin_parse(config_arg_str=''):
-    '''
-    @param config_arg_str: a string of the form var1=val1,var2=val2. It will be
-    passed to config script as a dictionary CONFIG_ARGS
-    '''
+def begin_parse():
     init_config_environment()
     for hook in _parse_config_hooks:
         hook()
@@ -3568,8 +3564,12 @@ def begin_parse(config_arg_str=''):
 
 
 def parse_config(trainer_config, config_arg_str):
-    begin_parse(config_arg_str)
+    '''
+    @param config_arg_str: a string of the form var1=val1,var2=val2. It will be
+    passed to config script as a dictionary CONFIG_ARGS
+    '''
 
+    begin_parse()
     config_args = {}
 
     if config_arg_str:

@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 `paddle.v2.layer` is a part of model config packages in paddle.v2. In API v2,
-we want to make Paddle a plain Python package. The model config package defined
+we want to make Paddle a plain Python package. The model config package defines
 the way how to configure a neural network topology in Paddle Python code.
 
 The primary usage shows below.
@@ -30,7 +30,6 @@ The primary usage shows below.
     # use prediction instance where needed.
     parameters = paddle.parameters.create(cost)
 """
-
 import collections
 import copy
 import re
@@ -44,9 +43,10 @@ __all__ = ['data', 'parse_network']
 
 
 def __need_to_keep__(name):
-    if name in ['StaticInput', 'LayerType', 'layer_support']:
-        return False
-    return True
+    return name in [
+        'StaticInput', 'SubsequenceInput', 'GeneratedInput', 'LayerType',
+        'layer_support'
+    ]
 
 
 def __need_to_wrap__(name):
@@ -54,6 +54,8 @@ def __need_to_wrap__(name):
 
 
 def __convert_name__(inname):
+    if __need_to_keep__(inname):
+        return inname
     if inname == 'maxid_layer':
         return 'max_id'
     elif inname.endswith('memory') or inname.endswith(
@@ -74,8 +76,6 @@ def __convert_name__(inname):
 
 for name in v1_layers.__all__:
     obj = getattr(v1_layers, name)
-    if not __need_to_keep__(name):
-        continue
     new_name = __convert_name__(name)
     if callable(obj) and __need_to_wrap__(name):
         globals()[new_name] = __convert_to_v2__(obj, new_name, __name__)
@@ -107,7 +107,7 @@ __data_layer__.__doc__ = __map_data_docstr__(v1_layers.data_layer.__doc__)
 data = __convert_to_v2__(__data_layer__, 'name', __name__)
 
 
-def __get_used_layers__(output_layers, extra_layers=None):
+def __get_used_layers__(output_layers):
     layer_names = set()
     parents = {}
 
@@ -175,6 +175,8 @@ def __get_used_submodels__(layer_names):
     for submodel in cp.g_config.model_config.sub_models:
         if submodel.name in layer_names:
             submodel_names.add(submodel.name)
+            if submodel.is_recurrent_layer_group:
+                layer_names |= set(submodel.layer_names)
     return submodel_names
 
 
@@ -248,17 +250,20 @@ def parse_network(output_layers, extra_layers=None):
 
     model_config = ModelConfig()
     model_config.type = cp.g_config.model_config.type
+
+    for layer in output_layers:
+        model_config.output_layer_names.append(layer.full_name)
+        output_layer_names.add(layer.full_name)
+
     for l in cp.g_config.model_config.layers:
         if l.name not in layer_names:
             continue
         model_config.layers.extend([l])
         if l.type == 'data':
+            if l.name in model_config.output_layer_names:
+                continue
             model_config.input_layer_names.append(l.name)
             input_layer_names.add(l.name)
-
-    for layer in output_layers:
-        model_config.output_layer_names.append(layer.full_name)
-        output_layer_names.add(layer.full_name)
 
     for e in cp.g_config.model_config.evaluators:
         if e.name in evaluator_names:

@@ -434,10 +434,18 @@ smooth_l1_cost
 ..  autoclass:: paddle.v2.layer.smooth_l1_cost
     :noindex:
 
-Check Layer 
+Check Layer
 ============
 
 eos
 ---
 ..  autoclass:: paddle.v2.layer.eos
+    :noindex:
+
+Miscs
+=====
+
+dropout
+--------------
+..  autoclass:: paddle.v2.layer.dropout
     :noindex:

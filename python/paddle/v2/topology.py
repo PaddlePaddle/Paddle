@@ -91,8 +91,9 @@ class Topology(object):
         [('image', dense_vector(768)), ('label', integer_value(10))]
         """
         data_layers = self.data_layers()
+
         return [(nm, data_layers[nm].data_type)
-                for nm in self.proto().input_layer_names]
+                for nm in self.proto().input_layer_names if nm in data_layers]
 
     def get_layer_proto(self, name):
         for layer in self.__model_config__.layers:
