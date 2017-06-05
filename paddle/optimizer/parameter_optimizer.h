@@ -17,9 +17,6 @@ public:
    * @brief  update hook for algorithm need to traverse parameter more than
    * once.
    */
-  // use config for pack trainig state
-  ParameterOptimizer(const OptimizerConfig &config) : config_(config){};
-
   ParameterOptimizer(BaseLr *lr) : lr_policy(lr), num_sample_passed(0) {}
   virtual ~ParameterOptimizer() { delete parameter_; };
 

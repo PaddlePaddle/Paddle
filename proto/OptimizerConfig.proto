@@ -52,7 +52,12 @@ message AdamConfig {
   optional double decay = 44;
 }
 
-message LearningRateConfig {
+message ConstLr {
+  // learninRate Policy
+  required double learning_rate = 40 [default = 1.0];
+}
+
+message LinearLr {
   // learninRate Policy
   required double learning_rate = 40 [default = 1.0];
   optional double lr_decay_a = 25; 
@@ -62,36 +67,26 @@ message LearningRateConfig {
 
 message OptimizerConfig {
   // common config of optimizer
+  // algorithm config, type : string
+  //  SGD = 1;
+  //  Adadelta = 2;
+  //  Adagrad = 3;
+  //  Adam = 4;
   required string optimizer_name = 1;
-  // algorithm config
-  enum OptimizerType {
-    SGD = 1;
-    Adadelta = 2;
-    Adagrad = 3;
-    Adam = 4;
-  }
-  required OptimizerType optimizer_type = 2;
   optional SGDConfig sgd = 3;
   optional AdadeltaConfig adadelta = 4;
   optional AdagradConfig adagrad = 5;
   optional AdamConfig adam = 6;
 
   // learning rate runtime policy config
-  //  lr_policy : string
+  //  lr_policy , type : string
   //  ConstLr = 0;
   //  LinearLr = 1;
   required string lr_policy = 11;
-  required LearningRateConfig lr_config = 12;
+  optional ConstLr const_lr = 12;
+  optional LinearLr linear_lr = 15;
   optional uint64 num_sample_passed = 13 [default = 0];
 
-  // reqularizer config
-  enum RegularizerType {
-    L1 = 1;
-    L2 = 2;
-    L1L2 = 3;
-  }
-  optional RegularizerType regularizer_type = 21;
-  
   // common config of optimizer
   optional double clipnorm = 101;
   optional double clipvalue = 102;

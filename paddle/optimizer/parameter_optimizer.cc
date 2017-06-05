@@ -1,7 +1,7 @@
 #include <glog/logging.h>
-// #include "adadelta_optimizer.h"
-// #include "adagrad_optimizer.h"
-// #include "adam_optimizer.h"
+#include "adadelta_optimizer.h"
+#include "adagrad_optimizer.h"
+#include "adam_optimizer.h"
 #include "lr_policy.h"
 #include "sgd_optimizer.h"
 
@@ -18,13 +18,13 @@ ParameterOptimizer *ParameterOptimizer::create(
 
   auto select_lr_policy = [=](const OptimizerConfig &config) -> BaseLr * {
     std::string s(config.lr_policy());
-    if (s == "ConstLr") return new ConstLr(config.lr_config().learning_rate());
+    if (s == "ConstLr") return new ConstLr(config.const_lr().learning_rate());
     if (s == "LinearLr")
-      return new LinearLr(config.lr_config().learning_rate(),
-                          config.lr_config().lr_decay_a(),
-                          config.lr_config().lr_decay_b());
+      return new LinearLr(config.linear_lr().learning_rate(),
+                          config.linear_lr().lr_decay_a(),
+                          config.linear_lr().lr_decay_b());
     // default
-    return new ConstLr(config.lr_config().learning_rate());
+    return nullptr;
   };
   BaseLr *lr = select_lr_policy(config);
   auto select_optimizer =
@@ -36,20 +36,20 @@ ParameterOptimizer *ParameterOptimizer::create(
                               config.sgd().nesterov(),
                               lr);
     }
-    // if (s == "Adadelta") {
-    //   return new AdagradOptimizer(
-    //       config.adagrad().epsilon(), config.adagrad().decay(), lr);
-    // }
-    // if (s == "Adagrad") {
-    //   return new AdagradOptimizer(
-    //       config.adagrad().epsilon(), config.adagrad().decay(), lr);
-    // }
-    // if (s == "Adam") {
-    //   return new AdadeltaOptimizer(config.adadelta().rho(),
-    //                                config.adadelta().epsilon(),
-    //                                config.adadelta().decay(),
-    //                                lr);
-    // }
+    if (s == "Adadelta") {
+      return new AdagradOptimizer(
+          config.adagrad().epsilon(), config.adagrad().decay(), lr);
+    }
+    if (s == "Adagrad") {
+      return new AdagradOptimizer(
+          config.adagrad().epsilon(), config.adagrad().decay(), lr);
+    }
+    if (s == "Adam") {
+      return new AdadeltaOptimizer(config.adadelta().rho(),
+                                   config.adadelta().epsilon(),
+                                   config.adadelta().decay(),
+                                   lr);
+    }
     // default
     return new SGDOptimizer(config.sgd().momentum(),
                             config.sgd().decay(),
