@@ -23,11 +23,11 @@ public:
     this->data_ = t.get_buffer();
   }
   T* get_buffer() { return this->data_; }
-  T& operator[](const int idx) {
+  T& operator[](const size_t idx) {
     CHECK(idx >= 0 && idx < this->width_) << "out of index range";
     return data_[idx];
   }
-  T& operator[](const int idx) const {
+  T& operator[](const size_t idx) const {
     CHECK(idx >= 0 && idx < this->width_) << "out of index range";
     return data_[idx];
   }
