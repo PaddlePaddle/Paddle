@@ -9,7 +9,11 @@ namespace optimizer {
 template <class T>
 class AdagradOptimizer : public ParameterOptimizer<T> {
 public:
-  AdagradOptimizer(const OptimizerConfig &config);
+  using ParameterOptimizer<T>::parameter_;
+  using ParameterOptimizer<T>::num_sample_passed;
+  using ParameterOptimizer<T>::lr_policy;
+  AdagradOptimizer(double epsilon, double decay, BaseLr *lr)
+      : ParameterOptimizer<T>(lr), epsilon(epsilon), decay(decay) {}
   ~AdagradOptimizer() {
     if (accum_gradient) delete accum_gradient;
   }

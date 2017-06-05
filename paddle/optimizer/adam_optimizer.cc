@@ -2,14 +2,6 @@
 
 namespace paddle {
 namespace optimizer {
-template <class T>
-AdamOptimizer<T>::AdamOptimizer(const ::paddle::OptimizerConfig &config)
-    : ParameterOptimizer<T>(config) {
-  beta_1 = config.adam().beta_1();
-  beta_2 = config.adam().beta_2();
-  epsilon = config.adam().epsilon();
-  decay = config.adam().decay();
-}
 
 template <class T>
 void AdamOptimizer<T>::set_weight(const Tensor<T> *p) {
@@ -23,11 +15,16 @@ void AdamOptimizer<T>::set_weight(const Tensor<T> *p) {
 template <class T>
 void AdamOptimizer<T>::update(const Tensor<T> &gradient) {
   num_sample_passed += 1;
-  double learning_rate = lr_policy->get_learning_rate();
-  for (size_t i = 0; i < parameter_.size(); ++i) {
-    accum_gradient[i] += gradient[i] * gradient[i];
-    parameter_[i] +=
-        learning_rate * (gradient[i] / std::sqrt(accum_gradient[i] + epsilon) +
+  double learning_rate = lr_policy->get_learning_rate(num_sample_passed);
+  double coef1 = 1.0 - std::pow(beta_1, num_sample_passed);
+  double coef2 = 1.0 - std::pow(beta_2, num_sample_passed);
+  learning_rate *= std::sqrt(coef2) / coef1;
+  for (size_t i = 0; i < parameter_->size(); ++i) {
+    momentums_[i] = beta_1 * momentums_[i] + (1.0 - beta_1) * gradient[i];
+    velocitys_[i] =
+        beta_2 * velocitys_[i] + (1.0 - beta_2) * gradient[i] * gradient[i];
+    parameter_[i] -=
+        learning_rate * (momentums_[i] / std::sqrt(velocitys_[i] + epsilon) +
                          decay * parameter_[i]);
   }
 }

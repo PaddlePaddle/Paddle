@@ -19,6 +19,8 @@ Regularizer<T>* Regularizer<T>::create(const std::string& config) {
 
 template class L1Regularizer<float>;
 template class L1Regularizer<double>;
+template class L2Regularizer<float>;
+template class L2Regularizer<double>;
 
 }  // namespace optimizer
 }  // namespace paddle

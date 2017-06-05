@@ -3,21 +3,14 @@
 
 namespace paddle {
 namespace optimizer {
-template <class T>
-AdadeltaOptimizer<T>::AdadeltaOptimizer(const ::paddle::OptimizerConfig& config)
-    : ParameterOptimizer<T>(config) {
-  rho = config.adadelta().rho();
-  epsilon = config.adadelta().epsilon();
-  decay = config.adadelta().decay();
-}
 
 template <class T>
 void AdadeltaOptimizer<T>::set_weight(const Tensor<T>* p) {
-  size_t size = p->width();
+  size_t size = p->size();
   T* gptr = new T[size];
   accum_gradient = Tensor<T>(gptr, size);
   T* dptr = new T[size];
-  accum_delta = Tensor<T>(dtpr, size);
+  accum_delta = Tensor<T>(dptr, size);
   T* dptr_current = new T[size];
   update_delta = Tensor<T>(dptr_current, size);
 }
@@ -25,8 +18,8 @@ void AdadeltaOptimizer<T>::set_weight(const Tensor<T>* p) {
 template <class T>
 void AdadeltaOptimizer<T>::update(const Tensor<T>& gradient) {
   num_sample_passed += 1;
-  double learning_rate = lr_policy->get_learning_rate();
-  for (size_t i = 0; i < parameter_.size(); ++i) {
+  double learning_rate = lr_policy->get_learning_rate(num_sample_passed);
+  for (size_t i = 0; i < parameter_->size(); ++i) {
     accum_gradient[i] =
         rho * accum_gradient[i] + (1.0 - rho) * gradient[i] * gradient[i];
 
@@ -36,7 +29,8 @@ void AdadeltaOptimizer<T>::update(const Tensor<T>& gradient) {
     accum_delta[i] =
         rho * accum_delta[i] + (1.0 - rho) * update_delta[i] * update_delta[i];
 
-    parameter_[i] -= update_delta[i] + decay * parameter_[i];
+    parameter_[i] -=
+        learning_rate * update_delta[i] + learning_rate * decay * parameter_[i];
   }
 }
 

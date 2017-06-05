@@ -1,9 +1,9 @@
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 set(OPITMIZER_SRCS
-    adadelta_optimizer.cc
-    adagrad_optimizer.cc
-    adam_optimizer.cc
+    # adadelta_optimizer.cc
+    # adagrad_optimizer.cc
+    # adam_optimizer.cc
     optimizer.cc
     parameter_optimizer.cc
     sgd_optmizer.cc
@@ -11,9 +11,9 @@ set(OPITMIZER_SRCS
   )
 
 set(OPITMIZER_Headers
-    adadelta_optimizer.h
-    adagrad_optimizer.h
-    adam_optimizer.h
+    # adadelta_optimizer.h
+    # adagrad_optimizer.h
+    # adam_optimizer.h
     lr_policy.h
     optimizer.h
     parameter_optimizer.h

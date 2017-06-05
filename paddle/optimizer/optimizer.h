@@ -64,7 +64,7 @@ int paddle_release_optimizer(paddle_optimizer* o);
  *  @return return exec status
  */
 int paddle_update_parameter(paddle_optimizer* o,
-                            paddle_element_type data_type,
+                            const paddle_element_type data_type,
                             const void* gradient,
                             int num_bytes);
 
@@ -76,7 +76,7 @@ int paddle_update_parameter(paddle_optimizer* o,
  *  @return return exec status
  */
 int paddle_optimizer_set_weights(paddle_optimizer* o,
-                                 paddle_element_type data_type,
+                                 const paddle_element_type data_type,
                                  void* param_buffer,
                                  int num_bytes);
 

@@ -3,11 +3,6 @@
 namespace paddle {
 namespace optimizer {
 template <class T>
-AdagradOptimizer<T>::AdagradOptimizer(const ::paddle::OptimizerConfig& config)
-    : ParameterOptimizer<T>(config) {
-  epsilon = config.adagrad().epsilon();
-  decay = config.adagrad().decay();
-}
 
 template <class T>
 void AdagradOptimizer<T>::set_weight(const Tensor<T>* p) {

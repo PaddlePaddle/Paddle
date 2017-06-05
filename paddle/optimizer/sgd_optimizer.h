@@ -9,8 +9,18 @@ namespace optimizer {
 template <class T>
 class SGDOptimizer : public ParameterOptimizer<T> {
 public:
-  SGDOptimizer(const ::paddle::OptimizerConfig& config);
-  ~SGDOptimizer() {
+  using ParameterOptimizer<T>::parameter_;
+  using ParameterOptimizer<T>::num_sample_passed;
+  using ParameterOptimizer<T>::lr_policy;
+
+  SGDOptimizer(double m,
+               double d,
+               bool n,
+               double learning_rate,
+               uint64_t num_sample_passed,
+               BaseLr* lr)
+      : ParameterOptimizer<T>(lr), momentum(m), decay(d), nesterov(n) {}
+  virtual ~SGDOptimizer() {
     // clear memory by Tensor library
     delete momentums_;
   }
@@ -18,7 +28,6 @@ public:
 
   void set_weight(const Tensor<T>* p);
   T* get_weight() const;
-  char* get_config_proto();
 
 private:
   Tensor<T>* momentums_;

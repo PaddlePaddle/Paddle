@@ -9,7 +9,12 @@ namespace optimizer {
 template <class T>
 class AdadeltaOptimizer : public ParameterOptimizer<T> {
 public:
-  AdadeltaOptimizer(const OptimizerConfig &config);
+  using ParameterOptimizer<T>::parameter_;
+  using ParameterOptimizer<T>::num_sample_passed;
+  using ParameterOptimizer<T>::lr_policy;
+
+  AdadeltaOptimizer(double rho, double epsilon, double decay, BaseLr *lr)
+      : ParameterOptimizer<T>(lr), rho(rho), epsilon(epsilon), decay(decay) {}
   ~AdadeltaOptimizer() {
     if (accum_gradient) delete accum_gradient;
     if (accum_delta) delete accum_delta;

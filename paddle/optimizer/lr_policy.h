@@ -1,19 +1,18 @@
 #ifndef PADDLE_OPTIMIZER_LR_POLICY_H_
 #define PADDLE_OPTIMIZER_LR_POLICY_H_
 
-#include "OptimizerConfig.ph.h"
+#include "OptimizerConfig.pb.h"
 
 namespace paddle {
 namespace optimizer {
 
 class BaseLr {
 public:
-  LrPolicyBase(const OpitmizerConfig &config) {
-    learning_rate = config.lr_config().learning_rate();
-  }
+  BaseLr(double lr) : learning_rate(lr) {}
+  virtual ~BaseLr() {}
   virtual double get_learning_rate(const uint64_t num_sample_passed) = 0;
 
-private:
+protected:
   double learning_rate;
 };
 

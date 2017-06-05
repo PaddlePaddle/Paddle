@@ -12,7 +12,7 @@ message SGDConfig {
   optional double momentum = 21 [default = 0.0];
   optional double decay = 23 [default = 0.0];
   optional bool nesterov =24 [default = false];
-
+}
 
 
 message AdadeltaConfig {
@@ -95,5 +95,4 @@ message OptimizerConfig {
   // common config of optimizer
   optional double clipnorm = 101;
   optional double clipvalue = 102;
-
 }

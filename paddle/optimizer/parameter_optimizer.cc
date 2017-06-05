@@ -1,6 +1,11 @@
-#include "parameter_optimizer.h"
 #include <glog/logging.h>
-#include "optimizer_factory.h"
+#include "adadelta_optimizer.h"
+#include "adagrad_optimizer.h"
+#include "adam_optimizer.h"
+#include "lr_policy.h"
+#include "sgd_optimizer.h"
+
+#include "parameter_optimizer.h"
 
 namespace paddle {
 namespace optimizer {
@@ -12,29 +17,40 @@ ParameterOptimizer<T> *ParameterOptimizer<T>::create(
   CHECK(config.ParseFromString(config_proto) == 0)
       << "error : optimizer config";
   CHECK(config_valid(config) == 0) << "error : invalid optimizer config ";
+
+  BaseLr *lr = nullptr;
+  switch (config.lr_policy()) {
+    case "ConstLr":
+      lr = new ConstLr(config.lr_config().learning_rate());
+      break;
+  }
   ParameterOptimizer<T> *opt = nullptr;
   switch (config.optimizer_name()) {
     case "SGD":
-      opt = new SGDOptimizer<T>(config);
+      opt = new SGDOptimizer<T>(config.sgd().momentum(),
+                                config.sgd().decay(),
+                                config.sgd().nesterov(),
+                                lr);
       break;
     case "Adagrad":
-      opt = new AdagradOptimizer<T>(config);
+      opt = new AdagradOptimizer<T>(
+          config.adagrad().epsilon(), config.adagrad().decay(), lr);
       break;
     case "Adadelta":
-      opt = new AdadeltaOptimizer<T>(config);
+      opt = new AdadeltaOptimizer<T>(config.adadelta().rho(),
+                                     config.adadelta().epsilon(),
+                                     config.adadelta().decay(),
+                                     lr);
       break;
     case "Adam":
-      opt = new AdamOptimizer<T>(config);
+      opt = new AdamOptimizer<T>(config.adam().beta_1(),
+                                 config.adam().beta_2(),
+                                 config.adam().epsilon(),
+                                 config.adam().decay(),
+                                 lr);
       break;
-    default:
-      opt = new SGDOptimizer<T>(config);
   }
 
-  switch (config.lr_policy()) {
-    case "ConstLr":
-      opt.lr_policy = new ConstLr(config);
-      break;
-  }
   return opt;
 }
 
