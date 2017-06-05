@@ -4765,21 +4765,36 @@ def warp_ctc_layer(input,
                    layer_attr=None):
     """
     A layer intergrating the open-source `warp-ctc
-    <https://github.com/baidu-research/warp-ctc>` library, which is used in
+    <https://github.com/baidu-research/warp-ctc>`_ library, which is used in
     `Deep Speech 2: End-toEnd Speech Recognition in English and Mandarin
-    <https://arxiv.org/pdf/1512.02595v1.pdf>`, to compute Connectionist Temporal
-    Classification (CTC) loss.
+    <https://arxiv.org/pdf/1512.02595v1.pdf>`_, to compute Connectionist Temporal
+    Classification (CTC) loss. Besides, another `warp-ctc
+    <https://github.com/gangliao/warp-ctc>`_ repository, which is forked from
+    the official one, is maintained to enable more compiling options. During the
+    building process, PaddlePaddle will clone the source codes, build and
+    install it to :code:`third_party/install/warpctc` directory.
+
+    To use warp_ctc layer, you need to specify the path of :code:`libwarpctc.so`,
+    using following methods:
+
+    1. Set it in :code:`paddle.init` (python api) or :code:`paddle_init` (c api),
+    such as :code:`paddle.init(use_gpu=True,
+    warpctc_dir=your_paddle_source_dir/third_party/install/warpctc/lib)`.
+
+    2. Set environment variable LD_LIBRARY_PATH on Linux or DYLD_LIBRARY_PATH
+    on Mac OS. For instance, :code:`export
+    LD_LIBRARY_PATH=your_paddle_source_dir/third_party/install/warpctc/lib:$LD_LIBRARY_PATH`.
 
     More details of CTC can be found by referring to `Connectionist Temporal
     Classification: Labelling Unsegmented Sequence Data with Recurrent
     Neural Networks <http://machinelearning.wustl.edu/mlpapers/paper_files/
-    icml2006_GravesFGS06.pdf>`_
+    icml2006_GravesFGS06.pdf>`_.
 
     Note:
         - Let num_classes represent the category number. Considering the 'blank'
-          label needed by CTC, you need to use (num_classes + 1) as the input
-          size. Thus, the size of both warp_ctc_layer and 'input' layer should
-          be set to num_classes + 1.
+          label needed by CTC, you need to use (num_classes + 1) as the input size.
+          Thus, the size of both warp_ctc layer and 'input' layer should be set to
+          num_classes + 1.
         - You can set 'blank' to any value ranged in [0, num_classes], which
           should be consistent as that used in your labels.
         - As a native 'softmax' activation is interated to the warp-ctc library,
