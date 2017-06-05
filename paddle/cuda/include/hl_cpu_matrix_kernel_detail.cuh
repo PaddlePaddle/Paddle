@@ -13,16 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 
-#ifndef HL_NEON_MATRIX_KERNEL_CUH_
-#define HL_NEON_MATRIX_KERNEL_CUH_
+#ifndef HL_MATRIX_KERNEL_DETAIL_CUH_
+#define HL_MATRIX_KERNEL_DETAIL_CUH_
 
 #include "hl_matrix_type.cuh"
-
-#define VECTOR_SIZE     16
-
-/* number of float in vector */
-#define     VECTOR_LEN      4
-#define     VECTOR_SET      vdupq_n_f32
 
 inline bool hl_check_align(size_t size) {
   return !(size & (VECTOR_SIZE - 1));
@@ -32,16 +26,62 @@ inline bool hl_check_align(void *ptr) {
   return hl_check_align(reinterpret_cast<size_t>(ptr));
 }
 
-template <class Agg>
-inline real hl_agg_op(Agg agg, vecType mm) {
-  float32x4_t rev = vrev64q_f32(mm);
-  float32x4_t tmp1 = agg.vecOp(rev, rev);
-  float32x2_t lo = vget_high_f32(rev);
-  float32x2_t hi = vget_low_f32(rev);
-  float32x4_t tmp2 = vcombine_f32(hi, lo);
-  float32x4_t ret = agg.vecOp(tmp1, tmp2);
+template <class Agg, class Op, class Saver>
+void hl_matrix_row_op(Agg agg, Op op, Saver sv,
+                      int dimM, int dimN,
+                      real *dst, int ld,
+                      real *A, int lda) {
+  for (int i = 0; i < dimM; i++) {
+    real tmp = agg.init();
+    for (int j = 0; j < dimN; j++) {
+        tmp = agg(tmp, op(A[i * lda + j]));
+    }
+    dst[i*ld] = sv(dst[i*ld], tmp);
+  }
+}
 
-  return vgetq_lane_f32(ret, 0);
+template <class Agg, class Op, class Saver>
+void hl_matrix_row_op(Agg agg, Op op, Saver sv,
+                      int dimM, int dimN,
+                      real *dst, int ld,
+                      real *A, int lda,
+                      real *B, int ldb) {
+  for (int i = 0; i < dimM; i++) {
+    real tmp = agg.init();
+    for (int j = 0; j < dimN; j++) {
+        tmp = agg(tmp, op(A[i * lda + j], B[i * ldb + j]));
+    }
+    dst[i*ld] = sv(dst[i*ld], tmp);
+  }
+}
+
+template <class Agg, class Op, class Saver>
+void hl_matrix_column_op(Agg agg, Op op, Saver sv,
+                         int dimM, int dimN,
+                         real *dst,
+                         real *A, int lda) {
+  for (int j = 0; j < dimN; j++) {
+    real tmp = agg.init();
+    for (int i = 0; i < dimM; i++) {
+        tmp = agg(tmp, op(A[i * lda + j]));
+    }
+    dst[j] = sv(dst[j], tmp);
+  }
+}
+
+template <class Agg, class Op, class Saver>
+void hl_matrix_column_op(Agg agg, Op op, Saver sv,
+                         int dimM, int dimN,
+                         real *dst,
+                         real *A, int lda,
+                         real *B, int ldb) {
+  for (int j = 0; j < dimN; j++) {
+    real tmp = agg.init();
+    for (int i = 0; i < dimM; i++) {
+        tmp = agg(tmp, op(A[i * lda + j], B[i * ldb + j]));
+    }
+    dst[j] = sv(dst[j], tmp);
+  }
 }
 
 template <class Agg, class Op, class Saver>
@@ -53,7 +93,7 @@ void hl_sse_matrix_row_op(Agg agg, Op op, Saver sv,
     vecType mm = VECTOR_SET(agg.init());
     vecType *a = (vecType*)(A);
     for (int j = 0; j < dimN / VECTOR_LEN; j++, a++) {
-      mm = agg.vecOp(mm, op.vecOp(*a));
+        mm = agg.vecOp(mm, op.vecOp(*a));
     }
 
     int rem = dimN % VECTOR_LEN;
@@ -61,11 +101,11 @@ void hl_sse_matrix_row_op(Agg agg, Op op, Saver sv,
       real tmp = hl_agg_op(agg, mm);
       real *a = A + (dimN / VECTOR_LEN) * VECTOR_LEN;
       for (int j = 0; j < rem; j++) {
-        tmp = agg(tmp, op(a[j]));
+          tmp = agg(tmp, op(a[j]));
       }
       dst[i*ld] = sv(dst[i*ld], tmp);
     } else {
-      dst[i*ld] = sv(dst[i*ld], hl_agg_op(agg, mm));
+        dst[i*ld] = sv(dst[i*ld], hl_agg_op(agg, mm));
     }
   }
 }
@@ -96,35 +136,6 @@ void hl_sse_matrix_row_op(Agg agg, Op op, Saver sv,
     } else {
         dst[i*ld] = sv(dst[i*ld], hl_agg_op(agg, mm));
     }
-  }
-}
-
-template <class Agg, class Op, class Saver>
-void hl_matrix_column_op(Agg agg, Op op, Saver sv,
-                         int dimM, int dimN,
-                         real *dst,
-                         real *A, int lda) {
-  for (int j = 0; j < dimN; j++) {
-    real tmp = agg.init();
-    for (int i = 0; i < dimM; i++) {
-        tmp = agg(tmp, op(A[i * lda + j]));
-    }
-    dst[j] = sv(dst[j], tmp);
-  }
-}
-
-template <class Agg, class Op, class Saver>
-void hl_matrix_column_op(Agg agg, Op op, Saver sv,
-                         int dimM, int dimN,
-                         real *dst,
-                         real *A, int lda,
-                         real *B, int ldb) {
-  for (int j = 0; j < dimN; j++) {
-    real tmp = agg.init();
-    for (int i = 0; i < dimM; i++) {
-        tmp = agg(tmp, op(A[i * lda + j], B[i * ldb + j]));
-    }
-    dst[j] = sv(dst[j], tmp);
   }
 }
 
@@ -296,4 +307,4 @@ void hl_sse_matrix_column_op(Agg agg, Op op, Saver sv,
   }
 }
 
-#endif /* HL_NEON_MATRIX_KERNEL_CUH_ */
+#endif /* HL_MATRIX_KERNEL_DETAIL_CUH_ */
