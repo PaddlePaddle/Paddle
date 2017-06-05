@@ -2,21 +2,18 @@
 
 namespace paddle {
 namespace optimizer {
-template <class T>
 
-template <class T>
-void AdagradOptimizer<T>::set_weight(const Tensor<T>* p) {
+void AdagradOptimizer::set_weight(Tensor* p) {
   size_t size = p->width();
-  T* gptr = new T[size];
-  accum_gradient = Tensor<T>(gptr, size);
-  T* dptr = new T[size];
-  accum_delta = Tensor<T>(dtpr, size);
-  T* dptr_current = new T[size];
-  update_delta = Tensor<T>(dptr_current, size);
+  real* gptr = new real[size];
+  accum_gradient = Tensor(gptr, size);
+  real* dptr = new real[size];
+  accum_delta = Tensor(dtpr, size);
+  real* dptr_current = new real[size];
+  update_delta = Tensor(dptr_current, size);
 }
 
-template <class T>
-void AdagradOptimizer<T>::update(const Tensor<T>& gradient) {
+void AdagradOptimizer::update(const Tensor& gradient) {
   num_sample_passed += 1;
   double learning_rate = lr_policy->get_learning_rate();
   for (size_t i = 0; i < parameter_.size(); ++i) {
@@ -27,7 +24,5 @@ void AdagradOptimizer<T>::update(const Tensor<T>& gradient) {
   }
 }
 
-template class AdagradOptimizer<float>;
-template class AdagradOptimizer<double>;
 }  // namespace optimizer
 }  // namespace paddle

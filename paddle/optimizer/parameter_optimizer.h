@@ -11,13 +11,6 @@
 namespace paddle {
 namespace optimizer {
 
-class ParameterOptimizerBase {
-private:
-  ParameterOptimizerBase(const ParameterOptimizerBase &) = delete;
-  ParameterOptimizerBase &operator=(const ParameterOptimizerBase &) = delete;
-};
-
-template <class T>
 class ParameterOptimizer {
 public:
   /**
@@ -31,14 +24,13 @@ public:
   virtual ~ParameterOptimizer() { delete parameter_; };
 
   static ParameterOptimizer *create(const ::std::string &config_proto);
-  virtual void update(const Tensor<T> &gradient) = 0;
-  virtual T *get_weight() const;
-  virtual void set_weight(const Tensor<T> *parameter);
+  virtual void update(const Tensor &gradient) = 0;
+  virtual real *get_weight() const;
+  virtual void set_weight(Tensor *parameter);
 
 public:
-  bool config_valid(::std::string &config) const;
   OptimizerConfig config_;
-  Tensor<T> *parameter_;
+  Tensor *parameter_;
 
   // learning rate policy
   BaseLr *lr_policy;

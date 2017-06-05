@@ -3,17 +3,15 @@
 namespace paddle {
 namespace optimizer {
 
-template <class T>
-void AdamOptimizer<T>::set_weight(const Tensor<T> *p) {
+void AdamOptimizer::set_weight(Tensor *p) {
   size_t size = p->width();
-  T *mptr = new T[size];
-  momentums_ = Tensor<T>(mptr, size);
-  T *vptr = new T[size];
-  velocitys_ = Tensor<T>(vtpr, size);
+  real *mptr = new real[size];
+  momentums_ = Tensor(mptr, size);
+  real *vptr = new real[size];
+  velocitys_ = Tensor(vtpr, size);
 }
 
-template <class T>
-void AdamOptimizer<T>::update(const Tensor<T> &gradient) {
+void AdamOptimizer::update(const Tensor &gradient) {
   num_sample_passed += 1;
   double learning_rate = lr_policy->get_learning_rate(num_sample_passed);
   double coef1 = 1.0 - std::pow(beta_1, num_sample_passed);
@@ -28,8 +26,5 @@ void AdamOptimizer<T>::update(const Tensor<T> &gradient) {
                          decay * parameter_[i]);
   }
 }
-
-template class AdamOptimizer<float>;
-template class AdamOptimizer<double>;
 }  // namespace optimizer
 }  // namespace paddle

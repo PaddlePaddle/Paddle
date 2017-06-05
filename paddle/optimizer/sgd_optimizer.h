@@ -6,31 +6,22 @@
 namespace paddle {
 namespace optimizer {
 
-template <class T>
-class SGDOptimizer : public ParameterOptimizer<T> {
+class SGDOptimizer : public ParameterOptimizer {
 public:
-  using ParameterOptimizer<T>::parameter_;
-  using ParameterOptimizer<T>::num_sample_passed;
-  using ParameterOptimizer<T>::lr_policy;
+  using ParameterOptimizer::parameter_;
+  using ParameterOptimizer::num_sample_passed;
+  using ParameterOptimizer::lr_policy;
 
-  SGDOptimizer(double m,
-               double d,
-               bool n,
-               double learning_rate,
-               uint64_t num_sample_passed,
-               BaseLr* lr)
-      : ParameterOptimizer<T>(lr), momentum(m), decay(d), nesterov(n) {}
-  virtual ~SGDOptimizer() {
-    // clear memory by Tensor library
-    delete momentums_;
-  }
-  void update(const Tensor<T>& gradient);
+  SGDOptimizer(double m, double d, bool n, BaseLr* lr)
+      : ParameterOptimizer(lr), momentum(m), decay(d), nesterov(n) {}
+  virtual ~SGDOptimizer() { delete momentums_; }
+  void update(const Tensor& gradient);
 
-  void set_weight(const Tensor<T>* p);
-  T* get_weight() const;
+  void set_weight(Tensor* p);
+  real* get_weight() const;
 
 private:
-  Tensor<T>* momentums_;
+  Tensor* momentums_;
   double momentum;
   double decay;
   bool nesterov;

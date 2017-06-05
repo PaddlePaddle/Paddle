@@ -6,23 +6,19 @@
 namespace paddle {
 namespace optimizer {
 
-template <class T>
-class AdagradOptimizer : public ParameterOptimizer<T> {
+class AdagradOptimizer : public ParameterOptimizer {
 public:
-  using ParameterOptimizer<T>::parameter_;
-  using ParameterOptimizer<T>::num_sample_passed;
-  using ParameterOptimizer<T>::lr_policy;
   AdagradOptimizer(double epsilon, double decay, BaseLr *lr)
-      : ParameterOptimizer<T>(lr), epsilon(epsilon), decay(decay) {}
+      : ParameterOptimizer(lr), epsilon(epsilon), decay(decay) {}
   ~AdagradOptimizer() {
     if (accum_gradient) delete accum_gradient;
   }
-  void update(const Tensor<T> &gradient);
-  void set_weight(const Tensor<T> *p);
-  T *get_weight() const;
+  void update(const Tensor &gradient);
+  void set_weight(Tensor *p);
+  real *get_weight() const;
 
 private:
-  Tensor<T> *accum_gradient;
+  Tensor *accum_gradient;
   double epsilon;
   double decay;
 };

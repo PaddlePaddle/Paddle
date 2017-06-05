@@ -6,15 +6,11 @@
 namespace paddle {
 namespace optimizer {
 
-template <class T>
-class AdamOptimizer : public ParameterOptimizer<T> {
+class AdamOptimizer : public ParameterOptimizer {
 public:
-  using ParameterOptimizer<T>::parameter_;
-  using ParameterOptimizer<T>::num_sample_passed;
-  using ParameterOptimizer<T>::lr_policy;
   AdamOptimizer(
       double beta_1, double beta_2, double epsilon, double decay, BaseLr *lr)
-      : ParameterOptimizer<T>(lr),
+      : ParameterOptimizer(lr),
         beta_1(beta_1),
         beta_2(beta_2),
         epsilon(epsilon),
@@ -23,13 +19,13 @@ public:
     if (momentums_) delete momentums_;
     if (velocitys_) delete velocitys_;
   }
-  void update(const Tensor<T> &gradient);
-  void set_weight(const Tensor<T> *p);
-  T *get_weight() const;
+  void update(const Tensor &gradient);
+  void set_weight(Tensor *p);
+  real *get_weight() const;
 
 private:
-  Tensor<T> *momentums_;
-  Tensor<T> *velocitys_;
+  Tensor *momentums_;
+  Tensor *velocitys_;
   double beta_1;
   double beta_2;
   double epsilon;

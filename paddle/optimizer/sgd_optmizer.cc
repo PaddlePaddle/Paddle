@@ -3,23 +3,21 @@
 namespace paddle {
 namespace optimizer {
 
-template <class T>
-void SGDOptimizer<T>::set_weight(const Tensor<T> *p) {
+void SGDOptimizer::set_weight(Tensor *p) {
   //  ParameterOptimizer::set_weight(p);
   size_t size = p->size();
   // TODO: fix it with align aware allocator bind to Tensor
   if (momentum != 0.0) {
-    T *ptr = new T[size];
-    momentums_ = Tensor<T>(ptr, size);
+    real *ptr = new real[size];
+    momentums_ = new Tensor(ptr, size);
   }
 }
 
-template <class T>
-void SGDOptimizer<T>::update(const Tensor<T> &gradient) {
+void SGDOptimizer::update(const Tensor &gradient) {
   num_sample_passed += 1;
   double learning_rate = lr_policy->get_learning_rate(num_sample_passed);
   double velocity = 0.0;
-  Tensor<T> &for (size_t i = 0; i < parameter_->size(); ++i) {
+  for (size_t i = 0; i < parameter_->size(); ++i) {
     if (momentum == 0.0) {
       velocity =
           -learning_rate * gradient[i] - learning_rate * decay * parameter_[i];
@@ -35,9 +33,6 @@ void SGDOptimizer<T>::update(const Tensor<T> &gradient) {
     }
   }
 }
-
-template class SGDOptimizer<float>;
-template class SGDOptimizer<double>;
 
 }  // namespace optimizer
 }  // namespace paddle

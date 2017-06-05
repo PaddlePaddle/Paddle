@@ -10,78 +10,60 @@
 namespace paddle {
 namespace optimizer {
 
-template <class T>
-ParameterOptimizer<T> *ParameterOptimizer<T>::create(
+ParameterOptimizer *ParameterOptimizer::create(
     const ::std::string &config_proto) {
   paddle::OptimizerConfig config;
   CHECK(config.ParseFromString(config_proto) == 0)
       << "error : optimizer config";
-  CHECK(config_valid(config) == 0) << "error : invalid optimizer config ";
 
-  BaseLr *lr = nullptr;
-  switch (config.lr_policy()) {
-    case "ConstLr":
-      lr = new ConstLr(config.lr_config().learning_rate());
-      break;
-  }
-  ParameterOptimizer<T> *opt = nullptr;
-  switch (config.optimizer_name()) {
-    case "SGD":
-      opt = new SGDOptimizer<T>(config.sgd().momentum(),
-                                config.sgd().decay(),
-                                config.sgd().nesterov(),
-                                lr);
-      break;
-    case "Adagrad":
-      opt = new AdagradOptimizer<T>(
+  auto select_lr_policy = [=](const OptimizerConfig &config) -> BaseLr * {
+    std::string s(config.lr_policy());
+    if (s == "ConstLr") return new ConstLr(config.lr_config().learning_rate());
+    if (s == "LinearLr")
+      return new LinearLr(config.lr_config().learning_rate(),
+                          config.lr_config().lr_decay_a(),
+                          config.lr_config().lr_decay_b());
+    // default
+    return new ConstLr(config.lr_config().learning_rate());
+  };
+  BaseLr *lr = select_lr_policy(config);
+  auto select_optimizer =
+      [=](const OptimizerConfig &config) -> ParameterOptimizer * {
+    std::string s(config.optimizer_name());
+    if (s == "SGD") {
+      return new SGDOptimizer(config.sgd().momentum(),
+                              config.sgd().decay(),
+                              config.sgd().nesterov(),
+                              lr);
+    }
+    if (s == "Adadelta") {
+      return new AdagradOptimizer(
           config.adagrad().epsilon(), config.adagrad().decay(), lr);
-      break;
-    case "Adadelta":
-      opt = new AdadeltaOptimizer<T>(config.adadelta().rho(),
-                                     config.adadelta().epsilon(),
-                                     config.adadelta().decay(),
-                                     lr);
-      break;
-    case "Adam":
-      opt = new AdamOptimizer<T>(config.adam().beta_1(),
-                                 config.adam().beta_2(),
-                                 config.adam().epsilon(),
-                                 config.adam().decay(),
-                                 lr);
-      break;
-  }
-
-  return opt;
+    }
+    if (s == "Adagrad") {
+      return new AdagradOptimizer(
+          config.adagrad().epsilon(), config.adagrad().decay(), lr);
+    }
+    if (s == "Adam") {
+      return new AdadeltaOptimizer(config.adadelta().rho(),
+                                   config.adadelta().epsilon(),
+                                   config.adadelta().decay(),
+                                   lr);
+    }
+    // default
+    return new SGDOptimizer(config.sgd().momentum(),
+                            config.sgd().decay(),
+                            config.sgd().nesterov(),
+                            lr);
+  };
+  return select_optimizer(config);
 }
 
-template <class T>
-T *ParameterOptimizer<T>::get_weight() const {
-  return parameter.get().get_buffer();
+real *ParameterOptimizer::get_weight() const {
+  return parameter_->get_buffer();
 }
 
-template <class T>
-char *ParameterOptimizer<T>::get_config_proto() const {
-  // set config dynamic value for save checkpoint
-  config_.lr_policy().set_learning_rate(
-      lr_policy->get_learning_rate(num_sample_passed));
-  config_.set_num_sample_passed(num_sample_passed);
-  config_.set_iterations(iterations);
-  return config_.SerializeAsString().c_str();
-}
-
-template <class T>
-void ParameterOptimizer<T>::set_weight(const Tensor<T> *p) {
-  parameter_ = p;
-}
-
-template <class T>
-bool ParameterOptimizer<T>::config_valid(const ::std::string &config) const {
-  // TODO(zhihong) : add more value checker, failed ASAP
-  return true;
-}
-
-template class ParameterOptimzier<float>;
-template class ParameterOptimzier<double>;
+void ParameterOptimizer::set_weight(Tensor *p) { parameter_ = p; }
 
 }  // namespace optimizer
 }  // namespace paddle
