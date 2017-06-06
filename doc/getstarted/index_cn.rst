@@ -7,4 +7,4 @@
   build_and_install/index_cn.rst
   concepts/use_concepts_cn.rst
 
-- `深度学习入门课程 <http://book.paddlepaddle.org/>`_
+- `深度学习入门课程 <http://book.paddlepaddle.org/index.cn.html>`_
