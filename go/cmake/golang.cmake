@@ -37,7 +37,7 @@ function(GO_LIBRARY NAME BUILD_TYPE)
   add_dependencies(goGet copyPaddle)
 
   add_custom_command(OUTPUT ${OUTPUT_DIR}/.timestamp
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
+    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build "-ldflags -extldflags=-fno-PIC" ${BUILD_MODE}
     -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
     ${CMAKE_GO_FLAGS} ${GO_SOURCE}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
