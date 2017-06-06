@@ -53,6 +53,7 @@ before_install:
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 script:
+  - cd go && go get -t -d ./... && go test -v -cover ./... && cd -
   - | 
     timeout 2580 paddle/scripts/travis/main.sh  # 43min timeout
     RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 142 ]; then true; else false; fi;
