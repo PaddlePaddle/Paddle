@@ -1,3 +1,4 @@
+#include "serialization.h"
 #include "sgd_optimizer.h"
 
 namespace paddle {
@@ -34,6 +35,32 @@ void SGDOptimizer::Update(const Tensor *gradient) {
     } else {
       param[i] += velocity;
     }
+  }
+}
+
+const char *SGDOptimizer::SerializeState() {
+  OptimizerState state;
+  // version is a global const value
+  state.set_version(kOptimizerVersion);
+  TensorToProto(*parameter_, state.add_data());
+  TensorToProto(*momentums_, state.add_data());
+  // state.add_data(param_proto);
+  // state.add_data(momentum_proto);
+  state.add_hyperparam(momentum_);
+  return state.SerializeAsString().c_str();
+}
+
+void SGDOptimizer::DeSerializeState(const std::string &str) {
+  OptimizerState state;
+  state.ParseFromString(str);
+  CHECK(state.version() == kOptimizerVersion)
+      << "error version of state"
+      << "expected : " << kOptimizerVersion << "get : " << state.version();
+
+  ProtoToTensor(state.data(0), parameter_);
+  if (state.data_size() == 2) {
+    ProtoToTensor(state.data(1), momentums_);
+    momentum_ = state.hyperparam(0);
   }
 }
 

@@ -64,6 +64,26 @@ message LinearLr {
   optional double lr_decay_b = 3;
 }
 
+message TensorProto {
+enum DataType {
+  PADDLE_ELEMENT_TYPE_INT32 = 0;
+  PADDLE_ELEMENT_TYPE_UINT32 = 1;
+  PADDLE_ELEMENT_TYPE_INT64 = 2;
+  PADDLE_ELEMENT_TYPE_UINT64 = 3;
+  PADDLE_ELEMENT_TYPE_FLOAT32 = 4;
+  PADDLE_ELEMENT_TYPE_FLOAT64 = 5;
+}
+  required DataType data_type = 1;
+  repeated bytes content = 2;
+  optional uint64 size = 3;
+}
+
+message OptimizerState {
+  // match old training state with format parser
+  required string version = 100;
+  repeated TensorProto data = 1;
+  repeated double hyperparam = 3;
+}
 
 message OptimizerConfig {
   // common config of optimizer

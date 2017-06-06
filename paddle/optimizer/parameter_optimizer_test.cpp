@@ -10,7 +10,7 @@
 using namespace paddle;
 using namespace paddle::optimizer;
 
-Tensor* fill_n_Tensor(size_t size) {
+Tensor* FillTensor(size_t size) {
   real* ptr = new real[size];
   Tensor* param = new Tensor(ptr, size);
   Tensor& p = *param;
@@ -20,7 +20,7 @@ Tensor* fill_n_Tensor(size_t size) {
   return param;
 }
 
-Tensor* fix_n_Tensor(size_t size) {
+Tensor* FixedTensor(size_t size) {
   real* ptr = new real[size];
   Tensor* param = new Tensor(ptr, size);
   Tensor& p = *param;
@@ -36,12 +36,12 @@ public:
   const size_t size = 5;
 
   virtual void SetUp() {
-    create_sgd();
-    create_adam();
+    CreateSGD();
+    CreateAdam();
   }
   virtual void TearDown() {}
 
-  void create_sgd() {
+  void CreateSGD() {
     config.set_optimizer(OptimizerConfig::SGD);
     config.mutable_sgd()->set_momentum(0.0);
     config.mutable_sgd()->set_decay(0.0);
@@ -54,7 +54,7 @@ public:
     opts.push_back(opt);
   }
 
-  void create_adam() {
+  void CreateAdam() {
     config.set_optimizer(OptimizerConfig::Adam);
     config.mutable_adam()->set_beta_1(0.9);
     config.mutable_adam()->set_beta_2(0.1);
@@ -66,15 +66,15 @@ public:
         ParameterOptimizer::Create(config.SerializeAsString());
     opts.push_back(opt);
   }
-  void test_set_weight() {
-    Tensor* p = fill_n_Tensor(size);
+  void TestSetWeight() {
+    Tensor* p = FillTensor(size);
     for (size_t i = 0; i < opts.size(); ++i) {
       opts[i]->set_weight(p);
     }
   }
 
-  void test_get_weight() {
-    Tensor* p = fix_n_Tensor(size);
+  void TestGetWeight() {
+    Tensor* p = FixedTensor(size);
     for (size_t i = 0; i < opts.size(); ++i) {
       opts[i]->set_weight(p);
     }
@@ -85,8 +85,8 @@ public:
       }
     }
   }
-  void test_update() {
-    Tensor* g = fix_n_Tensor(size);
+  void TestUpdate() {
+    Tensor* g = FixedTensor(size);
     for (size_t i = 0; i < opts.size(); ++i) {
       opts[i]->Update(g);
     }
@@ -98,10 +98,10 @@ private:
 };
 
 TEST_F(OptimizerTest, test_set_get_weight) {
-  test_set_weight();
-  test_get_weight();
+  TestSetWeight();
+  TestGetWeight();
 }
-TEST_F(OptimizerTest, test_update) { test_update(); }
+TEST_F(OptimizerTest, TestUpdate) { TestUpdate(); }
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

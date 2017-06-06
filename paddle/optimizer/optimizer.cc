@@ -34,10 +34,16 @@ struct paddle_optimizer {
 };
 
 paddle_optimizer* paddle_create_optimizer(const unsigned char* config_proto,
-                                          int config_proto_len) {
+                                          const int config_proto_len,
+                                          const char** state,
+                                          const int state_size) {
   paddle_optimizer* optimizer = new paddle_optimizer;
   std::string config(config_proto, config_proto + config_proto_len);
   optimizer->impl = ParameterOptimizer::Create(config);
+  if (state != nullptr) {
+    std::string s(*state, *state + state_size);
+    optimizer->impl->DeSerializeState(s);
+  }
   return optimizer;
 }
 
@@ -70,4 +76,9 @@ int paddle_optimizer_set_weights(paddle_optimizer* o,
 void* paddle_optimizer_get_weights(paddle_optimizer* o) {
   void* buffer = (void*)o->impl->get_weight();
   return buffer;
+}
+
+int paddle_optimizer_get_state(paddle_optimizer* o, const char* state) {
+  state = o->impl->SerializeState();
+  return PADDLE_SUCCESS;
 }

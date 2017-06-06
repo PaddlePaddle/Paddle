@@ -12,6 +12,8 @@ public:
       : ParameterOptimizer(lr), momentum_(m), decay_(d), nesterov_(n) {}
   virtual ~SGDOptimizer() { delete momentums_; }
   void Update(const Tensor* gradient);
+  const char* SerializeState();
+  void DeSerializeState(const std::string& state);
 
   void set_weight(Tensor* p);
   real* get_weight() const;

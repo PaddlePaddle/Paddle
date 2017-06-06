@@ -45,7 +45,9 @@ typedef struct paddle_optimizer paddle_optimizer;
  *  @return return optimizer instance
  */
 paddle_optimizer* paddle_create_optimizer(const unsigned char* config_proto,
-                                          int config_proto_len);
+                                          const int config_proto_len,
+                                          const char** state,
+                                          const int state_size);
 
 /**
  *  @brief release optimizer
@@ -85,6 +87,8 @@ int paddle_optimizer_set_weights(paddle_optimizer* o,
  *  @return return content of parameter buffer in optimizer
  */
 void* paddle_optimizer_get_weights(paddle_optimizer* o);
+
+int paddle_optimizer_get_state(paddle_optimizer* o, const char* state);
 
 #ifdef __cplusplus
 }

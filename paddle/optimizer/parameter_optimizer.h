@@ -11,6 +11,8 @@
 namespace paddle {
 namespace optimizer {
 
+const std::string kOptimizerVersion = "1.0";
+
 class ParameterOptimizer {
 public:
   /**
@@ -21,6 +23,8 @@ public:
   virtual ~ParameterOptimizer() { delete parameter_; };
 
   static ParameterOptimizer *Create(const std::string &config_proto);
+  virtual const char *SerializeState();
+  virtual void DeSerializeState(const std::string &state);
   virtual void Update(const Tensor *gradient) = 0;
   virtual real *get_weight() const;
   virtual void set_weight(Tensor *parameter);
