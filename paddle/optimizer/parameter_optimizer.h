@@ -5,8 +5,8 @@
 #include <functional>
 #include <string>
 #include "OptimizerConfig.pb.h"
-#include "Tensor.h"
 #include "lr_policy.h"
+#include "tensor.h"
 
 namespace paddle {
 namespace optimizer {
@@ -17,21 +17,21 @@ public:
    * @brief  update hook for algorithm need to traverse parameter more than
    * once.
    */
-  ParameterOptimizer(BaseLr *lr) : lr_policy(lr), num_sample_passed(0) {}
+  ParameterOptimizer(LrPolicy *lr) : lr_policy_(lr), num_sample_passed_(0) {}
   virtual ~ParameterOptimizer() { delete parameter_; };
 
-  static ParameterOptimizer *create(const ::std::string &config_proto);
-  virtual void update(const Tensor *gradient) = 0;
+  static ParameterOptimizer *Create(const std::string &config_proto);
+  virtual void Update(const Tensor *gradient) = 0;
   virtual real *get_weight() const;
   virtual void set_weight(Tensor *parameter);
 
-public:
+protected:
   OptimizerConfig config_;
   Tensor *parameter_;
 
   // learning rate policy
-  BaseLr *lr_policy;
-  uint64_t num_sample_passed;
+  LrPolicy *lr_policy_;
+  uint64_t num_sample_passed_;
 };
 
 }  // namespace optimizer

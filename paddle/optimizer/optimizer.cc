@@ -37,7 +37,7 @@ paddle_optimizer* paddle_create_optimizer(const unsigned char* config_proto,
                                           int config_proto_len) {
   paddle_optimizer* optimizer = new paddle_optimizer;
   std::string config(config_proto, config_proto + config_proto_len);
-  optimizer->impl = ParameterOptimizer::create(config);
+  optimizer->impl = ParameterOptimizer::Create(config);
   return optimizer;
 }
 
@@ -53,7 +53,7 @@ int paddle_update_parameter(paddle_optimizer* o,
   // TOOD(zhihong): datatype not work. need to add the runtime datatype
   auto grad_type = reinterpret_cast<const real*>(grad_buffer);
   Tensor* gradient = new Tensor(const_cast<real*>(grad_type), num_bytes);
-  o->impl->update(gradient);
+  o->impl->Update(gradient);
   return PADDLE_SUCCESS;
 }
 

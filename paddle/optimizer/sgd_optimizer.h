@@ -8,23 +8,19 @@ namespace optimizer {
 
 class SGDOptimizer : public ParameterOptimizer {
 public:
-  using ParameterOptimizer::parameter_;
-  using ParameterOptimizer::num_sample_passed;
-  using ParameterOptimizer::lr_policy;
-
-  SGDOptimizer(double m, double d, bool n, BaseLr* lr)
-      : ParameterOptimizer(lr), momentum(m), decay(d), nesterov(n) {}
+  SGDOptimizer(double m, double d, bool n, LrPolicy* lr)
+      : ParameterOptimizer(lr), momentum_(m), decay_(d), nesterov_(n) {}
   virtual ~SGDOptimizer() { delete momentums_; }
-  void update(const Tensor* gradient);
+  void Update(const Tensor* gradient);
 
   void set_weight(Tensor* p);
   real* get_weight() const;
 
 private:
   Tensor* momentums_;
-  double momentum;
-  double decay;
-  bool nesterov;
+  double momentum_;
+  double decay_;
+  bool nesterov_;
 };
 
 }  // namespace optimizer

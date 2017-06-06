@@ -10,41 +10,40 @@
 namespace paddle {
 namespace optimizer {
 
-ParameterOptimizer *ParameterOptimizer::create(
-    const ::std::string &config_proto) {
+ParameterOptimizer *ParameterOptimizer::Create(
+    const std::string &config_proto) {
   paddle::OptimizerConfig config;
   CHECK(config.ParseFromString(config_proto) == 0)
-      << "error : optimizer config";
+      << "failed parse optimizer config";
 
-  auto select_lr_policy = [=](const OptimizerConfig &config) -> BaseLr * {
-    std::string s(config.lr_policy());
-    if (s == "ConstLr") return new ConstLr(config.const_lr().learning_rate());
-    if (s == "LinearLr")
+  auto select_lr_policy = [=](const OptimizerConfig &config) -> LrPolicy * {
+    if (config.lr_policy() == OptimizerConfig::ConstLr)
+      return new ConstLr(config.const_lr().learning_rate());
+    if (config.lr_policy() == OptimizerConfig::LinearLr)
       return new LinearLr(config.linear_lr().learning_rate(),
                           config.linear_lr().lr_decay_a(),
                           config.linear_lr().lr_decay_b());
     // default
     return nullptr;
   };
-  BaseLr *lr = select_lr_policy(config);
+  LrPolicy *lr = select_lr_policy(config);
   auto select_optimizer =
       [=](const OptimizerConfig &config) -> ParameterOptimizer * {
-    std::string s(config.optimizer_name());
-    if (s == "SGD") {
+    if (config.optimizer() == OptimizerConfig::SGD) {
       return new SGDOptimizer(config.sgd().momentum(),
                               config.sgd().decay(),
                               config.sgd().nesterov(),
                               lr);
     }
-    if (s == "Adadelta") {
+    if (config.optimizer() == OptimizerConfig::Adadelta) {
       return new AdagradOptimizer(
           config.adagrad().epsilon(), config.adagrad().decay(), lr);
     }
-    if (s == "Adagrad") {
+    if (config.optimizer() == OptimizerConfig::Adagrad) {
       return new AdagradOptimizer(
           config.adagrad().epsilon(), config.adagrad().decay(), lr);
     }
-    if (s == "Adam") {
+    if (config.optimizer() == OptimizerConfig::Adam) {
       return new AdadeltaOptimizer(config.adadelta().rho(),
                                    config.adadelta().epsilon(),
                                    config.adadelta().decay(),

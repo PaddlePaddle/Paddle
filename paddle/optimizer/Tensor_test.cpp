@@ -1,6 +1,6 @@
-#include "Tensor.h"
 #include <iostream>
 #include "gtest/gtest.h"
+#include "tensor.h"
 
 using namespace paddle;
 using namespace paddle::optimizer;
@@ -13,6 +13,7 @@ TEST(Tensor, indexer) {
   }
   ASSERT_EQ(t[2], 2);
   ASSERT_EQ(t[1], 1);
+  delete ptr;
 }
 
 int main(int argc, char** argv) {

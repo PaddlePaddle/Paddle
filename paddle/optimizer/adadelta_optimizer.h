@@ -8,29 +8,25 @@ namespace optimizer {
 
 class AdadeltaOptimizer : public ParameterOptimizer {
 public:
-  using ParameterOptimizer::parameter_;
-  using ParameterOptimizer::num_sample_passed;
-  using ParameterOptimizer::lr_policy;
-
-  AdadeltaOptimizer(double rho, double epsilon, double decay, BaseLr *lr)
-      : ParameterOptimizer(lr), rho(rho), epsilon(epsilon), decay(decay) {}
+  AdadeltaOptimizer(double rho, double epsilon, double decay, LrPolicy *lr)
+      : ParameterOptimizer(lr), rho_(rho), epsilon_(epsilon), decay_(decay) {}
   ~AdadeltaOptimizer() {
-    if (accum_gradient) delete accum_gradient;
-    if (accum_delta) delete accum_delta;
-    if (update_delta) delete update_delta;
+    if (accum_gradient_) delete accum_gradient_;
+    if (accum_delta_) delete accum_delta_;
+    if (update_delta_) delete update_delta_;
   }
-  void update(const Tensor *gradient);
+  void Update(const Tensor *gradient);
   void set_weight(Tensor *p);
   real *get_weight() const;
 
 private:
-  Tensor *accum_gradient;
-  Tensor *accum_delta;
-  Tensor *update_delta;
+  Tensor *accum_gradient_;
+  Tensor *accum_delta_;
+  Tensor *update_delta_;
 
-  double rho;
-  double epsilon;
-  double decay;
+  double rho_;
+  double epsilon_;
+  double decay_;
 };
 
 }  // namespace optimizer

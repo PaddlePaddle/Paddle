@@ -8,19 +8,19 @@ namespace optimizer {
 
 class AdagradOptimizer : public ParameterOptimizer {
 public:
-  AdagradOptimizer(double epsilon, double decay, BaseLr *lr)
-      : ParameterOptimizer(lr), epsilon(epsilon), decay(decay) {}
+  AdagradOptimizer(double epsilon, double decay, LrPolicy *lr)
+      : ParameterOptimizer(lr), epsilon_(epsilon), decay_(decay) {}
   ~AdagradOptimizer() {
-    if (accum_gradient) delete accum_gradient;
+    if (accum_gradient_) delete accum_gradient_;
   }
-  void update(const Tensor *gradient);
+  void Update(const Tensor *gradient);
   void set_weight(Tensor *p);
   real *get_weight() const;
 
 private:
-  Tensor *accum_gradient;
-  double epsilon;
-  double decay;
+  Tensor *accum_gradient_;
+  double epsilon_;
+  double decay_;
 };
 
 }  // namespace optimizer

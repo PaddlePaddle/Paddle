@@ -42,28 +42,28 @@ public:
   virtual void TearDown() {}
 
   void create_sgd() {
-    config.set_optimizer_name("SGD");
+    config.set_optimizer(OptimizerConfig::SGD);
     config.mutable_sgd()->set_momentum(0.0);
     config.mutable_sgd()->set_decay(0.0);
     config.mutable_sgd()->set_nesterov(false);
-    config.set_lr_policy("ConstLr");
+    config.set_lr_policy(OptimizerConfig::ConstLr);
     config.mutable_const_lr()->set_learning_rate(0.1);
 
     ParameterOptimizer* opt =
-        ParameterOptimizer::create(config.SerializeAsString());
+        ParameterOptimizer::Create(config.SerializeAsString());
     opts.push_back(opt);
   }
 
   void create_adam() {
-    config.set_optimizer_name("Adam");
+    config.set_optimizer(OptimizerConfig::Adam);
     config.mutable_adam()->set_beta_1(0.9);
     config.mutable_adam()->set_beta_2(0.1);
     config.mutable_adam()->set_epsilon(1e-3);
     config.mutable_adam()->set_decay(0.0);
-    config.set_lr_policy("ConstLr");
+    config.set_lr_policy(OptimizerConfig::ConstLr);
     config.mutable_const_lr()->set_learning_rate(0.1);
     ParameterOptimizer* opt =
-        ParameterOptimizer::create(config.SerializeAsString());
+        ParameterOptimizer::Create(config.SerializeAsString());
     opts.push_back(opt);
   }
   void test_set_weight() {
@@ -88,7 +88,7 @@ public:
   void test_update() {
     Tensor* g = fix_n_Tensor(size);
     for (size_t i = 0; i < opts.size(); ++i) {
-      opts[i]->update(g);
+      opts[i]->Update(g);
     }
   }
 

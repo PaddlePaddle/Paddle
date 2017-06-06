@@ -32,7 +32,7 @@ public:
     return data_[idx];
   }
   // TODO: replace with tensorshape
-  size_t size() const { return this->width_; }
+  size_t size() const { return this->width_ * this->height_; }
 
 protected:
   size_t height_;
