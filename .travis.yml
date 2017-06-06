@@ -9,6 +9,7 @@ dist: trusty
 
 os:
   - linux
+
 env:
   - JOB=DOCS
   - JOB=BUILD_AND_TEST
