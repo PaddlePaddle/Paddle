@@ -239,7 +239,7 @@ public:
     Col2ImFunctor<Device, real> col2im;
     GemmFunctor<Device, real> gemm;
     size_t inputOffset = (inputChannels / groups_) * inputHeight * inputWidth;
-    size_t outputOffset = 
+    size_t outputOffset =
         (outputChannels / groups_) * outputHeight * outputWidth;
     size_t filterOffset = filter.getElements() / groups_;
 
