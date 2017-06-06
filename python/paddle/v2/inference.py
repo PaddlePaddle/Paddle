@@ -12,9 +12,9 @@ class Inference(object):
     """
     Inference combines neural network output and parameters together
     to do inference.
-    
+
     ..  code-block:: python
-    
+
         inferer = Inference(output_layer=prediction, parameters=parameters)
         for data_batch in batches:
             print inferer.infer(data_batch)
@@ -88,17 +88,28 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
     Infer a neural network by given neural network output and parameters.  The
     user should pass either a batch of input data or reader method.
 
-    Example usages:
+    Example usage for sinlge output_layer:
 
     ..  code-block:: python
 
-        result = paddle.infer(output_layer=prediction, 
-                              parameters=parameters, 
+        result = paddle.infer(output_layer=prediction,
+                              parameters=parameters,
                               input=SomeData)
         print result
 
+    Example usage for multiple outout_layers and fields:
+
+    ..  code-block:: python
+
+        result = paddle.infer(output_layer=[prediction1, prediction2],
+                              parameters=parameters,
+                              input=SomeData,
+                              field=[id, value]])
+        print result
+
     :param output_layer: output of the neural network that would be inferred
-    :type output_layer: paddle.v2.config_base.Layer
+    :type output_layer: paddle.v2.config_base.Layer or a list of
+                        paddle.v2.config_base.Layer
     :param parameters: parameters of the neural network.
     :type parameters: paddle.v2.parameters.Parameters
     :param input: input data batch. Should be a python iterable object, and each
@@ -106,13 +117,15 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
     :type input: collections.Iterable
     :param feeding: Reader dictionary. Default could generate from input
                         value.
-    :param field: The prediction field. It should in [`value`, `id`, `prob`]. 
-                  `value` and `prob` mean return the prediction probabilities, 
+    :param field: The prediction field. It should in [`value`, `id`, `prob`].
+                  `value` and `prob` mean return the prediction probabilities,
                   `id` means return the prediction labels. Default is `value`.
-                  Note that `prob` only used when output_layer is beam_search 
+                  Note that `prob` only used when output_layer is beam_search
                   or max_id.
     :type field: str
-    :return: a numpy array
+    :return: The prediction result. If there are multiple outout_layers and fields,
+             the return order is outout_layer1.field1, outout_layer2.field1, ...,
+             outout_layer1.field2, outout_layer2.field2 ...
     :rtype: numpy.ndarray
     """
 

@@ -12,18 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+cmake_minimum_required(VERSION 3.0)
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PROJ_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 include(system)
 
-if(ANDROID)
-    cmake_minimum_required(VERSION 3.7)
-else()
-    cmake_minimum_required(VERSION 3.0)
-endif()
-
-project(paddle CXX C)
+project(paddle CXX C Go)
 
 find_package(Sphinx)
 if(NOT CMAKE_CROSSCOMPILING)
@@ -96,6 +92,7 @@ include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
 include(external/any)       # download libn::any
 
+include(generic)            # simplify cmake module
 include(package)            # set paddle packages
 include(cpplint)            # set paddle c++ style
 include(ccache)             # set ccache for compilation

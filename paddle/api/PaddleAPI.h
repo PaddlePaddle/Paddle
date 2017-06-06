@@ -454,6 +454,25 @@ public:
                                         IVector* vec) throw(RangeError);
   void setSlotSequenceDim(size_t idx, IVector* vec) throw(RangeError);
 
+  /**
+   * Set the frame height of the idx-th Argument.
+   *
+   * @param ids The index of which Argument.
+   * @param h The height value.
+   */
+  void setSlotFrameHeight(size_t idx, size_t h) throw(RangeError);
+
+  /**
+   * Set the frame height of the idx-th Argument.
+   *
+   * @param ids The index of which Argument.
+   * @param h The height value.
+   */
+  void setSlotFrameWidth(size_t idx, size_t w) throw(RangeError);
+
+  size_t getSlotFrameHeight(size_t idx = 0) const throw(RangeError);
+  size_t getSlotFrameWidth(size_t idx = 0) const throw(RangeError);
+
   float sum() const;
 
 private:

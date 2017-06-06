@@ -1,10 +1,10 @@
 import numpy as np
 try:
     import cv2
-except ImportError:
-    cv2 = None
-
-from cv2 import resize
+except:
+    print(
+        "import cv2 error, please install opencv-python: pip install opencv-python"
+    )
 
 __all__ = [
     "load_image", "resize_short", "to_chw", "center_crop", "random_crop",
@@ -76,7 +76,7 @@ def resize_short(im, size):
         h_new = size * h / w
     else:
         w_new = size * w / h
-    im = resize(im, (h_new, w_new), interpolation=cv2.INTER_CUBIC)
+    im = cv2.resize(im, (h_new, w_new), interpolation=cv2.INTER_CUBIC)
     return im
 
 
