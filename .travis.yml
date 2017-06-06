@@ -52,6 +52,10 @@ before_install:
   - pip install rarfile
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
+install:
+  # Add Godeps dependencies to GOPATH and PATH
+  - export GOPATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace:$GOPATH"
+  - export PATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace/bin:$PATH"
 script:
   - cd go && go get -t -d ./... && go test -v -cover ./... && cd -
   - | 
