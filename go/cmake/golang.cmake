@@ -26,8 +26,7 @@ function(GO_LIBRARY NAME BUILD_TYPE)
 
   # automatically get all dependencies specified in the source code
   # for given target.
-  add_custom_target(goGet env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d ${PADDLE_DIR}/go/pserver/cclient)
-#  add_custom_target(goGet env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d ${rel}/...)
+  add_custom_target(goGet env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d ${rel}/...)
 
   # make a symlink that references Paddle inside $GOPATH, so go get
   # will use the local changes in Paddle rather than checkout Paddle
@@ -35,7 +34,7 @@ function(GO_LIBRARY NAME BUILD_TYPE)
   message(STATUS "PADDLE_DIR: ${PADDLE_DIR}")
   add_custom_target(copyPaddle
     COMMAND ln -sf ${PADDLE_DIR} ${PADDLE_IN_GOPATH})
-#  add_dependencies(goGet copyPaddle)
+  add_dependencies(goGet copyPaddle)
 
   add_custom_command(OUTPUT ${OUTPUT_DIR}/.timestamp
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}

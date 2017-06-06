@@ -33,47 +33,17 @@ namespace paddle {
       }
 
       // create parameter server client.
-//      char addr[] = "localhost:3000";
-//      parameterClient_ = paddle_new_pserver_client(addr, 1);
       parameterClient_ = paddle_new_pserver_client((char *)pserverSpec_.c_str(), FLAGS_trainer_id);
 
-
+      // init names_ for get parameter through paddle_cclient
       names_ = (char **)malloc((int)parameters.size() * sizeof(char *));
       for (int i = 0; i < parameterSize(); ++i) {
         names_[i] = (char *)parameters_[i]->getName().c_str();
       }
 
-      // init parameter of new cclient.
-      newParameters_ = (paddle_parameter **)malloc(sizeof(paddle_parameter *) * parameterSize());
-      for (int i = 0; i < parameterSize(); ++i) {
-        newParameters_[i] = (paddle_parameter*)malloc(sizeof(paddle_parameter));
-        memset(newParameters_[i], 0, sizeof(paddle_parameter));
-      }
-
-      for (int i = 0; i < parameterSize(); ++i) {
-        ParameterPtr para = parameters[i];
-        newParameters_[i]->content_len = 10;
-        newParameters_[i]->element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
-        newParameters_[i]->name = (char*)para->getName().c_str();
-        newParameters_[i]->content = (unsigned char *)(para->getBuf(PARAMETER_VALUE).get()->getData());
-        newParameters_[i]->content_len = (int)para->getBuf(PARAMETER_VALUE).get()->getSize();
-      }
-
-      // init gradient of new cclient.
-      newGradients_ = (paddle_parameter **)malloc(sizeof(paddle_parameter *) * parameterSize());
-      for (int i = 0; i < parameterSize(); ++i) {
-        newGradients_[i] = (paddle_parameter*)malloc(sizeof(paddle_parameter));
-        memset(newGradients_[i], 0, sizeof(paddle_parameter));
-      }
-
-      for (int i = 0; i < parameterSize(); ++i) {
-        ParameterPtr para = parameters[i];
-        newGradients_[i]->content_len = 10;
-        newGradients_[i]->element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
-        newGradients_[i]->name = (char*)para->getName().c_str();
-        newGradients_[i]->content = (unsigned char *)(para->getBuf(PARAMETER_GRADIENT).get()->getData());
-        newGradients_[i]->content_len = (int)para->getBuf(PARAMETER_GRADIENT).get()->getSize();
-      }
+      // init new parameter and gradient.
+      init_new_parameter(newParameters_, PARAMETER_VALUE);
+      init_new_parameter(newGradients_, PARAMETER_GRADIENT);
 
       // init parameter, one trainer will get the opportunity to int parameter and send
       // them to parameter server. Others will get the initialized parameter from parameter

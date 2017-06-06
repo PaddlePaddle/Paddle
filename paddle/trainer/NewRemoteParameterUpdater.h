@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/utils/Queue.h"
 #include "paddle/utils/Util.h"
 #include "libpaddle_cclient.h"
-//#include "go/pserver/cclient/libclient.h"
 
 namespace paddle {
 
@@ -57,6 +56,24 @@ public:
 
   int parameterSize() {
     return (int)parameters_.size();
+  }
+
+  void init_new_parameter(paddle_parameter** &new_paras, ParameterType type) {
+    // init parameter of new cclient.
+    new_paras = (paddle_parameter **)malloc(sizeof(paddle_parameter *) * parameterSize());
+    for (int i = 0; i < parameterSize(); ++i) {
+      new_paras[i] = (paddle_parameter*)malloc(sizeof(paddle_parameter));
+      memset(new_paras[i], 0, sizeof(paddle_parameter));
+    }
+
+    for (int i = 0; i < parameterSize(); ++i) {
+      ParameterPtr para = parameters_[i];
+      new_paras[i]->content_len = 10;
+      new_paras[i]->element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
+      new_paras[i]->name = (char*)para->getName().c_str();
+      new_paras[i]->content = (unsigned char *)(para->getBuf(type).get()->getData());
+      new_paras[i]->content_len = (int)para->getBuf(type).get()->getSize();
+    }
   }
 
 protected:

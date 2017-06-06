@@ -35,6 +35,8 @@ add_style_check_target(paddle_trainer_lib
     ${TRAINER_HEADERS})
 add_dependencies(paddle_trainer_lib
     gen_proto_cpp)
+add_dependencies(paddle_trainer_lib
+     paddle_cclient)
 
 macro(add_paddle_exe TARGET_NAME)
   add_executable(${TARGET_NAME} ${ARGN})
