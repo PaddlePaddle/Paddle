@@ -149,6 +149,20 @@ def __get_used_layers__(output_layers, extra_layers=None):
     for layer in output_layers:
         dfs_travel(layer.full_name)
 
+    # print layer needs to be specially handled because no other
+    # layer depends on it. It is used to print the result of some
+    # layers when running the model for debug purpose. So we explicitly
+    # add a print layer to the topolty if its input is in the toplogy.
+    for layer in cp.g_config.model_config.layers:
+        if layer.type == 'print':
+            used = True
+            for inp in layer.inputs:
+                if inp.input_layer_name not in layer_names:
+                    used = False
+                    break
+            if used:
+                layer_names.add(layer.name)
+
     return layer_names
 
 
