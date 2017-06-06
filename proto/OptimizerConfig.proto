@@ -87,7 +87,6 @@ message OptimizerState {
 
 message OptimizerConfig {
   // common config of optimizer
-  // algorithm config, type : string
   enum Optimizer {
    SGD = 1;
    Adadelta = 2;
@@ -100,7 +99,6 @@ message OptimizerConfig {
   optional AdagradConfig adagrad = 5;
   optional AdamConfig adam = 6;
 
-  // learning rate runtime policy config
   enum LrPolicy {
    ConstLr = 0;
    LinearLr = 1;

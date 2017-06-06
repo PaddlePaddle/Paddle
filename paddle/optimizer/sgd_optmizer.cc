@@ -5,7 +5,6 @@ namespace paddle {
 namespace optimizer {
 
 void SGDOptimizer::set_weight(Tensor *p) {
-  //  ParameterOptimizer::set_weight(p);
   parameter_ = p;
   size_t size = p->size();
   // TODO: fix it with align aware allocator bind to Tensor
@@ -44,8 +43,6 @@ const char *SGDOptimizer::SerializeState() {
   state.set_version(kOptimizerVersion);
   TensorToProto(*parameter_, state.add_data());
   TensorToProto(*momentums_, state.add_data());
-  // state.add_data(param_proto);
-  // state.add_data(momentum_proto);
   state.add_hyperparam(momentum_);
   return state.SerializeAsString().c_str();
 }
