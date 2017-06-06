@@ -762,6 +762,23 @@ is determined by argument buf_size.</p>
 </table>
 </dd></dl>
 
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">xmap_readers</code><span class="sig-paren">(</span><em>mapper</em>, <em>reader</em>, <em>process_num</em>, <em>buffer_size</em><span class="sig-paren">)</span></dt>
+<dd><p>Use multiprocess to map samples from reader by a mapper defined by user.
+And this function contains a buffered decorator.
+:param mapper:  a function to map sample.
+:type mapper: callable
+:param reader: the data reader to read from
+:type reader: callable
+:param process_num: process number to handle original sample
+:type process_num: int
+:param buffer_size: max buffer size
+:type buffer_size: int
+:return: the decarated reader
+:rtype: callable</p>
+</dd></dl>
+
 </div>
 <p>Creator package contains some simple reader creator, which could be used in user
 program.</p>
