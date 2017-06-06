@@ -20,7 +20,8 @@ limitations under the License. */
 #include "paddle/pserver/ParameterClient2.h"
 #include "paddle/utils/Queue.h"
 #include "paddle/utils/Util.h"
-#include "go/pserver/cclient/libclient.h"
+#include "libpaddle_cclient.h"
+//#include "go/pserver/cclient/libclient.h"
 
 namespace paddle {
 
@@ -29,7 +30,7 @@ namespace paddle {
  */
 class NewRemoteParameterUpdater : public ParameterUpdater {
 public:
-  NewRemoteParameterUpdater(const OptimizationConfig& config);
+  NewRemoteParameterUpdater(const OptimizationConfig& config, const std::string pserverSpec);
   ~NewRemoteParameterUpdater() {}
 
   /**
@@ -54,6 +55,9 @@ public:
   virtual void startPass();
   virtual bool finishPass();
 
+  int parameterSize() {
+    return (int)parameters_.size();
+  }
 
 protected:
   /**
@@ -66,11 +70,12 @@ protected:
   client parameterClient_;
   /// the parameters for new pserver client
   paddle_parameter** newParameters_;
+  /// the gradinets for new pserver client
+  paddle_parameter** newGradients_;
   /// the names for new parameters.
-  const char** names_;
-
-  static const std::string kAverage;
-  static const std::string kElasticAverage;
+  char** names_;
+  /// the specification of parameter server "host1:port,host1:port"
+  std::string pserverSpec_;
 };
 
 }  // namespace paddle

@@ -58,3 +58,10 @@ install(TARGETS paddle_trainer paddle_merge_model
 
 set_target_properties(paddle_trainer PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 set_target_properties(paddle_merge_model PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+if(APPLE)
+  set(CMAKE_EXE_LINKER_FLAGS "-framework CoreFoundation -framework Security")
+endif()
+
+target_link_libraries(paddle_trainer ${CMAKE_CURRENT_SOURCE_DIR}/libpaddle_cclient.a)
+target_link_libraries(paddle_trainer_lib ${CMAKE_CURRENT_SOURCE_DIR}/libpaddle_cclient.a)

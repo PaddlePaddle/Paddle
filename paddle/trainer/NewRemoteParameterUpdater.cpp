@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <go/pserver/cclient/libclient.h>
 #include "NewRemoteParameterUpdater.h"
 #include "Trainer.h"
 #include "paddle/utils/Stat.h"
@@ -22,64 +21,87 @@ DECLARE_string(save_dir);
 
 namespace paddle {
     NewRemoteParameterUpdater::NewRemoteParameterUpdater(
-            const OptimizationConfig &config) {}
+            const OptimizationConfig &config,
+            const std::string pserverSpec): pserverSpec_(pserverSpec) {}
 
     void NewRemoteParameterUpdater::init(const std::vector<ParameterPtr> &parameters) {
       ParameterUpdater::init(parameters);
+      LOG(INFO) << "NewRemoteParameterUpdater init in";
+
+      for (auto& para : parameters_) {
+        para->getBuf(PARAMETER_GRADIENT)->zeroMem();
+      }
 
       // create parameter server client.
-      char addr[] = "localhost:3000";
-      parameterClient_ = paddle_new_pserver_client(addr, FLAGS_trainer_id);
+//      char addr[] = "localhost:3000";
+//      parameterClient_ = paddle_new_pserver_client(addr, 1);
+      parameterClient_ = paddle_new_pserver_client((char *)pserverSpec_.c_str(), FLAGS_trainer_id);
+
+
+      names_ = (char **)malloc((int)parameters.size() * sizeof(char *));
+      for (int i = 0; i < parameterSize(); ++i) {
+        names_[i] = (char *)parameters_[i]->getName().c_str();
+      }
 
       // init parameter of new cclient.
-      *newParameters_ = new paddle_parameter(parameters.size());
-      for (int i = 0; i < parameters.size(); ++i) {
-        auto& para = parameters[i];
+      newParameters_ = (paddle_parameter **)malloc(sizeof(paddle_parameter *) * parameterSize());
+      for (int i = 0; i < parameterSize(); ++i) {
+        newParameters_[i] = (paddle_parameter*)malloc(sizeof(paddle_parameter));
+        memset(newParameters_[i], 0, sizeof(paddle_parameter));
+      }
+
+      for (int i = 0; i < parameterSize(); ++i) {
+        ParameterPtr para = parameters[i];
+        newParameters_[i]->content_len = 10;
         newParameters_[i]->element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
-        newParameters_[i]->name = para->getName().c_str();
-        newParameters_[i]->content =
-                (unsigned char *)(para->getBuf(PARAMETER_VALUE).get()->getData());
+        newParameters_[i]->name = (char*)para->getName().c_str();
+        newParameters_[i]->content = (unsigned char *)(para->getBuf(PARAMETER_VALUE).get()->getData());
         newParameters_[i]->content_len = (int)para->getBuf(PARAMETER_VALUE).get()->getSize();
       }
 
-      *names_ = new const char(parameters_.size());
-      for (int i = 0; i < parameters_.size(); ++i) {
-        names_[i] = parameters_[i]->getName().c_str();
+      // init gradient of new cclient.
+      newGradients_ = (paddle_parameter **)malloc(sizeof(paddle_parameter *) * parameterSize());
+      for (int i = 0; i < parameterSize(); ++i) {
+        newGradients_[i] = (paddle_parameter*)malloc(sizeof(paddle_parameter));
+        memset(newGradients_[i], 0, sizeof(paddle_parameter));
+      }
+
+      for (int i = 0; i < parameterSize(); ++i) {
+        ParameterPtr para = parameters[i];
+        newGradients_[i]->content_len = 10;
+        newGradients_[i]->element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
+        newGradients_[i]->name = (char*)para->getName().c_str();
+        newGradients_[i]->content = (unsigned char *)(para->getBuf(PARAMETER_GRADIENT).get()->getData());
+        newGradients_[i]->content_len = (int)para->getBuf(PARAMETER_GRADIENT).get()->getSize();
       }
 
       // init parameter, one trainer will get the opportunity to int parameter and send
       // them to parameter server. Others will get the initialized parameter from parameter
       // server
       if (paddle_begin_init_params(parameterClient_)) {
-        for (int i = 0; i < parameters_.size(); ++i) {
+        for (int i = 0; i < parameterSize(); ++i) {
           paddle_init_param(parameterClient_, *newParameters_[i], NULL, 0);
         }
       } else {
         paddle_get_params(parameterClient_, names_, newParameters_, (int)parameters_.size());
       }
       paddle_finish_init_params(parameterClient_);
+
+      LOG(INFO) << "paddle_finish_init_params";
     }
 
-    void NewRemoteParameterUpdater::updateImpl(Parameter *para) {
-    }
-
-    void copyToParameters() {
-    }
+    void NewRemoteParameterUpdater::updateImpl(Parameter *para) {}
 
     void NewRemoteParameterUpdater::finishBatch(real cost) {
+      LOG(INFO) << "finishBatch in, cost: " << cost;
 
-      // send parameter to parameter server.
-      for (int i = 0; i < (int)parameters_.size(); ++i) {
-        auto para = newParameters_[i];
-        paddle_send_grads(parameterClient_, para, para->content_len);
-      }
-
+      // send gradient to parameter server.
+      paddle_send_grads(parameterClient_, *newGradients_, parameterSize());
       // get the updated parameter from parameterClient.
-      paddle_get_params(parameterClient_, names_, newParameters_, (int)parameters_.size());
+      paddle_get_params(parameterClient_, names_, newParameters_, parameterSize());
 
       // clear gradient after update parameter.
       for (auto& para : parameters_) {
-        SetDevice device(para->getDeviceId());
         para->getBuf(PARAMETER_GRADIENT)->zeroMem();
       }
     }

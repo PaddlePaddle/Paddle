@@ -44,7 +44,7 @@ SET(SWIG_MODULE_swig_paddle_EXTRA_DEPS
 )
 
 IF(APPLE)
-    SET(MACOS_LD_FLAGS "-undefined dynamic_lookup -Wl,-all_load")
+    SET(MACOS_LD_FLAGS "-undefined dynamic_lookup -Wl,-all_load -framework CoreFoundation -framework Security")
 ELSE(APPLE)
     SET(START_GROUP "-Xlinker -start-group")
     SET(END_GROUP "-Xlinker -end-group")
