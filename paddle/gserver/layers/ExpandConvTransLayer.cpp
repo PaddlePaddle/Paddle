@@ -23,7 +23,7 @@ limitations under the License. */
 
 namespace paddle {
 
-REGISTER_LAYER(exconvt, ExpandConvTransLayer);
+// REGISTER_LAYER(exconvt, ExpandConvTransLayer);
 
 bool ExpandConvTransLayer::init(const LayerMap &layerMap,
                                 const ParameterMap &parameterMap) {
