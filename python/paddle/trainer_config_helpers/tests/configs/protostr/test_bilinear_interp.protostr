@@ -90,8 +90,6 @@ layers {
     input_layer_name: "__pool_0__"
     input_parameter_name: "___fc_layer_0__.w0"
   }
-  height: 32
-  width: 32
 }
 parameters {
   name: "___conv_0__.w0"

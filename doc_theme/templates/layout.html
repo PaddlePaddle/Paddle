@@ -114,10 +114,7 @@
           </ul>
         </div>
         <ul class="site-page-links">
-          <li><a>Home</a></li>
-          <li><a>Get Started</a></li>
-          <li class="active"><a>Documentation</a></li>
-          <li><a>About Us</a></li>
+          <li><a href="/">Home</a></li>
         </ul>
       </div>
       <div class="doc-module">
@@ -137,7 +134,7 @@
           {{ toctree }}
         {% endblock %}
     </nav>
-    {% if toc %}
+    {% if False %}
     <nav class="local-toc">{{ toc }}</nav>
     {% endif %}
     <section class="doc-content-wrap">
@@ -168,7 +165,8 @@
             VERSION:'{{ release|e }}',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'{{ '' if no_search_suffix else file_suffix }}',
-            HAS_SOURCE:  {{ has_source|lower }}
+            HAS_SOURCE:  {{ has_source|lower }},
+            SOURCELINK_SUFFIX: ".txt",
         };
     </script>
     {%- for scriptfile in script_files %}

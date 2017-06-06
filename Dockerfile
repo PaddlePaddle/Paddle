@@ -1,6 +1,6 @@
 # A image for building paddle binaries
 # Use cuda devel base image for both cpu and gpu environment
-FROM nvidia/cuda:8.0-cudnn5-devel-ubuntu14.04
+FROM nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 ARG UBUNTU_MIRROR
@@ -23,12 +23,24 @@ ENV HOME /root
 COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
-    apt-get install -y git python-pip python-dev openssh-server bison && \
-    apt-get install -y wget unzip tar xz-utils bzip2 gzip coreutils && \
-    apt-get install -y curl sed grep graphviz libjpeg-dev zlib1g-dev && \
-    apt-get install -y python-numpy python-matplotlib gcc g++ gfortran && \
-    apt-get install -y automake locales clang-format-3.8 swig doxygen && \
+    apt-get install -y \
+    git python-pip python-dev openssh-server bison  \
+    wget unzip tar xz-utils bzip2 gzip coreutils  \
+    curl sed grep graphviz libjpeg-dev zlib1g-dev  \
+    python-numpy python-matplotlib gcc g++ \
+    automake locales clang-format-3.8 swig doxygen cmake  \
+    liblapack-dev liblapacke-dev libboost-dev \
+    clang-3.8 llvm-3.8 libclang-3.8-dev && \
     apt-get clean -y
+
+# Install Go
+RUN wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go.tgz && \
+    mkdir /root/gopath && \
+    rm go.tgz
+ENV GOROOT=/usr/local/go GOPATH=/root/gopath
+# should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
+ENV PATH=${PATH}:${GOROOT}/bin
 
 # git credential to skip password typing
 RUN git config --global credential.helper store
@@ -44,13 +56,20 @@ RUN pip install --upgrade pip && \
     pip install -U docopt PyYAML sphinx && \
     pip install -U sphinx-rtd-theme==0.1.9 recommonmark && \
     pip install pre-commit 'requests==2.9.2' 'ipython==5.3.0' && \
-    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0'
+    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \ 
+    pip install rarfile
 
-RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
-    cd cmake-3.4.1 && ./bootstrap && make -j `nproc` && make install && \
-    cd .. && rm -rf cmake-3.4.1
+# To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
+# the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
+RUN apt-get install -y libssl-dev libffi-dev
+RUN pip install certifi urllib3[secure]
 
-VOLUME ["/woboq_out"]
+# Install woboq_codebrowser to /woboq
+RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
+    (cd /woboq \
+     cmake -DLLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config-3.8 \
+           -DCMAKE_BUILD_TYPE=Release . \
+     make)
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd

@@ -25,7 +25,6 @@ limitations under the License. */
 static void initPaddle(int argc, char** argv) {
   paddle::initMain(argc, argv);
   paddle::initPython(argc, argv);
-  feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW);
 }
 
 extern "C" {

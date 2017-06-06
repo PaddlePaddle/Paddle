@@ -44,6 +44,12 @@ simple_img_conv_pool
     :members: simple_img_conv_pool
     :noindex:
 
+small_vgg
+---------
+..  automodule:: paddle.v2.networks
+    :members: small_vgg
+    :noindex:
+
 vgg_16_network
 ---------------
 ..  automodule:: paddle.v2.networks
@@ -99,6 +105,18 @@ simple_gru
 ``````````
 ..  automodule:: paddle.v2.networks
     :members: simple_gru
+    :noindex:
+
+simple_gru2
+```````````
+..  automodule:: paddle.v2.networks
+    :members: simple_gru2
+    :noindex:
+
+bidirectional_gru
+``````````````````
+..  automodule:: paddle.v2.networks
+    :members: bidirectional_gru
     :noindex:
 
 simple_attention

@@ -21,11 +21,10 @@ limitations under the License. */
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <mutex>
 #include "hl_cuda.ph"
 #include "hl_thread.ph"
-#include "hl_dso_loader.h"
 #include "paddle/utils/Logging.h"
+#include "paddle/utils/DynamicLoader.h"
 // clang-format on
 
 namespace dynload {

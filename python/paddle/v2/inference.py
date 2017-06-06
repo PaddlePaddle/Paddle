@@ -5,7 +5,7 @@ import topology
 import minibatch
 from data_feeder import DataFeeder
 
-__all__ = ['infer']
+__all__ = ['infer', 'Inference']
 
 
 class Inference(object):
@@ -13,7 +13,14 @@ class Inference(object):
     Inference combines neural network output and parameters together
     to do inference.
 
-    :param outptut_layer: The neural network that should be inferenced.
+    ..  code-block:: python
+
+        inferer = Inference(output_layer=prediction, parameters=parameters)
+        for data_batch in batches:
+            print inferer.infer(data_batch)
+
+
+    :param output_layer: The neural network that should be inferenced.
     :type output_layer: paddle.v2.config_base.Layer or the sequence
                         of paddle.v2.config_base.Layer
     :param parameters: The parameters dictionary.
@@ -56,8 +63,14 @@ class Inference(object):
                 item = [each_result[each_field] for each_field in field]
                 yield item
 
-    def infer(self, field='value', **kwargs):
+    def infer(self, input, field='value', **kwargs):
+        """
+        Infer a data by model.
+        :param input: input data batch. Should be python iterable object.
+        :param field: output field.
+        """
         retv = None
+        kwargs['input'] = input
         for result in self.iter_infer_field(field=field, **kwargs):
             if retv is None:
                 retv = [[] for i in xrange(len(result))]
@@ -75,16 +88,28 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
     Infer a neural network by given neural network output and parameters.  The
     user should pass either a batch of input data or reader method.
 
-    Example usages:
+    Example usage for sinlge output_layer:
 
     ..  code-block:: python
 
-        result = paddle.infer(prediction, parameters, input=SomeData,
-                              batch_size=32)
+        result = paddle.infer(output_layer=prediction,
+                              parameters=parameters,
+                              input=SomeData)
+        print result
+
+    Example usage for multiple outout_layers and fields:
+
+    ..  code-block:: python
+
+        result = paddle.infer(output_layer=[prediction1, prediction2],
+                              parameters=parameters,
+                              input=SomeData,
+                              field=[id, value]])
         print result
 
     :param output_layer: output of the neural network that would be inferred
-    :type output_layer: paddle.v2.config_base.Layer
+    :type output_layer: paddle.v2.config_base.Layer or a list of
+                        paddle.v2.config_base.Layer
     :param parameters: parameters of the neural network.
     :type parameters: paddle.v2.parameters.Parameters
     :param input: input data batch. Should be a python iterable object, and each
@@ -92,13 +117,15 @@ def infer(output_layer, parameters, input, feeding=None, field='value'):
     :type input: collections.Iterable
     :param feeding: Reader dictionary. Default could generate from input
                         value.
-    :param field: The prediction field. It should in [`value`, `id`, `prob`]. 
-                  `value` and `prob` mean return the prediction probabilities, 
+    :param field: The prediction field. It should in [`value`, `id`, `prob`].
+                  `value` and `prob` mean return the prediction probabilities,
                   `id` means return the prediction labels. Default is `value`.
-                  Note that `prob` only used when output_layer is beam_search 
+                  Note that `prob` only used when output_layer is beam_search
                   or max_id.
     :type field: str
-    :return: a numpy array
+    :return: The prediction result. If there are multiple outout_layers and fields,
+             the return order is outout_layer1.field1, outout_layer2.field1, ...,
+             outout_layer1.field2, outout_layer2.field2 ...
     :rtype: numpy.ndarray
     """
 

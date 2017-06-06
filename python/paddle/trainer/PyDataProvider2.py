@@ -72,9 +72,16 @@ class InputType(object):
 
 def dense_slot(dim, seq_type=SequenceType.NO_SEQUENCE):
     """
-    Dense Vector. It means the input feature is dense float vector. For example,
-    if the input is an image with 28*28 pixels, the input of Paddle neural
-    network should be a dense vector with dimension 784.
+    Dense Array. It means the input feature is dense array with float type.
+    For example, if the input is an image with 28*28 pixels, the input of
+    Paddle neural network could be a dense vector with dimension 784 or a
+    numpy array with shape (28, 28).
+
+    For the 2-D convolution operation, each sample in one mini-batch must have
+    the similarly size in PaddlePaddle now. But, it supports variable-dimension
+    feature across mini-batch. For the variable-dimension, the param dim is not
+    used. While the data reader must yield numpy array and the data feeder will
+    set the data shape correctly.
 
     :param dim: dimension of this vector.
     :type dim: int
@@ -134,6 +141,10 @@ dense_vector = dense_slot
 sparse_binary_vector = sparse_non_value_slot
 sparse_vector = sparse_value_slot
 integer_value = index_slot
+
+# dense_array can be used for variable-length input feature.
+# Each feature is not a vector, but a multi-dimensional array.
+dense_array = dense_slot
 
 
 def dense_vector_sequence(dim):
@@ -270,7 +281,7 @@ class CheckWrapper(object):
             assert isinstance(each, collections.Sequence)
             for d in each:
                 assert isinstance(d, float)
-            assert len(each, input_type.dim)
+            assert len(each) == input_type.dim
         elif input_type.type == DataType.Index:
             assert isinstance(each, int)
             assert each < input_type.dim
@@ -304,7 +315,7 @@ class CheckInputTypeWrapper(object):
     def __call__(self, obj, filename):
         for items in self.generator(obj, filename):
             try:
-                # dict type is required for input_types when item is dict type 
+                # dict type is required for input_types when item is dict type
                 assert (isinstance(items, dict) and \
                         not isinstance(self.input_types, dict))==False
                 yield items

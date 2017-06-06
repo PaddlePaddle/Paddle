@@ -80,7 +80,7 @@ def train100():
 
 def test100():
     """
-    CIFAR-100 test set cretor.
+    CIFAR-100 test set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
     [0, 1] and label in [0, 9].
@@ -107,7 +107,7 @@ def train10():
 
 def test10():
     """
-    CIFAR-10 test set cretor.
+    CIFAR-10 test set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
     [0, 1] and label in [0, 9].

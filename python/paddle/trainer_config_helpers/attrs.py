@@ -110,15 +110,16 @@ class ParameterAttribute(object):
                  momentum=None,
                  gradient_clipping_threshold=None,
                  sparse_update=False):
-        # initialize strategy.
+        self.attr = {}
+
         if is_static:
-            self.attr = {'is_static': True}
-        elif initial_std is None and initial_mean is None and initial_max \
+            self.attr['is_static'] = True
+
+        if initial_std is None and initial_mean is None and initial_max \
                 is None and initial_min is None:
-            self.attr = {'initial_smart': True}
+            self.attr['initial_smart'] = True
         elif is_compatible_with(initial_std, float) or \
              is_compatible_with(initial_mean, float):
-            self.attr = dict()
             if initial_std is not None:
                 self.attr['initial_std'] = initial_std
             if initial_mean is not None:
@@ -131,7 +132,6 @@ class ParameterAttribute(object):
             assert initial_min < initial_max
             initial_mean = (initial_max + initial_min) / 2
             initial_std = initial_mean - initial_min
-            self.attr = dict()
             self.attr['initial_mean'] = initial_mean
             self.attr['initial_std'] = initial_std
             self.attr['initial_strategy'] = 1  # Uniform Random
@@ -208,12 +208,15 @@ class ExtraLayerAttribute(object):
                  drop_rate=None,
                  device=None):
         self.attr = dict()
-        if isinstance(error_clipping_threshold, float):
-            assert error_clipping_threshold > 0
-            self.attr["error_clipping_threshold"] = error_clipping_threshold
-
-        if isinstance(drop_rate, float):
-            assert drop_rate > 0
+        if error_clipping_threshold is not None:
+            error_clipping_threshold = float(error_clipping_threshold)
+            if error_clipping_threshold < 0:
+                raise ValueError("Error clipping must > 0")
+            self.attr['error_clipping_threshold'] = error_clipping_threshold
+        if drop_rate is not None:
+            drop_rate = float(drop_rate)
+            if drop_rate < 0:
+                raise ValueError("Dropout rate must > 0")
             self.attr["drop_rate"] = drop_rate
 
         if isinstance(device, int):

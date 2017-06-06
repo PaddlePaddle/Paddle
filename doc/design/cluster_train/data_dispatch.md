@@ -1,30 +1,37 @@
 ## 训练数据的存储和分发
 
+### 概念解释
+
 ### 流程介绍
 生产环境中的训练数据集通常体积很大，并被存储在诸如Hadoop HDFS，Ceph，AWS S3之类的分布式存储之上。这些分布式存储服务通常会把数据切割成多个分片分布式的存储在多个节点之上。这样就可以在云端执行多种数据类计算任务，包括：
 
 * 数据预处理任务
 * Paddle训练任务
 * 在线模型预测服务
+<div style="align: center">
+<img src="src/paddle-cloud-in-data-center.png" width="800"/>
+</div>
 
-<img src="src/paddle-cloud-in-data-center.png" width="500"/>
+在上图中显示了在一个实际生产环境中的应用（人脸识别）的数据流图。生产环境的日志数据会通过实时流的方式（Kafka）和离线数据的方式（HDFS）存储，并在集群中运行多个分布式数据处理任务，比如流式数据处理（online data process），离线批处理（offline data process）完成数据的预处理，提供给paddle作为训练数据。用户也可以上传labeled data到分布式存储补充训练数据。在paddle之上运行的深度学习训练输出的模型会提供给在线人脸识别的应用使用。
 
-在上图中显示了在一个实际生产环境中的应用（人脸识别）的数据流图。生产环境的日志数据会通过实时流的方式（Kafka）和离线数据的方式（HDFS）存储，并在集群中运行多个分布式数据处理任务，比如流式数据处理（online data process），离线批处理（offline data process）完成数据的预处理，提供给paddle作为训练数据。用于也可以上传labeled data到分布式存储补充训练数据。在paddle之上运行的深度学习训练输出的模型会提供给在线人脸识别的应用使用。
+### 训练数据存储
+我们选择[CephFS](http://docs.ceph.com/docs/master/cephfs/)作为存储系统。
 
-### 训练数据的存储
+- 无论是从[PFSClient](../file_manager/README.md)的角度，还是从[Pod](https://kubernetes.io/docs/concepts/workloads/pods/pod/)中运行任务的角度，统一用`/pfs/$DATACENTER/home/$USER`来访问用户自己的数据。  
+- `/pfs/$DATACENTER/common`下存放公共数据集合
+	- 做只读挂载 
 
-选择CephFS作为训练数据的存储服务。
-
-在Kubernetes上运行的不同的计算框架，可以通过Volume或PersistentVolume挂载存储空间到每个容器中。
-
-在CephFS存储系统中的公开目录，需要保存一些预置的公开数据集（比如MNIST, BOW, ImageNet数据集等），并且可以被提交的job直接使用。
+<div style="align: center">
+<img src="src/file_storage.png" width="700" align=center/>
+</div>
 
 ### 文件预处理
 
-在数据集可以被训练之前，文件需要预先被转换成PaddlePaddle集群内部的存储格式（SSTable）。我们提供两个转换方式：
 
-- 提供给用户本地转换的库，用户可以编写程序完成转换。
-- 用户可以上传自己的数据集，在集群运行MapReduce job完成转换。
+在开始训练之前, 数据集需要预先被转换成PaddlePaddle分布式训练使用的存储格[RecordIO](https://github.com/PaddlePaddle/Paddle/issues/1947)。我们提供两个转换方式：
+
+1. 用户在本地转换好再上传
+1. 用户上传数据后，在机群上运行转换程序
 
 转换生成的文件名会是以下格式：
 
@@ -92,11 +99,12 @@ random_images-00099-of-00099
 
 #### 进行训练
 
-PaddlePaddle提供专用的[data reader creator](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#python-data-reader-design-doc)，生成给定SSTable文件对应的data reader。**无论在本地还是在云端，reader的使用方式都是一致的**：
+
+PaddlePaddle提供专用的[data reader creator](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/reader/README.md#python-data-reader-design-doc)，生成给定`RecordIO`文件对应的data reader。**无论在本地还是在云端，reader的使用方式都是一致的**：
 
 ```python
 # ...
-reader = paddle.reader.creator.SSTable("/home/random_images-*-of-*")
+reader = paddle.reader.creator.RecordIO("/pfs/datacenter_name/home/user_name/random_images-*-of-*")
 batch_reader = paddle.batch(paddle.dataset.mnist.train(), 128)
 trainer.train(batch_reader, ...)
 ```
@@ -107,14 +115,46 @@ trainer.train(batch_reader, ...)
 
 使用下面命令，可以把本地的数据上传到存储集群中。
 
-```bash
-paddle cp filenames pfs://home/folder/
+```bash  
+paddle pfs cp filename /pfs/$DATACENTER/home/$USER/folder/
 ```
 
 比如，把之前示例中转换完毕的random_images数据集上传到云端的`/home/`可以用以下指令：
-```bash
-paddle cp random_images-*-of-* pfs://home/
+
+```bash  
+paddle pfs cp random_images-*-of-* /pfs/$DATACENTER/home/$USER/folder/
+```
+
+需要`$DATACENTER`的配置写到配置文件中，例如
+
+```
+# config file
+[datacenter_1]
+username=user
+usercert=user.pem
+userkey=user-key.pem
+endpoint=datacenter1.paddlepaddle.org
+
+[datacenter_2]
+username=user
+usercert=user.pem
+userkey=user-key.pem
+endpoint=datacenter2.paddlepaddle.org
 ```
 ## TODO
+### 文件访问的权限
+控制用户权限  
+
+- 用户可以把自己的数据分享给别人
+
+### 文件访问方式
+不用mount的方式来访问数据，而是直接用API的接口远程访问
+
+例如：  
+
+```
+f = open('/pfs/datacenter_name/home/user_name/test1.dat')
+```
+
 
 ### 支持用户自定义的数据预处理job

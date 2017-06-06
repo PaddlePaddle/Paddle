@@ -825,7 +825,8 @@ def gru_unit(input,
              gru_param_attr=None,
              act=None,
              gate_act=None,
-             gru_layer_attr=None):
+             gru_layer_attr=None,
+             naive=False):
     """
     Define calculations that a gated recurrent unit performs in a single time
     step. This function itself is not a recurrent layer, so that it can not be
@@ -857,7 +858,12 @@ def gru_unit(input,
 
     out_mem = memory(name=name, size=size)
 
-    gru_out = gru_step_layer(
+    if naive:
+        __step__ = gru_step_naive_layer
+    else:
+        __step__ = gru_step_layer
+
+    gru_out = __step__(
         name=name,
         input=input,
         output_mem=out_mem,
@@ -879,7 +885,8 @@ def gru_group(input,
               gru_param_attr=None,
               act=None,
               gate_act=None,
-              gru_layer_attr=None):
+              gru_layer_attr=None,
+              naive=False):
     """
     gru_group is a recurrent layer group version of Gated Recurrent Unit. It
     does exactly the same calculation as the grumemory layer does. A promising
@@ -928,7 +935,8 @@ def gru_group(input,
             gru_param_attr=gru_param_attr,
             act=act,
             gate_act=gate_act,
-            gru_layer_attr=gru_layer_attr)
+            gru_layer_attr=gru_layer_attr,
+            naive=naive)
 
     return recurrent_group(
         name='%s_recurrent_group' % name,
@@ -949,7 +957,8 @@ def simple_gru(input,
                gru_param_attr=None,
                act=None,
                gate_act=None,
-               gru_layer_attr=None):
+               gru_layer_attr=None,
+               naive=False):
     """
     You maybe see gru_step_layer, grumemory in layers.py, gru_unit, gru_group,
     simple_gru in network.py. The reason why there are so many interfaces is
@@ -1018,7 +1027,8 @@ def simple_gru(input,
         gru_param_attr=gru_param_attr,
         act=act,
         gate_act=gate_act,
-        gru_layer_attr=gru_layer_attr)
+        gru_layer_attr=gru_layer_attr,
+        naive=naive)
 
 
 @wrap_name_default('simple_gru2')

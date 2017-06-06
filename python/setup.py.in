@@ -1,5 +1,6 @@
 from setuptools import setup
 
+
 packages=['paddle',
           'paddle.proto',
           'paddle.trainer',
@@ -15,6 +16,11 @@ setup(name='paddle',
       description='Parallel Distributed Deep Learning',
       install_requires=[
           "requests",
+          "numpy",
+          "protobuf==${PROTOBUF_VERSION}",
+          "matplotlib",
+          "opencv-python",
+          "rarfile"
       ],
       packages=packages,
       package_dir={

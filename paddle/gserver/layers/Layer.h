@@ -106,9 +106,9 @@ protected:
 
 public:
   /**
-    * Wait until all input value ready.
-    * Called before Layer::forward() function.
-    */
+   * Wait until all input value ready.
+   * Called before Layer::forward() function.
+   */
   virtual void waitInputValue();
 
   /**
@@ -118,9 +118,9 @@ public:
   virtual void copyOutputToOtherDevice();
 
   /**
-    * Wait until all output grad ready and merge them to output_.grad.
-    * Called before Layer::backward() function.
-    */
+   * Wait until all output grad ready and merge them to output_.grad.
+   * Called before Layer::backward() function.
+   */
   virtual void waitAndMergeOutputGrad();
 
   /**

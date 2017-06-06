@@ -1,3 +1,5 @@
+# PaddlePaddle Distributed Training
+
 * [Introduction](#introduction)
 * [Preparations](#preparations)
 * [Command-line arguments](#command-line-arguments)
@@ -7,20 +9,21 @@
    * [Prepare Training program](#prepare-training-program)
 * [Use cluster platforms or cluster management tools](#use-cluster-platforms-or-cluster-management-tools)
    * [Cluster Training Using Fabric](#cluster-training-using-fabric)
-      * [Prepare a demo cluster using kubernetes(optional)](#prepare-a-demo-cluster-using-kubernetesoptional)
+      * [Prepare a Linux cluster](#prepare-a-linux-cluster)
       * [Launching Cluster Job](#launching-cluster-job)
       * [Kill Cluster Job](#kill-cluster-job)
       * [Check Cluster Training Result](#check-cluster-training-result)
       * [Check Model Output](#check-model-output)
    * [Cluster Training Using OpenMPI](#cluster-training-using-openmpi)
-      * [Prepare a demo OpenMPI cluster using kubernetes(optional)](#prepare-a-demo-openmpi-cluster-using-kubernetesoptional)
+      * [Prepare an OpenMPI cluster](#prepare-an-openmpi-cluster)
       * [Launching Cluster Job](#launching-cluster-job-1)
    * [Cluster Training Using Kubernetes](#cluster-training-using-kubernetes)
+
 # Introduction
 
 In this article, we'll explain how to do distributed training jobs with PaddlePaddle on different types of clusters. The diagram below shows the mail architecture of a distributed trainning job:
 
-![cluster train](src/trainer.png)
+<img src="src/trainer.png" width="500">
 
 - Data shard: training data will be split into multiple parts, trainers use some parts of the whole dataset to do the training job.
 - Trainer: each trainer reads the data shard, and do Neural Network training algorithms like "forward" and "backward". Then the trainer will upload calculated "gradients" to parameter servers, and wait for parameters to be optimized on the parameter server side. When that finishes, the trainer download optimized parameters and continues its training.
@@ -47,7 +50,7 @@ PaddlePaddle 0.10.0rc, compiled with
     with_timer: OFF
 ```
 
-We'll take `demo/word2vec` as an example to introduce distributed training using PaddlePaddle v2 API.
+We'll take `doc/howto/usage/cluster/src/word2vec` as an example to introduce distributed training using PaddlePaddle v2 API.
 
 # Command-line arguments
 
@@ -121,7 +124,7 @@ paddle.init(
 
 ## Prepare Training Dataset
 
-Here's some example code “prepare.py”(located in `demo/word2vec/prepare.py`), it will download public `imikolov` dataset and split it into multiple files according to job parallelism(trainers count). Modify `SPLIT_COUNT` to change the count of output files.
+Here's some example code “prepare.py”(located in `doc/howto/usage/cluster/src/word2vec/prepare.py`), it will download public `imikolov` dataset and split it into multiple files according to job parallelism(trainers count). Modify `SPLIT_COUNT` to change the count of output files.
 
 In the real world, we often use `MapReduce` job's output as training data, so there will be lots of files. You can use `mod` to assign training file to trainers:
 
@@ -175,7 +178,7 @@ Your workspace may looks like:
 
 - `mylib.py`: some library functions. This is optional.
 - `word_dict.pickle`: dict file for training word embeding.
-- `train.py`: training program. Sample code: "api_train_v2_cluster.py"(located in `demo/word2vec/api_train_v2_cluster.py`).
+- `train.py`: training program. Sample code: "api_train_v2_cluster.py"(located in `doc/howto/usage/cluster/src/word2vec/api_train_v2_cluster.py`).
   - ***NOTE:*** You may need to modify the head part of `train.py` when using different cluster platform to retrive configuration environment variables:
   ```python
   cluster_train_file = "./train_data_dir/train/train.txt"
@@ -200,7 +203,7 @@ These cluster platforms provide API or runtime environment variables for trainin
 
 ## Cluster Training Using Fabric
 
-### Prepare a demo cluster using kubernetes(optional)
+### Prepare a Linux cluster
 
 Run `kubectl -f ssh_servers.yaml` under the directory:  `paddle/scripts/cluster_train_v2/fabric/docker_cluster` will launch a demo cluster. Run `kubectl get po -o wide` to get IP addresses of these nodes.
 
@@ -244,7 +247,7 @@ After one pass finished, model files will be written in `output` directory in no
 
 ## Cluster Training Using OpenMPI
 
-### Prepare a demo OpenMPI cluster using kubernetes(optional)
+### Prepare an OpenMPI cluster
 
 Run the following command to start a 3-node MPI cluster and one "head" node.
 

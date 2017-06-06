@@ -84,6 +84,7 @@ __all__ = [
     'GeneratedInput',
     'SubsequenceInput',
     'gru_step_layer',
+    'gru_step_naive_layer',
     'recurrent_layer',
     'BaseGeneratedInput',
     'conv_operator',
@@ -110,6 +111,7 @@ __all__ = [
     'block_expand_layer',
     'maxout_layer',
     'out_prod_layer',
+    'printer_layer',
     'print_layer',
     'priorbox_layer',
     'cross_channel_norm_layer',
@@ -118,6 +120,7 @@ __all__ = [
     'eos_layer',
     'smooth_l1_cost',
     'layer_support',
+    'multiplex_layer',
 ]
 
 
@@ -184,6 +187,7 @@ class LayerType(object):
     MAXOUT = "maxout"
     SPP_LAYER = "spp"
     PAD_LAYER = "pad"
+    MULTIPLEX_LAYER = "multiplex"
 
     PRINT_LAYER = "print"
     PRIORBOX_LAYER = "priorbox"
@@ -224,8 +228,29 @@ class LayerType(object):
 
 
 class AggregateLevel(object):
-    EACH_TIMESTEP = 'non-seq'
-    EACH_SEQUENCE = 'seq'
+    """
+    PaddlePaddle supports three sequence types:
+
+    - :code:`SequenceType.NO_SEQUENCE` means the sample is not a sequence.
+    - :code:`SequenceType.SEQUENCE` means the sample is a sequence.
+    - :code:`SequenceType.SUB_SEQUENCE` means the sample is a nested sequence,
+      each timestep of which is also a sequence.
+
+    Accordingly, AggregateLevel supports two modes:
+
+    - :code:`AggregateLevel.TO_NO_SEQUENCE` means the aggregation acts on each
+      timestep of a sequence, both :code:`SUB_SEQUENCE` and :code:`SEQUENCE` will
+      be aggregated to :code:`NO_SEQUENCE`.
+
+    - :code:`AggregateLevel.TO_SEQUENCE` means the aggregation acts on each
+      sequence of a nested sequence, :code:`SUB_SEQUENCE` will be aggregated to
+      :code:`SEQUENCE`.
+    """
+    TO_NO_SEQUENCE = 'non-seq'
+    TO_SEQUENCE = 'seq'
+    # compatible with previous configuration
+    EACH_TIMESTEP = TO_NO_SEQUENCE
+    EACH_SEQUENCE = TO_SEQUENCE
 
 
 class LayerOutput(object):
@@ -266,6 +291,7 @@ class LayerOutput(object):
         assert size is not None
         assert LayerType.is_layer_type(layer_type)
         self.name = name
+        self.full_name = MakeLayerNameInSubmodel(name)
         self.layer_type = layer_type
         if parents is not None and type(parents) != list:
             parents = [parents]
@@ -460,7 +486,7 @@ def table_projection(input, size=0, param_attr=None):
     return proj
 
 
-def identity_projection(input, offset=None):
+def identity_projection(input, offset=None, size=None):
     """
     1. IdentityProjection if offset=None. It performs:
 
@@ -501,8 +527,10 @@ def identity_projection(input, offset=None):
         proj = IdentityProjection(input_layer_name=input.name)
         proj.origin = input
     else:
+        if size is None:
+            size = input.size - offset
         proj = IdentityOffsetProjection(
-            input_layer_name=input.name, offset=offset)
+            input_layer_name=input.name, offset=offset, size=size)
         proj.origin = input
     return proj
 
@@ -942,7 +970,7 @@ def fc_layer(input,
 
 
 @wrap_name_default("print")
-def print_layer(input, name=None):
+def printer_layer(input, name=None):
     """
     Print the output value of input layers. This layer is useful for debugging.
 
@@ -963,6 +991,13 @@ def print_layer(input, name=None):
         type=LayerType.PRINT_LAYER,
         inputs=[l.name for l in input], )
     # this layer don't return anything, can not be input of other layer.
+
+# Keep print_layer for compatibility with V1 API.
+# 'print_layer' does not work for V2 API because it will be changed to
+# 'print' for V2 API. But 'print' is a reserved key word in python.
+
+
+print_layer = printer_layer
 
 
 @wrap_name_default("priorbox")
@@ -1059,7 +1094,7 @@ def pooling_layer(input,
                   pooling_type=None,
                   name=None,
                   bias_attr=None,
-                  agg_level=AggregateLevel.EACH_TIMESTEP,
+                  agg_level=AggregateLevel.TO_NO_SEQUENCE,
                   layer_attr=None):
     """
     Pooling layer for sequence inputs, not used for Image.
@@ -1070,10 +1105,10 @@ def pooling_layer(input,
 
        seq_pool = pooling_layer(input=layer,
                                 pooling_type=AvgPooling(),
-                                agg_level=AggregateLevel.EACH_SEQUENCE)
+                                agg_level=AggregateLevel.TO_NO_SEQUENCE)
 
-    :param agg_level: AggregateLevel.EACH_TIMESTEP or
-                      AggregateLevel.EACH_SEQUENCE
+    :param agg_level: AggregateLevel.TO_NO_SEQUENCE or
+                      AggregateLevel.TO_SEQUENCE
     :type agg_level: AggregateLevel
     :param name: layer name.
     :type name: basestring
@@ -1343,7 +1378,7 @@ def grumemory(input,
 @layer_support()
 def last_seq(input,
              name=None,
-             agg_level=AggregateLevel.EACH_TIMESTEP,
+             agg_level=AggregateLevel.TO_NO_SEQUENCE,
              stride=-1,
              layer_attr=None):
     """
@@ -1378,7 +1413,7 @@ def last_seq(input,
                        " series information at all. Maybe you want to use"
                        " first_seq instead.")
 
-    if agg_level == AggregateLevel.EACH_SEQUENCE:
+    if agg_level == AggregateLevel.TO_SEQUENCE:
         assert stride == -1
 
     Layer(
@@ -1399,7 +1434,7 @@ def last_seq(input,
 @layer_support()
 def first_seq(input,
               name=None,
-              agg_level=AggregateLevel.EACH_TIMESTEP,
+              agg_level=AggregateLevel.TO_NO_SEQUENCE,
               stride=-1,
               layer_attr=None):
     """
@@ -1435,7 +1470,7 @@ def first_seq(input,
                        ' time series information at all. Maybe you want to use'
                        ' last_seq instead.')
 
-    if agg_level == AggregateLevel.EACH_SEQUENCE:
+    if agg_level == AggregateLevel.TO_SEQUENCE:
         assert stride == -1
 
     Layer(
@@ -1453,8 +1488,23 @@ def first_seq(input,
 
 
 class ExpandLevel(object):
-    FROM_TIMESTEP = AggregateLevel.EACH_TIMESTEP
-    FROM_SEQUENCE = AggregateLevel.EACH_SEQUENCE
+    """
+    Please refer to AggregateLevel first.
+
+    ExpandLevel supports two modes:
+
+    - :code:`ExpandLevel.FROM_NO_SEQUENCE` means the expansion acts on
+      :code:`NO_SEQUENCE`, which will be expanded to
+      :code:`SEQUENCE` or :code:`SUB_SEQUENCE`.
+
+    - :code:`ExpandLevel.FROM_SEQUENCE` means the expansion acts on
+      :code:`SEQUENCE`, which will be expanded to
+      :code:`SUB_SEQUENCE`.
+    """
+    FROM_NO_SEQUENCE = AggregateLevel.TO_NO_SEQUENCE
+    FROM_SEQUENCE = AggregateLevel.TO_SEQUENCE
+    # compatible with previous configuration
+    FROM_TIMESTEP = FROM_NO_SEQUENCE
 
 
 @wrap_name_default()
@@ -1463,7 +1513,7 @@ def expand_layer(input,
                  expand_as,
                  name=None,
                  bias_attr=False,
-                 expand_level=ExpandLevel.FROM_TIMESTEP,
+                 expand_level=ExpandLevel.FROM_NO_SEQUENCE,
                  layer_attr=None):
     """
     A layer for "Expand Dense data or (sequence data where the length of each
@@ -1475,7 +1525,7 @@ def expand_layer(input,
 
        expand = expand_layer(input=layer1,
                              expand_as=layer2,
-                             expand_level=ExpandLevel.FROM_TIMESTEP)
+                             expand_level=ExpandLevel.FROM_NO_SEQUENCE)
 
     :param input: Input layer
     :type input: LayerOutput
@@ -2286,7 +2336,7 @@ def img_pool_layer(input,
 
     type_name = pool_type.name + '-projection' \
         if (
-    isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
+        isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
         else pool_type.name
 
     pool_size_y = pool_size if pool_size_y is None else pool_size_y
@@ -2762,7 +2812,7 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
     if layer_type == LayerType.CONCAT_LAYER:
         assert not bias_attr
 
-    Layer(
+    layer = Layer(
         name=name,
         type=layer_type,
         inputs=[x.name for x in input] if is_concat_layer else input,
@@ -2770,13 +2820,7 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
         bias=ParamAttr.to_bias(bias_attr),
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
-    sz = 0
-    for each_input in input:
-        if each_input.size is not None:
-            sz += each_input.size
-        else:
-            sz = None
-            break
+    sz = layer.config.size
 
     return LayerOutput(
         name,
@@ -2880,10 +2924,10 @@ def memory(name,
     to specify the layer needs to be remembered as the following:
 
     .. code-block:: python
+
        mem = memory(size=256)
        state = fc_layer(input=mem, size=256)
        mem.set_input(mem)
-
 
     :param name: the name of the layer which this memory remembers.
                  If name is None, user should call set_input() to specify the
@@ -2944,7 +2988,7 @@ def memory(name,
 @layer_support()
 def lstm_step_layer(input,
                     state,
-                    size,
+                    size=None,
                     act=None,
                     name=None,
                     gate_act=None,
@@ -3010,6 +3054,9 @@ def lstm_step_layer(input,
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
+
+    assert size is None or state.size == size
+    size = state.size
     Layer(
         name=name,
         type=LayerType.LSTM_STEP_LAYER,
@@ -3017,7 +3064,7 @@ def lstm_step_layer(input,
         active_gate_type=gate_act.name,
         active_state_type=state_act.name,
         bias=ParamAttr.to_bias(bias_attr),
-        size=size,
+        size=state.size,
         inputs=[input.name, state.name],
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
@@ -3084,6 +3131,78 @@ def gru_step_layer(input,
         parents=[input, output_mem],
         size=size,
         activation=act)
+
+
+@wrap_bias_attr_default()
+@wrap_param_attr_default()
+@wrap_act_default(param_names=['gate_act'], act=SigmoidActivation())
+@wrap_act_default(act=TanhActivation())
+@wrap_name_default('gru_step_naive')
+@layer_support(ERROR_CLIPPING, DROPOUT)
+def gru_step_naive_layer(input,
+                         output_mem,
+                         size=None,
+                         name=None,
+                         act=None,
+                         gate_act=None,
+                         bias_attr=None,
+                         param_attr=None,
+                         layer_attr=None):
+    """
+    GRU Step Layer, but using MixedLayer to generate. It support ERROR_CLIPPING
+    and DROPOUT.
+
+    :param input:
+    :param output_mem:
+    :param size:
+    :param name:
+    :param act:
+    :param gate_act:
+    :param bias_attr:
+    :param param_attr:
+    :param layer_attr:
+    :return:
+    """
+    if input.size % 3 != 0:
+        raise ValueError("GruStep input size must be divided by 3")
+    if size is None:
+        size = input.size / 3
+
+    def __gate__(gate_name, offset):
+        with mixed_layer(
+                name=name + "_" + gate_name,
+                size=size,
+                layer_attr=layer_attr,
+                bias_attr=bias_attr,
+                act=gate_act) as gate:
+            gate += identity_projection(input=input, offset=offset)
+            gate += full_matrix_projection(
+                input=output_mem, param_attr=param_attr)
+        return gate
+
+    update_gate = __gate__("update", 0)
+    reset_gate = __gate__("reset", size)
+
+    with mixed_layer(
+            name=name + "_reset_output", bias_attr=False) as reset_output:
+        reset_output += dotmul_operator(a=output_mem, b=reset_gate)
+
+    with mixed_layer(
+            name=name + "_output_candidate",
+            size=size,
+            layer_attr=layer_attr,
+            bias_attr=bias_attr,
+            act=act) as output_candidate:
+        output_candidate += identity_projection(input=input, offset=2 * size)
+        output_candidate += full_matrix_projection(
+            input=reset_output, param_attr=param_attr)
+
+    with mixed_layer(name=name) as output:
+        output += identity_projection(output_mem)
+        output += dotmul_operator(a=output_mem, b=update_gate, scale=-1.0)
+        output += dotmul_operator(a=output_candidate, b=update_gate)
+
+    return output
 
 
 @wrap_name_default()
@@ -3296,7 +3415,7 @@ def recurrent_group(step,
                           else, for training or testing, one of the input type must
                           be LayerOutput.
 
-    : type is_generating: bool
+    :type is_generating: bool
 
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -3384,6 +3503,11 @@ def recurrent_group(step,
             RecurrentLayerGroupSetOutLink(ot.name)
 
     RecurrentLayerGroupEnd(name=name)
+
+    for layer_out in layer_outs:
+        # Thee previous full_name is the name is the rnn group
+        # We need a full_name outside the rnn group
+        layer_out.full_name = MakeLayerNameInSubmodel(layer_out.name)
 
     if len(layer_outs) == 1:
         return layer_outs[0]
@@ -3692,13 +3816,13 @@ def __cost_input__(input, label, weight=None):
 
 @wrap_name_default()
 @layer_support()
-def mse_cost(input, label, weight=None, name=None, layer_attr=None):
+def mse_cost(input, label, weight=None, name=None, coeff=1.0, layer_attr=None):
     """
     mean squared error cost:
 
     ..  math::
 
-        \frac{1}{N}\sum_{i=1}^N(t_i-y_i)^2
+        \\frac{1}{N}\sum_{i=1}^N(t_i-y_i)^2
 
     :param name: layer name.
     :type name: basestring
@@ -3709,6 +3833,8 @@ def mse_cost(input, label, weight=None, name=None, layer_attr=None):
     :param weight: The weight affects the cost, namely the scale of cost.
                    It is an optional argument.
     :type weight: LayerOutput
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
@@ -3720,6 +3846,7 @@ def mse_cost(input, label, weight=None, name=None, layer_attr=None):
         inputs=ipts,
         type="square_error",
         name=name,
+        coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(name, LayerType.COST, parents=parents, size=1)
 
@@ -4650,21 +4777,36 @@ def warp_ctc_layer(input,
                    layer_attr=None):
     """
     A layer intergrating the open-source `warp-ctc
-    <https://github.com/baidu-research/warp-ctc>` library, which is used in
+    <https://github.com/baidu-research/warp-ctc>`_ library, which is used in
     `Deep Speech 2: End-toEnd Speech Recognition in English and Mandarin
-    <https://arxiv.org/pdf/1512.02595v1.pdf>`, to compute Connectionist Temporal
-    Classification (CTC) loss.
+    <https://arxiv.org/pdf/1512.02595v1.pdf>`_, to compute Connectionist Temporal
+    Classification (CTC) loss. Besides, another `warp-ctc
+    <https://github.com/gangliao/warp-ctc>`_ repository, which is forked from
+    the official one, is maintained to enable more compiling options. During the
+    building process, PaddlePaddle will clone the source codes, build and
+    install it to :code:`third_party/install/warpctc` directory.
+
+    To use warp_ctc layer, you need to specify the path of :code:`libwarpctc.so`,
+    using following methods:
+
+    1. Set it in :code:`paddle.init` (python api) or :code:`paddle_init` (c api),
+    such as :code:`paddle.init(use_gpu=True,
+    warpctc_dir=your_paddle_source_dir/third_party/install/warpctc/lib)`.
+
+    2. Set environment variable LD_LIBRARY_PATH on Linux or DYLD_LIBRARY_PATH
+    on Mac OS. For instance, :code:`export
+    LD_LIBRARY_PATH=your_paddle_source_dir/third_party/install/warpctc/lib:$LD_LIBRARY_PATH`.
 
     More details of CTC can be found by referring to `Connectionist Temporal
     Classification: Labelling Unsegmented Sequence Data with Recurrent
     Neural Networks <http://machinelearning.wustl.edu/mlpapers/paper_files/
-    icml2006_GravesFGS06.pdf>`_
+    icml2006_GravesFGS06.pdf>`_.
 
     Note:
         - Let num_classes represent the category number. Considering the 'blank'
-          label needed by CTC, you need to use (num_classes + 1) as the input
-          size. Thus, the size of both warp_ctc_layer and 'input' layer should
-          be set to num_classes + 1.
+          label needed by CTC, you need to use (num_classes + 1) as the input size.
+          Thus, the size of both warp_ctc layer and 'input' layer should be set to
+          num_classes + 1.
         - You can set 'blank' to any value ranged in [0, num_classes], which
           should be consistent as that used in your labels.
         - As a native 'softmax' activation is interated to the warp-ctc library,
@@ -4725,6 +4867,7 @@ def crf_layer(input,
               weight=None,
               param_attr=None,
               name=None,
+              coeff=1.0,
               layer_attr=None):
     """
     A layer for calculating the cost of sequential conditional random
@@ -4751,6 +4894,8 @@ def crf_layer(input,
     :type param_attr: ParameterAttribute
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float
     :param layer_attr: Extra Layer config.
     :type layer_attr: ExtraLayerAttribute|None
     :return: LayerOutput object.
@@ -4775,6 +4920,7 @@ def crf_layer(input,
         type=LayerType.CRF_LAYER,
         size=size,
         inputs=ipts,
+        coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     parents = [input, label]
     if weight is not None:
@@ -4848,12 +4994,14 @@ def crf_decoding_layer(input,
 
 @wrap_act_default(act=SigmoidActivation())
 @wrap_bias_attr_default(has_bias=True)
+@wrap_param_attr_default()
 @wrap_name_default()
 @layer_support()
 def nce_layer(input,
               label,
-              num_classes,
+              num_classes=None,
               act=None,
+              param_attr=None,
               weight=None,
               num_neg_samples=10,
               neg_distribution=None,
@@ -4869,7 +5017,8 @@ def nce_layer(input,
 
     .. code-block:: python
 
-       cost = nce_layer(input=layer1, label=layer2, weight=layer3,
+       cost = nce_layer(input=[layer1, layer2], label=layer2,
+                        param_attr=[attr1, attr2], weight=layer3,
                         num_classes=3, neg_distribution=[0.1,0.3,0.6])
 
     :param name: layer name
@@ -4884,6 +5033,8 @@ def nce_layer(input,
     :type num_classes: int
     :param act: Activation, default is Sigmoid.
     :type act: BaseActivation
+    :param param_attr: The Parameter Attribute|list.
+    :type param_attr: ParameterAttribute
     :param num_neg_samples: number of negative samples. Default is 10.
     :type num_neg_samples: int
     :param neg_distribution: The distribution for generating the random negative labels.
@@ -4899,9 +5050,20 @@ def nce_layer(input,
     """
     if isinstance(input, LayerOutput):
         input = [input]
+        assert not isinstance(param_attr, collections.Sequence)
+        param_attr = [param_attr]
+    else:
+        if isinstance(param_attr, collections.Sequence):
+            assert len(input) == len(param_attr)
+        else:
+            param_attr = [copy.deepcopy(param_attr) for _ in range(len(input))]
+
     assert isinstance(input, collections.Sequence)
+
     assert isinstance(label, LayerOutput)
     assert label.layer_type == LayerType.DATA
+    if num_classes is None:
+        num_classes = label.size
     if neg_distribution is not None:
         assert isinstance(neg_distribution, collections.Sequence)
         assert len(neg_distribution) == num_classes
@@ -4911,9 +5073,9 @@ def nce_layer(input,
 
     ipts_for_layer = []
     parents = []
-    for each_input in input:
+    for each_input, attr in zip(input, param_attr):
         assert isinstance(each_input, LayerOutput)
-        ipts_for_layer.append(each_input.name)
+        ipts_for_layer.append(Input(each_input.name, **attr.attr))
         parents.append(each_input)
     ipts_for_layer.append(label.name)
     parents.append(label)
@@ -5290,7 +5452,7 @@ def multi_binary_label_cross_entropy(input,
 
 @wrap_name_default()
 @layer_support()
-def smooth_l1_cost(input, label, name=None, layer_attr=None):
+def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
     """
     This is a L1 loss but more smooth. It requires that the
     size of input and label are equal. The formula is as follows,
@@ -5319,6 +5481,8 @@ def smooth_l1_cost(input, label, name=None, layer_attr=None):
     :type input: LayerOutput
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
@@ -5332,6 +5496,58 @@ def smooth_l1_cost(input, label, name=None, layer_attr=None):
         name=name,
         type=LayerType.SMOOTH_L1,
         inputs=[input.name, label.name],
+        coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name, LayerType.SMOOTH_L1, parents=[input, label], size=1)
+
+
+@wrap_name_default()
+def multiplex_layer(input, name=None, layer_attr=None):
+    """
+    This layer multiplex multiple layers according to the index,
+    which is provided by the first input layer.
+    inputs[0]: the index of the layer to output of size batchSize.
+    inputs[1:N]; the candidate output data.
+    For each index i from 0 to batchSize -1, the output is the i-th row of the
+    (index[i] + 1)-th layer.
+
+    For each i-th row of output:
+    .. math::
+        y[i][j] = x_{x_{0}[i] + 1}[i][j], j = 0,1, ... , (x_{1}.width - 1)
+
+    where, y is output. :math:`x_{k}` is the k-th input layer and
+    :math:`k = x_{0}[i] + 1`.
+
+    .. code-block:: python
+
+       maxid = multiplex_layer(input=layers)
+
+    :param input: Input layers.
+    :type input: list of LayerOutput
+    :param name: Layer name.
+    :type name: basestring
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert isinstance(input, collections.Sequence)
+    assert len(input) > 2, 'multiplex_layer should have more than 2 inputs'
+    for i in range(1, len(input)):
+        assert isinstance(input[i], LayerOutput)
+        assert input[i].size == input[1].size, \
+            "All the input layers except the first one should have the same size"
+
+    l = Layer(
+        name=name,
+        type='multiplex',
+        inputs=[x.name for x in input],
+        size=input[1].size,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.MULTIPLEX_LAYER,
+        parents=input,
+        size=l.config.size)

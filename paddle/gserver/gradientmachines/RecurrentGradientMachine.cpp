@@ -637,7 +637,7 @@ void RecurrentGradientMachine::removeBeamSearchStatisticsCallbacks() {
 /* create scattered id infomation for all realLayer of inFrameLines one time.
  * If hasSubseq, will also create scattered sequenceStartPositions infomation
  * for all realLayer of inFrameLines one time.
-*/
+ */
 
 void RecurrentGradientMachine::createInFrameInfo(int inlinkId,
                                                  const Argument& input,
