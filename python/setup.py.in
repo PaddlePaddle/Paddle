@@ -19,7 +19,6 @@ setup(name='paddle',
           "numpy",
           "protobuf==${PROTOBUF_VERSION}",
           "matplotlib",
-          "opencv-python",
           "rarfile"
       ],
       packages=packages,

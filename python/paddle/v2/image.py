@@ -3,7 +3,10 @@ try:
     import cv2
 except:
     print(
-        "import cv2 error, please install opencv-python: pip install opencv-python"
+        "import cv2 error, please install python wrapper of opencv using:\n"
+        "    pip install opencv-python\n"
+        "    or\n"
+        "    apt-get install python-opencv\n"
     )
 
 __all__ = [
