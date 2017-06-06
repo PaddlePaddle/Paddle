@@ -59,7 +59,7 @@ macro(add_style_check_target TARGET_NAME)
                                 "--filter=${STYLE_FILTER}"
                                 "--write-success=${CUR_GEN}" ${filename}
                     DEPENDS ${filename}
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
             endif()
         endforeach()
     endif()
