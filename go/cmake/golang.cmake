@@ -32,7 +32,7 @@ function(GO_LIBRARY NAME BUILD_TYPE)
   # will use the local changes in Paddle rather than checkout Paddle
   # in github.
   add_custom_target(copyPaddle
-    COMMAND rm ${PADDLE_IN_GOPATH}/Paddle
+    COMMAND rm -rf ${PADDLE_IN_GOPATH}/Paddle
     COMMAND ln -sf ${PADDLE_DIR} ${PADDLE_IN_GOPATH}/Paddle)
   add_dependencies(goGet copyPaddle)
 
