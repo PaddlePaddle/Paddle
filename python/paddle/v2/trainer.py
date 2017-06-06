@@ -128,7 +128,8 @@ class SGD(object):
         __check_train_args__(**locals())
 
         self.__parameter_updater__ = self.__optimizer__.create_updater(
-            self.__is_local__, num_passes, self.__use_sparse_updater__, self.__pserver_spec__)
+            self.__is_local__, num_passes, self.__use_sparse_updater__,
+            self.__pserver_spec__)
         self.__parameter_updater__.init(self.__gradient_machine__)
 
         self.__gradient_machine__.start()

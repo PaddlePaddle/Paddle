@@ -20,66 +20,66 @@ DECLARE_int32(trainer_id);
 DECLARE_string(save_dir);
 
 namespace paddle {
-    NewRemoteParameterUpdater::NewRemoteParameterUpdater(
-            const OptimizationConfig &config,
-            const std::string pserverSpec): pserverSpec_(pserverSpec) {}
+NewRemoteParameterUpdater::NewRemoteParameterUpdater(
+    const OptimizationConfig &config, const std::string pserverSpec)
+    : pserverSpec_(pserverSpec) {}
 
-    void NewRemoteParameterUpdater::init(const std::vector<ParameterPtr> &parameters) {
-      ParameterUpdater::init(parameters);
-      LOG(INFO) << "NewRemoteParameterUpdater init in";
+void NewRemoteParameterUpdater::init(
+    const std::vector<ParameterPtr> &parameters) {
+  ParameterUpdater::init(parameters);
+  LOG(INFO) << "NewRemoteParameterUpdater init in";
 
-      for (auto& para : parameters_) {
-        para->getBuf(PARAMETER_GRADIENT)->zeroMem();
-      }
+  for (auto &para : parameters_) {
+    para->getBuf(PARAMETER_GRADIENT)->zeroMem();
+  }
 
-      // create parameter server client.
-      parameterClient_ = paddle_new_pserver_client((char *)pserverSpec_.c_str(), FLAGS_trainer_id);
+  // create parameter server client.
+  parameterClient_ =
+      paddle_new_pserver_client((char *)pserverSpec_.c_str(), FLAGS_trainer_id);
 
-      // init names_ for get parameter through paddle_cclient
-      names_ = (char **)malloc((int)parameters.size() * sizeof(char *));
-      for (int i = 0; i < parameterSize(); ++i) {
-        names_[i] = (char *)parameters_[i]->getName().c_str();
-      }
+  // init names_ for get parameter through paddle_cclient
+  names_ = (char **)malloc((int)parameters.size() * sizeof(char *));
+  for (int i = 0; i < parameterSize(); ++i) {
+    names_[i] = (char *)parameters_[i]->getName().c_str();
+  }
 
-      // init new parameter and gradient.
-      init_new_parameter(newParameters_, PARAMETER_VALUE);
-      init_new_parameter(newGradients_, PARAMETER_GRADIENT);
+  // init new parameter and gradient.
+  init_new_parameter(newParameters_, PARAMETER_VALUE);
+  init_new_parameter(newGradients_, PARAMETER_GRADIENT);
 
-      // init parameter, one trainer will get the opportunity to int parameter and send
-      // them to parameter server. Others will get the initialized parameter from parameter
-      // server
-      if (paddle_begin_init_params(parameterClient_)) {
-        for (int i = 0; i < parameterSize(); ++i) {
-          paddle_init_param(parameterClient_, *newParameters_[i], NULL, 0);
-        }
-      } else {
-        paddle_get_params(parameterClient_, names_, newParameters_, (int)parameters_.size());
-      }
-      paddle_finish_init_params(parameterClient_);
-
-      LOG(INFO) << "paddle_finish_init_params";
+  // init parameter, one trainer will get the opportunity to int parameter and
+  // send them to parameter server. Others will get the initialized parameter
+  // from parameter server
+  if (paddle_begin_init_params(parameterClient_)) {
+    for (int i = 0; i < parameterSize(); ++i) {
+      paddle_init_param(parameterClient_, *newParameters_[i], NULL, 0);
     }
+  } else {
+    paddle_get_params(
+        parameterClient_, names_, newParameters_, (int)parameters_.size());
+  }
+  paddle_finish_init_params(parameterClient_);
 
-    void NewRemoteParameterUpdater::updateImpl(Parameter *para) {}
+  LOG(INFO) << "paddle_finish_init_params";
+}
 
-    void NewRemoteParameterUpdater::finishBatch(real cost) {
-      LOG(INFO) << "finishBatch in, cost: " << cost;
+void NewRemoteParameterUpdater::updateImpl(Parameter *para) {}
 
-      // send gradient to parameter server.
-      paddle_send_grads(parameterClient_, *newGradients_, parameterSize());
-      // get the updated parameter from parameterClient.
-      paddle_get_params(parameterClient_, names_, newParameters_, parameterSize());
+void NewRemoteParameterUpdater::finishBatch(real cost) {
+  LOG(INFO) << "finishBatch in, cost: " << cost;
 
-      // clear gradient after update parameter.
-      for (auto& para : parameters_) {
-        para->getBuf(PARAMETER_GRADIENT)->zeroMem();
-      }
-    }
+  // send gradient to parameter server.
+  paddle_send_grads(parameterClient_, *newGradients_, parameterSize());
+  // get the updated parameter from parameterClient.
+  paddle_get_params(parameterClient_, names_, newParameters_, parameterSize());
 
-    void NewRemoteParameterUpdater::startPass() {
-    }
+  // clear gradient after update parameter.
+  for (auto &para : parameters_) {
+    para->getBuf(PARAMETER_GRADIENT)->zeroMem();
+  }
+}
 
-    bool NewRemoteParameterUpdater::finishPass() {
-      return true;
-    }
+void NewRemoteParameterUpdater::startPass() {}
+
+bool NewRemoteParameterUpdater::finishPass() { return true; }
 }

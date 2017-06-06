@@ -17,10 +17,10 @@ limitations under the License. */
 #include <functional>
 #include <thread>
 #include "ParameterUpdater.h"
+#include "libpaddle_cclient.h"
 #include "paddle/pserver/ParameterClient2.h"
 #include "paddle/utils/Queue.h"
 #include "paddle/utils/Util.h"
-#include "libpaddle_cclient.h"
 
 namespace paddle {
 
@@ -29,7 +29,8 @@ namespace paddle {
  */
 class NewRemoteParameterUpdater : public ParameterUpdater {
 public:
-  NewRemoteParameterUpdater(const OptimizationConfig& config, const std::string pserverSpec);
+  NewRemoteParameterUpdater(const OptimizationConfig& config,
+                            const std::string pserverSpec);
   ~NewRemoteParameterUpdater() {}
 
   /**
@@ -42,9 +43,7 @@ public:
    * @note  one batch training exhibits stateful feature to help
    *        to do performance tuning, sgd optimization if necessary.
    */
-  virtual PassType startBatch(int64_t batchSize) {
-    return PASS_TRAIN;
-  }
+  virtual PassType startBatch(int64_t batchSize) { return PASS_TRAIN; }
 
   /**
    * send parameters to pservers and get returned parameters
@@ -54,13 +53,12 @@ public:
   virtual void startPass();
   virtual bool finishPass();
 
-  int parameterSize() {
-    return (int)parameters_.size();
-  }
+  int parameterSize() { return (int)parameters_.size(); }
 
-  void init_new_parameter(paddle_parameter** &new_paras, ParameterType type) {
+  void init_new_parameter(paddle_parameter**& new_paras, ParameterType type) {
     // init parameter of new cclient.
-    new_paras = (paddle_parameter **)malloc(sizeof(paddle_parameter *) * parameterSize());
+    new_paras =
+        (paddle_parameter**)malloc(sizeof(paddle_parameter*) * parameterSize());
     for (int i = 0; i < parameterSize(); ++i) {
       new_paras[i] = (paddle_parameter*)malloc(sizeof(paddle_parameter));
       memset(new_paras[i], 0, sizeof(paddle_parameter));
@@ -71,7 +69,8 @@ public:
       new_paras[i]->content_len = 10;
       new_paras[i]->element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
       new_paras[i]->name = (char*)para->getName().c_str();
-      new_paras[i]->content = (unsigned char *)(para->getBuf(type).get()->getData());
+      new_paras[i]->content =
+          (unsigned char*)(para->getBuf(type).get()->getData());
       new_paras[i]->content_len = (int)para->getBuf(type).get()->getSize();
     }
   }

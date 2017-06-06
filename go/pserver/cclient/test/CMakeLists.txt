@@ -10,4 +10,3 @@ if(APPLE)
   set(CMAKE_EXE_LINKER_FLAGS "-framework CoreFoundation -framework Security")
 endif()
 target_link_libraries(main ${CMAKE_BINARY_DIR}/go/pserver/cclient/libpaddle_cclient.a)
-
