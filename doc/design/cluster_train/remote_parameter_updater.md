@@ -10,7 +10,7 @@ Parameter Updater is used by trainer to manage and update parameter, there are m
 
 Remote Parameter Updater manage parameters through remote parameter server with the client that communicate with pserver([The Client Library of Parameter Server Design Doc](pserver_client.md))
 
-In PaddlePaddle Python V2 API, trainer is implemented in python, and the trainer will hold a member of parameter updater and call it's functions directly. In this design, we should also expose the api of RemoteParameterUpdater to python with swig.
+In PaddlePaddle Python V2 API, trainer is implemented in python, and the trainer will hold a instance of parameter updater and call it's functions directly. In this design, we will also expose the api of RemoteParameterUpdater to python with swig.
 
 #### Sparse Remote Parameter Updater
 

@@ -31,7 +31,6 @@ function(GO_LIBRARY NAME BUILD_TYPE)
   # make a symlink that references Paddle inside $GOPATH, so go get
   # will use the local changes in Paddle rather than checkout Paddle
   # in github.
-  message(STATUS "PADDLE_DIR: ${PADDLE_DIR}")
   add_custom_target(copyPaddle
     COMMAND ln -sf ${PADDLE_DIR} ${PADDLE_IN_GOPATH})
   add_dependencies(goGet copyPaddle)
