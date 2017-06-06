@@ -44,22 +44,62 @@ public:
     for (int c = 0; c < channelsCol; ++c) {
       int wOffset = c % filterWidth;
       int hOffset = (c / filterWidth) % filterHeight;
-      int c_im = c / filterHeight / filterWidth;
+      int c_im = c / filterWidth / filterHeight;
       for (int h = 0; h < outputHeight; ++h) {
         for (int w = 0; w < outputWidth; ++w) {
-          // no c_im*height to Exclude the channel number
-          int imgRowIdx = h * strideHeight + hOffset;
-          int imgColIdx = w * strideWidth + wOffset;
-          if ((imgRowIdx - paddingHeight) < 0 ||
-              (imgRowIdx - paddingHeight) >= inputHeight ||
-              (imgColIdx - paddingWidth) < 0 ||
-              (imgColIdx - paddingWidth) >= inputWidth) {
+          int imRowIdx = h * strideHeight + hOffset;
+          int imColIdx = w * strideWidth + wOffset;
+          if ((imRowIdx - paddingHeight) < 0 ||
+              (imRowIdx - paddingHeight) >= inputHeight ||
+              (imColIdx - paddingWidth) < 0 ||
+              (imColIdx - paddingWidth) >= inputWidth) {
             colData[(c * outputHeight + h) * outputWidth + w] = T(0);
           } else {
-            imgRowIdx += c_im * inputHeight - paddingHeight;
-            imgColIdx -= paddingWidth;
+            imRowIdx += c_im * inputHeight - paddingHeight;
+            imColIdx -= paddingWidth;
             colData[(c * outputHeight + h) * outputWidth + w] =
-                imData[imgRowIdx * inputWidth + imgColIdx];
+                imData[imRowIdx * inputWidth + imColIdx];
+          }
+        }
+      }
+    }
+  }
+};
+
+template <class T>
+class Col2ImFunctor<DEVICE_TYPE_CPU, T> {
+public:
+  void operator()(const T* colData,
+                  int inputChannels,
+                  int inputHeight,
+                  int inputWidth,
+                  int filterHeight,
+                  int filterWidth,
+                  int strideHeight,
+                  int strideWidth,
+                  int paddingHeight,
+                  int paddingWidth,
+                  int outputHeight,
+                  int outputWidth,
+                  T* imData) {
+    int channelsCol = inputChannels * filterHeight * filterWidth;
+
+    for (int c = 0; c < channelsCol; ++c) {
+      int wOffset = c % filterWidth;
+      int hOffset = (c / filterWidth) % filterHeight;
+      int c_im = c / filterWidth / filterHeight;
+      for (int h = 0; h < outputHeight; ++h) {
+        for (int w = 0; w < outputWidth; ++w) {
+          int imRowIdx = h * strideHeight + hOffset;
+          int imColIdx = w * strideWidth + wOffset;
+          if ((imRowIdx - paddingHeight) >= 0 &&
+              (imRowIdx - paddingHeight) < inputHeight &&
+              (imColIdx - paddingWidth) >= 0 &&
+              (imColIdx - paddingWidth) < inputWidth) {
+            imRowIdx += c_im * inputHeight - paddingHeight;
+            imColIdx -= paddingWidth;
+            imData[imRowIdx * inputWidth + imColIdx] +=
+                colData[(c * outputHeight + h) * outputWidth + w];
           }
         }
       }
@@ -171,10 +211,74 @@ public:
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
-    const TensorShape& outputGrad = inputs[0].shape();
+    // CHECK_EQ(outputs[0].getArgType(), ADD_TO);
+    const TensorShape& output = inputs[0].shape();
     const TensorShape& filter = inputs[1].shape();
-    const TensorShape& inputGrad = outputs[0].shape();
-    check(inputGrad, filter, outputGrad);
+    const TensorShape& input = outputs[0].shape();
+    check(input, filter, output);
+
+    size_t batchSize = input[0];
+    size_t inputChannels = input[1];
+    size_t inputHeight = input[2];
+    size_t inputWidth = input[3];
+    size_t filterHeight = filter[2];
+    size_t filterWidth = filter[3];
+    size_t outputChannels = output[1];
+    size_t outputHeight = output[2];
+    size_t outputWidth = output[3];
+
+    real* outputGrad = inputs[0].data<real>();
+    real* filterData = inputs[1].data<real>();
+    real* inputGrad = outputs[0].data<real>();
+
+    size_t size = inputChannels / groups_ * filterHeight * filterWidth *
+                  outputHeight * outputWidth;
+    resizeBuffer<Device>(size);
+    real* colData = reinterpret_cast<real*>(memory_->getBuf());
+
+    Col2ImFunctor<Device, real> col2im;
+    GemmFunctor<Device, real> gemm;
+    size_t inputOffset = (inputChannels / groups_) * inputHeight * inputWidth;
+    size_t outputOffset = 
+        (outputChannels / groups_) * outputHeight * outputWidth;
+    size_t filterOffset = filter.getElements() / groups_;
+
+    for (size_t i = 0; i < batchSize; i++) {
+      for (size_t g = 0; g < groups_; g++) {
+        int K = outputChannels / groups_;
+        int N = outputHeight * outputWidth;
+        int M = inputChannels / groups_ * filterHeight * filterWidth;
+        gemm(CblasTrans,
+             CblasNoTrans,
+             M,
+             N,
+             K,
+             1.0f,
+             filterData + g * filterOffset,
+             M,
+             outputGrad + g * outputOffset,
+             N,
+             0.0f,
+             colData,
+             N);
+
+        col2im(colData,
+               inputChannels / groups_,
+               inputHeight,
+               inputWidth,
+               filterHeight,
+               filterWidth,
+               strideH(),
+               strideW(),
+               paddingH(),
+               paddingW(),
+               outputHeight,
+               outputWidth,
+               inputGrad + g * inputOffset);
+      }
+      inputGrad += inputChannels * inputHeight * inputWidth;
+      outputGrad += outputChannels * outputHeight * outputWidth;
+    }
   }
 };
 
@@ -191,11 +295,17 @@ public:
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
-    CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
     const TensorShape& output = inputs[0].shape();
     const TensorShape& input = inputs[1].shape();
     const TensorShape& filter = outputs[0].shape();
     check(input, filter, output);
+
+    real beta;
+    if (outputs[0].getArgType() == ADD_TO) {
+      beta = 1.0;
+    } else {
+      beta = 0.0;
+    }
 
     size_t batchSize = input[0];
     size_t inputChannels = input[1];
@@ -251,7 +361,7 @@ public:
              K,
              colData,
              K,
-             1.0f,
+             i == 0 ? beta : 1.0f,
              filterGrad + g * filterOffset,
              N);
       }

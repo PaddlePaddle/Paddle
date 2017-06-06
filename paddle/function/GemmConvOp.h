@@ -41,4 +41,22 @@ public:
                   T* colData);
 };
 
+template <DeviceType Device, class T>
+class Col2ImFunctor {
+public:
+  void operator()(const T* colData,
+                  int inputChannels,
+                  int inputHeight,
+                  int inputWidth,
+                  int filterHeight,
+                  int filterWidth,
+                  int strideHeight,
+                  int strideWidth,
+                  int paddingHeight,
+                  int paddingWidth,
+                  int outputHeight,
+                  int outputWidth,
+                  T* imData);
+};
+
 }  // namespace paddle

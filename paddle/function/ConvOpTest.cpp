@@ -78,12 +78,10 @@ public:
                     test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, output));
                     test.run();
                   } else if (type == BACKWARD_INPUT_TEST) {
-#if 0
                     test.addInputs(BufferArg(VALUE_TYPE_FLOAT, output));
                     test.addInputs(BufferArg(VALUE_TYPE_FLOAT, filter));
                     test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, input));
                     test.run();
-#endif
                   } else if (type == BACKWARD_FILTER_TEST) {
                     test.addInputs(BufferArg(VALUE_TYPE_FLOAT, output));
                     test.addInputs(BufferArg(VALUE_TYPE_FLOAT, input));
@@ -109,6 +107,11 @@ TEST(Forward, GEMM) {
 TEST(Forward, GEMM2) {
   ConvolutionTest<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU> test(
       "GemmConv-CPU", "GemmConv-GPU", FORWARD_TEST);
+}
+
+TEST(BackwardInput, GEMM) {
+  ConvolutionTest<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU> test(
+      "GemmConvGradInput-CPU", "GemmConvGradInput-GPU", BACKWARD_INPUT_TEST);
 }
 
 TEST(BackwardFilter, GEMM) {
