@@ -34,7 +34,7 @@ add_style_check_target(paddle_trainer_lib
 add_style_check_target(paddle_trainer_lib
     ${TRAINER_HEADERS})
 add_dependencies(paddle_trainer_lib
-    gen_proto_cpp paddle_cclient_lib)
+    gen_proto_cpp paddle_pserver_cclient_lib)
 
 macro(add_paddle_exe TARGET_NAME)
   add_executable(${TARGET_NAME} ${ARGN})
@@ -63,5 +63,5 @@ if(APPLE)
   set(CMAKE_EXE_LINKER_FLAGS "-framework CoreFoundation -framework Security")
 endif()
 
-target_link_libraries(paddle_trainer ${CMAKE_CURRENT_SOURCE_DIR}/libpaddle_cclient.a)
-target_link_libraries(paddle_trainer_lib ${CMAKE_CURRENT_SOURCE_DIR}/libpaddle_cclient.a)
+target_link_libraries(paddle_trainer ${CMAKE_CURRENT_SOURCE_DIR}/libpaddle_pserver_cclient.a)
+target_link_libraries(paddle_trainer_lib ${CMAKE_CURRENT_SOURCE_DIR}/libpaddle_pserver_cclient.a)

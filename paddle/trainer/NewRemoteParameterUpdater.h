@@ -17,7 +17,7 @@ limitations under the License. */
 #include <functional>
 #include <thread>
 #include "ParameterUpdater.h"
-#include "libpaddle_cclient.h"
+#include "libpaddle_pserver_cclient.h"
 #include "paddle/pserver/ParameterClient2.h"
 #include "paddle/utils/Queue.h"
 #include "paddle/utils/Util.h"
