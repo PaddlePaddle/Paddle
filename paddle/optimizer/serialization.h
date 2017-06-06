@@ -1,5 +1,4 @@
-#ifndef PADDLE_OPTIMIZER_SERIALIZARION_H
-#define PADDLE_OPTIMIZER_SERIALIZARION_H
+#pragma once
 
 #include <sstream>
 #include <string>
@@ -33,4 +32,3 @@ static void ProtoToTensor(const TensorProto& proto, Tensor* tensor) {
 
 }  // namespace optimizer
 }  // namespace paddle
-#endif

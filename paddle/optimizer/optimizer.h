@@ -1,5 +1,5 @@
-#ifndef PADDLE_LIB_OPTIMIZER_H_
-#define PADDLE_LIB_OPTIMIZER_H_
+#pragma once
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -92,5 +92,4 @@ int paddle_optimizer_get_state(paddle_optimizer* o, const char* state);
 
 #ifdef __cplusplus
 }
-#endif
 #endif

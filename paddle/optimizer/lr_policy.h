@@ -1,5 +1,4 @@
-#ifndef PADDLE_OPTIMIZER_LR_POLICY_H_
-#define PADDLE_OPTIMIZER_LR_POLICY_H_
+#pragma once
 
 #include <algorithm>
 #include "OptimizerConfig.pb.h"
@@ -41,5 +40,3 @@ private:
 
 }  // namespace optimizer
 }  // namespace paddle
-
-#endif

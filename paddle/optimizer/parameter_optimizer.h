@@ -1,5 +1,4 @@
-#ifndef PADDLE_PARAMETER_OPTIMIZER_H_
-#define PADDLE_PARAMETER_OPTIMIZER_H_
+#pragma once
 
 #include <glog/logging.h>
 #include <functional>
@@ -40,5 +39,3 @@ protected:
 
 }  // namespace optimizer
 }  // namespace paddle
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef PADDLE_ADADELTA_OPTIMIZER_H_
-#define PADDLE_ADADELTA_OPTIMIZER_H_
+#pragma once
 
 #include "parameter_optimizer.h"
 
@@ -31,5 +30,3 @@ private:
 
 }  // namespace optimizer
 }  // namespace paddle
-
-#endif

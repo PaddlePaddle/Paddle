@@ -9,17 +9,6 @@ set(OPITMIZER_SRCS
     sgd_optmizer.cc
   )
 
-set(OPITMIZER_HEADERS
-    adadelta_optimizer.h
-    adagrad_optimizer.h
-    adam_optimizer.h
-    lr_policy.h
-    optimizer.h
-    parameter_optimizer.h
-    sgd_optimizer.h
-    tensor.h
-  )
-
 add_library(optimizer STATIC ${OPITMIZER_SRCS})
 add_dependencies(optimizer gen_proto_cpp)
 

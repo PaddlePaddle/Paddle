@@ -1,10 +1,10 @@
-#ifndef PADDLE_OPTIMIZER_TENSOR_H_
-#define PADDLE_OPTIMIZER_TENSOR_H_
+#pragma once
 /**
  * @brief tensor used by optimizer
  */
 
 #include <string.h>
+#include <memory>
 #include "paddle/utils/Common.h"
 #include "paddle/utils/Logging.h"
 
@@ -45,5 +45,3 @@ typedef TensorT<real> Tensor;
 
 }  // namespace optimizer
 }  // namespace paddle
-
-#endif
