@@ -7,10 +7,8 @@ namespace optimizer {
 void AdamOptimizer::set_weight(Tensor *p) {
   parameter_ = p;
   size_t size = p->size();
-  real *mptr = new real[size];
-  momentums_ = new Tensor(mptr, size);
-  real *vptr = new real[size];
-  velocitys_ = new Tensor(vptr, size);
+  momentums_ = new Tensor(size);
+  velocitys_ = new Tensor(size);
 }
 
 void AdamOptimizer::Update(const Tensor *gradient) {

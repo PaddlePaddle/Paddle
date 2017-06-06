@@ -8,8 +8,7 @@ namespace optimizer {
 void AdagradOptimizer::set_weight(Tensor* p) {
   parameter_ = p;
   size_t size = p->size();
-  real* gptr = new real[size];
-  accum_gradient_ = new Tensor(gptr, size);
+  accum_gradient_ = new Tensor(size);
 }
 
 void AdagradOptimizer::Update(const Tensor* gradient) {

@@ -8,12 +8,9 @@ namespace optimizer {
 void AdadeltaOptimizer::set_weight(Tensor* p) {
   parameter_ = p;
   size_t size = p->size();
-  real* gptr = new real[size];
-  accum_gradient_ = new Tensor(gptr, size);
-  real* dptr = new real[size];
-  accum_delta_ = new Tensor(dptr, size);
-  real* dptr_current = new real[size];
-  update_delta_ = new Tensor(dptr_current, size);
+  accum_gradient_ = new Tensor(size);
+  accum_delta_ = new Tensor(size);
+  update_delta_ = new Tensor(size);
 }
 
 void AdadeltaOptimizer::Update(const Tensor* gradient) {

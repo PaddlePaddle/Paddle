@@ -11,8 +11,7 @@ using namespace paddle;
 using namespace paddle::optimizer;
 
 Tensor* FillTensor(size_t size) {
-  real* ptr = new real[size];
-  Tensor* param = new Tensor(ptr, size);
+  Tensor* param = new Tensor(size);
   Tensor& p = *param;
   for (auto i = 0; i < p.size(); ++i) {
     p[i] = (float)rand() / (float)RAND_MAX;
@@ -21,8 +20,7 @@ Tensor* FillTensor(size_t size) {
 }
 
 Tensor* FixedTensor(size_t size) {
-  real* ptr = new real[size];
-  Tensor* param = new Tensor(ptr, size);
+  Tensor* param = new Tensor(size);
   Tensor& p = *param;
   for (auto i = 0; i < p.size(); ++i) {
     p[i] = i;

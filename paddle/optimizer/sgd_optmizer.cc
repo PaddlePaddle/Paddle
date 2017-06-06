@@ -6,11 +6,10 @@ namespace optimizer {
 
 void SGDOptimizer::set_weight(Tensor *p) {
   parameter_ = p;
-  size_t size = p->size();
-  // TODO: fix it with align aware allocator bind to Tensor
   if (momentum_ != 0.0) {
-    real *ptr = new real[size];
-    momentums_ = new Tensor(ptr, size);
+    size_t size = p->size();
+    // TODO: fix it with align aware allocator bind to Tensor
+    momentums_ = new Tensor(size);
   }
 }
 
