@@ -11,16 +11,19 @@ packages=['paddle',
           'paddle.v2.reader',
           'paddle.v2.plot']
 
+setup_requires=["requests",
+                "numpy",
+                "protobuf==3.1",
+                "matplotlib",
+                "rarfile"]
+
+if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
+    setup_requires+=["opencv-python"]
+
 setup(name='paddle',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
-      install_requires=[
-          "requests",
-          "numpy",
-          "protobuf==${PROTOBUF_VERSION}",
-          "matplotlib",
-          "rarfile"
-      ],
+      install_requires=setup_requires,
       packages=packages,
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}'
