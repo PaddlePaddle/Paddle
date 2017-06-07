@@ -235,9 +235,9 @@ def __trim_submodel__(old_submodel, layer_names, input_layer_names,
 def parse_network(output_layers, extra_layers=None):
     if not isinstance(output_layers, collections.Sequence):
         output_layers = [output_layers]
-    if extra_layers is not None and not isinstance(extra_layers,
-                                                   collections.Sequence):
-        extra_layers = [extra_layers]
+    if extra_layers is not None:
+        if not isinstance(extra_layers, collections.Sequence):
+            extra_layers = [extra_layers]
     else:
         extra_layers = []
 
