@@ -86,7 +86,6 @@ message OptimizerState {
 }
 
 message OptimizerConfig {
-  // common config of optimizer
   enum Optimizer {
    SGD = 1;
    Adadelta = 2;
@@ -108,6 +107,8 @@ message OptimizerConfig {
   optional LinearLr linear_lr = 13;
 
   // common config of optimizer
-  optional double clipnorm = 101;
-  optional double clipvalue = 102;
+  // gradient clip when L2 exceeding value
+  optional double clip_norm = 101;
+  // gradient clip when L1 exceeding value
+  optional double clip_value = 102;
 }
