@@ -46,8 +46,13 @@ namespace paddle {
  *      are all NCHW format. Where N is batch size, C is the number of channels,
  *      H and W is the height and width of image or image gradient.
  *
- *   2. The format of the filter data is MCHW, where M is the number of
- *      output image channels, C is the number of input image channels,
+ *   2. The format of the filter data is MCHW, where M is the number of output
+ *      image channels, C is the number of input image channels,
+ *      H and W is height and width of filter.
+ *
+ *      If groups is greater than 1, the filter's data format should be GMCHW,
+ *      where G is the groups, and G * M is the number of output image channels,
+ *      G * C is the number of input image channels,
  *      H and W is height and width of filter.
  */
 class ConvFunctionBase : public FunctionBase {
@@ -73,20 +78,47 @@ public:
              const TensorShape& output) {
     // inputs and outputs arguments should be 4-dimensional.
     CHECK_EQ(input.ndims(), (size_t)4);
-    CHECK_EQ(filter.ndims(), (size_t)4);
     CHECK_EQ(output.ndims(), (size_t)4);
-
     // The batchSize of the input needs to be equal to
     // the batchSize of the output.
     CHECK_EQ(input[0], output[0]);
 
-    // The input and output channel dimensions are the second and first
-    // dimensions of the filter shape.
-    CHECK_EQ(input[1] / groups_, filter[1]);
-    CHECK_EQ(output[1], filter[0]);
+    if (filter.ndims() == (size_t)4) {
+      // If the filter's dimension is 4, groups convolution is not supported.
+      CHECK_EQ(groups_, (size_t)1);
+      // The input and output channel dimensions are the second and first
+      // dimensions of the filter shape.
+      CHECK_EQ(input[1], filter[1]);
+      CHECK_EQ(output[1], filter[0]);
+    } else {
+      // filter argument should be 5-dimensional.
+      CHECK_EQ(filter.ndims(), (size_t)5);
+      // The first dimension of the filter is the size of the group
+      CHECK_EQ(filter[0], groups_);
+      // The input and output channel dimensions are the third and second
+      // dimensions of the filter shape.
+      CHECK_EQ(input[1], filter[2] * groups_);
+      CHECK_EQ(output[1], filter[1] * groups_);
+    }
   }
 
 protected:
+  size_t getFilterHeight(const TensorShape& filter) const {
+    if (filter.ndims() == 5) {
+      return filter[3];
+    } else {
+      return filter[2];
+    }
+  }
+
+  size_t getFilterWidth(const TensorShape& filter) const {
+    if (filter.ndims() == 5) {
+      return filter[4];
+    } else {
+      return filter[3];
+    }
+  }
+
   std::vector<size_t> strides_;
   std::vector<size_t> paddings_;
 

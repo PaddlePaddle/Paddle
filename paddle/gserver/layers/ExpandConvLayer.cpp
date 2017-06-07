@@ -80,8 +80,11 @@ void ExpandConvLayer::forward(PassType passType) {
                                   (size_t)imgSizeH_[i],
                                   (size_t)imgSizeW_[i]});
     filterShape_[i] =
-        TensorShape({!isDeconv_ ? (size_t)numFilters_ : (size_t)channels_[i],
-                     !isDeconv_ ? (size_t)channels_[i] : (size_t)numFilters_,
+        TensorShape({(size_t)groups_[i],
+                     !isDeconv_ ? (size_t)numFilters_ / groups_[i]
+                                : (size_t)channels_[i] / groups_[i],
+                     !isDeconv_ ? (size_t)channels_[i] / groups_[i]
+                                : (size_t)numFilters_ / groups_[i],
                      (size_t)filterSizeY_[i],
                      (size_t)filterSize_[i]});
     outputShape_[i] = TensorShape({(size_t)batchSize,
@@ -96,8 +99,9 @@ void ExpandConvLayer::forward(PassType passType) {
     BufferArgs outputs;
     inputs.addArg(*getInputValue(i), inputShape_[i]);
     inputs.addArg(*weights_[i]->getW(), filterShape_[i]);
-    outputs.addArg(
-        *getOutputValue(), outputShape_[i], i == 0 ? ASSIGN_TO : ADD_TO);
+    outputs.addArg(*getOutputValue(),
+                   outputShape_[i],
+                   !isDeconv_ && i == 0 ? ASSIGN_TO : ADD_TO);
 
     forward_[i]->calc(inputs, outputs);
   }

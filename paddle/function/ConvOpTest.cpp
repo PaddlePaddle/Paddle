@@ -80,7 +80,7 @@ public:
                   } else if (type == BACKWARD_INPUT_TEST) {
                     test.addInputs(BufferArg(VALUE_TYPE_FLOAT, output));
                     test.addInputs(BufferArg(VALUE_TYPE_FLOAT, filter));
-                    test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, input));
+                    test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, input), ADD_TO);
                     test.run();
                   } else if (type == BACKWARD_FILTER_TEST) {
                     test.addInputs(BufferArg(VALUE_TYPE_FLOAT, output));
