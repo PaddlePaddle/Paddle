@@ -1479,13 +1479,8 @@ def outputs(layers, *args):
         if each_output.name not in final_outputs:
             final_outputs.append(each_output.name)
 
-    logger.info("".join(["The input order is [", ", ".join(final_inputs), "]"]))
-
     if len(final_outputs) == 0:
         final_outputs = map(lambda x: x.name, layers)
-
-    logger.info("".join(
-        ["The output order is [", ", ".join(final_outputs), "]"]))
 
     Inputs(*final_inputs)
     Outputs(*final_outputs)
