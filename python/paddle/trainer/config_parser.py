@@ -73,7 +73,6 @@ To use this from paddle_trainer, paddle_trainer should be called with
 --config_args=extension_module_name=[MODULE_NAME]
 
 '''
-
 import copy
 import logging
 import os
@@ -1731,9 +1730,10 @@ class ParameterReluLayer(LayerBase):
     def __init__(self, name, inputs, partial_sum=1, **args):
         super(ParameterReluLayer, self).__init__(
             name, self.layer_type, 0, inputs=inputs, **args)
-        config_assert(len(self.inputs) == 1)
-        config_assert(self.input_layer.size % partial_sum == 0)
         input_layer = self.get_input_layer(0)
+        config_assert(len(self.inputs) == 1, "prelu layer has only one input.")
+        config_assert(input_layer.size % partial_sum == 0,
+                      "a wrong setting for partial_sum")
         self.set_layer_size(input_layer.size)
         self.create_input_parameter(0, input_layer.size / partial_sum)
 

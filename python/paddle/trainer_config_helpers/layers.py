@@ -31,31 +31,31 @@ except ImportError:
 import copy
 
 __all__ = [
-    "full_matrix_projection",
-    "AggregateLevel",
-    "ExpandLevel",
-    "identity_projection",
-    "dotmul_projection",
-    "dotmul_operator",
-    "repeat_layer",
-    "seq_reshape_layer",
-    "table_projection",
-    "mixed_layer",
-    "data_layer",
-    "embedding_layer",
-    "fc_layer",
-    "grumemory",
-    "pooling_layer",
-    "lstmemory",
-    "last_seq",
-    "first_seq",
-    "cos_sim",
-    "hsigmoid",
-    "conv_projection",
-    "mse_cost",
-    "regression_cost",
+    'full_matrix_projection',
+    'AggregateLevel',
+    'ExpandLevel',
+    'identity_projection',
+    'dotmul_projection',
+    'dotmul_operator',
+    'repeat_layer',
+    'seq_reshape_layer',
+    'table_projection',
+    'mixed_layer',
+    'data_layer',
+    'embedding_layer',
+    'fc_layer',
+    'grumemory',
+    'pooling_layer',
+    'lstmemory',
+    'last_seq',
+    'first_seq',
+    'cos_sim',
+    'hsigmoid',
+    'conv_projection',
+    'mse_cost',
+    'regression_cost',
     'classification_cost',
-    "LayerOutput",
+    'LayerOutput',
     'img_conv_layer',
     'img_pool_layer',
     'batch_norm_layer',
@@ -121,6 +121,7 @@ __all__ = [
     'smooth_l1_cost',
     'layer_support',
     'multiplex_layer',
+    'prelu_layer',
 ]
 
 
@@ -129,26 +130,26 @@ class LayerType(object):
     Layer type enumerations.
     """
 
-    DATA = "data"
-    MIXED_LAYER = "mixed"
-    LSTMEMORY = "lstmemory"
-    GRUMEMORY = "gated_recurrent"
-    SEQUENCE_LAST_INSTANCE = "seqlastins"
-    SEQUENCE_FIRST_INSTANCE = "seqfirstins"
-    SEQUENCE_RESHAPE = "seqreshape"
-    POOLING_MAX = "max"
+    DATA = 'data'
+    MIXED_LAYER = 'mixed'
+    LSTMEMORY = 'lstmemory'
+    GRUMEMORY = 'gated_recurrent'
+    SEQUENCE_LAST_INSTANCE = 'seqlastins'
+    SEQUENCE_FIRST_INSTANCE = 'seqfirstins'
+    SEQUENCE_RESHAPE = 'seqreshape'
+    POOLING_MAX = 'max'
     POOLING_AVG = 'average'
-    FC_LAYER = "fc"
+    FC_LAYER = 'fc'
     COST = 'cost'
     COSINE_SIM_VEC = 'cos_vm'
     COSINE_SIM = 'cos'
     HSIGMOID = 'hsigmoid'
-    CONV_LAYER = "conv"
-    CONVTRANS_LAYER = "convt"
-    EXCONV_LAYER = "exconv"
-    EXCONVTRANS_LAYER = "exconvt"
-    CUDNNCONV_LAYER = "cudnn_conv"
-    POOL_LAYER = "pool"
+    CONV_LAYER = 'conv'
+    CONVTRANS_LAYER = 'convt'
+    EXCONV_LAYER = 'exconv'
+    EXCONVTRANS_LAYER = 'exconvt'
+    CUDNNCONV_LAYER = 'cudnn_conv'
+    POOL_LAYER = 'pool'
     BATCH_NORM_LAYER = 'batch_norm'
     NORM_LAYER = 'norm'
     SUM_TO_ONE_NORM_LAYER = 'sum_to_one_norm'
@@ -177,36 +178,38 @@ class LayerType(object):
     EOSID_LAYER = 'eos_id'
     RECURRENT_LAYER = 'recurrent'
 
-    CONV_SHIFT_LAYER = "conv_shift"
-    TENSOR_LAYER = "tensor"
-    SEL_FC_LAYER = "selective_fc"
-    SAMPLING_ID_LAYER = "sampling_id"
-    SLOPE_INTERCEPT_LAYER = "slope_intercept"
-    LINEAR_COMBINATION_LAYER = "convex_comb"
-    BLOCK_EXPAND = "blockexpand"
-    MAXOUT = "maxout"
-    SPP_LAYER = "spp"
-    PAD_LAYER = "pad"
-    MULTIPLEX_LAYER = "multiplex"
+    CONV_SHIFT_LAYER = 'conv_shift'
+    TENSOR_LAYER = 'tensor'
+    SEL_FC_LAYER = 'selective_fc'
+    SAMPLING_ID_LAYER = 'sampling_id'
+    SLOPE_INTERCEPT_LAYER = 'slope_intercept'
+    LINEAR_COMBINATION_LAYER = 'convex_comb'
+    BLOCK_EXPAND = 'blockexpand'
+    MAXOUT = 'maxout'
+    SPP_LAYER = 'spp'
+    PAD_LAYER = 'pad'
+    MULTIPLEX_LAYER = 'multiplex'
 
-    PRINT_LAYER = "print"
-    PRIORBOX_LAYER = "priorbox"
+    PRINT_LAYER = 'print'
+    PRIORBOX_LAYER = 'priorbox'
 
-    CTC_LAYER = "ctc"
-    WARP_CTC_LAYER = "warp_ctc"
-    CRF_LAYER = "crf"
-    CRF_DECODING_LAYER = "crf_decoding"
+    CTC_LAYER = 'ctc'
+    WARP_CTC_LAYER = 'warp_ctc'
+    CRF_LAYER = 'crf'
+    CRF_DECODING_LAYER = 'crf_decoding'
     NCE_LAYER = 'nce'
 
-    RANK_COST = "rank-cost"
-    LAMBDA_COST = "lambda_cost"
-    HUBER = "huber"
-    CROSS_ENTROPY = "multi-class-cross-entropy"
-    CROSS_ENTROPY_WITH_SELFNORM = "multi_class_cross_entropy_with_selfnorm"
-    SOFT_BIN_CLASS_CROSS_ENTROPY = "soft_binary_class_cross_entropy"
-    MULTI_BIN_LABEL_CROSS_ENTROPY = "multi_binary_label_cross_entropy"
-    SUM_COST = "sum_cost"
-    SMOOTH_L1 = "smooth_l1"
+    RANK_COST = 'rank-cost'
+    LAMBDA_COST = 'lambda_cost'
+    HUBER = 'huber'
+    CROSS_ENTROPY = 'multi-class-cross-entropy'
+    CROSS_ENTROPY_WITH_SELFNORM = 'multi_class_cross_entropy_with_selfnorm'
+    SOFT_BIN_CLASS_CROSS_ENTROPY = 'soft_binary_class_cross_entropy'
+    MULTI_BIN_LABEL_CROSS_ENTROPY = 'multi_binary_label_cross_entropy'
+    SUM_COST = 'sum_cost'
+    SMOOTH_L1 = 'smooth_l1'
+
+    PRELU = 'prelu'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -5549,5 +5552,71 @@ def multiplex_layer(input, name=None, layer_attr=None):
     return LayerOutput(
         name=name,
         layer_type=LayerType.MULTIPLEX_LAYER,
+        parents=input,
+        size=l.config.size)
+
+
+@wrap_name_default()
+@layer_support()
+@wrap_name_default()
+@wrap_param_attr_default()
+def prelu_layer(input,
+                name=None,
+                partial_sum=1,
+                param_attr=None,
+                layer_attr=None):
+    """
+    The Parameter Relu activation that actives outputs with a learnable weight.
+
+    Reference:
+        Delving Deep into Rectifiers: Surpassing Human-Level Performance on
+        ImageNet Classification http://arxiv.org/pdf/1502.01852v1.pdf
+
+    .. math::
+       z_i &\\quad if \\quad z_i > 0 \\\\
+       a_i * z_i  &\\quad \\mathrm{otherwise}
+
+    :param name: Name of this layer.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param partial_sum: this parameter makes a group of inputs share a same weight.
+           1. partial_sum = 1 indicates the element-wise activation:
+                              each element has a weight
+           2. partial_sum = number of elements in one channel indicates the channel-wise
+                              activation, elements in a channel share a same weight
+           3. partial_sum = number of outputs indicates all elements share a same weight
+    :type int
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
+    :type param_attr: ParameterAttribute|None
+    :param layer_attr: Extra layer configurations. Default is None.
+    :type layer_attr: ExtraLayerAttribute|None
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    if isinstance(input, collections.Sequence):
+        assert len(input) == 1, 'prelu_layer only accepts one input'
+    else:
+        input = [input]
+    assert isinstance(input[0], LayerOutput)
+
+    if isinstance(param_attr, collections.Sequence):
+        assert len(param_attr) == 1, (
+            'because prelu_layer only accepts one input '
+            'it requires only one parameter setting.')
+    else:
+        param_attr = [param_attr]
+    assert isinstance(param_attr[0], ParameterAttribute)
+
+    l = Layer(
+        name=name,
+        type='prelu',
+        inputs=Input(input[0].name, **param_attr[0].attr),
+        partial_sum=partial_sum,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.PRELU,
         parents=input,
         size=l.config.size)
