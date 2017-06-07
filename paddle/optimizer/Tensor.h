@@ -46,7 +46,7 @@ protected:
 };
 
 // TODO(zhihong): design problem of dynamic datatype, need to fix it
-typedef TensorT<real> Tensor;
+typedef TensorT<float> Tensor;
 
 }  // namespace optimizer
 }  // namespace paddle

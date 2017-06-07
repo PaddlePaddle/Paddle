@@ -77,7 +77,8 @@ public:
       opts[i]->set_weight(p);
     }
     for (size_t i = 0; i < opts.size(); ++i) {
-      real* newp = (real*)opts[i]->get_weight();
+      int s = 0;
+      float* newp = (float*)opts[i]->get_weight(&s);
       for (size_t j = 0; j < size; ++j) {
         EXPECT_EQ(newp[j], (*p)[j]);
       }

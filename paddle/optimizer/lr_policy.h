@@ -20,7 +20,7 @@ public:
     return learning_rate;
   }
 
-protected:
+private:
   double learning_rate;
 };
 

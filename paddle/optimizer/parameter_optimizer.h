@@ -25,11 +25,10 @@ public:
   virtual const char *SerializeState();
   virtual void DeSerializeState(const std::string &state);
   virtual void Update(const Tensor *gradient) = 0;
-  virtual real *get_weight() const;
+  virtual float *get_weight(int *param_size) const;
   virtual void set_weight(Tensor *parameter);
 
 protected:
-  OptimizerConfig config_;
   Tensor *parameter_;
 
   // learning rate policy

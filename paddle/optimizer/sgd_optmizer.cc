@@ -16,7 +16,7 @@ void SGDOptimizer::set_weight(Tensor *p) {
 void SGDOptimizer::Update(const Tensor *gradient) {
   num_sample_passed_ += 1;
   double learning_rate = lr_policy_->LearningRate(num_sample_passed_);
-  real velocity = 0.0;
+  float velocity = 0.0;
   Tensor &param = *parameter_;
   const Tensor &grad = *gradient;
   Tensor &m = *momentums_;

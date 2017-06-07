@@ -3,19 +3,18 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/*! \brief optimizer export C API. which will be used in
-  Case A, on Trainer (On ParameterServer Client) optimize gradient
-
-  Case B, on ParameterServer side optimize gradient
-
-  To simplify the configuration parsing. optimizer *do not* parse any config
-  e.g. learning rate should be calculated by the caller
+/**
+ * @brief optimizer library in independent with other module
+ * which will be used in :
+ * Case A, the gradient optimized locally on the trainer.
+ *
+ * Case B, the gradient optimized on the parameter server.
  */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-/*! \brief datatypes */
+
 typedef enum {
   PADDLE_ELEMENT_TYPE_INT32 = 0,
   PADDLE_ELEMENT_TYPE_UINT32 = 1,
@@ -25,7 +24,9 @@ typedef enum {
   PADDLE_ELEMENT_TYPE_FLOAT64 = 5,
 } paddle_element_type;
 
-/*! \brief execute status code */
+/**
+ * @brief execution status code
+ */
 const int32_t PADDLE_SUCCESS = 0;
 const int32_t PADDLE_ERROR = -1;
 
@@ -46,8 +47,11 @@ typedef struct paddle_optimizer paddle_optimizer;
  */
 paddle_optimizer* paddle_create_optimizer(const unsigned char* config_proto,
                                           const int config_proto_len,
-                                          const char** state,
-                                          const int state_size);
+                                          const paddle_element_type data_type,
+                                          void* param_buffer,
+                                          int num_bytes,
+                                          const char* state,
+                                          const int state_len);
 
 /**
  *  @brief release optimizer
@@ -72,23 +76,17 @@ int paddle_update_parameter(paddle_optimizer* o,
 
 /**
  *  @brief optimizer instance
- *  @param data_type datatype of gradient
  *  @param param_buffer, initilized parameter buffer
- *  @param num_bytes, parameter size
- *  @return return exec status
+ *  @return return content length
  */
-int paddle_optimizer_set_weights(paddle_optimizer* o,
-                                 const paddle_element_type data_type,
-                                 void* param_buffer,
-                                 int num_bytes);
+int paddle_optimizer_get_weights(paddle_optimizer* o, void** param_buffer);
 
 /**
- *  @brief optimizer instance
- *  @return return content of parameter buffer in optimizer
+ *  @brief optimzizer instance
+ *  @param training state for receive SerializeState
+ *  @return return state_buffer length
  */
-void* paddle_optimizer_get_weights(paddle_optimizer* o);
-
-int paddle_optimizer_get_state(paddle_optimizer* o, const char* state);
+int paddle_optimizer_get_state(paddle_optimizer* o, const char** state);
 
 #ifdef __cplusplus
 }

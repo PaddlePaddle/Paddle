@@ -10,6 +10,8 @@ public:
   AdamOptimizer(
       double beta_1, double beta_2, double epsilon, double decay, LrPolicy *lr)
       : ParameterOptimizer(lr),
+        momentums_(nullptr),
+        velocitys_(nullptr),
         beta_1_(beta_1),
         beta_2_(beta_2),
         epsilon_(epsilon),
@@ -20,7 +22,6 @@ public:
   }
   void Update(const Tensor *gradient);
   void set_weight(Tensor *p);
-  real *get_weight() const;
 
 private:
   Tensor *momentums_;

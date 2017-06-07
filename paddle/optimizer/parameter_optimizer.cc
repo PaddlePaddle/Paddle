@@ -24,7 +24,8 @@ ParameterOptimizer *ParameterOptimizer::Create(
                           config.linear_lr().lr_decay_a(),
                           config.linear_lr().lr_decay_b());
     // default
-    return nullptr;
+    LOG(WARNING) << " have not select any LrPolicy. use ConstLr in default";
+    return new ConstLr(0.1);
   };
   LrPolicy *lr = select_lr_policy(config);
   auto select_optimizer =
@@ -36,29 +37,32 @@ ParameterOptimizer *ParameterOptimizer::Create(
                               lr);
     }
     if (config.optimizer() == OptimizerConfig::Adadelta) {
-      return new AdagradOptimizer(
-          config.adagrad().epsilon(), config.adagrad().decay(), lr);
+      return new AdadeltaOptimizer(config.adadelta().rho(),
+                                   config.adadelta().epsilon(),
+                                   config.adadelta().decay(),
+                                   lr);
     }
     if (config.optimizer() == OptimizerConfig::Adagrad) {
       return new AdagradOptimizer(
           config.adagrad().epsilon(), config.adagrad().decay(), lr);
     }
     if (config.optimizer() == OptimizerConfig::Adam) {
-      return new AdadeltaOptimizer(config.adadelta().rho(),
-                                   config.adadelta().epsilon(),
-                                   config.adadelta().decay(),
-                                   lr);
+      return new AdamOptimizer(config.adam().beta_1(),
+                               config.adam().beta_2(),
+                               config.adam().epsilon(),
+                               config.adam().decay(),
+                               lr);
     }
     // default
-    return new SGDOptimizer(config.sgd().momentum(),
-                            config.sgd().decay(),
-                            config.sgd().nesterov(),
-                            lr);
+    LOG(WARNING)
+        << "have not select any Optimizer. use SGDOptimizer in default";
+    return new SGDOptimizer(0.0, 0.0, false, lr);
   };
   return select_optimizer(config);
 }
 
-real *ParameterOptimizer::get_weight() const {
+float *ParameterOptimizer::get_weight(int *param_size) const {
+  *param_size = (int)parameter_->size();
   return parameter_->get_buffer();
 }
 
