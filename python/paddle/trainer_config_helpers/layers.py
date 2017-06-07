@@ -3860,7 +3860,6 @@ def classification_cost(input,
                         label,
                         weight=None,
                         name=None,
-                        top_k=None,
                         evaluator=classification_error_evaluator,
                         layer_attr=None):
     """
@@ -3875,8 +3874,6 @@ def classification_cost(input,
     :param weight: The weight affects the cost, namely the scale of cost.
                    It is an optional argument.
     :type weight: LayerOutput
-    :param top_k: number k in top-k error rate
-    :type top_k: int
     :param evaluator: Evaluator method.
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -3904,7 +3901,7 @@ def classification_cost(input,
         assert isinstance(e.for_classification, bool)
         assert e.for_classification
 
-        e(name=e.__name__, input=input, label=label, weight=weight, top_k=top_k)
+        e(name=e.__name__, input=input, label=label, weight=weight)
 
     if not isinstance(evaluator, collections.Sequence):
         evaluator = [evaluator]
