@@ -1,4 +1,3 @@
-#include <iostream>
 #include "gtest/gtest.h"
 #include "tensor.h"
 
