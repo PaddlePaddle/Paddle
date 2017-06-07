@@ -4866,6 +4866,7 @@ def crf_layer(input,
               size=None,
               weight=None,
               param_attr=None,
+              coeff=1.0,
               name=None,
               coeff=1.0,
               layer_attr=None):
@@ -4892,6 +4893,8 @@ def crf_layer(input,
     :type weight: LayerOutput
     :param param_attr: Parameter attribute. None means default attribute
     :type param_attr: ParameterAttribute
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
