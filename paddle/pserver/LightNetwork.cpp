@@ -383,7 +383,7 @@ void SocketClient::TcpClient(const std::string &serverAddr, int serverPort) {
   setOption(sockfd);
 
   /// Now connect to the server
-  int retry_second = 0;
+  int retry_count = 0;
   do {
     if (connect(sockfd, (sockaddr *)&serv_addr, sizeof(serv_addr)) == 0) {
       break;
@@ -391,7 +391,7 @@ void SocketClient::TcpClient(const std::string &serverAddr, int serverPort) {
 
     if (errno == ECONNREFUSED) {
       LOG(WARNING) << "connection refused by pserver, try again!";
-      if (retry_second++ >= 7) {
+      if (retry_count++ >= 7) {
         LOG(FATAL) << "connection refused by pserver, maybe pserver failed!";
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
