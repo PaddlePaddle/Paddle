@@ -4728,7 +4728,7 @@ def ctc_layer(input,
         fc_layer with softmax activation, should be num_classes + 1. The size of ctc_layer
         should also be num_classes + 1.
 
-    The simple usage:
+    The example usage is:
 
     .. code-block:: python
 
@@ -4815,7 +4815,7 @@ def warp_ctc_layer(input,
         - As a native 'softmax' activation is interated to the warp-ctc library,
           'linear' activation is expected instead in the 'input' layer.
 
-    The simple usage:
+    The example usage is:
 
     .. code-block:: python
 
@@ -4876,7 +4876,7 @@ def crf_layer(input,
     A layer for calculating the cost of sequential conditional random
     field model.
 
-    The simple usage:
+    The example usage is:
 
     .. code-block:: python
 
@@ -4950,7 +4950,7 @@ def crf_decoding_layer(input,
     this layer will also calculate error. output.value[i] is 1 for incorrect
     decoding or 0 for correct decoding.
 
-    The simple usage:
+    The example usage is:
 
     .. code-block:: python
 
@@ -5143,7 +5143,7 @@ def rank_cost(left,
       - :math:`o_i` and :math:`o_j`: the left output and right output.
         Their dimension is one.
 
-    The simple usage:
+    The example usage is:
 
     .. code-block:: python
 
@@ -5200,7 +5200,7 @@ def lambda_cost(input,
     """
     lambdaCost for lambdaRank LTR approach.
 
-    The simple usage:
+    The example usage is:
 
     .. code-block:: python
 
@@ -5258,6 +5258,8 @@ def cross_entropy(input,
     """
     A loss layer for multi class entropy.
 
+    The example usage is:
+
     .. code-block:: python
 
        cost = cross_entropy(input=input_layer,
@@ -5304,6 +5306,8 @@ def cross_entropy_with_selfnorm(input,
     A loss layer for multi class entropy with selfnorm.
     Input should be a vector of positive numbers, without normalization.
 
+    The example usage is:
+
     .. code-block:: python
 
        cost = cross_entropy_with_selfnorm(input=input_layer,
@@ -5345,6 +5349,8 @@ def sum_cost(input, name=None, layer_attr=None):
     """
     A loss layer which calculate the sum of the input as loss
 
+    The example usage is:
+
     .. code-block:: python
 
        cost = sum_cost(input=input_layer)
@@ -5373,6 +5379,8 @@ def sum_cost(input, name=None, layer_attr=None):
 def huber_cost(input, label, name=None, coeff=1.0, layer_attr=None):
     """
     A loss layer for huber loss.
+
+    The example usage is:
 
     .. code-block:: python
 
@@ -5413,6 +5421,8 @@ def multi_binary_label_cross_entropy(input,
                                      layer_attr=None):
     """
     A loss layer for multi binary label cross entropy.
+
+    The example usage is:
 
     .. code-block:: python
 
@@ -5473,6 +5483,8 @@ def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
     More details can be found by referring to `Fast R-CNN
     <https://arxiv.org/pdf/1504.08083v2.pdf>`_
 
+    The example usage is:
+
     .. code-block:: python
 
        cost = smooth_l1_cost(input=input_layer,
@@ -5521,6 +5533,8 @@ def multiplex_layer(input, name=None, layer_attr=None):
 
     where, y is output. :math:`x_{k}` is the k-th input layer and
     :math:`k = x_{0}[i] + 1`.
+
+    The example usage is:
 
     .. code-block:: python
 
@@ -5576,17 +5590,23 @@ def prelu_layer(input,
        z_i &\\quad if \\quad z_i > 0 \\\\
        a_i * z_i  &\\quad \\mathrm{otherwise}
 
+    The example usage is:
+
+    .. code-block:: python
+
+       prelu = prelu_layer(input=layers, partial_sum=1)
+
     :param name: Name of this layer.
     :type name: basestring
     :param input: The input layer.
     :type input: LayerOutput
     :param partial_sum: this parameter makes a group of inputs share a same weight.
-           1. partial_sum = 1 indicates the element-wise activation:
-                              each element has a weight
-           2. partial_sum = number of elements in one channel indicates the channel-wise
-                              activation, elements in a channel share a same weight
-           3. partial_sum = number of outputs indicates all elements share a same weight
-    :type int
+
+        - partial_sum = 1, indicates the element-wise activation: each element has a weight.
+        - partial_sum = number of elements in one channel, indicates the channel-wise activation, elements in a channel share a same weight.
+        - partial_sum = number of outputs, indicates all elements share a same weight.
+
+    :type partial_sum: int
     :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute|None
     :param layer_attr: Extra layer configurations. Default is None.
@@ -5600,7 +5620,7 @@ def prelu_layer(input,
 
     l = Layer(
         name=name,
-        type='prelu',
+        type=LayerType.PRELU,
         inputs=Input(input.name, **param_attr.attr),
         partial_sum=partial_sum,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
