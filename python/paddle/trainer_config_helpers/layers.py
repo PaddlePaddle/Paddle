@@ -5595,24 +5595,13 @@ def prelu_layer(input,
     :rtype: LayerOutput
     """
 
-    if isinstance(input, collections.Sequence):
-        assert len(input) == 1, 'prelu_layer only accepts one input'
-    else:
-        input = [input]
-    assert isinstance(input[0], LayerOutput)
-
-    if isinstance(param_attr, collections.Sequence):
-        assert len(param_attr) == 1, (
-            'because prelu_layer only accepts one input '
-            'it requires only one parameter setting.')
-    else:
-        param_attr = [param_attr]
-    assert isinstance(param_attr[0], ParameterAttribute)
+    assert isinstance(input, LayerOutput), 'prelu_layer only accepts one input'
+    assert isinstance(param_attr, ParameterAttribute)
 
     l = Layer(
         name=name,
         type='prelu',
-        inputs=Input(input[0].name, **param_attr[0].attr),
+        inputs=Input(input.name, **param_attr.attr),
         partial_sum=partial_sum,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(

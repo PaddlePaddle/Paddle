@@ -443,7 +443,7 @@ eos
     :noindex:
 
 Activation with learnable parameter
-===================
+===================================
 
 prelu
 --------
