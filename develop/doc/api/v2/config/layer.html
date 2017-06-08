@@ -2805,6 +2805,7 @@ in width dimension.</p>
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">cross_entropy_cost</code></dt>
 <dd><p>A loss layer for multi class entropy.</p>
+<p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">cross_entropy</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                      <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
 </pre></div>
@@ -2844,6 +2845,7 @@ will not be calculated for weight.</li>
 <em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">cross_entropy_with_selfnorm_cost</code></dt>
 <dd><p>A loss layer for multi class entropy with selfnorm.
 Input should be a vector of positive numbers, without normalization.</p>
+<p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">cross_entropy_with_selfnorm</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                                    <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
 </pre></div>
@@ -2879,6 +2881,7 @@ Input should be a vector of positive numbers, without normalization.</p>
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">multi_binary_label_cross_entropy_cost</code></dt>
 <dd><p>A loss layer for multi binary label cross entropy.</p>
+<p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">multi_binary_label_cross_entropy</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                                         <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
 </pre></div>
@@ -2913,6 +2916,7 @@ Input should be a vector of positive numbers, without normalization.</p>
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">huber_cost</code></dt>
 <dd><p>A loss layer for huber loss.</p>
+<p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">huber_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                   <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
 </pre></div>
@@ -2947,7 +2951,7 @@ Input should be a vector of positive numbers, without normalization.</p>
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">lambda_cost</code></dt>
 <dd><p>lambdaCost for lambdaRank LTR approach.</p>
-<p>The simple usage:</p>
+<p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">lambda_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                    <span class="n">score</span><span class="o">=</span><span class="n">score</span><span class="p">,</span>
                    <span class="n">NDCG_num</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
@@ -3043,7 +3047,7 @@ Their dimension is one.</li>
 </ul>
 </dd>
 </dl>
-<p>The simple usage:</p>
+<p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">rank_cost</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="n">out_left</span><span class="p">,</span>
                  <span class="n">right</span><span class="o">=</span><span class="n">out_right</span><span class="p">,</span>
                  <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
@@ -3082,6 +3086,7 @@ It is an optional argument.</li>
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">sum_cost</code></dt>
 <dd><p>A loss layer which calculate the sum of the input as loss</p>
+<p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">sum_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -3114,7 +3119,7 @@ It is an optional argument.</li>
 <em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">crf</code></dt>
 <dd><p>A layer for calculating the cost of sequential conditional random
 field model.</p>
-<p>The simple usage:</p>
+<p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">crf</span> <span class="o">=</span> <span class="n">crf</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                 <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
                 <span class="n">size</span><span class="o">=</span><span class="n">label_dim</span><span class="p">)</span>
@@ -3158,7 +3163,7 @@ random field model. The decoding sequence is stored in output.ids.
 If a second input is provided, it is treated as the ground-truth label, and
 this layer will also calculate error. output.value[i] is 1 for incorrect
 decoding or 0 for correct decoding.</p>
-<p>The simple usage:</p>
+<p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">crf_decoding</span> <span class="o">=</span> <span class="n">crf_decoding</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                                   <span class="n">size</span><span class="o">=</span><span class="n">label_dim</span><span class="p">)</span>
 </pre></div>
@@ -3207,7 +3212,7 @@ And the &#8216;blank&#8217; is the last category index. So the size of &#8216;in
 fc with softmax activation, should be num_classes + 1. The size of ctc
 should also be num_classes + 1.</p>
 </div>
-<p>The simple usage:</p>
+<p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">ctc</span> <span class="o">=</span> <span class="n">ctc</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                 <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
                 <span class="n">size</span><span class="o">=</span><span class="mi">9055</span><span class="p">,</span>
@@ -3274,7 +3279,7 @@ should be consistent as that used in your labels.</li>
 &#8216;linear&#8217; activation is expected instead in the &#8216;input&#8217; layer.</li>
 </ul>
 </div>
-<p>The simple usage:</p>
+<p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">ctc</span> <span class="o">=</span> <span class="n">warp_ctc</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                      <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
                      <span class="n">size</span><span class="o">=</span><span class="mi">1001</span><span class="p">,</span>
@@ -3409,6 +3414,7 @@ size of input and label are equal. The formula is as follows,</p>
 <div class="math">
 \[\begin{split}smooth_{L1}(x) = \begin{cases} 0.5x^2&amp; \text{if}  \ |x| &lt; 1 \\ |x|-0.5&amp; \text{otherwise} \end{cases}\end{split}\]</div>
 <p>More details can be found by referring to <a class="reference external" href="https://arxiv.org/pdf/1504.08083v2.pdf">Fast R-CNN</a></p>
+<p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">smooth_l1_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                       <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
 </pre></div>
@@ -3462,6 +3468,57 @@ It is used by recurrent layer group.</p>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Input layer name.</li>
 <li><strong>eos_id</strong> (<em>int</em>) &#8211; end id of sequence</li>
 <li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; extra layer attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">paddle.v2.config_base.Layer object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">paddle.v2.config_base.Layer</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="activation-with-learnable-parameter">
+<h2>Activation with learnable parameter<a class="headerlink" href="#activation-with-learnable-parameter" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="prelu">
+<h3>prelu<a class="headerlink" href="#prelu" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">prelu</code></dt>
+<dd><p>The Parameter Relu activation that actives outputs with a learnable weight.</p>
+<dl class="docutils">
+<dt>Reference:</dt>
+<dd>Delving Deep into Rectifiers: Surpassing Human-Level Performance on
+ImageNet Classification <a class="reference external" href="http://arxiv.org/pdf/1502.01852v1.pdf">http://arxiv.org/pdf/1502.01852v1.pdf</a></dd>
+</dl>
+<div class="math">
+\[\begin{split}z_i &amp;\quad if \quad z_i &gt; 0 \\
+a_i * z_i  &amp;\quad \mathrm{otherwise}\end{split}\]</div>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">prelu</span> <span class="o">=</span> <span class="n">prelu</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layers</span><span class="p">,</span> <span class="n">partial_sum</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Name of this layer.</li>
+<li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; The input layer.</li>
+<li><strong>partial_sum</strong> (<em>int</em>) &#8211; <p>this parameter makes a group of inputs share a same weight.</p>
+<ul>
+<li>partial_sum = 1, indicates the element-wise activation: each element has a weight.</li>
+<li>partial_sum = number of elements in one channel, indicates the channel-wise activation, elements in a channel share a same weight.</li>
+<li>partial_sum = number of outputs, indicates all elements share a same weight.</li>
+</ul>
+</li>
+<li><strong>param_attr</strong> (<em>paddle.v2.attr.ParameterAttribute|None</em>) &#8211; The parameter attribute. See paddle.v2.attr.ParameterAttribute for details.</li>
+<li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttributeNone</em>) &#8211; Extra layer configurations. Default is None.</li>
 </ul>
 </td>
 </tr>
