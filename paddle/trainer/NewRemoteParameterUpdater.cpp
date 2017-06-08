@@ -45,8 +45,8 @@ void NewRemoteParameterUpdater::init(
   }
 
   // init new parameter and gradient.
-  initNewParameter(newParameters_, PARAMETER_VALUE);
-  initNewParameter(newGradients_, PARAMETER_GRADIENT);
+  newParameters_ = initNewParameter(PARAMETER_VALUE);
+  newGradients_ = initNewParameter(PARAMETER_GRADIENT);
 
   // init parameter, one trainer will get the opportunity to int parameter and
   // send them to parameter server. Others will get the initialized parameter
@@ -60,7 +60,7 @@ void NewRemoteParameterUpdater::init(
     LOG(INFO) << "paddle_begin_init_params done";
   } else {
     paddle_get_params(
-        parameterClient_, names_, newParameters_, (int)parameters_.size());
+        parameterClient_, names_, newParameters_, parameterSize());
   }
 
   LOG(INFO) << "NewRemoteParameterUpdater initialized";

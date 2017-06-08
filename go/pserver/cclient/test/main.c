@@ -14,7 +14,6 @@ int main() {
   client c = paddle_new_pserver_client(addr, 1);
 retry:
   if (paddle_begin_init_params(c)) {
-
     paddle_parameter param;
     char name_a[] = "param_a";
     char name_b[] = "param_b";
