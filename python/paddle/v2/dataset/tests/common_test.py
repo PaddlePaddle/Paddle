@@ -57,6 +57,22 @@ class TestCommon(unittest.TestCase):
         for idx, e in enumerate(reader()):
             self.assertEqual(e, str("0"))
 
+    def test_convert(self):
+        def test_reader():
+            def reader():
+                for x in xrange(10):
+                    yield x
+
+            return reader
+
+        path = tempfile.mkdtemp()
+
+        paddle.v2.dataset.common.convert(path,
+                                         test_reader(), 4, 'random_images')
+
+        files = glob.glob(temp_path + '/random_images-*')
+        self.assertEqual(len(files), 3)
+
 
 if __name__ == '__main__':
     unittest.main()
