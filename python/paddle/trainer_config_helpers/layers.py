@@ -191,6 +191,14 @@ class LayerType(object):
     PAD_LAYER = "pad"
     MULTIPLEX_LAYER = "multiplex"
     ROW_CONV_LAYER = "row_conv"
+
+    PRINT_LAYER = 'print'
+    PRIORBOX_LAYER = 'priorbox'
+
+    CTC_LAYER = 'ctc'
+    WARP_CTC_LAYER = 'warp_ctc'
+    CRF_LAYER = 'crf'
+    CRF_DECODING_LAYER = 'crf_decoding'
     NCE_LAYER = 'nce'
 
     RANK_COST = 'rank-cost'

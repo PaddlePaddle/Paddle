@@ -43,13 +43,14 @@ void RowConvLayer::forward(PassType passType) {
   resetOutput(height, width);
 
   const auto startPos = getInput(0).sequenceStartPositions->getVector(useGpu_);
-  wDims_ = TensorShape({contexLength_, width});
+  MatrixPtr w = weight_->getW();
+  wDims_ = TensorShape({w->getHeight(), w->getWidth()});
 
   MatrixPtr outV = getOutputValue();
   BufferArgs inputs;
   BufferArgs outputs;
   inputs.addArg(*getInputValue(0), *startPos);
-  inputs.addArg(*weight_->getW(), wDims_);
+  inputs.addArg(*w, wDims_);
   outputs.addArg(*getOutputValue(), *startPos, ADD_TO);
 
   {
