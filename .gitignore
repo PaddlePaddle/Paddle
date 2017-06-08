@@ -3,6 +3,7 @@ build/
 build_doc/
 *.user
 
+*.pyc
 .vscode
 .idea
 .project
