@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/PaddlePaddle/Paddle/go/pserver/internal/connection"
+	"github.com/PaddlePaddle/Paddle/go/connection"
 )
 
 // TODO(helin): add RPC call retry logic
