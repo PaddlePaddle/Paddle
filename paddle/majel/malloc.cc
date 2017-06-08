@@ -37,6 +37,8 @@ void free_cuda(void* dest_d) {
   CHECK(cudaSuccess == err || cudaErrorCudartUnloading == err)
       << get_cuda_error_string();
 }
+
+void set_cuda_device(int device) { cudaSetDevice(cuda_device); }
 #endif
 
 class DefaultAllocator {
@@ -58,7 +60,7 @@ public:
 
 #ifndef PADDLE_ONLY_CPU
   void* operator()(majel::GpuPlace p) {
-    void* address = malloc_cuda(size_);
+    set_cuda_device(p.device) void* address = malloc_cuda(size_);
     return address;
   }
 #endif
@@ -78,6 +80,7 @@ public:
 
 #ifndef PADDLE_ONLY_CPU
   void operator()(majel::GpuPlace p) {
+    set_cuda_device(p.device);
     if (ptr_) {
       free_cuda(ptr_);
     }

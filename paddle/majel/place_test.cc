@@ -1,33 +1,45 @@
 #include "paddle/majel/place.h"
 #include <sstream>
 #include "gtest/gtest.h"
-#include "paddle/utils/Logging.h"
 
 TEST(Place, Equality) {
   majel::CpuPlace cpu;
   EXPECT_EQ(cpu, cpu);
 
 #ifndef PADDLE_ONLY_CPU
-  majel::GpuPlace gpu;
-  EXPECT_EQ(gpu, gpu);
-  EXPECT_FALSE(majel::places_are_same_class(cpu, gpu));
+  majel::GpuPlace g0(0), g1(1), gg0(0);
+  EXPECT_EQ(g0, g0);
+  EXPECT_EQ(g1, g1);
+  EXPECT_EQ(g0, gg0);
+  EXPECT_NE(g0, g1);
+  EXPECT_TRUE(majel::places_are_same_class(g0, gg0));
+  EXPECT_FALSE(majel::places_are_same_class(g0, cpu));
 #endif
 }
 
-TEST(Place, Default) { EXPECT_TRUE(majel::is_cpu_place(majel::get_place())); }
+TEST(Place, Default) {
+  EXPECT_TRUE(majel::is_cpu_place(majel::default_cpu()));
+  majel::set_place(majel::CpuPlace());
+  EXPECT_TRUE(majel::is_cpu_place(majel::get_place()));
+
+#ifndef PADDLE_ONLY_CPU
+  EXPECT_TRUE(majel::is_gpu_place(majel::get_place()));
+  EXPECT_TRUE(majel::is_gpu_place(majel::default_gpu()));
+#endif
+}
 
 TEST(Place, Print) {
-#ifndef PADDLE_ONLY_CPU
-  {
-    std::stringstream ss;
-    ss << majel::GpuPlace();
-    EXPECT_EQ("GpuPlace", ss.str());
-  }
-#endif
   {
     std::stringstream ss;
     ss << majel::CpuPlace();
     EXPECT_EQ("CpuPlace", ss.str());
   }
-  LOG(INFO) << "\n[----------] Done \n";
+
+#ifndef PADDLE_ONLY_CPU
+  {
+    std::stringstream ss;
+    ss << majel::GpuPlace(1);
+    EXPECT_EQ("GpuPlace(1)", ss.str());
+  }
+#endif
 }
