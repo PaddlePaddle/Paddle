@@ -92,7 +92,7 @@ class Topology(object):
         data_layers = self.data_layers()
 
         return [(nm, data_layers[nm].data_type)
-                for nm in self.proto().input_layer_names if nm in data_layers]
+                for nm in self.proto().input_layer_names]
 
     def get_layer_proto(self, name):
         for layer in self.__model_config__.layers:
