@@ -140,7 +140,17 @@ TODO by Assignees
 
 ### Beam Search with CTC and LM
 
-TODO by Assignees
+<div align="center">
+<img src="image/beam_search.png" width=400><br/>
+Figure 2. Algorithm for Beam Search Decoder.
+</div>
+
+- The **Beam Search Decoder** for DS2 CTC-trained network follows the similar approach in \[[3](#references)\] with a modification for the ambiguous part, as shown in Figure 2.
+- An **external defined scorer** would be passed into the decoder to evaluate a candidate prefix during decoding whenever a space character appended.
+- Such scorer is a unified class, may consisting of language model, word count or any customed evaluators.
+- The **language model** is built from Task 5, with a parameter should be carefully tuned to achieve minimum WER/CER (c.f. Task 7)
+- This decoder needs to perform with **high efficiency** for the convenience of parameters tuning and speech recognition in reality. 
+ 
 
 ## Future Work
 
@@ -153,3 +163,4 @@ TODO by Assignees
 
 1. Dario Amodei, etc., [Deep Speech 2 : End-to-End Speech Recognition in English and Mandarin](http://proceedings.mlr.press/v48/amodei16.pdf). ICML 2016.
 2. Dario Amodei, etc., [Deep Speech 2 : End-to-End Speech Recognition in English and Mandarin](https://arxiv.org/abs/1512.02595). 	arXiv:1512.02595.
+3. Awni Y. Hannun, etc. [First-Pass Large Vocabulary Continuous Speech Recognition using Bi-Directional Recurrent DNNs](https://arxiv.org/abs/1408.2873). arXiv:1408.2873
