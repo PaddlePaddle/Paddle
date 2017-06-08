@@ -149,10 +149,24 @@ def __get_used_layers__(output_layers, extra_layers=None):
     for layer in output_layers:
         dfs_travel(layer.full_name)
 
+    # print layer needs to be specially handled because no other
+    # layer depends on it. It is used to print the result of some
+    # layers when running the model for debug purpose. So we explicitly
+    # add a print layer to the topolty if its input is in the toplogy.
+    for layer in cp.g_config.model_config.layers:
+        if layer.type == 'print':
+            used = True
+            for inp in layer.inputs:
+                if inp.input_layer_name not in layer_names:
+                    used = False
+                    break
+            if used:
+                layer_names.add(layer.name)
+
     return layer_names
 
 
-def __get_used_parameters__(layer_names):
+def __get_used_parameters__(layer_names, sub_models):
     parameter_names = set()
     for name in layer_names:
         l = cp.g_layer_map[name]
@@ -161,6 +175,12 @@ def __get_used_parameters__(layer_names):
                 parameter_names.add(inp.input_parameter_name)
         if l.bias_parameter_name:
             parameter_names.add(l.bias_parameter_name)
+
+    for sub_model in sub_models:
+        for mem in sub_model.memories:
+            if mem.HasField("boot_bias_parameter_name"):
+                parameter_names.add(mem.boot_bias_parameter_name)
+
     return parameter_names
 
 
@@ -236,7 +256,6 @@ def parse_network(output_layers, extra_layers=None):
     layer_names = __get_used_layers__(output_layers + extra_layers)
     submodel_names = __get_used_submodels__(layer_names)
     submodel_names.add('root')
-    parameter_names = __get_used_parameters__(layer_names)
     evaluator_names = __get_used_evaluators__(layer_names)
     input_layer_names = set()
     output_layer_names = set()
@@ -251,10 +270,6 @@ def parse_network(output_layers, extra_layers=None):
             model_config.input_layer_names.append(l.name)
             input_layer_names.add(l.name)
 
-    for p in cp.g_config.model_config.parameters:
-        if p.name in parameter_names:
-            model_config.parameters.extend([p])
-
     for layer in output_layers:
         model_config.output_layer_names.append(layer.full_name)
         output_layer_names.add(layer.full_name)
@@ -268,6 +283,13 @@ def parse_network(output_layers, extra_layers=None):
             s = __trim_submodel__(s, layer_names, input_layer_names,
                                   output_layer_names, evaluator_names)
             model_config.sub_models.extend([s])
+
+    parameter_names = __get_used_parameters__(layer_names,
+                                              model_config.sub_models)
+
+    for p in cp.g_config.model_config.parameters:
+        if p.name in parameter_names:
+            model_config.parameters.extend([p])
 
     return model_config
 

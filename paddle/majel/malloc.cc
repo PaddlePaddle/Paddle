@@ -3,7 +3,7 @@
 #include <memory>
 
 #ifndef PADDLE_ONLY_CPU
-#include <cuda_runtime.h>
+#include "cuda_runtime.h"
 #endif
 
 namespace majel {
@@ -38,7 +38,7 @@ void free_cuda(void* dest_d) {
       << get_cuda_error_string();
 }
 
-void set_cuda_device(int device) { cudaSetDevice(cuda_device); }
+void set_cuda_device(int device) { cudaSetDevice(device); }
 #endif
 
 class DefaultAllocator {
@@ -60,7 +60,8 @@ public:
 
 #ifndef PADDLE_ONLY_CPU
   void* operator()(majel::GpuPlace p) {
-    set_cuda_device(p.device) void* address = malloc_cuda(size_);
+    set_cuda_device(p.device);
+    void* address = malloc_cuda(size_);
     return address;
   }
 #endif

@@ -1,11 +1,11 @@
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -56,11 +56,11 @@ IF(WITH_TESTING)
                          -DCMAKE_BUILD_TYPE:STRING=Release
     )
 
-    ADD_LIBRARY(gtest STATIC IMPORTED)
+    ADD_LIBRARY(gtest STATIC IMPORTED GLOBAL)
     SET_PROPERTY(TARGET gtest PROPERTY IMPORTED_LOCATION ${GTEST_LIBRARIES})
     ADD_DEPENDENCIES(gtest extern_gtest)
 
-    ADD_LIBRARY(gtest_main STATIC IMPORTED)
+    ADD_LIBRARY(gtest_main STATIC IMPORTED GLOBAL)
     SET_PROPERTY(TARGET gtest_main PROPERTY IMPORTED_LOCATION ${GTEST_MAIN_LIBRARIES})
     ADD_DEPENDENCIES(gtest_main extern_gtest)
 

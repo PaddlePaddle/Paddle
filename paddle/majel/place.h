@@ -33,7 +33,7 @@ public:
 };
 
 #ifndef PADDLE_ONLY_CPU
-typedef boost::variant<CpuPlace, GpuPlace> Place;
+typedef boost::variant<GpuPlace, CpuPlace> Place;
 #else
 typedef boost::variant<CpuPlace> Place;
 #endif
