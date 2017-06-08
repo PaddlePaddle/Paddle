@@ -12,7 +12,7 @@ from paddle.trainer.config_parser import logger
 try:
     import cv2
 except ImportError:
-    logger.warning("OpenCV2 is not installed, using PIL to prcoess")
+    logger.warning("OpenCV2 is not installed, using PIL to process")
     cv2 = None
 
 __all__ = ["CvTransformer", "PILTransformer", "MultiProcessImageTransformer"]
