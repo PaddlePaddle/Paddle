@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "libclient.h"
+#include "libpaddle_pserver_cclient.h"
 
 void fail() {
   // TODO(helin): fix: gtest using cmake is not working, using this

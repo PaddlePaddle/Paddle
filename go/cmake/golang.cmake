@@ -32,17 +32,21 @@ function(GO_LIBRARY NAME BUILD_TYPE)
   # will use the local changes in Paddle rather than checkout Paddle
   # in github.
   add_custom_target(copyPaddle
-    COMMAND ln -sf ${PADDLE_DIR} ${PADDLE_IN_GOPATH})
+    COMMAND rm -rf ${PADDLE_IN_GOPATH}/Paddle
+    COMMAND ln -sf ${PADDLE_DIR} ${PADDLE_IN_GOPATH}/Paddle)
   add_dependencies(goGet copyPaddle)
 
+  # "-ldflags" "-extldflags=-fno-PIC"
   add_custom_command(OUTPUT ${OUTPUT_DIR}/.timestamp
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
-    -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
+     -gcflags=-shared -asmflags=-shared -installsuffix=_shared -a
+     -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
     ${CMAKE_GO_FLAGS} ${GO_SOURCE}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
   add_custom_target(${NAME} ALL DEPENDS ${OUTPUT_DIR}/.timestamp ${ARGN})
-  add_dependencies(${NAME} goGet)
+  add_dependencies(${NAME} copyPaddle)
+#  add_dependencies(${NAME} goGet)
 
   if(NOT BUILD_TYPE STREQUAL "STATIC")
     install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME} DESTINATION bin)

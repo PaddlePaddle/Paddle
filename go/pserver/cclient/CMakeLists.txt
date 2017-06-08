@@ -9,5 +9,14 @@ project(cxx_go C Go)
 include(golang)
 include(flags)
 
-go_library(client STATIC)
+go_library(paddle_pserver_cclient STATIC)
+
+add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/trainer/libpaddle_pserver_cclient.a
+        COMMAND cp ${CMAKE_BINARY_DIR}/go/pserver/cclient/libpaddle_pserver_cclient.h ${PROJ_ROOT}/paddle/trainer/
+        COMMAND cp ${CMAKE_BINARY_DIR}/go/pserver/cclient/libpaddle_pserver_cclient.a ${PROJ_ROOT}/paddle/trainer/
+        WORKING_DIRECTORY ${PROJ_ROOT}/paddle
+        DEPENDS paddle_pserver_cclient)
+
+add_custom_target(paddle_pserver_cclient_lib ALL DEPENDS ${PROJ_ROOT}/paddle/trainer/libpaddle_pserver_cclient.a)
+
 add_subdirectory(test)
