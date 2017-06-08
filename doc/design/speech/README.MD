@@ -138,21 +138,21 @@ CTC-Beam search                         | Not supported yet.                    
 
 - Difference with sequence convolution
 
-The 1D sequence convolution (`paddle.layer.sequence_conv`) was supported, but this row convolution is different from it as shown in figure 2 and 3. In the figure, assumed the context length is 3 and the hidden size of each time step is `d`. The weight dimension of sequence convolution is `3d x d`. And weight dimension of row convolution is `3 x d`. The weights are shared among all time steps.
+  The 1D sequence convolution (`paddle.layer.sequence_conv`) was supported, but this row convolution is different from it as shown in figure 2 and 3. In the figures, assumed the context length is 3 and the hidden size of each time step is `d`. The weight dimension of sequence convolution is `3d x d`. And weight dimension of row convolution is `3 x d`. The weights are shared among all time steps.
 
 <div align="center">
 <img src="image/seq_conv.png" width=350><br/>
-Figure 1. Archetecture of Deep Speech 2 Network.
+Figure 1. Connections of Sequence Convolution.
 </div>
 
 <div align="center">
 <img src="image/row_conv.png" width=350><br/>
-Figure 1. Archetecture of Deep Speech 2 Network.
+Figure 1. Connections of Row Convolution.
 </div>
 
 - How to deal with boundary.
 
-There are usually two modes for convolution, namely `same` and `valid` mode. The `same` mode means the output has the same size with input. The `valid` mode means the output are only computed without zero-padded edges. We only support the `same` mode.
+  There are usually two modes for convolution, namely `same` and `valid` mode. The `same` mode means the output has the same size with input. The `valid` mode means the output are only computed without zero-padded edges. We only support the `same` mode for row convolution.
 
 ### Beam Search with CTC and LM
 
