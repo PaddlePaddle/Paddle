@@ -50,7 +50,6 @@ func main() {
 		panic("no valid datset specified.")
 	}
 
-	idx := 0
 	for _, path := range paths {
 		f, err := os.Open(path)
 		if err != nil {
@@ -66,7 +65,6 @@ func main() {
 		count := index.NumChunks()
 		for i := 0; i < count; i++ {
 			chunk := master.Chunk{
-				Idx:   idx,
 				Path:  path,
 				Index: *index.ChunkIndex(i),
 			}

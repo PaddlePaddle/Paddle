@@ -75,9 +75,8 @@ func NewService(chunks []Chunk, chunksPerTask int, timeoutDur time.Duration, tim
 
 // Chunk is a chunk of data consisted of several data instances.
 type Chunk struct {
-	Idx   int // index of the chunk within the file
 	Path  string
-	Index recordio.Index // block index
+	Index recordio.Index // chunk index
 }
 
 // Task is the basic unit of data instances assigned to trainers.
@@ -122,6 +121,8 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 	if err != nil {
 		return err
 	}
+
+	*task = t.Task
 
 	time.AfterFunc(s.timeoutDur, func(taskID int, epoch int) func() {
 		return func() {
@@ -174,5 +175,11 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 	t.NumTimeout = 0
 	s.taskQueues.Done = append(s.taskQueues.Done, t)
 	delete(s.taskQueues.Pending, taskID)
+
+	if len(s.taskQueues.Todo) == 0 {
+		s.taskQueues.Todo = s.taskQueues.Done
+		s.taskQueues.Done = nil
+	}
+
 	return s.snapshot()
 }

@@ -47,7 +47,7 @@ func NewClient(l Lister, pserverNum int, sel Selector) *Client {
 // monitorPservers monitors pserver addresses, and updates connection
 // when the address changes.
 func (c *Client) monitorPservers(l Lister, pserverNum int) {
-	knownServers := make([]Server, pserverNum)
+	lastServers := make([]Server, pserverNum)
 	ticker := time.NewTicker(10 * time.Second)
 	monitor := func() {
 		curServers := make([]Server, pserverNum)
@@ -56,8 +56,17 @@ func (c *Client) monitorPservers(l Lister, pserverNum int) {
 			curServers[l.Index] = l
 		}
 
-		for i := range knownServers {
-			if knownServers[i].Addr != curServers[i].Addr {
+		for i := range lastServers {
+			if lastServers[i].Addr != curServers[i].Addr {
+				if curServers[i].Addr == "" {
+					err := c.pservers[i].Close()
+					if err != nil {
+						log.Println(err)
+					}
+
+					continue
+				}
+
 				err := c.pservers[i].Connect(curServers[i].Addr)
 				if err != nil {
 					log.Println(err)
@@ -65,12 +74,12 @@ func (c *Client) monitorPservers(l Lister, pserverNum int) {
 					// connect to addr failed, set
 					// to last known addr in order
 					// to retry next time.
-					curServers[i].Addr = knownServers[i].Addr
+					curServers[i].Addr = lastServers[i].Addr
 				}
 			}
 		}
 
-		knownServers = curServers
+		lastServers = curServers
 	}
 
 	monitor()
