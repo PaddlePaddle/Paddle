@@ -7,9 +7,12 @@ namespace optimizer {
 
 class AdamOptimizer : public ParameterOptimizer {
 public:
-  AdamOptimizer(
-      double beta_1, double beta_2, double epsilon, double decay, LrPolicy *lr)
-      : ParameterOptimizer(lr),
+  AdamOptimizer(Tensor *parameter,
+                LrPolicy *lr double beta_1,
+                double beta_2,
+                double epsilon,
+                double decay)
+      : ParameterOptimizer(parameter, lr),
         momentums_(nullptr),
         velocitys_(nullptr),
         beta_1_(beta_1),

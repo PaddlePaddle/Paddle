@@ -7,21 +7,31 @@ namespace optimizer {
 
 class AdadeltaOptimizer : public ParameterOptimizer {
 public:
-  AdadeltaOptimizer(double rho, double epsilon, double decay, LrPolicy *lr)
-      : ParameterOptimizer(lr),
+  AdadeltaOptimizer(
+      Tensor *parameter, LrPolicy *lr, double rho, double epsilon, double decay)
+      : ParameterOptimizer(parameter, lr),
         accum_gradient_(nullptr),
         accum_delta_(nullptr),
         update_delta_(nullptr),
         rho_(rho),
         epsilon_(epsilon),
-        decay_(decay) {}
+        decay_(decay) {
+    size_t size = p->size();
+    if (accum_gradient_) delete accum_gradient_;
+    accum_gradient_ = new Tensor(size);
+    if (accum_delta_) delete accum_delta_;
+    accum_delta_ = new Tensor(size);
+    if (update_delta_) delete update_delta_;
+    update_delta_ = new Tensor(size);
+  }
   ~AdadeltaOptimizer() {
     if (accum_gradient_) delete accum_gradient_;
     if (accum_delta_) delete accum_delta_;
     if (update_delta_) delete update_delta_;
   }
   void Update(const Tensor *gradient);
-  void set_weight(Tensor *p);
+  const char *SerializeState(int *state_len);
+  void DeSerializeState(const std::string &state);
 
 private:
   Tensor *accum_gradient_;

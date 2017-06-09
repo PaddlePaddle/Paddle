@@ -44,13 +44,13 @@ paddle_optimizer* paddle_create_optimizer(const unsigned char* config_proto,
                                           const int state_len) {
   paddle_optimizer* optimizer = new paddle_optimizer;
   std::string config(config_proto, config_proto + config_proto_len);
-  optimizer->impl = ParameterOptimizer::Create(config);
+  Tensor* parameter =
+      new Tensor(reinterpret_cast<float*>(param_buffer), num_bytes);
+  optimizer->impl = ParameterOptimizer::Create(config, parameter);
   if (state != nullptr) {
     std::string s(state, state + state_len);
     optimizer->impl->DeSerializeState(s);
   }
-  Tensor* param = new Tensor(reinterpret_cast<float*>(param_buffer), num_bytes);
-  optimizer->impl->set_weight(param);
   return optimizer;
 }
 
@@ -77,6 +77,7 @@ int paddle_optimizer_get_weights(paddle_optimizer* o, void** param_buffer) {
 }
 
 int paddle_optimizer_get_state(paddle_optimizer* o, const char** state) {
-  *state = o->impl->SerializeState();
-  return strlen(*state);
+  int state_len = 0;
+  *state = o->impl->SerializeState(&state_len);
+  return state_len;
 }

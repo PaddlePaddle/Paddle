@@ -7,16 +7,19 @@ namespace optimizer {
 
 class AdagradOptimizer : public ParameterOptimizer {
 public:
-  AdagradOptimizer(double epsilon, double decay, LrPolicy *lr)
-      : ParameterOptimizer(lr),
-        accum_gradient_(nullptr),
-        epsilon_(epsilon),
-        decay_(decay) {}
+  AdagradOptimizer(Tensor *parameter,
+                   LrPolicy *lr,
+                   double epsilon,
+                   double decay)
+      : ParameterOptimizer(parameter, lr), epsilon_(epsilon), decay_(decay) {
+    size_t size = p->size();
+    if (accum_gradient_) delete accum_gradient_;
+    accum_gradient_ = new Tensor(size);
+  }
   ~AdagradOptimizer() {
     if (accum_gradient_) delete accum_gradient_;
   }
   void Update(const Tensor *gradient);
-  void set_weight(Tensor *p);
 
 private:
   Tensor *accum_gradient_;

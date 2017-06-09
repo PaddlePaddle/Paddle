@@ -5,12 +5,6 @@
 namespace paddle {
 namespace optimizer {
 
-void AdagradOptimizer::set_weight(Tensor* p) {
-  parameter_ = p;
-  size_t size = p->size();
-  accum_gradient_ = new Tensor(size);
-}
-
 void AdagradOptimizer::Update(const Tensor* gradient) {
   num_sample_passed_ += 1;
   double learning_rate = lr_policy_->LearningRate(num_sample_passed_);
@@ -23,6 +17,8 @@ void AdagradOptimizer::Update(const Tensor* gradient) {
                 learning_rate * decay_ * param[i];
   }
 }
+const char* SGDOptimizer::SerializeState(int* state_len) { NIMPL; }
 
+void SGDOptimizer::DeSerializeState(const std::string& str) { NIMPL; }
+// namespace optimizer
 }  // namespace optimizer
-}  // namespace paddle

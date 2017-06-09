@@ -5,13 +5,14 @@ option optimize_for = LITE_RUNTIME;
 package paddle;
 
 message SGDConfig {
-  // SGD 
+  // SGD
   // momentum: float >= 0. Parameter updates momentum.
   // decay: float >= 0. Learning rate decay over each update.
   // nesterov: boolean. Whether to apply Nesterov momentum.
   optional double momentum = 21 [default = 0.0];
   optional double decay = 23 [default = 0.0];
   optional bool nesterov =24 [default = false];
+
 }
 
 
@@ -75,14 +76,38 @@ enum DataType {
 }
   required DataType data_type = 1;
   repeated bytes content = 2;
-  optional uint64 size = 3;
 }
 
 message OptimizerState {
-  // match old training state with format parser
-  required string version = 100;
-  repeated TensorProto data = 1;
-  repeated double hyperparam = 3;
+  optional double learning_rate = 101;
+  optional double lr_decay_a = 102;
+  optional double lr_decay_b = 103;
+  optional double num_sample_passed = 104;
+  // momentum
+  optional TensorProto parameter = 105;
+  optional TensorProto momentums = 1;
+
+  // adadelta
+  optional TensorProto accum_gradient = 2;
+  optional TensorProto accum_delta = 3;
+  optional TensorProto update_delta = 4;
+
+  // adam
+  optional TensorProto velocitys = 5;
+
+  // momentum
+  optional double momentum = 6;
+  optional double decay = 7;
+  optional bool nesterov = 8;
+
+  // adadelta
+  optional double rho = 9;
+  optional double epsilon = 10;
+
+  // adam
+  optional double beta_1 = 11;
+  optional double beta_2 = 12;
+
 }
 
 message OptimizerConfig {

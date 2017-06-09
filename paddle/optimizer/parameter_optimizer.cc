@@ -10,8 +10,8 @@
 namespace paddle {
 namespace optimizer {
 
-ParameterOptimizer *ParameterOptimizer::Create(
-    const std::string &config_proto) {
+ParameterOptimizer *ParameterOptimizer::Create(const std::string &config_proto,
+                                               Tensor *parameter) {
   paddle::OptimizerConfig config;
   CHECK(config.ParseFromString(config_proto) == 0)
       << "failed parse optimizer config";
@@ -29,34 +29,38 @@ ParameterOptimizer *ParameterOptimizer::Create(
   };
   LrPolicy *lr = select_lr_policy(config);
   auto select_optimizer =
-      [=](const OptimizerConfig &config) -> ParameterOptimizer * {
+      [=](Tensor *parameter,
+          const OptimizerConfig &config) -> ParameterOptimizer * {
     if (config.optimizer() == OptimizerConfig::SGD) {
-      return new SGDOptimizer(config.sgd().momentum(),
+      return new SGDOptimizer(parameter,
+                              lr,
+                              config.sgd().momentum(),
                               config.sgd().decay(),
-                              config.sgd().nesterov(),
-                              lr);
+                              config.sgd().nesterov());
     }
     if (config.optimizer() == OptimizerConfig::Adadelta) {
-      return new AdadeltaOptimizer(config.adadelta().rho(),
+      return new AdadeltaOptimizer(parameter,
+                                   lr,
+                                   config.adadelta().rho(),
                                    config.adadelta().epsilon(),
-                                   config.adadelta().decay(),
-                                   lr);
+                                   config.adadelta().decay());
     }
     if (config.optimizer() == OptimizerConfig::Adagrad) {
       return new AdagradOptimizer(
-          config.adagrad().epsilon(), config.adagrad().decay(), lr);
+          parameter, lr, config.adagrad().epsilon(), config.adagrad().decay());
     }
     if (config.optimizer() == OptimizerConfig::Adam) {
-      return new AdamOptimizer(config.adam().beta_1(),
+      return new AdamOptimizer(parameter,
+                               lr,
+                               config.adam().beta_1(),
                                config.adam().beta_2(),
                                config.adam().epsilon(),
-                               config.adam().decay(),
-                               lr);
+                               config.adam().decay());
     }
     // default
     LOG(WARNING)
         << "have not select any Optimizer. use SGDOptimizer in default";
-    return new SGDOptimizer(0.0, 0.0, false, lr);
+    return new SGDOptimizer(parameter, lr, 0.0, 0.0, false);
   };
   return select_optimizer(config);
 }
@@ -65,8 +69,6 @@ float *ParameterOptimizer::get_weight(int *param_size) const {
   *param_size = (int)parameter_->size();
   return parameter_->get_buffer();
 }
-
-void ParameterOptimizer::set_weight(Tensor *p) { parameter_ = p; }
 
 }  // namespace optimizer
 }  // namespace paddle

@@ -28,5 +28,33 @@ void AdamOptimizer::Update(const Tensor *gradient) {
         learning_rate * (m[i] / std::sqrt(v[i] + epsilon_) + decay_ * param[i]);
   }
 }
+
+const char *AdadeltaOptimizer::SerializeState(int *state_len) {
+  OptimizerState state;
+  state.set_learning_rate(lr_policy_->LearningRate(num_sample_passed_));
+  state.set_num_sample_passed(num_sample_passed_);
+
+  TensorToProto(*parameter_, state.mutable_parameter());
+  TensorToProto(*velocitys_, state.mutable_momentums());
+
+  state.set_beta_1(beta_1_);
+  state.set_beta_2(beta_2_);
+  state.set_decay(decay_);
+  *state_len += CalStateSize(
+      parameter_, momentums_, velocitys_, beta_1_, beta_2, epsilon_ decay_);
+  return state.SerializeAsString().c_str();
+}
+
+void AdadeltaOptimizer::DeSerializeState(const std::string &str) {
+  OptimizerState state;
+  state.ParseFromString(str);
+  lr_policy_->set(state.learning_rate());
+  num_sample_passed_ = state.num_sample_passed();
+
+  ProtoToTensor(state.parameter(), parameter_);
+  ProtoToTensor(state.velocitys(), velocitys__);
+  beta_1_ = state.beta_1();
+  beta_2_ = state.beta_2();
+}
 }  // namespace optimizer
 }  // namespace paddle
