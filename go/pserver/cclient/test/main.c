@@ -2,7 +2,7 @@
 
 #include "libclient.h"
 
-// TODO(helin): fix: gtest using cmake is not working, using this
+// TODO(helin): Fix: gtest using cmake is not working, using this
 // hacky way for now.
 #define fail()                                          \
   fprintf(stderr, "info: %s:%d: ", __FILE__, __LINE__); \
@@ -25,7 +25,7 @@ void getParams(paddle_pserver_client c) {
   paddle_parameter param_b;
   char name_a[] = "param_a";
   char name_b[] = "param_b";
-  // must pre-allocate the content for parameter to receive.
+  // Must pre-allocate the prameter content before calling paddle_get_params.
   unsigned char content_a[2000] = {};
   unsigned char content_b[3000] = {};
   param_a.element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
