@@ -37,6 +37,7 @@ const char* AdadeltaOptimizer::SerializeState(int* state_len) {
   state.set_nesterov(epsilon_);
   state.set_momentum(rho_);
   state.set_decay(decay_);
+  // can be used when memory alignment to system
   *state_len += CalStateSize(parameter_,
                              accum_gradient_,
                              accum_delta_,
