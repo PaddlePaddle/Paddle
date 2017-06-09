@@ -40,14 +40,8 @@ public:
   StringPiece(const char* s);
   StringPiece(const std::string& s);
 
-  // For a string, cap() returns the size of storage and len()
-  // returns the currently used storage.  For a StringPiece these
-  // are the same value.
-  size_t cap() const { return size_; }
-  size_t len() const { return size_; }
-  size_t size() const { return size_; }
-
   const char* data() const { return data_; }
+  size_t len() const { return size_; }
 
   char operator[](size_t n) const {
     assert(n < len());

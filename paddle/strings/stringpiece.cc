@@ -30,8 +30,8 @@ StringPiece::StringPiece(const char* d, size_t n) : data_(d), size_(n) {
         "StringPiece requires len to be 0 for NULL data");
 }
 
-StringPiece::StringPiece(const char* s) : data_(s), size_(strlen(s)) {
-  if (s == NULL) size_ = 0;
+StringPiece::StringPiece(const char* s) : data_(s) {
+  size_ = (s == NULL) ? 0 : strlen(s);
 }
 
 StringPiece::StringPiece(const std::string& s)

@@ -22,7 +22,6 @@ TEST(StringPiece, Construct) {
     paddle::StringPiece s;
     EXPECT_EQ(NULL, s.data());
     EXPECT_EQ(0U, s.len());
-    EXPECT_EQ(0U, s.cap());
   }
   {
     EXPECT_THROW([] { paddle::StringPiece s(NULL, 10000U); }(),
@@ -43,16 +42,36 @@ TEST(StringPiece, Construct) {
 TEST(StringPiece, CopyAndAssign) {
   paddle::StringPiece empty;
   EXPECT_EQ(0U, empty.len());
-  EXPECT_EQ(0U, empty.cap());
 
   paddle::StringPiece a("hello");
   paddle::StringPiece b = a;
   EXPECT_EQ(b.len(), strlen("hello"));
-  EXPECT_EQ(b.cap(), strlen("hello"));
   EXPECT_EQ(a, b);
 
   std::string storage("hello");
   paddle::StringPiece c(storage);
   EXPECT_EQ(a, c);
   EXPECT_NE(a.data(), c.data());
+}
+
+TEST(StringPiece, Comparison) {
+  {
+    paddle::StringPiece a("hello");
+    paddle::StringPiece b("world");
+    EXPECT_TRUE(a != b);
+    EXPECT_FALSE(a == b);
+    EXPECT_TRUE(a < b);
+    EXPECT_TRUE(a <= b);
+    EXPECT_FALSE(a > b);
+    EXPECT_FALSE(a >= b);
+  }
+  {
+    paddle::StringPiece a, b;
+    EXPECT_TRUE(a == b);
+    EXPECT_FALSE(a != b);
+    EXPECT_FALSE(a < b);
+    EXPECT_FALSE(a > b);
+    EXPECT_TRUE(a <= b);
+    EXPECT_TRUE(a >= b);
+  }
 }
