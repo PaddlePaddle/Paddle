@@ -22,7 +22,11 @@ DECLARE_string(save_dir);
 namespace paddle {
 NewRemoteParameterUpdater::NewRemoteParameterUpdater(
     const OptimizationConfig &config, const std::string pserverSpec)
-    : pserverSpec_(pserverSpec) {}
+    : parameterClient_(-1),
+      newParameters_(nullptr),
+      newGradients_(nullptr),
+      names_(nullptr),
+      pserverSpec_(pserverSpec) {}
 
 void NewRemoteParameterUpdater::init(
     const std::vector<ParameterPtr> &parameters) {
@@ -72,7 +76,7 @@ void NewRemoteParameterUpdater::finishBatch(real cost) {
   LOG(INFO) << "finishBatch in, cost: " << cost;
 
   // send gradient to parameter server.
-  paddle_send_grads(parameterClient_, *newGradients_, parameterSize());
+  paddle_send_grads(parameterClient_, newGradients_, parameterSize());
   // get the updated parameter from parameterClient.
   paddle_get_params(parameterClient_, names_, newParameters_, parameterSize());
 

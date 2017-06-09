@@ -32,6 +32,7 @@ public:
   NewRemoteParameterUpdater(const OptimizationConfig& config,
                             const std::string pserverSpec);
   ~NewRemoteParameterUpdater() {
+    LOG(INFO) << "~NewRemoteParameterUpdater in";
     releaseNewParameter(newParameters_);
     releaseNewParameter(newGradients_);
     if (parameterClient_ >= 0) paddle_pserver_client_release(parameterClient_);
@@ -64,46 +65,47 @@ protected:
   virtual void updateImpl(Parameter* para);
 
 private:
-    int parameterSize() {
-      return (int)parameters_.size();
+  int parameterSize() { return (int)parameters_.size(); }
+
+  /**
+   * init parameter of go paddle pserver cclient.
+   * @param new_params
+   * @param type
+   */
+  paddle_parameter** initNewParameter(ParameterType type) {
+    paddle_parameter** new_params =
+        (paddle_parameter**)malloc(sizeof(paddle_parameter*) * parameterSize());
+    for (int i = 0; i < parameterSize(); ++i) {
+      new_params[i] = (paddle_parameter*)malloc(sizeof(paddle_parameter));
+      memset(new_params[i], 0, sizeof(paddle_parameter));
     }
 
-    /**
-     * init parameter of paddle pserver cclient.
-     * @param new_params
-     * @param type
-     */
-    paddle_parameter** initNewParameter(ParameterType type) {
-      paddle_parameter** new_params =
-              (paddle_parameter**)malloc(sizeof(paddle_parameter*) * parameterSize());
-      for (int i = 0; i < parameterSize(); ++i) {
-        new_params[i] = (paddle_parameter*)malloc(sizeof(paddle_parameter));
-        memset(new_params[i], 0, sizeof(paddle_parameter));
-      }
-
-      for (int i = 0; i < parameterSize(); ++i) {
-        ParameterPtr param = parameters_[i];
-        new_params[i]->content_len = 10;
-        new_params[i]->element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
-        new_params[i]->name = (char*)param->getName().c_str();
-        new_params[i]->content =
-                (unsigned char*)(param->getBuf(type).get()->getData());
-        new_params[i]->content_len = (int)param->getBuf(type).get()->getSize();
-      }
-      return new_params;
+    for (int i = 0; i < parameterSize(); ++i) {
+      ParameterPtr param = parameters_[i];
+      new_params[i]->content_len = 10;
+      new_params[i]->element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
+      new_params[i]->name = (char*)param->getName().c_str();
+      new_params[i]->content =
+          (unsigned char*)(param->getBuf(type).get()->getData());
+      new_params[i]->content_len = (int)param->getBuf(type).get()->getSize();
     }
+    return new_params;
+  }
 
-    void releaseNewParameter(paddle_parameter** newParams) {
-      if (newParams != NULL) {
-        for (int i = 0; i < parameterSize(); ++i) {
-          paddle_release_param(newParams[i]);
+  void releaseNewParameter(paddle_parameter** newParams) {
+    if (newParams != nullptr) {
+      for (int i = 0; i < parameterSize(); ++i) {
+        auto param = newParams[i];
+        if (param != nullptr) {
+          paddle_release_param(param);
         }
       }
     }
+  }
 
 protected:
   /// internal parameter client object for exchanging data with pserver
-  client parameterClient_ = -1;
+  client parameterClient_;
   /// the parameters for new pserver client
   paddle_parameter** newParameters_;
   /// the gradinets for new pserver client

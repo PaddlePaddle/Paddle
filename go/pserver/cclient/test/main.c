@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "libpaddle_pserver_cclient.h"
 
@@ -7,6 +8,21 @@ void fail() {
   // hacky way for now.
   printf("test failed.\n");
   exit(-1);
+}
+
+void print_parameter(paddle_gradient* param) {
+  if (param == NULL) {
+    printf("param is NULL!!\n");
+  } else {
+    printf("==== parameter ====\n");
+    printf("name: %s\n", param->name);
+    printf("content_len: %d\n", param->content_len);
+    printf("content_type: %d\n", param->element_type);
+    for (int i = 0; i < param->content_len; ++i) {
+      printf("0x%x ", param->content[i]);
+    }
+    printf("\n");
+  }
 }
 
 int main() {
@@ -40,18 +56,42 @@ retry:
     fail();
   }
 
-  unsigned char content[] = {0x00, 0x11, 0x22};
-  paddle_gradient grads[2] = {
-      {"param_a", PADDLE_ELEMENT_TYPE_FLOAT32, content, 3},
-      {"param_b", PADDLE_ELEMENT_TYPE_INT32, content, 3}};
+  unsigned char content1[] = {0x12, 0x23, 0x34};
+  unsigned char content2[] = {0x45, 0x56, 0x67};
 
-  if (paddle_send_grads(c, grads, 2) != 0) {
+  paddle_gradient** new_params =
+      (paddle_gradient**)malloc(sizeof(paddle_gradient*) * 2);
+  new_params[0] = (paddle_gradient*)malloc(sizeof(paddle_gradient));
+  new_params[0]->name = "param_a";
+  new_params[0]->content = content1;
+  new_params[0]->content_len = 3;
+  new_params[0]->element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
+
+  new_params[1] = (paddle_gradient*)malloc(sizeof(paddle_gradient));
+  new_params[1]->name = "param_b";
+  new_params[1]->content = content2;
+  new_params[1]->content_len = 3;
+  new_params[1]->element_type = PADDLE_ELEMENT_TYPE_INT32;
+
+  print_parameter(new_params[0]);
+  print_parameter(new_params[1]);
+
+  if (paddle_send_grads(c, new_params, 2) != 0) {
     fail();
   }
 
   paddle_parameter* params[2] = {NULL, NULL};
   char* names[] = {"param_a", "param_b"};
   if (paddle_get_params(c, names, params, 2) != 0) {
+    fail();
+  }
+
+  print_parameter(params[0]);
+  print_parameter(params[1]);
+
+  /// change name of parameter.
+  char* names2[] = {"param_1", "param_2"};
+  if (paddle_get_params(c, names2, params, 2) == 0) {
     fail();
   }
 
