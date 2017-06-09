@@ -9,8 +9,10 @@ import (
 // ElementType is the type of elements of a Parameter.
 type ElementType int
 
-var ErrAlreadyInitialized = errors.New("pserver already initialized")
-var ErrUninitialized = errors.New("pserver not fully initialized")
+const (
+	AlreadyInitialized = "pserver already initialized"
+	Uninitialized      = "pserver not fully initialized"
+)
 
 // Supported element types
 const (
@@ -59,7 +61,7 @@ func NewService() *Service {
 func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, dummy *int) error {
 	select {
 	case <-s.initialized:
-		return ErrAlreadyInitialized
+		return errors.New(AlreadyInitialized)
 	default:
 	}
 
@@ -80,7 +82,7 @@ func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, dummy *int) er
 func (s *Service) FinishInitParams(dummy0 int, dummy1 *int) error {
 	select {
 	case <-s.initialized:
-		return ErrAlreadyInitialized
+		return errors.New(AlreadyInitialized)
 	default:
 	}
 
@@ -94,7 +96,7 @@ func (s *Service) SendGrad(g Gradient, dummy *int) error {
 	select {
 	case <-s.initialized:
 	default:
-		return ErrUninitialized
+		return errors.New(Uninitialized)
 	}
 
 	s.mu.Lock()
