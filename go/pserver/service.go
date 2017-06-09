@@ -29,6 +29,10 @@ type Parameter struct {
 	Content     []byte
 }
 
+func (p *Parameter) toString() {
+	fmt.Println(p.Name, p.ElementType, p.Content)
+}
+
 // ParameterWithConfig contains the parameter and the configuration.
 type ParameterWithConfig struct {
 	Param  Parameter

@@ -42,6 +42,7 @@ import (
 	"strings"
 	"sync"
 	"unsafe"
+	"fmt"
 
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
@@ -204,12 +205,14 @@ func paddle_get_params(client C.client, names **C.char, dst **C.paddle_parameter
 		}
 
 		p := ps[i]
-		param := *(**C.paddle_parameter)(unsafe.Pointer((uintptr(unsafe.Pointer(dst)) + uintptr(i)*unsafe.Sizeof(*dst))))
+		paramPtr := (**C.paddle_parameter)(unsafe.Pointer((uintptr(unsafe.Pointer(dst)) + uintptr(i)*unsafe.Sizeof(*dst))))
+		param := *paramPtr
 		nameReady := false
 		contentAllocated := false
 
 		if unsafe.Pointer(param) == nullPtr {
-			param = (*C.paddle_parameter)(C.calloc(1, C.size_t(unsafe.Sizeof(*param))))
+			*paramPtr = (*C.paddle_parameter)(C.calloc(1, C.size_t(unsafe.Sizeof(*param))))
+			param = *paramPtr
 		} else {
 			if unsafe.Pointer(param.name) != nullPtr {
 				if n := C.GoString(param.name); n != p.Name {

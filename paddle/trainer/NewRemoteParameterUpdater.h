@@ -33,8 +33,8 @@ public:
                             const std::string pserverSpec);
   ~NewRemoteParameterUpdater() {
     LOG(INFO) << "~NewRemoteParameterUpdater in";
-    releaseNewParameter(newParameters_);
-    releaseNewParameter(newGradients_);
+//    releaseNewParameter(newParameters_);
+//    releaseNewParameter(newGradients_);
     if (parameterClient_ >= 0) paddle_pserver_client_release(parameterClient_);
   }
 

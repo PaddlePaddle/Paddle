@@ -21,7 +21,7 @@ void print_parameter(paddle_gradient* param) {
     for (int i = 0; i < param->content_len; ++i) {
       printf("0x%x ", param->content[i]);
     }
-    printf("\n");
+    printf("\n\n");
   }
 }
 
@@ -33,17 +33,18 @@ retry:
     paddle_parameter param;
     char name_a[] = "param_a";
     char name_b[] = "param_b";
-    unsigned char content[] = {0x00, 0x00, 0x00};
+    unsigned char content1[] = {0x01, 0x02, 0x03};
     param.element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
     param.name = name_a;
-    param.content = content;
+    param.content = content1;
     param.content_len = 3;
     if (paddle_init_param(c, param, NULL, 0) != 0) {
       goto retry;
     }
+    unsigned char content2[] = {0x04, 0x05, 0x06};
     param.element_type = PADDLE_ELEMENT_TYPE_INT32;
     param.name = name_b;
-    param.content = content;
+    param.content = content2;
     param.content_len = 3;
     if (paddle_init_param(c, param, NULL, 0) != 0) {
       goto retry;
