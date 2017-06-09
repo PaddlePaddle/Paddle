@@ -17,7 +17,7 @@ unsigned CalStateSize(const HEAD& head, const TAIL&... tail) {
   if (std::is_fundamental<HEAD>::value) {
     return sizeof head + CalStateSize(tail...);
   } else {
-    return sizeof(head[0] * head->size()) + CalStateSize(tail...);
+    return sizeof(head[0]) * head->size() + CalStateSize(tail...);
   }
 }
 

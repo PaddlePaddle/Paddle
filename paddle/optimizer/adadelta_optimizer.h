@@ -10,9 +10,6 @@ public:
   AdadeltaOptimizer(
       Tensor *parameter, LrPolicy *lr, double rho, double epsilon, double decay)
       : ParameterOptimizer(parameter, lr),
-        accum_gradient_(nullptr),
-        accum_delta_(nullptr),
-        update_delta_(nullptr),
         rho_(rho),
         epsilon_(epsilon),
         decay_(decay) {

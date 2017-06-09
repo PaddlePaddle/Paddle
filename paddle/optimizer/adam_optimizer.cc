@@ -4,13 +4,6 @@
 namespace paddle {
 namespace optimizer {
 
-void AdamOptimizer::set_weight(Tensor *p) {
-  parameter_ = p;
-  size_t size = p->size();
-  momentums_ = new Tensor(size);
-  velocitys_ = new Tensor(size);
-}
-
 void AdamOptimizer::Update(const Tensor *gradient) {
   num_sample_passed_ += 1;
   double learning_rate = lr_policy_->LearningRate(num_sample_passed_);

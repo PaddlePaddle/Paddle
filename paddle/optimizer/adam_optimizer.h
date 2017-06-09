@@ -13,18 +13,19 @@ public:
                 double epsilon,
                 double decay)
       : ParameterOptimizer(parameter, lr),
-        momentums_(nullptr),
-        velocitys_(nullptr),
         beta_1_(beta_1),
         beta_2_(beta_2),
         epsilon_(epsilon),
-        decay_(decay) {}
+        decay_(decay) {
+    size_t size = p->size();
+    momentums_ = new Tensor(size);
+    velocitys_ = new Tensor(size);
+  }
   ~AdamOptimizer() {
     if (momentums_) delete momentums_;
     if (velocitys_) delete velocitys_;
   }
   void Update(const Tensor *gradient);
-  void set_weight(Tensor *p);
 
 private:
   Tensor *momentums_;

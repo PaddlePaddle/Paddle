@@ -20,6 +20,8 @@ public:
     if (accum_gradient_) delete accum_gradient_;
   }
   void Update(const Tensor *gradient);
+  const char *SerializeState(int *state_len);
+  void DeSerializeState(const std::string &state);
 
 private:
   Tensor *accum_gradient_;
