@@ -15,8 +15,7 @@ func TestFull(t *testing.T) {
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
 	p.ElementType = pserver.Int32
-	var dummy int
-	err := s.InitParam(pserver.ParameterWithConfig{Param: p, Config: nil}, &dummy)
+	err := s.InitParam(pserver.ParameterWithConfig{p, nil}, nil)
 	if err != nil {
 		t.FailNow()
 	}
@@ -25,12 +24,12 @@ func TestFull(t *testing.T) {
 	p1.Name = "param_b"
 	p1.Content = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	p1.ElementType = pserver.Float32
-	err = s.InitParam(pserver.ParameterWithConfig{Param: p1, Config: nil}, &dummy)
+	err = s.InitParam(pserver.ParameterWithConfig{p1, nil}, nil)
 	if err != nil {
 		t.FailNow()
 	}
 
-	err = s.FinishInitParams(0, &dummy)
+	err = s.FinishInitParams(0, nil)
 	if err != nil {
 		t.FailNow()
 	}
@@ -46,11 +45,11 @@ func TestFull(t *testing.T) {
 	}
 
 	g1, g2 := pserver.Gradient(p1), pserver.Gradient(p)
-	err = s.SendGrad(g1, &dummy)
+	err = s.SendGrad(g1, nil)
 	if err != nil {
 		t.FailNow()
 	}
-	err = s.SendGrad(g2, &dummy)
+	err = s.SendGrad(g2, nil)
 
 	if err != nil {
 		t.FailNow()
@@ -74,23 +73,21 @@ func TestFull(t *testing.T) {
 
 func TestMultipleInit(t *testing.T) {
 	s := pserver.NewService()
-	var dummy int
-	err := s.FinishInitParams(0, &dummy)
+	err := s.FinishInitParams(0, nil)
 	if err != nil {
 		t.FailNow()
 	}
 
-	err = s.FinishInitParams(0, &dummy)
-	if err.Error() != pserver.AlreadyInitialized {
+	err = s.FinishInitParams(0, nil)
+	if err != pserver.ErrAlreadyInitialized {
 		t.FailNow()
 	}
 }
 
 func TestUninitialized(t *testing.T) {
 	s := pserver.NewService()
-	var dummy int
-	err := s.SendGrad(pserver.Gradient{}, &dummy)
-	if err.Error() != pserver.Uninitialized {
+	err := s.SendGrad(pserver.Gradient{}, nil)
+	if err != pserver.ErrUninitialized {
 		t.FailNow()
 	}
 }
@@ -112,8 +109,7 @@ func TestBlockUntilInitialized(t *testing.T) {
 
 	wg.Add(1)
 	go func() {
-		var dummy int
-		err := s.Save("", &dummy)
+		err := s.Save("", nil)
 		if err != nil {
 			t.FailNow()
 		}
@@ -134,13 +130,12 @@ func TestBlockUntilInitialized(t *testing.T) {
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
 	p.ElementType = pserver.Int32
-	var dummy int
-	err := s.InitParam(pserver.ParameterWithConfig{Param: p, Config: nil}, &dummy)
+	err := s.InitParam(pserver.ParameterWithConfig{p, nil}, nil)
 	if err != nil {
 		t.FailNow()
 	}
 
-	err = s.FinishInitParams(0, &dummy)
+	err = s.FinishInitParams(0, nil)
 	if err != nil {
 		t.FailNow()
 	}

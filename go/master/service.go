@@ -3,6 +3,8 @@ package master
 import (
 	"errors"
 	"log"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -13,18 +15,15 @@ const (
 	targetTaskCount = 300
 )
 
-// errors
-var (
-	ErrNoMoreTask          = errors.New("no more task for current pass")
-	ErrPendingTaskNotFound = errors.New("pending task not found")
-)
-
 // Service is the master server service.
 type Service struct {
-	timeoutDur time.Duration
-	timeoutMax int
+	chunksPerTask int
+	timeoutDur    time.Duration
+	timeoutMax    int
+	ready         chan struct{}
 
 	mu         sync.Mutex
+	initBegan  bool
 	taskQueues taskQueues
 }
 
@@ -63,13 +62,14 @@ func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
 }
 
 // NewService creates a new service.
-func NewService(chunks []Chunk, chunksPerTask int, timeoutDur time.Duration, timeoutMax int) *Service {
+func NewService(chunksPerTask int, timeoutDur time.Duration, timeoutMax int) *Service {
 	s := &Service{}
+	s.chunksPerTask = chunksPerTask
 	s.timeoutDur = timeoutDur
 	s.timeoutMax = timeoutMax
 	s.taskQueues = taskQueues{}
 	s.taskQueues.Pending = make(map[int]taskEntry)
-	s.taskQueues.Todo = partition(chunks, chunksPerTask)
+	s.ready = make(chan struct{})
 	return s
 }
 
@@ -104,13 +104,102 @@ func (s *Service) snapshot() error {
 	return nil
 }
 
+// SetDataset sets dataset to dispatch for the master server.
+//
+// SetDataset can be call multiple times. But only the first call will
+// be honored.
+func (s *Service) SetDataset(globPaths []string, dummy *int) error {
+	if len(globPaths) == 0 {
+		return errors.New("no dataset specified")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.initBegan {
+		// SetDataset already called. All trainer will call
+		// SetDataset, but we only handle the first one. Treat
+		// other calls as successful but do nothing.
+		return nil
+	}
+
+	s.initBegan = true
+
+	var chunks []Chunk
+	var paths []string
+
+	for _, s := range globPaths {
+		match, err := filepath.Glob(s)
+		if err != nil {
+			panic(err)
+		}
+		paths = append(paths, match...)
+	}
+
+	if len(paths) == 0 {
+		return errors.New("no valid datset specified")
+	}
+
+	for _, path := range paths {
+		f, err := os.Open(path)
+		if err != nil {
+			panic(err)
+		}
+
+		index, err := recordio.LoadIndex(f)
+		if err != nil {
+			return err
+		}
+		err = f.Close()
+		if err != nil {
+			return err
+		}
+
+		count := index.NumChunks()
+		for i := 0; i < count; i++ {
+			chunk := Chunk{
+				Path:  path,
+				Index: *index.ChunkIndex(i),
+			}
+			chunks = append(chunks, chunk)
+		}
+	}
+
+	s.taskQueues.Todo = partition(chunks, s.chunksPerTask)
+
+	err := s.snapshot()
+	if err != nil {
+		return err
+	}
+
+	close(s.ready)
+	return nil
+}
+
 // GetTask gets a new task from the service.
 func (s *Service) GetTask(dummy int, task *Task) error {
+	select {
+	case <-s.ready:
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if len(s.taskQueues.Todo) == 0 {
-		return ErrNoMoreTask
+		if len(s.taskQueues.Done) == 0 {
+			if len(s.taskQueues.Pending) == 0 {
+				return errors.New("all task failed")
+			}
+
+			// TODO(helin): client need to retry in this
+			// error case. Gotcha: RPC client can't
+			// compare returned error with predefined
+			// erros like io.EOF. Because interface don't
+			// have same dynamic value when in different
+			// process.
+			return errors.New("no more available task")
+		}
+		s.taskQueues.Todo = s.taskQueues.Done
+		s.taskQueues.Todo = nil
 	}
 
 	t := s.taskQueues.Todo[0]
@@ -163,12 +252,16 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 
 // TaskFinished tell the service that a task is finished.
 func (s *Service) TaskFinished(taskID int, dummy *int) error {
+	select {
+	case <-s.ready:
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	t, ok := s.taskQueues.Pending[taskID]
 	if !ok {
-		return ErrPendingTaskNotFound
+		return errors.New("pending task not found")
 	}
 
 	// task finished, reset timeout
@@ -176,8 +269,8 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 	s.taskQueues.Done = append(s.taskQueues.Done, t)
 	delete(s.taskQueues.Pending, taskID)
 
-	if len(s.taskQueues.Todo) == 0 {
-		s.taskQueues.Todo = s.taskQueues.Done
+	if len(s.taskQueues.Pending) == 0 {
+		s.taskQueues.Todo = append(s.taskQueues.Todo, s.taskQueues.Done...)
 		s.taskQueues.Done = nil
 	}
 

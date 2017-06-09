@@ -102,16 +102,14 @@ func (c *Client) BeginInitParams() bool {
 
 // InitParam initializes the parameter on parameter servers.
 func (c *Client) InitParam(paramWithConfigs ParameterWithConfig) error {
-	var dummy int
-	return c.pservers[c.partition(paramWithConfigs.Param.Name)].Call("Service.InitParam", paramWithConfigs, &dummy)
+	return c.pservers[c.partition(paramWithConfigs.Param.Name)].Call("Service.InitParam", paramWithConfigs, nil)
 }
 
 // FinishInitParams tells parameter servers client has sent all
 // parameters to parameter servers as initialization.
 func (c *Client) FinishInitParams() error {
 	for _, p := range c.pservers {
-		var dummy int
-		err := p.Call("Service.FinishInitParams", dummy, &dummy)
+		err := p.Call("Service.FinishInitParams", 0, nil)
 		if err != nil {
 			return err
 		}
@@ -125,8 +123,7 @@ func (c *Client) SendGrads(grads []Gradient) error {
 	errCh := make(chan error, len(grads))
 	for _, g := range grads {
 		go func(g Gradient) {
-			var dummy int
-			err := c.pservers[c.partition(g.Name)].Call("Service.SendGrad", g, &dummy)
+			err := c.pservers[c.partition(g.Name)].Call("Service.SendGrad", g, nil)
 			errCh <- err
 		}(g)
 	}
@@ -205,8 +202,7 @@ func (c *Client) Save(path string) error {
 	errCh := make(chan error, len(c.pservers))
 
 	for _, p := range c.pservers {
-		var dummy int
-		err := p.Call("Service.Save", path, &dummy)
+		err := p.Call("Service.Save", path, nil)
 		errCh <- err
 	}
 

@@ -59,16 +59,22 @@ func (c *Client) monitorMaster(addr Addresser) {
 	}
 }
 
+// SetDataset set dataset for the master server to dispatch.
+//
+// SetDataset can be call multiple times from different nodes. But
+// only the first call will be honored.
+func (c *Client) SetDataset(globPaths []string) error {
+	return c.conn.Call("Service.SetDataset", globPaths, nil)
+}
+
 // GetTask gets a new task from the master server.
 func (c *Client) GetTask() (Task, error) {
-	var dummy int
 	var t Task
-	err := c.conn.Call("Service.GetTask", dummy, &t)
+	err := c.conn.Call("Service.GetTask", 0, &t)
 	return t, err
 }
 
 // TaskFinished tells the master server a task is finished.
 func (c *Client) TaskFinished(taskID int) error {
-	var dummy int
-	return c.conn.Call("Service.TaskFinished", taskID, &dummy)
+	return c.conn.Call("Service.TaskFinished", taskID, nil)
 }

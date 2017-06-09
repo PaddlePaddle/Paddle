@@ -5,12 +5,14 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/master"
+	"github.com/PaddlePaddle/recordio"
 )
 
 const (
@@ -34,8 +36,7 @@ func init() {
 	port = p
 
 	go func(l net.Listener) {
-		chunks := make([]master.Chunk, totalTask)
-		s := master.NewService(chunks, chunkPerTask, time.Second, 1)
+		s := master.NewService(chunkPerTask, time.Second, 1)
 		server := rpc.NewServer()
 		err := server.Register(s)
 		if err != nil {
@@ -58,21 +59,47 @@ func (a addresser) Address() string {
 }
 
 func TestClientFull(t *testing.T) {
+	const p = "/tmp/master_client_test_0"
+	f, err := os.Create(p)
+	if err != nil {
+		panic(err)
+	}
+
+	for i := 0; i < totalTask*chunkPerTask; i++ {
+		w := recordio.NewWriter(f, -1, -1)
+		w.Write(nil)
+		// call Close to force RecordIO writing a chunk.
+		w.Close()
+	}
+	f.Close()
+
 	c := master.NewClient(addresser(fmt.Sprintf(":%d", port)))
+	c.SetDataset([]string{p})
 
-	for i := 0; i < 5*totalTask/chunkPerTask; i++ {
-		task, err := c.GetTask()
-		if err != nil {
-			panic(err)
+	checkOnePass := func(i int) {
+		var tasks []master.Task
+		for i := 0; i < totalTask; i++ {
+			task, err := c.GetTask()
+			if err != nil {
+				t.Fatal(i, err)
+			}
+			tasks = append(tasks, task)
 		}
 
-		if len(task.Chunks) != chunkPerTask {
-			t.Fatal("wrong number of chunk per task", len(task.Chunks))
+		_, err = c.GetTask()
+		if err == nil {
+			t.Fatal(i, "should get error.")
 		}
 
-		err = c.TaskFinished(task.ID)
-		if err != nil {
-			panic(err)
+		for _, task := range tasks {
+			err = c.TaskFinished(task.ID)
+			if err != nil {
+				t.Fatal(i, err)
+			}
 		}
+	}
+
+	for i := 0; i < 10; i++ {
+		checkOnePass(i)
 	}
 }
