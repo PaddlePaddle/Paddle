@@ -132,7 +132,7 @@ func paddle_init_param(client C.paddle_pserver_client, param C.paddle_parameter,
 
 	if err != nil {
 		if err.Error() == pserver.AlreadyInitialized {
-			log.Println("parameter", name, "already initialized, treat paddle_init_param as sucessful.")
+			log.Printf("parameter %s already initialized, treat paddle_init_param as sucessful.\n", name)
 			return 0
 		}
 		log.Println(err)
@@ -194,12 +194,38 @@ func paddle_get_params(client C.paddle_pserver_client, dst **C.paddle_parameter,
 		return -1
 	}
 
+	names := func() (string, string) {
+		retNames := ""
+		for _, p := range ps {
+			if retNames == "" {
+				retNames = p.Name
+			} else {
+				retNames = ", " + p.Name
+			}
+		}
+
+		requestedNames := ""
+		for _, n := range ns {
+			if requestedNames == "" {
+				requestedNames = n
+			} else {
+				requestedNames = ", " + n
+			}
+		}
+
+		return requestedNames, retNames
+	}
+
 	if len(ps) != len(ns) {
+		requestedNames, retNames := names()
+		log.Printf("pserver returned wrong number of parameters. Requested: %s, returned: %s.\n", retNames, requestedNames)
 		return -1
 	}
 
 	for i := range ps {
 		if ns[i] != ps[i].Name {
+			requestedNames, retNames := names()
+			log.Printf("pserver returned wrong parameters, or not in requested order. Requested: %s, returned: %s.\n", retNames, requestedNames)
 			return -1
 		}
 	}
@@ -209,12 +235,12 @@ func paddle_get_params(client C.paddle_pserver_client, dst **C.paddle_parameter,
 		param := *(**C.paddle_parameter)(unsafe.Pointer((uintptr(unsafe.Pointer(dst)) + uintptr(i)*unsafe.Sizeof(*dst))))
 
 		if unsafe.Pointer(param) == nullPtr {
-			log.Println("Error: must pre-allocate parameter.")
+			log.Println("must pre-allocate parameter.")
 			return -1
 		} else {
 			if unsafe.Pointer(param.content) != nullPtr {
 				if int(param.content_len) != len(p.Content) {
-					log.Println("Error: the pre-allocated content len does not match parameter content len.", param.content_len, len(p.Content))
+					log.Printf("the pre-allocated content len does not match parameter content len. Pre-allocated len: %d, returned len: %d", param.content_len, len(p.Content))
 					return -1
 				}
 			}
