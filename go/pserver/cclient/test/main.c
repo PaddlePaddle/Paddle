@@ -41,7 +41,7 @@ retry:
 
   unsigned char content[] = {0x00, 0x11, 0x22};
   paddle_gradient** grads =
-          (paddle_gradient**)malloc(sizeof(paddle_gradient*) * 2);
+      (paddle_gradient**)malloc(sizeof(paddle_gradient*) * 2);
   grads[0] = (paddle_gradient*)malloc(sizeof(paddle_gradient));
   grads[0]->name = "param_a";
   grads[0]->content = content;
