@@ -42,7 +42,6 @@ import (
 	"strings"
 	"sync"
 	"unsafe"
-	"fmt"
 
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 )

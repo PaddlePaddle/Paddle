@@ -73,8 +73,6 @@ void NewRemoteParameterUpdater::init(
 void NewRemoteParameterUpdater::updateImpl(Parameter *para) {}
 
 void NewRemoteParameterUpdater::finishBatch(real cost) {
-  LOG(INFO) << "finishBatch in, cost: " << cost;
-
   // send gradient to parameter server.
   paddle_send_grads(parameterClient_, newGradients_, parameterSize());
   // get the updated parameter from parameterClient.

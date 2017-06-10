@@ -87,7 +87,7 @@ private:
       new_params[i]->name = (char*)param->getName().c_str();
       new_params[i]->content =
           (unsigned char*)(param->getBuf(type).get()->getData());
-      new_params[i]->content_len = (int)param->getBuf(type).get()->getSize();
+      new_params[i]->content_len = (int)param->getBuf(type).get()->getSize() * sizeof(real);
     }
     return new_params;
   }
