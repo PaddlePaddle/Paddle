@@ -16,7 +16,9 @@
 
 #include "paddle/strings/stringpiece.h"
 
-#include <stddef.h>
+// #include <stddef.h>
+#include <string.h>
+
 #include <algorithm>
 #include <iosfwd>
 
@@ -72,12 +74,14 @@ bool HasSuffix(StringPiece s, StringPiece x) {
 }
 
 StringPiece SkipPrefix(StringPiece s, size_t n) {
-  assert(n <= s.len());
+  if (n > s.len())
+    throw std::invalid_argument("Skip distance larger than StringPiece length");
   return StringPiece(s.data() + n, s.len() - n);
 }
 
 StringPiece SkipSuffix(StringPiece s, size_t n) {
-  assert(size_ >= n);
+  if (n > s.len())
+    throw std::invalid_argument("Skip distance larger than StringPiece length");
   return StringPiece(s.data(), s.len() - n);
 }
 
@@ -122,6 +126,10 @@ StringPiece SubStr(StringPiece s, size_t pos, size_t n) {
   if (pos > s.len()) pos = s.len();
   if (n > s.len() - pos) n = s.len() - pos;
   return StringPiece(s.data() + pos, n);
+}
+
+std::ostream& operator<<(std::ostream& o, StringPiece piece) {
+  return o << piece.ToString();
 }
 
 }  // namespace paddle

@@ -17,7 +17,6 @@
 #pragma once
 
 #include <assert.h>
-#include <string.h>
 
 #include <stdexcept>
 #include <string>
@@ -26,7 +25,11 @@ namespace paddle {
 
 // StringPiece points into a std::string object but doesn't own the
 // string.  It is for efficient access to strings.  Like Go's string
-// type.  StringPiece is not thread-safe.
+// type.  Not that StringPiece doesn't mutate the underlying string,
+// so it is thread-safe given that the underlying string doesn't
+// change.  Because StringPiece contains a little data members, and
+// its syntax is simple as it doesn't own/manage the string, it is
+// cheap to construct StringPieces and pass them around.
 class StringPiece {
 public:
   static const size_t npos = static_cast<size_t>(-1);
@@ -37,7 +40,7 @@ public:
   // size_ is 0.
   StringPiece();
   StringPiece(const char* d, size_t n);
-  StringPiece(const char* s);
+  StringPiece(const char* d);
   StringPiece(const std::string& s);
 
   const char* data() const { return data_; }
@@ -55,10 +58,6 @@ public:
   iterator begin() const { return data_; }
   iterator end() const { return data_ + size_; }
 
-  struct Hasher {
-    size_t operator()(StringPiece arg) const;
-  };
-
   // Return a string that contains the copy of the referenced data.
   std::string ToString() const { return std::string(data_, size_); }
 
@@ -68,12 +67,6 @@ private:
 
   // Intentionally copyable
 };
-
-// Because StringPiece contains a little data members, and without the
-// ownership, it is so cheap to pass StringPieces around, we don't
-// need to define parrameters of the following operations to be
-// references.  Also, it is cheap to construct new StringPieces, so we
-// don't define mutative operations as member functions.
 
 int Compare(StringPiece a, StringPiece b);
 
@@ -94,9 +87,13 @@ StringPiece SkipSuffix(StringPiece s, size_t n);
 StringPiece TrimPrefix(StringPiece s, StringPiece prefix);
 StringPiece TrimSuffix(StringPiece s, StringPiece suffix);
 
+// Returns if s contains sub.  Any s except for empty s contains an
+// empty sub.
 bool Contains(StringPiece s, StringPiece sub);
 
-// Return the first occurrence of sub in s, or npos.
+// Return the first occurrence of sub in s, or npos.  If both s and
+// sub is empty, it returns npos; otherwise, if only sub is empty, it
+// returns 0.
 size_t Index(StringPiece s, StringPiece sub);
 
 // Return the first occurrence of c in s[pos:end], or npos.
@@ -108,6 +105,6 @@ size_t RFind(StringPiece s, char c, size_t pos);
 StringPiece SubStr(StringPiece s, size_t pos, size_t n);
 
 // allow StringPiece to be logged
-extern std::ostream& operator<<(std::ostream& o, StringPiece piece);
+std::ostream& operator<<(std::ostream& o, StringPiece piece);
 
 }  // namespace paddle
