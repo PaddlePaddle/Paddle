@@ -39,8 +39,8 @@ void NewRemoteParameterUpdater::init(
   }
 
   // create parameter server client.
-  parameterClient_ =
-      paddle_new_pserver_client((char *)pserverSpec_.c_str(), FLAGS_trainer_id);
+  parameterClient_ = paddle_new_pserver_client((char *)pserverSpec_.c_str(),
+                                               FLAGS_trainer_id == 0);
 
   // init names_ for get parameter through paddle_cclient
   names_ = (char **)malloc(parameterSize() * sizeof(char *));

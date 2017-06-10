@@ -56,7 +56,7 @@ def convolutional_neural_network(img):
 
 
 def main():
-    paddle.init(use_gpu=False, trainer_count=1, trainer_id=1)
+    paddle.init(use_gpu=False, trainer_count=1)
 
     # define network topology
     images = paddle.layer.data(
@@ -91,9 +91,6 @@ def main():
             if event.batch_id % 1000 == 0:
                 print "Pass %d, Batch %d, Cost %f, %s" % (
                     event.pass_id, event.batch_id, event.cost, event.metrics)
-
-                with gzip.open('params.tar.gz', 'w') as f:
-                    parameters.to_tar(f)
 
         elif isinstance(event, paddle.event.EndPass):
             result = trainer.test(reader=paddle.batch(
