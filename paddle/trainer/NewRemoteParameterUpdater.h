@@ -32,9 +32,11 @@ public:
   NewRemoteParameterUpdater(const OptimizationConfig& config,
                             const std::string pserverSpec);
   ~NewRemoteParameterUpdater() {
-    LOG(INFO) << "~NewRemoteParameterUpdater in";
-//    releaseNewParameter(newParameters_);
-//    releaseNewParameter(newGradients_);
+    if (names_ != nullptr) {
+      free(names_);
+    }
+    releaseNewParameter(newParameters_);
+    releaseNewParameter(newGradients_);
     if (parameterClient_ >= 0) paddle_pserver_client_release(parameterClient_);
   }
 
@@ -95,11 +97,9 @@ private:
   void releaseNewParameter(paddle_parameter** newParams) {
     if (newParams != nullptr) {
       for (int i = 0; i < parameterSize(); ++i) {
-        auto param = newParams[i];
-        if (param != nullptr) {
-          paddle_release_param(param);
-        }
+        free(newParams[i]);
       }
+      free(newParams);
     }
   }
 
