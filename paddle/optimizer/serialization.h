@@ -10,7 +10,7 @@
 namespace paddle {
 namespace optimizer {
 
-inline unsigned CalStateSize(int* state_len) { return 0; }
+static unsigned CalStateSize(int* state_len) { return 0; }
 
 template <typename HEAD, typename... TAIL>
 unsigned CalStateSize(const HEAD& head, const TAIL&... tail) {
@@ -23,7 +23,6 @@ unsigned CalStateSize(const HEAD& head, const TAIL&... tail) {
 
 static void TensorToProto(const Tensor& tensor, TensorProto* proto) {
   proto->set_data_type(TensorProto::PADDLE_ELEMENT_TYPE_FLOAT32);
-  proto->set_size(tensor.size());
   std::stringstream os;
   for (size_t i = 0; i < tensor.size(); ++i) {
     os << tensor[i];
