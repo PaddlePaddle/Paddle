@@ -99,7 +99,7 @@ func (s *Service) snapshot() error {
 	return nil
 }
 
-func getChunks(globPaths []string) ([]Chunk, error) {
+func readChunks(globPaths []string) ([]Chunk, error) {
 	var chunks []Chunk
 	var paths []string
 
@@ -161,7 +161,7 @@ func (s *Service) SetDataset(globPaths []string, dummy *int) error {
 		return nil
 	}
 
-	chunks, err := getChunks(globPaths)
+	chunks, err := readChunks(globPaths)
 	if err != nil {
 		return err
 	}
