@@ -442,6 +442,14 @@ eos
 ..  autoclass:: paddle.v2.layer.eos
     :noindex:
 
+Miscs
+=====
+
+dropout
+--------------
+..  autoclass:: paddle.v2.layer.dropout
+    :noindex:
+
 Activation with learnable parameter
 ===================================
 
@@ -449,4 +457,3 @@ prelu
 --------
 ..  autoclass:: paddle.v2.layer.prelu
     :noindex:
-
