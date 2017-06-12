@@ -105,7 +105,12 @@ class SGD(object):
         self.__parameters__.to_tar(f)
         self.__parameter_updater__.restore()
 
-    def train(self, reader, num_passes=1, event_handler=None, feeding=None):
+    def train(self,
+              reader,
+              num_passes=1,
+              event_handler=None,
+              feeding=None,
+              feeder_class=DataFeeder):
         """
         Training method. Will train num_passes of input data.
 
@@ -135,7 +140,7 @@ class SGD(object):
         pass_evaluator = self.__gradient_machine__.makeEvaluator()
         assert isinstance(pass_evaluator, api.Evaluator)
         out_args = api.Arguments.createArguments(0)
-        feeder = DataFeeder(self.__data_types__, feeding)
+        feeder = feeder_class(self.__data_types__, feeding)
         for pass_id in xrange(num_passes):
             event_handler(v2_event.BeginPass(pass_id))
             pass_evaluator.start()

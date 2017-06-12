@@ -15,6 +15,8 @@
 from py_paddle import DataProviderConverter
 import collections
 import paddle.trainer.PyDataProvider2 as pydp2
+import cPickle as pickle
+from pyDes import triple_des, CBC, PAD_PKCS5
 
 __all__ = ['DataFeeder']
 
@@ -34,7 +36,7 @@ class DataFeeder(DataProviderConverter):
     Each sample is a list or a tuple with one feature or multiple features.
     DataFeeder converts this mini-batch data entries into Arguments in order
     to feed it to C++ interface.
-    
+
     The simple usage shows below
 
     ..  code-block:: python
@@ -128,6 +130,50 @@ class DataFeeder(DataProviderConverter):
                 reorder = []
                 for name in self.input_names:
                     reorder.append(each[self.feeding[name]])
+                retv.append(reorder)
+            return retv
+
+        return DataProviderConverter.convert(self, reorder_data(dat), argument)
+
+
+class EncryptedDataFeeder(DataFeeder):
+    def __init__(
+            self,
+            data_types,
+            feeding=None,
+            key_file="/etc/datasets.key", ):
+        """
+        EncryptedDataFeeder does exactly the same thing as DataFeeder except it
+        use triple_des to decrypt every line of the data using a key_file. This
+        is useful when public datasets are encrypted by cloud providers and users
+        have only access of use data as training data.
+
+        :param data_types: A list to specify data name and type. Each item is
+                           a tuple of (data_name, data_type).
+
+        :type data_types: list
+        :param feeding: A dictionary or a sequence to specify the position of each
+                        data in the input data.
+        :type feeding: dict|collections.Sequence|None
+        :param key_file: A file path string indicates the key file location
+        :type feeding: string|None
+        """
+        self.__key_file__ = key_file
+        DataFeeder.__init__(self, data_types, feeding)
+
+    def convert(self, dat, argument=None, fields=None):
+        def reorder_data(data):
+            key = ""
+            with open(self.__key_file__, "r") as f:
+                key = f.read().replace("\n", "")
+            k = triple_des(
+                key, CBC, "\0\0\0\0\0\0\0\0", pad=None, padmode=PAD_PKCS5)
+            retv = []
+            for each in data:
+                raw = pickle.loads(k.decrypt(each))
+                reorder = []
+                for name in self.input_names:
+                    reorder.append(raw[self.feeding[name]])
                 retv.append(reorder)
             return retv
 

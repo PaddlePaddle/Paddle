@@ -21,6 +21,7 @@ import importlib
 import paddle.v2.dataset
 import cPickle
 import glob
+from pyDes import *
 
 __all__ = ['DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader']
 
@@ -78,7 +79,11 @@ def fetch_all():
                 "fetch")()
 
 
-def split(reader, line_count, suffix="%05d.pickle", dumper=cPickle.dump):
+def split(reader,
+          line_count,
+          suffix="%05d.pickle",
+          dumper=cPickle.dump,
+          encrypt_key=None):
     """
     you can call the function as:
 
@@ -99,30 +104,59 @@ def split(reader, line_count, suffix="%05d.pickle", dumper=cPickle.dump):
     :param dumper: is a callable function that dump object to file, this
                 function will be called as dumper(obj, f) and obj is the object
                 will be dumped, f is a file object. Default is cPickle.dump.
+    :param encrypt_key: if present, will use triple_des to encrypt each line.
+                     every line is a pickle serialized string from tuple, then
+                     dump with dumper to append to file. The encrypt key will
+                     be stored at kubernetes secret and used at data_feeder. Must
+                     be of 16 or 24 bytes.
     """
     if not callable(dumper):
         raise TypeError("dumper should be callable.")
     lines = []
     indx_f = 0
+    if encrypt_key and type(encrypt_key) == str:
+        encrypter = triple_des(
+            encrypt_key, CBC, "\0\0\0\0\0\0\0\0", pad=None, padmode=PAD_PKCS5)
     for i, d in enumerate(reader()):
         lines.append(d)
         if i >= line_count and i % line_count == 0:
             with open(suffix % indx_f, "w") as f:
-                dumper(lines, f)
+                # dump multiple object, append to one file
+                # see: https://stackoverflow.com/questions/15463387/pickle-putting-more-than-1-object-in-a-file
+                for l in lines:
+                    if encrypt_key:
+                        dumper(encrypter.encrypt(cPickle.dumps(l)), f)
+                    else:
+                        dumper(l, f)
                 lines = []
                 indx_f += 1
     if lines:
         with open(suffix % indx_f, "w") as f:
-            dumper(lines, f)
+            for l in lines:
+                if encrypt_key:
+                    dumper(encrypter.encrypt(cPickle.dumps(l)), f)
+                else:
+                    dumper(l, f)
 
 
 def cluster_files_reader(files_pattern,
                          trainer_count,
                          trainer_id,
-                         loader=cPickle.load):
+                         loader=cPickle.load,
+                         is_public=False):
     """
     Create a reader that yield element from the given files, select
     a file set according trainer count and trainer_id
+
+    Sample usage, reading encrypted public datasets
+
+    ..  code-block:: python
+
+        trainer.train(
+            paddle.batch(paddle.dataset.common.cluster_files_reader("*.pickle", 1, 0, is_public=True), 32),
+            num_passes=30,
+            event_handler=event_handler, feeder_class=EncryptedDataFeeder)
+
 
     :param files_pattern: the files which generating by split(...)
     :param trainer_count: total trainer count
@@ -130,6 +164,9 @@ def cluster_files_reader(files_pattern,
     :param loader: is a callable function that load object from file, this
                 function will be called as loader(f) and f is a file object.
                 Default is cPickle.load
+    :param encrypt_key: if present, will use triple_des to encrypt each line.
+                     every line is a pickle serialized string from tuple, then
+                     dump with dumper to append to file.
     """
 
     def reader():
@@ -140,12 +177,21 @@ def cluster_files_reader(files_pattern,
         my_file_list = []
         for idx, fn in enumerate(file_list):
             if idx % trainer_count == trainer_id:
-                print "append file: %s" % fn
                 my_file_list.append(fn)
         for fn in my_file_list:
             with open(fn, "r") as f:
-                lines = loader(f)
-                for line in lines:
-                    yield line
+                if not is_public:
+                    lines = loader(f)
+                    for line in lines:
+                        yield line
+                # FIXME:
+                else:
+                    while True:
+                        try:
+                            line = loader(f)
+                            # NOTE: if data is encrypted, line is secret bytes.
+                            yield line
+                        except EOFError, e:
+                            return
 
     return reader
