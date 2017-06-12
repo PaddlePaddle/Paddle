@@ -156,6 +156,20 @@ def __get_used_layers__(output_layers):
     for layer in output_layers:
         dfs_travel(layer.full_name)
 
+    # print layer needs to be specially handled because no other
+    # layer depends on it. It is used to print the result of some
+    # layers when running the model for debug purpose. So we explicitly
+    # add a print layer to the topolty if its input is in the toplogy.
+    for layer in cp.g_config.model_config.layers:
+        if layer.type == 'print':
+            used = True
+            for inp in layer.inputs:
+                if inp.input_layer_name not in layer_names:
+                    used = False
+                    break
+            if used:
+                layer_names.add(layer.name)
+
     return layer_names
 
 
@@ -266,6 +280,14 @@ def parse_network(output_layers, extra_layers=None):
         model_config.layers.extend([l])
         if l.type == 'data':
             if l.name in model_config.output_layer_names:
+                """
+                In text generation, the outlink to save the generated word
+                indices is a data_layer defined in recurrent_group. This
+                data_layer is sure to be the output of the network in text
+                generation task, so this statement excludes such a special
+                data_layer from being inputs of the network, otherwise an error
+                will occur during data feeding.
+                """
                 continue
             model_config.input_layer_names.append(l.name)
             input_layer_names.add(l.name)
