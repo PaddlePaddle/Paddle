@@ -2,6 +2,7 @@ package connection
 
 import (
 	"errors"
+	"log"
 	"net/rpc"
 	"sync"
 )
@@ -62,7 +63,11 @@ func (c *Conn) Connect(addr string) error {
 			c.waitConn = nil
 		}
 	} else {
-		client.Close()
+		err := client.Close()
+		if err != nil {
+			log.Println(err)
+		}
+
 		return errors.New("client already set from a concurrent goroutine")
 	}
 

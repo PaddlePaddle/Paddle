@@ -50,7 +50,6 @@ func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
 
 	if len(cur.Task.Chunks) > 0 {
 		cur.Task.ID = id
-		id++
 		result = append(result, cur)
 	}
 

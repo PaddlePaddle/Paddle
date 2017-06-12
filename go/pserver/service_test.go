@@ -15,7 +15,7 @@ func TestFull(t *testing.T) {
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
 	p.ElementType = pserver.Int32
-	err := s.InitParam(pserver.ParameterWithConfig{p, nil}, nil)
+	err := s.InitParam(pserver.ParameterWithConfig{Param: p, Config: nil}, nil)
 	if err != nil {
 		t.FailNow()
 	}
@@ -24,7 +24,7 @@ func TestFull(t *testing.T) {
 	p1.Name = "param_b"
 	p1.Content = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	p1.ElementType = pserver.Float32
-	err = s.InitParam(pserver.ParameterWithConfig{p1, nil}, nil)
+	err = s.InitParam(pserver.ParameterWithConfig{Param: p1, Config: nil}, nil)
 	if err != nil {
 		t.FailNow()
 	}
@@ -95,13 +95,14 @@ func TestUninitialized(t *testing.T) {
 func TestBlockUntilInitialized(t *testing.T) {
 	s := pserver.NewService()
 	ch := make(chan struct{}, 2)
+	errCh := make(chan error, 2)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		var param pserver.Parameter
 		err := s.GetParam("param_a", &param)
 		if err != nil {
-			t.FailNow()
+			errCh <- err
 		}
 		wg.Done()
 		ch <- struct{}{}
@@ -111,7 +112,7 @@ func TestBlockUntilInitialized(t *testing.T) {
 	go func() {
 		err := s.Save("", nil)
 		if err != nil {
-			t.FailNow()
+			errCh <- err
 		}
 		wg.Done()
 		ch <- struct{}{}
@@ -123,6 +124,8 @@ func TestBlockUntilInitialized(t *testing.T) {
 	case <-ch:
 		// some function returned before initialization is completed.
 		t.FailNow()
+	case <-errCh:
+		t.FailNow()
 	default:
 	}
 
@@ -130,7 +133,7 @@ func TestBlockUntilInitialized(t *testing.T) {
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
 	p.ElementType = pserver.Int32
-	err := s.InitParam(pserver.ParameterWithConfig{p, nil}, nil)
+	err := s.InitParam(pserver.ParameterWithConfig{Param: p, Config: nil}, nil)
 	if err != nil {
 		t.FailNow()
 	}

@@ -83,7 +83,7 @@ func (c *Client) monitorPservers(l Lister, pserverNum int) {
 	}
 
 	monitor()
-	for _ = range ticker.C {
+	for range ticker.C {
 		monitor()
 	}
 }
