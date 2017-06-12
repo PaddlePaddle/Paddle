@@ -164,6 +164,7 @@ class OtherLayerTest(unittest.TestCase):
         maxid = layer.max_id(input=inference)
         sampling_id = layer.sampling_id(input=inference)
         eos = layer.eos(input=maxid, eos_id=5)
+        layer.printer(maxid)
         print layer.parse_network([maxid, sampling_id, eos])
 
     def test_slicing_joining_layer(self):

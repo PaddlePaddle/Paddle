@@ -130,7 +130,7 @@ recurrent_group
 ---------------
 ..  autoclass:: paddle.v2.layer.recurrent_group
     :noindex:
-    
+
 lstm_step
 ---------
 ..  autoclass:: paddle.v2.layer.lstm_step
@@ -145,12 +145,12 @@ beam_search
 ------------
 ..  autoclass:: paddle.v2.layer.beam_search
     :noindex:
-    
+
 get_output
 ----------
 ..  autoclass:: paddle.v2.layer.get_output
     :noindex:
-    
+
 Mixed Layer
 ===========
 
@@ -203,7 +203,7 @@ trans_full_matrix_projection
 ----------------------------
 ..  autoclass:: paddle.v2.layer.trans_full_matrix_projection
     :noindex:
-    
+
 Aggregate Layers
 ================
 
@@ -434,10 +434,26 @@ smooth_l1_cost
 ..  autoclass:: paddle.v2.layer.smooth_l1_cost
     :noindex:
 
-Check Layer 
+Check Layer
 ============
 
 eos
 ---
 ..  autoclass:: paddle.v2.layer.eos
+    :noindex:
+
+Miscs
+=====
+
+dropout
+--------------
+..  autoclass:: paddle.v2.layer.dropout
+    :noindex:
+
+Activation with learnable parameter
+===================================
+
+prelu
+--------
+..  autoclass:: paddle.v2.layer.prelu
     :noindex:

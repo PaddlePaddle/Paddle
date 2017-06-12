@@ -31,7 +31,6 @@ class Topology(object):
     def __init__(self, layers, extra_layers=None):
         def __check__(layers):
             if not isinstance(layers, collections.Sequence):
-                __check_layer_type__(layers)
                 layers = [layers]
             for layer in layers:
                 __check_layer_type__(layer)
@@ -91,6 +90,7 @@ class Topology(object):
         [('image', dense_vector(768)), ('label', integer_value(10))]
         """
         data_layers = self.data_layers()
+
         return [(nm, data_layers[nm].data_type)
                 for nm in self.proto().input_layer_names]
 

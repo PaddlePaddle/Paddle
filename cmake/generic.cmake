@@ -182,7 +182,7 @@ function(go_library TARGET_NAME)
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
     -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
     ${go_library_SRCS}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   add_custom_target(${TARGET_NAME}_lib ALL DEPENDS ${TARGET_NAME}_timestamp ${go_library_DEPS})
   add_library(${TARGET_NAME} STATIC IMPORTED)
   set_property(TARGET ${TARGET_NAME} PROPERTY
@@ -199,7 +199,7 @@ function(go_binary TARGET_NAME)
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
     -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     ${go_library_SRCS}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_binary_DEPS})
   install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME} DESTINATION bin)
 endfunction(go_binary)
@@ -213,7 +213,7 @@ function(go_test TARGET_NAME)
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} test
     -c -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     ${go_test_SRCS}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_test_DEPS})
   add_test(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
 endfunction(go_test)
