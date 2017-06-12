@@ -41,6 +41,7 @@ SET(SWIG_MODULE_swig_paddle_EXTRA_DEPS
     paddle_network
     paddle_proto
     ${external_project_dependencies}
+    ${RDMA_LIBS}
 )
 
 IF(APPLE)
@@ -73,6 +74,7 @@ SWIG_LINK_LIBRARIES(swig_paddle
     ${CMAKE_DL_LIBS}
     ${EXTERNAL_LIBS}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${RDMA_LD_FLAGS}
     ${START_END}
 )
 
