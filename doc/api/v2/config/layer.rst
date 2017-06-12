@@ -59,6 +59,11 @@ context_projection
 ..  autoclass:: paddle.v2.layer.context_projection
     :noindex:
 
+row_conv
+--------
+..  autoclass:: paddle.v2.layer.row_conv
+    :noindex:
+
 Image Pooling Layer
 ===================
 
@@ -351,6 +356,12 @@ sampling_id
 ..  autoclass:: paddle.v2.layer.sampling_id
     :noindex:
 
+multiplex
+---------
+..  autoclass:: paddle.v2.layer.multiplex
+    :noindex:
+
+
 Slicing and Joining Layers
 ==========================
 
@@ -447,6 +458,14 @@ eos
 ..  autoclass:: paddle.v2.layer.eos
     :noindex:
 
+Miscs
+=====
+
+dropout
+--------------
+..  autoclass:: paddle.v2.layer.dropout
+    :noindex:
+
 Activation with learnable parameter
 ===================================
 
@@ -454,4 +473,3 @@ prelu
 --------
 ..  autoclass:: paddle.v2.layer.prelu
     :noindex:
-

@@ -16,11 +16,11 @@
 
 #include "paddle/strings/stringpiece.h"
 
-// #include <stddef.h>
 #include <string.h>
 
 #include <algorithm>
 #include <iosfwd>
+#include <stdexcept>
 
 namespace paddle {
 
@@ -38,6 +38,12 @@ StringPiece::StringPiece(const char* s) : data_(s) {
 
 StringPiece::StringPiece(const std::string& s)
     : data_(s.data()), size_(s.size()) {}
+
+char StringPiece::operator[](size_t n) const {
+  if (n >= len())
+    throw std::invalid_argument("index out of StringPiece length");
+  return data_[n];
+}
 
 int Compare(StringPiece a, StringPiece b) {
   const size_t min_len = (a.len() < b.len()) ? a.len() : b.len();

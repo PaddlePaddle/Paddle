@@ -16,9 +16,7 @@
 
 #pragma once
 
-#include <assert.h>
-
-#include <stdexcept>
+#include <ostream>
 #include <string>
 
 namespace paddle {
@@ -46,10 +44,7 @@ public:
   const char* data() const { return data_; }
   size_t len() const { return size_; }
 
-  char operator[](size_t n) const {
-    assert(n < len());
-    return data_[n];
-  }
+  char operator[](size_t n) const;
 
   // StringPiece doesn't own the string, so both iterator and const
   // iterator are const char* indeed.

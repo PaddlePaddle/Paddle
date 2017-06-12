@@ -28,6 +28,7 @@ if(WITH_TESTING)
     add_simple_unittest(PadOpTest)
     add_simple_unittest(MulOpTest)
     add_simple_unittest(CosSimOpTest)
+    add_simple_unittest(RowConvOpTest)
 endif()
 endif()
 

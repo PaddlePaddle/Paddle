@@ -17,8 +17,6 @@ import sys
 import re
 import getopt
 
-from paddle.trainer.config_parser import *
-
 
 def main(print_whole_config, globals, locals):
     '''
