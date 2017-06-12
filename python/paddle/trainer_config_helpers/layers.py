@@ -122,6 +122,7 @@ __all__ = [
     'layer_support',
     'multiplex_layer',
     'row_conv_layer',
+    'dropout_layer',
     'prelu_layer',
 ]
 
@@ -3773,7 +3774,6 @@ def beam_search(step,
     assert generated_input_index != -1
 
     gipt = input[generated_input_index]
-    assert isinstance(gipt, BaseGeneratedInput)
 
     gipt.bos_id = bos_id
     gipt.eos_id = eos_id
@@ -3793,7 +3793,6 @@ def beam_search(step,
         predict = gipt.after_real_step(step(*args))
 
         eos_layer(input=predict, eos_id=eos_id, name=eos_name)
-
         return predict
 
     tmp = recurrent_group(
@@ -5567,6 +5566,24 @@ def multiplex_layer(input, name=None, layer_attr=None):
         layer_type=LayerType.MULTIPLEX_LAYER,
         parents=input,
         size=l.config.size)
+
+
+@wrap_name_default("dropout")
+def dropout_layer(input, dropout_rate, name=None):
+    """
+    @TODO(yuyang18): Add comments.
+
+    :param name:
+    :param input:
+    :param dropout_rate:
+    :return:
+    """
+    return addto_layer(
+        name=name,
+        input=input,
+        act=LinearActivation(),
+        bias_attr=False,
+        layer_attr=ExtraAttr(drop_rate=dropout_rate))
 
 
 @wrap_name_default()
