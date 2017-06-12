@@ -2081,6 +2081,23 @@ class MaxOutLayer(LayerBase):
                            g_layer_map[input_layer.name].width, out_channels)
 
 
+@config_layer('row_conv')
+class RowConvLayer(LayerBase):
+    def __init__(self, name, inputs, context_length, **xargs):
+        super(RowConvLayer, self).__init__(
+            name, 'maxout', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1,
+            'TransLayer must have one and only one input')
+        input_layer = self.get_input_layer(0)
+        row_conv_conf = self.config.inputs[0].row_conv_conf
+        row_conv_conf.context_length = context_length
+        self.set_layer_size(input_layer.size)
+        psize = context_length * input_layer.size
+        dims = [context_length, input_layer.size]
+        self.create_input_parameter(0, psize, dims)
+
+
 # key: cost type
 # value: cost class
 g_cost_map = {}
