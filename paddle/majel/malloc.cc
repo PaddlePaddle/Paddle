@@ -54,7 +54,7 @@ public:
 
   void* operator()(majel::CpuPlace p) {
     void* address;
-    posix_memalign(&address, 32ul, size_);
+    CHECK_EQ(posix_memalign(&address, 32ul, size_), 0);
     return address;
   }
 
