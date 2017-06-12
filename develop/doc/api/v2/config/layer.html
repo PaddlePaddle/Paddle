@@ -559,6 +559,62 @@ parameter attribute is set by this parameter.</li>
 </dd></dl>
 
 </div>
+<div class="section" id="row-conv">
+<h3>row_conv<a class="headerlink" href="#row-conv" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">row_conv</code></dt>
+<dd><p>The row convolution is called lookahead convolution. It is firstly
+introduced in paper of <a class="reference external" href="https://arxiv.org/pdf/1512.02595v1.pdf">Deep Speech 2: End-toEnd Speech Recognition
+in English and Mandarin</a> .</p>
+<p>The bidirectional RNN that learns representation for a sequence by
+performing a forward and a backward pass through the entire sequence.
+However, unlike unidirectional RNNs, bidirectional RNNs are challenging
+to deploy in an online and low-latency setting. The lookahead convolution
+incorporates information from future subsequences in a computationally
+efficient manner to improve unidirectional recurrent neural networks.</p>
+<p>The connection of row convolution is different form the 1D sequence
+convolution. Assumed that, the future context-length is k, that is to say,
+it can get the output at timestep t by using the the input feature from t-th
+timestep to (t+k+1)-th timestep. Assumed that the hidden dim of input
+activations are d, the activations r_t for the new layer at time-step t are:</p>
+<div class="math">
+\[r_{t,r} = \sum_{j=1}^{k + 1} {w_{i,j}h_{t+j-1, i}}
+          \quad         ext{for} \quad  (1 \leq i \leq d)\]</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The <cite>context_len</cite> is <cite>k + 1</cite>. That is to say, the lookahead step
+number plus one equals context_len.</p>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">row_conv</span> <span class="o">=</span> <span class="n">row_conv</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span> <span class="n">context_len</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; The input layer.</li>
+<li><strong>context_len</strong> (<em>int</em>) &#8211; The context length equals the lookahead step number
+plus one.</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation Type. Default is linear activation.</li>
+<li><strong>param_attr</strong> (<em>paddle.v2.attr.ParameterAttribute</em>) &#8211; The Parameter Attribute. If None, the parameter will be
+initialized smartly. It&#8217;s better set it by yourself.</li>
+<li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttributeNone</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">paddle.v2.config_base.Layer object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">paddle.v2.config_base.Layer</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 </div>
 <div class="section" id="image-pooling-layer">
 <h2>Image Pooling Layer<a class="headerlink" href="#image-pooling-layer" title="Permalink to this headline">¶</a></h2>
@@ -2713,6 +2769,50 @@ Sampling one id for one sample.</p>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; The input layer.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
 <li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttributeNone</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">paddle.v2.config_base.Layer object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">paddle.v2.config_base.Layer</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="multiplex">
+<h3>multiplex<a class="headerlink" href="#multiplex" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">multiplex</code></dt>
+<dd><p>This layer multiplex multiple layers according to the index,
+which is provided by the first input layer.
+inputs[0]: the index of the layer to output of size batchSize.
+inputs[1:N]; the candidate output data.
+For each index i from 0 to batchSize -1, the output is the i-th row of the
+(index[i] + 1)-th layer.</p>
+<p>For each i-th row of output:
+.. math:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">x_</span><span class="p">{</span><span class="n">x_</span><span class="p">{</span><span class="mi">0</span><span class="p">}[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">}[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">],</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span> <span class="o">...</span> <span class="p">,</span> <span class="p">(</span><span class="n">x_</span><span class="p">{</span><span class="mi">1</span><span class="p">}</span><span class="o">.</span><span class="n">width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>where, y is output. <span class="math">\(x_{k}\)</span> is the k-th input layer and
+<span class="math">\(k = x_{0}[i] + 1\)</span>.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">maxid</span> <span class="o">=</span> <span class="n">multiplex</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layers</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>list of paddle.v2.config_base.Layer</em>) &#8211; Input layers.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; extra layer attributes.</li>
 </ul>
 </td>
 </tr>
