@@ -20,8 +20,7 @@ void print_parameter(paddle_gradient* param) {
     printf("name: %s\n", param->name);
     printf("content_len: %d\n", param->content_len);
     printf("content_type: %d\n", param->element_type);
-    int i;
-    for (i = 0; i < param->content_len / sizeof(real); ++i) {
+    for (int i = 0; i < param->content_len / sizeof(real); ++i) {
       printf("%f ", ((float*)param->content)[i]);
     }
     printf("\n\n");

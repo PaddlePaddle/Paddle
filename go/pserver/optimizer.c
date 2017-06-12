@@ -36,8 +36,7 @@ int update_SGD(void* optimizer,
   float* parameter = (float*)buffer;
   float* grad = (float*)gradient;
 
-  int i;
-  for (i = 0; i < num_bytes / sizeof(float); ++i) {
+  for (int i = 0; i < num_bytes / sizeof(float); ++i) {
     parameter[i] -= o->learning_rate * grad[i];
   }
   return 0;
