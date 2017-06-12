@@ -632,7 +632,7 @@ void Argument::printValueString(std::ostream& stream,
                                 const std::string& prefix) const {
   std::unordered_map<std::string, std::string> out;
   getValueString(&out);
-  for (auto field : {"value", "id", "sequence pos", "sub-sequence pos"}) {
+  for (auto field : {"value", "ids", "sequence pos", "sub-sequence pos"}) {
     auto it = out.find(field);
     if (it != out.end()) {
       stream << prefix << field << ":\n" << it->second;
