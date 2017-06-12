@@ -164,10 +164,10 @@ func paddle_finish_init_params(client C.client) C.int {
 }
 
 //export paddle_send_grads
-func paddle_send_grads(client C.client, grads *C.paddle_gradient, total C.int) C.int {
+func paddle_send_grads(client C.client, grads **C.paddle_gradient, total C.int) C.int {
 	var gs []pserver.Gradient
 	for i := 0; i < int(total); i++ {
-		grad := (*C.paddle_gradient)(unsafe.Pointer((uintptr(unsafe.Pointer(grads)) + uintptr(i)*unsafe.Sizeof(*grads))))
+		grad := *(**C.paddle_gradient)(unsafe.Pointer((uintptr(unsafe.Pointer(grads)) + uintptr(i)*unsafe.Sizeof(*grads))))
 		et := pserver.ElementType(grad.element_type)
 		name := C.GoString(grad.name)
 		content := cArrayToSlice(unsafe.Pointer(grad.content), int(grad.content_len))
@@ -204,12 +204,14 @@ func paddle_get_params(client C.client, names **C.char, dst **C.paddle_parameter
 		}
 
 		p := ps[i]
-		param := *(**C.paddle_parameter)(unsafe.Pointer((uintptr(unsafe.Pointer(dst)) + uintptr(i)*unsafe.Sizeof(*dst))))
+		paramPtr := (**C.paddle_parameter)(unsafe.Pointer((uintptr(unsafe.Pointer(dst)) + uintptr(i)*unsafe.Sizeof(*dst))))
+		param := *paramPtr
 		nameReady := false
 		contentAllocated := false
 
 		if unsafe.Pointer(param) == nullPtr {
-			param = (*C.paddle_parameter)(C.calloc(1, C.size_t(unsafe.Sizeof(*param))))
+			*paramPtr = (*C.paddle_parameter)(C.calloc(1, C.size_t(unsafe.Sizeof(*param))))
+			param = *paramPtr
 		} else {
 			if unsafe.Pointer(param.name) != nullPtr {
 				if n := C.GoString(param.name); n != p.Name {
