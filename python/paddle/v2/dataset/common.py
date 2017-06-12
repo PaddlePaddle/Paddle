@@ -151,9 +151,14 @@ def cluster_files_reader(files_pattern,
     return reader
 
 
-def convert(output_path, eader, num_shards, name_prefix):
+def convert(output_path,
+            reader,
+            num_shards,
+            name_prefix,
+            max_lines_to_shuffle=10000):
     import recordio
     import cPickle as pickle
+    import random
     """
     Convert data from reader to recordio format files.
 
@@ -161,35 +166,40 @@ def convert(output_path, eader, num_shards, name_prefix):
     :param reader: a data reader, from which the convert program will read data instances.
     :param num_shards: the number of shards that the dataset will be partitioned into.
     :param name_prefix: the name prefix of generated files.
+    :param max_lines_to_shuffle: the max lines numbers to shuffle before writing.
     """
 
-    def open_needs(idx):
-        n = "%s/%s-%05d" % (output_path, name_prefix, idx)
-        w = recordio.writer(n)
-        f = open(n, "w")
-        idx += 1
+    assert num_shards >= 1
+    assert max_lines_to_shuffle >= 1
 
-        return w, f, idx
+    def open_writers():
+        w = []
+        for i in range(0, num_shards):
+            n = "%s/%s-%05d-of-%05d" % (output_path, name_prefix, i,
+                                        num_shards - 1)
+            w.append(recordio.writer(n))
 
-    def close_needs(w, f):
-        if w is not None:
-            w.close()
+        return w
 
-        if f is not None:
-            f.close()
+    def close_writers(w):
+        for i in range(0, num_shards):
+            w[i].close()
 
-    idx = 0
-    w = None
-    f = None
+    def write_data(w, lines):
+        random.shuffle(lines)
+        for i, d in enumerate(lines):
+            d = pickle.dumps(d, pickle.HIGHEST_PROTOCOL)
+            w[i % num_shards].write(d)
+
+    w = open_writers()
+    lines = []
 
     for i, d in enumerate(reader()):
-        if w is None:
-            w, f, idx = open_needs(idx)
+        lines.append(d)
+        if i % max_lines_to_shuffle == 0 and i >= max_lines_to_shuffle:
+            write_data(w, lines)
+            lines = []
+            continue
 
-        w.write(pickle.dumps(d, pickle.HIGHEST_PROTOCOL))
-
-        if i % num_shards == 0 and i >= num_shards:
-            close_needs(w, f)
-            w, f, idx = open_needs(idx)
-
-    close_needs(w, f)
+    write_data(w, lines)
+    close_writers(w)
