@@ -1,11 +1,11 @@
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,7 +16,7 @@
 # To simplify the build process of PaddlePaddle, we defined couple of
 # fundamental abstractions, e.g., how to build library, binary and
 # test in C++, CUDA and Go.
-# 
+#
 # -------------------------------------------
 #    C++	      CUDA C++	      Go
 # -------------------------------------------
@@ -28,6 +28,11 @@
 # cmake_parse_arguments can help us to achieve this goal.
 # https://cmake.org/cmake/help/v3.0/module/CMakeParseArguments.html
 #
+
+if(NOT APPLE)
+    find_package(Threads REQUIRED)
+    link_libraries(${CMAKE_THREAD_LIBS_INIT})
+endif(NOT APPLE)
 
 # cc_library parses tensor.cc and figures out that target also depend on tensor.h.
 # cc_library(tensor
@@ -45,7 +50,9 @@ function(cc_library TARGET_NAME)
   else()
     add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
   endif()
-  add_dependencies(${TARGET_NAME} ${cc_library_DEPS} ${external_project_dependencies})
+  if (cc_library_DEPS)
+    add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
+  endif()
 endfunction(cc_library)
 
 # cc_binary parses tensor.cc and figures out that target also depend on tensor.h.
@@ -58,8 +65,7 @@ function(cc_binary TARGET_NAME)
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   add_executable(${TARGET_NAME} ${cc_binary_SRCS})
-  link_paddle_exe(${TARGET_NAME})
-  if(cc_binary_DEPS)  
+  if(cc_binary_DEPS)
     target_link_libraries(${TARGET_NAME} ${cc_binary_DEPS})
     add_dependencies(${TARGET_NAME} ${cc_binary_DEPS})
   endif()
@@ -73,17 +79,16 @@ endfunction(cc_binary)
 #   DEPS
 #   tensor)
 function(cc_test TARGET_NAME)
-  set(options "")
-  set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
-  cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  add_executable(${TARGET_NAME} ${cc_test_SRCS})
-  link_paddle_test(${TARGET_NAME})
-  if(cc_test_DEPS)
-    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS})
-    add_dependencies(${TARGET_NAME} ${cc_test_DEPS})
+  if(WITH_TESTING)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    add_executable(${TARGET_NAME} ${cc_test_SRCS})
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
+    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
+    add_test(${TARGET_NAME} ${TARGET_NAME})
   endif()
-  add_test(${TARGET_NAME} ${TARGET_NAME})
 endfunction(cc_test)
 
 # Suppose that ops.cu includes global functions that take Tensor as
@@ -95,28 +100,33 @@ endfunction(cc_test)
 #   DEPS
 #   tensor)
 function(nv_library TARGET_NAME)
-  set(options OPTIONAL)
-  set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
-  cmake_parse_arguments(nv_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  if (${nv_library_OPTIONAL} STREQUAL "SHARED")
-    cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
-  else()
-    cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
+  if (WITH_GPU)
+    set(options OPTIONAL)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(nv_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    if (${nv_library_OPTIONAL} STREQUAL "SHARED")
+      cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
+    else()
+      cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
+    endif()
+    if (nv_library_DEPS)
+      add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
+    endif()
   endif()
-  add_dependencies(${TARGET_NAME} ${nv_library_DEPS} ${external_project_dependencies})
 endfunction(nv_library)
 
 function(nv_binary TARGET_NAME)
-  set(options "")
-  set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
-  cmake_parse_arguments(nv_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  cuda_add_executable(${TARGET_NAME} ${nv_binary_SRCS})
-  link_paddle_exe(${TARGET_NAME})  
-  if(nv_binary_DEPS)
-    target_link_libraries(${TARGET_NAME} ${nv_binary_DEPS})
-    add_dependencies(${TARGET_NAME} ${nv_binary_DEPS})
+  if (WITH_GPU)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(nv_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    cuda_add_executable(${TARGET_NAME} ${nv_binary_SRCS})
+    if(nv_binary_DEPS)
+      target_link_libraries(${TARGET_NAME} ${nv_binary_DEPS})
+      add_dependencies(${TARGET_NAME} ${nv_binary_DEPS})
+    endif()
   endif()
 endfunction(nv_binary)
 
@@ -128,17 +138,16 @@ endfunction(nv_binary)
 #   DEPS
 #   ops)
 function(nv_test TARGET_NAME)
-  set(options "")
-  set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
-  cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
-  link_paddle_test(${TARGET_NAME})  
-  if(nv_test_DEPS)
-    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS})
-    add_dependencies(${TARGET_NAME} ${nv_test_DEPS})
+  if (WITH_GPU AND WITH_TESTING)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
+    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} gtest gtest_main)
+    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} gtest gtest_main)
+    add_test(${TARGET_NAME} ${TARGET_NAME})
   endif()
-  add_test(${TARGET_NAME} ${TARGET_NAME})
 endfunction(nv_test)
 
 set(GOPATH "${CMAKE_CURRENT_BINARY_DIR}/go")
@@ -164,7 +173,7 @@ function(go_library TARGET_NAME)
       set(LIB_NAME "lib${TARGET_NAME}.dylib")
     else()
       set(LIB_NAME "lib${TARGET_NAME}.so")
-    endif()  
+    endif()
   else()
     set(BUILD_MODE "-buildmode=c-archive")
     set(LIB_NAME "lib${TARGET_NAME}.a")
@@ -173,7 +182,7 @@ function(go_library TARGET_NAME)
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
     -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
     ${go_library_SRCS}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   add_custom_target(${TARGET_NAME}_lib ALL DEPENDS ${TARGET_NAME}_timestamp ${go_library_DEPS})
   add_library(${TARGET_NAME} STATIC IMPORTED)
   set_property(TARGET ${TARGET_NAME} PROPERTY
@@ -190,8 +199,8 @@ function(go_binary TARGET_NAME)
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
     -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     ${go_library_SRCS}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})  
-  add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_binary_DEPS})  
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_binary_DEPS})
   install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME} DESTINATION bin)
 endfunction(go_binary)
 
@@ -204,8 +213,8 @@ function(go_test TARGET_NAME)
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} test
     -c -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     ${go_test_SRCS}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})  
-  add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_test_DEPS})  
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_test_DEPS})
   add_test(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
 endfunction(go_test)
 

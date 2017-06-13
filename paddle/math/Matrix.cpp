@@ -3606,7 +3606,7 @@ void CpuMatrix::sumOfSquaresBp(Matrix& output, Matrix& label) {
   }
 }
 
-void CpuMatrix::smoothL1(Matrix& output, Matrix& label) {
+void CpuMatrix::smoothL1(Matrix& output, Matrix& label, real destScale) {
   CHECK(output.useGpu_ == false && label.useGpu_ == false)
       << "Matrix type are not equal";
 
@@ -3624,6 +3624,7 @@ void CpuMatrix::smoothL1(Matrix& output, Matrix& label) {
   for (size_t i = 0; i < numSamples; ++i, out += dim, lbl += dim) {
     for (size_t j = 0; j < dim; ++j) {
       real absVal = std::fabs(out[j] - lbl[j]);
+      cost[i] *= destScale;
       if (absVal < 1.0)
         cost[i] += 0.5 * absVal * absVal;
       else
@@ -3632,7 +3633,7 @@ void CpuMatrix::smoothL1(Matrix& output, Matrix& label) {
   }
 }
 
-void CpuMatrix::smoothL1Bp(Matrix& output, Matrix& label) {
+void CpuMatrix::smoothL1Bp(Matrix& output, Matrix& label, real destScale) {
   CHECK(output.useGpu_ == false && label.useGpu_ == false)
       << "Matrix type are not equal";
 
@@ -3650,6 +3651,7 @@ void CpuMatrix::smoothL1Bp(Matrix& output, Matrix& label) {
   for (size_t i = 0; i < numSamples; ++i, out += dim, grad += dim, lbl += dim) {
     for (size_t j = 0; j < dim; ++j) {
       real val = out[j] - lbl[j];
+      grad[j] *= destScale;
       if (std::fabs(val) < 1) {
         grad[j] += val;
       } else {

@@ -1705,6 +1705,26 @@ TEST(Layer, TransLayer) {
   }
 }
 
+TEST(Layer, RowConvLayer) {
+  const int context = 3;
+  const int size = 512;
+
+  TestConfig config;
+  config.layerConfig.set_type("row_conv");
+  config.layerConfig.set_size(size);
+  config.layerConfig.set_active_type("sigmoid");
+
+  config.inputDefs.push_back(
+      {INPUT_SEQUENCE_DATA, "layer_0", size, context * size});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  RowConvConfig* conv = input->mutable_row_conv_conf();
+  conv->set_context_length(context);
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "row_conv", 100, false, useGpu, false);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);

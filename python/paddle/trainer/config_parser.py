@@ -73,7 +73,6 @@ To use this from paddle_trainer, paddle_trainer should be called with
 --config_args=extension_module_name=[MODULE_NAME]
 
 '''
-
 import copy
 import logging
 import os
@@ -1731,9 +1730,10 @@ class ParameterReluLayer(LayerBase):
     def __init__(self, name, inputs, partial_sum=1, **args):
         super(ParameterReluLayer, self).__init__(
             name, self.layer_type, 0, inputs=inputs, **args)
-        config_assert(len(self.inputs) == 1)
-        config_assert(self.input_layer.size % partial_sum == 0)
         input_layer = self.get_input_layer(0)
+        config_assert(len(self.inputs) == 1, "prelu layer has only one input.")
+        config_assert(input_layer.size % partial_sum == 0,
+                      "a wrong setting for partial_sum")
         self.set_layer_size(input_layer.size)
         self.create_input_parameter(0, input_layer.size / partial_sum)
 
@@ -2079,6 +2079,23 @@ class MaxOutLayer(LayerBase):
         out_channels = maxout_conf.image_conf.channels / maxout_conf.groups
         self.set_cnn_layer(name, g_layer_map[input_layer.name].height,
                            g_layer_map[input_layer.name].width, out_channels)
+
+
+@config_layer('row_conv')
+class RowConvLayer(LayerBase):
+    def __init__(self, name, inputs, context_length, **xargs):
+        super(RowConvLayer, self).__init__(
+            name, 'maxout', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1,
+            'TransLayer must have one and only one input')
+        input_layer = self.get_input_layer(0)
+        row_conv_conf = self.config.inputs[0].row_conv_conf
+        row_conv_conf.context_length = context_length
+        self.set_layer_size(input_layer.size)
+        psize = context_length * input_layer.size
+        dims = [context_length, input_layer.size]
+        self.create_input_parameter(0, psize, dims)
 
 
 # key: cost type
@@ -3371,7 +3388,7 @@ def make_importer(config_dir, config_args):
     return Import
 
 
-settings = dict(
+DEFAULT_SETTING = dict(
     batch_size=None,
     mini_batch_size=None,
     algorithm='async_sgd',
@@ -3403,6 +3420,8 @@ settings = dict(
     adam_beta1=0.9,
     adam_beta2=0.999,
     adam_epsilon=1e-8, )
+
+settings = copy.deepcopy(DEFAULT_SETTING)
 
 settings_deprecated = dict(usage_ratio=1., )
 
@@ -3544,23 +3563,32 @@ def update_g_config():
     return g_config
 
 
-def parse_config(trainer_config, config_arg_str):
-    '''
-    @param trainer_config: can be a string of config file name or a function name
-    with config logic
-    @param config_arg_str: a string of the form var1=val1,var2=val2. It will be
-    passed to config script as a dictionary CONFIG_ARGS
-    '''
+def begin_parse():
     init_config_environment()
     for hook in _parse_config_hooks:
         hook()
-
-    config_args = {}
 
     logger.findCaller = find_caller
     logger.fatal = my_fatal
 
     g_config.model_config.type = "nn"
+
+    global g_current_submodel, g_root_submodel
+    g_root_submodel = g_config.model_config.sub_models.add()
+    g_root_submodel.name = 'root'
+    g_root_submodel.is_recurrent_layer_group = False
+    g_current_submodel = g_root_submodel
+
+
+def parse_config(trainer_config, config_arg_str):
+    '''
+    @param config_arg_str: a string of the form var1=val1,var2=val2. It will be
+    passed to config script as a dictionary CONFIG_ARGS
+    '''
+
+    begin_parse()
+    config_args = {}
+
     if config_arg_str:
         config_args = dict([f.split('=') for f in config_arg_str.split(',')])
 
@@ -3572,14 +3600,6 @@ def parse_config(trainer_config, config_arg_str):
         global g_extended_config_funcs
         extension_module = importlib(extension_module_name)
         g_extended_config_funcs = extension_module.get_config_funcs(g_config)
-
-    g_config.model_config.type = 'nn'
-
-    global g_current_submodel, g_root_submodel
-    g_root_submodel = g_config.model_config.sub_models.add()
-    g_root_submodel.name = 'root'
-    g_root_submodel.is_recurrent_layer_group = False
-    g_current_submodel = g_root_submodel
 
     if hasattr(trainer_config, '__call__'):
         trainer_config.func_globals.update(
