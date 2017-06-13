@@ -1300,20 +1300,23 @@ def parse_maxout(maxout, input_layer_name, maxout_conf):
 
 # Define an evaluator
 @config_func
-def Evaluator(
-        name,
-        type,
-        inputs,
-        chunk_scheme=None,
-        num_chunk_types=None,
-        classification_threshold=None,
-        positive_label=None,
-        dict_file=None,
-        result_file=None,
-        num_results=None,
-        top_k=None,
-        delimited=None,
-        excluded_chunk_types=None, ):
+def Evaluator(name,
+              type,
+              inputs,
+              chunk_scheme=None,
+              num_chunk_types=None,
+              classification_threshold=None,
+              positive_label=None,
+              dict_file=None,
+              result_file=None,
+              num_results=None,
+              top_k=None,
+              delimited=None,
+              excluded_chunk_types=None,
+              overlap_threshold=None,
+              background_id=None,
+              evaluate_difficult=None,
+              ap_type=None):
     evaluator = g_config.model_config.evaluators.add()
     evaluator.type = type
     evaluator.name = MakeLayerNameInSubmodel(name)
@@ -1346,6 +1349,18 @@ def Evaluator(
 
     if excluded_chunk_types:
         evaluator.excluded_chunk_types.extend(excluded_chunk_types)
+
+    if overlap_threshold is not None:
+        evaluator.overlap_threshold = overlap_threshold
+
+    if background_id is not None:
+        evaluator.background_id = background_id
+
+    if evaluate_difficult is not None:
+        evaluator.evaluate_difficult = evaluate_difficult
+
+    if ap_type is not None:
+        evaluator.ap_type = ap_type
 
 
 class LayerBase(object):
