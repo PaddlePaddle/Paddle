@@ -24,10 +24,11 @@ enum ColFormat { kCFO = 0, kOCF = 1 };
  *        five dimensions in the Im2ColFunctor calculation,
  *        And in the Col2ImFunctor calculation, it is reversed.
  *
- * \param imData  Image data of NCHW format.
- *                The shape of imData is:
- *                [inputChannels, inputHeight, inputWidth].
- * \param colData colData data.
+ * \param imData   Image data.
+ * \param imShape  The shape of imData,
+ *                 [inputChannels, inputHeight, inputWidth].
+ * \param colData  Column data.
+ * \param colShape The shape of colData.
  *
  * If the template argument Format is kCFO, the shape of colData is:
  * [inputChannels, filterHeight, filterWidth, outputHeight, outputWidth]
@@ -38,10 +39,10 @@ enum ColFormat { kCFO = 0, kOCF = 1 };
  * outputHeight * outputWidth.
  *
  * Reshape:
- *     shape of colData                shape of sequence
+ *     shape of colData           shape of convolution matrix
  *     [inputChannels,
  *      filterHeight,
- *      filterWidth,      ======>    [seqLength, stepSize]
+ *      filterWidth,      ======>      [height, width]
  *      outputHeight,
  *      outputWidth]
  *
@@ -53,7 +54,7 @@ enum ColFormat { kCFO = 0, kOCF = 1 };
  * inputChannels * filterHeight * filterWidth.
  *
  * Reshape:
- *     shape of colData                shape of sequence
+ *     shape of colData             shape of sequence matrix
  *     [outputHeight,
  *      outputWidth,
  *      inputChannels,    ======>    [seqLength, stepSize]
