@@ -119,12 +119,17 @@ public:
         1 +
         (inputWidth + 2 * paddingW() - blockW() + strideW() - 1) / strideW();
     CHECK_EQ(seqLength, outputHeight * outputWidth);
-    CHECK_EQ(stepSize, inputChannels * blockH() * blockH());
+    CHECK_EQ(stepSize, inputChannels * blockH() * blockW());
 
     real* inputData = inputs[0].data<real>();
     real* outputData = outputs[0].data<real>();
     Im2ColFunctor<kOCF, Device, real> im2col;
     for (size_t i = 0; i < batchSize; i++) {
+      // The result of im2col is [output_height, output_width,
+      // input_channels, filter_height, filter_width], and it is easy to
+      // reshape into [seqLength, stepSize], where seqLength is equal
+      // output_height * output_width, stepSize is equal
+      // input_channels * filter_height * filter_width
       im2col(inputData,
              inputChannels,
              inputHeight,
@@ -160,5 +165,7 @@ protected:
 
   inline int blockW() const { return blocks_[1]; }
 };
+
+REGISTER_TYPED_FUNC(ImageExpand, CPU, ImageExpandFunction);
 
 }  // namespace paddle
