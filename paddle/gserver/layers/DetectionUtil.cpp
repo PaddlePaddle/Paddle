@@ -16,29 +16,33 @@ limitations under the License. */
 
 namespace paddle {
 
-size_t appendWithPermute(const MatrixPtr inMatrix,
+size_t appendWithPermute(const Matrix& inMatrix,
                          size_t height,
                          size_t width,
                          size_t outTotalSize,
                          size_t outOffset,
                          size_t batchSize,
-                         MatrixPtr outMatrix,
+                         Matrix& outMatrix,
                          PermMode permMode,
                          bool useGpu) {
-  if (permMode == NCHWTONHWC) {
-    size_t inElementCnt = inMatrix->getElementCnt();
+  if (permMode == kNCHWToNHWC) {
+    size_t inElementCnt = inMatrix.getElementCnt();
     size_t channels = inElementCnt / (height * width * batchSize);
     size_t imgSize = height * width;
     for (size_t i = 0; i < batchSize; ++i) {
       size_t offset = i * (outTotalSize / batchSize) + outOffset;
-      const MatrixPtr inTmp =
-          Matrix::create(inMatrix->getData() + i * channels * imgSize,
-                         channels,
+      const MatrixPtr inTmp = Matrix::create(
+          const_cast<real*>(inMatrix.getData()) + i * channels * imgSize,
+          channels,
+          imgSize,
+          false,
+          useGpu);
+      MatrixPtr outTmp =
+          Matrix::create(const_cast<real*>(outMatrix.getData()) + offset,
                          imgSize,
+                         channels,
                          false,
                          useGpu);
-      MatrixPtr outTmp = Matrix::create(
-          outMatrix->getData() + offset, imgSize, channels, false, useGpu);
       inTmp->transpose(outTmp, false);
     }
     return channels * imgSize;
@@ -47,29 +51,33 @@ size_t appendWithPermute(const MatrixPtr inMatrix,
   }
 }
 
-size_t decomposeWithPermute(const MatrixPtr inMatrix,
+size_t decomposeWithPermute(const Matrix& inMatrix,
                             size_t height,
                             size_t width,
                             size_t inTotalSize,
                             size_t inOffset,
                             size_t batchSize,
-                            MatrixPtr outMatrix,
+                            Matrix& outMatrix,
                             PermMode permMode,
                             bool useGpu) {
-  if (permMode == NHWCTONCHW) {
-    size_t outElementCnt = outMatrix->getElementCnt();
+  if (permMode == kNHWCToNCHW) {
+    size_t outElementCnt = outMatrix.getElementCnt();
     size_t channels = outElementCnt / (height * width * batchSize);
     size_t imgSize = height * width;
     for (size_t i = 0; i < batchSize; ++i) {
       size_t offset = i * (inTotalSize / batchSize) + inOffset;
-      const MatrixPtr inTmp = Matrix::create(
-          inMatrix->getData() + offset, imgSize, channels, false, useGpu);
-      MatrixPtr outTmp =
-          Matrix::create(outMatrix->getData() + i * channels * imgSize,
-                         channels,
+      const MatrixPtr inTmp =
+          Matrix::create(const_cast<real*>(inMatrix.getData()) + offset,
                          imgSize,
+                         channels,
                          false,
                          useGpu);
+      MatrixPtr outTmp = Matrix::create(
+          const_cast<real*>(outMatrix.getData()) + i * channels * imgSize,
+          channels,
+          imgSize,
+          false,
+          useGpu);
       inTmp->transpose(outTmp, false);
     }
     return channels * imgSize;
@@ -99,9 +107,10 @@ real jaccardOverlap(const NormalizedBBox& bbox1, const NormalizedBBox& bbox2) {
   }
 }
 
-vector<real> encodeBBoxWithVar(const NormalizedBBox& priorBBox,
-                               const vector<real> priorBBoxVar,
-                               const NormalizedBBox& gtBBox) {
+void encodeBBoxWithVar(const NormalizedBBox& priorBBox,
+                       const vector<real> priorBBoxVar,
+                       const NormalizedBBox& gtBBox,
+                       vector<real>& outVec) {
   real priorBBoxWidth = priorBBox.getWidth();
   real priorBBoxHeight = priorBBox.getHeight();
   real priorBBoxCenterX = priorBBox.getCenterX();
@@ -112,17 +121,15 @@ vector<real> encodeBBoxWithVar(const NormalizedBBox& priorBBox,
   real gtBBoxCenterX = gtBBox.getCenterX();
   real gtBBoxCenterY = gtBBox.getCenterY();
 
-  vector<real> offsetParam;
-  offsetParam.push_back((gtBBoxCenterX - priorBBoxCenterX) / priorBBoxWidth /
-                        priorBBoxVar[0]);
-  offsetParam.push_back((gtBBoxCenterY - priorBBoxCenterY) / priorBBoxHeight /
-                        priorBBoxVar[1]);
-  offsetParam.push_back(std::log(std::fabs(gtBBoxWidth / priorBBoxWidth)) /
-                        priorBBoxVar[2]);
-  offsetParam.push_back(std::log(std::fabs(gtBBoxHeight / priorBBoxHeight)) /
-                        priorBBoxVar[3]);
-
-  return offsetParam;
+  outVec.clear();
+  outVec.push_back((gtBBoxCenterX - priorBBoxCenterX) / priorBBoxWidth /
+                   priorBBoxVar[0]);
+  outVec.push_back((gtBBoxCenterY - priorBBoxCenterY) / priorBBoxHeight /
+                   priorBBoxVar[1]);
+  outVec.push_back(std::log(std::fabs(gtBBoxWidth / priorBBoxWidth)) /
+                   priorBBoxVar[2]);
+  outVec.push_back(std::log(std::fabs(gtBBoxHeight / priorBBoxHeight)) /
+                   priorBBoxVar[3]);
 }
 
 NormalizedBBox decodeBBoxWithVar(const NormalizedBBox& priorBBox,
@@ -318,9 +325,9 @@ void matchBBox(const vector<NormalizedBBox>& priorBBoxes,
 }
 
 pair<size_t, size_t> generateMatchIndices(
-    const MatrixPtr priorValue,
+    const Matrix& priorValue,
     const size_t numPriorBBoxes,
-    const MatrixPtr gtValue,
+    const Matrix& gtValue,
     const int* gtStartPosPtr,
     const size_t seqNum,
     const vector<vector<real>>& maxConfScore,
@@ -331,7 +338,7 @@ pair<size_t, size_t> generateMatchIndices(
     vector<vector<int>>* matchIndicesVecPtr,
     vector<vector<int>>* negIndicesVecPtr) {
   vector<NormalizedBBox> priorBBoxes;  // share same prior bboxes
-  getBBoxFromPriorData(priorValue->getData(), numPriorBBoxes, priorBBoxes);
+  getBBoxFromPriorData(priorValue.getData(), numPriorBBoxes, priorBBoxes);
   size_t totalPos = 0;
   size_t totalNeg = 0;
   for (size_t n = 0; n < batchSize; ++n) {
@@ -349,7 +356,7 @@ pair<size_t, size_t> generateMatchIndices(
     }
     vector<NormalizedBBox> gtBBoxes;
     getBBoxFromLabelData(
-        gtValue->getData() + gtStartPosPtr[n] * 6, numGTBBoxes, gtBBoxes);
+        gtValue.getData() + gtStartPosPtr[n] * 6, numGTBBoxes, gtBBoxes);
 
     matchBBox(
         priorBBoxes, gtBBoxes, overlapThreshold, &matchIndices, &matchOverlaps);
@@ -523,7 +530,7 @@ void getDetectionOutput(const real* confData,
                         const size_t batchSize,
                         const vector<map<size_t, vector<size_t>>>& allIndices,
                         const vector<vector<NormalizedBBox>>& allDecodedBBoxes,
-                        MatrixPtr out) {
+                        Matrix& out) {
   MatrixPtr outBuffer;
   Matrix::resizeOrCreate(outBuffer, numKept, 7, false, false);
   real* bufferData = outBuffer->getData();
@@ -550,7 +557,7 @@ void getDetectionOutput(const real* confData,
       }
     }
   }
-  out->copyFrom(bufferData, numKept * 7);
+  out.copyFrom(bufferData, numKept * 7);
 }
 
 NormalizedBBox clipBBox(const NormalizedBBox& bbox) {

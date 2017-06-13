@@ -42,10 +42,12 @@ struct BBoxBase {
 
   T getSize() const { return getWidth() * getHeight(); }
 
+  // coordinate of bounding box
   T xMin;
   T yMin;
   T xMax;
   T yMax;
+  // whether difficult object (e.g. object with heavy occlusion is difficult)
   bool isDifficult;
 };
 
@@ -53,31 +55,31 @@ struct NormalizedBBox : BBoxBase<real> {
   NormalizedBBox() : BBoxBase<real>() {}
 };
 
-enum PermMode { NCHWTONHWC, NHWCTONCHW };
+enum PermMode { kNCHWToNHWC, kNHWCToNCHW };
 
 /**
  * @brief First permute input maxtrix then append to output matrix
  */
-size_t appendWithPermute(const MatrixPtr inMatrix,
+size_t appendWithPermute(const Matrix& inMatrix,
                          size_t height,
                          size_t width,
                          size_t outTotalSize,
                          size_t outOffset,
                          size_t batchSize,
-                         MatrixPtr outMatrix,
+                         Matrix& outMatrix,
                          PermMode permMode,
                          bool useGpu);
 
 /**
  * @brief First permute input maxtrix then decompose to output
  */
-size_t decomposeWithPermute(const MatrixPtr inMatrix,
+size_t decomposeWithPermute(const Matrix& inMatrix,
                             size_t height,
                             size_t width,
                             size_t totalSize,
                             size_t offset,
                             size_t batchSize,
-                            MatrixPtr outMatrix,
+                            Matrix& outMatrix,
                             PermMode permMode,
                             bool useGpu);
 
@@ -89,15 +91,17 @@ size_t decomposeWithPermute(const MatrixPtr inMatrix,
 real jaccardOverlap(const NormalizedBBox& bbox1, const NormalizedBBox& bbox2);
 
 /**
- * @brief Compute offset parameters between prior bbox and groundtruth bbox
+ * @brief Compute offset parameters between prior bbox and ground truth bbox
  * and variances of prior bbox are considered
  * @param priorBBox Input prior bbox
  * @param priorBBoxVar Variance parameters of prior bbox
  * @param gtBBox Groundtruth bbox
+ * @param outVec Output vector
  */
-vector<real> encodeBBoxWithVar(const NormalizedBBox& priorBBox,
-                               const vector<real> priorBBoxVar,
-                               const NormalizedBBox& gtBBox);
+void encodeBBoxWithVar(const NormalizedBBox& priorBBox,
+                       const vector<real> priorBBoxVar,
+                       const NormalizedBBox& gtBBox,
+                       vector<real>& outVec);
 
 /**
  * @brief Decode prior bbox with offset parameters
@@ -194,9 +198,9 @@ negative examples
 * @param negIndicesVecPtr Save indices of negative prior bbox
 */
 pair<size_t, size_t> generateMatchIndices(
-    const MatrixPtr priorValue,
+    const Matrix& priorValue,
     const size_t numPriorBBoxes,
-    const MatrixPtr gtValue,
+    const Matrix& gtValue,
     const int* gtStartPosPtr,
     const size_t seqNum,
     const vector<vector<real>>& maxConfScore,
@@ -298,7 +302,7 @@ void getDetectionOutput(const real* confData,
                         const size_t batchSize,
                         const vector<map<size_t, vector<size_t>>>& allIndices,
                         const vector<vector<NormalizedBBox>>& allDecodedBBoxes,
-                        MatrixPtr out);
+                        Matrix& out);
 
 NormalizedBBox clipBBox(const NormalizedBBox& bbox);
 
