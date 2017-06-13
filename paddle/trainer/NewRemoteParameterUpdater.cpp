@@ -31,7 +31,6 @@ NewRemoteParameterUpdater::NewRemoteParameterUpdater(
 void NewRemoteParameterUpdater::init(
     const std::vector<ParameterPtr> &parameters) {
   ParameterUpdater::init(parameters);
-  LOG(INFO) << "NewRemoteParameterUpdater init in";
 
   for (auto &para : parameters_) {
     para->getBuf(PARAMETER_VALUE)->zeroMem();
@@ -58,7 +57,12 @@ void NewRemoteParameterUpdater::init(
   if (paddle_begin_init_params(parameterClient_)) {
     LOG(INFO) << "paddle_begin_init_params start";
     for (int i = 0; i < parameterSize(); ++i) {
-      paddle_init_param(parameterClient_, *newParameters_[i], NULL, 0);
+      auto paramConfig = parameters_[i]->getConfig();
+      std::string bytes = paramConfig.SerializeAsString();
+      const char *array = bytes.data();
+      int size = (int)bytes.size();
+      paddle_init_param(
+          parameterClient_, *newParameters_[i], (void *)array, size);
     }
     paddle_finish_init_params(parameterClient_);
     LOG(INFO) << "paddle_begin_init_params done";

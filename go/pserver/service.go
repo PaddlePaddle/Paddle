@@ -29,10 +29,6 @@ type Parameter struct {
 	Content     []byte
 }
 
-func (p *Parameter) toString() {
-	fmt.Println(p.Name, p.ElementType, p.Content)
-}
-
 // ParameterWithConfig contains the parameter and the configuration.
 type ParameterWithConfig struct {
 	Param  Parameter
@@ -53,7 +49,7 @@ type Service struct {
 
 // NewService creates a new service.
 func NewService() *Service {
-	s := &Service{opt: newOptimizer(sgd, 0.01)}
+	s := &Service{opt: newOptimizer(sgd, 0.005)}
 	s.paramMap = make(map[string]Parameter)
 	s.initialized = make(chan struct{})
 	return s

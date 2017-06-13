@@ -76,7 +76,5 @@ retry:
     fail();
   }
 
-  printf("test success!\n");
-
   return 0;
 }

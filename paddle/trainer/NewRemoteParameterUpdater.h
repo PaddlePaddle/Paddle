@@ -84,7 +84,6 @@ private:
 
     for (int i = 0; i < parameterSize(); ++i) {
       ParameterPtr param = parameters_[i];
-      new_params[i]->content_len = 10;
       new_params[i]->element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
       new_params[i]->name = (char*)param->getName().c_str();
       new_params[i]->content =

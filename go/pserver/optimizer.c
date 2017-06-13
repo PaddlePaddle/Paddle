@@ -32,7 +32,6 @@ int update_SGD(void* optimizer,
                const void* gradient,
                int num_bytes) {
   SGD_optimizer* o = (SGD_optimizer*)optimizer;
-  // TODO(a simple SGD implement)
   float* parameter = (float*)buffer;
   float* grad = (float*)gradient;
 
