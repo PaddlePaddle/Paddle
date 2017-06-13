@@ -37,16 +37,16 @@ bool BlockExpandLayer::init(const LayerMap& layerMap,
   imgSizeH_ = blockConf.img_size_y();
   imgSizeW_ = blockConf.img_size_x();
 
+  std::vector<size_t> strides = {(size_t)strideH_, (size_t)strideW_};
+  std::vector<size_t> paddings = {(size_t)paddingH_, (size_t)paddingW_};
+  std::vector<size_t> blocks = {(size_t)blockH_, (size_t)blockW_};
+  createFunction(forward_,
+                 "ImageExpand",
+                 FuncConfig()
+                     .set("strides", strides)
+                     .set("paddings", paddings)
+                     .set("blocks", blocks));
   if (!useGpu_) {
-    std::vector<size_t> strides = {(size_t)strideH_, (size_t)strideW_};
-    std::vector<size_t> paddings = {(size_t)paddingH_, (size_t)paddingW_};
-    std::vector<size_t> blocks = {(size_t)blockH_, (size_t)blockW_};
-    createFunction(forward_,
-                   "ImageExpand",
-                   FuncConfig()
-                       .set("strides", strides)
-                       .set("paddings", paddings)
-                       .set("blocks", blocks));
     createFunction(backward_,
                    "ImageExpandGrad",
                    FuncConfig()
@@ -84,62 +84,29 @@ void BlockExpandLayer::forward(PassType passType) {
   size_t blockNum = getBlockNum();
   size_t blockSize = blockH_ * blockW_ * channels_;
   resetOutput(blockNum * batchSize, blockSize);
-  // TODO(hedaoyuan): After completing the GPU version of ImageExpand,
-  // refactor the following code.
-  Argument& out = getOutput();
-  MatrixPtr outV = getOutputValue();
 
-  MatrixPtr input = getPrev(0)->getOutputValue();
-  Matrix::resizeOrCreate(outVTrans_, blockSize, blockNum, false, useGpu_);
+  // calculate output_.value
+  inputShape_ = TensorShape({batchSize, channels_, imgSizeH_, imgSizeW_});
+  outputShape_ = TensorShape({batchSize, blockNum, blockSize});
+  BufferArgs inputs;
+  BufferArgs outputs;
+  inputs.addArg(*getInputValue(0), inputShape_);
+  outputs.addArg(*getOutputValue(), outputShape_, ASSIGN_TO);
+  forward_[0]->calc(inputs, outputs);
+
+  // calculate output_.sequenceStartPositions and output_.cpuSequenceDims
+  Argument& out = getOutput();
   ICpuGpuVector::resizeOrCreate(
       out.sequenceStartPositions, batchSize + 1, false);
   IVector::resizeOrCreate(out.cpuSequenceDims, 2 * batchSize, false);
   int* start = out.sequenceStartPositions->getMutableData(false);
   int* dims = out.cpuSequenceDims->getData();
   for (size_t i = 0; i < batchSize; i++) {
-    if (useGpu_) {
-      outVTrans_->zeroMem();
-      /* expand each block as one row */
-      MatrixPtr inputTmp =
-          Matrix::create(input->getData() + i * input->getWidth(),
-                         1,
-                         input->getWidth(),
-                         false,
-                         useGpu_);
-      outVTrans_->convExpand(*inputTmp,
-                             imgSizeH_,
-                             imgSizeW_,
-                             channels_,
-                             blockH_,
-                             blockW_,
-                             strideH_,
-                             strideW_,
-                             paddingH_,
-                             paddingW_,
-                             outputH_,
-                             outputW_);
-      MatrixPtr outVTmp =
-          Matrix::create(outV->getData() + i * blockNum * blockSize,
-                         blockNum,
-                         blockSize,
-                         false,
-                         useGpu_);
-      outVTrans_->transpose(outVTmp, false);
-    }
     start[i] = i * blockNum;
     dims[2 * i] = outputH_;
     dims[2 * i + 1] = outputW_;
   }
   start[batchSize] = batchSize * blockNum;
-  if (!useGpu_) {
-    inputShape_ = TensorShape({batchSize, channels_, imgSizeH_, imgSizeW_});
-    outputShape_ = TensorShape({batchSize, blockNum, blockSize});
-    BufferArgs inputs;
-    BufferArgs outputs;
-    inputs.addArg(*getInputValue(0), inputShape_);
-    outputs.addArg(*getOutputValue(), outputShape_, ASSIGN_TO);
-    forward_[0]->calc(inputs, outputs);
-  }
 }
 
 void BlockExpandLayer::backward(const UpdateCallback& callback) {

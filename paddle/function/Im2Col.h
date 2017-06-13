@@ -14,6 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include "TensorShape.h"
+#include "TensorType.h"
+
 namespace paddle {
 
 /* The storage format of the coldata in the Im2ColFunctor and Col2ImFunctor. */

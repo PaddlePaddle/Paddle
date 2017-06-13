@@ -291,5 +291,8 @@ public:
 
 REGISTER_TYPED_FUNC(ImageExpand, CPU, ImageExpandForward);
 REGISTER_TYPED_FUNC(ImageExpandGrad, CPU, ImageExpandBackward);
+#ifndef PADDLE_ONLY_CPU
+REGISTER_TYPED_FUNC(ImageExpand, GPU, ImageExpandForward);
+#endif
 
 }  // namespace paddle
