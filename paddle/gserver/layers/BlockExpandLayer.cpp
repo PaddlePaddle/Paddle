@@ -46,14 +46,12 @@ bool BlockExpandLayer::init(const LayerMap& layerMap,
                      .set("strides", strides)
                      .set("paddings", paddings)
                      .set("blocks", blocks));
-  if (!useGpu_) {
-    createFunction(backward_,
-                   "ImageExpandGrad",
-                   FuncConfig()
-                       .set("strides", strides)
-                       .set("paddings", paddings)
-                       .set("blocks", blocks));
-  }
+  createFunction(backward_,
+                 "ImageExpandGrad",
+                 FuncConfig()
+                     .set("strides", strides)
+                     .set("paddings", paddings)
+                     .set("blocks", blocks));
 
   return true;
 }
@@ -110,14 +108,16 @@ void BlockExpandLayer::forward(PassType passType) {
 }
 
 void BlockExpandLayer::backward(const UpdateCallback& callback) {
-  size_t blockNum = outputH_ * outputW_;
-  size_t blockSize = blockH_ * blockW_ * channels_;
   /* Calculate the input layers error */
-  MatrixPtr preGrad = inputLayers_[0]->getOutputGrad();
-  if (!preGrad) {
-    return;
+  if (getInputGrad(0)) {
+    BufferArgs inputs;
+    BufferArgs outputs;
+    inputs.addArg(*getOutputGrad(), outputShape_);
+    outputs.addArg(*getInputGrad(0), inputShape_, ADD_TO);
+    backward_[0]->calc(inputs, outputs);
   }
 
+#if 0
   if (useGpu_) {
     MatrixPtr grad = getOutputGrad();
     MatrixPtr gradTrans = Matrix::create(blockSize, blockNum, false, useGpu_);
@@ -155,13 +155,8 @@ void BlockExpandLayer::backward(const UpdateCallback& callback) {
                              1.0,
                              1.0);
     }
-  } else {
-    BufferArgs inputs;
-    BufferArgs outputs;
-    inputs.addArg(*getOutputGrad(), outputShape_);
-    outputs.addArg(*getInputGrad(0), inputShape_, ADD_TO);
-    backward_[0]->calc(inputs, outputs);
   }
+#endif
 }
 
 }  // namespace paddle
