@@ -13,31 +13,33 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Function.h"
-#include "GemmConvOp.h"
+#include "Im2Col.h"
 
 namespace paddle {
 
 /*
- * imData = [input_channels, input_height, input_width]
- * colData = [output_height, output_width,
- *            input_channels, filter_height, filter_width]
+ * imShape = [inputChannels, inputHeight, inputWidth]
+ * colShape =
+ *   [outputHeight, outputWidth, inputChannels, filterHeight, filterWidth]
  */
 template <class T>
 class Im2ColFunctor<kOCF, DEVICE_TYPE_CPU, T> {
 public:
   void operator()(const T* imData,
-                  int inputChannels,
-                  int inputHeight,
-                  int inputWidth,
-                  int filterHeight,
-                  int filterWidth,
+                  const TensorShape& imShape,
+                  T* colData,
+                  const TensorShape& colShape,
                   int strideHeight,
                   int strideWidth,
                   int paddingHeight,
-                  int paddingWidth,
-                  int outputHeight,
-                  int outputWidth,
-                  T* colData) {
+                  int paddingWidth) {
+    int inputChannels = imShape[0];
+    int inputHeight = imShape[1];
+    int inputWidth = imShape[2];
+    int filterHeight = colShape[3];
+    int filterWidth = colShape[4];
+    int outputHeight = colShape[0];
+    int outputWidth = colShape[1];
     for (int outputH = 0; outputH < outputHeight; ++outputH) {
       for (int outputW = 0; outputW < outputWidth; ++outputW) {
         for (int channel = 0; channel < inputChannels; ++channel) {
@@ -55,7 +57,7 @@ public:
                   filterW;
               if (imRowOffset < 0 || imRowOffset >= inputHeight ||
                   imColOffset < 0 || imColOffset >= inputWidth) {
-                colData[colDataOffset] = T(0);
+                colData[colDataOffset] = float(0);
               } else {
                 int imDataOffset =
                     (channel * inputHeight + imRowOffset) * inputWidth +
@@ -70,22 +72,29 @@ public:
   }
 };
 
+/*
+ * imShape = [inputChannels, inputHeight, inputWidth]
+ * colShape =
+ *   [outputHeight, outputWidth, inputChannels, filterHeight, filterWidth]
+ */
 template <class T>
 class Col2ImFunctor<kOCF, DEVICE_TYPE_CPU, T> {
 public:
-  void operator()(const T* colData,
-                  int inputChannels,
-                  int inputHeight,
-                  int inputWidth,
-                  int filterHeight,
-                  int filterWidth,
+  void operator()(T* imData,
+                  const TensorShape& imShape,
+                  const T* colData,
+                  const TensorShape& colShape,
                   int strideHeight,
                   int strideWidth,
                   int paddingHeight,
-                  int paddingWidth,
-                  int outputHeight,
-                  int outputWidth,
-                  T* imData) {
+                  int paddingWidth) {
+    int inputChannels = imShape[0];
+    int inputHeight = imShape[1];
+    int inputWidth = imShape[2];
+    int filterHeight = colShape[3];
+    int filterWidth = colShape[4];
+    int outputHeight = colShape[0];
+    int outputWidth = colShape[1];
     for (int outputH = 0; outputH < outputHeight; ++outputH) {
       for (int outputW = 0; outputW < outputWidth; ++outputW) {
         for (int channel = 0; channel < inputChannels; ++channel) {
@@ -146,7 +155,7 @@ public:
 
   virtual void calc(const BufferArgs& inputs, const BufferArgs& outputs) {}
 
-  void check(const TensorShape& image, const TensorShape& sequence) {
+  void check(const TensorShape& image, const TensorShape& sequence) const {
     // image shape should be 4-dimensional.
     CHECK_EQ(image.ndims(), (size_t)4);
     // sequence shape should be 3-dimensional.
@@ -159,7 +168,7 @@ public:
   // Calculate the shape of colData based on the shape of the image
   // and the shape of the sequence.
   TensorShape getColShape(const TensorShape& image,
-                          const TensorShape& sequence) {
+                          const TensorShape& sequence) const {
     size_t inputChannels = image[1];
     size_t inputHeight = image[2];
     size_t inputWidth = image[3];
@@ -174,8 +183,7 @@ public:
     CHECK_EQ(seqLength, outputHeight * outputWidth);
     CHECK_EQ(stepSize, inputChannels * blockH() * blockW());
 
-    // [output_height, output_width,
-    // input_channels, filter_height, filter_width]
+    // [outputHeight, outputWidth, inputChannels, filterHeight, filterWidth]
     return TensorShape({outputHeight,
                         outputWidth,
                         inputChannels,
@@ -215,40 +223,29 @@ public:
     const TensorShape& sequence = outputs[0].shape();
     check(image, sequence);
 
+    TensorShape imShape = TensorShape({image[1], image[2], image[3]});
     TensorShape colShape = getColShape(image, sequence);
     size_t batchSize = image[0];
-    size_t inputChannels = image[1];
-    size_t inputHeight = image[2];
-    size_t inputWidth = image[3];
-    size_t seqLength = sequence[1];
-    size_t stepSize = sequence[2];
-    size_t outputHeight = colShape[0];
-    size_t outputWidth = colShape[1];
 
     real* imageData = inputs[0].data<real>();
     real* seqData = outputs[0].data<real>();
     Im2ColFunctor<kOCF, Device, real> im2col;
     for (size_t i = 0; i < batchSize; i++) {
-      // The result of im2col is [output_height, output_width,
-      // input_channels, filter_height, filter_width], and it is easy to
+      // The result of im2col is [outputHeight, outputWidth,
+      // inputChannels, filterHeight, filterWidth], and it is easy to
       // reshape into [seqLength, stepSize], where seqLength is equal
       // output_height * output_width, stepSize is equal
       // input_channels * filter_height * filter_width
       im2col(imageData,
-             inputChannels,
-             inputHeight,
-             inputWidth,
-             blockH(),
-             blockW(),
+             imShape,
+             seqData,
+             colShape,
              strideH(),
              strideW(),
              paddingH(),
-             paddingW(),
-             outputHeight,
-             outputWidth,
-             seqData);
-      imageData += inputChannels * inputHeight * inputWidth;
-      seqData += seqLength * stepSize;
+             paddingW());
+      imageData += imShape.getElements();
+      seqData += colShape.getElements();
     }
   }
 };
@@ -270,35 +267,24 @@ public:
     const TensorShape& sequence = inputs[0].shape();
     check(image, sequence);
 
+    TensorShape imShape = TensorShape({image[1], image[2], image[3]});
     TensorShape colShape = getColShape(image, sequence);
     size_t batchSize = image[0];
-    size_t inputChannels = image[1];
-    size_t inputHeight = image[2];
-    size_t inputWidth = image[3];
-    size_t seqLength = sequence[1];
-    size_t stepSize = sequence[2];
-    size_t outputHeight = colShape[0];
-    size_t outputWidth = colShape[1];
 
     real* imageData = outputs[0].data<real>();
     real* seqData = inputs[0].data<real>();
     Col2ImFunctor<kOCF, Device, real> col2im;
     for (size_t i = 0; i < batchSize; i++) {
-      col2im(seqData,
-             inputChannels,
-             inputHeight,
-             inputWidth,
-             blockH(),
-             blockW(),
+      col2im(imageData,
+             imShape,
+             seqData,
+             colShape,
              strideH(),
              strideW(),
              paddingH(),
-             paddingW(),
-             outputHeight,
-             outputWidth,
-             imageData);
-      imageData += inputChannels * inputHeight * inputWidth;
-      seqData += seqLength * stepSize;
+             paddingW());
+      imageData += imShape.getElements();
+      seqData += colShape.getElements();
     }
   }
 };
