@@ -117,7 +117,7 @@ func TestClientFull(t *testing.T) {
 
 	for i := range params {
 		if names[i] != params[i].Name {
-			t.Fatalf("order of returned parameter does not required: parameter name: %s, required name: %s", names[i], params[i])
+			t.Fatalf("order of returned parameter does not required: parameter name: %s, required name: %s", names[i], params[i].Name)
 		}
 	}
 }
