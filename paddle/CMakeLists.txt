@@ -8,10 +8,12 @@ add_subdirectory(gserver)
 add_subdirectory(pserver)
 add_subdirectory(trainer)
 add_subdirectory(scripts)
+add_subdirectory(strings)
 
-if(CMAKE_Go_COMPILER)
-  add_subdirectory(go)
-endif()
+# Do not build go directory until go cmake is working smoothly.
+# if(CMAKE_Go_COMPILER)
+#   add_subdirectory(go)
+# endif()
 
 find_package(Boost QUIET)
 

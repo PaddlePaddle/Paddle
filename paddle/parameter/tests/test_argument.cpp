@@ -42,7 +42,7 @@ TEST(Argument, poolSequenceWithStride) {
     CHECK_EQ(outStart[3], 4);
     CHECK_EQ(outStart[4], 7);
 
-    CHECK_EQ(stridePositions->getSize(), 8);
+    CHECK_EQ(stridePositions->getSize(), 8UL);
     auto result = reversed ? strideResultReversed : strideResult;
     for (int i = 0; i < 8; i++) {
       CHECK_EQ(stridePositions->getData()[i], result[i]);

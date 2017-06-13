@@ -21,6 +21,8 @@ cd /paddle/build
 
 # build script will not fail if *.deb does not exist
 rm *.deb 2>/dev/null || true
+# delete previous built whl packages
+rm -rf /paddle/paddle/dist 2>/dev/null || true
 
 cat <<EOF
 ========================================
@@ -56,7 +58,7 @@ EOF
 make -j `nproc`
 if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
     pip uninstall -y py-paddle paddle || true
-    ctest -V
+    ctest --output-on-failure
 fi
 
 

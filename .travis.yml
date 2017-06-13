@@ -49,6 +49,7 @@ before_install:
   # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python 
   # protobuf version.
   - pip install numpy wheel 'protobuf==3.1' sphinx==1.5.6 recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit requests==2.9.2 LinkChecker
+  - pip install rarfile
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 script:
