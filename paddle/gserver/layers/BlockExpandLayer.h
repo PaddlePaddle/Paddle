@@ -53,6 +53,9 @@ protected:
   /// auxiliary variable, which saves the transposed output value.
   MatrixPtr outVTrans_;
 
+  TensorShape inputShape_;
+  TensorShape outputShape_;
+
 public:
   explicit BlockExpandLayer(const LayerConfig& config) : Layer(config) {}
 

@@ -44,6 +44,7 @@ enum ColFormat { kCFO = 0, kOCF = 1 };
  *                 input_channels,
  *                 filter_height,
  *                 filter_width]
+ * TODO(hedaoyuan): Refactor the arguments of the interface with TensorShape.
  */
 template <ColFormat Format, DeviceType Device, class T>
 class Im2ColFunctor {

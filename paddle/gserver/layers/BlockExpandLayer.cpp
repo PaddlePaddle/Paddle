@@ -47,6 +47,12 @@ bool BlockExpandLayer::init(const LayerMap& layerMap,
                        .set("strides", strides)
                        .set("paddings", paddings)
                        .set("blocks", blocks));
+    createFunction(backward_,
+                   "ImageExpandGrad",
+                   FuncConfig()
+                       .set("strides", strides)
+                       .set("paddings", paddings)
+                       .set("blocks", blocks));
   }
 
   return true;
@@ -126,12 +132,12 @@ void BlockExpandLayer::forward(PassType passType) {
   }
   start[batchSize] = batchSize * blockNum;
   if (!useGpu_) {
-    TensorShape inputShape({batchSize, channels_, imgSizeH_, imgSizeW_});
-    TensorShape outputShape({batchSize, blockNum, blockSize});
+    inputShape_ = TensorShape({batchSize, channels_, imgSizeH_, imgSizeW_});
+    outputShape_ = TensorShape({batchSize, blockNum, blockSize});
     BufferArgs inputs;
     BufferArgs outputs;
-    inputs.addArg(*getInputValue(0), inputShape);
-    outputs.addArg(*getOutputValue(), outputShape, ASSIGN_TO);
+    inputs.addArg(*getInputValue(0), inputShape_);
+    outputs.addArg(*getOutputValue(), outputShape_, ASSIGN_TO);
     forward_[0]->calc(inputs, outputs);
   }
 }
@@ -144,41 +150,50 @@ void BlockExpandLayer::backward(const UpdateCallback& callback) {
   if (!preGrad) {
     return;
   }
-  MatrixPtr grad = getOutputGrad();
-  MatrixPtr gradTrans = Matrix::create(blockSize, blockNum, false, useGpu_);
-  size_t batchSize = preGrad->getHeight();
 
-  CHECK_EQ(batchSize * blockNum, grad->getHeight());
-  CHECK_EQ(blockSize, grad->getWidth());
+  if (useGpu_) {
+    MatrixPtr grad = getOutputGrad();
+    MatrixPtr gradTrans = Matrix::create(blockSize, blockNum, false, useGpu_);
+    size_t batchSize = preGrad->getHeight();
 
-  for (size_t i = 0; i < batchSize; i++) {
-    MatrixPtr gradTmp =
-        Matrix::create(grad->getData() + i * blockNum * blockSize,
-                       blockNum,
-                       blockSize,
-                       false,
-                       useGpu_);
-    gradTmp->transpose(gradTrans, false);
-    MatrixPtr preGradTmp =
-        Matrix::create(preGrad->getData() + i * preGrad->getWidth(),
-                       1,
-                       preGrad->getWidth(),
-                       false,
-                       useGpu_);
-    preGradTmp->convShrink(*gradTrans,
-                           imgSizeH_,
-                           imgSizeW_,
-                           channels_,
-                           blockH_,
-                           blockW_,
-                           strideH_,
-                           strideW_,
-                           paddingH_,
-                           paddingW_,
-                           outputH_,
-                           outputW_,
-                           1.0,
-                           1.0);
+    CHECK_EQ(batchSize * blockNum, grad->getHeight());
+    CHECK_EQ(blockSize, grad->getWidth());
+
+    for (size_t i = 0; i < batchSize; i++) {
+      MatrixPtr gradTmp =
+          Matrix::create(grad->getData() + i * blockNum * blockSize,
+                         blockNum,
+                         blockSize,
+                         false,
+                         useGpu_);
+      gradTmp->transpose(gradTrans, false);
+      MatrixPtr preGradTmp =
+          Matrix::create(preGrad->getData() + i * preGrad->getWidth(),
+                         1,
+                         preGrad->getWidth(),
+                         false,
+                         useGpu_);
+      preGradTmp->convShrink(*gradTrans,
+                             imgSizeH_,
+                             imgSizeW_,
+                             channels_,
+                             blockH_,
+                             blockW_,
+                             strideH_,
+                             strideW_,
+                             paddingH_,
+                             paddingW_,
+                             outputH_,
+                             outputW_,
+                             1.0,
+                             1.0);
+    }
+  } else {
+    BufferArgs inputs;
+    BufferArgs outputs;
+    inputs.addArg(*getOutputGrad(), outputShape_);
+    outputs.addArg(*getInputGrad(0), inputShape_, ADD_TO);
+    backward_[0]->calc(inputs, outputs);
   }
 }
 
