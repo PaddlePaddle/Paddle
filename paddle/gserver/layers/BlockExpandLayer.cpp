@@ -116,47 +116,6 @@ void BlockExpandLayer::backward(const UpdateCallback& callback) {
     outputs.addArg(*getInputGrad(0), inputShape_, ADD_TO);
     backward_[0]->calc(inputs, outputs);
   }
-
-#if 0
-  if (useGpu_) {
-    MatrixPtr grad = getOutputGrad();
-    MatrixPtr gradTrans = Matrix::create(blockSize, blockNum, false, useGpu_);
-    size_t batchSize = preGrad->getHeight();
-
-    CHECK_EQ(batchSize * blockNum, grad->getHeight());
-    CHECK_EQ(blockSize, grad->getWidth());
-
-    for (size_t i = 0; i < batchSize; i++) {
-      MatrixPtr gradTmp =
-          Matrix::create(grad->getData() + i * blockNum * blockSize,
-                         blockNum,
-                         blockSize,
-                         false,
-                         useGpu_);
-      gradTmp->transpose(gradTrans, false);
-      MatrixPtr preGradTmp =
-          Matrix::create(preGrad->getData() + i * preGrad->getWidth(),
-                         1,
-                         preGrad->getWidth(),
-                         false,
-                         useGpu_);
-      preGradTmp->convShrink(*gradTrans,
-                             imgSizeH_,
-                             imgSizeW_,
-                             channels_,
-                             blockH_,
-                             blockW_,
-                             strideH_,
-                             strideW_,
-                             paddingH_,
-                             paddingW_,
-                             outputH_,
-                             outputW_,
-                             1.0,
-                             1.0);
-    }
-  }
-#endif
 }
 
 }  // namespace paddle
