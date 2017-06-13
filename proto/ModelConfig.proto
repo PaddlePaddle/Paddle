@@ -194,6 +194,10 @@ message MaxOutConfig {
   required uint32 groups = 2;
 }
 
+message RowConvConfig {
+  required uint32 context_length = 1;
+}
+
 message ProjectionConfig {
   required string type = 1;
   required string name = 2;
@@ -279,6 +283,7 @@ message LayerInputConfig {
   optional SppConfig spp_conf = 12;
   optional PriorBoxConfig priorbox_conf = 13;
   optional PadConfig pad_conf = 14;
+  optional RowConvConfig row_conv_conf = 15;
 }
 
 message LayerConfig {
