@@ -155,7 +155,7 @@ def convert(output_path,
             reader,
             num_shards,
             name_prefix,
-            max_lines_to_shuffle=10000):
+            max_lines_to_shuffle=1000):
     import recordio
     import cPickle as pickle
     import random
