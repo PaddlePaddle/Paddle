@@ -49,7 +49,7 @@ paddle_optimizer* paddle_create_optimizer(const unsigned char* config_proto,
   optimizer->impl = ParameterOptimizer::Create(config, parameter);
   if (state != nullptr) {
     std::string s(state, state + state_len);
-    optimizer->impl->DeSerializeState(s);
+    optimizer->impl->DeserializeState(s);
   }
   return optimizer;
 }

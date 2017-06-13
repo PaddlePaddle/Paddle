@@ -14,7 +14,7 @@ public:
         decay_(d),
         nesterov_(n) {
     if (momentum_ != 0.0) {
-      size_t size = p->size();
+      size_t size = parameter->size();
       // TODO: fix it with align aware allocator bind to Tensor
       if (momentums_) delete momentums_;
       momentums_ = new Tensor(size);
@@ -25,7 +25,7 @@ public:
   }
   void Update(const Tensor* gradient);
   const char* SerializeState(int* state_len);
-  void DeSerializeState(const std::string& state);
+  void DeserializeState(const std::string& state);
 
 private:
   Tensor* momentums_;

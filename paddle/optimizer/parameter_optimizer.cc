@@ -62,7 +62,7 @@ ParameterOptimizer *ParameterOptimizer::Create(const std::string &config_proto,
         << "have not select any Optimizer. use SGDOptimizer in default";
     return new SGDOptimizer(parameter, lr, 0.0, 0.0, false);
   };
-  return select_optimizer(config);
+  return select_optimizer(parameter, config);
 }
 
 float *ParameterOptimizer::get_weight(int *param_size) const {

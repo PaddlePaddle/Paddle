@@ -13,7 +13,7 @@ public:
         rho_(rho),
         epsilon_(epsilon),
         decay_(decay) {
-    size_t size = p->size();
+    size_t size = parameter->size();
     if (accum_gradient_) delete accum_gradient_;
     accum_gradient_ = new Tensor(size);
     if (accum_delta_) delete accum_delta_;
@@ -28,7 +28,7 @@ public:
   }
   void Update(const Tensor *gradient);
   const char *SerializeState(int *state_len);
-  void DeSerializeState(const std::string &state);
+  void DeserializeState(const std::string &state);
 
 private:
   Tensor *accum_gradient_;

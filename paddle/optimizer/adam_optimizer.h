@@ -8,7 +8,8 @@ namespace optimizer {
 class AdamOptimizer : public ParameterOptimizer {
 public:
   AdamOptimizer(Tensor *parameter,
-                LrPolicy *lr double beta_1,
+                LrPolicy *lr,
+                double beta_1,
                 double beta_2,
                 double epsilon,
                 double decay)
@@ -17,7 +18,7 @@ public:
         beta_2_(beta_2),
         epsilon_(epsilon),
         decay_(decay) {
-    size_t size = p->size();
+    size_t size = parameter->size();
     momentums_ = new Tensor(size);
     velocitys_ = new Tensor(size);
   }
@@ -26,6 +27,8 @@ public:
     if (velocitys_) delete velocitys_;
   }
   void Update(const Tensor *gradient);
+  const char *SerializeState(int *state_len);
+  void DeserializeState(const std::string &state);
 
 private:
   Tensor *momentums_;

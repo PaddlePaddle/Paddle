@@ -17,16 +17,10 @@ public:
   TensorT(size_t size) : height_(1), width_(size) { data_ = new T[size]; }
   TensorT(T* data, size_t size) : height_(1), width_(size), data_(data) {}
   TensorT(T* data, size_t h, size_t w) : height_(h), width_(w), data_(data_) {}
-  TensorT(const TensorT& t)
-      : TensorT(1, t.size(), 0, t.get_buffer(), false, false) {}
   ~TensorT() {
     if (data_) delete data_;
   }
 
-  TensorT& operator=(const TensorT& t) {
-    this->width_ = t.size();
-    this->data_ = t.get_buffer();
-  }
   T* get_buffer() { return this->data_; }
   T& operator[](const size_t idx) {
     CHECK(idx >= 0 && idx < this->width_) << "out of index range";

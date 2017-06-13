@@ -1,5 +1,5 @@
-#include "serialization.h"
 #include "sgd_optimizer.h"
+#include "serialization.h"
 
 namespace paddle {
 namespace optimizer {
@@ -28,29 +28,24 @@ void SGDOptimizer::Update(const Tensor *gradient) {
 }
 
 const char *SGDOptimizer::SerializeState(int *state_len) {
-  OptimizerState state;
+  SGDOptimizerState state;
   state.set_learning_rate(lr_policy_->LearningRate(num_sample_passed_));
   state.set_num_sample_passed(num_sample_passed_);
 
   TensorToProto(*parameter_, state.mutable_parameter());
   TensorToProto(*momentums_, state.mutable_momentums());
-  state.set_momentum(momentum_);
-  state.set_decay(decay_);
-  state.set_nesterov(nesterov_);
-  *state_len +=
-      CalStateSize(parameter_, momentums_, momentum_, decay_, nesterov_);
+  *state_len = CalStateSize(parameter_, momentums_);
   return state.SerializeAsString().c_str();
 }
 
-void SGDOptimizer::DeSerializeState(const std::string &str) {
-  OptimizerState state;
+void SGDOptimizer::DeserializeState(const std::string &str) {
+  SGDOptimizerState state;
   state.ParseFromString(str);
   lr_policy_->set(state.learning_rate());
   num_sample_passed_ = state.num_sample_passed();
 
   ProtoToTensor(state.parameter(), parameter_);
   ProtoToTensor(state.parameter(), momentums_);
-  momentum_ = state.momentum();
 }
 
 }  // namespace optimizer

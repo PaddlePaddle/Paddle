@@ -78,36 +78,51 @@ enum DataType {
   repeated bytes content = 2;
 }
 
-message OptimizerState {
+message SGDOptimizerState {
+  // learning rate policy
   optional double learning_rate = 101;
   optional double lr_decay_a = 102;
   optional double lr_decay_b = 103;
   optional double num_sample_passed = 104;
-  // momentum
-  optional TensorProto parameter = 105;
-  optional TensorProto momentums = 1;
+  // state
+  optional TensorProto parameter = 1;
+  optional TensorProto momentums = 2;
+}
 
-  // adadelta
+message AdadeltaOptimizerState {
+  // learning rate policy
+  optional double learning_rate = 101;
+  optional double lr_decay_a = 102;
+  optional double lr_decay_b = 103;
+  optional double num_sample_passed = 104;
+  // state
+  optional TensorProto parameter = 1;
   optional TensorProto accum_gradient = 2;
   optional TensorProto accum_delta = 3;
   optional TensorProto update_delta = 4;
+}
 
-  // adam
-  optional TensorProto velocitys = 5;
+message AdagradOptimizerState {
+  // learning rate policy
+  optional double learning_rate = 101;
+  optional double lr_decay_a = 102;
+  optional double lr_decay_b = 103;
+  optional double num_sample_passed = 104;
+  // state
+  optional TensorProto parameter = 1;
+  optional TensorProto accum_gradient = 2;
+}
 
-  // momentum
-  optional double momentum = 6;
-  optional double decay = 7;
-  optional bool nesterov = 8;
-
-  // adadelta
-  optional double rho = 9;
-  optional double epsilon = 10;
-
-  // adam
-  optional double beta_1 = 11;
-  optional double beta_2 = 12;
-
+message AdamOptimizerState {
+  // learning rate policy
+  optional double learning_rate = 101;
+  optional double lr_decay_a = 102;
+  optional double lr_decay_b = 103;
+  optional double num_sample_passed = 104;
+  // state
+  optional TensorProto parameter = 1;
+  optional TensorProto momentums = 2;
+  optional TensorProto velocitys = 3;
 }
 
 message OptimizerConfig {

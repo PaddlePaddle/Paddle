@@ -26,7 +26,7 @@ void AdadeltaOptimizer::Update(const Tensor* gradient) {
 }
 
 const char* AdadeltaOptimizer::SerializeState(int* state_len) {
-  OptimizerState state;
+  AdadeltaOptimizerState state;
   state.set_learning_rate(lr_policy_->LearningRate(num_sample_passed_));
   state.set_num_sample_passed(num_sample_passed_);
 
@@ -34,22 +34,14 @@ const char* AdadeltaOptimizer::SerializeState(int* state_len) {
   TensorToProto(*accum_gradient_, state.mutable_accum_gradient());
   TensorToProto(*accum_delta_, state.mutable_accum_delta());
   TensorToProto(*update_delta_, state.mutable_update_delta());
-  state.set_nesterov(epsilon_);
-  state.set_momentum(rho_);
-  state.set_decay(decay_);
-  // can be used when memory alignment to system
-  *state_len += CalStateSize(parameter_,
-                             accum_gradient_,
-                             accum_delta_,
-                             update_delta_,
-                             rho_,
-                             epsilon_,
-                             decay_);
+
+  *state_len =
+      CalStateSize(parameter_, accum_gradient_, accum_delta_, update_delta_);
   return state.SerializeAsString().c_str();
 }
 
-void AdadeltaOptimizer::DeSerializeState(const std::string& str) {
-  OptimizerState state;
+void AdadeltaOptimizer::DeserializeState(const std::string& str) {
+  AdadeltaOptimizerState state;
   state.ParseFromString(str);
   lr_policy_->set(state.learning_rate());
   num_sample_passed_ = state.num_sample_passed();
@@ -58,6 +50,7 @@ void AdadeltaOptimizer::DeSerializeState(const std::string& str) {
   ProtoToTensor(state.accum_gradient(), accum_gradient_);
   ProtoToTensor(state.accum_delta(), accum_delta_);
   ProtoToTensor(state.update_delta(), update_delta_);
+}
 
 }  // namespace optimizer
-}  // namespace optimizer
+}  // namespace paddle

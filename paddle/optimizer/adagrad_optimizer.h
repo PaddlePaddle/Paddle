@@ -12,7 +12,7 @@ public:
                    double epsilon,
                    double decay)
       : ParameterOptimizer(parameter, lr), epsilon_(epsilon), decay_(decay) {
-    size_t size = p->size();
+    size_t size = parameter->size();
     if (accum_gradient_) delete accum_gradient_;
     accum_gradient_ = new Tensor(size);
   }
@@ -21,7 +21,7 @@ public:
   }
   void Update(const Tensor *gradient);
   const char *SerializeState(int *state_len);
-  void DeSerializeState(const std::string &state);
+  void DeserializeState(const std::string &state);
 
 private:
   Tensor *accum_gradient_;

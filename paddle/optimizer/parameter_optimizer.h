@@ -8,10 +8,6 @@
 #include "serialization.h"
 #include "tensor.h"
 
-// Not Implemen Yet, macr
-// o
-#define NIMPL crash(__PRETTY_FUNCTION__, " not implemented yet")
-
 namespace paddle {
 namespace optimizer {
 
@@ -30,7 +26,7 @@ public:
   virtual void Update(const Tensor *gradient) = 0;
   virtual float *get_weight(int *param_size) const;
   virtual const char *SerializeState(int *state_len) = 0;
-  virtual void DeSerializeState(const std::string &state) = 0;
+  virtual void DeserializeState(const std::string &state) = 0;
 
 protected:
   Tensor *parameter_;

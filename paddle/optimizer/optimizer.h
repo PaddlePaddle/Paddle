@@ -75,14 +75,14 @@ int paddle_update_parameter(paddle_optimizer* o,
                             int num_bytes);
 
 /**
- *  @brief optimizer instance
+ *  @brief optimizer for get parameter buffer
  *  @param param_buffer, initilized parameter buffer
  *  @return return content length
  */
 int paddle_optimizer_get_weights(paddle_optimizer* o, void** param_buffer);
 
 /**
- *  @brief optimzizer instance
+ *  @brief optimzizer for saving training state
  *  @param training state for receive SerializeState
  *  @return return state_buffer length
  */

@@ -17,8 +17,25 @@ void AdagradOptimizer::Update(const Tensor* gradient) {
                 learning_rate * decay_ * param[i];
   }
 }
-const char* SGDOptimizer::SerializeState(int* state_len) { NIMPL; }
+const char* AdagradOptimizer::SerializeState(int* state_len) {
+  AdagradOptimizerState state;
+  state.set_learning_rate(lr_policy_->LearningRate(num_sample_passed_));
+  state.set_num_sample_passed(num_sample_passed_);
 
-void SGDOptimizer::DeSerializeState(const std::string& str) { NIMPL; }
-// namespace optimizer
+  TensorToProto(*parameter_, state.mutable_parameter());
+  TensorToProto(*accum_gradient_, state.mutable_accum_gradient());
+  *state_len = CalStateSize(parameter_, accum_gradient_);
+  return state.SerializeAsString().c_str();
+}
+
+void AdagradOptimizer::DeserializeState(const std::string& str) {
+  AdagradOptimizerState state;
+  state.ParseFromString(str);
+  lr_policy_->set(state.learning_rate());
+  num_sample_passed_ = state.num_sample_passed();
+  ProtoToTensor(state.parameter(), parameter_);
+  ProtoToTensor(state.accum_gradient(), accum_gradient_);
+}
+
 }  // namespace optimizer
+}  // namespace paddle

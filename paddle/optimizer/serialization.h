@@ -10,15 +10,16 @@
 namespace paddle {
 namespace optimizer {
 
-static unsigned CalStateSize(int* state_len) { return 0; }
+static unsigned CalStateSize() { return 0; }
 
 template <typename HEAD, typename... TAIL>
 unsigned CalStateSize(const HEAD& head, const TAIL&... tail) {
-  if (std::is_fundamental<HEAD>::value) {
-    return sizeof head + CalStateSize(tail...);
-  } else {
-    return sizeof(head[0]) * head->size() + CalStateSize(tail...);
-  }
+  return sizeof head + CalStateSize(tail...);
+}
+
+template <typename... TAIL>
+unsigned CalStateSize(const Tensor* head, const TAIL&... tail) {
+  return head->size() + CalStateSize(tail...);
 }
 
 static void TensorToProto(const Tensor& tensor, TensorProto* proto) {
@@ -32,7 +33,6 @@ static void TensorToProto(const Tensor& tensor, TensorProto* proto) {
 }
 
 static void ProtoToTensor(const TensorProto& proto, Tensor* tensor) {
-  CHECK(proto.size() == tensor->size()) << "unmatch shape of proto and tensor";
   std::stringstream sin;
   for (auto i = 0; i < proto.content_size(); ++i) {
     sin << proto.content(i);
