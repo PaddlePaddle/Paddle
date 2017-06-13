@@ -104,7 +104,7 @@ public:
     size_t inputHeight = inputs[0].shape()[2];
     size_t inputWidth = inputs[0].shape()[3];
     size_t filterHeight = inputs[1].shape()[2];
-    size_t filterWidth = inputs[1].shape()[2];
+    size_t filterWidth = inputs[1].shape()[3];
     size_t outputChannels = outputs[0].shape()[1];
     size_t outputHeight = outputs[0].shape()[2];
     size_t outputWidth = outputs[0].shape()[3];
