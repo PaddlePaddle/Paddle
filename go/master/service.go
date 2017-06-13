@@ -237,10 +237,11 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 			// TODO(helin): client need to retry in this
 			// error case. Gotcha: RPC client can't
 			// compare returned error with predefined
-			// errors like io.EOF, because interface don't
-			// have same dynamic value when in different
-			// process. So we need to figure out a way for
-			// client to check this error correctly.
+			// errors like io.EOF, because the error
+			// instance deserialized from RPC is a
+			// different instance than the error defined
+			// in package. So we need to figure out a way
+			// for client to check this error correctly.
 			err := errors.New("no more available task")
 			log.Warningln(err)
 			return err
