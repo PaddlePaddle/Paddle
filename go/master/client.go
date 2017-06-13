@@ -28,6 +28,8 @@ func NewClient(addr Addresser) *Client {
 func (c *Client) monitorMaster(addr Addresser) {
 	lastMaster := ""
 	monitor := func() {
+		// get the lastest address of the master server,
+		// connect to the new address once address changed.
 		curMaster := addr.Address()
 		if curMaster != lastMaster {
 			if curMaster == "" {

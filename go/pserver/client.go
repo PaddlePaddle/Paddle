@@ -57,26 +57,29 @@ func (c *Client) monitorPservers(l Lister, pserverNum int) {
 		}
 
 		for i := range lastServers {
-			if lastServers[i].Addr != curServers[i].Addr {
-				if curServers[i].Addr == "" {
-					err := c.pservers[i].Close()
-					if err != nil {
-						log.Println(err)
-					}
+			if lastServers[i].Addr == curServers[i].Addr {
+				continue
+			}
 
-					continue
-				}
-
-				err := c.pservers[i].Connect(curServers[i].Addr)
+			if curServers[i].Addr == "" {
+				err := c.pservers[i].Close()
 				if err != nil {
 					log.Println(err)
-
-					// connect to addr failed, set
-					// to last known addr in order
-					// to retry next time.
-					curServers[i].Addr = lastServers[i].Addr
 				}
+
+				continue
 			}
+
+			err := c.pservers[i].Connect(curServers[i].Addr)
+			if err != nil {
+				log.Println(err)
+
+				// connect to addr failed, set
+				// to last known addr in order
+				// to retry next time.
+				curServers[i].Addr = lastServers[i].Addr
+			}
+
 		}
 
 		lastServers = curServers

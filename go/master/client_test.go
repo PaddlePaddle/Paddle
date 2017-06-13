@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/PaddlePaddle/Paddle/go/master"
 	"github.com/PaddlePaddle/recordio"
 )
@@ -23,6 +25,8 @@ const (
 var port int
 
 func init() {
+	log.SetLevel(log.ErrorLevel)
+
 	l, err := net.Listen("tcp", ":0")
 	if err != nil {
 		panic(err)
@@ -90,6 +94,17 @@ func TestClientFull(t *testing.T) {
 		if err == nil {
 			t.Fatal(i, "should get error.")
 		}
+
+		err = c.TaskFinished(tasks[0].ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tasks = tasks[1:]
+		task, err := c.GetTask()
+		if err != nil {
+			t.Fatal(err)
+		}
+		tasks = append(tasks, task)
 
 		for _, task := range tasks {
 			err = c.TaskFinished(task.ID)
