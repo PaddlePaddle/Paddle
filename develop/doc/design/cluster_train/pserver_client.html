@@ -244,14 +244,25 @@ name:sparse-n-1
 <span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
   <span class="kt">char</span><span class="o">*</span>               <span class="n">name</span><span class="p">;</span>
   <span class="n">paddle_element_type</span> <span class="n">element_type</span><span class="p">;</span>
-  <span class="kt">void</span><span class="o">*</span>               <span class="n">content</span><span class="p">;</span>
+  <span class="kt">unsigned</span> <span class="kt">char</span><span class="o">*</span>      <span class="n">content</span><span class="p">;</span>
   <span class="kt">int</span>                 <span class="n">content_len</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">paddle_parameter</span><span class="p">,</span> <span class="n">paddle_gradient</span><span class="p">;</span>
 
-<span class="k">typedef</span> <span class="k">struct</span> <span class="n">paddle_pserver_client</span> <span class="n">paddle_pserver_client</span><span class="p">;</span>
+<span class="k">typedef</span> <span class="kt">int</span> <span class="n">paddle_pserver_client</span><span class="p">;</span>
 
-<span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="nf">paddle_new_pserver_client</span><span class="p">();</span>
-<span class="kt">void</span> <span class="nf">paddle_pserver_client_release</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">);</span>
+<span class="cm">/**</span>
+<span class="cm"> * @brief creates a pserver client that talks to etcd for coordination.</span>
+<span class="cm"> */</span>
+<span class="n">paddle_pserver_client</span> <span class="nf">paddle_new_etcd_pserver_client</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span> <span class="n">etcd_addr</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @brief creates a pserver client given pserver addresses.</span>
+<span class="cm"> *</span>
+<span class="cm"> * @param pserver_addrs comma-separated pserver addresses.</span>
+<span class="cm"> * @param selected if current pserver client is selected to initialize all parameter servers.</span>
+<span class="cm"> */</span>
+<span class="n">paddle_pserver_client</span> <span class="nf">paddle_new_pserver_client</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span> <span class="n">pserver_addrs</span><span class="p">,</span> <span class="kt">int</span> <span class="n">selected</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">paddle_pserver_client_release</span><span class="p">(</span><span class="n">paddle_pserver_client</span> <span class="n">c</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @brief paddle_begin_init_params begins to initialize parameters on</span>
@@ -265,7 +276,7 @@ name:sparse-n-1
 <span class="cm"> * @return 1 if the trainer is selected to initialize parameter</span>
 <span class="cm"> * servers, otherwise 0.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">paddle_begin_init_params</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">paddle_begin_init_params</span><span class="p">(</span><span class="n">paddle_pserver_client</span> <span class="n">client</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @brief paddle_init_param initializes the parameter on parameter</span>
@@ -279,7 +290,7 @@ name:sparse-n-1
 <span class="cm"> * @paddle_begin_init_param). Or simply exit the program and wait for</span>
 <span class="cm"> * the cluster management system to restart the trainer.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">paddle_init_param</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="n">paddle_parameter</span> <span class="n">param</span><span class="p">,</span> <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">char</span><span class="o">*</span> <span class="n">param_config_proto</span><span class="p">,</span> <span class="kt">int</span> <span class="n">config_len</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">paddle_init_param</span><span class="p">(</span><span class="n">paddle_pserver_client</span> <span class="n">client</span><span class="p">,</span> <span class="n">paddle_parameter</span> <span class="n">param</span><span class="p">,</span> <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">char</span><span class="o">*</span> <span class="n">param_config_proto</span><span class="p">,</span> <span class="kt">int</span> <span class="n">config_len</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @brief paddle_finish_init_params tells parameter servers client has</span>
@@ -290,7 +301,7 @@ name:sparse-n-1
 <span class="cm"> * @paddle_begin_init_param). Or simply exit the program and wait for</span>
 <span class="cm"> * the cluster management system to restart the trainer.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">paddle_finish_init_params</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">paddle_finish_init_params</span><span class="p">(</span><span class="n">paddle_pserver_client</span> <span class="n">client</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @brief paddle_send_grads sends gradients to parameter servers for</span>
@@ -301,7 +312,7 @@ name:sparse-n-1
 <span class="cm"> * @param learning_rate the learning rate for the gradients.</span>
 <span class="cm"> * @return 0 if successful, otherwise -1.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">paddle_send_grads</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="n">paddle_gradient</span><span class="o">*</span> <span class="n">grads</span><span class="p">,</span> <span class="kt">int</span> <span class="n">len</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">paddle_send_grads</span><span class="p">(</span><span class="n">paddle_pserver_client</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="n">paddle_gradient</span><span class="o">*</span> <span class="n">grads</span><span class="p">,</span> <span class="kt">int</span> <span class="n">len</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @brief paddle_get_params gets parameters from parameter servers.</span>
@@ -309,13 +320,15 @@ name:sparse-n-1
 <span class="cm"> * paddle_get_params will block until parameters are initialized on</span>
 <span class="cm"> * the parameter servers.</span>
 <span class="cm"> *</span>
-<span class="cm"> * @param names the array of names of the parameters to get.</span>
-<span class="cm"> * @param dst the destination array of parameters to save to.</span>
+<span class="cm"> * @param dst the destination array of parameter pointers to save to.</span>
+<span class="cm"> * The parameter pointer must be pre-popullated with required parameter name,</span>
+<span class="cm"> * and the content of parameter must be pre-allocated of the size of required</span>
+<span class="cm"> * parameter on pserver.</span>
 <span class="cm"> * @param len the length of the names array and the paddle_parameter</span>
 <span class="cm"> * array.</span>
 <span class="cm"> * @return 0 if successful, otherwise -1.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">paddle_get_params</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">**</span> <span class="n">names</span><span class="p">,</span> <span class="n">paddle_parameter</span><span class="o">*</span> <span class="n">dst</span><span class="p">,</span> <span class="kt">int</span> <span class="n">len</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">paddle_get_params</span><span class="p">(</span><span class="n">paddle_pserver_client</span> <span class="n">client</span><span class="p">,</span> <span class="n">paddle_parameter</span><span class="o">**</span> <span class="n">dst</span><span class="p">,</span> <span class="kt">int</span> <span class="n">len</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @brief paddle_save_model indicates parameters to save the parameter</span>
@@ -324,7 +337,7 @@ name:sparse-n-1
 <span class="cm"> * @param path the path to save parameters.</span>
 <span class="cm"> * @return 0 if successful, otherwise -1.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">paddle_save_model</span><span class="p">(</span><span class="n">paddle_pserver_client</span><span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">path</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">paddle_save_model</span><span class="p">(</span><span class="n">paddle_pserver_client</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">path</span><span class="p">);</span>
 </pre></div>
 </div>
 </div>
