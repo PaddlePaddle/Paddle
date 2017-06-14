@@ -351,12 +351,10 @@ sub_models {
   in_links {
     layer_name: "__mixed_0__"
     link_name: "__mixed_0__@__lstm_group_0___recurrent_group"
-    has_subseq: false
   }
   out_links {
     layer_name: "__lstm_group_0__@__lstm_group_0___recurrent_group"
     link_name: "__lstm_group_0__"
-    has_subseq: false
   }
   target_inlinkid: -1
 }
@@ -383,12 +381,10 @@ sub_models {
   in_links {
     layer_name: "__mixed_1__"
     link_name: "__mixed_1__@__lstm_group_1___recurrent_group"
-    has_subseq: false
   }
   out_links {
     layer_name: "__lstm_group_1__@__lstm_group_1___recurrent_group"
     link_name: "__lstm_group_1__"
-    has_subseq: false
   }
   target_inlinkid: -1
 }

@@ -3329,8 +3329,9 @@ class StaticInput(object):
             input.size = size
 
 
-class SubsequenceInput(object):
+def SubsequenceInput(input):
     """
+    DEPRECATED.
     Input sequence has sub-sequence, used in recurrent_group.
 
     The example usage is:
@@ -3339,11 +3340,7 @@ class SubsequenceInput(object):
 
        input = SubsequenceInput(layer)
     """
-
-    def __init__(self, input):
-        assert isinstance(input, LayerOutput)
-        assert input.size is not None
-        self.input = input
+    return input
 
 
 @wrap_name_default("recurrent_group")
@@ -3407,7 +3404,8 @@ def recurrent_group(step,
                     input sequence in a reverse order.
     :type reverse: bool
 
-    :param targetInlink: the input layer which share info with layer group's output
+    :param targetInlink: DEPRECATED.
+                         The input layer which share info with layer group's output
 
                          Param input specifies multiple input layers. For
                          SubsequenceInput inputs, config should assign one input
@@ -3429,46 +3427,21 @@ def recurrent_group(step,
     model_type('recurrent_nn')
 
     def is_single_input(x):
-        return isinstance(x, LayerOutput) or isinstance(x, StaticInput) \
-               or isinstance(x, SubsequenceInput)
+        return isinstance(x, LayerOutput) or isinstance(x, StaticInput)
 
     if is_single_input(input):
         input = [input]
     assert isinstance(input, collections.Sequence)
 
     def is_in_links(x):
-        return isinstance(x, LayerOutput) or isinstance(x, SubsequenceInput)
+        return isinstance(x, LayerOutput)
 
     in_links = filter(is_in_links, input)
 
-    def targetInlink_in_inlinks():
-        for inlink in in_links:
-            if isinstance(inlink, SubsequenceInput):
-                if targetInlink == inlink.input:
-                    return True
-            elif targetInlink == inlink:
-                return True
-        return False
-
-    assert (targetInlink == None or targetInlink_in_inlinks())
-    targetInlinkName = None if targetInlink == None \
-        else targetInlink.name if isinstance(targetInlink, LayerOutput) \
-        else targetInlink.input.name
-
-    contains_sub_seq = [False]
-
-    def map_in_links(x):
-        if isinstance(x, SubsequenceInput):
-            contains_sub_seq[0] = True
-            return Link(name=x.input.name, has_subseq=True)
-        else:
-            return x.name
-
     RecurrentLayerGroupWithoutOutLinksBegin(
         name=name,
-        in_links=map(map_in_links, in_links),
-        seq_reversed=reverse,
-        target_inlinkname=targetInlinkName)
+        in_links=map(lambda x: x.name, in_links),
+        seq_reversed=reverse)
     in_args = []
     has_LayerOutput = False
     for each_input in input:
@@ -3476,10 +3449,7 @@ def recurrent_group(step,
         if isinstance(each_input, LayerOutput):
             in_args.append(each_input)
             has_LayerOutput = True
-        elif isinstance(each_input, SubsequenceInput):
-            in_args.append(each_input.input)
-            has_LayerOutput = True
-        else:
+        else:  # StaticInput
             mem_name = "__%s_memory__" % each_input.input.name
             mem = memory(
                 name=mem_name,
@@ -3503,10 +3473,7 @@ def recurrent_group(step,
     for ot in layer_outs:
         assert isinstance(ot, LayerOutput)
         ot.reverse = reverse
-        if contains_sub_seq[0]:
-            RecurrentLayerGroupSetOutLink(Link(ot.name, has_subseq=True))
-        else:
-            RecurrentLayerGroupSetOutLink(ot.name)
+        RecurrentLayerGroupSetOutLink(ot.name)
 
     RecurrentLayerGroupEnd(name=name)
 
@@ -5608,13 +5575,13 @@ def row_conv_layer(input,
     to deploy in an online and low-latency setting. The lookahead convolution
     incorporates information from future subsequences in a computationally
     efficient manner to improve unidirectional recurrent neural networks.
- 
+
     The connection of row convolution is different form the 1D sequence
     convolution. Assumed that, the future context-length is k, that is to say,
     it can get the output at timestep t by using the the input feature from t-th
     timestep to (t+k+1)-th timestep. Assumed that the hidden dim of input
     activations are d, the activations r_t for the new layer at time-step t are:
- 
+
     .. math::
 
         r_{t,r} = \sum_{j=1}^{k + 1} {w_{i,j}h_{t+j-1, i}}

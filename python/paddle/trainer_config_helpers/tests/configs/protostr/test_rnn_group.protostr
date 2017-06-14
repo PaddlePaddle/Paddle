@@ -155,7 +155,7 @@ layers {
 }
 layers {
   name: "sub_seq_input@__recurrent_group_2__"
-  type: "sequence_scatter_agent"
+  type: "scatter_agent"
   size: 100
   active_type: ""
 }
@@ -182,7 +182,7 @@ layers {
 }
 layers {
   name: "rnn_subseq_forward"
-  type: "sequence_gather_agent"
+  type: "gather_agent"
   size: 200
   active_type: ""
 }
@@ -623,12 +623,10 @@ sub_models {
   in_links {
     layer_name: "seq_input"
     link_name: "seq_input@__recurrent_group_0__"
-    has_subseq: false
   }
   out_links {
     layer_name: "rnn_forward@__recurrent_group_0__"
     link_name: "rnn_forward"
-    has_subseq: false
   }
   target_inlinkid: -1
 }
@@ -647,12 +645,10 @@ sub_models {
   in_links {
     layer_name: "seq_input"
     link_name: "seq_input@__recurrent_group_1__"
-    has_subseq: false
   }
   out_links {
     layer_name: "rnn_back@__recurrent_group_1__"
     link_name: "rnn_back"
-    has_subseq: false
   }
   target_inlinkid: -1
 }
@@ -671,12 +667,10 @@ sub_models {
   in_links {
     layer_name: "sub_seq_input"
     link_name: "sub_seq_input@__recurrent_group_2__"
-    has_subseq: true
   }
   out_links {
     layer_name: "rnn_subseq_forward@__recurrent_group_2__"
     link_name: "rnn_subseq_forward"
-    has_subseq: true
   }
   target_inlinkid: -1
 }
@@ -703,12 +697,10 @@ sub_models {
   in_links {
     layer_name: "__mixed_0__"
     link_name: "__mixed_0__@__lstm_group_0___recurrent_group"
-    has_subseq: false
   }
   out_links {
     layer_name: "__lstm_group_0__@__lstm_group_0___recurrent_group"
     link_name: "__lstm_group_0__"
-    has_subseq: false
   }
   target_inlinkid: -1
 }
@@ -727,12 +719,10 @@ sub_models {
   in_links {
     layer_name: "__mixed_1__"
     link_name: "__mixed_1__@__gru_group_0___recurrent_group"
-    has_subseq: false
   }
   out_links {
     layer_name: "__gru_group_0__@__gru_group_0___recurrent_group"
     link_name: "__gru_group_0__"
-    has_subseq: false
   }
   target_inlinkid: -1
 }
@@ -751,12 +741,10 @@ sub_models {
   in_links {
     layer_name: "seq_input"
     link_name: "seq_input@__recurrent_group_3__"
-    has_subseq: false
   }
   out_links {
     layer_name: "__fc_layer_0__@__recurrent_group_3__"
     link_name: "__fc_layer_0__"
-    has_subseq: false
   }
   target_inlinkid: -1
 }
