@@ -5,6 +5,7 @@
 
 #include <string.h>
 #include <memory>
+#include "paddle/math/MemoryHandle.h"
 #include "paddle/utils/Common.h"
 #include "paddle/utils/Logging.h"
 
@@ -14,15 +15,19 @@ namespace optimizer {
 template <class T>
 class TensorT {
 public:
-  TensorT(size_t size) : height_(1), width_(size) { data_ = new T[size]; }
+  TensorT(size_t size)
+      : TensorT(std::make_shared<CpuMemoryHandle>(size * sizeof(float)), size) {
+  }
+  TensorT(CpuMemHandlePtr handle, size_t size)
+      : height_(1),
+        width_(size),
+        data_(reinterpret_cast<T*>(handle->getBuf())) {}
 
   TensorT(T* data, size_t size) : height_(1), width_(size), data_(data) {}
 
   TensorT(T* data, size_t h, size_t w) : height_(h), width_(w), data_(data) {}
 
-  ~TensorT() {
-    if (data_) delete data_;
-  }
+  virtual ~TensorT() {}
 
   T* get_buffer() { return this->data_; }
 
