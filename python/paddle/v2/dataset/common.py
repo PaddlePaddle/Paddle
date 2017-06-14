@@ -97,8 +97,10 @@ def split(reader, line_count, suffix="%05d.pickle", dumper=cPickle.dump):
     :param suffix: the suffix for the output files, should contain "%d"
                 means the id for each file. Default is "%05d.pickle"
     :param dumper: is a callable function that dump object to file, this
-                function will be called as dumper(obj, f) and obj is the object
-                will be dumped, f is a file object. Default is cPickle.dump.
+                function will be called as dumper(obj, f) and obj is a tuple of
+                one record, f is a file object. dumper(obj, f) will be called
+                multiple times to add multiple records to one file. Default is
+                cPickle.dump.
     """
     if not callable(dumper):
         raise TypeError("dumper should be callable.")
@@ -108,12 +110,14 @@ def split(reader, line_count, suffix="%05d.pickle", dumper=cPickle.dump):
         lines.append(d)
         if i >= line_count and i % line_count == 0:
             with open(suffix % indx_f, "w") as f:
-                dumper(lines, f)
+                for l in lines:
+                    dumper(l, f)
                 lines = []
                 indx_f += 1
     if lines:
         with open(suffix % indx_f, "w") as f:
-            dumper(lines, f)
+            for l in lines:
+                dumper(lines, f)
 
 
 def cluster_files_reader(files_pattern,
@@ -129,6 +133,7 @@ def cluster_files_reader(files_pattern,
     :param trainer_id: the trainer rank id
     :param loader: is a callable function that load object from file, this
                 function will be called as loader(f) and f is a file object.
+                loader(f) will be called multiple times to retrive records.
                 Default is cPickle.load
     """
 
@@ -140,13 +145,15 @@ def cluster_files_reader(files_pattern,
         my_file_list = []
         for idx, fn in enumerate(file_list):
             if idx % trainer_count == trainer_id:
-                print "append file: %s" % fn
                 my_file_list.append(fn)
         for fn in my_file_list:
             with open(fn, "r") as f:
-                lines = loader(f)
-                for line in lines:
-                    yield line
+                while True:
+                    try:
+                        line = loader(f)
+                        yield line
+                    except EOFError, e:
+                        return
 
     return reader
 

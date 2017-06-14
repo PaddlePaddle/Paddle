@@ -16,6 +16,7 @@ import paddle.v2.dataset.common
 import unittest
 import tempfile
 import glob
+import cPickle as pickle
 
 
 class TestCommon(unittest.TestCase):
@@ -41,23 +42,24 @@ class TestCommon(unittest.TestCase):
 
             return reader
 
-        _, temp_path = tempfile.mkstemp()
+        temp_path = tempfile.mkdtemp()
         paddle.v2.dataset.common.split(
             test_reader(), 4, suffix=temp_path + '/test-%05d.pickle')
-        files = glob.glob(temp_path + '/test-%05d.pickle')
+        files = glob.glob(temp_path + '/test-*.pickle')
         self.assertEqual(len(files), 3)
 
     def test_cluster_file_reader(self):
-        _, temp_path = tempfile.mkstemp()
+        temp_path = tempfile.mkdtemp()
         for x in xrange(5):
-            with open(temp_path + '/%05d.test' % x) as f:
-                f.write('%d\n' % x)
+            with open(temp_path + '/%05d.test' % x, "w") as f:
+                pickle.dump(x, f)
         reader = paddle.v2.dataset.common.cluster_files_reader(
             temp_path + '/*.test', 5, 0)
         for idx, e in enumerate(reader()):
-            self.assertEqual(e, str("0"))
+            self.assertEqual(e, 0)
 
     def test_convert(self):
+        import recordio
         record_num = 10
         num_shards = 4
 
