@@ -15,8 +15,7 @@ func TestFull(t *testing.T) {
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
 	p.ElementType = pserver.Int32
-	var dummy int
-	err := s.InitParam(pserver.ParameterWithConfig{Param: p, Config: nil}, &dummy)
+	err := s.InitParam(pserver.ParameterWithConfig{Param: p, Config: nil}, nil)
 	if err != nil {
 		t.FailNow()
 	}
@@ -25,12 +24,12 @@ func TestFull(t *testing.T) {
 	p1.Name = "param_b"
 	p1.Content = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	p1.ElementType = pserver.Float32
-	err = s.InitParam(pserver.ParameterWithConfig{Param: p1, Config: nil}, &dummy)
+	err = s.InitParam(pserver.ParameterWithConfig{Param: p1, Config: nil}, nil)
 	if err != nil {
 		t.FailNow()
 	}
 
-	err = s.FinishInitParams(0, &dummy)
+	err = s.FinishInitParams(0, nil)
 	if err != nil {
 		t.FailNow()
 	}
@@ -46,11 +45,11 @@ func TestFull(t *testing.T) {
 	}
 
 	g1, g2 := pserver.Gradient(p1), pserver.Gradient(p)
-	err = s.SendGrad(g1, &dummy)
+	err = s.SendGrad(g1, nil)
 	if err != nil {
 		t.FailNow()
 	}
-	err = s.SendGrad(g2, &dummy)
+	err = s.SendGrad(g2, nil)
 
 	if err != nil {
 		t.FailNow()
@@ -74,13 +73,12 @@ func TestFull(t *testing.T) {
 
 func TestMultipleInit(t *testing.T) {
 	s := pserver.NewService()
-	var dummy int
-	err := s.FinishInitParams(0, &dummy)
+	err := s.FinishInitParams(0, nil)
 	if err != nil {
 		t.FailNow()
 	}
 
-	err = s.FinishInitParams(0, &dummy)
+	err = s.FinishInitParams(0, nil)
 	if err.Error() != pserver.AlreadyInitialized {
 		t.FailNow()
 	}
@@ -88,8 +86,7 @@ func TestMultipleInit(t *testing.T) {
 
 func TestUninitialized(t *testing.T) {
 	s := pserver.NewService()
-	var dummy int
-	err := s.SendGrad(pserver.Gradient{}, &dummy)
+	err := s.SendGrad(pserver.Gradient{}, nil)
 	if err.Error() != pserver.Uninitialized {
 		t.FailNow()
 	}
@@ -98,13 +95,14 @@ func TestUninitialized(t *testing.T) {
 func TestBlockUntilInitialized(t *testing.T) {
 	s := pserver.NewService()
 	ch := make(chan struct{}, 2)
+	errCh := make(chan error, 2)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		var param pserver.Parameter
 		err := s.GetParam("param_a", &param)
 		if err != nil {
-			t.FailNow()
+			errCh <- err
 		}
 		wg.Done()
 		ch <- struct{}{}
@@ -112,10 +110,9 @@ func TestBlockUntilInitialized(t *testing.T) {
 
 	wg.Add(1)
 	go func() {
-		var dummy int
-		err := s.Save("", &dummy)
+		err := s.Save("", nil)
 		if err != nil {
-			t.FailNow()
+			errCh <- err
 		}
 		wg.Done()
 		ch <- struct{}{}
@@ -127,6 +124,8 @@ func TestBlockUntilInitialized(t *testing.T) {
 	case <-ch:
 		// some function returned before initialization is completed.
 		t.FailNow()
+	case <-errCh:
+		t.FailNow()
 	default:
 	}
 
@@ -134,13 +133,12 @@ func TestBlockUntilInitialized(t *testing.T) {
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
 	p.ElementType = pserver.Int32
-	var dummy int
-	err := s.InitParam(pserver.ParameterWithConfig{Param: p, Config: nil}, &dummy)
+	err := s.InitParam(pserver.ParameterWithConfig{Param: p, Config: nil}, nil)
 	if err != nil {
 		t.FailNow()
 	}
 
-	err = s.FinishInitParams(0, &dummy)
+	err = s.FinishInitParams(0, nil)
 	if err != nil {
 		t.FailNow()
 	}
