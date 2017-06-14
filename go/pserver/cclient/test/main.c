@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "libclient.h"
+#include "libpaddle_pserver_cclient.h"
 
 // TODO(helin): Fix: gtest using cmake is not working, using this
 // hacky way for now.
@@ -11,10 +11,11 @@
 void sendGrads(paddle_pserver_client c) {
   unsigned char grad_a[2000] = {2};
   unsigned char grad_b[3000] = {3};
-  paddle_gradient grads[2] = {
-      {"param_a", PADDLE_ELEMENT_TYPE_FLOAT32, grad_a, 2000},
-      {"param_b", PADDLE_ELEMENT_TYPE_FLOAT32, grad_b, 3000}};
-
+  paddle_gradient grad1 = {
+      "param_a", PADDLE_ELEMENT_TYPE_FLOAT32, grad_a, 2000};
+  paddle_gradient grad2 = {
+      "param_b", PADDLE_ELEMENT_TYPE_FLOAT32, grad_b, 3000};
+  paddle_gradient* grads[2] = {&grad1, &grad2};
   if (paddle_send_grads(c, grads, 2)) {
     fail();
   }
@@ -77,7 +78,8 @@ retry:
     }
   }
 
-  for (int i = 0; i < 100; i++) {
+  int i;
+  for (i = 0; i < 100; i++) {
     sendGrads(c);
     getParams(c);
   }

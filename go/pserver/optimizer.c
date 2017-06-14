@@ -32,7 +32,13 @@ int update_SGD(void* optimizer,
                const void* gradient,
                int num_bytes) {
   SGD_optimizer* o = (SGD_optimizer*)optimizer;
-  // TODO
+  float* parameter = (float*)buffer;
+  float* grad = (float*)gradient;
+
+  int i;
+  for (i = 0; i < num_bytes / sizeof(float); ++i) {
+    parameter[i] -= o->learning_rate * grad[i];
+  }
   return 0;
 }
 

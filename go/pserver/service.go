@@ -51,7 +51,7 @@ type Service struct {
 
 // NewService creates a new service.
 func NewService() *Service {
-	s := &Service{opt: newOptimizer(sgd, 0.01)}
+	s := &Service{opt: newOptimizer(sgd, 0.005)}
 	s.paramMap = make(map[string]Parameter)
 	s.initialized = make(chan struct{})
 	return s
