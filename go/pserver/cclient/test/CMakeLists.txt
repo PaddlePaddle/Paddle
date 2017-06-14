@@ -7,6 +7,8 @@ add_dependencies(test_cclient paddle_pserver_cclient)
 
 if(APPLE)
   set(CMAKE_EXE_LINKER_FLAGS "-framework CoreFoundation -framework Security")
+else()
+  set(CMAKE_EXE_LINKER_FLAGS "-pthread")  
 endif()
 
 if(PROJ_ROOT)
