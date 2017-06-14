@@ -30,30 +30,36 @@ void print_parameter(paddle_gradient* param) {
 
 int main() {
   char addr[] = "localhost:3000";
-  client c = paddle_new_pserver_client(addr, 1);
+  paddle_pserver_client c = paddle_new_pserver_client(addr, 1);
 
   char* names[] = {"param_a", "param_b"};
+
 retry:
+  printf("init parameter to pserver:\n");
+
+  real param_content1[] = {0.1, 0.2, 0.3};
+  real param_content2[] = {0.4, 0.5, 0.6};
+  paddle_parameter** params =
+          (paddle_parameter**)malloc(sizeof(paddle_parameter*) * 2);
+  params[0] = (paddle_parameter*)malloc(sizeof(paddle_parameter));
+  params[0]->name = names[0];
+  params[0]->content = (unsigned char*)param_content1;
+  params[0]->content_len = 3 * sizeof(real);
+  params[0]->element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
+
+  params[1] = (paddle_parameter*)malloc(sizeof(paddle_parameter));
+  params[1]->name = names[1];
+  params[1]->content = (unsigned char*)param_content2;
+  params[1]->content_len = 3 * sizeof(real);
+  params[1]->element_type = PADDLE_ELEMENT_TYPE_INT32;
 
   if (paddle_begin_init_params(c)) {
-    paddle_parameter param;
-    real param_content1[] = {0.1, 0.2, 0.3};
-    param.element_type = PADDLE_ELEMENT_TYPE_FLOAT32;
-    param.name = names[0];
-    param.content = (unsigned char*)param_content1;
-    param.content_len = 3 * sizeof(real);
-    if (paddle_init_param(c, param, NULL, 0) != 0) {
+    if (paddle_init_param(c, *params[0], NULL, 0) != 0) {
       goto retry;
     }
-    real param_content2[] = {0.4, 0.5, 0.6};
-    param.element_type = PADDLE_ELEMENT_TYPE_INT32;
-    param.name = names[1];
-    param.content = (unsigned char*)param_content2;
-    param.content_len = 3 * sizeof(real);
-    if (paddle_init_param(c, param, NULL, 0) != 0) {
+    if (paddle_init_param(c, *params[1], NULL, 0) != 0) {
       goto retry;
     }
-
     if (paddle_finish_init_params(c) != 0) {
       goto retry;
     }
@@ -61,13 +67,13 @@ retry:
     fail();
   }
 
-  printf("get initialized parameters from pserver:\n");
-  paddle_parameter* param_ptrs[2] = {NULL, NULL};
-  if (paddle_get_params(c, names, param_ptrs, 2) != 0) {
+  printf("get inited parameters from pserver:\n");
+  // get parameters again by reusing the allocated parameter buffers.
+  if (paddle_get_params(c, params, 2) != 0) {
     fail();
   }
-  print_parameter(param_ptrs[0]);
-  print_parameter(param_ptrs[1]);
+  print_parameter(params[0]);
+  print_parameter(params[1]);
 
   printf("send gradient to pserver:\n");
   real gradient_content1[] = {0.01, 0.02, 0.03};
@@ -87,6 +93,7 @@ retry:
   grads[1]->content_len = 3 * sizeof(real);
   grads[1]->element_type = PADDLE_ELEMENT_TYPE_INT32;
 
+  printf("print gradient sent to pserver:\n");
   print_parameter(grads[0]);
   print_parameter(grads[1]);
 
@@ -96,15 +103,11 @@ retry:
 
   printf("get updated parameters from pserver:\n");
   // get parameters again by reusing the allocated parameter buffers.
-  if (paddle_get_params(c, names, param_ptrs, 2) != 0) {
+  if (paddle_get_params(c, params, 2) != 0) {
     fail();
   }
-
-  print_parameter(param_ptrs[0]);
-  print_parameter(param_ptrs[1]);
-
-  paddle_release_param(param_ptrs[0]);
-  paddle_release_param(param_ptrs[1]);
+  print_parameter(params[0]);
+  print_parameter(params[1]);
 
   if (paddle_save_model(c, "/tmp/") != 0) {
     fail();

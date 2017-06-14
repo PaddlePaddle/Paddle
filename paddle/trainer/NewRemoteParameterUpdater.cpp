@@ -25,7 +25,6 @@ NewRemoteParameterUpdater::NewRemoteParameterUpdater(
     : parameterClient_(-1),
       newParameters_(nullptr),
       newGradients_(nullptr),
-      names_(nullptr),
       pserverSpec_(pserverSpec) {}
 
 void NewRemoteParameterUpdater::init(
@@ -40,12 +39,6 @@ void NewRemoteParameterUpdater::init(
   // create parameter server client.
   parameterClient_ = paddle_new_pserver_client((char *)pserverSpec_.c_str(),
                                                FLAGS_trainer_id == 0);
-
-  // init names_ for get parameter through paddle_cclient
-  names_ = (char **)malloc(parameterSize() * sizeof(char *));
-  for (int i = 0; i < parameterSize(); ++i) {
-    names_[i] = (char *)parameters_[i]->getName().c_str();
-  }
 
   // init new parameter and gradient.
   newParameters_ = initNewParameter(PARAMETER_VALUE);
@@ -68,7 +61,7 @@ void NewRemoteParameterUpdater::init(
     LOG(INFO) << "paddle_begin_init_params done";
   } else {
     paddle_get_params(
-        parameterClient_, names_, newParameters_, parameterSize());
+        parameterClient_, newParameters_, parameterSize());
   }
 
   LOG(INFO) << "NewRemoteParameterUpdater initialized";
@@ -80,7 +73,7 @@ void NewRemoteParameterUpdater::finishBatch(real cost) {
   // send gradient to parameter server.
   paddle_send_grads(parameterClient_, newGradients_, parameterSize());
   // get the updated parameter from parameterClient.
-  paddle_get_params(parameterClient_, names_, newParameters_, parameterSize());
+  paddle_get_params(parameterClient_, newParameters_, parameterSize());
 
   // clear gradient after update parameter.
   for (auto &para : parameters_) {

@@ -32,9 +32,6 @@ public:
   NewRemoteParameterUpdater(const OptimizationConfig& config,
                             const std::string pserverSpec);
   ~NewRemoteParameterUpdater() {
-    if (names_ != nullptr) {
-      free(names_);
-    }
     releaseNewParameter(newParameters_);
     releaseNewParameter(newGradients_);
     if (parameterClient_ >= 0) paddle_pserver_client_release(parameterClient_);
@@ -105,13 +102,11 @@ private:
 
 protected:
   /// internal parameter client object for exchanging data with pserver
-  client parameterClient_;
+  paddle_pserver_client parameterClient_;
   /// the parameters for new pserver client
   paddle_parameter** newParameters_;
   /// the gradinets for new pserver client
   paddle_parameter** newGradients_;
-  /// the names for new parameters.
-  char** names_;
   /// the specification of parameter server "host1:port,host1:port"
   std::string pserverSpec_;
 };
