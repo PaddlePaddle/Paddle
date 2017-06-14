@@ -79,7 +79,7 @@ func TestMultipleInit(t *testing.T) {
 	}
 
 	err = s.FinishInitParams(0, nil)
-	if err != pserver.ErrAlreadyInitialized {
+	if err.Error() != pserver.AlreadyInitialized {
 		t.FailNow()
 	}
 }
@@ -87,7 +87,7 @@ func TestMultipleInit(t *testing.T) {
 func TestUninitialized(t *testing.T) {
 	s := pserver.NewService()
 	err := s.SendGrad(pserver.Gradient{}, nil)
-	if err != pserver.ErrUninitialized {
+	if err.Error() != pserver.Uninitialized {
 		t.FailNow()
 	}
 }
