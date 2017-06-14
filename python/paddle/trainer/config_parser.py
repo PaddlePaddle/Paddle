@@ -2428,7 +2428,13 @@ class ExpandLayer(LayerBase):
 
 @config_layer('featmap_expand')
 class FeatMapExpandLayer(LayerBase):
-    def __init__(self, name, inputs, device=None, num_filters=None, bias=False):
+    def __init__(self,
+                 name,
+                 inputs,
+                 device=None,
+                 num_filters=None,
+                 as_row_vector=True,
+                 bias=False):
         super(FeatMapExpandLayer, self).__init__(
             name, 'featmap_expand', 0, inputs=inputs, device=device)
         config_assert(
@@ -2437,6 +2443,8 @@ class FeatMapExpandLayer(LayerBase):
             self.config.num_filters = num_filters
         else:
             logger.fatal("FeatMapExpandLayer must specify num_filters.")
+        if not as_row_vector:
+            self.config.user_arg = "as_col_vec"
         self.set_layer_size(self.get_input_layer(0).size * num_filters)
 
 
