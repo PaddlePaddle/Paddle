@@ -60,8 +60,7 @@ void NewRemoteParameterUpdater::init(
     paddle_finish_init_params(parameterClient_);
     LOG(INFO) << "paddle_begin_init_params done";
   } else {
-    paddle_get_params(
-        parameterClient_, newParameters_, parameterSize());
+    paddle_get_params(parameterClient_, newParameters_, parameterSize());
   }
 
   LOG(INFO) << "NewRemoteParameterUpdater initialized";

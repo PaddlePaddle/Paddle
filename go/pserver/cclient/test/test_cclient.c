@@ -40,7 +40,7 @@ retry:
   real param_content1[] = {0.1, 0.2, 0.3};
   real param_content2[] = {0.4, 0.5, 0.6};
   paddle_parameter** params =
-          (paddle_parameter**)malloc(sizeof(paddle_parameter*) * 2);
+      (paddle_parameter**)malloc(sizeof(paddle_parameter*) * 2);
   params[0] = (paddle_parameter*)malloc(sizeof(paddle_parameter));
   params[0]->name = names[0];
   params[0]->content = (unsigned char*)param_content1;
