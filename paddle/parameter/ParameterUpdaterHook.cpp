@@ -20,6 +20,7 @@ limitations under the License. */
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include <algorithm>
 
 #include "paddle/math/Vector.h"
 #include "paddle/parameter/Parameter.h"
@@ -60,6 +61,7 @@ public:
     maskTemp_ = Vector::create(para->getSize(), false);
     maskTemp_->zeroMem();
     real* dataPtr = maskTemp_->getData();
+    size_t sparsityNum = para->getSize() * (1 - sparsityRatio_);
 
     VectorPtr vecCpu = Vector::create(para->getSize(), false);
     vecCpu->copyFrom(*vec);
@@ -67,10 +69,20 @@ public:
 
     for (size_t i = 0; i < para->getSize(); i++)
       param.push_back(std::make_pair(fabs(vecCpu->getData()[i]), i));
-    std::sort(param.begin(), param.end(), sortPairAscend);
 
-    for (size_t i = 0; i < para->getSize() * sparsityRatio_; i++)
-      dataPtr[param[i].second] = 1.0;
+    std::partial_sort(param.begin(),
+                      param.begin() + sparsityNum,
+                      param.end(),
+                      sortPairAscend);
+    for (size_t i = 0; i < sparsityNum; i++) dataPtr[param[i].second] = 1.0;
+
+    // Currently just use a mask vector for hack.
+    if (para->useGpu()) {
+      maskVec_ = Vector::create(para->getSize(), para->useGpu());
+      maskVec_->copyFrom(*maskTemp_);
+    } else {
+      maskVec_ = maskTemp_;
+    }
   }
 
   void init(Parameter* para) {
@@ -80,15 +92,6 @@ public:
                                 "in same ParamterUpdater";
     VLOG(3) << "Initialize Parameter " << para;
     SetDevice device(para->getDeviceId());
-
-    // Currently just use a mask vector for hack.
-    // @TODO(yuyang18): Implemented the mask operation in vector.
-    if (para->useGpu()) {
-      maskVec_ = Vector::create(para->getSize(), para->useGpu());
-      maskVec_->copyFrom(*maskTemp_);
-    } else {
-      maskVec_ = maskTemp_;
-    }
 
     auto& vec = para->getBuf(PARAMETER_VALUE);
     vec->dotMul(*maskVec_);
@@ -136,11 +139,7 @@ static IParameterUpdaterHook* createImpl(
     const ParameterUpdaterHookConfig& config) {
   auto& type = config.type();
   if (type == "pruning") {
-    if (config.has_sparsity_ratio())
-      return new StaticPruningHook(config);
-    else
-      LOG(FATAL) << "There must be sparsity_ratio parameter for " << type
-                 << " Hook";
+    return new StaticPruningHook(config);
   }
 
   LOG(FATAL) << "Unknown Hook type:  " << type;

@@ -3175,8 +3175,8 @@ def ParameterHook(type, **kwargs):
         hook = ParameterUpdaterHookConfig()
         hook.type = type
         sparsity_ratio = kwargs.get('sparsity_ratio', None)
-        assert sparsity_ratio is not None
-        hook.sparsity_ratio = sparsity_ratio
+        if sparsity_ratio is not None:
+            hook.sparsity_ratio = sparsity_ratio
         return hook
     else:
         return None
