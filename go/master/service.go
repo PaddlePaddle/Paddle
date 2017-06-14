@@ -217,6 +217,16 @@ func (s *Service) checkTimeoutFunc(taskID int, epoch int) func() {
 	}
 }
 
+// must be called with lock held.
+func (s *Service) logFields() log.Fields {
+	return log.Fields{
+		"todoLen":    len(s.taskQueues.Todo),
+		"pendingLen": len(s.taskQueues.Pending),
+		"doneLen":    len(s.taskQueues.Done),
+		"failedLen":  len(s.taskQueues.Failed),
+	}
+}
+
 // GetTask gets a new task from the service.
 func (s *Service) GetTask(dummy int, task *Task) error {
 	select {
@@ -230,7 +240,7 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 		if len(s.taskQueues.Done) == 0 {
 			if len(s.taskQueues.Pending) == 0 {
 				err := errors.New("all task failed")
-				log.Warningln(err)
+				log.WithFields(s.logFields()).Warningln("All tasks failed.")
 				return err
 			}
 
@@ -243,12 +253,12 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 			// in package. So we need to figure out a way
 			// for client to check this error correctly.
 			err := errors.New("no more available task")
-			log.Warningln(err)
+			log.WithFields(s.logFields()).Warningln("No more available task.")
 			return err
 		}
 		s.taskQueues.Todo = s.taskQueues.Done
 		s.taskQueues.Done = nil
-		log.Infoln("No more todo task, but trainer is requesting task to do. Move all done task to todo.")
+		log.WithFields(s.logFields()).Infoln("No more todo task, but trainer is requesting task to do. Move all done task to todo.")
 	}
 
 	t := s.taskQueues.Todo[0]
@@ -261,7 +271,7 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 	}
 
 	*task = t.Task
-	log.Infof("Task #%d dispatched\n", task.ID)
+	log.WithFields(s.logFields()).Infof("Task #%d dispatched.", task.ID)
 
 	time.AfterFunc(s.timeoutDur, s.checkTimeoutFunc(t.Task.ID, t.Epoch))
 	return nil
@@ -276,12 +286,10 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	log.Infof("Task %d finished\n", taskID)
-
 	t, ok := s.taskQueues.Pending[taskID]
 	if !ok {
 		err := errors.New("pending task not found")
-		log.Warningln(err)
+		log.WithFields(s.logFields()).Warningln("Pending task #%d not found.", taskID)
 		return err
 	}
 
@@ -290,8 +298,10 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 	s.taskQueues.Done = append(s.taskQueues.Done, t)
 	delete(s.taskQueues.Pending, taskID)
 
+	log.WithFields(s.logFields()).Infof("Task #%d finished.", taskID)
+
 	if len(s.taskQueues.Pending) == 0 && len(s.taskQueues.Todo) == 0 {
-		log.Infoln("No more todo and pending task, start a new pass.")
+		log.WithFields(s.logFields()).Infoln("No more todo and pending task, start a new pass.")
 		s.taskQueues.Todo = append(s.taskQueues.Todo, s.taskQueues.Done...)
 		s.taskQueues.Done = nil
 	}

@@ -11,21 +11,15 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/PaddlePaddle/Paddle/go/master"
 	"github.com/PaddlePaddle/recordio"
 )
 
-const (
-	totalTask    = 20
-	chunkPerTask = 10
-)
-
-var port int
-
-func init() {
-	log.SetLevel(log.ErrorLevel)
+func TestNextRecord(t *testing.T) {
+	const (
+		path  = "/tmp/master_client_TestFull"
+		total = 50
+	)
 
 	l, err := net.Listen("tcp", ":0")
 	if err != nil {
@@ -37,10 +31,9 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	port = p
 
 	go func(l net.Listener) {
-		s := master.NewService(chunkPerTask, time.Second, 1)
+		s := master.NewService(10, time.Second, 1)
 		server := rpc.NewServer()
 		err := server.Register(s)
 		if err != nil {
@@ -54,67 +47,33 @@ func init() {
 			panic(err)
 		}
 	}(l)
-}
 
-type addresser string
-
-func (a addresser) Address() string {
-	return string(a)
-}
-
-func TestClientFull(t *testing.T) {
-	const p = "/tmp/master_client_test_0"
-	f, err := os.Create(p)
+	f, err := os.Create(path)
 	if err != nil {
 		panic(err)
 	}
 
-	for i := 0; i < totalTask*chunkPerTask; i++ {
-		w := recordio.NewWriter(f, -1, -1)
-		w.Write(nil)
-		// call Close to force RecordIO writing a chunk.
-		w.Close()
+	w := recordio.NewWriter(f, -1, -1)
+	for i := 0; i < total; i++ {
+		w.Write([]byte{byte(i)})
 	}
+	w.Close()
 	f.Close()
 
-	c := master.NewClient(addresser(fmt.Sprintf(":%d", port)))
-	c.SetDataset([]string{p})
+	c := master.NewClient(master.TestAddresser(fmt.Sprintf(":%d", p)), 10)
+	c.SetDataset([]string{path})
 
-	checkOnePass := func(i int) {
-		var tasks []master.Task
-		for i := 0; i < totalTask; i++ {
-			task, err := c.GetTask()
-			if err != nil {
-				t.Fatal(i, err)
+	for pass := 0; pass < 50; pass++ {
+		received := make(map[byte]bool)
+		for i := 0; i < total; i++ {
+			r := c.NextRecord()
+			if len(r) != 1 {
+				t.Fatal("Length should be 1.", r)
 			}
-			tasks = append(tasks, task)
-		}
-
-		_, err = c.GetTask()
-		if err == nil {
-			t.Fatal(i, "should get error.")
-		}
-
-		err = c.TaskFinished(tasks[0].ID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		tasks = tasks[1:]
-		task, err := c.GetTask()
-		if err != nil {
-			t.Fatal(err)
-		}
-		tasks = append(tasks, task)
-
-		for _, task := range tasks {
-			err = c.TaskFinished(task.ID)
-			if err != nil {
-				t.Fatal(i, err)
+			if received[r[0]] {
+				t.Fatal("Received duplicate.", received, r)
 			}
+			received[r[0]] = true
 		}
-	}
-
-	for i := 0; i < 10; i++ {
-		checkOnePass(i)
 	}
 }
