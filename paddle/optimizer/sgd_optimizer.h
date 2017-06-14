@@ -16,7 +16,6 @@ public:
     if (momentum_ != 0.0) {
       size_t size = parameter->size();
       // TODO: fix it with align aware allocator bind to Tensor
-      if (momentums_) delete momentums_;
       momentums_ = new Tensor(size);
     }
   }

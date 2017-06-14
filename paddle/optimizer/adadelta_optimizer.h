@@ -10,17 +10,13 @@ public:
   AdadeltaOptimizer(
       Tensor *parameter, LrPolicy *lr, double rho, double epsilon, double decay)
       : ParameterOptimizer(parameter, lr),
+        accum_gradient_(new Tensor(parameter->size())),
+        accum_delta_(new Tensor(parameter->size())),
+        update_delta_(new Tensor(parameter->size())),
         rho_(rho),
         epsilon_(epsilon),
-        decay_(decay) {
-    size_t size = parameter->size();
-    if (accum_gradient_) delete accum_gradient_;
-    accum_gradient_ = new Tensor(size);
-    if (accum_delta_) delete accum_delta_;
-    accum_delta_ = new Tensor(size);
-    if (update_delta_) delete update_delta_;
-    update_delta_ = new Tensor(size);
-  }
+        decay_(decay) {}
+
   ~AdadeltaOptimizer() {
     if (accum_gradient_) delete accum_gradient_;
     if (accum_delta_) delete accum_delta_;

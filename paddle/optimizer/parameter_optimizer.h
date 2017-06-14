@@ -19,7 +19,10 @@ public:
    */
   ParameterOptimizer(Tensor *parameter, LrPolicy *lr)
       : parameter_(parameter), lr_policy_(lr), num_sample_passed_(0) {}
-  virtual ~ParameterOptimizer() { delete parameter_; };
+  virtual ~ParameterOptimizer() {
+    delete parameter_;
+    delete lr_policy_;
+  }
 
   static ParameterOptimizer *Create(const std::string &config_proto,
                                     Tensor *parameter);

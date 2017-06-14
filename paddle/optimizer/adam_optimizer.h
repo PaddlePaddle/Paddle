@@ -14,14 +14,12 @@ public:
                 double epsilon,
                 double decay)
       : ParameterOptimizer(parameter, lr),
+        momentums_(new Tensor(parameter->size())),
+        velocitys_(new Tensor(parameter->size())),
         beta_1_(beta_1),
         beta_2_(beta_2),
         epsilon_(epsilon),
-        decay_(decay) {
-    size_t size = parameter->size();
-    momentums_ = new Tensor(size);
-    velocitys_ = new Tensor(size);
-  }
+        decay_(decay) {}
   ~AdamOptimizer() {
     if (momentums_) delete momentums_;
     if (velocitys_) delete velocitys_;

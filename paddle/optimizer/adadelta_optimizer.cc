@@ -27,23 +27,22 @@ void AdadeltaOptimizer::Update(const Tensor* gradient) {
 
 const char* AdadeltaOptimizer::SerializeState(int* state_len) {
   AdadeltaOptimizerState state;
-  state.set_learning_rate(lr_policy_->LearningRate(num_sample_passed_));
+  // TODO(zhihong) : add lr_policy serialization
   state.set_num_sample_passed(num_sample_passed_);
 
   TensorToProto(*parameter_, state.mutable_parameter());
   TensorToProto(*accum_gradient_, state.mutable_accum_gradient());
   TensorToProto(*accum_delta_, state.mutable_accum_delta());
   TensorToProto(*update_delta_, state.mutable_update_delta());
-
-  *state_len =
-      CalStateSize(parameter_, accum_gradient_, accum_delta_, update_delta_);
-  return state.SerializeAsString().c_str();
+  auto str = state.SerializeAsString();
+  *state_len = str.size();
+  return str.c_str();
 }
 
 void AdadeltaOptimizer::DeserializeState(const std::string& str) {
   AdadeltaOptimizerState state;
   state.ParseFromString(str);
-  lr_policy_->set(state.learning_rate());
+  // TODO(zhihong) : add lr_policy DeserializeState
   num_sample_passed_ = state.num_sample_passed();
 
   ProtoToTensor(state.parameter(), parameter_);

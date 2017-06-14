@@ -11,11 +11,10 @@ public:
                    LrPolicy *lr,
                    double epsilon,
                    double decay)
-      : ParameterOptimizer(parameter, lr), epsilon_(epsilon), decay_(decay) {
-    size_t size = parameter->size();
-    if (accum_gradient_) delete accum_gradient_;
-    accum_gradient_ = new Tensor(size);
-  }
+      : ParameterOptimizer(parameter, lr),
+        accum_gradient_(new Tensor(parameter->size())),
+        epsilon_(epsilon),
+        decay_(decay) {}
   ~AdagradOptimizer() {
     if (accum_gradient_) delete accum_gradient_;
   }
