@@ -130,7 +130,7 @@ private:
 
 static WeakKVCache<std::pair<std::string, int>,
                    IParameterUpdaterHook,
-                   StringIntPairHasher> 
+                   StringIntPairHasher>
     g_hookCache_;
 
 /**
