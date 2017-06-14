@@ -14,13 +14,13 @@ limitations under the License. */
 
 #include "ParameterUpdaterHook.h"
 
+#include <algorithm>
 #include <atomic>
 #include <fstream>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include <algorithm>
 
 #include "paddle/math/Vector.h"
 #include "paddle/parameter/Parameter.h"
