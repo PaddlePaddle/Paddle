@@ -17,7 +17,7 @@ function(GO_LIBRARY NAME BUILD_TYPE)
   endif()
 
   file(GLOB GO_SOURCE RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.go")
-  file(RELATIVE_PATH rel ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+  file(RELATIVE_PATH rel ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 
   # find Paddle directory.
   get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
@@ -32,12 +32,14 @@ function(GO_LIBRARY NAME BUILD_TYPE)
   # will use the local changes in Paddle rather than checkout Paddle
   # in github.
   add_custom_target(copyPaddle
-    COMMAND ln -sf ${PADDLE_DIR} ${PADDLE_IN_GOPATH})
+    COMMAND rm -rf ${PADDLE_IN_GOPATH}/Paddle
+    COMMAND ln -sf ${PADDLE_DIR} ${PADDLE_IN_GOPATH}/Paddle)
   add_dependencies(goGet copyPaddle)
 
   add_custom_command(OUTPUT ${OUTPUT_DIR}/.timestamp
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
-    -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
+     -gcflags=-shared -asmflags=-shared -installsuffix=_shared -a
+     -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
     ${CMAKE_GO_FLAGS} ${GO_SOURCE}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 

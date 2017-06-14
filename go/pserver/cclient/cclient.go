@@ -162,10 +162,10 @@ func paddle_finish_init_params(client C.paddle_pserver_client) C.int {
 }
 
 //export paddle_send_grads
-func paddle_send_grads(client C.paddle_pserver_client, grads *C.paddle_gradient, total C.int) C.int {
+func paddle_send_grads(client C.paddle_pserver_client, grads **C.paddle_gradient, total C.int) C.int {
 	var gs []pserver.Gradient
 	for i := 0; i < int(total); i++ {
-		grad := (*C.paddle_gradient)(unsafe.Pointer((uintptr(unsafe.Pointer(grads)) + uintptr(i)*unsafe.Sizeof(*grads))))
+		grad := *(**C.paddle_gradient)(unsafe.Pointer((uintptr(unsafe.Pointer(grads)) + uintptr(i)*unsafe.Sizeof(*grads))))
 		et := pserver.ElementType(grad.element_type)
 		name := C.GoString(grad.name)
 		content := cArrayToSlice(unsafe.Pointer(grad.content), int(grad.content_len))

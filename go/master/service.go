@@ -2,29 +2,25 @@ package master
 
 import (
 	"errors"
-	"log"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/PaddlePaddle/recordio"
 )
 
-const (
-	targetTaskCount = 300
-)
-
-// errors
-var (
-	ErrNoMoreTask          = errors.New("no more task for current pass")
-	ErrPendingTaskNotFound = errors.New("pending task not found")
-)
-
 // Service is the master server service.
 type Service struct {
-	timeoutDur time.Duration
-	timeoutMax int
+	chunksPerTask int
+	timeoutDur    time.Duration
+	timeoutMax    int
+	ready         chan struct{}
 
 	mu         sync.Mutex
+	initDone   bool
 	taskQueues taskQueues
 }
 
@@ -55,7 +51,6 @@ func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
 
 	if len(cur.Task.Chunks) > 0 {
 		cur.Task.ID = id
-		id++
 		result = append(result, cur)
 	}
 
@@ -63,21 +58,21 @@ func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
 }
 
 // NewService creates a new service.
-func NewService(chunks []Chunk, chunksPerTask int, timeoutDur time.Duration, timeoutMax int) *Service {
+func NewService(chunksPerTask int, timeoutDur time.Duration, timeoutMax int) *Service {
 	s := &Service{}
+	s.chunksPerTask = chunksPerTask
 	s.timeoutDur = timeoutDur
 	s.timeoutMax = timeoutMax
 	s.taskQueues = taskQueues{}
 	s.taskQueues.Pending = make(map[int]taskEntry)
-	s.taskQueues.Todo = partition(chunks, chunksPerTask)
+	s.ready = make(chan struct{})
 	return s
 }
 
 // Chunk is a chunk of data consisted of several data instances.
 type Chunk struct {
-	Idx   int // index of the chunk within the file
 	Path  string
-	Index recordio.Index // block index
+	Index recordio.Index // chunk index
 }
 
 // Task is the basic unit of data instances assigned to trainers.
@@ -105,13 +100,155 @@ func (s *Service) snapshot() error {
 	return nil
 }
 
+func readChunks(globPaths []string) ([]Chunk, error) {
+	var chunks []Chunk
+	var paths []string
+
+	for _, s := range globPaths {
+		match, err := filepath.Glob(s)
+		if err != nil {
+			return nil, err
+		}
+		paths = append(paths, match...)
+	}
+
+	if len(paths) == 0 {
+		return nil, errors.New("no valid dataset specified")
+	}
+
+	for _, path := range paths {
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, err
+		}
+
+		index, err := recordio.LoadIndex(f)
+		if err != nil {
+			return nil, err
+		}
+		err = f.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		count := index.NumChunks()
+		for i := 0; i < count; i++ {
+			chunk := Chunk{
+				Path:  path,
+				Index: *index.ChunkIndex(i),
+			}
+			chunks = append(chunks, chunk)
+		}
+	}
+
+	return chunks, nil
+}
+
+// SetDataset sets dataset to dispatch for the master server.
+//
+// SetDataset can be call multiple times. But only the first call will
+// be honored.
+func (s *Service) SetDataset(globPaths []string, dummy *int) error {
+	if len(globPaths) == 0 {
+		return errors.New("no dataset specified")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.initDone {
+		// Already initialized. All trainer will call
+		// SetDataset, but we only handle the first one. Treat
+		// other calls as successful but do nothing.
+		return nil
+	}
+
+	chunks, err := readChunks(globPaths)
+	if err != nil {
+		return err
+	}
+
+	s.taskQueues.Todo = partition(chunks, s.chunksPerTask)
+
+	err = s.snapshot()
+	if err != nil {
+		log.Errorln(err)
+		return err
+	}
+
+	close(s.ready)
+	s.initDone = true
+	return nil
+}
+
+func (s *Service) checkTimeoutFunc(taskID int, epoch int) func() {
+	return func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+
+		t, ok := s.taskQueues.Pending[taskID]
+		if !ok {
+			return
+		}
+
+		if t.Epoch != epoch {
+			// new epoch, task launched after the
+			// schedule of this timeout check.
+			return
+		}
+
+		defer func() {
+			err := s.snapshot()
+			if err != nil {
+				log.Errorln(err)
+			}
+		}()
+
+		delete(s.taskQueues.Pending, t.Task.ID)
+
+		t.NumTimeout++
+		if t.NumTimeout > s.timeoutMax {
+			log.Warningf("Task %v failed %d times, discard.\n", t.Task, t.NumTimeout)
+			s.taskQueues.Failed = append(s.taskQueues.Failed, t.Task)
+			return
+		}
+
+		log.Warningf("Task %v failed %d times, retry.\n", t.Task, t.NumTimeout)
+		s.taskQueues.Todo = append(s.taskQueues.Todo, t)
+	}
+}
+
 // GetTask gets a new task from the service.
 func (s *Service) GetTask(dummy int, task *Task) error {
+	select {
+	case <-s.ready:
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if len(s.taskQueues.Todo) == 0 {
-		return ErrNoMoreTask
+		if len(s.taskQueues.Done) == 0 {
+			if len(s.taskQueues.Pending) == 0 {
+				err := errors.New("all task failed")
+				log.Warningln(err)
+				return err
+			}
+
+			// TODO(helin): client need to retry in this
+			// error case. Gotcha: RPC client can't
+			// compare returned error with predefined
+			// errors like io.EOF, because the error
+			// instance deserialized from RPC is a
+			// different instance than the error defined
+			// in package. So we need to figure out a way
+			// for client to check this error correctly.
+			err := errors.New("no more available task")
+			log.Warningln(err)
+			return err
+		}
+		s.taskQueues.Todo = s.taskQueues.Done
+		s.taskQueues.Done = nil
+		log.Infoln("No more todo task, but trainer is requesting task to do. Move all done task to todo.")
 	}
 
 	t := s.taskQueues.Todo[0]
@@ -123,56 +260,45 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 		return err
 	}
 
-	time.AfterFunc(s.timeoutDur, func(taskID int, epoch int) func() {
-		return func() {
-			s.mu.Lock()
-			defer s.mu.Unlock()
+	*task = t.Task
+	log.Infof("Task #%d dispatched\n", task.ID)
 
-			t, ok := s.taskQueues.Pending[taskID]
-			if !ok {
-				return
-			}
-
-			if t.Epoch != epoch {
-				// new epoch, task launched after the
-				// schedule of this timeout check.
-				return
-			}
-
-			defer func() {
-				err := s.snapshot()
-				if err != nil {
-					log.Println(err)
-				}
-			}()
-
-			delete(s.taskQueues.Pending, t.Task.ID)
-
-			t.NumTimeout++
-			if t.NumTimeout > s.timeoutMax {
-				s.taskQueues.Failed = append(s.taskQueues.Failed, t.Task)
-				return
-			}
-
-			s.taskQueues.Todo = append(s.taskQueues.Todo, t)
-		}
-	}(t.Task.ID, t.Epoch))
+	time.AfterFunc(s.timeoutDur, s.checkTimeoutFunc(t.Task.ID, t.Epoch))
 	return nil
 }
 
 // TaskFinished tell the service that a task is finished.
 func (s *Service) TaskFinished(taskID int, dummy *int) error {
+	select {
+	case <-s.ready:
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	log.Infof("Task %d finished\n", taskID)
+
 	t, ok := s.taskQueues.Pending[taskID]
 	if !ok {
-		return ErrPendingTaskNotFound
+		err := errors.New("pending task not found")
+		log.Warningln(err)
+		return err
 	}
 
 	// task finished, reset timeout
 	t.NumTimeout = 0
 	s.taskQueues.Done = append(s.taskQueues.Done, t)
 	delete(s.taskQueues.Pending, taskID)
-	return s.snapshot()
+
+	if len(s.taskQueues.Pending) == 0 && len(s.taskQueues.Todo) == 0 {
+		log.Infoln("No more todo and pending task, start a new pass.")
+		s.taskQueues.Todo = append(s.taskQueues.Todo, s.taskQueues.Done...)
+		s.taskQueues.Done = nil
+	}
+
+	err := s.snapshot()
+	if err != nil {
+		log.Errorln(err)
+	}
+	return err
 }
