@@ -15,6 +15,7 @@ limitations under the License. */
 #include "PaddleAPI.h"
 
 #include "PaddleAPIPrivate.h"
+#include "paddle/trainer/NewRemoteParameterUpdater.h"
 #include "paddle/trainer/RemoteParameterUpdater.h"
 #include "paddle/trainer/ThreadParameterUpdater.h"
 
@@ -25,6 +26,14 @@ ParameterUpdater *ParameterUpdater::createLocalUpdater(
   auto updater = new ParameterUpdater();
   updater->m->updater.reset(
       new paddle::SgdThreadUpdater(config->m->getConfig()));
+  return updater;
+}
+
+ParameterUpdater *ParameterUpdater::createNewRemoteUpdater(
+    OptimizationConfig *config, const std::string pserverSpec) {
+  auto updater = new ParameterUpdater();
+  updater->m->updater.reset(new paddle::NewRemoteParameterUpdater(
+      config->m->getConfig(), pserverSpec));
   return updater;
 }
 

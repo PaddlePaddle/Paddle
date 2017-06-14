@@ -49,7 +49,8 @@ class SGD(object):
                  parameters,
                  update_equation,
                  extra_layers=None,
-                 is_local=True):
+                 is_local=True,
+                 pserver_spec=None):
 
         if not isinstance(parameters, v2_parameters.Parameters):
             raise TypeError('parameters should be parameters')
@@ -63,6 +64,7 @@ class SGD(object):
         self.__parameters__ = parameters
         self.__topology_in_proto__ = topology.proto()
         self.__is_local__ = is_local
+        self.__pserver_spec__ = pserver_spec
 
         self.__use_sparse_updater__ = self.__topology__.use_sparse_updater()
         # # In local mode, disable sparse_remote_update.
@@ -126,7 +128,8 @@ class SGD(object):
         __check_train_args__(**locals())
 
         self.__parameter_updater__ = self.__optimizer__.create_updater(
-            self.__is_local__, num_passes, self.__use_sparse_updater__)
+            self.__is_local__, num_passes, self.__use_sparse_updater__,
+            self.__pserver_spec__)
         self.__parameter_updater__.init(self.__gradient_machine__)
 
         self.__gradient_machine__.start()

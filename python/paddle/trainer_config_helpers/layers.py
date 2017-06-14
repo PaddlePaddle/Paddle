@@ -121,6 +121,7 @@ __all__ = [
     'smooth_l1_cost',
     'layer_support',
     'multiplex_layer',
+    'row_conv_layer',
     'dropout_layer',
     'prelu_layer',
 ]
@@ -179,17 +180,18 @@ class LayerType(object):
     EOSID_LAYER = 'eos_id'
     RECURRENT_LAYER = 'recurrent'
 
-    CONV_SHIFT_LAYER = 'conv_shift'
-    TENSOR_LAYER = 'tensor'
-    SEL_FC_LAYER = 'selective_fc'
-    SAMPLING_ID_LAYER = 'sampling_id'
-    SLOPE_INTERCEPT_LAYER = 'slope_intercept'
-    LINEAR_COMBINATION_LAYER = 'convex_comb'
-    BLOCK_EXPAND = 'blockexpand'
-    MAXOUT = 'maxout'
-    SPP_LAYER = 'spp'
-    PAD_LAYER = 'pad'
-    MULTIPLEX_LAYER = 'multiplex'
+    CONV_SHIFT_LAYER = "conv_shift"
+    TENSOR_LAYER = "tensor"
+    SEL_FC_LAYER = "selective_fc"
+    SAMPLING_ID_LAYER = "sampling_id"
+    SLOPE_INTERCEPT_LAYER = "slope_intercept"
+    LINEAR_COMBINATION_LAYER = "convex_comb"
+    BLOCK_EXPAND = "blockexpand"
+    MAXOUT = "maxout"
+    SPP_LAYER = "spp"
+    PAD_LAYER = "pad"
+    MULTIPLEX_LAYER = "multiplex"
+    ROW_CONV_LAYER = "row_conv"
 
     PRINT_LAYER = 'print'
     PRIORBOX_LAYER = 'priorbox'
@@ -5585,6 +5587,79 @@ def dropout_layer(input, dropout_rate, name=None):
 
 
 @wrap_name_default()
+@wrap_act_default(act=LinearActivation())
+@wrap_param_attr_default()
+@layer_support(DROPOUT)
+def row_conv_layer(input,
+                   context_len,
+                   act=None,
+                   name=None,
+                   param_attr=None,
+                   layer_attr=None):
+    """
+
+    The row convolution is called lookahead convolution. It is firstly
+    introduced in paper of `Deep Speech 2: End-toEnd Speech Recognition
+    in English and Mandarin <https://arxiv.org/pdf/1512.02595v1.pdf>`_ .
+
+    The bidirectional RNN that learns representation for a sequence by
+    performing a forward and a backward pass through the entire sequence.
+    However, unlike unidirectional RNNs, bidirectional RNNs are challenging
+    to deploy in an online and low-latency setting. The lookahead convolution
+    incorporates information from future subsequences in a computationally
+    efficient manner to improve unidirectional recurrent neural networks.
+ 
+    The connection of row convolution is different form the 1D sequence
+    convolution. Assumed that, the future context-length is k, that is to say,
+    it can get the output at timestep t by using the the input feature from t-th
+    timestep to (t+k+1)-th timestep. Assumed that the hidden dim of input
+    activations are d, the activations r_t for the new layer at time-step t are:
+ 
+    .. math::
+
+        r_{t,r} = \sum_{j=1}^{k + 1} {w_{i,j}h_{t+j-1, i}}
+                  \quad \text{for} \quad  (1 \leq i \leq d)
+
+    Note:
+        The `context_len` is `k + 1`. That is to say, the lookahead step
+        number plus one equals context_len.
+
+
+    .. code-block:: python
+
+       row_conv = row_conv_layer(input=input_layer, context_len=3)
+
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param context_len: The context length equals the lookahead step number
+                        plus one.
+    :type context_len: int
+    :param act: Activation Type. Default is linear activation.
+    :type act: BaseActivation
+    :param param_attr: The Parameter Attribute. If None, the parameter will be
+                       initialized smartly. It's better set it by yourself.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+
+    """
+    assert isinstance(input, LayerOutput)
+    assert context_len > 0, "the context_len must be greatet than 0."
+
+    Layer(
+        inputs=[Input(input.name, **param_attr.attr)],
+        name=name,
+        context_length=context_len,
+        type=LayerType.ROW_CONV_LAYER,
+        active_type=act.name,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.ROW_CONV_LAYER, input, activation=act, size=input.size)
+
+
 @layer_support()
 @wrap_name_default()
 @wrap_param_attr_default()
