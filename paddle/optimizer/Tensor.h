@@ -15,13 +15,17 @@ template <class T>
 class TensorT {
 public:
   TensorT(size_t size) : height_(1), width_(size) { data_ = new T[size]; }
+
   TensorT(T* data, size_t size) : height_(1), width_(size), data_(data) {}
-  TensorT(T* data, size_t h, size_t w) : height_(h), width_(w), data_(data_) {}
+
+  TensorT(T* data, size_t h, size_t w) : height_(h), width_(w), data_(data) {}
+
   ~TensorT() {
     if (data_) delete data_;
   }
 
   T* get_buffer() { return this->data_; }
+
   T& operator[](const size_t idx) {
     CHECK(idx >= 0 && idx < this->width_) << "out of index range";
     return data_[idx];

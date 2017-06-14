@@ -9,9 +9,8 @@ set(OPITMIZER_SRCS
     sgd_optimizer.cc
   )
 
-add_library(optimizer STATIC ${OPITMIZER_SRCS})
-add_dependencies(optimizer gen_proto_cpp)
+add_library(paddle_optimizer STATIC ${OPITMIZER_SRCS})
+add_dependencies(paddle_optimizer gen_proto_cpp)
 
 add_simple_unittest(serialization_test)
 add_simple_unittest(parameter_optimizer_test)
-add_dependencies(parameter_optimizer_test optimizer)

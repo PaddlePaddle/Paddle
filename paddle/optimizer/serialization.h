@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -16,7 +17,7 @@ static void TensorToProto(const Tensor& tensor, TensorProto* proto) {
   for (size_t i = 0; i < tensor.size(); ++i) {
     os << tensor[i];
     proto->add_content(os.str());
-    os.clear();
+    os.str(std::string());
   }
 }
 
@@ -25,6 +26,7 @@ static void ProtoToTensor(const TensorProto& proto, Tensor* tensor) {
   for (auto i = 0; i < proto.content_size(); ++i) {
     sin << proto.content(i);
     sin >> (*tensor)[i];
+    sin.str(std::string());
     sin.clear();
   }
 }

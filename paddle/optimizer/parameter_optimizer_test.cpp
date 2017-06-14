@@ -49,8 +49,8 @@ public:
     config_.set_lr_policy(OptimizerConfig::ConstLr);
     config_.mutable_const_lr()->set_learning_rate(0.1);
 
-    ParameterOptimizer* opt =
-        ParameterOptimizer::Create(config_.SerializeAsString(), parameter);
+    std::string str = config_.SerializeAsString();
+    ParameterOptimizer* opt = ParameterOptimizer::Create(str, parameter);
     opts_.push_back(opt);
     opts_table_[opts_.size()] = OptimizerConfig::SGD;
   }
@@ -64,8 +64,8 @@ public:
     config_.mutable_adam()->set_decay(0.0);
     config_.set_lr_policy(OptimizerConfig::ConstLr);
     config_.mutable_const_lr()->set_learning_rate(0.1);
-    ParameterOptimizer* opt =
-        ParameterOptimizer::Create(config_.SerializeAsString(), parameter);
+    std::string str = config_.SerializeAsString();
+    ParameterOptimizer* opt = ParameterOptimizer::Create(str, parameter);
     opts_.push_back(opt);
     opts_table_[opts_.size()] = OptimizerConfig::Adam;
   }

@@ -10,6 +10,7 @@ TEST(TensorToProto, Case1) {
     t[i] = i;
     t1[i] = 0;
   }
+
   TensorProto proto;
   TensorToProto(t, &proto);
   ProtoToTensor(proto, &t1);
