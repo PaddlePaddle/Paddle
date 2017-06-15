@@ -1,7 +1,6 @@
 package main
 
 /*
-#include <stdlib.h>
 #include <string.h>
 typedef enum {
   PADDLE_ELEMENT_TYPE_INT32   = 0,
@@ -223,12 +222,12 @@ func paddle_get_params(client C.paddle_pserver_client, dst **C.paddle_parameter,
 		if unsafe.Pointer(param) == nullPtr {
 			log.Println("must pre-allocate parameter.")
 			return C.PSERVER_ERROR
-		} else {
-			if unsafe.Pointer(param.content) != nullPtr {
-				if int(param.content_len) != len(p.Content) {
-					log.Printf("the pre-allocated content len does not match parameter content len. Pre-allocated len: %d, returned len: %d", param.content_len, len(p.Content))
-					return C.PSERVER_ERROR
-				}
+		}
+
+		if unsafe.Pointer(param.content) != nullPtr {
+			if int(param.content_len) != len(p.Content) {
+				log.Printf("the pre-allocated content len does not match parameter content len. Pre-allocated len: %d, returned len: %d", param.content_len, len(p.Content))
+				return C.PSERVER_ERROR
 			}
 		}
 

@@ -21,13 +21,10 @@ type Client struct {
 }
 
 // NewClient creates a new Client.
-//
-// bufSize is the record buffer size. NextRecord will read from the
-// buffer.
-func NewClient(addr Addresser, bufSize int) *Client {
+func NewClient(addr Addresser) *Client {
 	c := &Client{}
 	c.conn = connection.New()
-	c.ch = make(chan []byte, bufSize)
+	c.ch = make(chan []byte)
 	go c.monitorMaster(addr)
 	go c.getRecords()
 	return c
@@ -53,11 +50,19 @@ func (c *Client) getRecords() {
 				c.ch <- s.Record()
 			}
 
+			if s.Err() != nil {
+				log.Println(err, chunk.Path)
+			}
+
 			err = f.Close()
 			if err != nil {
 				log.Println(err)
 			}
 		}
+
+		// We treat a task as finished whenever the last data
+		// instance of the task is read. This is not exactly
+		// correct, but a reasonable approximation.
 		c.taskFinished(t.ID)
 	}
 }
