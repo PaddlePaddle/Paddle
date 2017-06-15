@@ -34,6 +34,8 @@ func (c *Client) getRecords() {
 	for {
 		t, err := c.getTask()
 		if err != nil {
+			// TODO(helin): wait before move on with next
+			// getTask call.
 			log.Println(err)
 			continue
 		}
@@ -125,7 +127,7 @@ func (c *Client) taskFinished(taskID int) error {
 
 // NextRecord returns next record in the dataset.
 //
-// NextRecord will block until next record is available. It is
+// NextRecord will block until the next record is available. It is
 // thread-safe.
 func (c *Client) NextRecord() []byte {
 	return <-c.ch

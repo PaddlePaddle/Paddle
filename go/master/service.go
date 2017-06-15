@@ -207,12 +207,12 @@ func (s *Service) checkTimeoutFunc(taskID int, epoch int) func() {
 
 		t.NumTimeout++
 		if t.NumTimeout > s.timeoutMax {
-			log.Warningf("Task %v failed %d times, discard.\n", t.Task, t.NumTimeout)
+			log.Warningf("Task %v timed out %d times, discard.\n", t.Task, t.NumTimeout)
 			s.taskQueues.Failed = append(s.taskQueues.Failed, t.Task)
 			return
 		}
 
-		log.Warningf("Task %v failed %d times, retry.\n", t.Task, t.NumTimeout)
+		log.Warningf("Task %v timed out %d times, retry.\n", t.Task, t.NumTimeout)
 		s.taskQueues.Todo = append(s.taskQueues.Todo, t)
 	}
 }

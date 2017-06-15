@@ -75,6 +75,7 @@ func TestGetFinishTask(t *testing.T) {
 	}
 	f.Close()
 
+	// Manually intialize client to avoid calling c.getRecords()
 	c := &Client{}
 	c.conn = connection.New()
 	go c.monitorMaster(TestAddresser(fmt.Sprintf(":%d", p)))
@@ -85,19 +86,19 @@ func TestGetFinishTask(t *testing.T) {
 		for idx := 0; idx < totalTask; idx++ {
 			task, err := c.getTask()
 			if err != nil {
-				t.Fatal(err, " pass:", i)
+				t.Fatalf("Error: %v, pass: %d\n", err, i)
 			}
 			tasks = append(tasks, task)
 		}
 
 		_, err = c.getTask()
 		if err == nil {
-			t.Fatal("Should get error. Pass:", i)
+			t.Fatalf("Should get error, pass: %d\n", i)
 		}
 
 		err = c.taskFinished(tasks[0].ID)
 		if err != nil {
-			t.Fatal(err, "pass:", i)
+			t.Fatalf("Error: %v, pass: %d\n", err, i)
 		}
 		tasks = tasks[1:]
 		task, err := c.getTask()
@@ -109,7 +110,7 @@ func TestGetFinishTask(t *testing.T) {
 		for _, task := range tasks {
 			err = c.taskFinished(task.ID)
 			if err != nil {
-				t.Fatal(err, " pass:", i)
+				t.Fatalf("Error: %v, pass: %d\n", err, i)
 			}
 		}
 	}
