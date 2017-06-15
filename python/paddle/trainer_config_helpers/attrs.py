@@ -123,6 +123,10 @@ class ParameterAttribute(object):
     :param sparse_update: Enable sparse update for this parameter. It will
                           enable both local and remote sparse update.
     :type sparse_update: bool
+    :param initializer: If not None, it should be a callable object which accepts
+                        a parameter name and returns numpy array for the initial
+                        value of the parameter
+    :param initializer: callable object
     """
 
     def __init__(self,
@@ -138,7 +142,8 @@ class ParameterAttribute(object):
                  momentum=None,
                  gradient_clipping_threshold=None,
                  sparse_update=False,
-                 update_hooks=None):
+                 update_hooks=None,
+                 initializer=None):
         self.attr = {}
 
         if is_static:
@@ -190,6 +195,8 @@ class ParameterAttribute(object):
                 is_compatible_with(gradient_clipping_threshold, float):
             self.attr['gradient_clipping_threshold'] = \
                 gradient_clipping_threshold
+        if initializer is not None:
+            self.attr['initializer'] = initializer
 
         if update_hooks:
             self.attr['update_hooks'] = update_hooks
