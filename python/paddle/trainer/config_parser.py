@@ -126,6 +126,7 @@ def init_config_environment(
         g_config=TrainerConfig(),
         g_layer_map={},
         g_parameter_map={},
+        g_parameter_initializer_map={},
         g_extended_config_funcs={},
 
         # store command args of paddle_trainer
@@ -439,22 +440,22 @@ def model_type(name):
 
 @config_class
 class Bias(Cfg):
-    def __init__(
-            self,
-            parameter_name=None,
-            learning_rate=None,
-            momentum=None,
-            decay_rate=None,
-            decay_rate_l1=None,
-            initial_mean=None,
-            initial_std=None,
-            initial_strategy=None,
-            initial_smart=None,
-            num_batches_regularization=None,
-            sparse_remote_update=None,
-            gradient_clipping_threshold=None,
-            is_static=None,
-            is_shared=None, ):
+    def __init__(self,
+                 parameter_name=None,
+                 learning_rate=None,
+                 momentum=None,
+                 decay_rate=None,
+                 decay_rate_l1=None,
+                 initial_mean=None,
+                 initial_std=None,
+                 initial_strategy=None,
+                 initial_smart=None,
+                 num_batches_regularization=None,
+                 sparse_remote_update=None,
+                 gradient_clipping_threshold=None,
+                 is_static=None,
+                 is_shared=None,
+                 initializer=None):
         self.add_keys(locals())
 
 
@@ -465,6 +466,7 @@ class Input(Cfg):
             self,
             input_layer_name,
             parameter_name=None,
+            initializer=None,
             learning_rate=None,
             momentum=None,
             decay_rate=None,
@@ -521,6 +523,7 @@ class Projection(Input):
             initial_std=None,
             initial_strategy=None,
             initial_smart=None,
+            initializer=None,
             num_batches_regularization=None,
             sparse_remote_update=None,
             sparse_update=None,
@@ -1494,7 +1497,8 @@ class LayerBase(object):
                     gradient_clipping_threshold=bias.
                     gradient_clipping_threshold,
                     is_static=bias.is_static,
-                    is_shared=bias.is_shared, )
+                    is_shared=bias.is_shared,
+                    initializer=bias.initializer)
             if for_self:
                 self.config.bias_parameter_name = bias.parameter_name
             else:
@@ -1551,7 +1555,8 @@ class LayerBase(object):
             format=format,
             is_static=input_config.is_static,
             is_shared=input_config.is_shared,
-            update_hooks=input_config.update_hooks)
+            update_hooks=input_config.update_hooks,
+            initializer=input_config.initializer)
 
     def set_layer_size(self, size):
         if self.config.size == 0:
@@ -3236,7 +3241,8 @@ def Parameter(name,
               need_compact=None,
               is_static=None,
               is_shared=None,
-              update_hooks=None):
+              update_hooks=None,
+              initializer=None):
 
     config_assert(name not in g_parameter_map,
                   'Duplicated parameter name: ' + name)
@@ -3324,6 +3330,11 @@ def Parameter(name,
             para.update_hooks.extend(update_hooks)
 
     g_parameter_map[name] = para
+    if initializer is not None:
+        config_assert(
+            callable(initializer),
+            "parameter initializer should be a callable object")
+        g_parameter_initializer_map[name] = initializer
 
 
 @config_func
