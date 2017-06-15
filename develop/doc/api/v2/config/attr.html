@@ -211,7 +211,7 @@
 
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.attr.</code><code class="descname">ParameterAttribute</code><span class="sig-paren">(</span><em>name=None</em>, <em>is_static=False</em>, <em>initial_std=None</em>, <em>initial_mean=None</em>, <em>initial_max=None</em>, <em>initial_min=None</em>, <em>l1_rate=None</em>, <em>l2_rate=None</em>, <em>learning_rate=None</em>, <em>momentum=None</em>, <em>gradient_clipping_threshold=None</em>, <em>sparse_update=False</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.attr.</code><code class="descname">ParameterAttribute</code><span class="sig-paren">(</span><em>name=None</em>, <em>is_static=False</em>, <em>initial_std=None</em>, <em>initial_mean=None</em>, <em>initial_max=None</em>, <em>initial_min=None</em>, <em>l1_rate=None</em>, <em>l2_rate=None</em>, <em>learning_rate=None</em>, <em>momentum=None</em>, <em>gradient_clipping_threshold=None</em>, <em>sparse_update=False</em>, <em>initializer=None</em><span class="sig-paren">)</span></dt>
 <dd><p>Parameter Attributes object. To fine-tuning network training process, user
 can set attribute to control training details, such as l1,l2 rate / learning
 rate / how to init param.</p>
@@ -240,6 +240,10 @@ value larger than some value, will be
 clipped.</li>
 <li><strong>sparse_update</strong> (<em>bool</em>) &#8211; Enable sparse update for this parameter. It will
 enable both local and remote sparse update.</li>
+<li><strong>initializer</strong> &#8211; If not None, it should be a callable object which accepts
+a parameter name and returns numpy array for the initial
+value of the parameter</li>
+<li><strong>initializer</strong> &#8211; callable object</li>
 </ul>
 </td>
 </tr>
