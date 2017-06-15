@@ -40,7 +40,7 @@ struct BBoxBase {
 
   T getCenterY() const { return (yMin + yMax) / 2; }
 
-  T getSize() const { return getWidth() * getHeight(); }
+  T getArea() const { return getWidth() * getHeight(); }
 
   // coordinate of bounding box
   T xMin;
@@ -67,8 +67,7 @@ size_t appendWithPermute(const Matrix& inMatrix,
                          size_t outOffset,
                          size_t batchSize,
                          Matrix& outMatrix,
-                         PermMode permMode,
-                         bool useGpu);
+                         PermMode permMode);
 
 /**
  * @brief First permute input maxtrix then decompose to output
@@ -80,8 +79,7 @@ size_t decomposeWithPermute(const Matrix& inMatrix,
                             size_t offset,
                             size_t batchSize,
                             Matrix& outMatrix,
-                            PermMode permMode,
-                            bool useGpu);
+                            PermMode permMode);
 
 /**
  * @brief Compute jaccard overlap between two bboxes.
@@ -99,7 +97,7 @@ real jaccardOverlap(const NormalizedBBox& bbox1, const NormalizedBBox& bbox2);
  * @param outVec Output vector
  */
 void encodeBBoxWithVar(const NormalizedBBox& priorBBox,
-                       const vector<real> priorBBoxVar,
+                       const vector<real>& priorBBoxVar,
                        const NormalizedBBox& gtBBox,
                        vector<real>& outVec);
 

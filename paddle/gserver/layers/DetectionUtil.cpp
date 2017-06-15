@@ -23,8 +23,9 @@ size_t appendWithPermute(const Matrix& inMatrix,
                          size_t outOffset,
                          size_t batchSize,
                          Matrix& outMatrix,
-                         PermMode permMode,
-                         bool useGpu) {
+                         PermMode permMode) {
+  CHECK_EQ(inMatrix.useGpu(), outMatrix.useGpu());
+  bool useGpu = inMatrix.useGpu();
   if (permMode == kNCHWToNHWC) {
     size_t inElementCnt = inMatrix.getElementCnt();
     size_t channels = inElementCnt / (height * width * batchSize);
@@ -58,8 +59,9 @@ size_t decomposeWithPermute(const Matrix& inMatrix,
                             size_t inOffset,
                             size_t batchSize,
                             Matrix& outMatrix,
-                            PermMode permMode,
-                            bool useGpu) {
+                            PermMode permMode) {
+  CHECK_EQ(inMatrix.useGpu(), outMatrix.useGpu());
+  bool useGpu = inMatrix.useGpu();
   if (permMode == kNHWCToNCHW) {
     size_t outElementCnt = outMatrix.getElementCnt();
     size_t channels = outElementCnt / (height * width * batchSize);
@@ -98,17 +100,17 @@ real jaccardOverlap(const NormalizedBBox& bbox1, const NormalizedBBox& bbox2) {
 
     real interWidth = interXMax - interXMin;
     real interHeight = interYMax - interYMin;
-    real interSize = interWidth * interHeight;
+    real interArea = interWidth * interHeight;
 
-    real bboxSize1 = bbox1.getSize();
-    real bboxSize2 = bbox2.getSize();
+    real bboxArea1 = bbox1.getArea();
+    real bboxArea2 = bbox2.getArea();
 
-    return interSize / (bboxSize1 + bboxSize2 - interSize);
+    return interArea / (bboxArea1 + bboxArea2 - interArea);
   }
 }
 
 void encodeBBoxWithVar(const NormalizedBBox& priorBBox,
-                       const vector<real> priorBBoxVar,
+                       const vector<real>& priorBBoxVar,
                        const NormalizedBBox& gtBBox,
                        vector<real>& outVec) {
   real priorBBoxWidth = priorBBox.getWidth();
