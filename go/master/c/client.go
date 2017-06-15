@@ -13,11 +13,11 @@ typedef int paddle_master_client;
 import "C"
 
 import (
-	"log"
 	"sync"
 	"unsafe"
 
 	"github.com/PaddlePaddle/Paddle/go/master"
+	log "github.com/sirupsen/logrus"
 )
 
 var nullPtr = unsafe.Pointer(uintptr(0))
@@ -77,7 +77,7 @@ func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int
 	}
 	err := c.SetDataset(paths)
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		return C.PADDLE_MASTER_ERROR
 	}
 

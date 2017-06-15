@@ -1,12 +1,12 @@
 package master
 
 import (
-	"log"
 	"os"
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
 	"github.com/PaddlePaddle/recordio"
+	log "github.com/sirupsen/logrus"
 )
 
 // Addresser provide the address of the master server.
@@ -36,14 +36,14 @@ func (c *Client) getRecords() {
 		if err != nil {
 			// TODO(helin): wait before move on with next
 			// getTask call.
-			log.Println(err)
+			log.Errorln(err)
 			continue
 		}
 
 		for _, chunk := range t.Chunks {
 			f, err := os.Open(chunk.Path)
 			if err != nil {
-				log.Println(err)
+				log.Errorln(err)
 				continue
 			}
 
@@ -53,12 +53,12 @@ func (c *Client) getRecords() {
 			}
 
 			if s.Err() != nil {
-				log.Println(err, chunk.Path)
+				log.Errorln(err, chunk.Path)
 			}
 
 			err = f.Close()
 			if err != nil {
-				log.Println(err)
+				log.Errorln(err)
 			}
 		}
 
@@ -79,12 +79,12 @@ func (c *Client) monitorMaster(addr Addresser) {
 			if curMaster == "" {
 				err := c.conn.Close()
 				if err != nil {
-					log.Println(err)
+					log.Errorln(err)
 				}
 			} else {
 				err := c.conn.Connect(curMaster)
 				if err != nil {
-					log.Println(err)
+					log.Errorln(err)
 
 					// connect to addr failed, set
 					// to last known addr in order

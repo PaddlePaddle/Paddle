@@ -2,11 +2,11 @@ package pserver
 
 import (
 	"hash/fnv"
-	"log"
 	"sort"
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
+	log "github.com/sirupsen/logrus"
 )
 
 // TODO(helin): add RPC call retry logic
@@ -64,7 +64,7 @@ func (c *Client) monitorPservers(l Lister, pserverNum int) {
 			if curServers[i].Addr == "" {
 				err := c.pservers[i].Close()
 				if err != nil {
-					log.Println(err)
+					log.Errorln(err)
 				}
 
 				continue
@@ -72,7 +72,7 @@ func (c *Client) monitorPservers(l Lister, pserverNum int) {
 
 			err := c.pservers[i].Connect(curServers[i].Addr)
 			if err != nil {
-				log.Println(err)
+				log.Errorln(err)
 
 				// connect to addr failed, set
 				// to last known addr in order
