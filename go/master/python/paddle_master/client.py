@@ -31,9 +31,9 @@ class client(object):
         ret = ctypes.pointer(p)
         size = lib.paddle_next_record(self.c, ret)
         if size == 0:
-            # empty record
+            # Empty record
             return ""
         record = ret.contents.value[:size]
-        # memory created from C should be freed.
+        # Memory created from C should be freed.
         lib.mem_free(ret.contents)
         return record
