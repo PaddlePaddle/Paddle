@@ -21,10 +21,13 @@ type Client struct {
 }
 
 // NewClient creates a new Client.
-func NewClient(addr Addresser) *Client {
+//
+// bufSize is the record buffer size. NextRecord will read from this
+// buffer.
+func NewClient(addr Addresser, bufSize int) *Client {
 	c := &Client{}
 	c.conn = connection.New()
-	c.ch = make(chan []byte)
+	c.ch = make(chan []byte, bufSize)
 	go c.monitorMaster(addr)
 	go c.getRecords()
 	return c

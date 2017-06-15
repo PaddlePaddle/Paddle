@@ -60,7 +60,7 @@ func TestNextRecord(t *testing.T) {
 	w.Close()
 	f.Close()
 
-	c := master.NewClient(master.TestAddresser(fmt.Sprintf(":%d", p)))
+	c := master.NewClient(master.TestAddresser(fmt.Sprintf(":%d", p)), 10)
 	c.SetDataset([]string{path})
 
 	for pass := 0; pass < 50; pass++ {

@@ -55,9 +55,9 @@ func (a addresser) Address() string {
 }
 
 //export paddle_new_master_client
-func paddle_new_master_client(addr *C.char) C.paddle_master_client {
+func paddle_new_master_client(addr *C.char, bufSize int) C.paddle_master_client {
 	a := C.GoString(addr)
-	c := master.NewClient(addresser(a))
+	c := master.NewClient(addresser(a), bufSize)
 	return add(c)
 }
 
