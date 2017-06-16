@@ -28,8 +28,8 @@ Each allocator is corresponding to one CPU or GPU device.
 1. `init`: calculate and reset how many allocators exist in current system, then respectively recording their own capacity, available, etc.
 2. `shutdown`: clear all exist allocators.
 
-3. The definition of `Place` is under folder `paddle/majel`.
-4. `memory_used` really makes sense when users do interactive programming, they may wondering the underlying memory resource.
+3. The definition of `Place` is under folder `paddle/majel`. It denotes allocation places either CPU or GPU.
+4. `memory_used` really makes sense when users do interactive programming such as Python, they may wondering the underlying memory resource.
 
 ### CPU System Allocators
 
