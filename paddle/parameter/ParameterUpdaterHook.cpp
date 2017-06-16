@@ -61,7 +61,7 @@ public:
     maskTemp_ = Vector::create(para->getSize(), false);
     maskTemp_->zeroMem();
     real* dataPtr = maskTemp_->getData();
-    size_t sparsityNum = para->getSize() * (1 - sparsityRatio_);
+    size_t nonZeroNum = para->getSize() * (1 - sparsityRatio_);
 
     VectorPtr vecCpu = Vector::create(para->getSize(), false);
     vecCpu->copyFrom(*vec);
@@ -71,10 +71,10 @@ public:
       param.push_back(std::make_pair(fabs(vecCpu->getData()[i]), i));
 
     std::partial_sort(param.begin(),
-                      param.begin() + sparsityNum,
+                      param.begin() + nonZeroNum,
                       param.end(),
                       sortPairAscend);
-    for (size_t i = 0; i < sparsityNum; i++) dataPtr[param[i].second] = 1.0;
+    for (size_t i = 0; i < nonZeroNum; i++) dataPtr[param[i].second] = 1.0;
 
     // Currently just use a mask vector for hack.
     if (para->useGpu()) {

@@ -65,7 +65,8 @@ class HookAttribute(object):
     :param  type: Hook type, eg: 'pruning'
     :type type: string
 
-    :param sparsity_ratio: Must be specified if hook type is 'pruning'
+    :param sparsity_ratio: Must be specified if hook type is 'pruning', 
+                           it represents the ratio of the zero elements to be set by the Parameter.
     :type sparsity_ratio: float or None
 	
     """
