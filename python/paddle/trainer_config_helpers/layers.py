@@ -1565,10 +1565,12 @@ def expand_layer(input,
 
 
 @wrap_name_default()
+@wrap_act_default(act=IdentityActivation())
 @layer_support()
 def repeat_layer(input,
                  num_repeats,
                  as_row_vector=True,
+                 act=None,
                  name=None,
                  layer_attr=None):
     """
@@ -1599,6 +1601,8 @@ def repeat_layer(input,
                           False for treating input as column vector and repeating
                           in the row direction.
     :type as_row_vector: bool
+    :param act: Activation type.
+    :type act: BaseActivation
     :type name: basestring
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
@@ -1609,6 +1613,7 @@ def repeat_layer(input,
     l = Layer(
         inputs=[input.name],
         name=name,
+        active_type=act.name,
         num_filters=num_repeats,
         as_row_vector=as_row_vector,
         type=LayerType.FEATURE_MAP_EXPAND_LAYER,
@@ -1617,6 +1622,7 @@ def repeat_layer(input,
         name=name,
         size=l.config.size,
         layer_type=LayerType.FEATURE_MAP_EXPAND_LAYER,
+        activation=act,
         parents=[input])
 
 
@@ -2873,7 +2879,7 @@ def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
 
     ..  code-block:: python
 
-        concat = seq_concat_layer(al=layer1, b=layer2)
+        concat = seq_concat_layer(a=layer1, b=layer2)
 
     :param name: Layer name.
     :type name: basestring
@@ -5625,13 +5631,13 @@ def row_conv_layer(input,
     to deploy in an online and low-latency setting. The lookahead convolution
     incorporates information from future subsequences in a computationally
     efficient manner to improve unidirectional recurrent neural networks.
- 
+
     The connection of row convolution is different form the 1D sequence
     convolution. Assumed that, the future context-length is k, that is to say,
     it can get the output at timestep t by using the the input feature from t-th
     timestep to (t+k+1)-th timestep. Assumed that the hidden dim of input
     activations are d, the activations r_t for the new layer at time-step t are:
- 
+
     .. math::
 
         r_{t,r} = \sum_{j=1}^{k + 1} {w_{i,j}h_{t+j-1, i}}

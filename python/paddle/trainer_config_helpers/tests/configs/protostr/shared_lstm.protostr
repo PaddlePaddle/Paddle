@@ -205,7 +205,7 @@ layers {
   name: "__last_seq_0__"
   type: "seqlastins"
   size: 100
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__lstm_group_0__"
   }
@@ -216,7 +216,7 @@ layers {
   name: "__last_seq_1__"
   type: "seqlastins"
   size: 100
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__lstm_group_1__"
   }
