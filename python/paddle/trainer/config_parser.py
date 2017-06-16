@@ -328,16 +328,12 @@ def RecurrentLayerGroupWithoutOutLinksBegin(name,
     SubModelBegin(name)
     g_current_submodel.is_recurrent_layer_group = True
     g_current_submodel.reversed = seq_reversed
-    g_current_submodel.target_inlinkid = -1
     in_links_count = 0
     for linkid, link in enumerate(in_links):
         if isinstance(link, basestring):
             name = link
         else:
             name = link.link_name
-        # assign target_inlinkid according to target_inlinkname
-        if target_inlinkname == name:
-            g_current_submodel.target_inlinkid = linkid
 
         in_links_count += 1
         layer_name = MakeLayerNameInParentSubmodel(name)
@@ -373,8 +369,7 @@ def RecurrentLayerGroupBegin(name,
                              generator=None,
                              target_inlinkname="",
                              seq_reversed=False):
-    RecurrentLayerGroupWithoutOutLinksBegin(name, in_links, seq_reversed,
-                                            target_inlinkname)
+    RecurrentLayerGroupWithoutOutLinksBegin(name, in_links, seq_reversed)
     for link in out_links:
         RecurrentLayerGroupSetOutLink(link)
 
@@ -2309,7 +2304,6 @@ def Memory(name,
     if name is not None:
         memory.layer_name = MakeLayerNameInSubmodel(name)
     memory.link_name = MakeLayerNameInSubmodel(agent_name)
-    memory.is_sequence = is_sequence
     options = sum((boot_layer is not None, bool(boot_bias),
                    boot_with_const_id is not None))
     config_assert(

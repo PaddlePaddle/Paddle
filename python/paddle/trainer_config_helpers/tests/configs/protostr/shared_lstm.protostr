@@ -341,12 +341,10 @@ sub_models {
   memories {
     layer_name: "__lstm_group_0__@__lstm_group_0___recurrent_group"
     link_name: "__lstm_group_0__+delay1@__lstm_group_0___recurrent_group"
-    is_sequence: false
   }
   memories {
     layer_name: "__lstm_group_0___state@__lstm_group_0___recurrent_group"
     link_name: "__lstm_group_0___state+delay1@__lstm_group_0___recurrent_group"
-    is_sequence: false
   }
   in_links {
     layer_name: "__mixed_0__"
@@ -356,7 +354,6 @@ sub_models {
     layer_name: "__lstm_group_0__@__lstm_group_0___recurrent_group"
     link_name: "__lstm_group_0__"
   }
-  target_inlinkid: -1
 }
 sub_models {
   name: "__lstm_group_1___recurrent_group"
@@ -371,12 +368,10 @@ sub_models {
   memories {
     layer_name: "__lstm_group_1__@__lstm_group_1___recurrent_group"
     link_name: "__lstm_group_1__+delay1@__lstm_group_1___recurrent_group"
-    is_sequence: false
   }
   memories {
     layer_name: "__lstm_group_1___state@__lstm_group_1___recurrent_group"
     link_name: "__lstm_group_1___state+delay1@__lstm_group_1___recurrent_group"
-    is_sequence: false
   }
   in_links {
     layer_name: "__mixed_1__"
@@ -386,6 +381,5 @@ sub_models {
     layer_name: "__lstm_group_1__@__lstm_group_1___recurrent_group"
     link_name: "__lstm_group_1__"
   }
-  target_inlinkid: -1
 }
 

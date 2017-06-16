@@ -59,7 +59,8 @@ def outer_step(subseq, seq, nonseq, encoding):
         return out
 
     decoder = recurrent_group(
-        step=inner_step, name='inner', input=[subseq, seq, nonseq])
+        step=inner_step, name='inner',
+        input=[subseq, StaticInput(seq), nonseq])
     last = last_seq(name="outer_rnn_state", input=decoder)
     context = simple_attention(
         encoded_sequence=encoding, encoded_proj=encoding, decoder_state=last)
@@ -69,7 +70,7 @@ def outer_step(subseq, seq, nonseq, encoding):
 out = recurrent_group(
     name="outer",
     step=outer_step,
-    input=[data1, data2, label, StaticInput(encoding)])
+    input=[data1, data2, StaticInput(label), StaticInput(encoding)])
 
 rep = last_seq(input=out)
 prob = fc_layer(

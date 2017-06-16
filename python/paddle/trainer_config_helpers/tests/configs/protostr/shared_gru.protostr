@@ -256,7 +256,6 @@ sub_models {
   memories {
     layer_name: "__simple_gru_0__@__simple_gru_0___recurrent_group"
     link_name: "__simple_gru_0__+delay1@__simple_gru_0___recurrent_group"
-    is_sequence: false
   }
   in_links {
     layer_name: "__simple_gru_0___transform"
@@ -266,7 +265,6 @@ sub_models {
     layer_name: "__simple_gru_0__@__simple_gru_0___recurrent_group"
     link_name: "__simple_gru_0__"
   }
-  target_inlinkid: -1
 }
 sub_models {
   name: "__simple_gru_1___recurrent_group"
@@ -278,7 +276,6 @@ sub_models {
   memories {
     layer_name: "__simple_gru_1__@__simple_gru_1___recurrent_group"
     link_name: "__simple_gru_1__+delay1@__simple_gru_1___recurrent_group"
-    is_sequence: false
   }
   in_links {
     layer_name: "__simple_gru_1___transform"
@@ -288,6 +285,5 @@ sub_models {
     layer_name: "__simple_gru_1__@__simple_gru_1___recurrent_group"
     link_name: "__simple_gru_1__"
   }
-  target_inlinkid: -1
 }
 

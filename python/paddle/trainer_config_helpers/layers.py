@@ -311,18 +311,6 @@ class LayerOutput(object):
         self.outputs = outputs
         self.reverse = reverse
 
-    def __repr__(self):
-        """
-        Disable __repr__ for debug reason. Will be implemented when release
-        """
-        assert False, "this method should not be invoked"
-
-    def __str__(self):
-        """
-        Disable __str__ for debug reason. Will be implemented when release
-        """
-        assert False, "this method should not be invoked"
-
     def set_input(self, input):
         """
         Set the input for a memory layer. Can only be used for memory layer
@@ -2944,7 +2932,7 @@ def memory(name,
     :param memory_name: the name of the memory.
                         It is ignored when name is provided.
     :type memory_name: basestring
-    :param is_seq: is sequence for boot_layer
+    :param is_seq: DEPRECATED. is sequence for boot_layer
     :type is_seq: bool
     :param boot_layer: boot layer of memory.
     :type boot_layer: LayerOutput|None
@@ -2971,7 +2959,6 @@ def memory(name,
     memory_name = Memory(
         name,
         size,
-        is_sequence=is_seq,
         boot_layer=boot_layer.name if boot_layer is not None else None,
         boot_bias=boot_bias,
         boot_bias_active_type=boot_bias_active_type.name,
@@ -3318,15 +3305,16 @@ class StaticInput(object):
     """
     StaticInput is only used in recurrent_group which defines a read-only memory
     that can be a sequence or non-sequence.
+    :param size: DEPRECATED
+    :param is_seq: DEPRECATED
     """
 
     def __init__(self, input, is_seq=False, size=None):
         assert isinstance(input, LayerOutput)
         self.input = input
-        self.is_seq = is_seq
-        assert input.size is not None or size is not None
+        assert input.size is not None
         if size is not None:
-            input.size = size
+            assert input.size == size
 
 
 def SubsequenceInput(input):
@@ -3452,15 +3440,10 @@ def recurrent_group(step,
         else:  # StaticInput
             mem_name = "__%s_memory__" % each_input.input.name
             mem = memory(
-                name=mem_name,
-                is_seq=each_input.is_seq,
+                name=None,
                 size=each_input.input.size,
                 boot_layer=each_input.input)
-            with mixed_layer(
-                    name=mem_name,
-                    size=each_input.input.size,
-                    act=IdentityActivation()) as mix:
-                mix += identity_projection(mem)
+            mem.set_input(mem)
             in_args.append(mem)
 
     assert (is_generating != has_LayerOutput)
