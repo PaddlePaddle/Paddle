@@ -14,16 +14,34 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/majel/place.h>
+#ifdef _WIN32
+
+#else
+    #include <sys/mman.h>
+
+#endif
 
 namespace paddle {
 namespace memory {
+namespace cpu {
 
-void init();
-void shutdown();
+inline void pin_memory(void* address, size_t size) {
+    #if _WIN32
 
-void* malloc(majel::Place place, size_t size);
-void free(majel::Place place, void* ptr);
-size_t memory_used(majel::Place);
+    #else
+        mlock(address, size);
+    #endif
 }
+
+inline void unpin_memory(void* address, size_t size) {
+    #if _WIN32
+
+    #else
+        munlock(address, size);
+    #endif
 }
+
+} /* cpu */
+} /* memory */
+} /* paddle */
+
