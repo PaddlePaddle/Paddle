@@ -70,10 +70,8 @@ public:
     for (size_t i = 0; i < para->getSize(); i++)
       param.push_back(std::make_pair(fabs(vecCpu->getData()[i]), i));
 
-    std::partial_sort(param.begin(),
-                      param.begin() + nonZeroNum,
-                      param.end(),
-                      sortPairAscend);
+    std::partial_sort(
+        param.begin(), param.begin() + nonZeroNum, param.end(), sortPairAscend);
     for (size_t i = 0; i < nonZeroNum; i++) dataPtr[param[i].second] = 1.0;
 
     // Currently just use a mask vector for hack.
