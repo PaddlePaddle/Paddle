@@ -104,11 +104,11 @@ public:
 
 protected:
   size_t getFilterHeight(const TensorShape& filter) const {
-    filter[filter.ndims() - 2];
+    return filter[filter.ndims() - 2];
   }
 
   size_t getFilterWidth(const TensorShape& filter) const {
-    filter[filter.ndims() - 1];
+    return filter[filter.ndims() - 1];
   }
 
   std::vector<size_t> strides_;
