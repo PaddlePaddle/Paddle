@@ -1689,6 +1689,70 @@ TEST(Layer, smooth_l1) {
   }
 }
 
+TEST(Layer, multibox_loss) {
+  TestConfig config;
+  config.layerConfig.set_type("multibox_loss");
+  config.biasSize = 0;
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  MultiBoxLossConfig* multiboxLoss = input->mutable_multibox_loss_conf();
+  multiboxLoss->set_num_classes(21);
+  multiboxLoss->set_input_num(1);
+  multiboxLoss->set_overlap_threshold(0.5);
+  multiboxLoss->set_neg_pos_ratio(3);
+  multiboxLoss->set_neg_overlap(0.5);
+  multiboxLoss->set_background_id(0);
+  multiboxLoss->set_height(3);
+  multiboxLoss->set_width(3);
+
+  size_t gtNum = 1;
+  MatrixPtr labelValue = Matrix::create(gtNum, 6, false, false);
+  labelValue->randomizeUniform();
+  labelValue->add(-0.5);
+  labelValue->sigmoid(*labelValue);
+  real* labelData = labelValue->getData();
+  size_t labelWidth = labelValue->getWidth();
+  for (size_t i = 0; i < gtNum; ++i) {
+    *(labelData + i * labelWidth) = std::rand() % 20 + 1;
+    *(labelData + i * labelWidth + 1) = 0.400259;
+    *(labelData + i * labelWidth + 2) = 0.377857;
+    *(labelData + i * labelWidth + 3) = 0.525712;
+    *(labelData + i * labelWidth + 4) = 0.519368;
+  }
+  vector<int> seqStartPositions(gtNum + 1, 0);
+  for (size_t i = 1; i <= gtNum; ++i) {
+    seqStartPositions[i] = i;
+  }
+
+  // Ensure at lease one matched bbox
+  MatrixPtr priorValue = Matrix::create(1, 72, false, false);
+  priorValue->randomizeUniform();
+  priorValue->add(-0.5);
+  priorValue->sigmoid(*priorValue);
+  real* priorData = priorValue->getData();
+  *(priorData) = 0.424811;
+  *(priorData + 1) = 0.397059;
+  *(priorData + 2) = 0.538905;
+  *(priorData + 3) = 0.447091;
+  *(priorData + 4) = 0.425720;
+  *(priorData + 5) = 0.515228;
+  *(priorData + 6) = 0.519452;
+  *(priorData + 7) = 0.591065;
+
+  config.inputDefs.push_back(
+      {INPUT_SELF_DEFINE_DATA, "priorbox", priorValue, {}});
+  config.inputDefs.push_back(
+      {INPUT_SELF_DEFINE_DATA, "label", labelValue, seqStartPositions});
+  config.inputDefs.push_back({INPUT_DATA, "locPred", 36, 0});
+  config.inputDefs.push_back({INPUT_DATA, "confPred", 189, 0});
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "multibox_loss", 1, false, useGpu, false);
+  }
+}
+
 TEST(Layer, TransLayer) {
   TestConfig config;
   const int height = 128;

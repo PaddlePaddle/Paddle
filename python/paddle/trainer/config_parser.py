@@ -1676,6 +1676,52 @@ class PriorBoxLayer(LayerBase):
         self.config.size = size
 
 
+@config_layer('multibox_loss')
+class MultiBoxLossLayer(LayerBase):
+    def __init__(self, name, inputs, input_num, num_classes, overlap_threshold,
+                 neg_pos_ratio, neg_overlap, background_id):
+        super(MultiBoxLossLayer, self).__init__(name, 'multibox_loss', 0,
+                                                inputs)
+        config_assert(
+            len(inputs) == (input_num * 2 + 2),
+            'MultiBoxLossLayer does not have enough inputs')
+        config_assert(num_classes > background_id,
+                      'Classes number must greater than background ID')
+        self.config.inputs[0].multibox_loss_conf.num_classes = num_classes
+        self.config.inputs[
+            0].multibox_loss_conf.overlap_threshold = overlap_threshold
+        self.config.inputs[0].multibox_loss_conf.neg_pos_ratio = neg_pos_ratio
+        self.config.inputs[0].multibox_loss_conf.neg_overlap = neg_overlap
+        self.config.inputs[0].multibox_loss_conf.background_id = background_id
+        self.config.inputs[0].multibox_loss_conf.input_num = input_num
+        self.config.size = 1
+
+
+@config_layer('detection_output')
+class DetectionOutputLayer(LayerBase):
+    def __init__(self, name, inputs, size, input_num, num_classes,
+                 nms_threshold, nms_top_k, keep_top_k, confidence_threshold,
+                 background_id):
+        super(DetectionOutputLayer, self).__init__(name, 'detection_output', 0,
+                                                   inputs)
+        config_assert(
+            len(inputs) == (input_num * 2 + 1),
+            'DetectionOutputLayer does not have enough inputs')
+        config_assert(num_classes > background_id,
+                      'Classes number must greater than background ID')
+        self.config.inputs[0].detection_output_conf.num_classes = num_classes
+        self.config.inputs[
+            0].detection_output_conf.nms_threshold = nms_threshold
+        self.config.inputs[0].detection_output_conf.nms_top_k = nms_top_k
+        self.config.inputs[0].detection_output_conf.keep_top_k = keep_top_k
+        self.config.inputs[
+            0].detection_output_conf.confidence_threshold = confidence_threshold
+        self.config.inputs[
+            0].detection_output_conf.background_id = background_id
+        self.config.inputs[0].detection_output_conf.input_num = input_num
+        self.config.size = size
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self, name, size, height=None, width=None, device=None):
