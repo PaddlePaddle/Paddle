@@ -32,7 +32,10 @@
         <link rel="index" title="Index"
               href="../../../genindex.html"/>
         <link rel="search" title="Search" href="../../../search.html"/>
-    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html"/> 
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html"/>
+        <link rel="up" title="RNN Models" href="index_en.html"/>
+        <link rel="next" title="Tune GPU Performance" href="../../optimization/gpu_profiling_en.html"/>
+        <link rel="prev" title="RNN Models" href="index_en.html"/> 
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
   <link rel="stylesheet" href="../../../_static/css/override.css" type="text/css" />
@@ -80,9 +83,9 @@
       </div>
       <div class="doc-module">
         
-        <ul>
+        <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../index_en.html">HOW TO</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">HOW TO</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../api/index_en.html">API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
 </ul>
@@ -105,7 +108,7 @@
     <nav class="doc-menu-vertical" role="navigation">
         
           
-          <ul>
+          <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../../getstarted/index_en.html">GET STARTED</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
@@ -115,7 +118,7 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../index_en.html">HOW TO</a><ul>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_en.html">HOW TO</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../../usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../usage/cmd_parameter/use_case_en.html">Use Case</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
@@ -127,7 +130,10 @@
 <li class="toctree-l2"><a class="reference internal" href="../../usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../dev/new_layer_en.html">Write New Layers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../dev/contribute_to_paddle_en.html">Contribute Code</a></li>
-<li class="toctree-l2"><a class="reference internal" href="index_en.html">RNN Models</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index_en.html">RNN Models</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">RNN Configuration</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="../../optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
 </ul>
 </li>
@@ -167,6 +173,10 @@
 <div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
       
+        <li><a href="../../index_en.html">HOW TO</a> > </li>
+      
+        <li><a href="index_en.html">RNN Models</a> > </li>
+      
     <li>RNN Configuration</li>
   </ul>
 </div>
@@ -180,26 +190,11 @@
 <h1>RNN Configuration<a class="headerlink" href="#rnn-configuration" title="Permalink to this headline">¶</a></h1>
 <p>This tutorial will guide you how to configure recurrent neural network in PaddlePaddle. PaddlePaddle supports highly flexible and efficient recurrent neural network configuration. In this tutorial, you will learn how to:</p>
 <ul class="simple">
-<li>prepare sequence data for learning recurrent neural networks.</li>
 <li>configure recurrent neural network architecture.</li>
 <li>generate sequence with learned recurrent neural network models.</li>
 </ul>
-<p>We will use vanilla recurrent neural network, and sequence to sequence model to guide you through these steps. The code of sequence to sequence model can be found at <code class="code docutils literal"><span class="pre">demo/seqToseq</span></code>.</p>
-<div class="section" id="prepare-sequence-data">
-<h2>Prepare Sequence Data<a class="headerlink" href="#prepare-sequence-data" title="Permalink to this headline">¶</a></h2>
-<p>PaddlePaddle does not need any preprocessing to sequence data, such as padding. The only thing that needs to be done is to set the type of the corresponding type to input. For example, the following code snippets defines three input. All of them are sequences, and the size of them are <code class="code docutils literal"><span class="pre">src_dict</span></code>, <code class="code docutils literal"><span class="pre">trg_dict</span></code>, and <code class="code docutils literal"><span class="pre">trg_dict</span></code>:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">settings</span><span class="o">.</span><span class="n">input_types</span> <span class="o">=</span> <span class="p">[</span>
-  <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">src_dict</span><span class="p">)),</span>
-  <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">trg_dict</span><span class="p">)),</span>
-  <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">trg_dict</span><span class="p">))]</span>
-</pre></div>
-</div>
-<p>Then at the <code class="code docutils literal"><span class="pre">process</span></code> function, each <code class="code docutils literal"><span class="pre">yield</span></code> function will return three integer lists. Each integer list is treated as a sequence of integers:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">yield</span> <span class="n">src_ids</span><span class="p">,</span> <span class="n">trg_ids</span><span class="p">,</span> <span class="n">trg_ids_next</span>
-</pre></div>
-</div>
-<p>For more details description of how to write a data provider, please refer to <a class="reference internal" href="../../../api/v1/data_provider/pydataprovider2_en.html#api-pydataprovider2"><span class="std std-ref">PyDataProvider2</span></a> . The full data provider file is located at <code class="code docutils literal"><span class="pre">demo/seqToseq/dataprovider.py</span></code>.</p>
-</div>
+<p>We will use vanilla recurrent neural network, and sequence to sequence model to guide you through these steps. The code of sequence to sequence model can be found at <a class="reference external" href="https://github.com/PaddlePaddle/book/tree/develop/08.machine_translation">book/08.machine_translation</a> .
+And the data preparation of this model can be found at <a class="reference external" href="https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/dataset/wmt14.py">python/paddle/v2/dataset/wmt14.py</a></p>
 <div class="section" id="configure-recurrent-neural-network-architecture">
 <h2>Configure Recurrent Neural Network Architecture<a class="headerlink" href="#configure-recurrent-neural-network-architecture" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="simple-gated-recurrent-neural-network">
@@ -224,19 +219,19 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
                <span class="n">act</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
                <span class="n">rnn_layer_attr</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__rnn_step__</span><span class="p">(</span><span class="n">ipt</span><span class="p">):</span>
-       <span class="n">out_mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
-       <span class="n">rnn_out</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">ipt</span><span class="p">),</span>
-                                      <span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">out_mem</span><span class="p">)],</span>
-                             <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="p">,</span>
-                             <span class="n">bias_attr</span> <span class="o">=</span> <span class="n">rnn_bias_attr</span><span class="p">,</span>
-                             <span class="n">act</span> <span class="o">=</span> <span class="n">act</span><span class="p">,</span>
-                             <span class="n">layer_attr</span> <span class="o">=</span> <span class="n">rnn_layer_attr</span><span class="p">,</span>
-                             <span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">)</span>
+       <span class="n">out_mem</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+       <span class="n">rnn_out</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">mixed</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="p">[</span><span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">ipt</span><span class="p">),</span>
+                                             <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">out_mem</span><span class="p">)],</span>
+                                    <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="p">,</span>
+                                    <span class="n">bias_attr</span> <span class="o">=</span> <span class="n">rnn_bias_attr</span><span class="p">,</span>
+                                    <span class="n">act</span> <span class="o">=</span> <span class="n">act</span><span class="p">,</span>
+                                    <span class="n">layer_attr</span> <span class="o">=</span> <span class="n">rnn_layer_attr</span><span class="p">,</span>
+                                    <span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">)</span>
        <span class="k">return</span> <span class="n">rnn_out</span>
-    <span class="k">return</span> <span class="n">recurrent_group</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_recurrent_group&#39;</span> <span class="o">%</span> <span class="n">name</span><span class="p">,</span>
-                           <span class="n">step</span><span class="o">=</span><span class="n">__rnn_step__</span><span class="p">,</span>
-                           <span class="n">reverse</span><span class="o">=</span><span class="n">reverse</span><span class="p">,</span>
-                           <span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">recurrent_group</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_recurrent_group&#39;</span> <span class="o">%</span> <span class="n">name</span><span class="p">,</span>
+                                        <span class="n">step</span><span class="o">=</span><span class="n">__rnn_step__</span><span class="p">,</span>
+                                        <span class="n">reverse</span><span class="o">=</span><span class="n">reverse</span><span class="p">,</span>
+                                        <span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>PaddlePaddle uses memory to construct step function. <strong>Memory</strong> is the most important concept when constructing recurrent neural networks in PaddlePaddle. A memory is a state that is used recurrently in step functions, such as <span class="math">\(x_{t+1} = f_x(x_t)\)</span>. One memory contains an <strong>output</strong> and a <strong>input</strong>. The output of memory at the current time step is utilized as the input of the memory at the next time step. A memory can also has a <strong>boot layer</strong>, whose output is utilized as the initial value of the memory. In our case, the output of the gated recurrent unit is employed as the output memory. Notice that the name of the layer <code class="code docutils literal"><span class="pre">rnn_out</span></code> is the same as the name of <code class="code docutils literal"><span class="pre">out_mem</span></code>. This means the output of the layer <code class="code docutils literal"><span class="pre">rnn_out</span></code> (<span class="math">\(x_{t+1}\)</span>) is utilized as the <strong>output</strong> of <code class="code docutils literal"><span class="pre">out_mem</span></code> memory.</p>
@@ -251,40 +246,49 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
 <p>The encoder part of the model is listed below. It calls <code class="code docutils literal"><span class="pre">grumemory</span></code> to represent gated recurrent neural network. It is the recommended way of using recurrent neural network if the network architecture is simple, because it is faster than <code class="code docutils literal"><span class="pre">recurrent_group</span></code>. We have implemented most of the commonly used recurrent neural network architectures, you can refer to <span class="xref std std-ref">api_trainer_config_helpers_layers</span> for more details.</p>
 <p>We also project the encoder vector to <code class="code docutils literal"><span class="pre">decoder_size</span></code> dimensional space, get the first instance of the backward recurrent network, and project it to <code class="code docutils literal"><span class="pre">decoder_size</span></code> dimensional space:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># Define the data layer of the source sentence.</span>
-<span class="n">src_word_id</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;source_language_word&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">source_dict_dim</span><span class="p">)</span>
+<span class="n">src_word_id</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">data</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;source_language_word&#39;</span><span class="p">,</span>
+    <span class="nb">type</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">data_type</span><span class="o">.</span><span class="n">integer_value_sequence</span><span class="p">(</span><span class="n">source_dict_dim</span><span class="p">))</span>
 <span class="c1"># Calculate the word embedding of each word.</span>
-<span class="n">src_embedding</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span>
+<span class="n">src_embedding</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">embedding</span><span class="p">(</span>
     <span class="nb">input</span><span class="o">=</span><span class="n">src_word_id</span><span class="p">,</span>
     <span class="n">size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">,</span>
-    <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;_source_language_embedding&#39;</span><span class="p">))</span>
+    <span class="n">param_attr</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">attr</span><span class="o">.</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;_source_language_embedding&#39;</span><span class="p">))</span>
 <span class="c1"># Apply forward recurrent neural network.</span>
-<span class="n">src_forward</span> <span class="o">=</span> <span class="n">grumemory</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">src_embedding</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">encoder_size</span><span class="p">)</span>
+<span class="n">src_forward</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">networks</span><span class="o">.</span><span class="n">simple_gru</span><span class="p">(</span>
+    <span class="nb">input</span><span class="o">=</span><span class="n">src_embedding</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">encoder_size</span><span class="p">)</span>
 <span class="c1"># Apply backward recurrent neural network. reverse=True means backward recurrent neural network.</span>
-<span class="n">src_backward</span> <span class="o">=</span> <span class="n">grumemory</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">src_embedding</span><span class="p">,</span>
-                          <span class="n">size</span><span class="o">=</span><span class="n">encoder_size</span><span class="p">,</span>
-                          <span class="n">reverse</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">src_backward</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">networks</span><span class="o">.</span><span class="n">simple_gru</span><span class="p">(</span>
+    <span class="nb">input</span><span class="o">=</span><span class="n">src_embedding</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">encoder_size</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 <span class="c1"># Mix the forward and backward parts of the recurrent neural network together.</span>
-<span class="n">encoded_vector</span> <span class="o">=</span> <span class="n">concat_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">src_forward</span><span class="p">,</span> <span class="n">src_backward</span><span class="p">])</span>
+<span class="n">encoded_vector</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">src_forward</span><span class="p">,</span> <span class="n">src_backward</span><span class="p">])</span>
 
 <span class="c1"># Project encoding vector to decoder_size.</span>
-<span class="n">encoder_proj</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">encoded_vector</span><span class="p">)],</span>
-                           <span class="n">size</span> <span class="o">=</span> <span class="n">decoder_size</span><span class="p">)</span>
+<span class="n">encoded_proj</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">mixed</span><span class="p">(</span>
+    <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span><span class="p">,</span>
+    <span class="nb">input</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">encoded_vector</span><span class="p">))</span>
 
 <span class="c1"># Compute the first instance of the backward RNN.</span>
-<span class="n">backward_first</span> <span class="o">=</span> <span class="n">first_seq</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">src_backward</span><span class="p">)</span>
+<span class="n">backward_first</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">first_seq</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">src_backward</span><span class="p">)</span>
 
 <span class="c1"># Project the first instance of backward RNN to decoder size.</span>
-<span class="n">decoder_boot</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">backward_first</span><span class="p">)],</span> <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">())</span>
+<span class="n">decoder_boot</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">mixed</span><span class="p">(</span>
+   <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span><span class="p">,</span>
+   <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">activation</span><span class="o">.</span><span class="n">Tanh</span><span class="p">(),</span>
+   <span class="nb">input</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">backward_first</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>The decoder uses <code class="code docutils literal"><span class="pre">recurrent_group</span></code> to define the recurrent neural network. The step and output functions are defined in <code class="code docutils literal"><span class="pre">gru_decoder_with_attention</span></code>:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">group_inputs</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_vector</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
-              <span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_proj</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">)]</span>
-<span class="n">trg_embedding</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span>
-    <span class="nb">input</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;target_language_word&#39;</span><span class="p">,</span>
-                     <span class="n">size</span><span class="o">=</span><span class="n">target_dict_dim</span><span class="p">),</span>
-    <span class="n">size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">,</span>
-    <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;_target_language_embedding&#39;</span><span class="p">))</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">group_input1</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_vector</span><span class="p">,</span> <span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">group_input2</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_proj</span><span class="p">,</span> <span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">group_inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">group_input1</span><span class="p">,</span> <span class="n">group_input2</span><span class="p">]</span>
+<span class="n">trg_embedding</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">embedding</span><span class="p">(</span>
+        <span class="nb">input</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">data</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;target_language_word&#39;</span><span class="p">,</span>
+            <span class="nb">type</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">data_type</span><span class="o">.</span><span class="n">integer_value_sequence</span><span class="p">(</span><span class="n">target_dict_dim</span><span class="p">)),</span>
+        <span class="n">size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">,</span>
+        <span class="n">param_attr</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">attr</span><span class="o">.</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;_target_language_embedding&#39;</span><span class="p">))</span>
+    <span class="n">group_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trg_embedding</span><span class="p">)</span>
 <span class="n">group_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trg_embedding</span><span class="p">)</span>
 
 <span class="c1"># For decoder equipped with attention mechanism, in training,</span>
@@ -293,9 +297,10 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
 <span class="c1"># StaticInput means the same value is utilized at different time steps.</span>
 <span class="c1"># Otherwise, it is a sequence input. Inputs at different time steps are different.</span>
 <span class="c1"># All sequence inputs should have the same length.</span>
-<span class="n">decoder</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">decoder_group_name</span><span class="p">,</span>
-                          <span class="n">step</span><span class="o">=</span><span class="n">gru_decoder_with_attention</span><span class="p">,</span>
-                          <span class="nb">input</span><span class="o">=</span><span class="n">group_inputs</span><span class="p">)</span>
+<span class="n">decoder</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">recurrent_group</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="n">decoder_group_name</span><span class="p">,</span>
+        <span class="n">step</span><span class="o">=</span><span class="n">gru_decoder_with_attention</span><span class="p">,</span>
+        <span class="nb">input</span><span class="o">=</span><span class="n">group_inputs</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The implementation of the step function is listed as below. First, it defines the <strong>memory</strong> of the decoder network. Then it defines attention, gated recurrent unit step function, and the output function:</p>
@@ -303,27 +308,32 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
     <span class="c1"># Defines the memory of the decoder.</span>
     <span class="c1"># The output of this memory is defined in gru_step.</span>
     <span class="c1"># Notice that the name of gru_step should be the same as the name of this memory.</span>
-    <span class="n">decoder_mem</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;gru_decoder&#39;</span><span class="p">,</span>
-                         <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span><span class="p">,</span>
-                         <span class="n">boot_layer</span><span class="o">=</span><span class="n">decoder_boot</span><span class="p">)</span>
+    <span class="n">decoder_mem</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">memory</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;gru_decoder&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span><span class="p">,</span> <span class="n">boot_layer</span><span class="o">=</span><span class="n">decoder_boot</span><span class="p">)</span>
     <span class="c1"># Compute attention weighted encoder vector.</span>
-    <span class="n">context</span> <span class="o">=</span> <span class="n">simple_attention</span><span class="p">(</span><span class="n">encoded_sequence</span><span class="o">=</span><span class="n">enc_vec</span><span class="p">,</span>
-                               <span class="n">encoded_proj</span><span class="o">=</span><span class="n">enc_proj</span><span class="p">,</span>
-                               <span class="n">decoder_state</span><span class="o">=</span><span class="n">decoder_mem</span><span class="p">)</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">networks</span><span class="o">.</span><span class="n">simple_attention</span><span class="p">(</span>
+        <span class="n">encoded_sequence</span><span class="o">=</span><span class="n">enc_vec</span><span class="p">,</span>
+        <span class="n">encoded_proj</span><span class="o">=</span><span class="n">enc_proj</span><span class="p">,</span>
+        <span class="n">decoder_state</span><span class="o">=</span><span class="n">decoder_mem</span><span class="p">)</span>
     <span class="c1"># Mix the current word embedding and the attention weighted encoder vector.</span>
-    <span class="n">decoder_inputs</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">context</span><span class="p">),</span>
-                                           <span class="n">full_matrix_projection</span><span class="p">(</span><span class="n">current_word</span><span class="p">)],</span>
-                                 <span class="n">size</span> <span class="o">=</span> <span class="n">decoder_size</span> <span class="o">*</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="n">decoder_inputs</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">mixed</span><span class="p">(</span>
+        <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="nb">input</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">context</span><span class="p">),</span>
+            <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">current_word</span><span class="p">)</span>
+        <span class="p">])</span>
     <span class="c1"># Define Gated recurrent unit recurrent neural network step function.</span>
-    <span class="n">gru_step</span> <span class="o">=</span> <span class="n">gru_step_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;gru_decoder&#39;</span><span class="p">,</span>
-                              <span class="nb">input</span><span class="o">=</span><span class="n">decoder_inputs</span><span class="p">,</span>
-                              <span class="n">output_mem</span><span class="o">=</span><span class="n">decoder_mem</span><span class="p">,</span>
-                              <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span><span class="p">)</span>
+    <span class="n">gru_step</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">gru_step</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;gru_decoder&#39;</span><span class="p">,</span>
+        <span class="nb">input</span><span class="o">=</span><span class="n">decoder_inputs</span><span class="p">,</span>
+        <span class="n">output_mem</span><span class="o">=</span><span class="n">decoder_mem</span><span class="p">,</span>
+        <span class="n">size</span><span class="o">=</span><span class="n">decoder_size</span><span class="p">)</span>
     <span class="c1"># Defines the output function.</span>
-    <span class="n">out</span> <span class="o">=</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">gru_step</span><span class="p">)],</span>
-                      <span class="n">size</span><span class="o">=</span><span class="n">target_dict_dim</span><span class="p">,</span>
-                      <span class="n">bias_attr</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
-                      <span class="n">act</span><span class="o">=</span><span class="n">SoftmaxActivation</span><span class="p">())</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">mixed</span><span class="p">(</span>
+        <span class="n">size</span><span class="o">=</span><span class="n">target_dict_dim</span><span class="p">,</span>
+        <span class="n">bias_attr</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+        <span class="n">act</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">activation</span><span class="o">.</span><span class="n">Softmax</span><span class="p">(),</span>
+        <span class="nb">input</span><span class="o">=</span><span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">gru_step</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">out</span>
 </pre></div>
 </div>
@@ -341,44 +351,36 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
 <li><code class="code docutils literal"><span class="pre">max_length</span></code>: the maximum length of the generated sentences.</li>
 </ul>
 </li>
-<li>use <code class="code docutils literal"><span class="pre">seqtext_printer_evaluator</span></code> to print text according to index matrix and dictionary. This function needs to set:<ul>
-<li><code class="code docutils literal"><span class="pre">id_input</span></code>: the integer ID of the data, used to identify the corresponding output in the generated files.</li>
-<li><code class="code docutils literal"><span class="pre">dict_file</span></code>: the dictionary file for converting word id to word.</li>
-<li><code class="code docutils literal"><span class="pre">result_file</span></code>: the path of the generation result file.</li>
-</ul>
-</li>
 </ul>
 <p>The code is listed below:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">group_inputs</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_vector</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
-              <span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_proj</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">)]</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">group_input1</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_vector</span><span class="p">,</span> <span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">group_input2</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_proj</span><span class="p">,</span> <span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">group_inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">group_input1</span><span class="p">,</span> <span class="n">group_input2</span><span class="p">]</span>
 <span class="c1"># In generation, decoder predicts a next target word based on</span>
 <span class="c1"># the encoded source sequence and the last generated target word.</span>
 <span class="c1"># The encoded source sequence (encoder&#39;s output) must be specified by</span>
 <span class="c1"># StaticInput which is a read-only memory.</span>
 <span class="c1"># Here, GeneratedInputs automatically fetchs the last generated word,</span>
 <span class="c1"># which is initialized by a start mark, such as &lt;s&gt;.</span>
-<span class="n">trg_embedding</span> <span class="o">=</span> <span class="n">GeneratedInput</span><span class="p">(</span>
-    <span class="n">size</span><span class="o">=</span><span class="n">target_dict_dim</span><span class="p">,</span>
-    <span class="n">embedding_name</span><span class="o">=</span><span class="s1">&#39;_target_language_embedding&#39;</span><span class="p">,</span>
-    <span class="n">embedding_size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">)</span>
+<span class="n">trg_embedding</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">GeneratedInput</span><span class="p">(</span>
+        <span class="n">size</span><span class="o">=</span><span class="n">target_dict_dim</span><span class="p">,</span>
+        <span class="n">embedding_name</span><span class="o">=</span><span class="s1">&#39;_target_language_embedding&#39;</span><span class="p">,</span>
+        <span class="n">embedding_size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">)</span>
 <span class="n">group_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trg_embedding</span><span class="p">)</span>
-<span class="n">beam_gen</span> <span class="o">=</span> <span class="n">beam_search</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">decoder_group_name</span><span class="p">,</span>
-                       <span class="n">step</span><span class="o">=</span><span class="n">gru_decoder_with_attention</span><span class="p">,</span>
-                       <span class="nb">input</span><span class="o">=</span><span class="n">group_inputs</span><span class="p">,</span>
-                       <span class="n">bos_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># Beginnning token.</span>
-                       <span class="n">eos_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="c1"># End of sentence token.</span>
-                       <span class="n">beam_size</span><span class="o">=</span><span class="n">beam_size</span><span class="p">,</span>
-                       <span class="n">max_length</span><span class="o">=</span><span class="n">max_length</span><span class="p">)</span>
+<span class="n">beam_gen</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">beam_search</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="n">decoder_group_name</span><span class="p">,</span>
+        <span class="n">step</span><span class="o">=</span><span class="n">gru_decoder_with_attention</span><span class="p">,</span>
+        <span class="nb">input</span><span class="o">=</span><span class="n">group_inputs</span><span class="p">,</span>
+        <span class="n">bos_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># Beginnning token.</span>
+        <span class="n">eos_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="c1"># End of sentence token.</span>
+        <span class="n">beam_size</span><span class="o">=</span><span class="n">beam_size</span><span class="p">,</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="n">max_length</span><span class="p">)</span>
 
-<span class="n">seqtext_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">beam_gen</span><span class="p">,</span>
-                          <span class="n">id_input</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;sent_id&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-                          <span class="n">dict_file</span><span class="o">=</span><span class="n">trg_dict_path</span><span class="p">,</span>
-                          <span class="n">result_file</span><span class="o">=</span><span class="n">gen_trans_file</span><span class="p">)</span>
-<span class="n">outputs</span><span class="p">(</span><span class="n">beam_gen</span><span class="p">)</span>
+<span class="k">return</span> <span class="n">beam_gen</span>
 </pre></div>
 </div>
-<p>Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to <a class="reference internal" href="../../../tutorials/semantic_role_labeling/index_en.html#semantic-role-labeling"><span class="std std-ref">Semantic Role labeling Tutorial</span></a> for more details.</p>
-<p>The full configuration file is located at <code class="code docutils literal"><span class="pre">demo/seqToseq/seqToseq_net.py</span></code>.</p>
+<p>Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to <a class="reference external" href="https://github.com/PaddlePaddle/book/tree/develop/06.understand_sentiment">book/06.understand_sentiment</a> for more details.</p>
+<p>The full configuration file is located at <a class="reference external" href="https://github.com/PaddlePaddle/book/blob/develop/08.machine_translation/train.py">book/08.machine_translation/train.py</a> .</p>
 </div>
 </div>
 
@@ -386,6 +388,15 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
            </div>
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../../optimization/gpu_profiling_en.html" class="btn btn-neutral float-right" title="Tune GPU Performance" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index_en.html" class="btn btn-neutral" title="RNN Models" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
