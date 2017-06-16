@@ -126,6 +126,7 @@ endif(WITH_GPU)
 
 add_subdirectory(proto)
 add_subdirectory(paddle)
+add_subdirectory(go/master/c)
 add_subdirectory(python)
 add_subdirectory(go/pserver/cclient)
 

@@ -1,6 +1,5 @@
 from setuptools import setup
 
-
 packages=['paddle',
           'paddle.proto',
           'paddle.trainer',
@@ -9,7 +8,8 @@ packages=['paddle',
           'paddle.v2',
           'paddle.v2.dataset',
           'paddle.v2.reader',
-          'paddle.v2.plot']
+          'paddle.v2.plot',
+          'paddle.v2.master']
 
 setup_requires=["requests",
                 "numpy",
@@ -25,7 +25,8 @@ setup(name='paddle',
       description='Parallel Distributed Deep Learning',
       install_requires=setup_requires,
       packages=packages,
+      package_data={'paddle.v2.master': ['libpaddle_master.so'], },
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}'
-      }
+      },
 )

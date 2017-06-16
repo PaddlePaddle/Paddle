@@ -1,7 +1,7 @@
 import ctypes
 import os
 
-path = os.path.join(os.path.dirname(__file__), "libmaster.so")
+path = os.path.join(os.path.dirname(__file__), "libpaddle_master.so")
 lib = ctypes.cdll.LoadLibrary(path)
 
 
