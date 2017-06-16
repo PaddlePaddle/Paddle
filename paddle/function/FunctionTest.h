@@ -296,9 +296,9 @@ public:
     compareOutputs();
   }
 
-  std::shared_ptr<FunctionBase> getCpuFunction() const { return function1_; }
+  std::shared_ptr<FunctionBase> getFunction1() const { return function1_; }
 
-  std::shared_ptr<FunctionBase> getGpuFunction() const { return function2_; }
+  std::shared_ptr<FunctionBase> getFunction2() const { return function2_; }
 
 protected:
   // only init cpu argument, gpu argument copy from cpu argument.
