@@ -210,6 +210,7 @@
 <li><strong>CMake</strong>: CMake &gt;= 3.0 (at least CMake 3.4 on Mac OS X)</li>
 <li><strong>BLAS</strong>: MKL, OpenBlas or ATLAS</li>
 <li><strong>Python</strong>: only support Python 2.7</li>
+<li><strong>Go</strong></li>
 </ul>
 <p><strong>Note:</strong> For CUDA 7.0 and CUDA 7.5, GCC 5.0 and up are not supported!
 For CUDA 8.0, GCC versions later than 5.3 are not supported!</p>
@@ -289,6 +290,18 @@ sudo apt-get update
 sudo apt-get install -y git curl gcc g++ gfortran make build-essential automake
 sudo apt-get install -y python python-pip python-numpy libpython-dev bison
 sudo pip install <span class="s1">&#39;protobuf==3.1.0.post1&#39;</span>
+
+<span class="c1"># Install Go</span>
+<span class="c1"># You can follow https://golang.org/doc/install for a detailed explanation.</span>
+wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz <span class="o">&amp;&amp;</span> <span class="se">\</span>
+tar -C <span class="nv">$HOME</span> -xzf go.tgz <span class="o">&amp;&amp;</span> <span class="se">\</span>
+mkdir <span class="nv">$HOME</span>/gopath <span class="o">&amp;&amp;</span> <span class="se">\</span>
+rm go.tgz
+
+<span class="c1"># Setup environment variables</span>
+<span class="nb">export</span> <span class="nv">GOROOT</span><span class="o">=</span><span class="nv">$HOME</span>/go
+<span class="nb">export</span> <span class="nv">GOPATH</span><span class="o">=</span><span class="nv">$HOME</span>/gopath
+<span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span><span class="nv">$PATH</span>:<span class="nv">$GOROOT</span>/bin
 
 <span class="c1"># install cmake 3.4</span>
 curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz <span class="p">|</span> tar -xz <span class="o">&amp;&amp;</span> <span class="se">\</span>
