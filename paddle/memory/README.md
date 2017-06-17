@@ -1,15 +1,6 @@
 ## Region-based Heterogeneous Memory Management
 
-With the recent explosion of deep learning, entire industries substantial concerns around how to build
-a flexible, scalable, reliable deep learning system. Deep learning heavily rely on the capability of mult-GPUs, but GPU memory only the limits available.
-A solution to manage the heterogeneous memory resource efficiently is needed.
-
-We provides a technical foundation to reason about challenges and trends.
-
-A memory arena is simply a large, contiguous chunk of memory that is allocated once and then used to manage memory manually by handing out smaller chunks of that memory. You can get memory locations as required from a chunk and return it back to this chunk when you are done with the use.
-
-Instead of requiring individual calls to library malloc/free functions for each small chunk, managing many small chunks of memory this can reduce overhead significantly.
-
+As usual, you can find all the gory details about region-based memory management in [wikipedia](https://en.wikipedia.org/wiki/Region-based_memory_management).
 ### Abstraction
 
 Unified Interfaces for both CPU and GPU allocation.

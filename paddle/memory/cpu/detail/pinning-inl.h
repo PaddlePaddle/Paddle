@@ -17,7 +17,7 @@ limitations under the License. */
 #ifdef _WIN32
 
 #else
-    #include <sys/mman.h>
+#include <sys/mman.h>
 
 #endif
 
@@ -26,22 +26,21 @@ namespace memory {
 namespace cpu {
 
 inline void pin_memory(void* address, size_t size) {
-    #if _WIN32
+#if _WIN32
 
-    #else
-        mlock(address, size);
-    #endif
+#else
+  mlock(address, size);
+#endif
 }
 
 inline void unpin_memory(void* address, size_t size) {
-    #if _WIN32
+#if _WIN32
 
-    #else
-        munlock(address, size);
-    #endif
+#else
+  munlock(address, size);
+#endif
 }
 
 } /* cpu */
 } /* memory */
 } /* paddle */
-

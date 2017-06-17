@@ -22,20 +22,20 @@ namespace cpu {
 
 class SystemAllocator {
 public:
-    static void* malloc(size_t& index, size_t size);
-    static void free(void* address, size_t size, size_t index);
+  static void* malloc(size_t& index, size_t size);
+  static void free(void* address, size_t size, size_t index);
 
 public:
-    static size_t index_count();
+  static size_t index_count();
 
 public:
-    static void init();
-    static void shutdown();
+  static void init();
+  static void shutdown();
 
 public:
-    static bool uses_gpu();
+  static bool uses_gpu();
 };
 
-} // namespace cpu
-} // namespace memory
-} // namespace paddle
+}  // namespace cpu
+}  // namespace memory
+}  // namespace paddle

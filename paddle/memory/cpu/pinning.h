@@ -21,8 +21,8 @@ namespace cpu {
 inline void pin_memory(void* address, size_t size);
 inline void unpin_memory(void* address, size_t size);
 
-} // namespace cpu
-} // namespace memory
-} // namespace paddle
+}  // namespace cpu
+}  // namespace memory
+}  // namespace paddle
 
 #include "detail/pinning-inl.h"

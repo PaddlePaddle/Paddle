@@ -26,5 +26,5 @@ void* malloc(majel::Place place, size_t size);
 void free(majel::Place place, void* ptr);
 size_t memory_used(majel::Place);
 
-} // namespace memory
-} // namespace paddle
+}  // namespace memory
+}  // namespace paddle
