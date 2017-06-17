@@ -14,16 +14,28 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/majel/place.h>
+#include <cstddef>
 
 namespace paddle {
 namespace memory {
+namespace cpu {
 
-void init();
-void shutdown();
+class SystemAllocator {
+public:
+    static void* malloc(size_t& index, size_t size);
+    static void free(void* address, size_t size, size_t index);
 
-void* malloc(majel::Place place, size_t size);
-void free(majel::Place place, void* ptr);
-size_t memory_used(majel::Place);
-}
-}
+public:
+    static size_t index_count();
+
+public:
+    static void init();
+    static void shutdown();
+
+public:
+    static bool uses_gpu();
+};
+
+} // namespace cpu
+} // namespace memory
+} // namespace paddle

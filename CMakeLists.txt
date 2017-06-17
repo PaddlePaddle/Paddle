@@ -124,7 +124,6 @@ if(WITH_GPU)
     endif(NOT WITH_DSO)
 endif(WITH_GPU)
 
-add_subdirectory(memory)
 add_subdirectory(proto)
 add_subdirectory(paddle)
 add_subdirectory(python)

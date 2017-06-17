@@ -14,28 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include <cstddef>
-
 namespace paddle {
 namespace memory {
 namespace cpu {
 
-class SystemAllocator {
-public:
-    static void* malloc(size_t& index, size_t size);
-    static void free(void* address, size_t size, size_t index);
+inline void pin_memory(void* address, size_t size);
+inline void unpin_memory(void* address, size_t size);
 
-public:
-    static size_t index_count();
+} // namespace cpu
+} // namespace memory
+} // namespace paddle
 
-public:
-    static void init();
-    static void shutdown();
-
-public:
-    static bool uses_gpu();
-};
-
-} /* cpu */
-} /* memory */
-} /* paddle */
+#include "detail/pinning-inl.h"

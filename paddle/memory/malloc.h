@@ -14,15 +14,17 @@ limitations under the License. */
 
 #pragma once
 
+#include <paddle/majel/place.h>
+
 namespace paddle {
 namespace memory {
-namespace cpu {
 
-inline void pin_memory(void* address, size_t size);
-inline void unpin_memory(void* address, size_t size);
+void init();
+void shutdown();
 
-} /* cpu */
-} /* memory */
-} /* paddle */
+void* malloc(majel::Place place, size_t size);
+void free(majel::Place place, void* ptr);
+size_t memory_used(majel::Place);
 
-#include "detail/pinning-inl.h"
+} // namespace memory
+} // namespace paddle

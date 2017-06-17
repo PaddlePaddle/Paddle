@@ -12,12 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory/cpu/system_allocator.h>
-#include <memory/cpu/pinning.h>
+#include <paddle/memory/cpu/system_allocator.h>
+#include <paddle/memory/cpu/pinning.h>
 
 #include <cstdlib>
 #include <cassert>
 #include <vector>
+#include <memory>
 
 namespace paddle {
 namespace memory {
@@ -118,6 +119,6 @@ bool SystemAllocator::uses_gpu() {
     return false;
 }
 
-} /* cpu */
-} /* memory */
-} /* paddle */
+} // namespace cpu
+} // namespace memory
+} // namespace paddle
