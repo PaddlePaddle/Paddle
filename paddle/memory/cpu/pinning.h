@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstddef>
+
 namespace paddle {
 namespace memory {
 namespace cpu {
