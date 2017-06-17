@@ -41,6 +41,6 @@ inline void unpin_memory(void* address, size_t size) {
 #endif
 }
 
-} /* cpu */
-} /* memory */
-} /* paddle */
+}  // namespace cpu
+}  // namespace memory
+}  // namespace paddle
