@@ -26,10 +26,11 @@ ParameterOptimizer *ParameterOptimizer::Create(const std::string &config_proto,
     LOG(WARNING) << " have not select any LrPolicy. use ConstLr in default";
     return new ConstLr(0.1);
   };
+
   LrPolicy *lr = select_lr_policy(config);
-  auto select_optimizer = [=](
-     Tensor *parameter,
-     const OptimizerConfig &config) -> ParameterOptimizer * {
+  auto select_optimizer =
+      [=](Tensor *parameter,
+          const OptimizerConfig &config) -> ParameterOptimizer * {
     if (config.optimizer() == OptimizerConfig::SGD) {
       return new SGDOptimizer(parameter,
                               lr,
