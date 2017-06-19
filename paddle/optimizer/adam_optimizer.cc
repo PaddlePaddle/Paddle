@@ -28,7 +28,8 @@ const char *AdamOptimizer::SerializeState(int *state_len) {
   state.set_num_sample_passed(num_sample_passed_);
 
   TensorToProto(*parameter_, state.mutable_parameter());
-  TensorToProto(*velocitys_, state.mutable_momentums());
+  TensorToProto(*momentums_, state.mutable_momentums());
+  TensorToProto(*velocitys_, state.mutable_velocitys());
   auto str = state.SerializeAsString();
   *state_len = str.size();
   return str.c_str();

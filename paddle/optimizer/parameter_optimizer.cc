@@ -13,13 +13,13 @@ namespace optimizer {
 ParameterOptimizer *ParameterOptimizer::Create(const std::string &config_proto,
                                                Tensor *parameter) {
   paddle::OptimizerConfig config;
-  CHECK(config.ParseFromString(config_proto) == 0)
+  CHECK(config.ParseFromString(config_proto) == true)
       << "failed parse optimizer config";
 
   auto select_lr_policy = [=](const OptimizerConfig &config) -> LrPolicy * {
-    if (config.lr_policy() == OptimizerConfig::ConstLr)
+    if (config.lr_policy() == OptimizerConfig::Const)
       return new ConstLr(config.const_lr().learning_rate());
-    if (config.lr_policy() == OptimizerConfig::LinearLr)
+    if (config.lr_policy() == OptimizerConfig::Linear)
       return new LinearLr(config.linear_lr().learning_rate(),
                           config.linear_lr().lr_decay_a(),
                           config.linear_lr().lr_decay_b());

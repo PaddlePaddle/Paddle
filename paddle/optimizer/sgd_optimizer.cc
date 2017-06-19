@@ -29,11 +29,9 @@ void SGDOptimizer::Update(const Tensor *gradient) {
 
 const char *SGDOptimizer::SerializeState(int *state_len) {
   SGDOptimizerState state;
-  // TODO(zhihong) : add lr_policy serialization
   state.set_num_sample_passed(num_sample_passed_);
-
   TensorToProto(*parameter_, state.mutable_parameter());
-  TensorToProto(*momentums_, state.mutable_momentums());
+  if (momentum_ != 0.0) TensorToProto(*momentums_, state.mutable_momentums());
   auto str = state.SerializeAsString();
   *state_len = str.size();
   return str.c_str();
@@ -42,9 +40,7 @@ const char *SGDOptimizer::SerializeState(int *state_len) {
 void SGDOptimizer::DeserializeState(const std::string &str) {
   SGDOptimizerState state;
   state.ParseFromString(str);
-  // TODO(zhihong) : add lr_policy DeserializeState
   num_sample_passed_ = state.num_sample_passed();
-
   ProtoToTensor(state.parameter(), parameter_);
   ProtoToTensor(state.parameter(), momentums_);
 }

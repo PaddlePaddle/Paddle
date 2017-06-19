@@ -21,8 +21,8 @@ public:
   double LearningRate(const uint64_t num_sample_passed) {
     return learning_rate;
   }
-  const char *SerializeState(int *state_len);
-  void DeserializeState(const std::string &state);
+  const char *SerializeState(int *state_len) { return nullptr; }
+  void DeserializeState(const std::string &state) {}
 
 private:
   double learning_rate;
@@ -35,8 +35,13 @@ public:
   double LearningRate(const uint64_t num_sample_passed) {
     return std::max(learning_rate - lr_decay_a * num_sample_passed, lr_decay_b);
   }
-  const char *SerializeState(int *state_len);
-  void DeserializeState(const std::string &state);
+  const char *SerializeState(int *state_len) {
+    // TODO(zhihong) : add lr_policy serialization
+    return nullptr;
+  }
+  void DeserializeState(const std::string &state) {
+    // TODO(zhihong) : add lr_policy serialization
+  }
 
 private:
   double learning_rate;

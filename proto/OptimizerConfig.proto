@@ -53,12 +53,12 @@ message AdamConfig {
   optional double decay = 44;
 }
 
-message ConstLr {
+message ConstLrConfig {
   // learninRate Policy
   required double learning_rate = 1 [default = 1.0];
 }
 
-message LinearLr {
+message LinearLrConfig {
   // learninRate Policy
   required double learning_rate = 1 [default = 1.0];
   optional double lr_decay_a = 2;
@@ -139,12 +139,12 @@ message OptimizerConfig {
   optional AdamConfig adam = 6;
 
   enum LrPolicy {
-   ConstLr = 0;
-   LinearLr = 1;
+   Const = 0;
+   Linear = 1;
   }
   required LrPolicy lr_policy = 11;
-  optional ConstLr const_lr = 12;
-  optional LinearLr linear_lr = 13;
+  optional ConstLrConfig const_lr = 12;
+  optional LinearLrConfig linear_lr = 13;
 
   // common config of optimizer
   // gradient clip when L2 exceeding value
