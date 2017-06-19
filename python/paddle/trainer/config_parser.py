@@ -328,53 +328,33 @@ def RecurrentLayerGroupWithoutOutLinksBegin(name,
     SubModelBegin(name)
     g_current_submodel.is_recurrent_layer_group = True
     g_current_submodel.reversed = seq_reversed
-    g_current_submodel.target_inlinkid = -1
     in_links_count = 0
     for linkid, link in enumerate(in_links):
         if isinstance(link, basestring):
             name = link
-            has_subseq = False
         else:
             name = link.link_name
-            has_subseq = link.has_subseq
-        # assign target_inlinkid according to target_inlinkname
-        if target_inlinkname == name:
-            g_current_submodel.target_inlinkid = linkid
 
-        if in_links_count == 0:
-            in_links_has_subseq = has_subseq
-        else:
-            config_assert(
-                in_links_has_subseq == has_subseq,
-                "The sequence type of in_links should be the same in RecurrentLayerGroup"
-            )
         in_links_count += 1
         layer_name = MakeLayerNameInParentSubmodel(name)
         layer = g_layer_map[layer_name]
-        if has_subseq:
-            SequenceScatterAgentLayer(name=name, size=layer.size)
-        else:
-            ScatterAgentLayer(name=name, size=layer.size)
+        ScatterAgentLayer(name=name, size=layer.size)
 
         pair = g_current_submodel.in_links.add()
         pair.layer_name = layer_name
         pair.link_name = MakeLayerNameInSubmodel(name)
-        pair.has_subseq = has_subseq
 
 
 @config_func
 def RecurrentLayerGroupSetOutLink(link):
     if isinstance(link, basestring):
         name = link
-        has_subseq = False
     else:
         name = link.link_name
-        has_subseq = link.has_subseq
     layer_name = MakeLayerNameInParentSubmodel(name)
     pair = g_current_submodel.out_links.add()
     pair.layer_name = MakeLayerNameInSubmodel(name)
     pair.link_name = layer_name
-    pair.has_subseq = has_subseq
 
 
 def RecurrentLayerGroupSetGenerator(generator=None):
@@ -389,8 +369,7 @@ def RecurrentLayerGroupBegin(name,
                              generator=None,
                              target_inlinkname="",
                              seq_reversed=False):
-    RecurrentLayerGroupWithoutOutLinksBegin(name, in_links, seq_reversed,
-                                            target_inlinkname)
+    RecurrentLayerGroupWithoutOutLinksBegin(name, in_links, seq_reversed)
     for link in out_links:
         RecurrentLayerGroupSetOutLink(link)
 
@@ -425,8 +404,6 @@ def RecurrentLayerGroupEnd(name):
         agent_name = GetLayerBaseName(pair.link_name)
         if prev_submodel.HasField("generator"):
             DataLayer(name=agent_name, size=layer.size)
-        elif pair.has_subseq:
-            SequenceGatherAgentLayer(name=agent_name, size=layer.size)
         else:
             GatherAgentLayer(name=agent_name, size=layer.size)
 
@@ -2253,13 +2230,6 @@ class AgentLayer(LayerBase):
             name, 'agent', size, inputs=[], device=device)
 
 
-@config_layer('sequence_agent')
-class SequenceAgentLayer(LayerBase):
-    def __init__(self, name, size, device=None):
-        super(SequenceAgentLayer, self).__init__(
-            name, 'sequence_agent', size, inputs=[], device=device)
-
-
 @config_layer('gather_agent')
 class GatherAgentLayer(LayerBase):
     def __init__(self, name, size, device=None):
@@ -2272,20 +2242,6 @@ class ScatterAgentLayer(LayerBase):
     def __init__(self, name, size, device=None):
         super(ScatterAgentLayer, self).__init__(
             name, 'scatter_agent', size, inputs=[], device=device)
-
-
-@config_layer('sequence_gather_agent')
-class SequenceGatherAgentLayer(LayerBase):
-    def __init__(self, name, size, device=None):
-        super(SequenceGatherAgentLayer, self).__init__(
-            name, 'sequence_gather_agent', size, inputs=[], device=device)
-
-
-@config_layer('sequence_scatter_agent')
-class SequenceScatterAgentLayer(LayerBase):
-    def __init__(self, name, size, device=None):
-        super(SequenceScatterAgentLayer, self).__init__(
-            name, 'sequence_scatter_agent', size, inputs=[], device=device)
 
 
 @config_layer('multiplex')
@@ -2303,12 +2259,12 @@ class MultiplexLayer(LayerBase):
 
 
 @config_func
-def Link(
-        name,
-        has_subseq=False, ):
+def Link(name, has_subseq=False):
+    """
+    Still keeping has_subseq for backward compatibility
+    """
     link_config = LinkConfig()
     link_config.link_name = name
-    link_config.has_subseq = has_subseq
     return link_config
 
 
@@ -2341,20 +2297,13 @@ def Memory(name,
         config_assert(name is not None, "name needs cannot be None")
         memory_name = name + "+delay1"
     agent_name = memory_name
-    if is_sequence:
-        config_assert(
-            boot_layer is not None,
-            "there must be boot_layer in network when is_sequence = True")
-        agent_layer = SequenceAgentLayer(agent_name, size)
-    else:
-        agent_layer = AgentLayer(agent_name, size)
+    agent_layer = AgentLayer(agent_name, size)
     config_assert(g_current_submodel.is_recurrent_layer_group,
                   'Memory should be used in recurrent layer group only')
     memory = g_current_submodel.memories.add()
     if name is not None:
         memory.layer_name = MakeLayerNameInSubmodel(name)
     memory.link_name = MakeLayerNameInSubmodel(agent_name)
-    memory.is_sequence = is_sequence
     options = sum((boot_layer is not None, bool(boot_bias),
                    boot_with_const_id is not None))
     config_assert(
