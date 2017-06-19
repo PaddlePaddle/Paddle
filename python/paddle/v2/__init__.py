@@ -26,6 +26,7 @@ import evaluator
 from . import dataset
 from . import reader
 from . import plot
+from . import master
 import attr
 import op
 import pooling
@@ -37,9 +38,26 @@ import plot
 import image
 
 __all__ = [
-    'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
-    'event', 'data_type', 'attr', 'pooling', 'data_feeder', 'dataset', 'reader',
-    'topology', 'networks', 'infer', 'plot', 'evaluator', 'image'
+    'optimizer',
+    'layer',
+    'activation',
+    'parameters',
+    'init',
+    'trainer',
+    'event',
+    'data_type',
+    'attr',
+    'pooling',
+    'data_feeder',
+    'dataset',
+    'reader',
+    'topology',
+    'networks',
+    'infer',
+    'plot',
+    'evaluator',
+    'image',
+    'master',
 ]
 
 
