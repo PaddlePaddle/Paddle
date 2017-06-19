@@ -428,8 +428,6 @@ protected:
   std::vector<int>
       parameterIds_;  // parameters actually used by this Layer Group
 
-  std::unique_ptr<Evaluator> evaluator_;  // frame printers in this layer group
-
   // store final argument of outFrameLines_
   std::vector<Argument> dataArgs_;
   // store each frame's output argument of outFrameLines_
