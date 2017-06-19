@@ -65,9 +65,12 @@ void doOneDetectionOutputTest(MatrixPtr& inputLoc,
   dataLayers[2]->getOutputValue()->copyFrom(*inputConf);
 
   // test layer initialize
+  bool store_FLAGS_use_gpu = FLAGS_use_gpu;
+  FLAGS_use_gpu = use_gpu;
   std::vector<ParameterPtr> parameters;
   LayerPtr detectionOutputLayer;
   initTestLayer(configt, &layerMap, &parameters, &detectionOutputLayer);
+  FLAGS_use_gpu = store_FLAGS_use_gpu;
   detectionOutputLayer->forward(PASS_GC);
   checkMatrixEqual(detectionOutputLayer->getOutputValue(), result);
 }
