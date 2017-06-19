@@ -22,14 +22,62 @@ namespace paddle {
 
 typedef std::shared_ptr<BufferArg> BufferArgPtr;
 
+namespace test {
+template <DeviceType DType>
+struct Allocator;
+
+template <>
+struct Allocator<DEVICE_TYPE_CPU> {
+  using type = CpuMemoryHandle;
+};
+
+template <>
+struct Allocator<DEVICE_TYPE_GPU> {
+  using type = GpuMemoryHandle;
+};
+
+// Copy argument1 to argument2
+template <DeviceType DType1, DeviceType DType2>
+class CopyArgument {
+public:
+  void operator()(const BufferArg& arg1, BufferArg& arg2) {
+    CHECK_EQ(arg1.valueType(), arg2.valueType());
+    CHECK_LE(arg1.shape().getElements(), arg2.shape().getElements());
+
+    if (arg1.valueType() == VALUE_TYPE_INT32) {
+      IVectorPtr vector1 =
+          IVector::create((int*)arg1.data(),
+                          arg1.shape().getElements(),
+                          DType1 == DEVICE_TYPE_CPU ? false : true);
+      IVectorPtr vector2 =
+          IVector::create((int*)arg2.data(),
+                          arg2.shape().getElements(),
+                          DType2 == DEVICE_TYPE_CPU ? false : true);
+      vector2->copyFrom(*vector1);
+    } else {
+      VectorPtr vector1 =
+          Vector::create((real*)arg1.data(),
+                         arg1.shape().getElements(),
+                         DType1 == DEVICE_TYPE_CPU ? false : true);
+      VectorPtr vector2 =
+          Vector::create((real*)arg2.data(),
+                         arg2.shape().getElements(),
+                         DType2 == DEVICE_TYPE_CPU ? false : true);
+      vector2->copyFrom(*vector1);
+    }
+  }
+};
+}  // namespace test
+
 /**
- * \brief A class for comparing CPU and GPU implementations of Function.
- *
+ * \brief A class for comparing two Functions of different implementations.
+ *        For example, can be used to compare the CPU and GPU implementation
+ *        of the function is consistent.
  *
  * Use case:
  *  // Initializes a test object, the corresponding cpu and gpu Function
  *  // are constructed according to FunctionName and FuncConfig.
- *  FunctionCompare test(FunctionName, FuncConfig);
+ *  CpuGpuFuncCompare test(FunctionName, FuncConfig);
  *  // Prepare inputs and outputs arguments.
  *  // Here the input and output can not contain real data,
  *  // only contains the argument type and shape.
@@ -45,28 +93,38 @@ typedef std::shared_ptr<BufferArg> BufferArgPtr;
  *  // Compares CPU and GPU calculation results for consistency.
  *  test.run();
  */
-class FunctionCompare {
+template <DeviceType DType1, DeviceType DType2>
+class Compare2Function {
 public:
-  FunctionCompare(const std::string& name, const FuncConfig& config)
-      : cpuFunc_(FunctionBase::funcRegistrar_.createByType(name + "-CPU")),
-        gpuFunc_(FunctionBase::funcRegistrar_.createByType(name + "-GPU")) {
-    cpuFunc_->init(config);
-    gpuFunc_->init(config);
+  typedef typename test::Allocator<DType1>::type Allocator1;
+  typedef typename test::Allocator<DType2>::type Allocator2;
+  typedef typename Tensor<real, DType1>::Vector Vector1;
+  typedef typename Tensor<real, DType2>::Vector Vector2;
+  typedef typename Tensor<real, DType1>::SparseMatrix SparseMatrix1;
+  typedef typename Tensor<real, DType2>::SparseMatrix SparseMatrix2;
+
+  Compare2Function(const std::string& name1,
+                   const std::string& name2,
+                   const FuncConfig& config)
+      : function1_(FunctionBase::funcRegistrar_.createByType(name1)),
+        function2_(FunctionBase::funcRegistrar_.createByType(name2)) {
+    function1_->init(config);
+    function2_->init(config);
   }
 
-  ~FunctionCompare() {}
+  ~Compare2Function() {}
 
   // input need only contains shape, do not contains data.
   void addInputs(const BufferArg& input) {
     size_t size =
         input.shape().getElements() * sizeOfValuType(input.valueType());
-    cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
-    gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
+    func1Memory_.emplace_back(std::make_shared<Allocator1>(size));
+    func2Memory_.emplace_back(std::make_shared<Allocator2>(size));
 
-    cpuInputs_.emplace_back(std::make_shared<BufferArg>(
-        cpuMemory_.back()->getBuf(), input.valueType(), input.shape()));
-    gpuInputs_.emplace_back(std::make_shared<BufferArg>(
-        gpuMemory_.back()->getBuf(), input.valueType(), input.shape()));
+    func1Inputs_.emplace_back(std::make_shared<BufferArg>(
+        func1Memory_.back()->getBuf(), input.valueType(), input.shape()));
+    func2Inputs_.emplace_back(std::make_shared<BufferArg>(
+        func2Memory_.back()->getBuf(), input.valueType(), input.shape()));
   }
 
   // assume one copy of sequence is shared by different SequenceArgs
@@ -75,62 +133,57 @@ public:
     size_t batchSize = input.shape()[0];
     size_t numSeqs = batchSize / 10 + 1;
     size_t sizeId = (numSeqs + 1) * sizeOfValuType(VALUE_TYPE_INT32);
-    cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(sizeId));
-    gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(sizeId));
-    cpuSeq_ = std::make_shared<SequenceIdArg>(cpuMemory_.back()->getBuf(),
-                                              TensorShape{numSeqs + 1});
-    gpuSeq_ = std::make_shared<SequenceIdArg>(gpuMemory_.back()->getBuf(),
-                                              TensorShape{numSeqs + 1});
+    func1Memory_.emplace_back(std::make_shared<Allocator1>(sizeId));
+    func2Memory_.emplace_back(std::make_shared<Allocator2>(sizeId));
+    seq1_ = std::make_shared<SequenceIdArg>(func1Memory_.back()->getBuf(),
+                                            TensorShape{numSeqs + 1});
+    seq2_ = std::make_shared<SequenceIdArg>(func2Memory_.back()->getBuf(),
+                                            TensorShape{numSeqs + 1});
     /// init sequence Id
-    initArg(*cpuSeq_, batchSize);
+    initArg(*seq1_, batchSize);
 
-    // todo(tianbing), delete it
-    CHECK_EQ(cpuSeq_->shape().getElements(), cpuSeq_->numSeqs() + 1);
-
-    CpuIVector cpuSeq(cpuSeq_->shape().getElements(), (int*)cpuSeq_->data());
-    GpuIVector gpuSeq(gpuSeq_->shape().getElements(), (int*)gpuSeq_->data());
-    gpuSeq.copyFrom(cpuSeq);
+    copyArg_(*seq1_, *seq2_);
   }
 
   void addInputs(const SequenceArg& input) {
     CHECK_EQ(input.shape().ndims(), 2UL);
     size_t batchSize = input.shape()[0];
-    if (!cpuSeq_ || !gpuSeq_) {  // sequence not exist
+    if (!seq1_ || !seq2_) {  // sequence not exist
       addSequence(SequenceIdArg(TensorShape{batchSize}));
     }
 
     size_t size =
         input.shape().getElements() * sizeOfValuType(input.valueType());
-    cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
-    gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
+    func1Memory_.emplace_back(std::make_shared<Allocator1>(size));
+    func2Memory_.emplace_back(std::make_shared<Allocator2>(size));
 
     /// SequenceArg
-    cpuInputs_.emplace_back(
-        std::make_shared<SequenceArg>(cpuMemory_.back()->getBuf(),
+    func1Inputs_.emplace_back(
+        std::make_shared<SequenceArg>(func1Memory_.back()->getBuf(),
                                       input.valueType(),
                                       input.shape(),
-                                      *cpuSeq_));
-    gpuInputs_.emplace_back(
-        std::make_shared<SequenceArg>(gpuMemory_.back()->getBuf(),
+                                      *seq1_));
+    func2Inputs_.emplace_back(
+        std::make_shared<SequenceArg>(func2Memory_.back()->getBuf(),
                                       input.valueType(),
                                       input.shape(),
-                                      *gpuSeq_));
+                                      *seq2_));
   }
 
   // output need only contains shape, do not contains data.
   void addOutputs(const BufferArg& output, ArgType argType = ASSIGN_TO) {
     size_t size =
         output.shape().getElements() * sizeOfValuType(output.valueType());
-    cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
-    gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
+    func1Memory_.emplace_back(std::make_shared<Allocator1>(size));
+    func2Memory_.emplace_back(std::make_shared<Allocator2>(size));
 
-    cpuOutputs_.emplace_back(
-        std::make_shared<BufferArg>(cpuMemory_.back()->getBuf(),
+    func1Outputs_.emplace_back(
+        std::make_shared<BufferArg>(func1Memory_.back()->getBuf(),
                                     output.valueType(),
                                     output.shape(),
                                     argType));
-    gpuOutputs_.emplace_back(
-        std::make_shared<BufferArg>(gpuMemory_.back()->getBuf(),
+    func2Outputs_.emplace_back(
+        std::make_shared<BufferArg>(func2Memory_.back()->getBuf(),
                                     output.valueType(),
                                     output.shape(),
                                     argType));
@@ -138,14 +191,14 @@ public:
 
   /// add and init output sparse matrix
   void addOutputs(const SparseMatrixArg& output, ArgType argType = ASSIGN_TO) {
-    cpuSparse_ = std::make_shared<CpuSparseMatrix>(
+    sparse1_ = std::make_shared<SparseMatrix1>(
         output.shape()[0],
         output.shape()[1],
         output.nnz(),
         static_cast<SparseValueType>(output.dataType()),
         static_cast<SparseFormat>(output.dataFormat()));
 
-    gpuSparse_ = std::make_shared<GpuSparseMatrix>(
+    sparse2_ = std::make_shared<SparseMatrix2>(
         output.shape()[0],
         output.shape()[1],
         output.nnz(),
@@ -154,52 +207,52 @@ public:
 
     /// init sparse matrix
     hl_stream_t stream(HPPL_STREAM_1);
-    cpuSparse_->randomizeUniform();
-    gpuSparse_->copyFrom(*cpuSparse_, stream);
+    sparse1_->randomizeUniform();
+    sparse2_->copyFrom(*sparse1_, stream);
     hl_stream_synchronize(stream);
 
-    cpuOutputs_.emplace_back(
-        std::make_shared<SparseMatrixArg>(*cpuSparse_, argType));
-    gpuOutputs_.emplace_back(
-        std::make_shared<SparseMatrixArg>(*gpuSparse_, argType));
+    func1Outputs_.emplace_back(
+        std::make_shared<SparseMatrixArg>(*sparse1_, argType));
+    func2Outputs_.emplace_back(
+        std::make_shared<SparseMatrixArg>(*sparse2_, argType));
   }
 
   void addOutputs(const SequenceArg& output, ArgType argType = ASSIGN_TO) {
     CHECK_EQ(output.shape().ndims(), 2UL);
     size_t batchSize = output.shape()[0];
 
-    if (!cpuSeq_ || !gpuSeq_) {  // sequence not exist
+    if (!seq1_ || !seq2_) {  // sequence not exist
       addSequence(SequenceIdArg(TensorShape{batchSize}));
     }
     size_t size =
         output.shape().getElements() * sizeOfValuType(output.valueType());
-    cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
-    gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
+    func1Memory_.emplace_back(std::make_shared<Allocator1>(size));
+    func2Memory_.emplace_back(std::make_shared<Allocator2>(size));
 
     /// SequenceArg
-    cpuOutputs_.emplace_back(
-        std::make_shared<SequenceArg>(cpuMemory_.back()->getBuf(),
+    func1Outputs_.emplace_back(
+        std::make_shared<SequenceArg>(func1Memory_.back()->getBuf(),
                                       output.valueType(),
                                       output.shape(),
-                                      *cpuSeq_,
+                                      *seq1_,
                                       argType));
-    gpuOutputs_.emplace_back(
-        std::make_shared<SequenceArg>(gpuMemory_.back()->getBuf(),
+    func2Outputs_.emplace_back(
+        std::make_shared<SequenceArg>(func2Memory_.back()->getBuf(),
                                       output.valueType(),
                                       output.shape(),
-                                      *gpuSeq_,
+                                      *seq2_,
                                       argType));
   }
 
   void addInputs(const SparseMatrixArg& input) {
-    cpuSparse_ = std::make_shared<CpuSparseMatrix>(
+    sparse1_ = std::make_shared<SparseMatrix1>(
         input.shape()[0],
         input.shape()[1],
         input.nnz(),
         static_cast<SparseValueType>(input.dataType()),
         static_cast<SparseFormat>(input.dataFormat()));
 
-    gpuSparse_ = std::make_shared<GpuSparseMatrix>(
+    sparse2_ = std::make_shared<SparseMatrix2>(
         input.shape()[0],
         input.shape()[1],
         input.nnz(),
@@ -208,12 +261,12 @@ public:
 
     /// init sparse matrix
     hl_stream_t stream(HPPL_STREAM_1);
-    cpuSparse_->randomizeUniform();
-    gpuSparse_->copyFrom(*cpuSparse_, stream);
+    sparse1_->randomizeUniform();
+    sparse2_->copyFrom(*sparse1_, stream);
     hl_stream_synchronize(stream);
 
-    cpuInputs_.emplace_back(std::make_shared<SparseMatrixArg>(*cpuSparse_));
-    gpuInputs_.emplace_back(std::make_shared<SparseMatrixArg>(*gpuSparse_));
+    func1Inputs_.emplace_back(std::make_shared<SparseMatrixArg>(*sparse1_));
+    func2Inputs_.emplace_back(std::make_shared<SparseMatrixArg>(*sparse2_));
   }
 
   void run() {
@@ -236,27 +289,27 @@ public:
       function->calc(inArgs, outArgs);
     };
 
-    callFunction(cpuFunc_.get(), cpuInputs_, cpuOutputs_);
-    callFunction(gpuFunc_.get(), gpuInputs_, gpuOutputs_);
+    callFunction(function1_.get(), func1Inputs_, func1Outputs_);
+    callFunction(function2_.get(), func2Inputs_, func2Outputs_);
 
     // check outputs
     compareOutputs();
   }
 
-  std::shared_ptr<FunctionBase> getCpuFunction() const { return cpuFunc_; }
+  std::shared_ptr<FunctionBase> getFunction1() const { return function1_; }
 
-  std::shared_ptr<FunctionBase> getGpuFunction() const { return gpuFunc_; }
+  std::shared_ptr<FunctionBase> getFunction2() const { return function2_; }
 
 protected:
   // only init cpu argument, gpu argument copy from cpu argument.
   void initArg(BufferArg& arg) {
-    CpuVector vector(arg.shape().getElements(), (real*)arg.data());
+    Vector1 vector(arg.shape().getElements(), (real*)arg.data());
     vector.uniform(0.001, 1);
   }
 
   void initArg(SequenceArg& arg) {
     /// init only matrix
-    CpuVector vector(arg.shape().getElements(), (real*)arg.data());
+    Vector1 vector(arg.shape().getElements(), (real*)arg.data());
     vector.uniform(0.001, 1);
   }
 
@@ -276,73 +329,72 @@ protected:
   }
 
   void initInputs() {
-    for (size_t i = 0; i < cpuInputs_.size(); i++) {
-      if (cpuInputs_[i]->isSparseArg()) {
+    for (size_t i = 0; i < func1Inputs_.size(); i++) {
+      if (func1Inputs_[i]->isSparseArg()) {
         continue;  /// sparse matrix already init
       }
 
-      if (cpuInputs_[i]->isSequenceArg()) {
-        initArg(dynamic_cast<SequenceArg&>(*cpuInputs_[i]));
+      if (func1Inputs_[i]->isSequenceArg()) {
+        initArg(dynamic_cast<SequenceArg&>(*func1Inputs_[i]));
       } else {
-        initArg(*cpuInputs_[i]);
+        initArg(*func1Inputs_[i]);
       }
-      // TODO: Need a BufferCopy used to copy from one BufferArg to another.
-      CpuVector cpuVector(cpuInputs_[i]->shape().getElements(),
-                          (real*)cpuInputs_[i]->data());
-      GpuVector gpuVector(gpuInputs_[i]->shape().getElements(),
-                          (real*)gpuInputs_[i]->data());
 
-      gpuVector.copyFrom(cpuVector);
+      copyArg_(*func1Inputs_[i], *func2Inputs_[i]);
     }
   }
 
   void initOutputs() {
-    for (size_t i = 0; i < cpuOutputs_.size(); i++) {
-      if (cpuOutputs_[i]->isSparseArg()) {
+    for (size_t i = 0; i < func1Outputs_.size(); i++) {
+      if (func1Outputs_[i]->isSparseArg()) {
         continue;  /// sparse matrix already init
       }
 
-      if (cpuOutputs_[i]->isSequenceArg()) {
-        initArg(dynamic_cast<SequenceArg&>(*cpuOutputs_[i]));
+      if (func1Outputs_[i]->isSequenceArg()) {
+        initArg(dynamic_cast<SequenceArg&>(*func1Outputs_[i]));
       } else {
-        initArg(*cpuOutputs_[i]);
+        initArg(*func1Outputs_[i]);
       }
 
-      // TODO: Need a BufferCopy used to copy from one BufferArg to another.
-      CpuVector cpuVector(cpuOutputs_[i]->shape().getElements(),
-                          (real*)cpuOutputs_[i]->data());
-      GpuVector gpuVector(gpuOutputs_[i]->shape().getElements(),
-                          (real*)gpuOutputs_[i]->data());
-
-      gpuVector.copyFrom(cpuVector);
+      copyArg_(*func1Outputs_[i], *func2Outputs_[i]);
     }
   }
 
   void compareOutputs() {
-    for (size_t i = 0; i < cpuOutputs_.size(); i++) {
+    for (size_t i = 0; i < func1Outputs_.size(); i++) {
       // TODO, Need a BufferCheck used to compare the two buffers.
-      const auto cpu = cpuOutputs_[i];
-      const auto gpu = gpuOutputs_[i];
+      const auto cpu = func1Outputs_[i];
+      const auto gpu = func2Outputs_[i];
       CHECK_EQ(cpu->numElements(), gpu->numElements());
-      CpuVector cpuVector(cpu->numElements(), (real*)cpu->data());
-      GpuVector gpuVector(gpu->numElements(), (real*)gpu->data());
+      Vector1 cpuVector(cpu->numElements(), (real*)cpu->data());
+      Vector2 gpuVector(gpu->numElements(), (real*)gpu->data());
       autotest::TensorCheckErr(cpuVector, gpuVector);
     }
   }
 
 protected:
-  std::shared_ptr<FunctionBase> cpuFunc_;
-  std::shared_ptr<FunctionBase> gpuFunc_;
-  std::vector<CpuMemHandlePtr> cpuMemory_;
-  std::vector<GpuMemHandlePtr> gpuMemory_;
-  std::vector<BufferArgPtr> cpuInputs_;
-  std::vector<BufferArgPtr> cpuOutputs_;
-  std::vector<BufferArgPtr> gpuInputs_;
-  std::vector<BufferArgPtr> gpuOutputs_;
-  std::shared_ptr<CpuSparseMatrix> cpuSparse_;
-  std::shared_ptr<GpuSparseMatrix> gpuSparse_;
-  std::shared_ptr<SequenceIdArg> cpuSeq_;
-  std::shared_ptr<SequenceIdArg> gpuSeq_;
+  std::shared_ptr<FunctionBase> function1_;
+  std::shared_ptr<FunctionBase> function2_;
+  std::vector<std::shared_ptr<Allocator1>> func1Memory_;
+  std::vector<std::shared_ptr<Allocator2>> func2Memory_;
+  std::vector<BufferArgPtr> func1Inputs_;
+  std::vector<BufferArgPtr> func1Outputs_;
+  std::vector<BufferArgPtr> func2Inputs_;
+  std::vector<BufferArgPtr> func2Outputs_;
+  std::shared_ptr<SparseMatrix1> sparse1_;
+  std::shared_ptr<SparseMatrix2> sparse2_;
+  std::shared_ptr<SequenceIdArg> seq1_;
+  std::shared_ptr<SequenceIdArg> seq2_;
+  test::CopyArgument<DType1, DType2> copyArg_;
+};
+
+class CpuGpuFuncCompare
+    : public Compare2Function<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU> {
+public:
+  CpuGpuFuncCompare(const std::string& name, const FuncConfig& config)
+      : Compare2Function(name + "-CPU", name + "-GPU", config) {}
+
+  ~CpuGpuFuncCompare() {}
 };
 
 }  // namespace paddle

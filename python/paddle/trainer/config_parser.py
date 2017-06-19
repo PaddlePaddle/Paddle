@@ -73,7 +73,6 @@ To use this from paddle_trainer, paddle_trainer should be called with
 --config_args=extension_module_name=[MODULE_NAME]
 
 '''
-
 import copy
 import logging
 import os
@@ -127,6 +126,7 @@ def init_config_environment(
         g_config=TrainerConfig(),
         g_layer_map={},
         g_parameter_map={},
+        g_parameter_initializer_map={},
         g_extended_config_funcs={},
 
         # store command args of paddle_trainer
@@ -440,22 +440,22 @@ def model_type(name):
 
 @config_class
 class Bias(Cfg):
-    def __init__(
-            self,
-            parameter_name=None,
-            learning_rate=None,
-            momentum=None,
-            decay_rate=None,
-            decay_rate_l1=None,
-            initial_mean=None,
-            initial_std=None,
-            initial_strategy=None,
-            initial_smart=None,
-            num_batches_regularization=None,
-            sparse_remote_update=None,
-            gradient_clipping_threshold=None,
-            is_static=None,
-            is_shared=None, ):
+    def __init__(self,
+                 parameter_name=None,
+                 learning_rate=None,
+                 momentum=None,
+                 decay_rate=None,
+                 decay_rate_l1=None,
+                 initial_mean=None,
+                 initial_std=None,
+                 initial_strategy=None,
+                 initial_smart=None,
+                 num_batches_regularization=None,
+                 sparse_remote_update=None,
+                 gradient_clipping_threshold=None,
+                 is_static=None,
+                 is_shared=None,
+                 initializer=None):
         self.add_keys(locals())
 
 
@@ -466,6 +466,7 @@ class Input(Cfg):
             self,
             input_layer_name,
             parameter_name=None,
+            initializer=None,
             learning_rate=None,
             momentum=None,
             decay_rate=None,
@@ -522,6 +523,7 @@ class Projection(Input):
             initial_std=None,
             initial_strategy=None,
             initial_smart=None,
+            initializer=None,
             num_batches_regularization=None,
             sparse_remote_update=None,
             sparse_update=None,
@@ -1480,7 +1482,8 @@ class LayerBase(object):
                     gradient_clipping_threshold=bias.
                     gradient_clipping_threshold,
                     is_static=bias.is_static,
-                    is_shared=bias.is_shared, )
+                    is_shared=bias.is_shared,
+                    initializer=bias.initializer)
             if for_self:
                 self.config.bias_parameter_name = bias.parameter_name
             else:
@@ -1537,7 +1540,8 @@ class LayerBase(object):
             format=format,
             is_static=input_config.is_static,
             is_shared=input_config.is_shared,
-            update_hooks=input_config.update_hooks)
+            update_hooks=input_config.update_hooks,
+            initializer=input_config.initializer)
 
     def set_layer_size(self, size):
         if self.config.size == 0:
@@ -1731,9 +1735,10 @@ class ParameterReluLayer(LayerBase):
     def __init__(self, name, inputs, partial_sum=1, **args):
         super(ParameterReluLayer, self).__init__(
             name, self.layer_type, 0, inputs=inputs, **args)
-        config_assert(len(self.inputs) == 1)
-        config_assert(self.input_layer.size % partial_sum == 0)
         input_layer = self.get_input_layer(0)
+        config_assert(len(self.inputs) == 1, "prelu layer has only one input.")
+        config_assert(input_layer.size % partial_sum == 0,
+                      "a wrong setting for partial_sum")
         self.set_layer_size(input_layer.size)
         self.create_input_parameter(0, input_layer.size / partial_sum)
 
@@ -2079,6 +2084,23 @@ class MaxOutLayer(LayerBase):
         out_channels = maxout_conf.image_conf.channels / maxout_conf.groups
         self.set_cnn_layer(name, g_layer_map[input_layer.name].height,
                            g_layer_map[input_layer.name].width, out_channels)
+
+
+@config_layer('row_conv')
+class RowConvLayer(LayerBase):
+    def __init__(self, name, inputs, context_length, **xargs):
+        super(RowConvLayer, self).__init__(
+            name, 'maxout', 0, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1,
+            'TransLayer must have one and only one input')
+        input_layer = self.get_input_layer(0)
+        row_conv_conf = self.config.inputs[0].row_conv_conf
+        row_conv_conf.context_length = context_length
+        self.set_layer_size(input_layer.size)
+        psize = context_length * input_layer.size
+        dims = [context_length, input_layer.size]
+        self.create_input_parameter(0, psize, dims)
 
 
 # key: cost type
@@ -3204,7 +3226,8 @@ def Parameter(name,
               need_compact=None,
               is_static=None,
               is_shared=None,
-              update_hooks=None):
+              update_hooks=None,
+              initializer=None):
 
     config_assert(name not in g_parameter_map,
                   'Duplicated parameter name: ' + name)
@@ -3292,6 +3315,11 @@ def Parameter(name,
             para.update_hooks.extend(update_hooks)
 
     g_parameter_map[name] = para
+    if initializer is not None:
+        config_assert(
+            callable(initializer),
+            "parameter initializer should be a callable object")
+        g_parameter_initializer_map[name] = initializer
 
 
 @config_func
@@ -3546,11 +3574,7 @@ def update_g_config():
     return g_config
 
 
-def begin_parse(config_arg_str=''):
-    '''
-    @param config_arg_str: a string of the form var1=val1,var2=val2. It will be
-    passed to config script as a dictionary CONFIG_ARGS
-    '''
+def begin_parse():
     init_config_environment()
     for hook in _parse_config_hooks:
         hook()
@@ -3568,8 +3592,12 @@ def begin_parse(config_arg_str=''):
 
 
 def parse_config(trainer_config, config_arg_str):
-    begin_parse(config_arg_str)
+    '''
+    @param config_arg_str: a string of the form var1=val1,var2=val2. It will be
+    passed to config script as a dictionary CONFIG_ARGS
+    '''
 
+    begin_parse()
     config_args = {}
 
     if config_arg_str:

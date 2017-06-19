@@ -118,11 +118,7 @@ size_t ConvBaseLayer::calOutputSize() {
     layerSize = outH[0] * outW[0] * size_t(numFilters_);
   };
 
-  if (isDeconv_) {
-    setLayerSize(outputH_, outputW_, imgSizeH_, imgSizeW_);
-  } else {
-    setLayerSize(imgSizeH_, imgSizeW_, outputH_, outputW_);
-  }
+  setLayerSize(imgSizeH_, imgSizeW_, outputH_, outputW_);
 
   return layerSize;
 }

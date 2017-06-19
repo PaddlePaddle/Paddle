@@ -3,34 +3,11 @@ RNN Configuration
 
 This tutorial will guide you how to configure recurrent neural network in PaddlePaddle. PaddlePaddle supports highly flexible and efficient recurrent neural network configuration. In this tutorial, you will learn how to:
 
-- prepare sequence data for learning recurrent neural networks.
 - configure recurrent neural network architecture.
 - generate sequence with learned recurrent neural network models.
 
-We will use vanilla recurrent neural network, and sequence to sequence model to guide you through these steps. The code of sequence to sequence model can be found at :code:`demo/seqToseq`.
-
-=====================
-Prepare Sequence Data
-=====================
-
-PaddlePaddle does not need any preprocessing to sequence data, such as padding. The only thing that needs to be done is to set the type of the corresponding type to input. For example, the following code snippets defines three input. All of them are sequences, and the size of them are :code:`src_dict`, :code:`trg_dict`, and :code:`trg_dict`:
-
-.. code-block:: python
-
-    settings.input_types = [
-      integer_value_sequence(len(settings.src_dict)),
-      integer_value_sequence(len(settings.trg_dict)),
-      integer_value_sequence(len(settings.trg_dict))]
-
-
-Then at the :code:`process` function, each :code:`yield` function will return three integer lists. Each integer list is treated as a sequence of integers:
-
-.. code-block:: python
-
-    yield src_ids, trg_ids, trg_ids_next
-
-
-For more details description of how to write a data provider, please refer to :ref:`api_pydataprovider2` . The full data provider file is located at :code:`demo/seqToseq/dataprovider.py`.
+We will use vanilla recurrent neural network, and sequence to sequence model to guide you through these steps. The code of sequence to sequence model can be found at `book/08.machine_translation <https://github.com/PaddlePaddle/book/tree/develop/08.machine_translation>`_ .
+And the data preparation of this model can be found at `python/paddle/v2/dataset/wmt14.py <https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/dataset/wmt14.py>`_ 
 
 ===============================================
 Configure Recurrent Neural Network Architecture
@@ -75,19 +52,19 @@ Its **output function** simply takes :math:`x_t` as the output.
                    act=None,
                    rnn_layer_attr=None):
         def __rnn_step__(ipt):
-           out_mem = memory(name=name, size=size)
-           rnn_out = mixed_layer(input = [full_matrix_projection(ipt),
-                                          full_matrix_projection(out_mem)],
-                                 name = name,
-                                 bias_attr = rnn_bias_attr,
-                                 act = act,
-                                 layer_attr = rnn_layer_attr,
-                                 size = size)
+           out_mem = paddle.layer.memory(name=name, size=size)
+           rnn_out = paddle.layer.mixed(input = [paddle.layer.full_matrix_projection(input=ipt),
+                                                 paddle.layer.full_matrix_projection(input=out_mem)],
+                                        name = name,
+                                        bias_attr = rnn_bias_attr,
+                                        act = act,
+                                        layer_attr = rnn_layer_attr,
+                                        size = size)
            return rnn_out
-        return recurrent_group(name='%s_recurrent_group' % name,
-                               step=__rnn_step__,
-                               reverse=reverse,
-                               input=input)
+        return paddle.layer.recurrent_group(name='%s_recurrent_group' % name,
+                                            step=__rnn_step__,
+                                            reverse=reverse,
+                                            input=input)
 
 
 PaddlePaddle uses memory to construct step function. **Memory** is the most important concept when constructing recurrent neural networks in PaddlePaddle. A memory is a state that is used recurrently in step functions, such as :math:`x_{t+1} = f_x(x_t)`. One memory contains an **output** and a **input**. The output of memory at the current time step is utilized as the input of the memory at the next time step. A memory can also has a **boot layer**, whose output is utilized as the initial value of the memory. In our case, the output of the gated recurrent unit is employed as the output memory. Notice that the name of the layer :code:`rnn_out` is the same as the name of :code:`out_mem`. This means the output of the layer :code:`rnn_out` (:math:`x_{t+1}`) is utilized as the **output** of :code:`out_mem` memory.
@@ -113,43 +90,52 @@ We also project the encoder vector to :code:`decoder_size` dimensional space, ge
 .. code-block:: python
 
     # Define the data layer of the source sentence.
-    src_word_id = data_layer(name='source_language_word', size=source_dict_dim)
+    src_word_id = paddle.layer.data(
+        name='source_language_word',
+        type=paddle.data_type.integer_value_sequence(source_dict_dim))
     # Calculate the word embedding of each word.
-    src_embedding = embedding_layer(
+    src_embedding = paddle.layer.embedding(
         input=src_word_id,
         size=word_vector_dim,
-        param_attr=ParamAttr(name='_source_language_embedding'))
+        param_attr=paddle.attr.ParamAttr(name='_source_language_embedding'))
     # Apply forward recurrent neural network.
-    src_forward = grumemory(input=src_embedding, size=encoder_size)
+    src_forward = paddle.networks.simple_gru(
+        input=src_embedding, size=encoder_size)
     # Apply backward recurrent neural network. reverse=True means backward recurrent neural network.
-    src_backward = grumemory(input=src_embedding,
-                              size=encoder_size,
-                              reverse=True)
+    src_backward = paddle.networks.simple_gru(
+        input=src_embedding, size=encoder_size, reverse=True)
     # Mix the forward and backward parts of the recurrent neural network together.
-    encoded_vector = concat_layer(input=[src_forward, src_backward])
+    encoded_vector = paddle.layer.concat(input=[src_forward, src_backward])
 
     # Project encoding vector to decoder_size.
-    encoder_proj = mixed_layer(input = [full_matrix_projection(encoded_vector)],
-                               size = decoder_size)
+    encoded_proj = paddle.layer.mixed(
+        size=decoder_size,
+        input=paddle.layer.full_matrix_projection(encoded_vector))
 
     # Compute the first instance of the backward RNN.
-    backward_first = first_seq(input=src_backward)
+    backward_first = paddle.layer.first_seq(input=src_backward)
 
     # Project the first instance of backward RNN to decoder size.
-    decoder_boot = mixed_layer(input=[full_matrix_projection(backward_first)], size=decoder_size, act=TanhActivation())
+    decoder_boot = paddle.layer.mixed(
+       size=decoder_size,
+       act=paddle.activation.Tanh(),
+       input=paddle.layer.full_matrix_projection(backward_first))
 
 
 The decoder uses :code:`recurrent_group` to define the recurrent neural network. The step and output functions are defined in :code:`gru_decoder_with_attention`:
 
 .. code-block:: python
 
-    group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
-                  StaticInput(input=encoded_proj,is_seq=True)]
-    trg_embedding = embedding_layer(
-        input=data_layer(name='target_language_word',
-                         size=target_dict_dim),
-        size=word_vector_dim,
-        param_attr=ParamAttr(name='_target_language_embedding'))
+    group_input1 = paddle.layer.StaticInput(input=encoded_vector, is_seq=True)
+    group_input2 = paddle.layer.StaticInput(input=encoded_proj, is_seq=True)
+    group_inputs = [group_input1, group_input2]
+    trg_embedding = paddle.layer.embedding(
+            input=paddle.layer.data(
+                name='target_language_word',
+                type=paddle.data_type.integer_value_sequence(target_dict_dim)),
+            size=word_vector_dim,
+            param_attr=paddle.attr.ParamAttr(name='_target_language_embedding'))
+        group_inputs.append(trg_embedding)
     group_inputs.append(trg_embedding)
 
     # For decoder equipped with attention mechanism, in training,
@@ -158,9 +144,10 @@ The decoder uses :code:`recurrent_group` to define the recurrent neural network.
     # StaticInput means the same value is utilized at different time steps.
     # Otherwise, it is a sequence input. Inputs at different time steps are different.
     # All sequence inputs should have the same length.
-    decoder = recurrent_group(name=decoder_group_name,
-                              step=gru_decoder_with_attention,
-                              input=group_inputs)
+    decoder = paddle.layer.recurrent_group(
+            name=decoder_group_name,
+            step=gru_decoder_with_attention,
+            input=group_inputs)
 
 
 The implementation of the step function is listed as below. First, it defines the **memory** of the decoder network. Then it defines attention, gated recurrent unit step function, and the output function:
@@ -171,27 +158,32 @@ The implementation of the step function is listed as below. First, it defines th
         # Defines the memory of the decoder.
         # The output of this memory is defined in gru_step.
         # Notice that the name of gru_step should be the same as the name of this memory.
-        decoder_mem = memory(name='gru_decoder',
-                             size=decoder_size,
-                             boot_layer=decoder_boot)
+        decoder_mem = paddle.layer.memory(
+            name='gru_decoder', size=decoder_size, boot_layer=decoder_boot)
         # Compute attention weighted encoder vector.
-        context = simple_attention(encoded_sequence=enc_vec,
-                                   encoded_proj=enc_proj,
-                                   decoder_state=decoder_mem)
+        context = paddle.networks.simple_attention(
+            encoded_sequence=enc_vec,
+            encoded_proj=enc_proj,
+            decoder_state=decoder_mem)
         # Mix the current word embedding and the attention weighted encoder vector.
-        decoder_inputs = mixed_layer(inputs = [full_matrix_projection(context),
-                                               full_matrix_projection(current_word)],
-                                     size = decoder_size * 3)
+        decoder_inputs = paddle.layer.mixed(
+            size=decoder_size * 3,
+            input=[
+                paddle.layer.full_matrix_projection(input=context),
+                paddle.layer.full_matrix_projection(input=current_word)
+            ])
         # Define Gated recurrent unit recurrent neural network step function.
-        gru_step = gru_step_layer(name='gru_decoder',
-                                  input=decoder_inputs,
-                                  output_mem=decoder_mem,
-                                  size=decoder_size)
+        gru_step = paddle.layer.gru_step(
+            name='gru_decoder',
+            input=decoder_inputs,
+            output_mem=decoder_mem,
+            size=decoder_size)
         # Defines the output function.
-        out = mixed_layer(input=[full_matrix_projection(input=gru_step)],
-                          size=target_dict_dim,
-                          bias_attr=True,
-                          act=SoftmaxActivation())
+        out = paddle.layer.mixed(
+            size=target_dict_dim,
+            bias_attr=True,
+            act=paddle.activation.Softmax(),
+            input=paddle.layer.full_matrix_projection(input=gru_step))
         return out
 
 
@@ -207,45 +199,37 @@ After training the model, we can use it to generate sequences. A common practice
   - :code:`eos_id`: the end token. Every sentence ends with the end token.
   - :code:`beam_size`: the beam size used in beam search.
   - :code:`max_length`: the maximum length of the generated sentences.
-
-* use :code:`seqtext_printer_evaluator` to print text according to index matrix and dictionary. This function needs to set:
-
-  - :code:`id_input`: the integer ID of the data, used to identify the corresponding output in the generated files.
-  - :code:`dict_file`: the dictionary file for converting word id to word.
-  - :code:`result_file`: the path of the generation result file.
     
 The code is listed below:
 
 .. code-block:: python
 
-    group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
-                  StaticInput(input=encoded_proj,is_seq=True)]
+    group_input1 = paddle.layer.StaticInput(input=encoded_vector, is_seq=True)
+    group_input2 = paddle.layer.StaticInput(input=encoded_proj, is_seq=True)
+    group_inputs = [group_input1, group_input2]
     # In generation, decoder predicts a next target word based on
     # the encoded source sequence and the last generated target word.
     # The encoded source sequence (encoder's output) must be specified by
     # StaticInput which is a read-only memory.
     # Here, GeneratedInputs automatically fetchs the last generated word,
     # which is initialized by a start mark, such as <s>.
-    trg_embedding = GeneratedInput(
-        size=target_dict_dim,
-        embedding_name='_target_language_embedding',
-        embedding_size=word_vector_dim)
+    trg_embedding = paddle.layer.GeneratedInput(
+            size=target_dict_dim,
+            embedding_name='_target_language_embedding',
+            embedding_size=word_vector_dim)
     group_inputs.append(trg_embedding)
-    beam_gen = beam_search(name=decoder_group_name,
-                           step=gru_decoder_with_attention,
-                           input=group_inputs,
-                           bos_id=0, # Beginnning token.
-                           eos_id=1, # End of sentence token.
-                           beam_size=beam_size,
-                           max_length=max_length)
+    beam_gen = paddle.layer.beam_search(
+            name=decoder_group_name,
+            step=gru_decoder_with_attention,
+            input=group_inputs,
+            bos_id=0, # Beginnning token.
+            eos_id=1, # End of sentence token.
+            beam_size=beam_size,
+            max_length=max_length)
 
-    seqtext_printer_evaluator(input=beam_gen,
-                              id_input=data_layer(name="sent_id", size=1),
-                              dict_file=trg_dict_path,
-                              result_file=gen_trans_file)
-    outputs(beam_gen)
+    return beam_gen
 
 
-Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to :ref:`semantic_role_labeling` for more details.
+Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to `book/06.understand_sentiment <https://github.com/PaddlePaddle/book/tree/develop/06.understand_sentiment>`_ for more details.
 
-The full configuration file is located at :code:`demo/seqToseq/seqToseq_net.py`.
+The full configuration file is located at `book/08.machine_translation/train.py <https://github.com/PaddlePaddle/book/blob/develop/08.machine_translation/train.py>`_ .
