@@ -15,7 +15,6 @@ ParameterOptimizer *ParameterOptimizer::Create(const std::string &config_proto,
   paddle::OptimizerConfig config;
   CHECK(config.ParseFromString(config_proto) == true)
       << "failed parse optimizer config";
-
   auto select_lr_policy = [=](const OptimizerConfig &config) -> LrPolicy * {
     if (config.lr_policy() == OptimizerConfig::Const)
       return new ConstLr(config.const_lr().learning_rate());
