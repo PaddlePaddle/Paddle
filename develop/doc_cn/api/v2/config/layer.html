@@ -1166,7 +1166,7 @@ name of the layer which this memory remembers.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; size of memory.</li>
 <li><strong>memory_name</strong> (<em>basestring</em>) &#8211; the name of the memory.
 It is ignored when name is provided.</li>
-<li><strong>is_seq</strong> (<em>bool</em>) &#8211; is sequence for boot</li>
+<li><strong>is_seq</strong> (<em>bool</em>) &#8211; DEPRECATED. is sequence for boot</li>
 <li><strong>boot</strong> (<em>paddle.v2.config_base.Layer|None</em>) &#8211; boot layer of memory.</li>
 <li><strong>boot_bias</strong> (<em>paddle.v2.attr.ParameterAttribute|None</em>) &#8211; boot layer&#8217;s bias</li>
 <li><strong>boot_bias_active_type</strong> (<em>paddle.v2.activation.Base</em>) &#8211; boot layer&#8217;s active type.</li>
@@ -1234,7 +1234,8 @@ through time. It&#8217;s a mechanism to access layer outside step function.</p>
 </li>
 <li><strong>reverse</strong> (<em>bool</em>) &#8211; If reverse is set true, the recurrent unit will process the
 input sequence in a reverse order.</li>
-<li><strong>targetInlink</strong> (<em>paddle.v2.config_base.Layer|SubsequenceInput</em>) &#8211; <p>the input layer which share info with layer group&#8217;s output</p>
+<li><strong>targetInlink</strong> (<em>paddle.v2.config_base.Layer|SubsequenceInput</em>) &#8211; <p>DEPRECATED.
+The input layer which share info with layer group&#8217;s output</p>
 <p>Param input specifies multiple input layers. For
 SubsequenceInput inputs, config should assign one input
 layer that share info(the number of sentences and the number
