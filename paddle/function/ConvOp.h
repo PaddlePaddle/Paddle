@@ -50,9 +50,9 @@ namespace paddle {
  *      image channels, C is the number of input image channels,
  *      H and W is height and width of filter.
  *
- *      If groups is greater than 1, the filter's data format should be GMCHW,
- *      where G is the groups, and G * M is the number of output image channels,
- *      G * C is the number of input image channels,
+ *      If `groups` is greater than 1, the filter's data format should be GMCHW,
+ *      where G is the `groups`, and G * M is the number of output image
+ *      channels, G * C is the number of input image channels,
  *      H and W is height and width of filter.
  */
 class ConvFunctionBase : public FunctionBase {
