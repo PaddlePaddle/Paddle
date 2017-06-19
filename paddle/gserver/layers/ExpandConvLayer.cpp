@@ -18,32 +18,94 @@ limitations under the License. */
 
 namespace paddle {
 
+/*
+ * The calculation of the exconvt(convolution transpose (deconv) operation)
+ * is a swap of forward and backward of the calculation of exconv.
+ * */
 REGISTER_LAYER(exconv, ExpandConvLayer);
+REGISTER_LAYER(exconvt, ExpandConvLayer);
 
 bool ExpandConvLayer::init(const LayerMap &layerMap,
                            const ParameterMap &parameterMap) {
   /* Initialize the basic convolutional parent class */
   ExpandConvBaseLayer::init(layerMap, parameterMap);
+
+  size_t numInputs = config_.inputs_size();
+  inputShape_.resize(numInputs);
+  filterShape_.resize(numInputs);
+  outputShape_.resize(numInputs);
+  for (int i = 0; i < config_.inputs_size(); i++) {
+    std::vector<size_t> paddings = {(size_t)paddingY_[i], (size_t)padding_[i]};
+    std::vector<size_t> strides = {(size_t)strideY_[i], (size_t)stride_[i]};
+    createFunction(forward_,
+                   !isDeconv_ ? "GemmConv" : "GemmConvGradInput",
+                   FuncConfig()
+                       .set("paddings", paddings)
+                       .set("strides", strides)
+                       .set("groups", (size_t)groups_[i]));
+
+    createFunction(backward_,
+                   !isDeconv_ ? "GemmConvGradInput" : "GemmConv",
+                   FuncConfig()
+                       .set("paddings", paddings)
+                       .set("strides", strides)
+                       .set("groups", (size_t)groups_[i]));
+
+    createFunction(backward_,
+                   "GemmConvGradFilter",
+                   FuncConfig()
+                       .set("paddings", paddings)
+                       .set("strides", strides)
+                       .set("groups", (size_t)groups_[i]));
+  }
   return true;
 }
+
+// i is the index of input layers
+#define BACKWARD_INPUT(i, inputs, outputs) \
+  backward_[2 * i]->calc(inputs, outputs)
+#define BACKWARD_FILTER(i, inputs, outputs) \
+  backward_[2 * i + 1]->calc(inputs, outputs)
 
 void ExpandConvLayer::forward(PassType passType) {
   Layer::forward(passType);
 
-  /* malloc memory for the output_ if necessary */
-  int batchSize = inputLayers_[0]->getOutputValue()->getHeight();
+  size_t batchSize = inputLayers_[0]->getOutputValue()->getHeight();
   resetOutput(batchSize, getOutputSize());
 
-  MatrixPtr image = nullptr;
-  MatrixPtr outV = getOutputValue();
+  // Calculate the shape of the input, output, and filter.
   for (size_t i = 0; i < inputLayers_.size(); ++i) {
-    LayerPtr prevLayer = getPrev(i);
-    image = prevLayer->getOutputValue();
-    for (size_t off = 0; off < image->getHeight(); off++) {
-      REGISTER_TIMER_INFO("expandFwdOnce", getName().c_str());
-      expandFwdOnce(image, outV, i, off);
-    }
+    inputShape_[i] = TensorShape({(size_t)batchSize,
+                                  (size_t)channels_[i],
+                                  (size_t)imgSizeH_[i],
+                                  (size_t)imgSizeW_[i]});
+    filterShape_[i] =
+        TensorShape({(size_t)groups_[i],
+                     !isDeconv_ ? (size_t)numFilters_ / groups_[i]
+                                : (size_t)channels_[i] / groups_[i],
+                     !isDeconv_ ? (size_t)channels_[i] / groups_[i]
+                                : (size_t)numFilters_ / groups_[i],
+                     (size_t)filterSizeY_[i],
+                     (size_t)filterSize_[i]});
+    outputShape_[i] = TensorShape({(size_t)batchSize,
+                                   (size_t)numFilters_,
+                                   (size_t)outputH_[i],
+                                   (size_t)outputW_[i]});
   }
+
+  // Calculate the output value.
+  for (size_t i = 0; i < inputLayers_.size(); ++i) {
+    BufferArgs inputs;
+    BufferArgs outputs;
+    inputs.addArg(*getInputValue(i), inputShape_[i]);
+    inputs.addArg(*weights_[i]->getW(), filterShape_[i]);
+    outputs.addArg(*getOutputValue(),
+                   outputShape_[i],
+                   !isDeconv_ && i == 0 ? ASSIGN_TO : ADD_TO);
+
+    forward_[i]->calc(inputs, outputs);
+  }
+
   /* add the bias-vector */
   if (biases_.get()) {
     if (sharedBiases_) {
@@ -67,14 +129,30 @@ void ExpandConvLayer::backward(const UpdateCallback &callback) {
     biases_->getParameterPtr()->incUpdate(callback);
   }
 
+  // Calculate the input grad and filter grad.
   for (size_t i = 0; i < inputLayers_.size(); ++i) {
-    /* First, calculate the input layers error */
-    if (getPrev(i)->getOutputGrad()) {
-      bpropActs(outGrad, getPrev(i)->getOutputGrad(), i);
+    if (getInputGrad(i)) {
+      BufferArgs inputs;
+      BufferArgs outputs;
+      inputs.addArg(*getOutputGrad(), outputShape_[i]);
+      inputs.addArg(*weights_[i]->getW(), filterShape_[i]);
+      outputs.addArg(*getInputGrad(i), inputShape_[i], ADD_TO);
+      BACKWARD_INPUT(i, inputs, outputs);
     }
+
     if (weights_[i]->getWGrad()) {
-      /* Then, calculate the W-gradient for the current layer */
-      bpropWeights(getPrev(i)->getOutputValue(), outGrad, i);
+      BufferArgs inputs;
+      BufferArgs outputs;
+      if (!isDeconv_) {
+        inputs.addArg(*getOutputGrad(), outputShape_[i]);
+        inputs.addArg(*getInputValue(i), inputShape_[i]);
+      } else {
+        inputs.addArg(*getInputValue(i), inputShape_[i]);
+        inputs.addArg(*getOutputGrad(), outputShape_[i]);
+      }
+      outputs.addArg(*weights_[i]->getWGrad(), filterShape_[i], ADD_TO);
+      BACKWARD_FILTER(i, inputs, outputs);
+
       /* Increasing the number of gradient */
       weights_[i]->getParameterPtr()->incUpdate(callback);
     }
