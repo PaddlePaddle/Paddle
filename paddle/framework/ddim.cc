@@ -1,6 +1,7 @@
-#include "paddle/majel/ddim.h"
+#include "paddle/framework/ddim.h"
 
-namespace majel {
+namespace paddle {
+namespace framework {
 
 ///@cond HIDDEN
 
@@ -66,7 +67,7 @@ DDim make_ddim(const std::vector<int>& dims) {
 ///@cond HIDDEN
 // XXX For some reason, putting this in an anonymous namespace causes errors
 class DynamicMutableIndexer : public boost::static_visitor<int&> {
-public:
+ public:
   DynamicMutableIndexer(int idx) : idx_(idx) {}
 
   template <int D>
@@ -74,12 +75,12 @@ public:
     return dim[idx_];
   }
 
-private:
+ private:
   int idx_;
 };
 
 class DynamicConstIndexer : public boost::static_visitor<int> {
-public:
+ public:
   DynamicConstIndexer(int idx) : idx_(idx) {}
 
   template <int D>
@@ -87,7 +88,7 @@ public:
     return dim[idx_];
   }
 
-private:
+ private:
   int idx_;
 };
 
@@ -213,10 +214,11 @@ struct DDimPrinter : boost::static_visitor<void> {
 
 ///\endcond
 
-std::ostream& operator<<(std::ostream& os, const majel::DDim& ddim) {
+std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
   DDimPrinter printer(os);
   boost::apply_visitor(printer, ddim);
   return os;
 }
 
-}  // namespace majel
+}  // namespace framework
+}  // namespace paddle

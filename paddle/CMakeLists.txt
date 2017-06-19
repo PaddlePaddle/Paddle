@@ -18,6 +18,7 @@ add_subdirectory(strings)
 find_package(Boost QUIET)
 
 add_subdirectory(platform)
+add_subdirectory(framework)
 
 # if(Boost_FOUND)
 #   include_directories(${Boost_INCLUDE_DIRS})
