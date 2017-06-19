@@ -166,9 +166,9 @@ def detection_map_evaluator(input,
                             ap_type="11point",
                             name=None):
     """
-    Detection mAP Evaluator. It will print mean Average Precision for detection.
+    Detection mAP Evaluator. It will print mean Average Precision (mAP) for detection.
 
-    The detection mAP Evaluator according to the detection_output's output count
+    The detection mAP Evaluator based on the output of detection_output layer counts
     the true positive and the false positive bbox and integral them to get the
     mAP.
 
@@ -186,7 +186,7 @@ def detection_map_evaluator(input,
     :type overlap_threshold: float
     :param background_id: The background class index.
     :type background_id: int
-    :param evaluate_difficult: Wether evaluate a difficult ground truth.
+    :param evaluate_difficult: Whether evaluate a difficult ground truth.
     :type evaluate_difficult: bool
     """
     if not isinstance(input, list):
