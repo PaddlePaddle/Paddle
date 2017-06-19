@@ -11,6 +11,9 @@ except ImportError:
     sys.exit(0)
 
 import paddle.v2.parameters as parameters
+import paddle.v2.data_type as data_type
+import paddle.v2.layer as layer
+from paddle.v2.attr import ParamAttr
 from paddle.proto.ParameterConfig_pb2 import ParameterConfig
 import random
 import cStringIO
@@ -54,6 +57,25 @@ class TestParameters(unittest.TestCase):
             p0 = params.get(name)
             p1 = params_dup.get(name)
             self.assertTrue(numpy.isclose(p0, p1).all())
+
+    def test_initializer(self):
+        def initializer(name):
+            assert name == "fc.w"
+            mat = numpy.ones((3, 2), dtype=numpy.float32)
+            mat[1, 1] = 2
+            return mat
+
+        x = layer.data(name="x", type=data_type.dense_vector(3))
+        y = layer.fc(x,
+                     size=2,
+                     bias_attr=False,
+                     param_attr=ParamAttr(
+                         name="fc.w", initializer=initializer))
+        params = parameters.create(y)
+        val = params["fc.w"]
+        assert val.shape == (3, 2)
+        expected = numpy.array([[1, 1], [1, 2], [1, 1]], numpy.float32)
+        assert numpy.logical_and.reduce(numpy.reshape(val == expected, 6))
 
 
 if __name__ == '__main__':

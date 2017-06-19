@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/rpc"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // TODO(helin): add TCP re-connect logic
@@ -19,6 +21,18 @@ type Conn struct {
 func New() *Conn {
 	c := &Conn{}
 	return c
+}
+
+// Close closes the connection.
+func (c *Conn) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.client == nil {
+		return nil
+	}
+
+	return c.client.Close()
 }
 
 // Connect connects the connection to a address.
@@ -50,11 +64,19 @@ func (c *Conn) Connect(addr string) error {
 			c.waitConn = nil
 		}
 	} else {
+		err := client.Close()
+		if err != nil {
+			log.Errorln(err)
+		}
+
 		return errors.New("client already set from a concurrent goroutine")
 	}
 
 	return nil
 }
+
+// TODO(helin): refactor Call to be able to perform given retry
+// policy.
 
 // Call make a RPC call.
 //
