@@ -22,7 +22,7 @@ void testCosSimForward(size_t height_x,
                        size_t height_y,
                        size_t width,
                        real scale) {
-  FunctionCompare test("CosSimForward", FuncConfig().set("scale", scale));
+  CpuGpuFuncCompare test("CosSimForward", FuncConfig().set("scale", scale));
   // prepare input arguments
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{height_x, width}));
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{height_y, width}));
@@ -36,7 +36,7 @@ void testCosSimBackward(size_t height_x,
                         size_t height_y,
                         size_t width,
                         real scale) {
-  FunctionCompare test("CosSimBackward", FuncConfig().set("scale", scale));
+  CpuGpuFuncCompare test("CosSimBackward", FuncConfig().set("scale", scale));
   // prepare input arguments
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{height_x, 1}));
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{height_x, 1}));
