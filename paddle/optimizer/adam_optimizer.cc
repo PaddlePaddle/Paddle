@@ -26,7 +26,6 @@ const char *AdamOptimizer::SerializeState(int *state_len) {
   AdamOptimizerState state;
   // TODO(zhihong) : add lr_policy serialization
   state.set_num_sample_passed(num_sample_passed_);
-
   TensorToProto(*parameter_, state.mutable_parameter());
   TensorToProto(*momentums_, state.mutable_momentums());
   TensorToProto(*velocitys_, state.mutable_velocitys());
@@ -42,6 +41,7 @@ void AdamOptimizer::DeserializeState(const std::string &str) {
   num_sample_passed_ = state.num_sample_passed();
 
   ProtoToTensor(state.parameter(), parameter_);
+  ProtoToTensor(state.momentums(), momentums_);
   ProtoToTensor(state.velocitys(), velocitys_);
 }
 }  // namespace optimizer

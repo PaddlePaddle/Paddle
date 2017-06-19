@@ -42,7 +42,7 @@ void SGDOptimizer::DeserializeState(const std::string &str) {
   state.ParseFromString(str);
   num_sample_passed_ = state.num_sample_passed();
   ProtoToTensor(state.parameter(), parameter_);
-  ProtoToTensor(state.parameter(), momentums_);
+  if (momentum_ != 0.0) ProtoToTensor(state.parameter(), momentums_);
 }
 
 }  // namespace optimizer

@@ -55,12 +55,12 @@ message AdamConfig {
 
 message ConstLrConfig {
   // learninRate Policy
-  required double learning_rate = 1 [default = 1.0];
+  optional double learning_rate = 1 [default = 1.0];
 }
 
 message LinearLrConfig {
   // learninRate Policy
-  required double learning_rate = 1 [default = 1.0];
+  optional double learning_rate = 1 [default = 1.0];
   optional double lr_decay_a = 2;
   optional double lr_decay_b = 3;
 }
@@ -74,7 +74,7 @@ enum DataType {
   PADDLE_ELEMENT_TYPE_FLOAT32 = 4;
   PADDLE_ELEMENT_TYPE_FLOAT64 = 5;
 }
-  required DataType data_type = 1;
+  optional DataType data_type = 1;
   repeated bytes content = 2;
 }
 
@@ -132,7 +132,7 @@ message OptimizerConfig {
    Adagrad = 3;
    Adam = 4;
   }
-  required Optimizer optimizer = 1;
+  optional Optimizer optimizer = 1;
   optional SGDConfig sgd = 3;
   optional AdadeltaConfig adadelta = 4;
   optional AdagradConfig adagrad = 5;
@@ -142,7 +142,7 @@ message OptimizerConfig {
    Const = 0;
    Linear = 1;
   }
-  required LrPolicy lr_policy = 11;
+  optional LrPolicy lr_policy = 11;
   optional ConstLrConfig const_lr = 12;
   optional LinearLrConfig linear_lr = 13;
 
