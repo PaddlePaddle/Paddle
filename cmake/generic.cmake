@@ -11,22 +11,79 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
+#
 # To simplify the build process of PaddlePaddle, we defined couple of
 # fundamental abstractions, e.g., how to build library, binary and
 # test in C++, CUDA and Go.
 #
 # -------------------------------------------
-#    C++	      CUDA C++	      Go
+#     C++        CUDA C++       Go
 # -------------------------------------------
-# cc_library	 nv_library	  go_library
-# cc_binary  	 nv_binary	  go_binary
-# cc_test        nv_test	  go_test
+# cc_library    nv_library   go_library
+# cc_binary     nv_binary    go_binary
+# cc_test       nv_test      go_test
 # -------------------------------------------
 #
 # cmake_parse_arguments can help us to achieve this goal.
 # https://cmake.org/cmake/help/v3.0/module/CMakeParseArguments.html
+#
+# cc_library|nv_library(<target_name> [STATIC SHARED] SRCS <file>... DEPS <libs>...)
+#
+# cc_library and nv_library can generate *.a, or *.so
+# if the corresponding keyword STATIC or SHARED is specified.
+#
+# cc_binary|nv_binary(<target_name> SRCS <file>... DEPS <libs>...)
+#
+# cc_binary and nv_binary can build souce code and link the dependent
+# libraries to generate a binary.
+#
+# cc_test|nv_test(<target_name> SRCS <file>... DEPS <libs>...)
+#
+# cc_test and nv_test can build test code, link gtest and other dependent
+# libraries to generate test suite.
+#
+# For example, in one folder, it contains
+#   ddim{.h, .cc, _test.cc, _test.cu}
+#   place{.h, cc, _test.cc}
+#
+# We can add build script as follows: 
+# 
+# cc_library(place STATIC SRCS place.cc)
+#
+# place.cc -> place.a
+# cc_library's STATIC OPTION will generate libplace.a.
+#
+# cc_test(place_test
+#    SRCS place_test.cc
+#    DEPS place glog gflags)
+#
+# place_test.cc, place, glog, gflags -> place_test
+# cc_test will combine place_test.cc, libplace.a with libglog.a.
+# and libgflags.a to generate place_test.
+#
+# cc_library(ddim STATIC SRCS ddim.cc)
+#
+# ddim.cc -> ddim.a
+# cc_library's STATIC OPTION will generate libddim.a.
+#
+# cc_test(ddim_test
+#    SRCS ddim_test.cc
+#    DEPS ddim)
+#
+# ddim_test.cc, ddim.a -> ddim_test
+# cc_test will build ddim_test.cc with libddim.a to generate ddim_test.
+#
+# nv_test(dim_test
+#    SRCS dim_test.cu
+#    DEPS ddim)
+#
+# dim_test.cu, ddim.a -> dim_test
+# nv_test will build dim_test.cu with libddim.a to generate dim_test.
+#
+# cc_library(framework DEPS place ddim)
+#
+# place.a, ddim.a -> framework.a
+# If no SRCS exists, merging libplace.a and libddim.a to generate libframework.a.
 #
 
 if(NOT APPLE)
@@ -34,33 +91,92 @@ if(NOT APPLE)
     link_libraries(${CMAKE_THREAD_LIBS_INIT})
 endif(NOT APPLE)
 
-# cc_library parses tensor.cc and figures out that target also depend on tensor.h.
-# cc_library(tensor
-#   SRCS
-#   tensor.cc
-#   DEPS
-#   variant)
+function(merge_static_libs TARGET_NAME)
+	set(libs ${ARGN})
+	list(REMOVE_DUPLICATES libs)
+
+	# First get the file names of the libraries to be merged
+	foreach(lib ${libs})
+		get_target_property(libtype ${lib} TYPE)
+		if(NOT libtype STREQUAL "STATIC_LIBRARY")
+			message(FATAL_ERROR "merge_static_libs can only process static libraries")
+		endif()
+		set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
+  endforeach()
+
+  if(APPLE) # Use OSX's libtool to merge archives
+    add_custom_target(${TARGET_NAME}_archive
+      COMMAND libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+      DEPENDS ${libs}
+      )
+    add_library(${TARGET_NAME} STATIC IMPORTED GLOBAL)
+    set_property(TARGET ${TARGET_NAME} PROPERTY
+      IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a")
+    add_dependencies(${TARGET_NAME} ${TARGET_NAME}_archive)
+	else() # general UNIX: use "ar" to extract objects and re-add to a common lib
+		foreach(lib ${libs})
+			set(objlistfile ${lib}.objlist) # list of objects in the input library
+			set(objdir ${lib}.objdir)
+
+			add_custom_command(OUTPUT ${objdir}
+					COMMAND ${CMAKE_COMMAND} -E make_directory ${objdir})
+
+			add_custom_command(OUTPUT ${objlistfile}
+					COMMAND ${CMAKE_AR} -x "$<TARGET_FILE:${lib}>"
+					COMMAND ${CMAKE_AR} -t "$<TARGET_FILE:${lib}>" > ../${objlistfile}
+					DEPENDS ${lib} ${objdir}
+					WORKING_DIRECTORY ${objdir})
+
+			# Empty dummy source file that goes into merged library
+			set(mergebase ${lib}.mergebase.c)
+			add_custom_command(OUTPUT ${mergebase}
+					COMMAND ${CMAKE_COMMAND} -E touch ${mergebase}
+					DEPENDS ${objlistfile})
+
+			list(APPEND mergebases "${mergebase}")
+		endforeach()
+
+		# We need a target for the output merged library
+		add_library(${TARGET_NAME} STATIC ${mergebases})
+		set(outlibfile "$<TARGET_FILE:${TARGET_NAME}>")
+
+		foreach(lib ${libs})
+			add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+					COMMAND ${CMAKE_AR} ru ${outlibfile} @"../${objlistfile}"
+					WORKING_DIRECTORY ${objdir})
+		endforeach()
+
+		add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+				COMMAND ${CMAKE_RANLIB} ${outlibfile})
+	endif()
+endfunction(merge_static_libs)
+
 function(cc_library TARGET_NAME)
-  set(options OPTIONAL)
+  set(options STATIC static SHARED shared)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  if (${cc_library_OPTIONAL} STREQUAL "SHARED")
-    add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
-  else()
-    add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
-  endif()
-  if (cc_library_DEPS)
-    add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
-  endif()
+  if (cc_library_SRCS)
+    if (cc_library_SHARED OR cc_library_shared) # build *.so
+      add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
+    else()
+      add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
+    endif()
+    if (cc_library_DEPS)
+      add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
+    endif()
+  else(cc_library_SRCS)
+    if (cc_library_DEPS)
+      merge_static_libs(${TARGET_NAME} ${cc_library_DEPS})
+    else()
+      message(FATAL "Please specify source file or library in cc_library.")
+    endif()
+  endif(cc_library_SRCS)
 endfunction(cc_library)
 
-# cc_binary parses tensor.cc and figures out that target also depend on tensor.h.
-# cc_binary(tensor
-#   SRCS
-#   tensor.cc)
 function(cc_binary TARGET_NAME)
-  set(options OPTIONAL)
+  set(options "")
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -71,13 +187,6 @@ function(cc_binary TARGET_NAME)
   endif()
 endfunction(cc_binary)
 
-# The dependency to target tensor implies that if any of
-# tensor{.h,.cc,_test.cc} is changed, tensor_test need to be re-built.
-# cc_test(tensor_test
-#   SRCS
-#   tensor_test.cc
-#   DEPS
-#   tensor)
 function(cc_test TARGET_NAME)
   if(WITH_TESTING)
     set(options "")
@@ -91,28 +200,28 @@ function(cc_test TARGET_NAME)
   endif()
 endfunction(cc_test)
 
-# Suppose that ops.cu includes global functions that take Tensor as
-# their parameters, so ops depend on tensor. This implies that if
-# any of tensor.{h.cc}, ops.{h,cu} is changed, ops need to be re-built.
-# nv_library(ops
-#   SRCS
-#   ops.cu
-#   DEPS
-#   tensor)
 function(nv_library TARGET_NAME)
   if (WITH_GPU)
-    set(options OPTIONAL)
+    set(options STATIC static SHARED shared)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    if (${nv_library_OPTIONAL} STREQUAL "SHARED")
-      cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
-    else()
-      cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
-    endif()
-    if (nv_library_DEPS)
-      add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
-    endif()
+    if(nv_library_SRCS)
+      if (nv_library_SHARED OR nv_library_shared) # build *.so
+        cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
+      else()
+          cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
+      endif()
+      if (nv_library_DEPS)
+        add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
+      endif()
+    else(nv_library_SRCS)
+      if (nv_library_DEPS)
+        merge_static_libs(${TARGET_NAME} ${nv_library_DEPS})
+      else()
+        message(FATAL "Please specify source file or library in nv_library.")
+      endif()
+    endif(nv_library_SRCS)
   endif()
 endfunction(nv_library)
 
@@ -130,13 +239,6 @@ function(nv_binary TARGET_NAME)
   endif()
 endfunction(nv_binary)
 
-# The dependency to target tensor implies that if any of
-# ops{.h,.cu,_test.cu} is changed, ops_test need to be re-built.
-# nv_test(ops_test
-#   SRCS
-#   ops_test.cu
-#   DEPS
-#   ops)
 function(nv_test TARGET_NAME)
   if (WITH_GPU AND WITH_TESTING)
     set(options "")
