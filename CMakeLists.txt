@@ -132,7 +132,7 @@ add_subdirectory(python)
 if(WITH_GO)
 add_subdirectory(go/master/c)
 add_subdirectory(go/pserver/cclient)
-endif(WITH_GO)
+endif()
 
 if(WITH_DOC)
     add_subdirectory(doc)
