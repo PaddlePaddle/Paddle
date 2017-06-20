@@ -170,29 +170,30 @@ void ScatterAgentLayer::forward(PassType passType) {
   CHECK_EQ(realLayer_->getDeviceId(), this->getDeviceId());
 
   int width = this->getSize();
-  if (realOutArg_.hasSeq()) {
-    forwardSequence(passType);
-  } else if (realOutArg_.value || realOutArg_.ids) {
-    output_.subArgFrom(
-        realOutArg_, /* offset */ idIndex_, idSize_, width, useGpu_);
-  } else {  // used in generation
-    if (realLayer_->getOutput().ids) {
-      IVector::resizeOrCreate(output_.ids, ids_->getSize(), useGpu_);
-      output_.ids->selectFrom(*realLayer_->getOutput().ids, *ids_);
-    }
-    if (realLayer_->getOutput().value) {
-      int height = ids_->getSize();
-      resetOutput(height, width);
-
-      const MatrixPtr& outV = getOutputValue();
-      const MatrixPtr& realV = realLayer_->getOutputValue();
-      outV->selectRows(*realV, *ids_);
+  if (selectionMode_) {
+    forwardWithSelection(passType);
+  } else {
+    if (realOutArg_.hasSeq()) {
+      output_.subArgFrom(realOutArg_,
+                         /* offset */ idIndex_,
+                         idSize_,
+                         width,
+                         useGpu_,
+                         /* trans */ false,
+                         /* seqFlag */ true,
+                         /* seqStart */ seqStartPosIndex_,
+                         /* seqSize */ numSequences_);
+    } else {
+      output_.subArgFrom(
+          realOutArg_, /* offset */ idIndex_, idSize_, width, useGpu_);
     }
   }
 }
 
 void ScatterAgentLayer::backward(const UpdateCallback& callback) {
   (void)callback;
+
+  CHECK(!selectionMode_);
 
   const MatrixPtr& outputGrad = realOutArg_.grad;
   const MatrixPtr& realGrad = realLayer_->getOutputGrad();
@@ -208,7 +209,7 @@ void ScatterAgentLayer::backward(const UpdateCallback& callback) {
 REGISTER_LAYER(gather_agent, GatherAgentLayer);
 REGISTER_LAYER(scatter_agent, ScatterAgentLayer);
 
-void ScatterAgentLayer::forwardSequence(PassType passType) {
+void ScatterAgentLayer::forwardWithSelection(PassType passType) {
   Layer::forward(passType);
   CHECK_EQ(realLayer_->getDeviceId(), this->getDeviceId());
 
@@ -219,17 +220,19 @@ void ScatterAgentLayer::forwardSequence(PassType passType) {
   AsyncGpuBlock asyncGpuBlock;
   REGISTER_TIMER_INFO("SequenceAgentLayerForward", getName().c_str());
 
-  if (realOutArg_.value || realOutArg_.ids) {
-    CHECK(realOutArg_.sequenceStartPositions);
-    output_.subArgFrom(realOutArg_,
-                       /* offset */ idIndex_,
-                       idSize_,
-                       width,
-                       useGpu_,
-                       /* trans */ false,
-                       /* seqFlag */ true,
-                       /* seqStart */ seqStartPosIndex_,
-                       /* seqSize */ numSequences_);
+  if (!input.hasSeq()) {
+    if (realLayer_->getOutput().ids) {
+      IVector::resizeOrCreate(output_.ids, ids_->getSize(), useGpu_);
+      output_.ids->selectFrom(*realLayer_->getOutput().ids, *ids_);
+    }
+    if (realLayer_->getOutput().value) {
+      int height = ids_->getSize();
+      resetOutput(height, width);
+
+      const MatrixPtr& outV = getOutputValue();
+      const MatrixPtr& realV = realLayer_->getOutputValue();
+      outV->selectRows(*realV, *ids_);
+    }
   } else {
     // Putting the generation logic here is really an ugly hack!
     // used in generation
