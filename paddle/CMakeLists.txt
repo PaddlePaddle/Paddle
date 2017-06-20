@@ -8,6 +8,7 @@ add_subdirectory(gserver)
 add_subdirectory(pserver)
 add_subdirectory(trainer)
 add_subdirectory(scripts)
+add_subdirectory(optimizer)
 add_subdirectory(strings)
 
 # Do not build go directory until go cmake is working smoothly.

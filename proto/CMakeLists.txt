@@ -5,6 +5,7 @@ set(proto_filenames
     ParameterConfig.proto
     ParameterService.proto
     TrainerConfig.proto
+    OptimizerConfig.proto
     ParameterServerConfig.proto)
 
 set(PROTO_GEN)
