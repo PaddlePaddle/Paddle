@@ -5,20 +5,14 @@
 #include <stdexcept>
 #include <vector>
 
-#include "paddle/majel/dim.h"
+#include "paddle/framework/dim.h"
 
-namespace majel {
+namespace paddle {
+namespace framework {
 
 namespace {
-typedef boost::variant<Dim<1>,
-                       Dim<2>,
-                       Dim<3>,
-                       Dim<4>,
-                       Dim<5>,
-                       Dim<6>,
-                       Dim<7>,
-                       Dim<8>,
-                       Dim<9>>
+typedef boost::variant<Dim<1>, Dim<2>, Dim<3>, Dim<4>, Dim<5>, Dim<6>, Dim<7>,
+                       Dim<8>, Dim<9>>
     DDimVar;
 }
 
@@ -95,14 +89,15 @@ ssize_t product(const DDim& ddim);
 
 int arity(const DDim& ddim);
 
-std::ostream& operator<<(std::ostream&, const majel::DDim&);
+std::ostream& operator<<(std::ostream&, const DDim&);
 
-}  // namespace majel
+}  // namespace framework
+}  // namespace paddle
 
 namespace boost {
 
 template <typename T>
-T get(const majel::DDim& in) {
+T get(const paddle::framework::DDim& in) {
   return boost::get<T>(in.var);
 }
 
