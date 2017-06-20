@@ -47,7 +47,7 @@ option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
-option(WITH_Go          "Compile PaddlePaddle with Go)"                 OFF)
+option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -108,7 +108,7 @@ include(configure)          # add paddle env configuration
 include_directories("${PROJ_ROOT}")
 include_directories("${PROJ_ROOT}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
-include_directories("${CMAKE_BINARY_DIR}/go/pserver/cclient")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/cclient")
 
 set(EXTERNAL_LIBS
     ${GFLAGS_LIBRARIES}
@@ -130,10 +130,10 @@ add_subdirectory(proto)
 add_subdirectory(paddle)
 add_subdirectory(python)
 
-if(WITH_Go)
-    #add_subdirectory(go/pserver/cclient)
-    add_subdirectory(go/master/c)
-endif(WITH_Go)
+if(WITH_GOLANG)
+    #TODO (add go/master/c back when fixed)
+    add_subdirectory(go/pserver/cclient)
+endif(WITH_GOLANG)
 
 if(WITH_DOC)
     add_subdirectory(doc)
