@@ -57,7 +57,6 @@ __all__ = [
     'plot',
     'evaluator',
     'image',
-    'master',
 ]
 
 
