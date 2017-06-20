@@ -26,7 +26,6 @@ import evaluator
 from . import dataset
 from . import reader
 from . import plot
-from . import master
 import attr
 import op
 import pooling
