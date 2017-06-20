@@ -90,14 +90,19 @@ public:
     ConvFunctionBase::init(config);
   }
 
-  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(numInputs_, inputs.size());
-    CHECK_EQ(numOutputs_, outputs.size());
+  virtual void check(const BufferArgs& inputs,
+                     const BufferArgs& outputs) override {
     const TensorShape& input = inputs[0].shape();
     const TensorShape& filter = inputs[1].shape();
     const TensorShape& output = outputs[0].shape();
-    check(input, filter, output);
+    checkShape(input, filter, output);
+  }
+
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    CHECK_EQ(numInputs_, inputs.size());
+    CHECK_EQ(numOutputs_, outputs.size());
     CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
+    check(inputs, outputs);
 
     size_t batchSize = inputs[0].shape()[0];
     size_t inputChannels = inputs[0].shape()[1];
