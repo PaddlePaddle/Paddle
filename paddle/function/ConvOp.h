@@ -68,14 +68,12 @@ public:
     numOutputs_ = 1;
   }
 
-  virtual void calc(const BufferArgs& inputs, const BufferArgs& outputs) {}
-
   // input can be INPUT and INPUT_GRAD
   // filter can be FILTER and FILTER_GRAD
   // output can be OUTPUT and OUTPUT_GRAD
-  void check(const TensorShape& input,
-             const TensorShape& filter,
-             const TensorShape& output) {
+  void checkShape(const TensorShape& input,
+                  const TensorShape& filter,
+                  const TensorShape& output) {
     // inputs and outputs arguments should be 4-dimensional.
     CHECK_EQ(input.ndims(), (size_t)4);
     CHECK_EQ(output.ndims(), (size_t)4);
