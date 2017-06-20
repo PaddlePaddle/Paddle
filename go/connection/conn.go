@@ -2,9 +2,10 @@ package connection
 
 import (
 	"errors"
-	"log"
 	"net/rpc"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // TODO(helin): add TCP re-connect logic
@@ -65,7 +66,7 @@ func (c *Conn) Connect(addr string) error {
 	} else {
 		err := client.Close()
 		if err != nil {
-			log.Println(err)
+			log.Errorln(err)
 		}
 
 		return errors.New("client already set from a concurrent goroutine")

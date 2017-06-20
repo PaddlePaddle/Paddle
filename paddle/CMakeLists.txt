@@ -8,6 +8,7 @@ add_subdirectory(gserver)
 add_subdirectory(pserver)
 add_subdirectory(trainer)
 add_subdirectory(scripts)
+add_subdirectory(optimizer)
 add_subdirectory(strings)
 add_subdirectory(memory)
 

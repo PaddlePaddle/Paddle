@@ -155,6 +155,15 @@ TEST(RecurrentGradientMachine, rnn_multi_unequalength_input) {
   }
 }
 
+TEST(RecurrentGradientMachine, rnn_mixed_input) {
+  for (bool useGpu : {false, true}) {
+    test("gserver/tests/sequence_rnn_mixed_inputs.py",
+         "gserver/tests/sequence_rnn_matched_inputs.py",
+         1e-6,
+         useGpu);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
 

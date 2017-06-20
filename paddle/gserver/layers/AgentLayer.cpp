@@ -36,14 +36,23 @@ void AgentLayer::forward(PassType passType) {
   Layer::forward(passType);
 
   Argument& realOutput = realLayer_->getOutput();
-  int realHeight = realOutput.getBatchSize();
-  CHECK_LE(numSamples_, realHeight);
+  int realNumSequences = realOutput.getNumSequences();
+  CHECK_LE(numSamples_, realNumSequences);
 
   // get Arguments from real layers
-  if (numSamples_ > 0 && numSamples_ < realHeight) {
-    if (realOutput.ids) {
-      output_.ids =
-          IVector::create(realOutput.ids->getData(), numSamples_, useGpu_);
+  if (numSamples_ > 0 && numSamples_ < realNumSequences) {
+    if (realOutput.hasSeq()) {
+      int numRows =
+          realOutput.sequenceStartPositions->getData(false)[numSamples_];
+      output_.subArgFrom(realOutput,
+                         /* offset */ 0,
+                         numRows,
+                         getSize(),
+                         useGpu_,
+                         /* trans */ false,
+                         /* seqFlag */ true,
+                         /* seqStart */ 0,
+                         /* seqSize */ numSamples_ + 1);
     } else {
       output_.subArgFrom(
           realOutput, /* offset */ 0, numSamples_, getSize(), useGpu_);
@@ -52,34 +61,6 @@ void AgentLayer::forward(PassType passType) {
     output_ = realOutput;
   }
 }
-
-void SequenceAgentLayer::forward(PassType passType) {
-  Layer::forward(passType);
-
-  Argument& realOutput = realLayer_->getOutput();
-  int realNumSequences = realOutput.getNumSequences();
-  CHECK_LE(numSamples_, realNumSequences);
-
-  // get Arguments from real layers
-  if (numSamples_ > 0 && numSamples_ < realNumSequences) {
-    int numRows =
-        realOutput.sequenceStartPositions->getData(false)[numSamples_];
-    CHECK(!realOutput.ids) << "Not supported";
-    output_.subArgFrom(realOutput,
-                       /* offset */ 0,
-                       numRows,
-                       getSize(),
-                       useGpu_,
-                       /* trans */ false,
-                       /* seqFlag */ true,
-                       /* seqStart */ 0,
-                       /* seqSize */ numSamples_ + 1);
-  } else {
-    output_ = realOutput;
-  }
-}
-
-REGISTER_LAYER(sequence_agent, SequenceAgentLayer);
 
 bool GatherAgentLayer::init(const LayerMap& layerMap,
                             const ParameterMap& parameterMap) {
@@ -91,18 +72,26 @@ bool GatherAgentLayer::init(const LayerMap& layerMap,
   return true;
 }
 
-void GatherAgentLayer::copyIdAndSequenceInfo(const Argument& input,
-                                             const IVectorPtr& ids,
-                                             const std::vector<int>& idIndex) {
-  output_.sequenceStartPositions = input.sequenceStartPositions;
-  output_.subSequenceStartPositions = input.subSequenceStartPositions;
-  realLayers_.clear();
+void GatherAgentLayer::copyIdAndSequenceInfo(
+    ICpuGpuVectorPtr sequenceStartPositions,
+    ICpuGpuVectorPtr subSequenceStartPositions,
+    const IVectorPtr& ids,
+    const std::vector<int>& idIndex) {
+  output_.sequenceStartPositions = sequenceStartPositions;
+  output_.subSequenceStartPositions = subSequenceStartPositions;
   allIds_ = ids;
   idIndex_ = idIndex;
 }
 
 void GatherAgentLayer::forward(PassType passType) {
   Layer::forward(passType);
+  forwardIds(passType);
+  forwardValue(passType);
+}
+
+void GatherAgentLayer::forwardValue(PassType passType) {
+  MatrixPtr valueReal = realLayers_[0]->getOutputValue();
+  if (!valueReal) return;
 
   int height = allIds_->getSize();
   int width = this->getSize();
@@ -147,7 +136,9 @@ void ScatterAgentLayer::forward(PassType passType) {
   CHECK_EQ(realLayer_->getDeviceId(), this->getDeviceId());
 
   int width = this->getSize();
-  if (realOutArg_.value || realOutArg_.ids) {
+  if (realOutArg_.hasSeq()) {
+    forwardSequence(passType);
+  } else if (realOutArg_.value || realOutArg_.ids) {
     output_.subArgFrom(
         realOutArg_, /* offset */ idIndex_, idSize_, width, useGpu_);
   } else {  // used in generation
@@ -174,7 +165,7 @@ void ScatterAgentLayer::backward(const UpdateCallback& callback) {
   if (realGrad) {
     // for agent in inFrameLines and memoryFrameLines,
     // only first scatterAgentLayer should do addToRows in backward
-    if (idIndex_ == 0) {
+    if (handleBackward_) {
       outputGrad->addToRows(*realGrad, *ids_);
     }
   }
@@ -183,12 +174,14 @@ void ScatterAgentLayer::backward(const UpdateCallback& callback) {
 REGISTER_LAYER(gather_agent, GatherAgentLayer);
 REGISTER_LAYER(scatter_agent, ScatterAgentLayer);
 
-void SequenceGatherAgentLayer::forward(PassType passType) {
-  Layer::forward(passType);
+void GatherAgentLayer::forwardIds(PassType passType) {
   int height = 0;
-  int* starts = output_.subSequenceStartPositions->getMutableData(false);
   IVectorPtr idReal = realLayers_[0]->getOutputLabel();
-  if (idReal) {
+
+  if (!idReal) return;
+
+  if (output_.subSequenceStartPositions) {
+    int* starts = output_.subSequenceStartPositions->getMutableData(false);
     // Gather generator.idsVec
     // if is beam search generation result. Get first result.
     if (idReal->getData()[idReal->getSize() - 1] == -1) {
@@ -212,13 +205,11 @@ void SequenceGatherAgentLayer::forward(PassType passType) {
           ->copyFrom(*realLayers_[i]->getOutputLabel());
     }
   } else {
-    // Gather output.value, same as GatherAgentLayer
-    CHECK(output_.subSequenceStartPositions);
-    GatherAgentLayer::forward(passType);
+    LOG(FATAL) << "Not implemented";
   }
 }
 
-void SequenceScatterAgentLayer::forward(PassType passType) {
+void ScatterAgentLayer::forwardSequence(PassType passType) {
   Layer::forward(passType);
   CHECK_EQ(realLayer_->getDeviceId(), this->getDeviceId());
 
@@ -241,6 +232,7 @@ void SequenceScatterAgentLayer::forward(PassType passType) {
                        /* seqStart */ seqStartPosIndex_,
                        /* seqSize */ numSequences_);
   } else {
+    // Putting the generation logic here is really an ugly hack!
     // used in generation
     int height = 0;
     size_t numSequences = ids_->getSize();
@@ -283,8 +275,5 @@ void SequenceScatterAgentLayer::forward(PassType passType) {
                                 *inputStartPos_->getVector(useGpu_));
   }
 }
-
-REGISTER_LAYER(sequence_gather_agent, SequenceGatherAgentLayer);
-REGISTER_LAYER(sequence_scatter_agent, SequenceScatterAgentLayer);
 
 }  // namespace paddle

@@ -328,53 +328,33 @@ def RecurrentLayerGroupWithoutOutLinksBegin(name,
     SubModelBegin(name)
     g_current_submodel.is_recurrent_layer_group = True
     g_current_submodel.reversed = seq_reversed
-    g_current_submodel.target_inlinkid = -1
     in_links_count = 0
     for linkid, link in enumerate(in_links):
         if isinstance(link, basestring):
             name = link
-            has_subseq = False
         else:
             name = link.link_name
-            has_subseq = link.has_subseq
-        # assign target_inlinkid according to target_inlinkname
-        if target_inlinkname == name:
-            g_current_submodel.target_inlinkid = linkid
 
-        if in_links_count == 0:
-            in_links_has_subseq = has_subseq
-        else:
-            config_assert(
-                in_links_has_subseq == has_subseq,
-                "The sequence type of in_links should be the same in RecurrentLayerGroup"
-            )
         in_links_count += 1
         layer_name = MakeLayerNameInParentSubmodel(name)
         layer = g_layer_map[layer_name]
-        if has_subseq:
-            SequenceScatterAgentLayer(name=name, size=layer.size)
-        else:
-            ScatterAgentLayer(name=name, size=layer.size)
+        ScatterAgentLayer(name=name, size=layer.size)
 
         pair = g_current_submodel.in_links.add()
         pair.layer_name = layer_name
         pair.link_name = MakeLayerNameInSubmodel(name)
-        pair.has_subseq = has_subseq
 
 
 @config_func
 def RecurrentLayerGroupSetOutLink(link):
     if isinstance(link, basestring):
         name = link
-        has_subseq = False
     else:
         name = link.link_name
-        has_subseq = link.has_subseq
     layer_name = MakeLayerNameInParentSubmodel(name)
     pair = g_current_submodel.out_links.add()
     pair.layer_name = MakeLayerNameInSubmodel(name)
     pair.link_name = layer_name
-    pair.has_subseq = has_subseq
 
 
 def RecurrentLayerGroupSetGenerator(generator=None):
@@ -389,8 +369,7 @@ def RecurrentLayerGroupBegin(name,
                              generator=None,
                              target_inlinkname="",
                              seq_reversed=False):
-    RecurrentLayerGroupWithoutOutLinksBegin(name, in_links, seq_reversed,
-                                            target_inlinkname)
+    RecurrentLayerGroupWithoutOutLinksBegin(name, in_links, seq_reversed)
     for link in out_links:
         RecurrentLayerGroupSetOutLink(link)
 
@@ -425,8 +404,6 @@ def RecurrentLayerGroupEnd(name):
         agent_name = GetLayerBaseName(pair.link_name)
         if prev_submodel.HasField("generator"):
             DataLayer(name=agent_name, size=layer.size)
-        elif pair.has_subseq:
-            SequenceGatherAgentLayer(name=agent_name, size=layer.size)
         else:
             GatherAgentLayer(name=agent_name, size=layer.size)
 
@@ -1949,7 +1926,6 @@ class BatchNormLayer(LayerBase):
     def __init__(self,
                  name,
                  inputs,
-                 active_type="linear",
                  bias=True,
                  use_global_stats=True,
                  moving_average_fraction=0.9,
@@ -1987,12 +1963,7 @@ class BatchNormLayer(LayerBase):
             cudnn_version >= 4007
         self.layer_type = "cudnn_batch_norm" if use_cudnn else "batch_norm"
         super(BatchNormLayer, self).__init__(
-            name,
-            self.layer_type,
-            0,
-            active_type=active_type,
-            inputs=inputs,
-            **xargs)
+            name, self.layer_type, 0, inputs=inputs, **xargs)
 
         if use_global_stats is not None:
             self.config.use_global_stats = use_global_stats
@@ -2253,13 +2224,6 @@ class AgentLayer(LayerBase):
             name, 'agent', size, inputs=[], device=device)
 
 
-@config_layer('sequence_agent')
-class SequenceAgentLayer(LayerBase):
-    def __init__(self, name, size, device=None):
-        super(SequenceAgentLayer, self).__init__(
-            name, 'sequence_agent', size, inputs=[], device=device)
-
-
 @config_layer('gather_agent')
 class GatherAgentLayer(LayerBase):
     def __init__(self, name, size, device=None):
@@ -2272,20 +2236,6 @@ class ScatterAgentLayer(LayerBase):
     def __init__(self, name, size, device=None):
         super(ScatterAgentLayer, self).__init__(
             name, 'scatter_agent', size, inputs=[], device=device)
-
-
-@config_layer('sequence_gather_agent')
-class SequenceGatherAgentLayer(LayerBase):
-    def __init__(self, name, size, device=None):
-        super(SequenceGatherAgentLayer, self).__init__(
-            name, 'sequence_gather_agent', size, inputs=[], device=device)
-
-
-@config_layer('sequence_scatter_agent')
-class SequenceScatterAgentLayer(LayerBase):
-    def __init__(self, name, size, device=None):
-        super(SequenceScatterAgentLayer, self).__init__(
-            name, 'sequence_scatter_agent', size, inputs=[], device=device)
 
 
 @config_layer('multiplex')
@@ -2303,12 +2253,12 @@ class MultiplexLayer(LayerBase):
 
 
 @config_func
-def Link(
-        name,
-        has_subseq=False, ):
+def Link(name, has_subseq=False):
+    """
+    Still keeping has_subseq for backward compatibility
+    """
     link_config = LinkConfig()
     link_config.link_name = name
-    link_config.has_subseq = has_subseq
     return link_config
 
 
@@ -2341,20 +2291,13 @@ def Memory(name,
         config_assert(name is not None, "name needs cannot be None")
         memory_name = name + "+delay1"
     agent_name = memory_name
-    if is_sequence:
-        config_assert(
-            boot_layer is not None,
-            "there must be boot_layer in network when is_sequence = True")
-        agent_layer = SequenceAgentLayer(agent_name, size)
-    else:
-        agent_layer = AgentLayer(agent_name, size)
+    agent_layer = AgentLayer(agent_name, size)
     config_assert(g_current_submodel.is_recurrent_layer_group,
                   'Memory should be used in recurrent layer group only')
     memory = g_current_submodel.memories.add()
     if name is not None:
         memory.layer_name = MakeLayerNameInSubmodel(name)
     memory.link_name = MakeLayerNameInSubmodel(agent_name)
-    memory.is_sequence = is_sequence
     options = sum((boot_layer is not None, bool(boot_bias),
                    boot_with_const_id is not None))
     config_assert(
@@ -2428,15 +2371,23 @@ class ExpandLayer(LayerBase):
 
 @config_layer('featmap_expand')
 class FeatMapExpandLayer(LayerBase):
-    def __init__(self, name, inputs, device=None, num_filters=None, bias=False):
+    def __init__(self,
+                 name,
+                 inputs,
+                 num_filters=None,
+                 as_row_vector=True,
+                 bias=False,
+                 **xargs):
         super(FeatMapExpandLayer, self).__init__(
-            name, 'featmap_expand', 0, inputs=inputs, device=device)
+            name, 'featmap_expand', 0, inputs=inputs, **xargs)
         config_assert(
             len(self.inputs) == 1, 'ExpandLayer takes 1 and only 1 inputs')
         if num_filters is not None:
             self.config.num_filters = num_filters
         else:
             logger.fatal("FeatMapExpandLayer must specify num_filters.")
+        if not as_row_vector:
+            self.config.user_arg = "as_col_vec"
         self.set_layer_size(self.get_input_layer(0).size * num_filters)
 
 
@@ -2446,14 +2397,12 @@ class MaxLayer(LayerBase):
                  name,
                  inputs,
                  trans_type='non-seq',
-                 active_type='linear',
                  bias=False,
                  output_max_index=None,
                  **xargs):
         super(MaxLayer, self).__init__(name, 'max', 0, inputs=inputs, **xargs)
         config_assert(len(self.inputs) == 1, 'MaxLayer must have 1 input')
         self.config.trans_type = trans_type
-        self.config.active_type = active_type
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             self.set_layer_size(input_layer.size)
@@ -2495,18 +2444,12 @@ class SequenceLastInstanceLayer(LayerBase):
     def __init__(self,
                  name,
                  inputs,
-                 active_type='linear',
                  trans_type='non-seq',
                  bias=False,
                  stride=-1,
                  **xargs):
         super(SequenceLastInstanceLayer, self).__init__(
-            name,
-            'seqlastins',
-            0,
-            inputs=inputs,
-            active_type=active_type,
-            **xargs)
+            name, 'seqlastins', 0, inputs=inputs, **xargs)
         config_assert(
             len(inputs) == 1, 'SequenceLastInstanceLayer must have 1 input')
         if trans_type == 'seq':
@@ -2522,7 +2465,6 @@ class SequenceFirstInstanceLayer(SequenceLastInstanceLayer):
     def __init__(self,
                  name,
                  inputs,
-                 active_type='linear',
                  trans_type='non-seq',
                  bias=False,
                  stride=-1,
@@ -2530,7 +2472,6 @@ class SequenceFirstInstanceLayer(SequenceLastInstanceLayer):
         super(SequenceFirstInstanceLayer, self).__init__(
             name,
             inputs=inputs,
-            active_type=active_type,
             trans_type=trans_type,
             bias=bias,
             stride=stride,
@@ -2540,14 +2481,9 @@ class SequenceFirstInstanceLayer(SequenceLastInstanceLayer):
 
 @config_layer('seqconcat')
 class SequenceConcatLayer(LayerBase):
-    def __init__(self, name, inputs, active_type='linear', bias=False, **xargs):
+    def __init__(self, name, inputs, bias=False, **xargs):
         super(SequenceConcatLayer, self).__init__(
-            name,
-            'seqconcat',
-            0,
-            inputs=inputs,
-            active_type=active_type,
-            **xargs)
+            name, 'seqconcat', 0, inputs=inputs, **xargs)
         config_assert(
             len(inputs) == 2, 'SequenceConcatLayer must have 2 inputs')
         for input_index in xrange(len(self.inputs)):
@@ -2558,20 +2494,9 @@ class SequenceConcatLayer(LayerBase):
 
 @config_layer('seqreshape')
 class SequenceReshapeLayer(LayerBase):
-    def __init__(self,
-                 name,
-                 size,
-                 inputs,
-                 active_type='linear',
-                 bias=False,
-                 **xargs):
+    def __init__(self, name, size, inputs, bias=False, **xargs):
         super(SequenceReshapeLayer, self).__init__(
-            name,
-            'seqreshape',
-            size,
-            inputs=inputs,
-            active_type=active_type,
-            **xargs)
+            name, 'seqreshape', size, inputs=inputs, **xargs)
         config_assert(
             len(inputs) == 1, 'SequenceReshapeLayer must have 1 inputs')
         self.set_layer_size(size)
@@ -2580,9 +2505,9 @@ class SequenceReshapeLayer(LayerBase):
 
 @config_layer('subseq')
 class SubSequenceLayer(LayerBase):
-    def __init__(self, name, inputs, active_type='linear', bias=False, **xargs):
+    def __init__(self, name, inputs, bias=False, **xargs):
         super(SubSequenceLayer, self).__init__(
-            name, 'subseq', 0, inputs=inputs, active_type=active_type, **xargs)
+            name, 'subseq', 0, inputs=inputs, **xargs)
         config_assert(len(inputs) == 3, 'SubSequenceLayer must have 3 inputs')
         input_layer0 = self.get_input_layer(0)
         size = input_layer0.size
@@ -2738,11 +2663,10 @@ class AverageLayer(LayerBase):
                  inputs,
                  average_strategy='average',
                  trans_type='non-seq',
-                 active_type='linear',
                  bias=False,
                  **xargs):
         super(AverageLayer, self).__init__(
-            name, 'average', 0, inputs=inputs, active_type=active_type, **xargs)
+            name, 'average', 0, inputs=inputs, **xargs)
         self.config.average_strategy = average_strategy
         self.config.trans_type = trans_type
         config_assert(len(inputs) == 1, 'AverageLayer must have 1 input')

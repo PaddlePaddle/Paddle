@@ -1,7 +1,6 @@
 package main
 
 /*
-#include <stdlib.h>
 #include <string.h>
 typedef enum {
   PADDLE_ELEMENT_TYPE_INT32   = 0,
@@ -26,12 +25,12 @@ typedef int paddle_pserver_client;
 import "C"
 
 import (
-	"log"
 	"strings"
 	"sync"
 	"unsafe"
 
 	"github.com/PaddlePaddle/Paddle/go/pserver"
+	log "github.com/sirupsen/logrus"
 )
 
 var nullPtr = unsafe.Pointer(uintptr(0))
@@ -134,10 +133,10 @@ func paddle_init_param(client C.paddle_pserver_client, param C.paddle_parameter,
 
 	if err != nil {
 		if err.Error() == pserver.AlreadyInitialized {
-			log.Printf("parameter %s already initialized, treat paddle_init_param as sucessful.\n", name)
+			log.Warningf("parameter %s already initialized, treat paddle_init_param as sucessful.\n", name)
 			return C.PSERVER_OK
 		}
-		log.Println(err)
+		log.Errorln(err)
 		return C.PSERVER_ERROR
 	}
 
@@ -150,11 +149,11 @@ func paddle_finish_init_params(client C.paddle_pserver_client) C.int {
 	err := c.FinishInitParams()
 	if err != nil {
 		if err.Error() == pserver.AlreadyInitialized {
-			log.Println("parameters already initialized, treat paddle_finish_init_params as sucessful.")
+			log.Warningln("parameters already initialized, treat paddle_finish_init_params as sucessful.")
 			return C.PSERVER_OK
 		}
 
-		log.Println(err)
+		log.Errorln(err)
 		return C.PSERVER_ERROR
 	}
 
@@ -175,7 +174,7 @@ func paddle_send_grads(client C.paddle_pserver_client, grads **C.paddle_gradient
 	c := get(client)
 	err := c.SendGrads(gs)
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		return C.PSERVER_ERROR
 	}
 
@@ -192,7 +191,7 @@ func paddle_get_params(client C.paddle_pserver_client, dst **C.paddle_parameter,
 	c := get(client)
 	ps, err := c.GetParams(ns)
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		return C.PSERVER_ERROR
 	}
 
@@ -201,7 +200,7 @@ func paddle_get_params(client C.paddle_pserver_client, dst **C.paddle_parameter,
 		for i, p := range ps {
 			pn[i] = p.Name
 		}
-		log.Printf("pserver returned wrong number of parameters. Requested: %s, returned: %s.\n", strings.Join(pn, ", "), strings.Join(ns, ", "))
+		log.Errorf("pserver returned wrong number of parameters. Requested: %s, returned: %s.\n", strings.Join(pn, ", "), strings.Join(ns, ", "))
 		return C.PSERVER_ERROR
 	}
 
@@ -211,7 +210,7 @@ func paddle_get_params(client C.paddle_pserver_client, dst **C.paddle_parameter,
 			for i, p := range ps {
 				pn[i] = p.Name
 			}
-			log.Printf("pserver returned wrong parameters, or not in requested order. Requested: %s, returned: %s.\n", strings.Join(pn, ", "), strings.Join(ns, ", "))
+			log.Errorf("pserver returned wrong parameters, or not in requested order. Requested: %s, returned: %s.\n", strings.Join(pn, ", "), strings.Join(ns, ", "))
 			return C.PSERVER_ERROR
 		}
 	}
@@ -221,14 +220,14 @@ func paddle_get_params(client C.paddle_pserver_client, dst **C.paddle_parameter,
 		param := *(**C.paddle_parameter)(unsafe.Pointer((uintptr(unsafe.Pointer(dst)) + uintptr(i)*unsafe.Sizeof(*dst))))
 
 		if unsafe.Pointer(param) == nullPtr {
-			log.Println("must pre-allocate parameter.")
+			log.Errorln("must pre-allocate parameter.")
 			return C.PSERVER_ERROR
-		} else {
-			if unsafe.Pointer(param.content) != nullPtr {
-				if int(param.content_len) != len(p.Content) {
-					log.Printf("the pre-allocated content len does not match parameter content len. Pre-allocated len: %d, returned len: %d", param.content_len, len(p.Content))
-					return C.PSERVER_ERROR
-				}
+		}
+
+		if unsafe.Pointer(param.content) != nullPtr {
+			if int(param.content_len) != len(p.Content) {
+				log.Errorf("the pre-allocated content len does not match parameter content len. Pre-allocated len: %d, returned len: %d", param.content_len, len(p.Content))
+				return C.PSERVER_ERROR
 			}
 		}
 
@@ -246,7 +245,7 @@ func paddle_save_model(client C.paddle_pserver_client, path *C.char) C.int {
 	c := get(client)
 	err := c.Save(p)
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		return C.PSERVER_ERROR
 	}
 
