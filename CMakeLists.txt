@@ -47,6 +47,7 @@ option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
+option(WITH_Go          "Compile PaddlePaddle with Go"                  OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -126,9 +127,12 @@ endif(WITH_GPU)
 
 add_subdirectory(proto)
 add_subdirectory(paddle)
-add_subdirectory(go/master/c)
 add_subdirectory(python)
+
+if(WITH_GO)
+add_subdirectory(go/master/c)
 add_subdirectory(go/pserver/cclient)
+endif(WITH_GO)
 
 if(WITH_DOC)
     add_subdirectory(doc)
