@@ -92,16 +92,16 @@ if(NOT APPLE)
 endif(NOT APPLE)
 
 function(merge_static_libs TARGET_NAME)
-	set(libs ${ARGN})
-	list(REMOVE_DUPLICATES libs)
+  set(libs ${ARGN})
+  list(REMOVE_DUPLICATES libs)
 
-	# First get the file names of the libraries to be merged
-	foreach(lib ${libs})
-		get_target_property(libtype ${lib} TYPE)
-		if(NOT libtype STREQUAL "STATIC_LIBRARY")
-			message(FATAL_ERROR "merge_static_libs can only process static libraries")
-		endif()
-		set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
+  # First get the file names of the libraries to be merged
+  foreach(lib ${libs})
+    get_target_property(libtype ${lib} TYPE)
+    if(NOT libtype STREQUAL "STATIC_LIBRARY")
+      message(FATAL_ERROR "merge_static_libs can only process static libraries")
+    endif()
+    set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
   endforeach()
 
   if(APPLE) # Use OSX's libtool to merge archives
