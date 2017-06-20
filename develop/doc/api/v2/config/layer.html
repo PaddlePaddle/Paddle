@@ -2010,13 +2010,14 @@ Inputs can be list of paddle.v2.config_base.Layer or list of projection.</p>
 <dl class="docutils">
 <dt>Inputs:</dt>
 <dd><ul class="first last simple">
-<li>a = [a1, a2, ..., an]</li>
+<li>a = [a1, a2, ..., am]</li>
 <li>b = [b1, b2, ..., bn]</li>
-<li>Note that the length of a and b should be the same.</li>
 </ul>
 </dd>
 </dl>
-<p>Output: [a1, b1, a2, b2, ..., an, bn]</p>
+<p>Output: [a1, ..., am, b1, ..., bn]</p>
+<p>Note that the above computation is for one sample. Multiple samples are
+processed in one batch.</p>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">concat</span> <span class="o">=</span> <span class="n">seq_concat</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">layer2</span><span class="p">)</span>
 </pre></div>
@@ -2171,10 +2172,17 @@ bias.</li>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">repeat</code></dt>
-<dd><p>A layer for repeating the input for num_repeats times. This is equivalent
-to apply concat() with num_repeats same input.</p>
-<div class="math">
-\[y  = [x, x, \cdots, x]\]</div>
+<dd><p>A layer for repeating the input for num_repeats times.</p>
+<p>If as_row_vector:
+.. math:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">y</span>  <span class="o">=</span> <span class="p">[</span><span class="n">x_1</span><span class="p">,</span>\<span class="n">cdots</span><span class="p">,</span> <span class="n">x_n</span><span class="p">,</span> \<span class="n">cdots</span><span class="p">,</span> <span class="n">x_1</span><span class="p">,</span> \<span class="n">cdots</span><span class="p">,</span> <span class="n">x_n</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>If not as_row_vector:
+.. math:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">y</span>  <span class="o">=</span> <span class="p">[</span><span class="n">x_1</span><span class="p">,</span>\<span class="n">cdots</span><span class="p">,</span> <span class="n">x_1</span><span class="p">,</span> \<span class="n">cdots</span><span class="p">,</span> <span class="n">x_n</span><span class="p">,</span> \<span class="n">cdots</span><span class="p">,</span> <span class="n">x_n</span><span class="p">]</span>
+</pre></div>
+</div>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">expand</span> <span class="o">=</span> <span class="n">repeat</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span> <span class="n">num_repeats</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
 </pre></div>
@@ -2187,6 +2195,12 @@ to apply concat() with num_repeats same input.</p>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Input layer</li>
 <li><strong>num_repeats</strong> (<em>int</em>) &#8211; Repeat the input so many times</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>as_row_vector</strong> (<em>bool</em>) &#8211; True for treating input as row vector and repeating
+in the column direction.  This is equivalent to apply
+concat() with num_repeats same input.
+False for treating input as column vector and repeating
+in the row direction.</li>
+<li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; Activation type.</li>
 <li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttribute</em>) &#8211; extra layer attributes.</li>
 </ul>
 </td>
