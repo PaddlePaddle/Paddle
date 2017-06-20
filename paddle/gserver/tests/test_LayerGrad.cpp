@@ -1598,12 +1598,15 @@ TEST(Layer, FeatureMapExpandLayer) {
                               /* paraSize= */ 0});
   config.layerConfig.add_inputs();
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config,
-                  "featmap_expand",
-                  /*batch_size*/ 100,
-                  /* trans= */ false,
-                  useGpu,
-                  /* useWeight */ true);
+    for (auto asRowVec : {false, true}) {
+      config.layerConfig.set_user_arg(asRowVec ? "as_row_vec" : "as_col_vec");
+      testLayerGrad(config,
+                    "featmap_expand",
+                    /*batch_size*/ 100,
+                    /* trans= */ false,
+                    useGpu,
+                    /* useWeight */ true);
+    }
   }
 }
 

@@ -1553,14 +1553,24 @@ def expand_layer(input,
 
 
 @wrap_name_default()
+@wrap_act_default(act=IdentityActivation())
 @layer_support()
-def repeat_layer(input, num_repeats, name=None, layer_attr=None):
+def repeat_layer(input,
+                 num_repeats,
+                 as_row_vector=True,
+                 act=None,
+                 name=None,
+                 layer_attr=None):
     """
-    A layer for repeating the input for num_repeats times. This is equivalent
-    to apply concat_layer() with num_repeats same input.
+    A layer for repeating the input for num_repeats times.
 
+    If as_row_vector:
     .. math::
-       y  = [x, x, \cdots, x]
+       y  = [x_1,\cdots, x_n, \cdots, x_1, \cdots, x_n]
+    If not as_row_vector:
+    .. math::
+       y  = [x_1,\cdots, x_1, \cdots, x_n, \cdots, x_n]
+
 
     The example usage is:
 
@@ -1573,6 +1583,14 @@ def repeat_layer(input, num_repeats, name=None, layer_attr=None):
     :param num_repeats: Repeat the input so many times
     :type num_repeats: int
     :param name: Layer name.
+    :param as_row_vector: True for treating input as row vector and repeating
+                          in the column direction.  This is equivalent to apply
+                          concat_layer() with num_repeats same input.
+                          False for treating input as column vector and repeating
+                          in the row direction.
+    :type as_row_vector: bool
+    :param act: Activation type.
+    :type act: BaseActivation
     :type name: basestring
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
@@ -1583,13 +1601,16 @@ def repeat_layer(input, num_repeats, name=None, layer_attr=None):
     l = Layer(
         inputs=[input.name],
         name=name,
+        active_type=act.name,
         num_filters=num_repeats,
+        as_row_vector=as_row_vector,
         type=LayerType.FEATURE_MAP_EXPAND_LAYER,
         **ExtraAttr.to_kwargs(layer_attr))
     return LayerOutput(
         name=name,
         size=l.config.size,
         layer_type=LayerType.FEATURE_MAP_EXPAND_LAYER,
+        activation=act,
         parents=[input])
 
 
@@ -2834,11 +2855,13 @@ def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
     Concat sequence a with sequence b.
 
     Inputs:
-      - a = [a1, a2, ..., an]
+      - a = [a1, a2, ..., am]
       - b = [b1, b2, ..., bn]
-      - Note that the length of a and b should be the same.
 
-    Output: [a1, b1, a2, b2, ..., an, bn]
+    Output: [a1, ..., am, b1, ..., bn]
+
+    Note that the above computation is for one sample. Multiple samples are
+    processed in one batch.
 
     The example usage is:
 

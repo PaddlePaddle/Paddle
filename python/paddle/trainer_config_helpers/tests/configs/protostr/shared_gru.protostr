@@ -123,7 +123,7 @@ layers {
   name: "__last_seq_0__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__simple_gru_0__"
   }
@@ -134,7 +134,7 @@ layers {
   name: "__last_seq_1__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__simple_gru_1__"
   }

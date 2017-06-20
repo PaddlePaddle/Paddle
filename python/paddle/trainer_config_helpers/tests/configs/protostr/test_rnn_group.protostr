@@ -91,7 +91,7 @@ layers {
   name: "__last_seq_0__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "rnn_forward"
   }
@@ -140,7 +140,7 @@ layers {
   name: "__first_seq_0__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "rnn_back"
   }
@@ -190,7 +190,7 @@ layers {
   name: "__last_seq_1__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "rnn_subseq_forward"
   }
@@ -280,7 +280,7 @@ layers {
   name: "__last_seq_2__"
   type: "seqlastins"
   size: 100
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__lstm_group_0__"
   }
@@ -329,7 +329,7 @@ layers {
   name: "__last_seq_3__"
   type: "seqlastins"
   size: 100
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__gru_group_0__"
   }
@@ -378,7 +378,7 @@ layers {
   name: "__last_seq_4__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__fc_layer_0__"
   }

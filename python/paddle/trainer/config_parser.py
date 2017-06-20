@@ -1926,7 +1926,6 @@ class BatchNormLayer(LayerBase):
     def __init__(self,
                  name,
                  inputs,
-                 active_type="linear",
                  bias=True,
                  use_global_stats=True,
                  moving_average_fraction=0.9,
@@ -1964,12 +1963,7 @@ class BatchNormLayer(LayerBase):
             cudnn_version >= 4007
         self.layer_type = "cudnn_batch_norm" if use_cudnn else "batch_norm"
         super(BatchNormLayer, self).__init__(
-            name,
-            self.layer_type,
-            0,
-            active_type=active_type,
-            inputs=inputs,
-            **xargs)
+            name, self.layer_type, 0, inputs=inputs, **xargs)
 
         if use_global_stats is not None:
             self.config.use_global_stats = use_global_stats
@@ -2377,15 +2371,23 @@ class ExpandLayer(LayerBase):
 
 @config_layer('featmap_expand')
 class FeatMapExpandLayer(LayerBase):
-    def __init__(self, name, inputs, device=None, num_filters=None, bias=False):
+    def __init__(self,
+                 name,
+                 inputs,
+                 num_filters=None,
+                 as_row_vector=True,
+                 bias=False,
+                 **xargs):
         super(FeatMapExpandLayer, self).__init__(
-            name, 'featmap_expand', 0, inputs=inputs, device=device)
+            name, 'featmap_expand', 0, inputs=inputs, **xargs)
         config_assert(
             len(self.inputs) == 1, 'ExpandLayer takes 1 and only 1 inputs')
         if num_filters is not None:
             self.config.num_filters = num_filters
         else:
             logger.fatal("FeatMapExpandLayer must specify num_filters.")
+        if not as_row_vector:
+            self.config.user_arg = "as_col_vec"
         self.set_layer_size(self.get_input_layer(0).size * num_filters)
 
 
@@ -2395,14 +2397,12 @@ class MaxLayer(LayerBase):
                  name,
                  inputs,
                  trans_type='non-seq',
-                 active_type='linear',
                  bias=False,
                  output_max_index=None,
                  **xargs):
         super(MaxLayer, self).__init__(name, 'max', 0, inputs=inputs, **xargs)
         config_assert(len(self.inputs) == 1, 'MaxLayer must have 1 input')
         self.config.trans_type = trans_type
-        self.config.active_type = active_type
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             self.set_layer_size(input_layer.size)
@@ -2444,18 +2444,12 @@ class SequenceLastInstanceLayer(LayerBase):
     def __init__(self,
                  name,
                  inputs,
-                 active_type='linear',
                  trans_type='non-seq',
                  bias=False,
                  stride=-1,
                  **xargs):
         super(SequenceLastInstanceLayer, self).__init__(
-            name,
-            'seqlastins',
-            0,
-            inputs=inputs,
-            active_type=active_type,
-            **xargs)
+            name, 'seqlastins', 0, inputs=inputs, **xargs)
         config_assert(
             len(inputs) == 1, 'SequenceLastInstanceLayer must have 1 input')
         if trans_type == 'seq':
@@ -2471,7 +2465,6 @@ class SequenceFirstInstanceLayer(SequenceLastInstanceLayer):
     def __init__(self,
                  name,
                  inputs,
-                 active_type='linear',
                  trans_type='non-seq',
                  bias=False,
                  stride=-1,
@@ -2479,7 +2472,6 @@ class SequenceFirstInstanceLayer(SequenceLastInstanceLayer):
         super(SequenceFirstInstanceLayer, self).__init__(
             name,
             inputs=inputs,
-            active_type=active_type,
             trans_type=trans_type,
             bias=bias,
             stride=stride,
@@ -2489,14 +2481,9 @@ class SequenceFirstInstanceLayer(SequenceLastInstanceLayer):
 
 @config_layer('seqconcat')
 class SequenceConcatLayer(LayerBase):
-    def __init__(self, name, inputs, active_type='linear', bias=False, **xargs):
+    def __init__(self, name, inputs, bias=False, **xargs):
         super(SequenceConcatLayer, self).__init__(
-            name,
-            'seqconcat',
-            0,
-            inputs=inputs,
-            active_type=active_type,
-            **xargs)
+            name, 'seqconcat', 0, inputs=inputs, **xargs)
         config_assert(
             len(inputs) == 2, 'SequenceConcatLayer must have 2 inputs')
         for input_index in xrange(len(self.inputs)):
@@ -2507,20 +2494,9 @@ class SequenceConcatLayer(LayerBase):
 
 @config_layer('seqreshape')
 class SequenceReshapeLayer(LayerBase):
-    def __init__(self,
-                 name,
-                 size,
-                 inputs,
-                 active_type='linear',
-                 bias=False,
-                 **xargs):
+    def __init__(self, name, size, inputs, bias=False, **xargs):
         super(SequenceReshapeLayer, self).__init__(
-            name,
-            'seqreshape',
-            size,
-            inputs=inputs,
-            active_type=active_type,
-            **xargs)
+            name, 'seqreshape', size, inputs=inputs, **xargs)
         config_assert(
             len(inputs) == 1, 'SequenceReshapeLayer must have 1 inputs')
         self.set_layer_size(size)
@@ -2529,9 +2505,9 @@ class SequenceReshapeLayer(LayerBase):
 
 @config_layer('subseq')
 class SubSequenceLayer(LayerBase):
-    def __init__(self, name, inputs, active_type='linear', bias=False, **xargs):
+    def __init__(self, name, inputs, bias=False, **xargs):
         super(SubSequenceLayer, self).__init__(
-            name, 'subseq', 0, inputs=inputs, active_type=active_type, **xargs)
+            name, 'subseq', 0, inputs=inputs, **xargs)
         config_assert(len(inputs) == 3, 'SubSequenceLayer must have 3 inputs')
         input_layer0 = self.get_input_layer(0)
         size = input_layer0.size
@@ -2687,11 +2663,10 @@ class AverageLayer(LayerBase):
                  inputs,
                  average_strategy='average',
                  trans_type='non-seq',
-                 active_type='linear',
                  bias=False,
                  **xargs):
         super(AverageLayer, self).__init__(
-            name, 'average', 0, inputs=inputs, active_type=active_type, **xargs)
+            name, 'average', 0, inputs=inputs, **xargs)
         self.config.average_strategy = average_strategy
         self.config.trans_type = trans_type
         config_assert(len(inputs) == 1, 'AverageLayer must have 1 input')
