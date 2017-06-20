@@ -54,8 +54,8 @@ public:
                   T inValue;
                   const int inH = inStartH + fH;
                   const int inW = inStartW + fW;
-                  if ((inH >= 0 && inH < inputHeight) &&
-                      (inW >= 0 && inW < inputWidth)) {
+                  if ((inH >= 0 && inH < (int)inputHeight) &&
+                      (inW >= 0 && inW < (int)inputWidth)) {
                     size_t offsetInput =
                         batch * inputChannels * inputHeight * inputWidth +
                         inC * inputHeight * inputWidth + inH * inputWidth + inW;
