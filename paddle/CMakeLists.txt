@@ -17,14 +17,11 @@ add_subdirectory(strings)
 
 find_package(Boost QUIET)
 
-add_subdirectory(platform)
-add_subdirectory(framework)
 
-# if(Boost_FOUND)
-#   include_directories(${Boost_INCLUDE_DIRS})
-#   include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-#   add_subdirectory(majel)
-# endif()
+if(Boost_FOUND)
+  add_subdirectory(platform)
+  add_subdirectory(framework)
+endif()
 
 if(WITH_C_API)
     add_subdirectory(capi)
