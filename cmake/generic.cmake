@@ -115,41 +115,41 @@ function(merge_static_libs TARGET_NAME)
       IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a")
     add_dependencies(${TARGET_NAME} ${TARGET_NAME}_archive)
 	else() # general UNIX: use "ar" to extract objects and re-add to a common lib
-		foreach(lib ${libs})
-			set(objlistfile ${lib}.objlist) # list of objects in the input library
-			set(objdir ${lib}.objdir)
+    foreach(lib ${libs})
+      set(objlistfile ${lib}.objlist) # list of objects in the input library
+      set(objdir ${lib}.objdir)
 
-			add_custom_command(OUTPUT ${objdir}
-					COMMAND ${CMAKE_COMMAND} -E make_directory ${objdir})
+      add_custom_command(OUTPUT ${objdir}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${objdir})
 
-			add_custom_command(OUTPUT ${objlistfile}
-					COMMAND ${CMAKE_AR} -x "$<TARGET_FILE:${lib}>"
-					COMMAND ${CMAKE_AR} -t "$<TARGET_FILE:${lib}>" > ../${objlistfile}
-					DEPENDS ${lib} ${objdir}
-					WORKING_DIRECTORY ${objdir})
+      add_custom_command(OUTPUT ${objlistfile}
+        COMMAND ${CMAKE_AR} -x "$<TARGET_FILE:${lib}>"
+        COMMAND ${CMAKE_AR} -t "$<TARGET_FILE:${lib}>" > ../${objlistfile}
+        DEPENDS ${lib} ${objdir}
+        WORKING_DIRECTORY ${objdir})
 
-			# Empty dummy source file that goes into merged library
-			set(mergebase ${lib}.mergebase.c)
-			add_custom_command(OUTPUT ${mergebase}
-					COMMAND ${CMAKE_COMMAND} -E touch ${mergebase}
-					DEPENDS ${objlistfile})
+      # Empty dummy source file that goes into merged library
+      set(mergebase ${lib}.mergebase.c)
+      add_custom_command(OUTPUT ${mergebase}
+        COMMAND ${CMAKE_COMMAND} -E touch ${mergebase}
+        DEPENDS ${objlistfile})
 
-			list(APPEND mergebases "${mergebase}")
-		endforeach()
+      list(APPEND mergebases "${mergebase}")
+    endforeach()
 
-		# We need a target for the output merged library
-		add_library(${TARGET_NAME} STATIC ${mergebases})
-		set(outlibfile "$<TARGET_FILE:${TARGET_NAME}>")
+    # We need a target for the output merged library
+    add_library(${TARGET_NAME} STATIC ${mergebases})
+    set(outlibfile "$<TARGET_FILE:${TARGET_NAME}>")
 
-		foreach(lib ${libs})
-			add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-					COMMAND ${CMAKE_AR} ru ${outlibfile} @"../${objlistfile}"
-					WORKING_DIRECTORY ${objdir})
-		endforeach()
+    foreach(lib ${libs})
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND ${CMAKE_AR} ru ${outlibfile} @"../${objlistfile}"
+      WORKING_DIRECTORY ${objdir})
+    endforeach()
 
-		add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-				COMMAND ${CMAKE_RANLIB} ${outlibfile})
-	endif()
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND ${CMAKE_RANLIB} ${outlibfile})
+  endif()
 endfunction(merge_static_libs)
 
 function(cc_library TARGET_NAME)
