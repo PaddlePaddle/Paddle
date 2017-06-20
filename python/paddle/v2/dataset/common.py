@@ -15,6 +15,7 @@
 import requests
 import hashlib
 import os
+import errno
 import shutil
 import sys
 import importlib
@@ -27,7 +28,12 @@ __all__ = ['DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader']
 DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
 
 if not os.path.exists(DATA_HOME):
-    os.makedirs(DATA_HOME)
+    try:
+        os.makedirs(DATA_HOME)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST:
+            raise
+        pass
 
 
 def md5file(fname):
