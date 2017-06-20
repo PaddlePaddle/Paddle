@@ -18,12 +18,12 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
 if(WITH_Go)
   add_custom_command(OUTPUT ${OUTPUT_DIR}/.timestamp
       COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-      COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT_DIR}/.timestamp)
+      COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT_DIR}/.timestamp
+      DEPENDS gen_proto_py ${PY_FILES} ${external_project_dependencies} paddle_master_shared)
 else()
   add_custom_command(OUTPUT ${OUTPUT_DIR}/.timestamp
       COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-      COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT_DIR}/.timestamp
-      DEPENDS gen_proto_py ${PY_FILES} ${external_project_dependencies} paddle_master_shared)
+      COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT_DIR}/.timestamp)
 endif()
 
 add_custom_target(paddle_python ALL DEPENDS
