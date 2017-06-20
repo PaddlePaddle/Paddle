@@ -1628,8 +1628,14 @@ class SelectiveFCLayer(LayerBase):
 
 @config_layer('print')
 class PrintLayer(LayerBase):
-    def __init__(self, name, inputs):
+    def __init__(self, name, inputs, format=None):
         super(PrintLayer, self).__init__(name, 'print', 0, inputs)
+        if format is None:
+            format = "\n".join([
+                "layer=" + input.input_layer_name + " %s"
+                for input in self.inputs
+            ])
+        self.config.user_arg = format
 
 
 @config_layer('priorbox')
