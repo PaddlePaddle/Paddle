@@ -414,6 +414,7 @@ protected:
     std::vector<int> ids;  // store generated sequences
     Argument outArg;       // final output argument
   };
+  bool generating_;
   Generator generator_;
 
   std::vector<std::unique_ptr<NeuralNetwork>> frames_;

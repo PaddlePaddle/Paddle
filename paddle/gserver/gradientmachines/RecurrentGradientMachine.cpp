@@ -208,6 +208,7 @@ void RecurrentGradientMachine::init(
                    });
   CHECK(subModelConfig != config.sub_models().end());
   reversed_ = subModelConfig->reversed();
+  generating_ = subModelConfig->has_generator();
 
   inFrameLines_.resize(subModelConfig->in_links_size());
   for (size_t i = 0; i < inFrameLines_.size(); ++i) {
@@ -538,7 +539,7 @@ void RecurrentGradientMachine::forward(const std::vector<Argument>& inArgs,
      The outputs are outFramesLines_[i].agentLayer
    */
 
-  if (inFrameLines_.empty() && passType == PASS_TEST) {
+  if (generating_) {
     generateSequence();
     return;
   }  // else forward..
@@ -569,6 +570,9 @@ void RecurrentGradientMachine::forward(const std::vector<Argument>& inArgs,
 }
 
 void RecurrentGradientMachine::backward(const UpdateCallback& callback) {
+  if (generating_) {
+    return;
+  }
   REGISTER_TIMER_INFO("RecurrentBwTime", "RecurrentBwTime");
   AsyncGpuBlock asyncGpuBlock;
   for (int i = maxSequenceLength_ - 1; i >= 0; --i) {
@@ -1321,11 +1325,10 @@ void RecurrentGradientMachine::fillGenOutputs() {
 
   batchMachineIdVec_.clear();
   generator_.ids.clear();
+  int* starts = generator_.outArg.sequenceStartPositions->getMutableData(false);
+  starts[0] = 0;
   if (numResults > 1) {
     real* probs = generator_.outArg.in->getData();
-    int* starts =
-        generator_.outArg.sequenceStartPositions->getMutableData(false);
-    starts[0] = 0;
     for (size_t i = 0; i < finalPaths_.size(); ++i) {
       for (size_t j = 0; j < finalPaths_[i].size(); ++j) {
         Path& path = finalPaths_[i][j];
@@ -1348,7 +1351,10 @@ void RecurrentGradientMachine::fillGenOutputs() {
   } else {
     for (size_t i = 0; i < finalPaths_.size(); ++i) {
       CHECK(!finalPaths_[i].empty());
-      generator_.ids = finalPaths_[i][0].ids;
+      generator_.ids.insert(generator_.ids.begin(),
+                            finalPaths_[i][0].ids.begin(),
+                            finalPaths_[i][0].ids.end());
+      starts[i + 1] = starts[i] + finalPaths_[i][0].ids.size();
     }
   }
 }

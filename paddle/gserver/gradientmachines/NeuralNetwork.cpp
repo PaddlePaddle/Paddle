@@ -241,11 +241,14 @@ void NeuralNetwork::forward(const std::vector<Argument>& inArgs,
     dataLayers_[i]->setData(inArgs[i]);
   }
 
+  gLayerStackTrace.set_stage(true);
+
   {
     for (auto& layer : layers_) {
       REGISTER_TIMER_INFO("ForwardTimer", layer->getName().c_str());
       gLayerStackTrace.push(layer->getName());
       layer->forward(passType);
+      gLayerStackTrace.pop(layer->getName());
     }
   }
 
@@ -253,9 +256,6 @@ void NeuralNetwork::forward(const std::vector<Argument>& inArgs,
   outArgs->reserve(outputLayers_.size());
   for (auto& layer : outputLayers_) {
     outArgs->push_back(layer->getOutput());
-  }
-  if (passType == PASS_TEST) {
-    gLayerStackTrace.clear();
   }
 }
 
@@ -283,9 +283,10 @@ void NeuralNetwork::getState(MachineState& machineState) {
 }
 
 void NeuralNetwork::backward(const UpdateCallback& callback) {
-  gLayerStackTrace.pop("");  // tell layer trace is during backward.
+  gLayerStackTrace.set_stage(false);
   FOR_EACH_R(layer, layers_) {
     REGISTER_TIMER_INFO("BackwardTimer", (*layer)->getName().c_str());
+    gLayerStackTrace.push((*layer)->getName());
     if ((*layer)->needGradient()) {
       (*layer)->backward(callback);
     }
