@@ -81,7 +81,7 @@ def main():
     trainer = paddle.trainer.SGD(cost=cost,
                                  parameters=parameters,
                                  update_equation=optimizer,
-                                 is_local=False,
+                                 is_local=True,
                                  pserver_spec="localhost:3000")
 
     lists = []

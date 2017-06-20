@@ -842,7 +842,7 @@ public:
                                                int passCount,
                                                bool useSparseUpdater);
   static ParameterUpdater* createNewRemoteUpdater(
-      OptimizationConfig* config, const std::string pserverSpec);
+      OptimizationConfig* config, const std::string pserverSpec) throw(UnsupportError);
   ~ParameterUpdater();
 
   /**

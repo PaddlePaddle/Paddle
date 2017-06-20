@@ -40,6 +40,10 @@ if(NOT CMAKE_CROSSCOMPILING)
     endif()
 endif()
 
+if(NOT WITH_Go)
+    add_definitions(-DPADDLE_WITHOUT_GO)
+endif()
+
 if(NOT WITH_GPU)
     add_definitions(-DPADDLE_ONLY_CPU)
     add_definitions(-DHPPL_STUB_FUNC)
