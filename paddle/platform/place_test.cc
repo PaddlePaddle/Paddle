@@ -1,6 +1,6 @@
 #include "paddle/platform/place.h"
-#include "gtest/gtest.h"
 #include <sstream>
+#include "gtest/gtest.h"
 
 TEST(Place, Equality) {
   paddle::platform::CpuPlace cpu;
