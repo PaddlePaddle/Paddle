@@ -6,16 +6,16 @@ namespace platform {
 namespace detail {
 
 class PlacePrinter : public boost::static_visitor<> {
-public:
+ public:
   PlacePrinter(std::ostream &os) : os_(os) {}
   void operator()(const CpuPlace &) { os_ << "CpuPlace"; }
   void operator()(const GpuPlace &p) { os_ << "GpuPlace(" << p.device << ")"; }
 
-private:
+ private:
   std::ostream &os_;
 };
 
-} // namespace detail
+}  // namespace detail
 
 static Place the_default_place;
 
@@ -42,5 +42,5 @@ std::ostream &operator<<(std::ostream &os, const Place &p) {
   return os;
 }
 
-} // namespace platform
-} // namespace paddle
+}  // namespace platform
+}  // namespace paddle

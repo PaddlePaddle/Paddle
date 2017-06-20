@@ -45,5 +45,5 @@ bool places_are_same_class(const Place &, const Place &);
 
 std::ostream &operator<<(std::ostream &, const Place &);
 
-} // namespace platform
-} // namespace paddle
+}  // namespace platform
+}  // namespace paddle
