@@ -15,6 +15,19 @@ import (
 	"github.com/PaddlePaddle/recordio"
 )
 
+type myStore struct {
+	buf []byte
+}
+
+func (m *myStore) Save(b []byte) error {
+	m.buf = b
+	return nil
+}
+
+func (m *myStore) Load() ([]byte, error) {
+	return m.buf, nil
+}
+
 func TestNextRecord(t *testing.T) {
 	const (
 		path  = "/tmp/master_client_TestFull"
@@ -33,9 +46,13 @@ func TestNextRecord(t *testing.T) {
 	}
 
 	go func(l net.Listener) {
-		s := master.NewService(10, time.Second, 1)
+		s, err := master.NewService(&myStore{}, 10, time.Second, 1)
+		if err != nil {
+			panic(err)
+		}
+
 		server := rpc.NewServer()
-		err := server.Register(s)
+		err = server.Register(s)
 		if err != nil {
 			panic(err)
 		}

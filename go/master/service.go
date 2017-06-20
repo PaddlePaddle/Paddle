@@ -1,6 +1,9 @@
 package master
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/gob"
 	"errors"
 	"os"
 	"path/filepath"
@@ -12,22 +15,52 @@ import (
 	"github.com/PaddlePaddle/recordio"
 )
 
+const (
+	dialTimeout = 5 * time.Second
+)
+
+// Store is the interface for save and load the master state.
+type Store interface {
+	Save([]byte) error
+	Load() ([]byte, error)
+}
+
+// Chunk is a chunk of data consisted of several data instances.
+type Chunk struct {
+	Path  string
+	Index recordio.Index // chunk index
+}
+
+// Task is the basic unit of data instances assigned to trainers.
+type Task struct {
+	ID     int
+	Chunks []Chunk
+}
+
+type taskEntry struct {
+	Epoch      int
+	NumTimeout int
+	Task       Task
+}
+
+type taskQueues struct {
+	Todo    []taskEntry
+	Pending map[int]taskEntry // map from task ID to task entry
+	Done    []taskEntry
+	Failed  []Task
+}
+
 // Service is the master server service.
 type Service struct {
 	chunksPerTask int
 	timeoutDur    time.Duration
 	timeoutMax    int
 	ready         chan struct{}
+	store         Store
 
 	mu         sync.Mutex
 	initDone   bool
 	taskQueues taskQueues
-}
-
-// Recover recovers service state from etcd.
-func Recover() (*Service, error) {
-	// TODO(helin): recover from snapshot state from etcd.
-	return nil, nil
 }
 
 func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
@@ -58,7 +91,7 @@ func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
 }
 
 // NewService creates a new service.
-func NewService(chunksPerTask int, timeoutDur time.Duration, timeoutMax int) *Service {
+func NewService(store Store, chunksPerTask int, timeoutDur time.Duration, timeoutMax int) (*Service, error) {
 	s := &Service{}
 	s.chunksPerTask = chunksPerTask
 	s.timeoutDur = timeoutDur
@@ -66,38 +99,81 @@ func NewService(chunksPerTask int, timeoutDur time.Duration, timeoutMax int) *Se
 	s.taskQueues = taskQueues{}
 	s.taskQueues.Pending = make(map[int]taskEntry)
 	s.ready = make(chan struct{})
-	return s
+	s.store = store
+	recovered, err := s.recover()
+	if err != nil {
+		return nil, err
+	}
+
+	if recovered {
+		// Recovered. Now the state is already initialized,
+		// and the master is ready.
+		s.initDone = true
+		close(s.ready)
+	}
+
+	return s, nil
 }
 
-// Chunk is a chunk of data consisted of several data instances.
-type Chunk struct {
-	Path  string
-	Index recordio.Index // chunk index
+// recover recovers service state from etcd.
+func (s *Service) recover() (bool, error) {
+	state, err := s.store.Load()
+	if err != nil {
+		return false, err
+	}
+
+	if state == nil {
+		log.Infoln("No state exists, not recovered.")
+		return false, nil
+	}
+
+	log.Infof("Loaded snapshot of size: %d bytes.", len(state))
+	gr, err := gzip.NewReader(bytes.NewReader(state))
+	if err != nil {
+		return false, err
+	}
+
+	dec := gob.NewDecoder(gr)
+	var tqs taskQueues
+	err = dec.Decode(&tqs)
+	if err != nil {
+		return false, err
+	}
+
+	err = gr.Close()
+	if err != nil {
+		// Only close failed, recover actually succeed, so
+		// just log error.
+		log.Errorln(err)
+	}
+
+	s.taskQueues = tqs
+	return true, nil
 }
 
-// Task is the basic unit of data instances assigned to trainers.
-type Task struct {
-	ID     int
-	Chunks []Chunk
-}
-
-type taskEntry struct {
-	Epoch      int
-	NumTimeout int
-	Task       Task
-}
-
-type taskQueues struct {
-	Todo    []taskEntry
-	Pending map[int]taskEntry // map from task ID to task entry
-	Done    []taskEntry
-	Failed  []Task
-}
-
-// *must* be called with s.mu being held.
+// snapshot *must* be called with s.mu being held.
 func (s *Service) snapshot() error {
-	// TODO(helin): snapshot state on etcd.
-	return nil
+	// TOOD(helin): etcd request has a size limit, so the snapshot
+	// size is limited by the max request size. We should either
+	// divide the snapshot into smaller chunks and save under
+	// different keys, or configure the request size to be big
+	// enough:
+	// https://github.com/coreos/etcd/blob/2f84f3d8d8ed8f9537ab6ffa44a3a1c7eddfa9b1/embed/config.go#L44
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	enc := gob.NewEncoder(gw)
+	err := enc.Encode(s.taskQueues)
+	if err != nil {
+		return err
+	}
+	err = gw.Close()
+	if err != nil {
+		return err
+	}
+
+	state := buf.Bytes()
+	log.Infof("Saving snapshot of size: %d bytes.", len(state))
+	return s.store.Save(state)
 }
 
 func readChunks(globPaths []string) ([]Chunk, error) {
@@ -207,12 +283,12 @@ func (s *Service) checkTimeoutFunc(taskID int, epoch int) func() {
 
 		t.NumTimeout++
 		if t.NumTimeout > s.timeoutMax {
-			log.Warningf("Task %v timed out %d times, discard.\n", t.Task, t.NumTimeout)
+			log.Warningf("Task %v timed out %d times, discard.", t.Task, t.NumTimeout)
 			s.taskQueues.Failed = append(s.taskQueues.Failed, t.Task)
 			return
 		}
 
-		log.Warningf("Task %v timed out %d times, retry.\n", t.Task, t.NumTimeout)
+		log.Warningf("Task %v timed out %d times, retry.", t.Task, t.NumTimeout)
 		s.taskQueues.Todo = append(s.taskQueues.Todo, t)
 	}
 }

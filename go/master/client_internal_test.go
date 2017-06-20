@@ -32,6 +32,19 @@ func (a TestAddresser) Address() string {
 	return string(a)
 }
 
+type myStore struct {
+	buf []byte
+}
+
+func (m *myStore) Save(b []byte) error {
+	m.buf = b
+	return nil
+}
+
+func (m *myStore) Load() ([]byte, error) {
+	return m.buf, nil
+}
+
 func TestGetFinishTask(t *testing.T) {
 	const path = "/tmp/master_client_test_0"
 
@@ -47,9 +60,13 @@ func TestGetFinishTask(t *testing.T) {
 	}
 
 	go func(l net.Listener) {
-		s := NewService(chunkPerTask, time.Second, 1)
+		s, err := NewService(&myStore{}, chunkPerTask, time.Second, 1)
+		if err != nil {
+			panic(err)
+		}
+
 		server := rpc.NewServer()
-		err := server.Register(s)
+		err = server.Register(s)
 		if err != nil {
 			panic(err)
 		}
