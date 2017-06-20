@@ -11,22 +11,94 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
+#
 # To simplify the build process of PaddlePaddle, we defined couple of
 # fundamental abstractions, e.g., how to build library, binary and
 # test in C++, CUDA and Go.
 #
 # -------------------------------------------
-#    C++	      CUDA C++	      Go
+#     C++        CUDA C++       Go
 # -------------------------------------------
-# cc_library	 nv_library	  go_library
-# cc_binary  	 nv_binary	  go_binary
-# cc_test        nv_test	  go_test
+# cc_library    nv_library   go_library
+# cc_binary     nv_binary    go_binary
+# cc_test       nv_test      go_test
 # -------------------------------------------
 #
 # cmake_parse_arguments can help us to achieve this goal.
 # https://cmake.org/cmake/help/v3.0/module/CMakeParseArguments.html
+#
+# cc_library|nv_library(<target_name>
+# [STATIC SHARED OBJECT]
+#   SRCS <file>...
+#   OBJS <objs>...
+#   DEPS <libs>...)
+#
+# cc_library and nv_library can generate *.o, *.a, or *.so
+# if the corresponding keyword OBJECT, STATIC or SHARED is specified.
+#
+# cc_binary|nv_binary(<target_name>
+#   SRCS <file>...
+#   OBJS <objs>...
+#   DEPS <libs>...)
+#
+# cc_binary and nv_binary can build souce code and link the dependent
+# libraries to generate a binary.
+#
+# cc_test|nv_test(<target_name>
+#   SRCS <file>...
+#   OBJS <objs>...
+#   DEPS <libs>...)
+#
+# cc_test and nv_test can build test code, link gtest and other dependent
+# libraries to generate test suite.
+#
+# For example, in one folder, it contains
+#   ddim{.h, .cc, _test.cc, _test.cu}
+#   place{.h, cc, _test.cc}
+#
+# We can add build script as follows: 
+# 
+# cc_library(place OBJECT
+#    SRCS place.cc)
+#
+# place.cc -> place.o
+# cc_library's OBJECT OPTION will generate place.o.
+#
+# cc_test(place_test
+#    SRCS place_test.cc
+#    OBJS place
+#    DEPS glog gflags)
+#
+# place_test.cc, place.o, glog, gflags -> place_test
+# cc_test will combine place_test.cc, place.o with libglog.a
+# and libgflags.a to generate place_test.
+#
+# cc_library(ddim OBJECT
+#    SRCS ddim.cc)
+#
+# ddim.cc -> ddim.o
+# cc_library's OBJECT OPTION will generate ddim.o.
+#
+# cc_test(ddim_test
+#    SRCS ddim_test.cc
+#    OBJS ddim)
+#
+# ddim_test.cc, ddim.o -> ddim_test
+# cc_test will build ddim_test.cc with ddim.o to generate ddim_test.
+#
+# nv_test(dim_test
+#    SRCS dim_test.cu
+#    OBJS ddim)
+#
+# dim_test.cu, ddim.o -> dim_test
+# nv_test will build dim_test.cu with ddim.o to generate dim_test.
+#
+# cc_library(majel
+#    OBJS place ddim)
+#
+# place.o, ddim.o -> libmajel.a
+# cc_library's default OPTION is STATIC. It will archive place.o
+# and ddim.o to generate libmajel.a.
 #
 
 if(NOT APPLE)
@@ -34,118 +106,128 @@ if(NOT APPLE)
     link_libraries(${CMAKE_THREAD_LIBS_INIT})
 endif(NOT APPLE)
 
-# cc_library parses tensor.cc and figures out that target also depend on tensor.h.
-# cc_library(tensor
-#   SRCS
-#   tensor.cc
-#   DEPS
-#   variant)
 function(cc_library TARGET_NAME)
-  set(options OPTIONAL)
+  set(options STATIC static SHARED shared OBJECT object)
   set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
+  set(multiValueArgs SRCS DEPS OBJS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  if (${cc_library_OPTIONAL} STREQUAL "SHARED")
-    add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
+  set(__objs "")
+  foreach(object ${cc_library_OBJS})
+    set(__objs $<TARGET_OBJECTS:${object}> ${__objs})
+  endforeach()
+  if (cc_library_SHARED OR cc_library_shared) # build *.so
+    add_library(${TARGET_NAME} SHARED ${cc_library_SRCS} ${__objs})
   else()
-    add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
+    if (cc_library_OBJECT OR cc_library_object) # build *.o
+      if (__objs)
+        message(FATAL_ERROR "Cannot merge objects <${cc_library_OBJS}> to object ${TARGET_NAME}.")
+      endif(__objs)
+      add_library(${TARGET_NAME} OBJECT ${cc_library_SRCS} ${__objs})
+    else() # default build *.a
+      add_library(${TARGET_NAME} ${cc_library_SRCS} ${__objs})
+    endif()
   endif()
-  if (cc_library_DEPS)
-    add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
+  if (cc_library_DEPS OR cc_library_OBJS)
+    add_dependencies(${TARGET_NAME} ${cc_library_DEPS} ${cc_library_OBJS})
   endif()
 endfunction(cc_library)
 
-# cc_binary parses tensor.cc and figures out that target also depend on tensor.h.
-# cc_binary(tensor
-#   SRCS
-#   tensor.cc)
 function(cc_binary TARGET_NAME)
-  set(options OPTIONAL)
+  set(options "")
   set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
+  set(multiValueArgs SRCS DEPS OBJS)
   cmake_parse_arguments(cc_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  add_executable(${TARGET_NAME} ${cc_binary_SRCS})
+  set(__objs "")
+  foreach(object ${cc_binary_OBJS})
+    list(APPEND __objs $<TARGET_OBJECTS:${object}>)
+  endforeach()
+  add_executable(${TARGET_NAME} ${cc_binary_SRCS} ${__objs})
   if(cc_binary_DEPS)
     target_link_libraries(${TARGET_NAME} ${cc_binary_DEPS})
-    add_dependencies(${TARGET_NAME} ${cc_binary_DEPS})
+  endif()
+  if(cc_binary_DEPS OR cc_binary_OBJS)
+    add_dependencies(${TARGET_NAME} ${cc_binary_DEPS} ${cc_binary_OBJS})
   endif()
 endfunction(cc_binary)
 
-# The dependency to target tensor implies that if any of
-# tensor{.h,.cc,_test.cc} is changed, tensor_test need to be re-built.
-# cc_test(tensor_test
-#   SRCS
-#   tensor_test.cc
-#   DEPS
-#   tensor)
 function(cc_test TARGET_NAME)
-  if(WITH_TESTING)
+  if (WITH_TESTING)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS)
+    set(multiValueArgs SRCS DEPS OBJS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    add_executable(${TARGET_NAME} ${cc_test_SRCS})
+    set(__objs "")
+    foreach(object ${cc_test_OBJS})
+      list(APPEND __objs $<TARGET_OBJECTS:${object}>)
+    endforeach()
+    add_executable(${TARGET_NAME} ${cc_test_SRCS} ${__objs})
     target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
-    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
+    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} ${cc_test_OBJS} gtest gtest_main)
     add_test(${TARGET_NAME} ${TARGET_NAME})
-  endif()
+  endif(WITH_TESTING)
 endfunction(cc_test)
 
-# Suppose that ops.cu includes global functions that take Tensor as
-# their parameters, so ops depend on tensor. This implies that if
-# any of tensor.{h.cc}, ops.{h,cu} is changed, ops need to be re-built.
-# nv_library(ops
-#   SRCS
-#   ops.cu
-#   DEPS
-#   tensor)
 function(nv_library TARGET_NAME)
   if (WITH_GPU)
-    set(options OPTIONAL)
+    set(options STATIC static SHARED shared OBJECT object)
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS)
+    set(multiValueArgs SRCS DEPS OBJS)
     cmake_parse_arguments(nv_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    if (${nv_library_OPTIONAL} STREQUAL "SHARED")
-      cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
+    set(__objs "")
+    foreach(object ${nv_library_OBJS})
+      set(__objs $<TARGET_OBJECTS:${object}> ${__objs})
+    endforeach()
+    if (nv_library_SHARED OR nv_library_shared) # build *.so
+      cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS} ${__objs})
     else()
-      cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
+      if (nv_library_OBJECT OR nv_library_object) # build *.o
+        if (__objs)
+          message(FATAL_ERROR "Cannot merge objects <${nv_library_OBJS}> to object ${TARGET_NAME}.")
+        endif(__objs)
+        cuda_compile(${TARGET_NAME} ${nv_library_SRCS} ${__objs})
+      else() # default build *.a
+        cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS} ${__objs})
+      endif()
     endif()
-    if (nv_library_DEPS)
-      add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
+    if (nv_library_DEPS OR nv_library_OBJS)
+      add_dependencies(${TARGET_NAME} ${nv_library_DEPS} ${nv_library_OBJS})
     endif()
-  endif()
+  endif(WITH_GPU)
 endfunction(nv_library)
 
 function(nv_binary TARGET_NAME)
   if (WITH_GPU)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS)
+    set(multiValueArgs SRCS DEPS OBJS)
     cmake_parse_arguments(nv_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${nv_binary_SRCS})
+    set(__objs "")
+    foreach(object ${nv_binary_OBJS})
+      set(__objs $<TARGET_OBJECTS:${object}> ${__objs})
+    endforeach()
+    cuda_add_executable(${TARGET_NAME} ${nv_binary_SRCS} ${__objs})
     if(nv_binary_DEPS)
       target_link_libraries(${TARGET_NAME} ${nv_binary_DEPS})
-      add_dependencies(${TARGET_NAME} ${nv_binary_DEPS})
     endif()
-  endif()
+    if(nv_binary_DEPS OR nv_binary_OBJS)
+      add_dependencies(${TARGET_NAME} ${nv_binary_DEPS} ${nv_binary_OBJS})
+    endif()
+  endif(WITH_GPU)
 endfunction(nv_binary)
 
-# The dependency to target tensor implies that if any of
-# ops{.h,.cu,_test.cu} is changed, ops_test need to be re-built.
-# nv_test(ops_test
-#   SRCS
-#   ops_test.cu
-#   DEPS
-#   ops)
 function(nv_test TARGET_NAME)
   if (WITH_GPU AND WITH_TESTING)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS)
+    set(multiValueArgs SRCS DEPS OBJS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
+    set(__objs "")
+    foreach(object ${nv_test_OBJS})
+      set(__objs $<TARGET_OBJECTS:${object}> ${__objs})
+    endforeach()    
+    cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS} ${__objs})
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} gtest gtest_main)
-    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} gtest gtest_main)
+    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} ${nv_test_OBJS} gtest gtest_main)
     add_test(${TARGET_NAME} ${TARGET_NAME})
   endif()
 endfunction(nv_test)
