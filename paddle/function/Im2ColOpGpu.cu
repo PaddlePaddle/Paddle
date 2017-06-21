@@ -57,6 +57,11 @@ void im2col(const T* data_im, int numOuts, int height, int width,
   }
 }
 
+/*
+ * imShape = [inputChannels, inputHeight, inputWidth]
+ * colShape =
+ *   [inputChannels, filterHeight, filterWidth, outputHeight, outputWidth]
+ */
 template <class T>
 class Im2ColFunctor<kCFO, DEVICE_TYPE_GPU, T> {
 public:
@@ -71,10 +76,10 @@ public:
     int inputChannels = imShape[0];
     int inputHeight = imShape[1];
     int inputWidth = imShape[2];
-    int filterHeight = colShape[3];
-    int filterWidth = colShape[4];
-    int outputHeight = colShape[0];
-    int outputWidth = colShape[1];
+    int filterHeight = colShape[1];
+    int filterWidth = colShape[2];
+    int outputHeight = colShape[3];
+    int outputWidth = colShape[4];
 
     int numKernels = inputChannels * outputHeight * outputWidth;
     int blocks = (numKernels + 1024 -1) / 1024;
@@ -135,6 +140,11 @@ void col2im(size_t n, const T* data_col, size_t height,
   }
 }
 
+/*
+ * imShape = [inputChannels, inputHeight, inputWidth]
+ * colShape =
+ *   [inputChannels, filterHeight, filterWidth, outputHeight, outputWidth]
+ */
 template <class T>
 class Col2ImFunctor<kCFO, DEVICE_TYPE_GPU, T> {
 public:
@@ -149,10 +159,10 @@ public:
     int inputChannels = imShape[0];
     int inputHeight = imShape[1];
     int inputWidth = imShape[2];
-    int filterHeight = colShape[3];
-    int filterWidth = colShape[4];
-    int outputHeight = colShape[0];
-    int outputWidth = colShape[1];
+    int filterHeight = colShape[1];
+    int filterWidth = colShape[2];
+    int outputHeight = colShape[3];
+    int outputWidth = colShape[4];
 
     size_t numKernels = inputChannels * (inputHeight + 2*paddingHeight)
         * (inputWidth + 2*paddingWidth);
