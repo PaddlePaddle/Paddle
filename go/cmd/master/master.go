@@ -6,7 +6,6 @@ import (
 	"net/rpc"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/namsral/flag"
@@ -14,26 +13,6 @@ import (
 
 	"github.com/PaddlePaddle/Paddle/go/master"
 )
-
-type inMemStore struct {
-	mu  sync.Mutex
-	buf []byte
-}
-
-func (m *inMemStore) Save(b []byte) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.buf = b
-	return nil
-}
-
-func (m *inMemStore) Load() ([]byte, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	return m.buf, nil
-}
 
 func main() {
 	port := flag.Int("port", 8080, "port of the master server.")
@@ -58,7 +37,7 @@ func main() {
 			log.Fatal(err)
 		}
 	} else {
-		store = &inMemStore{}
+		store = &master.InMemStore{}
 	}
 
 	s, err := master.NewService(store, *chunkPerTask, *taskTimeoutDur, *taskTimeoutMax)
