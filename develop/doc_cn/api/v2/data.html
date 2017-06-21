@@ -765,7 +765,7 @@ is determined by argument buf_size.</p>
 
 <dl class="function">
 <dt>
-<code class="descclassname">paddle.v2.reader.</code><code class="descname">xmap_readers</code><span class="sig-paren">(</span><em>mapper</em>, <em>reader</em>, <em>process_num</em>, <em>buffer_size</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.v2.reader.</code><code class="descname">xmap_readers</code><span class="sig-paren">(</span><em>mapper</em>, <em>reader</em>, <em>process_num</em>, <em>buffer_size</em>, <em>order=False</em><span class="sig-paren">)</span></dt>
 <dd><p>Use multiprocess to map samples from reader by a mapper defined by user.
 And this function contains a buffered decorator.
 :param mapper:  a function to map sample.
@@ -776,6 +776,8 @@ And this function contains a buffered decorator.
 :type process_num: int
 :param buffer_size: max buffer size
 :type buffer_size: int
+:param order: keep the order of reader
+:type order: bool
 :return: the decarated reader
 :rtype: callable</p>
 </dd></dl>
