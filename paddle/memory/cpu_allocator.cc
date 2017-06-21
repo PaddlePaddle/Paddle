@@ -12,13 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <paddle/memory/cpu/pinning.h>
-#include <paddle/memory/cpu/system_allocator.h>
+#include <paddle/memory/cpu_allocator.h>
+#include <paddle/platform/assert.h>
 
-#include <cassert>
 #include <cstdlib>
 #include <memory>
 #include <vector>
+
+#ifndef _WIN32
+#include <sys/mman.h>
+#endif
+
+#include <gflags/gflags.h>
+
+DEFINE_bool(uses_pinned_allocator, false, "If set, use cpu pinned allocator.");
 
 namespace paddle {
 namespace memory {
@@ -42,12 +49,16 @@ public:
       return address;
     }
 
-    memory::cpu::pin_memory(address, size);
+  #ifndef _WIN32
+    mlock(address, size);
+  #endif
     return address;
   }
 
   virtual void free(void* address, size_t size) {
-    memory::cpu::unpin_memory(address, size);
+  #ifndef _WIN32
+    munlock(address, size);
+  #endif
     std::free(address);
   }
 };
@@ -79,7 +90,7 @@ void* SystemAllocator::malloc(size_t& index, size_t size) {
 }
 
 void SystemAllocator::free(void* address, size_t size, size_t index) {
-  assert(index < system_allocators.size());
+  PADDLE_ASSERT(index < system_allocators.size());
 
   system_allocators[index]->free(address, size);
 }
@@ -87,20 +98,21 @@ void SystemAllocator::free(void* address, size_t size, size_t index) {
 size_t SystemAllocator::index_count() { return system_allocators.size(); }
 
 void SystemAllocator::init() {
-  assert(system_allocators.empty());
+  PADDLE_ASSERT(system_allocators.empty());
 
   // make sure no copies occur
   system_allocators.reserve(2);
 
-  // add the pinned allocator
-  system_allocators.push_back(std::unique_ptr<Allocator>(new PinnedAllocator));
-
+  if (FLAGS_uses_pinned_allocator) {
+    // add the pinned allocator
+    system_allocators.push_back(std::unique_ptr<Allocator>(new PinnedAllocator));
+  }
   // add the default allocator
   system_allocators.push_back(std::unique_ptr<Allocator>(new DefaultAllocator));
 }
 
 void SystemAllocator::shutdown() {
-  assert(!system_allocators.empty());
+  PADDLE_ASSERT(!system_allocators.empty());
 
   // destroy all allocators
   system_allocators.clear();

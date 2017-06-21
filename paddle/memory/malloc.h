@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/majel/place.h>
+#include <paddle/platform/place.h>
 
 namespace paddle {
 namespace memory {
@@ -22,9 +22,9 @@ namespace memory {
 void init();
 void shutdown();
 
-void* malloc(majel::Place place, size_t size);
-void free(majel::Place place, void* ptr);
-size_t memory_used(majel::Place);
+void* malloc(platform::Place place, size_t size);
+void free(platform::Place place, void* ptr);
+size_t memory_used(platform::Place);
 
 }  // namespace memory
 }  // namespace paddle
