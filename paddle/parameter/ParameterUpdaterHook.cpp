@@ -71,10 +71,9 @@ public:
     for (size_t i = 0; i < para->getSize(); i++)
       param.push_back(std::make_pair(fabs(paraCpuCopy->getData()[i]), i));
 
-    std::partial_sort(param.begin(), param.begin() + nonZeroNum, param.end(),
-                      sortPairAscend);
-    for (size_t i = 0; i < nonZeroNum; i++)
-      maskTempData[param[i].second] = 1.0;
+    std::partial_sort(
+        param.begin(), param.begin() + nonZeroNum, param.end(), sortPairAscend);
+    for (size_t i = 0; i < nonZeroNum; i++) maskTempData[param[i].second] = 1.0;
 
     // Currently just use a mask vector for hack.
     if (para->useGpu()) {
@@ -127,14 +126,16 @@ private:
   std::hash<int> intHasher_;
 };
 
-static WeakKVCache<std::pair<std::string, int>, IParameterUpdaterHook,
-                   StringIntPairHasher> g_hookCache_;
+static WeakKVCache<std::pair<std::string, int>,
+                   IParameterUpdaterHook,
+                   StringIntPairHasher>
+    g_hookCache_;
 
 /**
  * ParameterUpdaterHook actually factory method.
  */
-static IParameterUpdaterHook *
-createImpl(const ParameterUpdaterHookConfig &config) {
+static IParameterUpdaterHook *createImpl(
+    const ParameterUpdaterHookConfig &config) {
   auto &type = config.type();
   if (type == "pruning") {
     return new StaticPruningHook(config);
@@ -144,11 +145,11 @@ createImpl(const ParameterUpdaterHookConfig &config) {
   return nullptr;
 }
 
-std::shared_ptr<IParameterUpdaterHook>
-IParameterUpdaterHook::create(const ParameterConfig &paramConfig, int idx) {
+std::shared_ptr<IParameterUpdaterHook> IParameterUpdaterHook::create(
+    const ParameterConfig &paramConfig, int idx) {
   std::pair<std::string, int> key = {paramConfig.name(), idx};
   return g_hookCache_.get(
       key, [&] { return createImpl(paramConfig.update_hooks(idx)); });
 }
 
-} // namespace paddle
+}  // namespace paddle
