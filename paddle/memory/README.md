@@ -24,9 +24,15 @@ Each allocator is corresponding to one CPU or GPU device.
 
 ### CPU System Allocators
 
+CPU Allocators consists of two classes, you can enable any of them via GFLAGS `--uses_pinned_allocator=true/false`.
+
 #### Default Allocator
 
-#### PINNED Allocator
+The internal implementation of Default Allocator will invoke standard interfaces, such as `std::malloc` and `std::free`.
+
+#### Pinned Allocator
+
+The internal implementation of Pinned Allocator will invoke system calls, such as [`mlock` and `munlock`](https://linux.die.net/man/2/mlock).
 
 ### GPU System Allocators
 

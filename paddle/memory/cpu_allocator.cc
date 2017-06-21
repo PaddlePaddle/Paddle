@@ -32,16 +32,16 @@ namespace memory {
 namespace cpu {
 
 class Allocator {
-public:
+ public:
   virtual ~Allocator() {}
 
-public:
+ public:
   virtual void* malloc(size_t) = 0;
   virtual void free(void*, size_t) = 0;
 };
 
 class PinnedAllocator : public Allocator {
-public:
+ public:
   virtual void* malloc(size_t size) {
     void* address = std::malloc(size);
 
@@ -49,22 +49,22 @@ public:
       return address;
     }
 
-  #ifndef _WIN32
+#ifndef _WIN32
     mlock(address, size);
-  #endif
+#endif
     return address;
   }
 
   virtual void free(void* address, size_t size) {
-  #ifndef _WIN32
+#ifndef _WIN32
     munlock(address, size);
-  #endif
+#endif
     std::free(address);
   }
 };
 
 class DefaultAllocator : public Allocator {
-public:
+ public:
   virtual void* malloc(size_t size) { return std::malloc(size); }
 
   virtual void free(void* address, size_t size) { return std::free(address); }
@@ -105,7 +105,8 @@ void SystemAllocator::init() {
 
   if (FLAGS_uses_pinned_allocator) {
     // add the pinned allocator
-    system_allocators.push_back(std::unique_ptr<Allocator>(new PinnedAllocator));
+    system_allocators.push_back(
+        std::unique_ptr<Allocator>(new PinnedAllocator));
   }
   // add the default allocator
   system_allocators.push_back(std::unique_ptr<Allocator>(new DefaultAllocator));
