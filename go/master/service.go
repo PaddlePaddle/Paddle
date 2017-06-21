@@ -110,6 +110,7 @@ func NewService(store Store, chunksPerTask int, timeoutDur time.Duration, timeou
 		// and the master is ready.
 		s.initDone = true
 		close(s.ready)
+		log.Info("Master recovered from saved state.")
 	}
 
 	return s, nil
