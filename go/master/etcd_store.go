@@ -29,6 +29,10 @@ type EtcdStore struct {
 
 // NewEtcdStore creates a new EtcdStore.
 func NewEtcdStore(endpoints []string, lockPath, statePath string, ttlSec int) (*EtcdStore, error) {
+	// TODO(helin): gracefully shutdown etcd store. Becuase etcd
+	// store holds a etcd lock, even though the lock will expire
+	// when the lease timeout, we need to implement graceful
+	// shutdown to release the lock.
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
