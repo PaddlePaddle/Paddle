@@ -3,20 +3,20 @@ package main
 /*
 #include <stdio.h>
 
-#define PADDLE_TRAINER_INIT_ERROR -1
 typedef int paddle_trainer;
 
 */
 import "C"
 import (
 	"sync"
+	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/trainer"
 )
 
 var mu sync.Mutex
 var handleMap = make(map[C.paddle_trainer]*trainer.Trainer)
-var curHandle C.paddle_pserver_client
+var curHandle C.paddle_trainer
 
 func add(t *trainer.Trainer) C.paddle_trainer {
 	mu.Lock()
@@ -24,15 +24,12 @@ func add(t *trainer.Trainer) C.paddle_trainer {
 	instance := curHandle
 	curHandle++
 	handleMap[instance] = t
-	return trainer
+	return instance
 }
 
 //export paddle_new_trainer
-func paddle_new_trainer(endpoints *C.char) C.paddle_trainer {
-	t, err := trainer.NewTrainer(C.GoString(endpoints))
-	if err != nil {
-		return C.PADDLE_TRAINER_ERROR
-	}
+func paddle_new_trainer(endpoints *C.char, timeout C.int) C.paddle_trainer {
+	t := trainer.NewTrainer(C.GoString(endpoints), time.Second*time.Duration(timeout))
 	return add(t)
 }
 
