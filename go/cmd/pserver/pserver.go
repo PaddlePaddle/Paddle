@@ -43,7 +43,9 @@ func main() {
 		panic(err)
 	}
 
+	log.Infof("start pserver at port %d", *port)
 	err = http.Serve(l, nil)
+
 	if err != nil {
 		panic(err)
 	}
