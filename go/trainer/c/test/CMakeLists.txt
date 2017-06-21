@@ -1,0 +1,20 @@
+cmake_minimum_required(VERSION 3.0)
+
+add_executable(main main.c)
+add_dependencies(main paddle_trainer)
+
+if(APPLE)
+  set(CMAKE_EXE_LINKER_FLAGS "-framework CoreFoundation -framework Security")
+else()
+  set(CMAKE_EXE_LINKER_FLAGS "-pthread")
+endif()
+
+if(PROJ_ROOT)
+  include_directories(${CMAKE_CURRENT_BINARY_DIR}/..)
+  target_link_libraries(main ${CMAKE_CURRENT_BINARY_DIR}/../libpaddle_trainer.a pthread)
+  #target_link_libraries(test_trainer ${CMAKE_CURRENT_BINARY_DIR}/../libpaddle_trainer.a pthread)
+else(PROJ_ROOT)
+  include_directories(${CMAKE_BINARY_DIR})
+  target_link_libraries(main ${CMAKE_BINARY_DIR}/libpaddle_trainer.a pthread)
+  #target_link_libraries(test_trainer ${CMAKE_BINARY_DIR}/libpaddle_trainer.a pthread)
+endif(PROJ_ROOT)
