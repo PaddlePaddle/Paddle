@@ -31,7 +31,6 @@
 # 
 #   cc_library(example SRCS example.cc)
 # 
-
 # To build a static library example.a from multiple source files
 # example{1,2,3}.cc:
 # 
