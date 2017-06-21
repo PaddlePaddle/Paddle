@@ -28,15 +28,19 @@ import (
 	"strings"
 	"sync"
 	"unsafe"
+	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 	log "github.com/sirupsen/logrus"
+	"github.com/coreos/etcd/clientv3"
 )
 
 var nullPtr = unsafe.Pointer(uintptr(0))
 var mu sync.Mutex
 var handleMap = make(map[C.paddle_pserver_client]*pserver.Client)
 var curHandle C.paddle_pserver_client
+var etcdCli *clientv3.Client
+var etcdTimeout time.Duration
 
 func add(c *pserver.Client) C.paddle_pserver_client {
 	mu.Lock()
@@ -100,9 +104,17 @@ func paddle_new_pserver_client(addrs *C.char, selected int) C.paddle_pserver_cli
 }
 
 //export paddle_new_etcd_pserver_client
-func paddle_new_etcd_pserver_client(etcd_addr *C.char) C.paddle_pserver_client {
+func paddle_new_etcd_pserver_client(etcd_addr *C.char, pserver_path *C.char) C.paddle_pserver_client {
 	// TODO(helin): fault tolerant pserver client using etcd.
-	panic("not implemented.")
+	if etcd_addr == "" {
+		return C.PSERVER_ERROR
+	}
+	var err error
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   etcd_addr,
+		DialTimeout: etcdTimeout,
+	})
+	get := clientv3.OpGet(pserver_path)
 }
 
 //export paddle_pserver_client_release
