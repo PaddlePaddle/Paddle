@@ -97,15 +97,12 @@ function(merge_static_libs TARGET_NAME)
   endforeach()
 
   if(APPLE) # Use OSX's libtool to merge archives
-    add_custom_target(${TARGET_NAME}_archive
-      COMMAND libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles}
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-      DEPENDS ${libs}
-      )
-    add_library(${TARGET_NAME} STATIC IMPORTED GLOBAL)
-    set_property(TARGET ${TARGET_NAME} PROPERTY
-      IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a")
-    add_dependencies(${TARGET_NAME} ${TARGET_NAME}_archive)
+    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+    file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
+    add_library(${TARGET_NAME} STATIC ${dummyfile})
+		add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+			COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
+			COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles})
 	else() # general UNIX: use "ar" to extract objects and re-add to a common lib
     foreach(lib ${libs})
       set(objlistfile ${lib}.objlist) # list of objects in the input library
@@ -134,9 +131,9 @@ function(merge_static_libs TARGET_NAME)
     set(outlibfile "$<TARGET_FILE:${TARGET_NAME}>")
 
     foreach(lib ${libs})
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND ${CMAKE_AR} ru ${outlibfile} @"../${objlistfile}"
-      WORKING_DIRECTORY ${objdir})
+      add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMAND ${CMAKE_AR} ru ${outlibfile} @"../${objlistfile}"
+        WORKING_DIRECTORY ${objdir})
     endforeach()
 
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
