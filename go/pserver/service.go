@@ -1,9 +1,18 @@
 package pserver
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
+	"time"
+
+	"github.com/PaddlePaddle/Paddle/go/utils"
+	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/clientv3/concurrency"
+	log "github.com/sirupsen/logrus"
 )
 
 // ElementType is the type of elements of a Parameter.
@@ -47,14 +56,113 @@ type Service struct {
 	mu       sync.Mutex
 	opt      *optimizer
 	paramMap map[string]Parameter
+
+	etcdEndpoints string
+	etcdClient    *clientv3.Client
+	// etcdTimeout is also used as retry intervals.
+	etcdTimeout time.Duration
+	// desired number of pservers in the job.
+	// assume desired will not change during one training job.
+	desired int
+	// FIXME: ensure GetExternalIP gets the correct ip for trainers to connect.
+	externalIP string
 }
 
 // NewService creates a new service.
-func NewService() *Service {
+func NewService(endpoints string, timeout time.Duration) (*Service, error) {
 	s := &Service{opt: newOptimizer(sgd, 0.005)}
 	s.paramMap = make(map[string]Parameter)
 	s.initialized = make(chan struct{})
-	return s
+	s.etcdEndpoints = endpoints
+	s.etcdTimeout = timeout
+
+	var err error
+	s.externalIP, err = utils.GetExternalIP()
+	if err != nil {
+		return nil, err
+	}
+
+	if endpoints != "" {
+		// initialize connection to etcd, try
+		ep := strings.Split(s.etcdEndpoints, ",")
+		for {
+			cli, err := clientv3.New(clientv3.Config{
+				Endpoints:   ep,
+				DialTimeout: s.etcdTimeout,
+			})
+			if err != nil {
+				log.Errorf("connect to etcd error: %v", err)
+				time.Sleep(s.etcdTimeout)
+				continue
+			}
+			s.etcdClient = cli
+			log.Debugf("inited client to %s", s.etcdEndpoints)
+			break
+		}
+		// wait and set s.desired init value
+		for {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			resp, err := s.etcdClient.Get(ctx, "/ps_desired")
+			cancel()
+			if err != nil {
+				log.Errorf("getting /ps_desired error: %v", err)
+				time.Sleep(s.etcdTimeout)
+				continue
+			}
+			for _, ev := range resp.Kvs {
+				log.Debugf("key: %s, value: %s", ev.Key, ev.Value)
+				if string(ev.Key) == "/ps_desired" {
+					s.desired, err = strconv.Atoi(string(ev.Value))
+					if err != nil {
+						log.Errorf("value of /ps_desired invalid %v\n", err)
+						time.Sleep(s.etcdTimeout)
+						// NOTE: wait util ps_desired value change
+						continue
+					}
+				}
+			}
+			break
+		}
+		s.registerPserverEtcd()
+	} // if endpoints != ""
+	// Bypass etcd registration if no endpoints specified
+	return s, nil
+}
+
+// registerPserverEtcd registers pserver node on etcd using transaction.
+func (s *Service) registerPserverEtcd() (*clientv3.TxnResponse, error) {
+	return concurrency.NewSTMRepeatable(context.TODO(), s.etcdClient, func(c concurrency.STM) error {
+		for i := 0; i < s.desired; i++ {
+			psKey := "/ps/" + strconv.Itoa(i)
+			log.Debugf("checking %s", psKey)
+			ps := c.Get(psKey)
+			log.Debugf("got value (%s) for key: %s", ps, psKey)
+
+			resp, err := s.etcdClient.Grant(context.TODO(), 5)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if ps == "" {
+				// find the first id and write info
+				c.Put(psKey, s.externalIP, clientv3.WithLease(resp.ID))
+				log.Debugf("set pserver node %s with value %s", psKey, s.externalIP)
+				ch, kaerr := s.etcdClient.KeepAlive(context.TODO(), resp.ID)
+				if kaerr != nil {
+					log.Errorf("keepalive etcd node error: %v", kaerr)
+					return kaerr
+				}
+				// FIXME: does this really needed?
+				go func(ch <-chan *clientv3.LeaseKeepAliveResponse) {
+					ka := <-ch
+					log.Debugf("keepalive: %d\n", ka.TTL)
+				}(ch)
+				break
+			}
+		}
+		log.Debug("register finished")
+		return nil
+	})
 }
 
 // InitParam initializes a parameter.
