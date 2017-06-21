@@ -134,7 +134,7 @@ class TestXmap(unittest.TestCase):
                 for size in buffered_size:
                     result = []
                     for i in paddle.v2.reader.xmap_readers(mapper,
-                                                           reader_creator_10(),
+                                                           reader_creator_10(0),
                                                            tNum, size, order)():
                         result.append(i)
                     if not order:
