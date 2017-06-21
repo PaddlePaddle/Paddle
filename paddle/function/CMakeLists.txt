@@ -29,6 +29,7 @@ if(WITH_GPU)
     add_simple_unittest(MulOpTest)
     add_simple_unittest(CosSimOpTest)
     add_simple_unittest(RowConvOpTest)
+    add_simple_unittest(ImageExpandOpTest)
 endif()
 
 add_simple_unittest(ConvOpTest)

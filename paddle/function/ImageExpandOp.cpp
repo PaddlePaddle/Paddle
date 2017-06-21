@@ -116,6 +116,7 @@ public:
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
     check(inputs, outputs);
+    CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
     const TensorShape& image = inputs[0].shape();
     const TensorShape& sequence = outputs[0].shape();
 
