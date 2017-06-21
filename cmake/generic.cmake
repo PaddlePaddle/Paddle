@@ -14,7 +14,9 @@
 #
 
 
-# generic.cmake defines CMakes functions that look like Bazel's building rules (https://bazel.build/).
+# generic.cmake defines CMakes functions that look like Bazel's
+# building rules (https://bazel.build/).
+#
 # 
 # -------------------------------------------
 #     C++        CUDA C++       Go
@@ -24,11 +26,14 @@
 # cc_test       nv_test      go_test
 # -------------------------------------------
 # 
-# To build a static library example.a from example.cc using the system compiler (like GCC):
+# To build a static library example.a from example.cc using the system
+#  compiler (like GCC):
 # 
 #   cc_library(example SRCS example.cc)
 # 
-# To build a static library example.a from multiple source files example{1,2,3}.cc:
+
+# To build a static library example.a from multiple source files
+# example{1,2,3}.cc:
 # 
 #   cc_library(example SRCS example1.cc example2.cc example3.cc)
 # 
@@ -36,7 +41,8 @@
 # 
 #   cc_library(example SHARED SRCS example.cc)
 # 
-# To build a library using Nvidia's NVCC from .cu file(s), use the nv_ prefixed version:
+# To build a library using Nvidia's NVCC from .cu file(s), use the nv_
+# prefixed version:
 # 
 #   nv_library(example SRCS example.cu)
 # 
@@ -48,15 +54,18 @@
 # 
 #   cc_library(composed DEPS dependent1 dependent2 dependent3)
 # 
-# To build an executable binary file from some source files and dependent libraries:
+# To build an executable binary file from some source files and
+# dependent libraries:
 # 
 #   cc_binary(example SRCS main.cc something.cc DEPS example1 example2)
 # 
-# To build an executable binary file using NVCC, use the nv_ prefixed version:
+# To build an executable binary file using NVCC, use the nv_ prefixed
+# version:
 # 
 #   nv_binary(example SRCS main.cc something.cu DEPS example1 example2)
 # 
-# To build a unit test binary, which is an executable binary with GoogleTest linked:
+# To build a unit test binary, which is an executable binary with
+# GoogleTest linked:
 # 
 #   cc_test(example_test SRCS example_test.cc DEPS example)
 # 
@@ -64,7 +73,9 @@
 # 
 #   nv_test(example_test SRCS example_test.cu DEPS example)
 #
-# It is pretty often that executable and test binaries depend on pre-defined external libaries like glog and gflags defined in /cmake/external/*.cmake:
+# It is pretty often that executable and test binaries depend on
+# pre-defined external libaries like glog and gflags defined in
+# /cmake/external/*.cmake:
 #
 #   cc_test(example_test SRCS example_test.cc DEPS example glog gflags)
 
