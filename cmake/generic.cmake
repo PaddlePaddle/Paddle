@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# To simplify the build process of PaddlePaddle, we defined couple of
-# fundamental abstractions, e.g., how to build library, binary and
-# test in C++, CUDA and Go.
-#
+
+
+# generic.cmake defines CMakes functions that look like Bazel's building rules (https://bazel.build/).
+# 
 # -------------------------------------------
 #     C++        CUDA C++       Go
 # -------------------------------------------
@@ -23,68 +23,50 @@
 # cc_binary     nv_binary    go_binary
 # cc_test       nv_test      go_test
 # -------------------------------------------
-#
-# cmake_parse_arguments can help us to achieve this goal.
-# https://cmake.org/cmake/help/v3.0/module/CMakeParseArguments.html
-#
-# cc_library|nv_library(<target_name> [STATIC SHARED] SRCS <file>... DEPS <libs>...)
-#
-# cc_library and nv_library can generate *.a, or *.so
-# if the corresponding keyword STATIC or SHARED is specified.
-#
-# cc_binary|nv_binary(<target_name> SRCS <file>... DEPS <libs>...)
-#
-# cc_binary and nv_binary can build souce code and link the dependent
-# libraries to generate a binary.
-#
-# cc_test|nv_test(<target_name> SRCS <file>... DEPS <libs>...)
-#
-# cc_test and nv_test can build test code, link gtest and other dependent
-# libraries to generate test suite.
-#
-# For example, in one folder, it contains
-#   ddim{.h, .cc, _test.cc, _test.cu}
-#   place{.h, cc, _test.cc}
-#
-# We can add build script as follows: 
 # 
-# cc_library(place STATIC SRCS place.cc)
+# To build a static library example.a from example.cc using the system compiler (like GCC):
+# 
+#   cc_library(example SRCS example.cc)
+# 
+# To build a static library example.a from multiple source files example{1,2,3}.cc:
+# 
+#   cc_library(example SRCS example1.cc example2.cc example3.cc)
+# 
+# To build a shared library example.so from example.cc:
+# 
+#   cc_library(example SHARED SRCS example.cc)
+# 
+# To build a library using Nvidia's NVCC from .cu file(s), use the nv_ prefixed version:
+# 
+#   nv_library(example SRCS example.cu)
+# 
+# To specify that a library new_example.a depends on other libraies:
+# 
+#   cc_library(new_example SRCS new_example.cc DEPS example)
+# 
+# Static libraries can be composed of other static libraries:
+# 
+#   cc_library(composed DEPS dependent1 dependent2 dependent3)
+# 
+# To build an executable binary file from some source files and dependent libraries:
+# 
+#   cc_binary(example SRCS main.cc something.cc DEPS example1 example2)
+# 
+# To build an executable binary file using NVCC, use the nv_ prefixed version:
+# 
+#   nv_binary(example SRCS main.cc something.cu DEPS example1 example2)
+# 
+# To build a unit test binary, which is an executable binary with GoogleTest linked:
+# 
+#   cc_test(example_test SRCS example_test.cc DEPS example)
+# 
+# To build a unit test binary using NVCC, use the nv_ prefixed version:
+# 
+#   nv_test(example_test SRCS example_test.cu DEPS example)
 #
-# place.cc -> place.a
-# cc_library's STATIC OPTION will generate libplace.a.
+# It is pretty often that executable and test binaries depend on pre-defined external libaries like glog and gflags defined in /cmake/external/*.cmake:
 #
-# cc_test(place_test
-#    SRCS place_test.cc
-#    DEPS place glog gflags)
-#
-# place_test.cc, place, glog, gflags -> place_test
-# cc_test will combine place_test.cc, libplace.a with libglog.a.
-# and libgflags.a to generate place_test.
-#
-# cc_library(ddim STATIC SRCS ddim.cc)
-#
-# ddim.cc -> ddim.a
-# cc_library's STATIC OPTION will generate libddim.a.
-#
-# cc_test(ddim_test
-#    SRCS ddim_test.cc
-#    DEPS ddim)
-#
-# ddim_test.cc, ddim.a -> ddim_test
-# cc_test will build ddim_test.cc with libddim.a to generate ddim_test.
-#
-# nv_test(dim_test
-#    SRCS dim_test.cu
-#    DEPS ddim)
-#
-# dim_test.cu, ddim.a -> dim_test
-# nv_test will build dim_test.cu with libddim.a to generate dim_test.
-#
-# cc_library(framework DEPS place ddim)
-#
-# place.a, ddim.a -> framework.a
-# If no SRCS exists, merging libplace.a and libddim.a to generate libframework.a.
-#
+#   cc_test(example_test SRCS example_test.cc DEPS example glog gflags)
 
 if(NOT APPLE)
     find_package(Threads REQUIRED)
