@@ -859,49 +859,6 @@ public:
   }
 
   /**
-   * This function is used to calculate the convolution:
-   *
-   * It will expand a feature matrix according to the
-   * convolution filters
-   */
-  virtual void convExpand(Matrix& feature,
-                          int feaImgHeight,
-                          int feaImgWidth,
-                          int channels,
-                          int blockH,
-                          int blockW,
-                          int strideH,
-                          int strideW,
-                          int paddingH,
-                          int paddingW,
-                          int outputH,
-                          int outputW) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  /**
-   * This function is the reverse implementation of convExpand:
-   *
-   * Its function is to restore a expanded-matrix into a feature matrix
-   */
-  virtual void convShrink(Matrix& expandColMat,
-                          int thisImgHeight,
-                          int thisImgWidth,
-                          int channels,
-                          int blockH,
-                          int blockW,
-                          int strideH,
-                          int strideW,
-                          int paddingH,
-                          int paddingW,
-                          int outputH,
-                          int outputW,
-                          real alpha = 1.0f,
-                          real beta = 0.0f) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  /**
    * Pooling forward operation, pick out the largest element
    * in the sizeX of value
    */
@@ -1334,34 +1291,6 @@ public:
 
   void classificationError(Matrix& output, IVector& label, size_t topkSize = 1);
 
-  void convExpand(Matrix& feature,
-                  int feaImgHeight,
-                  int feaImgWidth,
-                  int channels,
-                  int blockH,
-                  int blockW,
-                  int strideH,
-                  int strideW,
-                  int paddingH,
-                  int paddingW,
-                  int outputH,
-                  int outputW);
-
-  void convShrink(Matrix& expandColMat,
-                  int thisImgHeight,
-                  int thisImgWidth,
-                  int channels,
-                  int blockH,
-                  int blochW,
-                  int strideH,
-                  int strideW,
-                  int paddingH,
-                  int paddingWreal,
-                  int outputH,
-                  int outputW,
-                  real alpha = 1.0f,
-                  real beta = 0.0f);
-
   void maxPoolForward(Matrix& inputMat,
                       size_t imgSizeH,
                       size_t imgSizeW,
@@ -1520,34 +1449,6 @@ public:
   void copyByRowIndex(Matrix& b, const IVector& rowIndex);
 
   MatrixPtr clone(size_t height, size_t width, bool useGpu = false);
-
-  void convExpand(Matrix& feature,
-                  int feaImgHeight,
-                  int feaImgWidth,
-                  int channels,
-                  int blcokH,
-                  int blockW,
-                  int strideH,
-                  int strideW,
-                  int paddingH,
-                  int paddingW,
-                  int outputH,
-                  int outputW);
-
-  void convShrink(Matrix& expandFeat,
-                  int thisImgHeight,
-                  int thisImgWidth,
-                  int channels,
-                  int blockH,
-                  int blockW,
-                  int strideH,
-                  int strideW,
-                  int paddingH,
-                  int paddingW,
-                  int outputH,
-                  int outputW,
-                  real alpha = 1.0f,
-                  real beta = 0.0f);
 
   void maxPoolForward(Matrix& inputMat,
                       size_t imgSizeH,
