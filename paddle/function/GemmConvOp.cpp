@@ -117,15 +117,23 @@ public:
     ConvFunctionBase::init(config);
   }
 
+  virtual void check(const BufferArgs& inputs,
+                     const BufferArgs& outputs) override {
+    const TensorShape& input = inputs[0].shape();
+    const TensorShape& filter = inputs[1].shape();
+    const TensorShape& output = outputs[0].shape();
+    checkShape(input, filter, output);
+  }
+
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
+    check(inputs, outputs);
     // TODO(hedaoyuan): Need to define some index macros,
     // to avoid useing 0 and 1.
     const TensorShape& input = inputs[0].shape();
     const TensorShape& filter = inputs[1].shape();
     const TensorShape& output = outputs[0].shape();
-    check(input, filter, output);
 
     real beta;
     if (outputs[0].getArgType() == ADD_TO) {
@@ -209,16 +217,24 @@ public:
     ConvFunctionBase::init(config);
   }
 
+  virtual void check(const BufferArgs& inputs,
+                     const BufferArgs& outputs) override {
+    const TensorShape& output = inputs[0].shape();
+    const TensorShape& filter = inputs[1].shape();
+    const TensorShape& input = outputs[0].shape();
+    checkShape(input, filter, output);
+  }
+
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
+    check(inputs, outputs);
     // Since the implementation of Col2ImFunctor is ADD_TO,
     // this function only supports ADD_TO mode.
     CHECK_EQ(outputs[0].getArgType(), ADD_TO);
     const TensorShape& output = inputs[0].shape();
     const TensorShape& filter = inputs[1].shape();
     const TensorShape& input = outputs[0].shape();
-    check(input, filter, output);
 
     size_t batchSize = input[0];
     size_t inputChannels = input[1];
@@ -295,13 +311,21 @@ public:
     ConvFunctionBase::init(config);
   }
 
-  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(numInputs_, inputs.size());
-    CHECK_EQ(numOutputs_, outputs.size());
+  virtual void check(const BufferArgs& inputs,
+                     const BufferArgs& outputs) override {
     const TensorShape& output = inputs[0].shape();
     const TensorShape& input = inputs[1].shape();
     const TensorShape& filter = outputs[0].shape();
-    check(input, filter, output);
+    checkShape(input, filter, output);
+  }
+
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    CHECK_EQ(numInputs_, inputs.size());
+    CHECK_EQ(numOutputs_, outputs.size());
+    check(inputs, outputs);
+    const TensorShape& output = inputs[0].shape();
+    const TensorShape& input = inputs[1].shape();
+    const TensorShape& filter = outputs[0].shape();
 
     real beta;
     if (outputs[0].getArgType() == ADD_TO) {

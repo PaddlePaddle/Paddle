@@ -46,6 +46,9 @@ void SequencePoolLayer::forward(PassType passType) {
   Layer::forward(passType);
 
   const Argument& input = getInput(0);
+  CHECK(input.hasSeq() || input.hasSubseq())
+      << "Input should be a sequence or subsequence for layer " << getName();
+
   newBatchSize_ = type_ ? input.getNumSubSequences() : input.getNumSequences();
   size_t dim = getSize();
   // check
