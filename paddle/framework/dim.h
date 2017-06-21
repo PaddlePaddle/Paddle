@@ -5,10 +5,11 @@
 #include <stdexcept>
 #include <type_traits>
 
-#include "paddle/majel/detail/cuda_assert.h"
-#include "paddle/majel/detail/hostdevice.h"
+#include "paddle/platform/assert.h"
+#include "paddle/platform/hostdevice.h"
 
-namespace majel {
+namespace paddle {
+namespace framework {
 
 // Statically sized, statically indexed dimension
 template <int i>
@@ -74,7 +75,7 @@ struct Dim<1> {
       throw std::invalid_argument("Index out of range.");
     }
 #else
-    MAJEL_ASSERT(idx < size.head);
+    PADDLE_ASSERT(idx < size.head);
 #endif
   }
 
@@ -131,7 +132,7 @@ HOSTDEVICE int& indexer(Dim<D>& dim, int idx) {
     throw std::invalid_argument("Tried to access a negative dimension");
   }
 #else
-  MAJEL_ASSERT(idx >= 0);
+  PADDLE_ASSERT(idx >= 0);
 #endif
   if (idx == 0) {
     return dim.head;
@@ -146,7 +147,7 @@ HOSTDEVICE int& indexer<1>(Dim<1>& dim, int idx) {
     throw std::invalid_argument("Invalid index");
   }
 #else
-  MAJEL_ASSERT(idx == 0);
+  PADDLE_ASSERT(idx == 0);
 #endif
   return dim.head;
 }
@@ -158,7 +159,7 @@ HOSTDEVICE int indexer(const Dim<D>& dim, int idx) {
     throw std::invalid_argument("Tried to access a negative dimension");
   }
 #else
-  MAJEL_ASSERT(idx >= 0);
+  PADDLE_ASSERT(idx >= 0);
 #endif
   if (idx == 0) {
     return dim.head;
@@ -173,7 +174,7 @@ HOSTDEVICE int indexer<1>(const Dim<1>& dim, int idx) {
     throw std::invalid_argument("Invalid index");
   }
 #else
-  MAJEL_ASSERT(idx == 0);
+  PADDLE_ASSERT(idx == 0);
 #endif
   return dim.head;
 }
@@ -411,7 +412,7 @@ HOSTDEVICE Dim<sizeof...(Args)> make_dim(Args... idxes) {
 // XXX For some reason, overloading fails to resolve this correctly
 template <int i>
 typename std::enable_if<(i > 1), std::ostream&>::type operator<<(
-    std::ostream& os, const majel::Dim<i>& d) {
+    std::ostream& os, const Dim<i>& d) {
   os << d.head << ", " << d.tail;
   return os;
 }
@@ -420,7 +421,7 @@ typename std::enable_if<(i > 1), std::ostream&>::type operator<<(
 // XXX I wish this could be an overload instead of a template
 template <int i>
 typename std::enable_if<(i == 1), std::ostream&>::type operator<<(
-    std::ostream& os, const majel::Dim<i>& d) {
+    std::ostream& os, const Dim<i>& d) {
   os << d.head;
   return os;
 }
@@ -448,4 +449,5 @@ HOSTDEVICE Dim<D> linear_to_dimension(int linear_index, Dim<D> extents) {
   return result;
 }
 
-}  // namespace majel
+}  // namespace framework
+}  // namespace paddle

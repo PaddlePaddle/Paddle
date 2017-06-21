@@ -908,12 +908,13 @@ const T* CpuGpuVectorT<T>::getData(bool useGpu) const {
 // Operation will change data and need to reset sync_ & syncFlag_.
 #define MUTABLE_VECTOR_OP(OP, useGpu, args...) \
   do {                                         \
-    setSync(useGpu);                           \
     if (useGpu) {                              \
       copyToGpu();                             \
+      setSync(useGpu);                         \
       return gpuVectorT_->OP(args);            \
     } else {                                   \
       copyToCpu();                             \
+      setSync(useGpu);                         \
       return cpuVectorT_->OP(args);            \
     }                                          \
   } while (0)
@@ -1030,7 +1031,7 @@ void CpuGpuVectorT<T>::copyToCpu() {
     case DATA_AT_GPU:
       CHECK(gpuVectorT_);
       this->resizeOrCreate(gpuVectorT_->getSize(), false);
-      cpuVectorT_->copyFrom(*gpuVectorT_, HPPL_STREAM_DEFAULT);
+      cpuVectorT_->copyFrom(*gpuVectorT_);
       setSync(SYNCED);
       break;
     case DATA_AT_CPU:
@@ -1049,7 +1050,7 @@ void CpuGpuVectorT<T>::copyToGpu() {
     case DATA_AT_CPU:
       CHECK(cpuVectorT_);
       this->resizeOrCreate(cpuVectorT_->getSize(), true);
-      gpuVectorT_->copyFrom(*cpuVectorT_, HPPL_STREAM_DEFAULT);
+      gpuVectorT_->copyFrom(*cpuVectorT_);
       setSync(SYNCED);
       break;
     case DATA_AT_GPU:

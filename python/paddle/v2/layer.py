@@ -260,7 +260,7 @@ def parse_network(output_layers, extra_layers=None):
     else:
         extra_layers = []
 
-    layer_names = __get_used_layers__(output_layers + extra_layers)
+    layer_names = __get_used_layers__(list(output_layers) + list(extra_layers))
     submodel_names = __get_used_submodels__(layer_names)
     submodel_names.add('root')
     evaluator_names = __get_used_evaluators__(layer_names)
