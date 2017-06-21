@@ -21,8 +21,8 @@ find_package(Boost QUIET)
 
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-  add_subdirectory(majel)
+  add_subdirectory(platform)
+  add_subdirectory(framework)
 endif()
 
 if(WITH_C_API)

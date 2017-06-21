@@ -964,7 +964,7 @@ def fc_layer(input,
 
 
 @wrap_name_default("print")
-def printer_layer(input, name=None):
+def printer_layer(input, format=None, name=None):
     """
     Print the output value of input layers. This layer is useful for debugging.
 
@@ -982,6 +982,7 @@ def printer_layer(input, name=None):
 
     Layer(
         name=name,
+        format=format,
         type=LayerType.PRINT_LAYER,
         inputs=[l.name for l in input], )
     # this layer don't return anything, can not be input of other layer.
