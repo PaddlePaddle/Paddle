@@ -1,3 +1,4 @@
+group: deprecated-2017Q2
 language: cpp
 cache:
   directories:
