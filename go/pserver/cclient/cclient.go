@@ -121,7 +121,14 @@ func paddle_begin_init_params(client C.paddle_pserver_client) C.int {
 
 //export paddle_init_param
 func paddle_init_param(client C.paddle_pserver_client, param C.paddle_parameter, param_config unsafe.Pointer, config_len C.int) C.int {
-	et
+	et := pserver.ElementType(param.element_type)
+	name := C.GoString(param.name)
+	pc := pserver.ParameterWithConfig{
+		Param:  pserver.Parameter{Name: name, ElementType: et, Content: param.content, Length: para.content_len},
+		Config: cArrayToSlice(param_config, int(config_len)),
+	}
+	c := get(client)
+	err := c.InitParam(pc)
 
 	if err != nil {
 		if err.Error() == pserver.AlreadyInitialized {
