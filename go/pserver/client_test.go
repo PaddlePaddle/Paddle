@@ -75,7 +75,9 @@ func TestClientFull(t *testing.T) {
 		var p pserver.Parameter
 		p.Name = "p_" + strconv.Itoa(i)
 		p.ElementType = pserver.Float32
-		p.Content = make([]byte, (i+1)*100)
+		ElementValue := make([]byte, (i+1)*100)
+		p.Content = &ElementValue[0]
+		p.Length = len(ElementValue)
 		err := c.InitParam(pserver.ParameterWithConfig{Param: p})
 		if err != nil {
 			t.Fatal(err)
@@ -92,7 +94,9 @@ func TestClientFull(t *testing.T) {
 		var g pserver.Gradient
 		g.Name = "p_" + strconv.Itoa(i)
 		g.ElementType = pserver.Float32
-		g.Content = make([]byte, (i+1)*100)
+		ElementValue := make([]byte, (i+1)*100)
+		g.Content = &ElementValue[0]
+		g.Length = len(ElementValue)
 		grads = append(grads, g)
 	}
 
