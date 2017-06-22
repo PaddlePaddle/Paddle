@@ -123,7 +123,7 @@ net.Run(&scope);
 
 ## Compatibility with RNN
 
-Benefit from the decoupling of `Run` and `Scope`, `ScratchNet` is compatible with RNN design, 
+Benefit from the decoupling of `ScratchNet.Run` and `Scope`, `ScratchNet` is compatible with future RNN design, 
 for example we can implement a simple recurrent neural network as followed
 
 ```c++
