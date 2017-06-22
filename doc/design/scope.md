@@ -17,7 +17,6 @@
     * 每一个Scope析构的时候，会同时析构variable
     * 只能通过Scope创建Vairable。
     * 只能通过Scope获取Variable。
-
 ## Scope 可以被继承或者叫共享
 
 解释下Scope如何被共享，如何查找Variable的算法。
@@ -26,7 +25,4 @@
 
 # 接口实现
 
-C++ code.
-
-
-## 各个接口是啥意思，为啥这么设计
+# 各个接口是啥意思，为啥这么设计
