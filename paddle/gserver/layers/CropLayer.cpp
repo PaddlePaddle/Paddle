@@ -25,20 +25,57 @@ bool CropLayer::init(const LayerMap& layerMap,
   Layer::init(layerMap, parameterMap);
 
   auto& crop_conf = config_.inputs(0).crop_conf();
-  auto& img_conf = crop_conf.image_conf();
-  CHECK_EQ(config_.inputs_size(), 1);
-  inDims_ = TensorShape(
-      {0,
-       img_conf.channels(),
-       img_conf.has_img_size_y() ? img_conf.img_size_y() : img_conf.img_size(),
-       img_conf.img_size()});
+  crop_axis_ = crop_conf.axis();
+  for (int i = 0; i < crop_conf.offset_size(); i++) {
+    crop_offsets_[i] = crop_conf.offset(i);
+  }
 
-  crop_corner_ = {crop_conf.crop_corner(0),
-                  crop_conf.crop_corner(1),
-                  crop_conf.crop_corner(2)};
-  crop_shape_ = {crop_conf.crop_shape(0),
-                 crop_conf.crop_shape(1),
-                 crop_conf.crop_shape(2)};
+  // 1. get input_0 shape
+  auto& input0_img_conf = config_.inputs(0).image_conf();
+  inDims_ = TensorShape({0,
+                         input0_img_conf.channels(),
+                         input0_img_conf.has_img_size_y()
+                             ? input0_img_conf.img_size_y()
+                             : input0_img_conf.img_size(),
+                         input0_img_conf.img_size()});
+
+  // 2. get output shape from input_1 or crop shap conf
+  if (config_.inputs_size() == 2) {
+    auto& input1_img_conf = config_.inputs(1).image_conf();
+    targetDims_ = TensorShape({0,
+                               input1_img_conf.channels(),
+                               input1_img_conf.has_img_size_y()
+                                   ? input1_img_conf.img_size_y()
+                                   : input1_img_conf.img_size(),
+                               input1_img_conf.img_size()});
+  } else {
+    targetDims_ = TensorShape({crop_conf.shape(0),
+                               crop_conf.shape(1),
+                               crop_conf.shape(2),
+                               crop_conf.shape(3)});
+  }
+
+  // 3. get final crop shape
+  int dimSize = 4;
+  for (int i = 0; i < dimSize; i++) {
+    if (i >= crop_axis_) {
+      crop_shape_[i] = targetDims_[i];
+    } else {
+      crop_shape_[i] = inDims_[i];
+    }
+  }
+
+  // 4. get final crop corner
+  crop_corner_ = {0, 0, 0, 0};
+  for (int i = 0; i < dimSize; i++) {
+    if (i >= crop_axis_) {
+      if (crop_offsets_.size() > 1) {
+        crop_corner_[i] = crop_offsets_[i - crop_axis_];
+      } else {
+        crop_corner_[i] = crop_offsets_[0];
+      }
+    }
+  }
 
   outDims_ = TensorShape(4);
   setOutDims(0);
@@ -58,7 +95,7 @@ bool CropLayer::init(const LayerMap& layerMap,
 }
 
 void CropLayer::setOutDims(const size_t batchSize) {
-  outDims_.reshape({batchSize, crop_shape_[0], crop_shape_[1], crop_shape_[2]});
+  outDims_.reshape({batchSize, crop_shape_[1], crop_shape_[2], crop_shape_[3]});
 }
 
 void CropLayer::setTensorDim(const size_t batchSize) {

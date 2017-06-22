@@ -28,8 +28,8 @@ TEST(Crop, real) {
             FunctionCompare compare(
                 test_grad ? "CropGrad" : "Crop",
                 FuncConfig()
-                    .set<std::vector<uint32_t>>("crop_corner", {1, 1, 1})
-                    .set<std::vector<uint32_t>>("crop_shape", {2, 3, 3}));
+                    .set<std::vector<uint32_t>>("crop_corner", {0, 1, 1, 1})
+                    .set<std::vector<uint32_t>>("crop_shape", {0, 2, 3, 3}));
             TensorShape inDims{numSamples, channels, imgSizeH, imgSizeW};
             TensorShape outDims{numSamples, 2, 3, 3};
             compare.addInputs(

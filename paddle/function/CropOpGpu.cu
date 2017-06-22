@@ -37,19 +37,21 @@ template <>
 void Crop<DEVICE_TYPE_GPU>(real* outputs,
                           const real* inputs,
 						  const TensorShape inShape,
-                          const CropConf& crop) {
-  int cropC = crop.corner[0];
-  int cropH = crop.corner[1];
-  int cropW = crop.corner[2];
+                          const FuncConfig& conf) {
+  std::vector<uint32_t> crop_corner = conf.get<std::vector<uint32_t>>("crop_corner");
+  std::vector<uint32_t> crop_shape = conf.get<std::vector<uint32_t>>("crop_shape");
+  int cropC = crop_corner[1];
+  int cropH = crop_corner[2];
+  int cropW = crop_corner[3];
 
   int num = inShape[0];
   int inC = inShape[1];
   int inH = inShape[2];
   int inW = inShape[3];
 
-  int outC = crop.shape[0];
-  int outH = crop.shape[1];
-  int outW = crop.shape[2];
+  int outC = crop_shape[1];
+  int outH = crop_shape[2];
+  int outW = crop_shape[3];
   
   size_t nth = num * outC * outH * outW;
   int blockSize = 1024;
@@ -82,19 +84,21 @@ template <>
 void CropGrad<DEVICE_TYPE_GPU>(const real* inGrad,
                               real* outGrad,
                               const TensorShape outShape,
-                              const CropConf& crop) {
-  int cropC = crop.corner[0];
-  int cropH = crop.corner[1];
-  int cropW = crop.corner[2];
+                              const FuncConfig& conf) {
+  std::vector<uint32_t> crop_corner = conf.get<std::vector<uint32_t>>("crop_corner");
+  std::vector<uint32_t> crop_shape = conf.get<std::vector<uint32_t>>("crop_shape");
+  int cropC = crop_corner[1];
+  int cropH = crop_corner[2];
+  int cropW = crop_corner[3];
 
   int num = outShape[0];
   int outC = outShape[1];
   int outH = outShape[2];
   int outW = outShape[3];
 
-  int inC = crop.shape[0];
-  int inH = crop.shape[1];
-  int inW = crop.shape[2];
+  int inC = crop_shape[1];
+  int inH = crop_shape[2];
+  int inW = crop_shape[3];
   
   size_t nth = num * inC * inH * inW;
   int blockSize = 1024;

@@ -19,9 +19,13 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * \brief  This layer crop inputs according to the specify corner and shape.
- *         The input and output is a 4D tensor. Cropping from the 2nd to
- *         the 4th dimenstion.
+ * \brief  This layer crop input according to the specify conf.
+ *         input_0: input to be cropped
+ *         input_1: optional reference input
+ *         axis: start dimension to be croped
+ *         offset: offset of cropping  in each dimension
+ *         shape: if reference input layer was not setted,
+ *                  crop input as this shape conf
  */
 class CropLayer : public Layer {
 public:
@@ -38,9 +42,12 @@ protected:
   void setOutDims(const size_t batchSize);
   void setTensorDim(const size_t batchSize);
 
+  int32_t crop_axis_;
+  std::vector<uint32_t> crop_offsets_;
   std::vector<uint32_t> crop_corner_;
   std::vector<uint32_t> crop_shape_;
   TensorShape inDims_;
+  TensorShape targetDims_;
   TensorShape outDims_;
 };
 }  // namespace paddle

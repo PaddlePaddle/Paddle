@@ -18,13 +18,6 @@ limitations under the License. */
 
 namespace paddle {
 
-struct CropConf {
-  /// The upper left corner of croped result
-  std::vector<uint32_t> corner;
-  /// The shape of croped result
-  std::vector<uint32_t> shape;
-};
-
 /**
  * \brief  This funtion crops inputs according to the specify start point and
  *shape.
@@ -32,13 +25,13 @@ struct CropConf {
  * \param[out] outputs	save results.
  * \param[in]  inputs	input data.
  * \param[in]  inShape  the shape of input tensor.
- * \param[in]  crop     the cropping config
+ * \param[in]  conf     the cropping config
  */
 template <DeviceType Device>
 void Crop(real* outputs,
           const real* inputs,
           const TensorShape inShape,
-          const CropConf& crop);
+          const FuncConfig& conf);
 
 /**
  * \brief   Cropping operation backward.
@@ -46,11 +39,11 @@ void Crop(real* outputs,
  * \param[out] inGrad	gradients of previous layer
  * \param[in]  outGrad  output gradient
  * \param[in]  inShape  the shape of input tensor.
- * \param[in]  crop     the cropping config
+ * \param[in]  conf     the cropping config
  */
 template <DeviceType Device>
 void CropGrad(const real* inGrad,
               real* outGrad,
               const TensorShape inShape,
-              const CropConf& crop);
+              const FuncConfig& conf);
 }  // namespace paddle
