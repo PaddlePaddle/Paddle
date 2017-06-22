@@ -18,13 +18,13 @@
 # building rules (https://bazel.build/).
 #
 # 
-# -------------------------------------------
-#     C++        CUDA C++       Go
-# -------------------------------------------
-# cc_library    nv_library   go_library
+# -----------------------------------------------------
+#     C++        CUDA C++       Go          Proto
+# -----------------------------------------------------
+# cc_library    nv_library   go_library   proto_library
 # cc_binary     nv_binary    go_binary
 # cc_test       nv_test      go_test
-# -------------------------------------------
+# -----------------------------------------------------
 # 
 # To build a static library example.a from example.cc using the system
 #  compiler (like GCC):
@@ -82,6 +82,22 @@ if(NOT APPLE)
     find_package(Threads REQUIRED)
     link_libraries(${CMAKE_THREAD_LIBS_INIT})
 endif(NOT APPLE)
+
+
+find_package(Protobuf ${PROTOBUF_VERSION})  # required by proto_library.
+if(PROTOBUF_FOUND)
+  # Figure out protobuf version.
+  exec_program(${PROTOBUF_PROTOC_EXECUTABLE} ARGS --version OUTPUT_VARIABLE PROTOBUF_VERSION)
+  string(REGEX MATCH "[0-9]+.[0-9]+" PROTOBUF_VERSION "${PROTOBUF_VERSION}")
+
+  if("${PROTOBUF_VERSION}" VERSION_LESS "3.1.0")
+    message("Found too early version of protobuf ${PROTOBUF_VERSION} to use.")
+    set(PROTOBUF_FOUND OFF)
+  else()
+    include_directories(${PROTOBUF_INCLUDE_DIRS})
+  endif()
+endif(PROTOBUF_FOUND)
+
 
 function(merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
@@ -166,6 +182,22 @@ function(cc_library TARGET_NAME)
     endif()
   endif(cc_library_SRCS)
 endfunction(cc_library)
+
+
+function(proto_library TARGET_NAME)
+  if (NOT ${PROTOBUF_FOUND})
+    error("Using proto_library but CMake cannot find installed protobuf.")
+  endif()
+  
+  set(options STATIC static SHARED shared)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(proto_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+  generate_protobuf_cpp(${TARGET_NAME}_SRCS ${TARGET_NAME}_HDRS ${proto_library_SRCS})
+  cc_library(${TARGET_NAME} SRCS ${${TARGET_NAME}_SRCS} DEPS ${proto_library}_DEPS)
+endfunction(proto_library)
+
 
 function(cc_binary TARGET_NAME)
   set(options "")
