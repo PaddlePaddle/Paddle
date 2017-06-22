@@ -25,14 +25,16 @@ cout << memory::Used(pl);
 memory::Free(pl, p);
 ```
 
-### The API
+### API
 
 In `paddle/memory/memory.h` we have:
 
 ```cpp
-template <typeanme Place> void* Alloc(Place, size_t);
-template <typeanme Place> void Free(Place, void*);
-}
+namespace memory {
+template <typename Place> void* Alloc(Place, size_t);
+template <typename Place> void Free(Place, void*);
+template <typename Place> void Used(Place);
+}  // namespace memory
 ```
 
 These function templates have specializations on either `platform::CPUPlace` or `platform::GPUPlace`:
@@ -48,12 +50,14 @@ and
 
 ```cpp
 template<>
-void Alloc(GPUPlace)(GPUPlace p, size_t size) {
+void Alloc<GPUPlace>(GPUPlace p, size_t size) {
   return GetGPUBuddyAllocator(p.id)->Alloc(size);
 }
 ```
 
-### The Implementation
+Similar specializations exist for `Free` and `Used`.
+
+### Implementation
 
 `GetCPUBuddyAllocator` and `GetGPUBuddyAllocator` are singletions.
 
@@ -94,7 +98,7 @@ class BuddyAllocator {
  private:
   struct Block {
     size_t size;
-    Blobk* left, right;
+    Block* left, right;
   };
   ...
 };
@@ -102,15 +106,15 @@ class BuddyAllocator {
 
 #### System Allocators
 
-The `GPUAllocator` and `CPUAllocator` are calls *system allocators*.  They hold information about the device, including the amount of memory has been allocated.  So that we can call
+The `GPUAllocator` and `CPUAllocator` are calls *system allocators*.  They work as the fallback allocators of `BuddyAllocator`.  A system allocator holds information about a device, including the amount of memory has been allocated, so we can call
 
-- `GPUAllocator::Used` and
-- `CPUAllocator::Used`
+- `GPUAllocator::Used()` and
+- `CPUAllocator::Used()`
 
 to get the amount of memory that has been allocated so far.
 
 
-## Why Such a Design
+## Justification
 
 I got inspiration from Majel and Caffe2, though above design look different from both.
 
