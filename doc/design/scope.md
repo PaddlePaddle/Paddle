@@ -61,7 +61,7 @@ Just like [scope](https://en.wikipedia.org/wiki/Scope_(computer_science)) in pro
 
 ```cpp
 class Scope {
-public:
+ public:
   Scope(const std::shared_ptr<Scope>& scope): parent_(scope) {}
 
   Variable* GetVar(const std::string& name) const {
@@ -75,7 +75,7 @@ public:
     }
   }
 
-private:
+ private:
   std::shared_ptr<Scope> parent_ {nullptr};
 };
 ```
@@ -88,16 +88,16 @@ A local scope is very useful when we implement Recurrent Neural Network. Each ti
 
 ```cpp
 class Variable {
-private:
+ private:
   Variable() = default;
   friend class Scope;
 };
 
 class Scope {
-private:
+ private:
   Scope(const std::shared_ptr<Scope>& parent = nullptr);
 
-public:
+ public:
   static std::shared_ptr<Scope> Create(const std::shared_ptr<Scope>& parent = nullptr);
 
   // return nullptr if not found.
@@ -106,7 +106,7 @@ public:
   // return Error if already contains same name variable.
   Error CreateVariable(const std::string& name);
 
-private:
+ private:
   std::shared_ptr<Scope> parent_;
   std::unordered_map<std::string, std::unique_ptr<Scope>> attrs_;
 };
