@@ -136,7 +136,7 @@ Scope default_scope;
 
 auto rnn_net = ScratchNet(rnn_net_def);
 
-// Create rnn's states, the last scope is used to store rrn's outputs.
+// Create rnn's states, the last scope is used to store rnn outputs.
 Scope *rnn_states = new Scope[num_states + 1];
 
 for (int i = 0; i < num_states + 1; i++) {
