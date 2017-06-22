@@ -18,8 +18,9 @@ class NetworkBase {
 public:
   BaseNetwork(const NetDef &def, Scope *scope);
 
-  // run all the operators and return success(true) or not.
-  virtual bool Run() = 0;
+  // run all the operators and return success(true) or not, all the 
+  // variables are located in `scope`.
+  virtual bool Run(Scope* scope) = 0;
 
 protected:
   // keys of the input variables feed into the network.
@@ -57,8 +58,9 @@ public:
              const std::vector<const Variable &> &inputs,
              std::vector<Variable &> &outputs, const OprAttr &attr = OprAttr());
 
-  // Run all the operators with the default scope.
-  virtual bool Run() override;
+  // Run all the operators with the `scope`, if no scope is provided, default
+  // scope will be used instead.
+  virtual bool Run(Scope *scope = nullptr) override;
 
   // run all operators in ops_ sequentially.
   bool RunOps(Scope *scope);
