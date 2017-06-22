@@ -106,23 +106,25 @@ func paddle_new_pserver_client(addrs *C.char, selected int) C.paddle_pserver_cli
 
 //export paddle_new_etcd_pserver_client
 func paddle_new_etcd_pserver_client(etcd_addr *C.char, pserver_path *C.char, selected int) C.paddle_pserver_client {
-	if etcd_addr == "" {
+	addr := C.GoString(etcd_addr)
+	path := C.GoString(pserver_path)
+	if addr == "" {
 		return C.PSERVER_ERROR
 	}
-	etcd_addrs := strings.Split(etcd_addr, ",")
+	etcd_addrs := strings.Split(addr, ",")
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   etcd_addrs,
 		DialTimeout: etcdTimeout,
 	})
 	if err != nil {
 		log.Errorln(err)
-		return err
+		return C.PSERVER_ERROR
 	}
 	retryTimes := defaultRetryTimes
 	for retryTimes < 0 {
 		retryTimes--
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		resp, err := cli.Get(ctx, pserver_path)
+		resp, err := cli.Get(ctx, path)
 		cancel()
 		if err != nil {
 			log.Errorf("get %s error %v", pserver_path, err)
