@@ -1,6 +1,7 @@
 # Network Design
 
-`Network` is the container and controller of a set of operators in a network, users can use `Network.AddOp` to add operators into a network, 
+`Network` is the container and controller of a set of operators in a network, 
+users can build a real network from a `NetDef` in protobuf message 
 and use `Network.Run()` to run all the operators in the network.
 
 The `Network` will
