@@ -22,8 +22,7 @@ Scope is an association of a name to variable. All variables belong to `Scope`. 
 1. Variable can only be created by Scope and a variable can only be got from Scope. User cannot create or get a variable outside a scope. This is a constraints of our framework, and will keep our framework simple and clear.
 
 1. Scope only contains methods that are used to Create and Get Variables. Scope do not contain Operators and have no information to run them.
-    
-  `Net` is designed to drive the computation and Scope only contains a map of variables. There is no computation logic inside a `Scope`. Scope just handles the lifetime management of variables.
+    `Net` is designed to drive the computation and Scope only contains a map of variables. There is no computation logic inside a `Scope`. Scope just handles the lifetime management of variables.
     - `Create` is used to create a Variable by its name and add the mapping relation.
     - `Get` is used to find a Variable by name.
 
