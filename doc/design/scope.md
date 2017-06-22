@@ -4,8 +4,8 @@
 
 Scope is an important concept in programming languages, which defines a program region that a set of bindings between names and entities applies. In a specific scope, a valid name is uniquely associated with an entity, such as a variable. And in another scope, this name may refer to other entity or nothing at all. It clearly restricts the visibility and validity of names in a program. Hence **Scope** is introduced to PaddlePaddle to manage variables in context. But different from the original abstract concept, Scope now becomes an object with two important attributes:
 
-- Scope is a container of variables
-- Scope can be inherited or shared
+- Scope is an association of a name to variable.
+- Variables in a parent scope can be retrieved from local scope.
 
 A detailed explanation of these two attributes goes as following.
 
