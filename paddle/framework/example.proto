@@ -5,5 +5,5 @@ option optimize_for = LITE_RUNTIME;
 package paddle.framework;
 
 message Something {
-  optional double momentum = 21 [default = 0.0];
+  optional double something = 1 [default = 0.0];
 }

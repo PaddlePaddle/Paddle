@@ -83,20 +83,8 @@ if(NOT APPLE)
     link_libraries(${CMAKE_THREAD_LIBS_INIT})
 endif(NOT APPLE)
 
-
-find_package(Protobuf ${PROTOBUF_VERSION})  # required by proto_library.
-if(PROTOBUF_FOUND)
-  # Figure out protobuf version.
-  exec_program(${PROTOBUF_PROTOC_EXECUTABLE} ARGS --version OUTPUT_VARIABLE PROTOBUF_VERSION)
-  string(REGEX MATCH "[0-9]+.[0-9]+" PROTOBUF_VERSION "${PROTOBUF_VERSION}")
-
-  if("${PROTOBUF_VERSION}" VERSION_LESS "3.1.0")
-    message("Found too early version of protobuf ${PROTOBUF_VERSION} to use.")
-    set(PROTOBUF_FOUND OFF)
-  else()
-    include_directories(${PROTOBUF_INCLUDE_DIRS})
-  endif()
-endif(PROTOBUF_FOUND)
+# Source files generated from .proto files will be in ${CMAKE_BINARY_DIR}.
+include_directories(${CMAKE_BINARY_DIR})
 
 
 function(merge_static_libs TARGET_NAME)
@@ -194,8 +182,8 @@ function(proto_library TARGET_NAME)
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(proto_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-  generate_protobuf_cpp(${TARGET_NAME}_SRCS ${TARGET_NAME}_HDRS ${proto_library_SRCS})
-  cc_library(${TARGET_NAME} SRCS ${${TARGET_NAME}_SRCS} DEPS ${proto_library}_DEPS)
+  protobuf_generate_cpp(${TARGET_NAME}_SRCS ${TARGET_NAME}_HDRS ${proto_library_SRCS})
+  cc_library(${TARGET_NAME} SRCS ${${TARGET_NAME}_SRCS} DEPS protobuf ${${proto_library}_DEPS})
 endfunction(proto_library)
 
 
