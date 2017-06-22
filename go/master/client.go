@@ -25,8 +25,10 @@ type Client struct {
 	ch   chan []byte
 }
 
+// MasterAddresser provide master address
 type MasterAddresser string
 
+// Address return the address
 func (m MasterAddresser) Address() string {
 	return string(m)
 }
