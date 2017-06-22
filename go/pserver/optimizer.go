@@ -1,6 +1,7 @@
 package pserver
 
 /*
+#cgo CFLAGS: -I ../../
 #include "paddle/optimizer/optimizer.h"
 */
 import "C"

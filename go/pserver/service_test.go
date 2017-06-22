@@ -13,7 +13,9 @@ func TestFull(t *testing.T) {
 	s := pserver.NewService()
 	var p pserver.Parameter
 	p.Name = "param_a"
-	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
+	ElementValue := []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
+	p.Content = &ElementValue[0]
+	p.Length = len(ElementValue)
 	p.ElementType = pserver.Int32
 	err := s.InitParam(pserver.ParameterWithConfig{Param: p, Config: nil}, nil)
 	if err != nil {
@@ -22,7 +24,9 @@ func TestFull(t *testing.T) {
 
 	var p1 pserver.Parameter
 	p1.Name = "param_b"
-	p1.Content = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	ElementValue = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	p1.Content = &ElementValue[0]
+	p1.Length = len(ElementValue)
 	p1.ElementType = pserver.Float32
 	err = s.InitParam(pserver.ParameterWithConfig{Param: p1, Config: nil}, nil)
 	if err != nil {

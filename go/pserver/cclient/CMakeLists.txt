@@ -10,5 +10,6 @@ include(golang)
 include(flags)
 
 go_library(paddle_pserver_cclient STATIC)
-
-add_subdirectory(test)
+if(WITH_TESTING)
+  add_subdirectory(test)
+endif()
