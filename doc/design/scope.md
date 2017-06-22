@@ -29,7 +29,7 @@ Scope is used to provide a running environment for Net.
 
 1. Every variable only belongs to one certain Scope.
 
-    Variable can not be shared between nets, if we want to use variables from different scope we can use `Parent scope`.
+    Variable can not be shared between scopes, if we want to use variables from different scope we can use `Parent scope`.
 
 1. Scope should destruct all Variables within it when itself is destructed.
 
