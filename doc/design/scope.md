@@ -30,7 +30,7 @@ class Scope {
 public:
   Scope(const std::shared_ptr<Scope>& scope): parent_(scope) {}
 
-  Variable* Get(const std::string& name) const {
+  Variable* GetVar(const std::string& name) const {
     Variable* var = GetVarLocally(name);
     if (var != nullptr) {
       return var;
