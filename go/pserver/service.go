@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/PaddlePaddle/Paddle/go/utils"
+	"github.com/PaddlePaddle/Paddle/go/utils/networkhelper"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
 	log "github.com/sirupsen/logrus"
@@ -32,6 +32,9 @@ const (
 	Float32
 	Float64
 )
+
+// PsDesired is etcd path for store desired pserver count
+const PsDesired = "/ps_desired"
 
 // Parameter is a piece of data to sync with the parameter server.
 type Parameter struct {
@@ -68,7 +71,8 @@ type Service struct {
 	externalIP string
 }
 
-// NewService creates a new service.
+// NewService creates a new service, will bypass etcd registration if no
+// endpoints specified.
 func NewService(endpoints string, timeout time.Duration) (*Service, error) {
 	s := &Service{opt: newOptimizer(sgd, 0.005)}
 	s.paramMap = make(map[string]Parameter)
@@ -77,7 +81,7 @@ func NewService(endpoints string, timeout time.Duration) (*Service, error) {
 	s.etcdTimeout = timeout
 
 	var err error
-	s.externalIP, err = utils.GetExternalIP()
+	s.externalIP, err = networkhelper.GetExternalIP()
 	if err != nil {
 		return nil, err
 	}
@@ -102,67 +106,74 @@ func NewService(endpoints string, timeout time.Duration) (*Service, error) {
 		// wait and set s.desired init value
 		for {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			resp, err := s.etcdClient.Get(ctx, "/ps_desired")
+			resp, err := s.etcdClient.Get(ctx, PsDesired)
 			cancel()
 			if err != nil {
-				log.Errorf("getting /ps_desired error: %v", err)
+				log.Errorf("getting %s error: %v", PsDesired, err)
 				time.Sleep(s.etcdTimeout)
 				continue
 			}
-			for _, ev := range resp.Kvs {
-				log.Debugf("key: %s, value: %s", ev.Key, ev.Value)
-				if string(ev.Key) == "/ps_desired" {
-					s.desired, err = strconv.Atoi(string(ev.Value))
-					if err != nil {
-						log.Errorf("value of /ps_desired invalid %v\n", err)
-						time.Sleep(s.etcdTimeout)
-						// NOTE: wait util ps_desired value change
-						continue
-					}
+			if len(resp.Kvs) != 0 {
+				s.desired, err = strconv.Atoi(string(resp.Kvs[0].Value))
+				if err != nil {
+					log.Errorf("value of %s invalid %v\n", PsDesired, err)
+					time.Sleep(s.etcdTimeout)
+					// NOTE: wait util ps_desired value change
+					continue
 				}
+				break
+			}
+		}
+		// try register pserver node on etcd
+		for {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			_, err := s.registerPserverEtcd(ctx)
+			cancel()
+			if err != nil {
+				log.Warn(err)
+				time.Sleep(s.etcdTimeout)
+				continue
 			}
 			break
 		}
-		s.registerPserverEtcd()
 	} // if endpoints != ""
 	// Bypass etcd registration if no endpoints specified
 	return s, nil
 }
 
 // registerPserverEtcd registers pserver node on etcd using transaction.
-func (s *Service) registerPserverEtcd() (*clientv3.TxnResponse, error) {
-	return concurrency.NewSTMRepeatable(context.TODO(), s.etcdClient, func(c concurrency.STM) error {
+func (s *Service) registerPserverEtcd(ctx context.Context) (*clientv3.TxnResponse, error) {
+	return concurrency.NewSTM(s.etcdClient, func(c concurrency.STM) error {
+		registered := false
 		for i := 0; i < s.desired; i++ {
 			psKey := "/ps/" + strconv.Itoa(i)
 			log.Debugf("checking %s", psKey)
 			ps := c.Get(psKey)
 			log.Debugf("got value (%s) for key: %s", ps, psKey)
 
-			resp, err := s.etcdClient.Grant(context.TODO(), 5)
-			if err != nil {
-				log.Fatal(err)
-			}
-
 			if ps == "" {
+				resp, err := s.etcdClient.Grant(context.TODO(), 5)
+				if err != nil {
+					log.Fatal(err)
+				}
 				// find the first id and write info
 				c.Put(psKey, s.externalIP, clientv3.WithLease(resp.ID))
 				log.Debugf("set pserver node %s with value %s", psKey, s.externalIP)
-				ch, kaerr := s.etcdClient.KeepAlive(context.TODO(), resp.ID)
+				_, kaerr := s.etcdClient.KeepAlive(context.TODO(), resp.ID)
 				if kaerr != nil {
 					log.Errorf("keepalive etcd node error: %v", kaerr)
 					return kaerr
 				}
-				// FIXME: does this really needed?
-				go func(ch <-chan *clientv3.LeaseKeepAliveResponse) {
-					ka := <-ch
-					log.Debugf("keepalive: %d\n", ka.TTL)
-				}(ch)
+				log.Debug("register finished")
+				registered = true
 				break
 			}
 		}
-		log.Debug("register finished")
-		return nil
-	})
+		if registered == true {
+			return nil
+		}
+		return errors.New("not registerd, may due to already have enough pservers")
+	}, concurrency.WithAbortContext(ctx), concurrency.WithIsolation(concurrency.RepeatableReads))
 }
 
 // InitParam initializes a parameter.
