@@ -57,15 +57,17 @@ def text_file(path):
     return reader
 
 
-def RecordIO(path):
+def recordio(path):
     """
     Creates a data reader that outputs record one one by one from given recordio file
     :path: path of recordio file
     :returns: data reader of recordio file
     """
 
+    import recordio as rec
+
     def reader():
-        f = recordio.reader(path)
+        f = rec.reader(path)
         while True:
             r = f.read()
             if r is None:

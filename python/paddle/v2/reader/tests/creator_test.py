@@ -37,10 +37,10 @@ class TestTextFile(unittest.TestCase):
 
 
 class TestRecordIO(unittest.TestCase):
-    def test_RecordIO(self):
+    def test_recordio(self):
         path = os.path.join(
             os.path.dirname(__file__), "test_recordio_creator.dat")
-        reader = paddle.v2.reader.creator.RecordIO(path)
+        reader = paddle.v2.reader.creator.recordio(path)
         for idx, r in enumerate(reader()):
             self.assertSequenceEqual(r, str(idx))
 
