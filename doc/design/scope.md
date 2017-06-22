@@ -15,23 +15,28 @@ A detailed explanation of these two attributes goes as following.
 Scope is used to provide a running environment for Net.
 
 1. Scope mainly has Variables as it's data member.
+
     Scope is a running environment for Net. Net should get all it need to do computation from a scope, such as data buffer, state(momentum) etc.
     All these data/state can be abstracted and create as variable in Paddle, so the only thing Scope need to care about is Variable.
 1. Variable can only be created by Scope.
 1. Variable can only be got from Scope.
 1. Scope contains methods that are used to manage Variables, such as Create/Get/Delete.
+
     Because we only need to care about Variable, we only need method to manage the lifecycle of Variable.
     - `Create` is used to create a Variable by its name and add the mapping relation.
     - `Get` is used to find a Variable by name.
     - `Delete` is used to remove a Variable because sometimes we want to release memory or other resources.
 
 1. Every variable only belongs to one certain Scope.
+
     Variable can not be shared between nets, if we want to use variables from different scope we can use `Parent scope`.
 
 1. Scope should destruct all Variables within it when itself is destructed.
+
     Because Variable can only be got from Scope, when destroying Scope, we also need to destroy all the Vars in it.
 
 1. Scope do not contain Operators and have no information to run them.
+
     Net is designed to drive the computation, Scope is only used to provide a running environment.
 
 ```cpp
