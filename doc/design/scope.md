@@ -20,10 +20,10 @@
 
 ## Parent scope and local scope
 
-Just like [scope](https://en.wikipedia.org/wiki/Scope_(computer_science)) in programming languages, `Scope` in the neural network can also be local. There are two attributes about local scope.
+Just like [scope](https://en.wikipedia.org/wiki/Scope_(computer_science)) in programming languages, `Scope` in the neural network can also be a local scope. There are two attributes about local scope.
 
 1.  We can create local variables in a local scope. When that local scope are destroyed, all local variables should also be destroyed.
-2.  Variables in a parent scope can be retrieved from that parent scope's local scopes, i.e., when user get a variable from a scope, it will try to search this variable in current scope. If there is no such variable in the local scope, `scope` will keep searching from its parent, until the variable is found or there is no parent.
+2.  Variables in a parent scope can be retrieved from local scopes of that parent scope, i.e., when user get a variable from a scope, it will try to search this variable in current scope. If there is no such variable in the local scope, `scope` will keep searching from its parent, until the variable is found or there is no parent.
 
 ```cpp
 class Scope {
