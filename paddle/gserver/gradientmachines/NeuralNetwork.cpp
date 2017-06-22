@@ -321,7 +321,7 @@ public:
     }
   }
 
-  virtual void eval(const NeuralNetwork& nn) {
+  virtual void eval(const NeuralNetwork& nn) override {
     for (auto& evaluator : evaluators_) {
       evaluator->eval(nn);
     }
@@ -396,6 +396,30 @@ private:
   }
 };
 
+class SubnetEvaluator : public CombinedEvaluator {
+public:
+  SubnetEvaluator(const std::string& layerName,
+                  std::unique_ptr<Evaluator>&& evaluator)
+      : layerName_(layerName) {
+    addEvaluator(std::move(evaluator));
+  }
+  virtual void eval(const NeuralNetwork& nn) override {
+    const LayerPtr& layer = nn.getLayer(layerName_);
+    CHECK(layer) << "Nonexisted layer: " << layerName_ << " in submodel "
+                 << nn.getName();
+    bool accessed = false;
+    layer->accessSubNetwork([this, &accessed](NeuralNetwork& subnet) {
+      subnet.eval(evaluators_[0].get());
+      accessed = true;
+    });
+    CHECK(accessed) << "There is no subnetwork for layer " << layerName_
+                    << " in submodel " << nn.getName();
+  }
+
+protected:
+  std::string layerName_;
+};
+
 Evaluator* NeuralNetwork::makeEvaluator() const {
   CombinedEvaluator* combinedEvaluator = new CombinedEvaluator();
   auto subModelConfig = std::find_if(config_.sub_models().begin(),
@@ -421,6 +445,15 @@ Evaluator* NeuralNetwork::makeEvaluator() const {
             Evaluator::create(*thisEvalConfig));
         combinedEvaluator->addEvaluator(std::move(evaluator));
       }
+    }
+    for (auto& layer : layers_) {
+      layer->accessSubNetwork(
+          [layer, combinedEvaluator](NeuralNetwork& subnet) {
+            std::unique_ptr<Evaluator> subEvaluator(new SubnetEvaluator(
+                layer->getName(),
+                std::unique_ptr<Evaluator>(subnet.makeEvaluator())));
+            combinedEvaluator->addEvaluator(std::move(subEvaluator));
+          });
     }
   } else {
     for (const EvaluatorConfig& evalConfig : config_.evaluators()) {
