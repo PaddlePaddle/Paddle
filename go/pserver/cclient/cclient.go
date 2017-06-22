@@ -29,6 +29,7 @@ import (
 	"sync"
 	"unsafe"
 	"time"
+	"context"
 
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 	log "github.com/sirupsen/logrus"
@@ -39,8 +40,8 @@ var nullPtr = unsafe.Pointer(uintptr(0))
 var mu sync.Mutex
 var handleMap = make(map[C.paddle_pserver_client]*pserver.Client)
 var curHandle C.paddle_pserver_client
-var etcdCli *clientv3.Client
 var etcdTimeout time.Duration
+var defaultRetryTimes = 5
 
 func add(c *pserver.Client) C.paddle_pserver_client {
 	mu.Lock()
@@ -104,17 +105,39 @@ func paddle_new_pserver_client(addrs *C.char, selected int) C.paddle_pserver_cli
 }
 
 //export paddle_new_etcd_pserver_client
-func paddle_new_etcd_pserver_client(etcd_addr *C.char, pserver_path *C.char) C.paddle_pserver_client {
-	// TODO(helin): fault tolerant pserver client using etcd.
+func paddle_new_etcd_pserver_client(etcd_addr *C.char, pserver_path *C.char, selected int) C.paddle_pserver_client {
 	if etcd_addr == "" {
 		return C.PSERVER_ERROR
 	}
-	var err error
+	etcd_addrs := strings.Split(etcd_addr, ",")
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   etcd_addr,
+		Endpoints:   etcd_addrs,
 		DialTimeout: etcdTimeout,
 	})
-	get := clientv3.OpGet(pserver_path)
+	if err != nil {
+		log.Errorln(err)
+		return err
+	}
+	retryTimes := defaultRetryTimes
+	for retryTimes < 0 {
+		retryTimes--
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		resp, err := cli.Get(ctx, pserver_path)
+		cancel()
+		if err != nil {
+			log.Errorf("get %s error %v", pserver_path, err)
+		}
+		kvs := resp.Kvs
+		if len(kvs) == 0 {
+			log.Infoln("Waiting for pservers register, sleeping")
+			time.Sleep(time.Second)
+			continue
+		}
+		ps_addr := string(kvs[0].Value)
+		return paddle_new_pserver_client(C.CString(ps_addr), selected)
+	}
+	log.Errorln("get pserver address from etcd timeout!")
+	return C.PSERVER_ERROR
 }
 
 //export paddle_pserver_client_release
