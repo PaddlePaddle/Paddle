@@ -54,6 +54,13 @@ func (a addresser) Address() string {
 	return string(a)
 }
 
+//export paddle_new_etcd_master_client
+func paddle_new_etcd_master_client(etcdEndpoints *C.char, bufSize int) C.paddle_master_client {
+	p := C.GoString(etcdEndpoints)
+	c := master.NewEtcdClient(addresser(p), bufSize)
+	return add(c)
+}
+
 //export paddle_new_master_client
 func paddle_new_master_client(addr *C.char, bufSize int) C.paddle_master_client {
 	a := C.GoString(addr)

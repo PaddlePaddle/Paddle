@@ -13,6 +13,7 @@ import (
 
 	"github.com/PaddlePaddle/Paddle/go/master"
 	"github.com/PaddlePaddle/recordio"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNextRecord(t *testing.T) {
@@ -76,4 +77,9 @@ func TestNextRecord(t *testing.T) {
 			received[r[0]] = true
 		}
 	}
+}
+
+func TestNewEtcdClientFailed(t *testing.T) {
+	assert.Panics(t, func() { master.NewEtcdClient("localhost:1235", 3, 1) },
+		"Invalid etcd address should be panic.")
 }

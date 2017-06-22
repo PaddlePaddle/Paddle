@@ -1,13 +1,18 @@
 package master
 
 import (
+	"context"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
 	"github.com/PaddlePaddle/recordio"
+	"github.com/coreos/etcd/clientv3"
 	log "github.com/sirupsen/logrus"
 )
+
+const masterAddrPath = "/master"
 
 // Addresser provide the address of the master server.
 type Addresser interface {
@@ -18,6 +23,12 @@ type Addresser interface {
 type Client struct {
 	conn *connection.Conn
 	ch   chan []byte
+}
+
+type MasterAddresser string
+
+func (m MasterAddresser) Address() string {
+	return string(m)
 }
 
 // NewClient creates a new Client.
@@ -31,6 +42,46 @@ func NewClient(addr Addresser, bufSize int) *Client {
 	go c.monitorMaster(addr)
 	go c.getRecords()
 	return c
+}
+
+// NewEtcdClient create a new master client by etcd
+//
+// etcdEndpoints is the endpoints for etcd, it's separated by "," such as
+// "172.0.1.0:2379,172.0.1.1:2379"
+// bufSize is the record buffer size. NextRecord will read from this buffer.
+func NewEtcdClient(etcdEndpoints string, etcdTimeout int, bufSize int) *Client {
+	timeout := time.Second * time.Duration(etcdTimeout)
+	ep := strings.Split(etcdEndpoints, ",")
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   ep,
+		DialTimeout: timeout,
+	})
+	if err != nil {
+		log.Errorf("Init etcd connection failed: %v", err)
+		panic(err)
+	}
+	log.Debugf("Connected to etcd: %s\n", etcdEndpoints)
+	for {
+
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		resp, err := cli.Get(ctx, masterAddrPath)
+		cancel()
+		if err != nil {
+			log.Errorf("Fetch master addr failed, %v\n", err)
+			time.Sleep(timeout)
+			continue
+		}
+		kvs := resp.Kvs
+		if len(kvs) == 0 {
+			log.Infoln("Waiting for master be ready ...\n")
+			time.Sleep(timeout)
+			continue
+		}
+
+		mAddr := kvs[0].Value
+		log.Debugf("Fetched master address: %s\n", mAddr)
+		return NewClient(MasterAddresser(mAddr), bufSize)
+	}
 }
 
 func (c *Client) getRecords() {
