@@ -76,8 +76,11 @@ private:
 using VariablePtr = std::weak_ptr<Variable>;
 
 class Scope {
-public:
+private:
   Scope(const std::shared_ptr<Scope>& parent = nullptr);
+
+public:
+  static std::shared_ptr<Scope> Create(const std::shared_ptr<Scope>& parent = nullptr);
 
   // return nullptr if not found.
   VariablePtr GetVariable(const std::string& name) const;
@@ -101,6 +104,8 @@ The `VariablePtr` is a `weak_ptr`. `Net` and `Op` can only get a Variable from `
 ## Sharing a parent scope
 
 Local scope contains a `parent_` pointer. It is a linked-list for scopes. Using a `shared_ptr` because when a local scope is using, its parents cannot be destroyed.
+
+Also, as the parent scope is a `shared_ptr`, we can only `Create()` a scope shared pointer. We cannot construct a scope variable, because it cannot be passed to other scope as `parent` pointer.
 
 ## Orthogonal interface
 
