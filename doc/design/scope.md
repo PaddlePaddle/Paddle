@@ -1,4 +1,4 @@
-# What is a scope.
+# Design of Scope in Paddle
 
 ## Overview
 
