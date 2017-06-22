@@ -16,7 +16,7 @@ To make the `Network` extendibe, a base class is defined like this
 // The minimum a network should be implemented.
 class NetworkBase {
 public:
-  BaseNetwork(const NetDef &def, Scope *scope);
+  NetworkBase(const NetDef &def=NetDef());
 
   // run all the operators and return success(true) or not, all the 
   // variables are located in `scope`.
@@ -33,17 +33,15 @@ protected:
 A simple implemention is as followed:
 
 ```c++
-class Network final : public BaseNetwork {
+class Network final : public NetworkBase {
 public:
-  // Create an empty network, user can add operators by calling `AddOp`.
-  Network(const std::string &name);
-
+  // Create an empty network, user can add new operators by calling `AddOp`.
   // NetDef is the definition of a network, in some occasion, operators are
   // created dynamically by user one by one; but in some other occasion such as
   // LSTM, all the operators in the networks should be  created during the
   // construction of the network. So a `NetDef` is provided with all the
   // operators' definitions.
-  Network(const std::string &name, const NetDef &def);
+  Network(const std::string &name, const NetDef &def=NetDef());
 
   // Add a operator which is identified  as `type` and has attributes described
   // in `attr`, the `inputs` are the keys of readonly input variables, `outputs`
