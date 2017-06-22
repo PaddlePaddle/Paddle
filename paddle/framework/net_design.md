@@ -56,18 +56,19 @@ private:
 };
 ```
 
-We can define a network like this
+We can define and run a network like this
 
 ```c++
-auto x = NewVar("x");
-auto y = NewVar("y");
-auto z = NewVar("z");
+// create an empty scope located on CPU device.
+Scope scope(CPUPlace());
 
-auto net_def =
-    NetDef().NewOperator("xxx").AddInput(x).AddInput(y).AddOutput(z).Build();
+// create and init variables described in `net_desc`.
+w1.CreateVariables(net_desc);
+w1.InitVariables(net_desc);
 
-Network net(net_def);
+// create a network according to `net_desc`
+auto net = CreateNet(net_desc);
 
-// use default scope.
-net.Run()
+// run the network providing the `scope`.
+net.Run(&scope);
 ```
