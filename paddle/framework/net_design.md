@@ -16,7 +16,7 @@ To make the `Network` extendibe, a base class is defined like this
 // The minimum a network should be implemented.
 class NetworkBase {
 public:
-  NetworkBase(const NetDef &def=NetDef());
+  NetworkBase(const NetDef &def);
 
   // run all the operators and return success(true) or not, all the 
   // variables are located in `scope`.
@@ -34,34 +34,21 @@ A simple implemention is as followed:
 
 ```c++
 class Network final : public NetworkBase {
-public:
-  // Create an empty network, user can add new operators by calling `AddOp`.
-  // NetDef is the definition of a network, in some occasion, operators are
-  // created dynamically by user one by one; but in some other occasion such as
-  // LSTM, all the operators in the networks should be  created during the
-  // construction of the network. So a `NetDef` is provided with all the
-  // operators' definitions.
-  Network(const std::string &name, const NetDef &def=NetDef());
+ public:
+  // Create a network describe by `def`.  NetDef is the definition of a network.
+  Network(const NetDef &def);
 
-  // Add a operator which is identified  as `type` and has attributes described
+ protected:
+  // Add a operator which is identified as `type` and has attributes described
   // in `attr`, the `inputs` are the keys of readonly input variables, `outputs`
   // are keys of mutable output variables.
   bool AddOp(const std::string &type, const std::vector<string> &inputs,
              const std::vector<string> &outputs,
              const OprAttr &attr = OprAttr());
 
-  // Add a operator, `Network` will get keys of Variables from `inputs` and
-  // `outputs`.
-  bool AddOp(const std::string &type,
-             const std::vector<const Variable &> &inputs,
-             std::vector<Variable &> &outputs, const OprAttr &attr = OprAttr());
-
   // Run all the operators with the `scope`, if no scope is provided, default
   // scope will be used instead.
   virtual bool Run(Scope *scope = nullptr) override;
-
-  // run all operators in ops_ sequentially.
-  bool RunOps(Scope *scope);
 
 private:
   // the operators are owned by `Network`.
@@ -72,12 +59,15 @@ private:
 We can define a network like this
 
 ```c++
-Network net("demo_net");
-
 auto x = NewVar("x");
 auto y = NewVar("y");
 auto z = NewVar("z");
 
-// default scope is used.
-net.AddOp("AddOp", {x, y}, {z});
+auto net_def =
+    NetDef().NewOperator("xxx").AddInput(x).AddInput(y).AddOutput(z).Build();
+
+Network net(net_def);
+
+// use default scope.
+net.Run()
 ```
