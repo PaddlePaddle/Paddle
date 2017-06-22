@@ -110,6 +110,9 @@ protected:
   // of real layer.
   ICpuGpuVectorPtr inputStartPos_;
 
+  // true for setRealLayer, false for setRealLayerAndOutput
+  bool selectionMode_;
+
 public:
   explicit ScatterAgentLayer(const LayerConfig& config) : Layer(config) {}
 
@@ -137,6 +140,7 @@ public:
     } else {
       cpuIds_ = ids_;
     }
+    selectionMode_ = true;
   }
 
   // set real layer and output, [idIndex, idIndex + idSize) of *ids*
@@ -153,6 +157,7 @@ public:
     idIndex_ = idIndex;
     idSize_ = idSize;
     handleBackward_ = handleBackward;
+    selectionMode_ = false;
   }
 
   void setSequenceStartPositions(const ICpuGpuVectorPtr& sequenceStartPositions,
@@ -166,7 +171,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
 
-  void forwardSequence(PassType passType);
+  void forwardWithSelection(PassType passType);
 };
 
 }  // namespace paddle
