@@ -108,8 +108,8 @@ the operators are created by `CreateNet`, and each operator is created by `AddOp
 Scope scope(CPUPlace());
 
 // create and init variables described in `net_desc`.
-w1.CreateVariables(net_desc);
-w1.InitVariables(net_desc);
+scope.CreateVariables(net_desc);
+scope.InitVariables(net_desc);
 
 // create a network according to `net_desc`
 auto net = CreateNet(net_desc);
