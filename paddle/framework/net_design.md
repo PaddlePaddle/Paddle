@@ -10,19 +10,21 @@ The `Network` will
 
 # API
 
-To make the `Network` extendibe, a base class is defined like this
+## NetworkBase
+To make the `Network` extendable, a base class is defined like this
 
 ```c++
 // The minimum a network should be implemented.
 class NetworkBase {
-public:
-  NetworkBase(const NetDef &def);
+ public:
+  // `def` is a proto message that describe the structure of a network.
+  NetworkBase(const NetDef& def);
 
-  // run all the operators and return success(true) or not, all the 
+  // run all the operators and return success(true) or not, all the
   // variables are located in `scope`.
   virtual bool Run(Scope* scope) = 0;
 
-protected:
+ protected:
   // keys of the input variables feed into the network.
   std::vector<string> inputs_;
   // keys of the corresponding output variables the network will mutate.
@@ -30,33 +32,75 @@ protected:
 };
 ```
 
+All network implementations should build networks from  a protobuf message which 
+describes the structure of a real network; `Run` method should be implemented by 
+all implementations to offer a universal method to forward or backward compute a network.
+
+A method of factory pattern can be defined like
+
+```c++
+NetworkBase* CreateNet(const NetDef& def) {
+  switch (def.model_type()) {
+    case NN:
+      return new Network(def);
+    case Recursive:
+      return new RecursiveNet(def);
+    case Recurrent:
+      return new RecurrentNet(def);
+  }
+  return new Network(def);
+}
+```
+
+Network is designed as the container of operators, to make it more extendable,
+we decompling it from the related variable resources. 
+A `scope` is provided to `Run` so that the network structure can be reused 
+in different scopes.
+
+Finally, `NetworkBase` can be used as followed
+
+```c++
+Scope default_scope;
+auto net = CreateNet(def);
+net.Run(&default_scope);
+```
+
+## A Simple Network Implemention
+
 A simple implemention is as followed:
 
 ```c++
-class Network final : public NetworkBase {
+class ScratchNet final : public NetworkBase {
  public:
   // Create a network describe by `def`.  NetDef is the definition of a network.
-  Network(const NetDef &def);
-
- protected:
-  // Add a operator which is identified as `type` and has attributes described
-  // in `attr`, the `inputs` are the keys of readonly input variables, `outputs`
-  // are keys of mutable output variables.
-  bool AddOp(const std::string &type, const std::vector<string> &inputs,
-             const std::vector<string> &outputs,
-             const OprAttr &attr = OprAttr());
+  ScratchNet(const NetDef &def);
 
   // Run all the operators with the `scope`, if no scope is provided, default
   // scope will be used instead.
   virtual bool Run(Scope *scope = nullptr) override;
 
-private:
+ protected:
+  // Create operators accordding to `def`.
+  bool CreateNet(const NetDef &def);
+
+  // Add a operator which is identified as `type` and has attributes described
+  // in `attrs`, the `inputs` are the keys of readonly input variables,
+  // `outputs` are keys of mutable output variables.
+  bool AddOp(const std::string &type, const std::vector<string> &inputs,
+             const std::vector<string> &outputs,
+             const OprAttr &attrs = OprAttr());
+
+ private:
   // the operators are owned by `Network`.
   std::vector<std::unique_ptr<Operator>> ops_;
 };
 ```
 
-We can define and run a network like this
+`ScratchNet` will create operators so that a private member `ops_` is defined,
+the operators are created by `CreateNet`, and each operator is created by `AddOp`.
+
+## Usage
+`ScratchNet` can be used to define and run a network as followed
 
 ```c++
 // create an empty scope located on CPU device.
