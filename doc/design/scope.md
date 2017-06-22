@@ -73,8 +73,6 @@ private:
   friend class Scope;
 };
 
-using VariablePtr = std::weak_ptr<Variable>;
-
 class Scope {
 private:
   Scope(const std::shared_ptr<Scope>& parent = nullptr);
@@ -83,14 +81,14 @@ public:
   static std::shared_ptr<Scope> Create(const std::shared_ptr<Scope>& parent = nullptr);
 
   // return nullptr if not found.
-  VariablePtr GetVariable(const std::string& name) const;
+  Variable* GetVariable(const std::string& name) const;
 
   // return Error if already contains same name variable.
   Error CreateVariable(const std::string& name);
 
 private:
   std::shared_ptr<Scope> parent_;
-  std::unordered_map<std::string, std::shared_ptr<Scope>> attrs_;
+  std::unordered_map<std::string, std::unique_ptr<Scope>> attrs_;
 };
 ```
 ## Only scope can create a variable
@@ -99,7 +97,7 @@ To ensure `only scope can create a variable`, we should mark `Variable`'s constr
 
 ## When scope destroyed, all variables inside this scope should be destroyed together
 
-The `VariablePtr` is a `weak_ptr`. `Net` and `Op` can only get a Variable from `Scope`, but cannot hold it. When scope is destroyed, all `VariablePtr`s belong to this Scope will be changed to `nullptr`.
+The scope hold unique pointers for all variables. User can `GetVariable` from scope, but he should not hold this pointer as a member variable. Because when scope is destroyed, all variables inside this scope will be destroyed together.
 
 ## Sharing a parent scope
 
