@@ -10,33 +10,30 @@ Scope is an important concept in programming languages, which defines a program 
 A detailed explanation of these two attributes goes as following.
 
 
-## Scope is a Container of Variables.
+## Scope is an association of a name to variable.
 
-Scope is used to provide a running environment for Net.
+Scope is an association of a name to variable. All variables belong to `Scope`. You need to specify a scope to run a Net, i.e., `net.Run(&scope)`. One net can run in different scopes and update different variable in the scope.
 
-1. Scope mainly has Variables as it's data member.
 
-    Scope is a running environment for Net. Net should get all it need to do computation from a scope, such as data buffer, state(momentum) etc.
-    All these data/state can be abstracted and create as variable in Paddle, so the only thing Scope need to care about is Variable.
-1. Variable can only be created by Scope.
-1. Variable can only be got from Scope.
-1. Scope contains methods that are used to manage Variables, such as Create/Get.
+1. Scope only contains a map of a name to variable.
 
-    Because we only need to care about Variable, we only need method to manage the lifecycle of Variable.
+   All parameters, data, states in a Net should be variables and stored inside a scope. Each op should get inputs and outputs to do computation from a scope, such as data buffer, state(momentum) etc.
+
+1. Variable can only be created by Scope and a variable can only be got from Scope. User cannot create or get a variable outside a scope. This is a constraints of our framework, and will keep our framework simple and clear.
+
+1. Scope only contains methods that are used to Create and Get Variables. Scope do not contain Operators and have no information to run them.
+    
+  `Net` is designed to drive the computation and Scope only contains a map of variables. There is no computation logic inside a `Scope`. Scope just handles the lifetime management of variables.
     - `Create` is used to create a Variable by its name and add the mapping relation.
     - `Get` is used to find a Variable by name.
 
 1. Every variable only belongs to one certain Scope.
 
-    Variable can not be shared between scopes, if we want to use variables from different scope we can use `Parent scope`.
+   Variable can not belong to many scopes. If you want to use variables from parent scope, you can use `parent scope`.
 
-1. Scope should destruct all Variables within it when itself is destructed.
+1. Scope should destruct all Variables inside it when itself is destructed. User can never store `Variable` pointer somewhere else. 
 
-    Because Variable can only be got from Scope, when destroying Scope, we also need to destroy all the Vars in it.
-
-1. Scope do not contain Operators and have no information to run them.
-
-    Net is designed to drive the computation, Scope is only used to provide a running environment.
+   Because Variable can only be got from Scope. When destroying Scope, we also need to destroy all the Variables in it. If user store `Variable` pointer to private data member or some global variable, the pointer will be a invalid pointer when associated `Scope` is destroyed.
 
 ```cpp
 class Scope {
@@ -45,7 +42,7 @@ class Scope {
   const Variable* GetVariable(const std::string& name) const;
 
  private:
-    std::unordered_map<std::string, std::shared_ptr<Vairable>> vars_;
+    std::unordered_map<std::string, std::unique_ptr<Vairable>> vars_;
 };
 ```
 
