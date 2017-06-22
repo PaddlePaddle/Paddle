@@ -66,6 +66,7 @@ auto net = CreateNet(def);
 net.Run(&default_scope);
 ```
 
+
 ## A Simple Network Implemention
 
 A simple implemention is as followed:
@@ -92,13 +93,15 @@ class ScratchNet final : public NetworkBase {
              const OprAttr &attrs = OprAttr());
 
  private:
-  // the operators are owned by `Network`.
+  // the operators owned by `Network`.
   std::vector<std::unique_ptr<Operator>> ops_;
 };
 ```
 
 `ScratchNet` will create operators so that a private member `ops_` is defined,
 the operators are created by `CreateNet`, and each operator is created by `AddOp`.
+
+
 
 ## Usage
 `ScratchNet` can be used to define and run a network as followed
@@ -116,4 +119,42 @@ auto net = CreateNet(net_desc);
 
 // run the network providing the `scope`.
 net.Run(&scope);
+```
+
+## Compatibility with RNN
+
+Benefit from the decoupling of `Run` and `Scope`, `ScratchNet` is compatible with RNN design, 
+for example we can implement a simple recurrent neural network as followed
+
+```c++
+// copy some `vars` form `source` to `target`
+void Copy(const Scope &source, Scope &target,
+          const std::vector<std::string> &vars);
+
+Scope default_scope;
+// some initial mutations on `default_scope` here.
+
+auto rnn_net = ScratchNet(rnn_net_def);
+
+// Create rnn's states, the last scope is used to store rrn's outputs.
+Scope *rnn_states = new Scope[num_states + 1];
+
+for (int i = 0; i < num_states + 1; i++) {
+  // Initialize all rnn state scopes, copy parameters and so on.
+  rnn_states[i].CreateVars(rnn_net_def);
+  Copy(default_scope, rnn_states[i], rnn_related_vars);
+  // Prepare rnn's inlinks, just copy inlink variables to each state.
+  Copy(default_scope, rnn_states[i], inlink_vars);
+}
+
+// Run the rnn.
+for (int i = 0; i < num_states; i++) {
+  rnn_net.Run(rnn_states[i]);
+  // Copy current state's state variables to next state, the related variables
+  // are named like "previous_state_xxx".
+  Copy(rnn_states[i], rnn_states[i + 1], pre_state_vars)
+}
+
+// Copy rnn's final outputs to `default_scope`.
+Copy(rnn_states[num_states], default_scope, outlink_vars);
 ```
