@@ -70,3 +70,16 @@ private:
   std::vector<std::unique_ptr<Operator>> ops_;
 };
 ```
+
+We can define a network like this
+
+```c++
+Network net("demo_net");
+
+auto x = NewVar("x");
+auto y = NewVar("y");
+auto z = NewVar("z");
+
+// default scope is used.
+net.AddOp("AddOp", {x, y}, {z});
+```
