@@ -45,7 +45,7 @@ class Scope {
 public:
   Scope(const std::shared_ptr<Scope>& scope): parent_(scope) {}
 
-  Variable* Get(const std::string& name) const {
+  Variable* GetVar(const std::string& name) const {
     Variable* var = GetVarLocally(name);
     if (var != nullptr) {
       return var;
@@ -65,6 +65,49 @@ In `Scope` class, there is a private data member called `parent_`. `parent_` is 
 
 A local scope is very useful when we implement Recurrent Neural Network. Each timestep of an RNN should be a `Net`. Each `Net` of timestep (`StepNet` for short) should use an independent local scope. Just like variables in a while loop is inside a local scope in programming languages. By using a single `StepNet` and changing local scope, we can implement an RNN easily.
 
-# 接口实现
+# Interface Design
 
-# 各个接口是啥意思，为啥这么设计
+```cpp
+class Variable {
+private:
+  Variable() = default;
+  friend class Scope;
+};
+
+using VariablePtr = std::weak_ptr<Variable>;
+
+class Scope {
+private:
+  Scope(const std::shared_ptr<Scope>& parent = nullptr);
+
+public:
+  static std::shared_ptr<Scope> Create(const std::shared_ptr<Scope>& parent = nullptr);
+
+  // return nullptr if not found.
+  VariablePtr GetVariable(const std::string& name) const;
+
+  // return Error if already contains same name variable.
+  Error CreateVariable(const std::string& name);
+
+private:
+  std::shared_ptr<Scope> parent_;
+  std::unordered_map<std::string, std::shared_ptr<Scope>> attrs_;
+};
+```
+## Only scope can create a variable
+
+To ensure `only scope can create a variable`, we should mark `Variable`'s constructor as a private member function, and Scope is a friend class of Variable. And then only `CreateVariable` can construct `Variable`.
+
+## When scope destroyed, all variables inside this scope should be destroyed together
+
+The `VariablePtr` is a `weak_ptr`. `Net` and `Op` can only get a Variable from `Scope`, but cannot hold it. When scope is destroyed, all `VariablePtr`s belong to this Scope will be changed to `nullptr`.
+
+## Sharing a parent scope
+
+Local scope contains a `parent_` pointer. It is a linked-list for scopes. Using a `shared_ptr` because when a local scope is using, its parents cannot be destroyed.
+
+Also, as the parent scope is a `shared_ptr`, we can only `Create()` a scope shared pointer. We cannot construct a scope variable, because it cannot be passed to other scope as `parent` pointer.
+
+## Orthogonal interface
+
+`GetVariable` will return `nullptr` when `name` is not found. It can be used as `Contains` method. `CreateVariable` will return a `Error` when there is a name conflict locally. Combine `GetVariable` and `CreateVariable`, we can implement `CreateOrGetVariable` easily.
