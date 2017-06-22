@@ -63,7 +63,7 @@ class Scope {
     if (var != nullptr) {
       return var;
     } else if (parent_ != nullptr) {
-      return parent_->Get(name);
+      return parent_->GetVariable(name);
     } else {
       return nullptr;
     }
@@ -102,7 +102,7 @@ class Scope {
 
  private:
   std::shared_ptr<Scope> parent_;
-  std::unordered_map<std::string, std::unique_ptr<Attribute>> vars_;
+  std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
 };
 ```
 ## Only scope can create a variable
