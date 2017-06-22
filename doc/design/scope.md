@@ -108,7 +108,7 @@ class Scope {
 
  private:
   std::shared_ptr<Scope> parent_;
-  std::unordered_map<std::string, std::unique_ptr<Scope>> attrs_;
+  std::unordered_map<std::string, std::unique_ptr<Attribute>> attrs_;
 };
 ```
 ## Only scope can create a variable
