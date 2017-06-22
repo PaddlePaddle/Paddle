@@ -14,6 +14,16 @@
 
 INCLUDE(ExternalProject)
 
+# By calling find_package, we got CMake function
+# protobuf_generate_cpp.  This find_package invocation might fail if
+# the host doesn't have protobuf install.  In that case, it overwrites
+# some variables like PROTOBUF_LIBRARIES.  Because we don't really use
+# the pre-installed protobuf; intead, we download the source code and
+# build our own, so we need to call find_package before we reset all
+# variables that a successful invocation to find_package are suppoed
+# to return.
+find_package(Protobuf ${PROTOBUF_VERSION})
+
 SET(PROTOBUF_SOURCES_DIR ${THIRD_PARTY_PATH}/protobuf)
 SET(PROTOBUF_INSTALL_DIR ${THIRD_PARTY_PATH}/install/protobuf)
 SET(PROTOBUF_INCLUDE_DIR "${PROTOBUF_INSTALL_DIR}/include" CACHE PATH "protobuf include directory." FORCE)
@@ -25,6 +35,34 @@ IF(WIN32)
 ELSE(WIN32)
     SET(PROTOBUF_LIBRARIES "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf.a" CACHE FILEPATH "protobuf library." FORCE)
 ENDIF(WIN32)
+
+LIST(APPEND external_project_dependencies protobuf)
+
+# Overwrite varaibles supposed to be defined by find_pacakge(Protobuf):
+set(PROTOBUF_FOUND ON)
+set(PROTOBUF_INCLUDE_DIRS ${PROTOBUF_INCLUDE_DIR})
+
+IF(WIN32)
+    SET(PROTOBUF_PROTOC_LIBRARIES "${PROTOBUF_INSTALL_DIR}/lib/libprotoc.lib" CACHE FILEPATH "protoc library." FORCE)
+ELSE(WIN32)
+    SET(PROTOBUF_PROTOC_LIBRARIES "${PROTOBUF_INSTALL_DIR}/lib/libprotoc.a" CACHE FILEPATH "protoc library." FORCE)
+ENDIF(WIN32)
+
+IF(WIN32)
+    SET(PROTOBUF_LITE_LIBRARIES "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf-lite.lib" CACHE FILEPATH "protobuf-lite library." FORCE)
+ELSE(WIN32)
+    SET(PROTOBUF_LITE_LIBRARIES "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf_lite.a" CACHE FILEPATH "protobuf-lite library." FORCE)
+ENDIF(WIN32)
+
+set(PROTOBUF_LIBRARY ${PROTOBUF_LIBRARIES})
+set(PROTOBUF_PROTOC_LIBRARY ${PROTOBUF_LITE_LIBRARIES})
+
+set(PROTOBUF_PROTOC_EXECUTABLE "${PROTOBUF_INSTALL_DIR}/bin/protoc")
+
+set(PROTOBUF_LIBRARY_DEBUG ${PROTOBUF_LIBRARY})
+set(PROTOBUF_PROTOC_LIBRARY_DEBUG ${PROTOBUF_PROTOC_LIBRARY})
+set(PROTOBUF_LITE_LIBRARY ${PROTOBUF_LITE_LIBRARIES})
+set(PROTOBUF_LITE_LIBRARY_DEBUG ${PROTOBUF_LITE_LIBRARY})
 
 ExternalProject_Add(
   extern_protobuf
@@ -53,33 +91,10 @@ ADD_LIBRARY(protobuf STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET protobuf PROPERTY IMPORTED_LOCATION ${PROTOBUF_LIBRARIES})
 ADD_DEPENDENCIES(protobuf extern_protobuf)
 
-LIST(APPEND external_project_dependencies protobuf)
+ADD_LIBRARY(protobuf_lite STATIC IMPORTED GLOBAL)
+SET_PROPERTY(TARGET protobuf_lite PROPERTY IMPORTED_LOCATION ${PROTOBUF_LITE_LIBRARIES})
+ADD_DEPENDENCIES(protobuf_lite extern_protobuf)
 
-# By calling find_package, we got CMake function protobuf_generate_cpp.
-find_package(Protobuf ${PROTOBUF_VERSION})
-
-# Overwrite varaibles supposed to be defined by find_pacakge(Protobuf):
-set(PROTOBUF_FOUND ON)
-set(PROTOBUF_INCLUDE_DIRS ${PROTOBUF_INCLUDE_DIR})
-
-IF(WIN32)
-    SET(PROTOBUF_PROTOC_LIBRARIES "${PROTOBUF_INSTALL_DIR}/lib/libprotoc.lib" CACHE FILEPATH "protoc library." FORCE)
-ELSE(WIN32)
-    SET(PROTOBUF_PROTOC_LIBRARIES "${PROTOBUF_INSTALL_DIR}/lib/libprotoc.a" CACHE FILEPATH "protoc library." FORCE)
-ENDIF(WIN32)
-
-IF(WIN32)
-    SET(PROTOBUF_LITE_LIBRARIES "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf-lite.lib" CACHE FILEPATH "protobuf-lite library." FORCE)
-ELSE(WIN32)
-    SET(PROTOBUF_LITE_LIBRARIES "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf_lite.a" CACHE FILEPATH "protobuf-lite library." FORCE)
-ENDIF(WIN32)
-
-set(PROTOBUF_LIBRARY ${PROTOBUF_LIBRARIES})
-set(PROTOBUF_PROTOC_LIBRARY ${PROTOBUF_LITE_LIBRARIES})
-
-set(PROTOBUF_PROTOC_EXECUTABLE "${PROTOBUF_INSTALL_DIR}/bin/protoc")
-
-set(PROTOBUF_LIBRARY_DEBUG ${PROTOBUF_LIBRARY})
-set(PROTOBUF_PROTOC_LIBRARY_DEBUG ${PROTOBUF_PROTOC_LIBRARY})
-set(PROTOBUF_LITE_LIBRARY ${PROTOBUF_LITE_LIBRARIES})
-set(PROTOBUF_LITE_LIBRARY_DEBUG ${PROTOBUF_LITE_LIBRARY})
+ADD_LIBRARY(protoc STATIC IMPORTED GLOBAL)
+SET_PROPERTY(TARGET protoc PROPERTY IMPORTED_LOCATION ${PROTOC_LIBRARIES})
+ADD_DEPENDENCIES(protoc extern_protobuf)

@@ -182,8 +182,8 @@ function(proto_library TARGET_NAME)
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(proto_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-  protobuf_generate_cpp(${TARGET_NAME}_SRCS ${TARGET_NAME}_HDRS ${proto_library_SRCS})
-  cc_library(${TARGET_NAME} SRCS ${${TARGET_NAME}_SRCS} DEPS protobuf ${${proto_library}_DEPS})
+  protobuf_generate_cpp(${TARGET_NAME}_PROTO_SRCS ${TARGET_NAME}_PROTO_HDRS ${proto_library_SRCS})
+  cc_library(${TARGET_NAME} SRCS ${${TARGET_NAME}_PROTO_SRCS} DEPS ${${proto_library}_DEPS} protobuf)
 endfunction(proto_library)
 
 
