@@ -1,58 +1,32 @@
-# Scope
+# What is a scope.
 
-### Define
+## Overview
 
-Scope is a context to manage Variables. It mainly contains a map from Variable name to Variable. Net will get and update variable throw scope.
+预期使用场景。
 
-```cpp
-class Variable;
-using VariablePtr = std::shared_ptr<Variable>;
+引出Scope的两个属性。
+    1. Scope是Variable的Container
+    2. Scope可以共享
 
-class Scope final {
-public:
-  Scope();
-  Scope(const std::shared_ptr<Scope>& parent);
+## Scope 是一个Variable的Container
 
-  //! Get Variable in this scope.
-  //! @return nullptr if no such variable.
-  const VariablePtr& getVar(const std::string& name) const;
+解释下为啥Scope是Variable的container。解释下面几个小点的原因。
 
-  //! Create or get a variable in this scope.
-  VariablePtr& createOrGetVar(const std::string& name);
+    * 他只包含variable
+    * 每一个variable也只属于一个Scope
+    * 每一个Scope析构的时候，会同时析构variable
+    * 只能通过Scope创建Vairable。
+    * 只能通过Scope获取Variable。
 
-private:
-  /// variable name -> variable
-  std::unordered_map<std::string, VariablePtr> vars_;
-  std::shared_ptr<Scope> parent_{nullptr};
-};
-```
+## Scope 可以被继承或者叫共享
 
-You need to specify a scope to run a Net. One net can run in different scopes and update different variable in the scope. If you did not specify one, It will run in a default scope.
+解释下Scope如何被共享，如何查找Variable的算法。
+       * Scope永远从本地寻找Variable，找不到会从他的父亲Scope寻找Variable
+    * 嵌套深度不做要求。
 
-```cpp
-Scope global;
-auto x = newVar("X");  // x is created in scope global, implicitly.
-auto y = newVar("Y");
-Net net1;
-net1.addOp("add", {x, y}, {x});  // x = x + y;
-net1.run();
+# 接口实现
 
-for (size_t i=0; i<10; ++i) {
-  Scope local;
-  auto tmp = newVar("tmp");  // tmp is created in scope local.
-  Net net2;
-  net2.addOp("add", {x, y}, {tmp});
-  net2.run();  // tmp = x + y;
-}
-
-Net net3;
-net3.addOp("add", {x, y}, {"tmp"});  // error! cannot found "tmp" in global scope.
-
-```
-
-### Chain structure
-
-Scope has a pointer point to it's parent scope, this is mainly used in RNN when it need to create many stepNet.
+C++ code.
 
 
-### Scope Guard
+## 各个接口是啥意思，为啥这么设计
