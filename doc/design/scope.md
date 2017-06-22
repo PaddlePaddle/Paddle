@@ -20,12 +20,11 @@ Scope is used to provide a running environment for Net.
     All these data/state can be abstracted and create as variable in Paddle, so the only thing Scope need to care about is Variable.
 1. Variable can only be created by Scope.
 1. Variable can only be got from Scope.
-1. Scope contains methods that are used to manage Variables, such as Create/Get/Delete.
+1. Scope contains methods that are used to manage Variables, such as Create/Get.
 
     Because we only need to care about Variable, we only need method to manage the lifecycle of Variable.
     - `Create` is used to create a Variable by its name and add the mapping relation.
     - `Get` is used to find a Variable by name.
-    - `Delete` is used to remove a Variable because sometimes we want to release memory or other resources.
 
 1. Every variable only belongs to one certain Scope.
 
@@ -44,10 +43,9 @@ class Scope {
  public:
   Variable* CreateVariable(const std::string& name);
   const Variable* GetVariable(const std::string& name) const;
-  bool DeleteVariable(const std::string& name);
 
  private:
-    std::unordered_map<std::string, std::shared_ptr<Vairable>> variable_map_;
+    std::unordered_map<std::string, std::shared_ptr<Vairable>> vars_;
 };
 ```
 
@@ -108,7 +106,7 @@ class Scope {
 
  private:
   std::shared_ptr<Scope> parent_;
-  std::unordered_map<std::string, std::unique_ptr<Attribute>> attrs_;
+  std::unordered_map<std::string, std::unique_ptr<Attribute>> vars_;
 };
 ```
 ## Only scope can create a variable
