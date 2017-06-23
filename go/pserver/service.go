@@ -159,11 +159,18 @@ func (s *Service) registerPserverEtcd(ctx context.Context) (*clientv3.TxnRespons
 				// find the first id and write info
 				c.Put(psKey, s.externalIP, clientv3.WithLease(resp.ID))
 				log.Debugf("set pserver node %s with value %s", psKey, s.externalIP)
-				_, kaerr := s.etcdClient.KeepAlive(context.TODO(), resp.ID)
+				ch, kaerr := s.etcdClient.KeepAlive(context.TODO(), resp.ID)
 				if kaerr != nil {
 					log.Errorf("keepalive etcd node error: %v", kaerr)
 					return kaerr
 				}
+
+				// Eat the keep alive message so etcd
+				// will not expire the lease.
+				go func(ch <-chan *clientv3.LeaseKeepAliveResponse) {
+					ka := <-ch
+					log.Debugf("keepalive: %d\n", ka.TTL)
+				}(ch)
 				log.Debug("register finished")
 				registered = true
 				break
