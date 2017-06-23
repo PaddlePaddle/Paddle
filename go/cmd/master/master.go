@@ -32,7 +32,7 @@ func main() {
 	if *endpoints != "" {
 		eps := strings.Split(*endpoints, ",")
 		var err error
-		store, err = master.NewEtcdStore(eps, master.DefaultLockPath, master.DefaultStatePath, *ttlSec)
+		store, err = master.NewEtcd(eps, master.DefaultLockPath, master.DefaultStatePath, *ttlSec)
 		if err != nil {
 			log.Fatal(err)
 		}
