@@ -40,7 +40,7 @@ all implementations to offer a universal method to forward or backward compute a
 A method of factory pattern can be defined like
 
 ```c++
-NetworkBase* CreateNet(const NetDef& def) {
+std::unique<NetworkBase* CreateNet(const NetDef& def) {
   switch (def.model_type()) {
     case NN:
       return new Network(def);
@@ -69,7 +69,7 @@ net.Run(&default_scope);
 
 ## A Simple Network Implemention
 
-A simple implemention is as followed:
+A very basic implemention is as followed, all it does is simply to run every operators in sequence.
 
 ```c++
 class ScratchNet final : public NetworkBase {
@@ -100,7 +100,6 @@ class ScratchNet final : public NetworkBase {
 
 `ScratchNet` will create operators so that a private member `ops_` is defined,
 the operators are created by `CreateNet`, and each operator is created by `AddOp`.
-
 
 
 ## Usage
@@ -134,14 +133,14 @@ void Copy(const Scope &source, Scope &target,
 Scope default_scope;
 // some initial mutations on `default_scope` here.
 
-auto rnn_net = ScratchNet(rnn_net_def);
+auto rnn_step_net = ScratchNet(rnn_step_net_def);
 
 // Create rnn's states, the last scope is used to store rnn outputs.
 Scope *rnn_states = new Scope[num_states + 1];
 
 for (int i = 0; i < num_states + 1; i++) {
   // Initialize all rnn state scopes, copy parameters and so on.
-  rnn_states[i].CreateVars(rnn_net_def);
+  rnn_states[i].CreateVars(rnn_step_net_def);
   Copy(default_scope, rnn_states[i], rnn_related_vars);
   // Prepare rnn's inlinks, just copy inlink variables to each state.
   Copy(default_scope, rnn_states[i], inlink_vars);
@@ -149,7 +148,7 @@ for (int i = 0; i < num_states + 1; i++) {
 
 // Run the rnn.
 for (int i = 0; i < num_states; i++) {
-  rnn_net.Run(rnn_states[i]);
+  rnn_step_net.Run(rnn_states[i]);
   // Copy current state's state variables to next state, the related variables
   // are named like "previous_state_xxx".
   Copy(rnn_states[i], rnn_states[i + 1], pre_state_vars)
