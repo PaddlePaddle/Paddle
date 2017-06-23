@@ -45,12 +45,12 @@ __all__ = ['data', 'parse_network']
 def __need_to_keep__(name):
     return name in [
         'StaticInput', 'SubsequenceInput', 'GeneratedInput', 'LayerType',
-        'layer_support'
+        'layer_support', 'BaseGeneratedInput'
     ]
 
 
 def __need_to_wrap__(name):
-    return name not in ['AggregateLevel', 'ExpandLevel']
+    return name not in ['AggregateLevel', 'ExpandLevel', 'BaseGeneratedInput']
 
 
 def __convert_name__(inname):
@@ -199,6 +199,15 @@ def __get_used_submodels__(layer_names):
     return submodel_names
 
 
+def __get_submodel_data_out_links__():
+    data_links = set()
+    for submodel in cp.g_config.model_config.sub_models:
+        for link in submodel.out_links:
+            if cp.g_layer_map[link.link_name].type == 'data':
+                data_links.add(link.link_name)
+    return data_links
+
+
 def __get_used_evaluators__(layer_names):
     evaluator_names = set()
     for e in cp.g_config.model_config.evaluators:
@@ -264,6 +273,7 @@ def parse_network(output_layers, extra_layers=None):
     submodel_names = __get_used_submodels__(layer_names)
     submodel_names.add('root')
     evaluator_names = __get_used_evaluators__(layer_names)
+    data_out_links = __get_submodel_data_out_links__()
     input_layer_names = set()
     output_layer_names = set()
 
@@ -279,7 +289,7 @@ def parse_network(output_layers, extra_layers=None):
             continue
         model_config.layers.extend([l])
         if l.type == 'data':
-            if l.name in model_config.output_layer_names:
+            if l.name in data_out_links:
                 """
                 In text generation, the outlink to save the generated word
                 indices is a data_layer defined in recurrent_group. This
