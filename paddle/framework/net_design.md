@@ -23,7 +23,7 @@ class NetworkBase {
 
   // run all the operators and return success(true) or not, all the
   // variables are located in `scope`.
-  virtual bool Run(Scope* scope) = 0;
+  virtual bool Run(Scope* scope) const = 0;
 
  protected:
   // keys of the input variables feed into the network.
@@ -79,7 +79,7 @@ class ScratchNet final : public NetworkBase {
 
   // Run all the operators with the `scope`, if no scope is provided, default
   // scope will be used instead.
-  virtual bool Run(Scope *scope = nullptr) override;
+  virtual bool Run(Scope *scope = nullptr) const override;
 
  protected:
   // Create operators accordding to `def`.
