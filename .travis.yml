@@ -2,7 +2,6 @@ group: deprecated-2017Q2
 language: cpp
 cache:
   directories:
-    - $HOME/third_party
     - $HOME/.ccache
     - $HOME/.cache/pip
 sudo: required
@@ -18,7 +17,6 @@ addons:
     packages:
       - gcc-4.8
       - g++-4.8
-      - gfortran-4.8
       - git
       - build-essential
       - python

@@ -1,13 +1,11 @@
 #!/bin/bash
 cd `dirname $0`
 
-if [ ${JOB} == "BUILD_AND_TEST" ]; then
-  ./build_and_test.sh
-elif [ ${JOB} == "DOCS" ]; then
-  ./docs.sh
+if [ ${JOB} == "DOCS" ]; then
+  ./build_doc.sh
 elif [ ${JOB} == "PRE_COMMIT" ]; then
-  ./precommit.sh
+  ./check_style.sh
 else
-  echo Unknown job ${JOB}
-  exit 1
+  echo "Unknown Travis CI job: ${JOB}"
+  exit 0 # Don't fail due to unknown Travis CI job.
 fi
