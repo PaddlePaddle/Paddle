@@ -18,13 +18,13 @@
 # building rules (https://bazel.build/).
 #
 # 
-# -------------------------------------------
-#     C++        CUDA C++       Go
-# -------------------------------------------
-# cc_library    nv_library   go_library
+# -----------------------------------------------------
+#     C++        CUDA C++       Go          Proto
+# -----------------------------------------------------
+# cc_library    nv_library   go_library   proto_library
 # cc_binary     nv_binary    go_binary
 # cc_test       nv_test      go_test
-# -------------------------------------------
+# -----------------------------------------------------
 # 
 # To build a static library example.a from example.cc using the system
 #  compiler (like GCC):
@@ -82,6 +82,10 @@ if(NOT APPLE)
     find_package(Threads REQUIRED)
     link_libraries(${CMAKE_THREAD_LIBS_INIT})
 endif(NOT APPLE)
+
+# Source files generated from .proto files will be in ${CMAKE_BINARY_DIR}.
+include_directories(${CMAKE_BINARY_DIR})
+
 
 function(merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
@@ -166,6 +170,22 @@ function(cc_library TARGET_NAME)
     endif()
   endif(cc_library_SRCS)
 endfunction(cc_library)
+
+
+function(proto_library TARGET_NAME)
+  if (NOT ${PROTOBUF_FOUND})
+    error("Using proto_library but CMake cannot find installed protobuf.")
+  endif()
+  
+  set(options STATIC static SHARED shared)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(proto_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+  protobuf_generate_cpp(${TARGET_NAME}_PROTO_SRCS ${TARGET_NAME}_PROTO_HDRS ${proto_library_SRCS})
+  cc_library(${TARGET_NAME} SRCS ${${TARGET_NAME}_PROTO_SRCS} DEPS ${${proto_library}_DEPS} protobuf)
+endfunction(proto_library)
+
 
 function(cc_binary TARGET_NAME)
   set(options "")
