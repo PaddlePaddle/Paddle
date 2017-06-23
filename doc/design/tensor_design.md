@@ -175,4 +175,6 @@ Tensor<GpuDevice, float, 2> t_c(make_dim(3, 8), t_b);
 void* data_ptr = t_a.raw_ptr();
 ```
 
-## TODO
+## Interface to Eigen
+
+*// todo*
