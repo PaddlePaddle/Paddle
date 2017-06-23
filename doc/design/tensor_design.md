@@ -6,7 +6,7 @@
 `Allocation` is a [RAII](http://en.cppreference.com/w/cpp/language/raii) class template, which is used to handle a piece of memory. 
 
 ```cpp
-// Template parametr 'Device' can be 'CpuDevice' or 'GpuDevice'
+// Template parameter 'Device' can be 'CpuDevice' or 'GpuDevice'
 template <typename Device>
 class Allocation {
 public:
@@ -79,7 +79,11 @@ public:
     // make a new tensor by another existing tensor
     // new tensor and source tensor have the same numel but deferent rank
     template<int src_rank>
-    Tensor(const Dim<rank>& size, const Tensor<Device, T, src_rank>& src);
+    Tensor(const Dim<rank>& size, Tensor<Device, T, src_rank>& src);
+    
+    // '=' are not allowed, because users may be confused about
+    //     whether it's deep copy or shallow copy.
+    Tensor& operator=(const Tensor& src) = delete;
 
     // return raw pointer to the data.
     T* raw_ptr() const;
@@ -94,7 +98,7 @@ public:
     Dim<rank> stride() const;
 
     // return raw pointer to the 'idx'th element
-    T* index(const Dim<D>& idx) const;
+    T* index(const Dim<rank>& idx) const;
 
     // resize tensor, data may be erased
     void resize(const Dim<rank>& size);
@@ -138,16 +142,15 @@ Dim<sizeof...(Args)> make_dim(Args... idxes) {
 }
 ```
 
-In addition to `Tensor`'s member function, a few related global functions are going to be offered, such as `copy()` and `make_tensor()`:
+In addition to `Tensor`'s member function, a few related global functions are going to be offered, such as `Copy()` and `ShareData()`:
 
 ```cpp
-// Copy() is used to tensor deep copy
+// Copy() is used for tensor deep copy
 template <typename Device, typename T, int rank>
-Tensor<Device, T, rank> copy(const Tensor<Device, T, rank>& src);
+Tensor<Device, T, rank> Copy(const Tensor<Device, T, rank>& src);
 
-// helper function to make a new tensor
-template <typename Device, typename T, int rank>
-Tensor<Device, T, rank> make_tensor(const Device& device, const T& v, const Dim<rank>& dim);
+// ShareDate() is used for tensor shallow copy
+Tensor<Device, T, rank> ShareData(const Tensor<Device, T, rank>& src);
 ```
 
 ## Tensor Usage
@@ -156,9 +159,9 @@ We can use tensors as follow:
 
 ```cpp
 // make a totally new tensor on CPU with raw constructor
-Tensor<CpuDevice, double, 2> t_a = Tensor<CpuDevice, double, 2>(make_dim(2,3), CpuDevice());
-// make a totally new tensor on GPU 1 with helper function
-Tensor<GpuDevice, float, 3> t_b = make_tensor(GpuDevice(1), float(0), make_dim(2, 3, 4));
+Tensor<CpuDevice, double, 2> t_a(make_dim(2, 3), CpuDevice());
+// make a totally new tensor on GPU 1
+Tensor<GpuDevice, float, 3> t_b(make_dim(2, 3, 4), GpuDevice(1));
 
 // resize t_a
 // resize can not change tensor's rank
