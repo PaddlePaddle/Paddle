@@ -40,7 +40,7 @@ all implementations to offer a universal method to forward or backward compute a
 A method of factory pattern can be defined like
 
 ```c++
-std::unique<NetworkBase* CreateNet(const NetDef& def) {
+std::unique<NetworkBase> CreateNet(const NetDef& def) {
   switch (def.model_type()) {
     case NN:
       return new Network(def);
