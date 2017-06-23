@@ -1571,7 +1571,13 @@ class MultiClassCrossEntropySelfNormCostLayer(LayerBase):
 
 @config_layer('fc')
 class FCLayer(LayerBase):
-    def __init__(self, name, size, inputs, bias=True, **xargs):
+    def __init__(self,
+                 name,
+                 size,
+                 inputs,
+                 bias=True,
+                 error_clipping_threshold=None,
+                 **xargs):
         super(FCLayer, self).__init__(name, 'fc', size, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
@@ -1588,6 +1594,8 @@ class FCLayer(LayerBase):
             self.create_input_parameter(input_index, psize, dims, sparse,
                                         format)
         self.create_bias_parameter(bias, self.config.size)
+        if error_clipping_threshold is not None:
+            self.config.error_clipping_threshold = error_clipping_threshold
 
 
 @config_layer('selective_fc')
