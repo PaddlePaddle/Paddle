@@ -84,7 +84,7 @@ class HookAttribute(object):
             assert is_compatible_with(
                 self.sparsity_ratio,
                 float), 'sparisity_ratio must be float type'
-            assert self.sparsity_ratio <= 1 and self.sparsity_ratio >= 0, 'sparisity_ratio must be a float between [0, 1] '
+            assert self.sparsity_ratio <= 1 and self.sparsity_ratio >= 0, 'sparsity_ratio must be a float between [0, 1] '
 
     def __call__(self):
         return ParameterHook(self.type, sparsity_ratio=self.sparsity_ratio)

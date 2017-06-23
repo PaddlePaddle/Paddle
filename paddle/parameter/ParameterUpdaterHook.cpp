@@ -32,7 +32,7 @@ namespace paddle {
 /**
  * The static pruning hook
  * Static means user specify a sparsity_ratio before training started, and the
- * network will prune the parameters based on the sparsity_ratio. More deatils
+ * network will prune the parameters based on the sparsity_ratio. More details
  * can be found https://arxiv.org/pdf/1506.02626.pdf.
  */
 
