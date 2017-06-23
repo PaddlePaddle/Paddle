@@ -1,6 +1,6 @@
 # Network Design
 
-`Network` is the container and controller of a set of operators in a network, 
+`Network` is the container and controller of a set of operators,
 users can build a real network from a `NetDef` in protobuf message 
 and use `Network.Run()` to run all the operators in the network.
 
@@ -15,15 +15,21 @@ The `Network` will
 To make the `Network` extendable, a base class is defined like this
 
 ```c++
+// operator's index stored in a network.
+typedef int OpIndex;
+
 // The minimum a network should be implemented.
 class NetworkBase {
  public:
   // `def` is a proto message that describe the structure of a network.
-  NetworkBase(const NetDef& def);
+  NetworkBase();
 
   // run all the operators and return success(true) or not, all the
-  // variables are located in `scope`.
-  virtual bool Run(Scope* scope) const = 0;
+  // variables are located in `scope`. `begin` and `end` specify the scope of
+  // `ops_` to run, If no positive indexes are provided, all operators in `ops_`
+  // will run.
+  virtual bool Run(Scope *scope, OpIndex begin = -1,
+                   OpIndex end = -1) const = 0;
 
  protected:
   // keys of the input variables feed into the network.
@@ -33,7 +39,7 @@ class NetworkBase {
 };
 ```
 
-All network implementations should build networks from  a protobuf message which 
+All network implementations should build networks from a protobuf message which 
 describes the structure of a real network; `Run` method should be implemented by 
 all implementations to offer a universal method to forward or backward compute a network.
 
@@ -54,9 +60,9 @@ std::unique<NetworkBase> CreateNet(const NetDef& def) {
 ```
 
 Network is designed as the container of operators, to make it more extendable,
-we decompling it from the related variable resources. 
-A `scope` is provided to `Run` so that the network structure can be reused 
-in different scopes.
+we decoupling it from the related variable resources. 
+
+`Run(Scope* scope)` takes the scope as a argument so that it can run in different scopes.
 
 Finally, `NetworkBase` can be used as followed
 
@@ -67,9 +73,9 @@ net.Run(&default_scope);
 ```
 
 
-## A Simple Network Implemention
+## A Simple Network Implementation
 
-A very basic implemention is as followed, all it does is simply to run every operators in sequence.
+A very basic implementation is as followed, all it does is simply to run every operators in sequence.
 
 ```c++
 class ScratchNet final : public NetworkBase {
@@ -79,7 +85,8 @@ class ScratchNet final : public NetworkBase {
 
   // Run all the operators with the `scope`, if no scope is provided, default
   // scope will be used instead.
-  virtual bool Run(Scope *scope = nullptr) const override;
+  virtual bool Run(Scope *scope = nullptr, OpIndex begin,
+                   OpIndex end) const override;
 
  protected:
   // Create operators accordding to `def`.
@@ -87,14 +94,15 @@ class ScratchNet final : public NetworkBase {
 
   // Add a operator which is identified as `type` and has attributes described
   // in `attrs`, the `inputs` are the keys of readonly input variables,
-  // `outputs` are keys of mutable output variables.
-  bool AddOp(const std::string &type, const std::vector<string> &inputs,
-             const std::vector<string> &outputs,
-             const OprAttr &attrs = OprAttr());
+  // `outputs` are keys of mutable output variables. An `OpIndex` will be
+  // returned which indicates the offset of the new operator in `ops_`.
+  OpIndex AddOp(const std::string &type, const std::vector<string> &inputs,
+                const std::vector<string> &outputs,
+                const OprAttr &attrs = OprAttr());
 
  private:
   // the operators owned by `Network`.
-  std::vector<std::unique_ptr<Operator>> ops_;
+  std::vector<Operator> ops_;
 };
 ```
 
