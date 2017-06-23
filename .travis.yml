@@ -10,7 +10,6 @@ os:
   - linux
 env:
   - JOB=DOCS
-  - JOB=BUILD_AND_TEST
   - JOB=PRE_COMMIT
 addons:
   apt:
@@ -33,17 +32,6 @@ addons:
       - libtool
       - ccache
 before_install:
-  - |
-    if [ ${JOB} == "BUILD_AND_TEST" ]; then
-      local change_list=`git diff --name-only $TRAVIS_COMMIT_RANGE`
-      if [ $? -eq 0 ]; then  # if git diff return no zero, then rerun unit test.
-        if ! echo ${change_list} | grep -qvE '(\.md$)|(\.rst$)|(\.jpg$)|(\.png$)'
-        then
-          echo "Only markdown docs were updated, stopping build process."
-          exit
-        fi
-      fi
-    fi
   - if [[ "$JOB" == "PRE_COMMIT" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
   # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python 
   # protobuf version.
