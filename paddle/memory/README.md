@@ -1,5 +1,3 @@
-In my mind, the memory package works like the following:
-
 ## Design
 
 ### Usage
