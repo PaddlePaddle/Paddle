@@ -6,34 +6,32 @@
 `Allocation` is a [RAII](http://en.cppreference.com/w/cpp/language/raii) class template, which is used to handle a piece of memory. 
 
 ```cpp
-// Template parameter 'Device' can be 'CpuDevice' or 'GpuDevice'
 template <typename Device>
 class Allocation {
-  public:
-    Allocation();
-    Allocation(size_t size, Device device);
+ public:
+  Allocation();
+  Allocation(size_t size, Device device);
 
-    // Creates a non-owned allocation
-    Allocation(void *ptr, size_t size, Device device);
+  // Creates a non-owned allocation
+  Allocation(void *ptr, size_t size, Device device);
 
-    ~Allocation();
-    //No copying!
-    Allocation(const Allocation &) = delete;
-    //No assigning!
-    Allocation &operator=(const Allocation &) = delete;
+  ~Allocation();
+  // No copying!
+  Allocation(const Allocation &) = delete;
+  // No assigning!
+  Allocation &operator=(const Allocation &) = delete;
 
-    void *ptr() const;
-    void *end() const;
-    Device device() const;
-    size_t size() const;
+  void *ptr() const;
+  void *end() const;
+  Device device() const;
+  size_t size() const;
 
-  private:
-    bool owned_;
-    void *ptr_;
-    size_t size_;
-    Device device_;
+ private:
+  bool owned_;
+  void *ptr_;
+  size_t size_;
+  Device device_;
 };
-
 ```
 
 `ptr_` points to the head of the memory piece and `size_` shows its length. `owned_` marks whether the memory piece is allocated by `allocation` itself, if so the memory will be freed when `allocation` is destructed.
@@ -42,25 +40,19 @@ class Allocation {
 
 ```cpp
 struct CpuDevice {
-    inline bool operator==(const CpuDevice &) const {
-        return true;
-    }
-    inline bool operator!=(const CpuDevice &) const {
-        return false;
-    }
+  inline bool operator==(const CpuDevice &) const { return true; }
+  inline bool operator!=(const CpuDevice &) const { return false; }
 };
 
 struct GpuDevice {
-    GpuDevice(int d) : device_id(d) {}
+  GpuDevice(int d) : device_id(d) {}
 
-    inline bool operator==(const GpuDevice &o) const {
-        return device_id == o.device_id;
-    }
-    inline bool operator!=(const GpuDevice &o) const {
-        return !(*this == o);
-    }
-    GpuDevice() : GpuDevice(0) {}
-    int device_id;
+  inline bool operator==(const GpuDevice &o) const {
+    return device_id == o.device_id;
+  }
+  inline bool operator!=(const GpuDevice &o) const { return !(*this == o); }
+  GpuDevice() : GpuDevice(0) {}
+  int device_id;
 };
 ```
 
@@ -71,47 +63,47 @@ struct GpuDevice {
 ```cpp
 template <typename Device, typename T, int rank>
 class Tensor {
-  public:
-    // tensor with zero size and no memory
-    Tensor();
-    // allocates new densely packed tensor
-    Tensor(const Dim<rank> size, Device device);
+ public:
+  // tensor with zero size and no memory
+  Tensor();
+  // allocates new densely packed tensor
+  Tensor(const Dim<rank> size, Device device);
 
-    // make a new tensor by another existing tensor
-    // new tensor and source tensor have the same numel but deferent rank
-    template <int src_rank>
-    Tensor(const Dim<rank> &size, Tensor<Device, T, src_rank> &src);
+  // make a new tensor by another existing tensor
+  // new tensor and source tensor have the same numel but deferent rank
+  template <int src_rank>
+  Tensor(const Dim<rank> &size, Tensor<Device, T, src_rank> &src);
 
-    // '=' are not allowed, because users may be confused about
-    //     whether it's deep copy or shallow copy.
-    Tensor &operator=(const Tensor &src) = delete;
+  // '=' are not allowed, because users may be confused about
+  //     whether it's deep copy or shallow copy.
+  Tensor &operator=(const Tensor &src) = delete;
 
-    // return raw pointer to the data.
-    T *raw_ptr() const;
+  // return raw pointer to the data.
+  T *raw_ptr() const;
 
-    // return tensor size
-    Dim<rank> size() const;
+  // return tensor size
+  Dim<rank> size() const;
 
-    // return the number of tensor elements
-    int numel() const;
+  // return the number of tensor elements
+  int numel() const;
 
-    // return tensor stride
-    Dim<rank> stride() const;
+  // return tensor stride
+  Dim<rank> stride() const;
 
-    // return raw pointer to the 'idx'th element
-    T *index(const Dim<rank> &idx) const;
+  // return raw pointer to the 'idx'th element
+  T *index(const Dim<rank> &idx) const;
 
-    // resize tensor, data may be erased
-    void resize(const Dim<rank> &size);
+  // resize tensor, data may be erased
+  void resize(const Dim<rank> &size);
 
-    // reshape tensor, data will be retained
-    void reshape(const Dim<rank> &size);
+  // reshape tensor, data will be retained
+  void reshape(const Dim<rank> &size);
 
-  private:
-    std::shared_ptr<Allocation<Device>> allocation_;
-    Dim<rank> size_;
-    Dim<rank> stride_;
-    T *ptr_;
+ private:
+  std::shared_ptr<Allocation<Device>> allocation_;
+  Dim<rank> size_;
+  Dim<rank> stride_;
+  T *ptr_;
 };
 ```
 
@@ -122,23 +114,23 @@ The member variable `allocation_` points to the `Allocation` object where data a
 ```cpp
 template <int rank>
 struct Dim {
-    // constructor
-    template <typename... Args>
-    Dim(int _head, Args... _tail) : head(_head), tail(_tail...) {}
+  // constructor
+  template <typename... Args>
+  Dim(int _head, Args... _tail) : head(_head), tail(_tail...) {}
 
-    int head;
-    Dim<rank - 1> tail;
+  int head;
+  Dim<rank - 1> tail;
 }
 
 template <>
 struct Dim<1> {
-    int head;
+  int head;
 }
 
 // helper function to make a Dim
 template <typename... Args>
 Dim<sizeof...(Args)> make_dim(Args... idxes) {
-    return Dim<sizeof...(Args)>(idxes...);
+  return Dim<sizeof...(Args)>(idxes...);
 }
 ```
 
@@ -168,7 +160,8 @@ Tensor<GpuDevice, float, 3> t_b(make_dim(2, 3, 4), GpuDevice(1));
 t_a.resize(make_dim(1, 4));
 
 // make a new allocation shared tensor with the same numel and differnet rank
-// t_b's numel is 2*3*4=24, t_c's desired numel is 3*8=24, they are same so the construction is allowed.
+// t_b's numel is 2*3*4=24, t_c's desired numel is 3*8=24, they are same so the
+// construction is allowed.
 Tensor<GpuDevice, float, 2> t_c(make_dim(3, 8), t_b);
 
 // get tensor's data pointer
