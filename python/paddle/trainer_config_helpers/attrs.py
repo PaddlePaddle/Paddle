@@ -68,7 +68,7 @@ class HookAttribute(object):
                             The specific usage can be paddle.layer.img_conv(input=img, filter_size=3,
                                                                        num_channels=3, num_filters=64,
                                                                        param_attr=ParameterAttribute(update_hooks=hk) )
-                            The pruning deatils can be found https://arxiv.org/pdf/1506.02626.pdf
+                            The pruning details can be found https://arxiv.org/pdf/1506.02626.pdf
     :type type: string
 
     :param sparsity_ratio: Must be specified if hook type is 'pruning', 
