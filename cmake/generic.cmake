@@ -257,31 +257,31 @@ file(MAKE_DIRECTORY ${GOPATH})
 #   tensor # Because ops depend on tensor, this line is optional.
 #   ops)
 function(go_library TARGET_NAME)
-  set(options OPTIONAL)
+  set(options STATIC static SHARED shared)
   set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
+  set(multiValueArgs DEPS)
   cmake_parse_arguments(go_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  if (${go_library_OPTIONAL} STREQUAL "SHARED")
+
+  if (go_library_SHARED OR go_library_shared)
     set(BUILD_MODE "-buildmode=c-shared")
-    if(APPLE)
-      set(LIB_NAME "lib${TARGET_NAME}.dylib")
-    else()
-      set(LIB_NAME "lib${TARGET_NAME}.so")
-    endif()
+    set(LIB_NAME "${LIBRARY_PREFIX}${TARGET_NAME}${SHARED_LIBRARY_SUFFIX}")
   else()
     set(BUILD_MODE "-buildmode=c-archive")
-    set(LIB_NAME "lib${TARGET_NAME}.a")
+    set(LIB_NAME "${LIBRARY_PREFIX}${TARGET_NAME}${STATIC_LIBRARY_SUFFIX}")
   endif()
-  add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
+
+  set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+  file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
+  add_library(${TARGET_NAME} STATIC ${dummyfile})
+  add_dependencies(${TARGET_NAME} ${go_library_DEPS})
+
+  file(GLOB GO_SOURCE RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.go")
+  add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
     -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
-    ${go_library_SRCS}
+    ${GO_SOURCE}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  add_custom_target(${TARGET_NAME}_lib ALL DEPENDS ${TARGET_NAME}_timestamp ${go_library_DEPS})
-  add_library(${TARGET_NAME} STATIC IMPORTED)
-  set_property(TARGET ${TARGET_NAME} PROPERTY
-    IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}")
-  add_dependencies(${TARGET_NAME} ${TARGET_NAME}_lib)
 endfunction(go_library)
 
 function(go_binary TARGET_NAME)
@@ -316,5 +316,5 @@ endfunction(go_test)
 # go_extern(target_name extern_source)
 # go_extern(go_redis github.com/hoisie/redis)
 function(go_extern TARGET_NAME)
-  add_custom_target(${TARGET_NAME} env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get ${ARGN})
+  add_custom_target(${TARGET_NAME} env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d ${ARGN})
 endfunction(go_extern)
