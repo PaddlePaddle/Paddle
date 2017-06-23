@@ -16,6 +16,8 @@
 #include <typeindex>
 #include <typeinfo>
 
+#include "paddle/platform/assert.h"
+
 namespace paddle {
 namespace framework {
 
@@ -23,6 +25,9 @@ class Variable {
  public:
   template <typename T>
   const T& Get() const {
+    PADDLE_ASSERT(holder_ != nullptr);
+    PADDLE_ASSERT(std::type_index(typeid(T)) ==
+                  std::type_index(holder_->Type()));
     return *static_cast<const T*>(holder_->Ptr());
   }
 
