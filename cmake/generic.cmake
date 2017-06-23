@@ -264,10 +264,10 @@ function(go_library TARGET_NAME)
 
   if (go_library_SHARED OR go_library_shared)
     set(BUILD_MODE "-buildmode=c-shared")
-    set(LIB_NAME "${LIBRARY_PREFIX}${TARGET_NAME}${SHARED_LIBRARY_SUFFIX}")
+    set(LIB_NAME "${CMAKE_SHARED_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
   else()
     set(BUILD_MODE "-buildmode=c-archive")
-    set(LIB_NAME "${LIBRARY_PREFIX}${TARGET_NAME}${STATIC_LIBRARY_SUFFIX}")
+    set(LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
   endif()
 
   set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
