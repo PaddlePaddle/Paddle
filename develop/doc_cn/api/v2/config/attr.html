@@ -207,6 +207,18 @@
 
 <dl class="attribute">
 <dt>
+<code class="descclassname">paddle.v2.attr.</code><code class="descname">Hook</code></dt>
+<dd><p><code class="xref py py-class docutils literal"><span class="pre">HookAttribute</span></code> 的别名</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<code class="descclassname">paddle.v2.attr.</code><code class="descname">HookAttr</code></dt>
+<dd><p><code class="xref py py-class docutils literal"><span class="pre">HookAttribute</span></code> 的别名</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
 <code class="descclassname">paddle.v2.attr.</code><code class="descname">ParamAttr</code></dt>
 <dd><p><code class="xref py py-class docutils literal"><span class="pre">ParameterAttribute</span></code> 的别名</p>
 </dd></dl>
@@ -219,7 +231,7 @@
 
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.v2.attr.</code><code class="descname">ParameterAttribute</code><span class="sig-paren">(</span><em>name=None</em>, <em>is_static=False</em>, <em>initial_std=None</em>, <em>initial_mean=None</em>, <em>initial_max=None</em>, <em>initial_min=None</em>, <em>l1_rate=None</em>, <em>l2_rate=None</em>, <em>learning_rate=None</em>, <em>momentum=None</em>, <em>gradient_clipping_threshold=None</em>, <em>sparse_update=False</em>, <em>initializer=None</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.attr.</code><code class="descname">ParameterAttribute</code><span class="sig-paren">(</span><em>name=None</em>, <em>is_static=False</em>, <em>initial_std=None</em>, <em>initial_mean=None</em>, <em>initial_max=None</em>, <em>initial_min=None</em>, <em>l1_rate=None</em>, <em>l2_rate=None</em>, <em>learning_rate=None</em>, <em>momentum=None</em>, <em>gradient_clipping_threshold=None</em>, <em>sparse_update=False</em>, <em>update_hooks=None</em>, <em>initializer=None</em><span class="sig-paren">)</span></dt>
 <dd><p>Parameter Attributes object. To fine-tuning network training process, user
 can set attribute to control training details, such as l1,l2 rate / learning
 rate / how to init param.</p>
