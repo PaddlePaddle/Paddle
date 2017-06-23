@@ -3839,7 +3839,8 @@ def classification_cost(input,
                         weight=None,
                         name=None,
                         evaluator=classification_error_evaluator,
-                        layer_attr=None):
+                        layer_attr=None,
+                        coeff=1.):
     """
     classification cost Layer.
 
@@ -3855,6 +3856,8 @@ def classification_cost(input,
     :param evaluator: Evaluator method.
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
+    :param coeff: The coefficient affects the gradient in the backward.
+    :type coeff: float
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3868,6 +3871,7 @@ def classification_cost(input,
         name=name,
         type="multi-class-cross-entropy",
         inputs=ipts,
+        coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
     def __add_evaluator__(e):
