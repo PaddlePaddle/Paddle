@@ -711,6 +711,40 @@ one or more input layers.</p>
 
 </div>
 </div>
+<div class="section" id="detection">
+<h2>Detection<a class="headerlink" href="#detection" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="detection-map">
+<h3>detection_map<a class="headerlink" href="#detection-map" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.v2.evaluator.</code><code class="descname">detection_map</code><span class="sig-paren">(</span><em>*args</em>, <em>**xargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Detection mAP Evaluator. It will print mean Average Precision (mAP) for detection.</p>
+<p>The detection mAP Evaluator based on the output of detection_output layer counts
+the true positive and the false positive bbox and integral them to get the
+mAP.</p>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span>  <span class="n">detection_evaluator</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">det_output</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="n">lbl</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Input layer.</li>
+<li><strong>label</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; Label layer.</li>
+<li><strong>overlap_threshold</strong> (<em>float</em>) &#8211; The bbox overlap threshold of a true positive.</li>
+<li><strong>background_id</strong> (<em>int</em>) &#8211; The background class index.</li>
+<li><strong>evaluate_difficult</strong> (<em>bool</em>) &#8211; Whether evaluate a difficult ground truth.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
 </div>
 
 
