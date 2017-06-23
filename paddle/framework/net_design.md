@@ -24,18 +24,16 @@ class NetworkBase {
   // `def` is a proto message that describe the structure of a network.
   NetworkBase();
 
+  // Infer the shapes of variables required by operators in the network. The
+  // `scope` will be mutated according to the inferred shapes.
+  virtual bool InferShape(Scope *scope) = 0;
+
   // run all the operators and return success(true) or not, all the
   // variables are located in `scope`. `begin` and `end` specify the scope of
   // `ops_` to run, If no positive indexes are provided, all operators in `ops_`
   // will run.
   virtual bool Run(Scope *scope, OpIndex begin = -1,
                    OpIndex end = -1) const = 0;
-
- protected:
-  // keys of the input variables feed into the network.
-  std::vector<string> inputs_;
-  // keys of the corresponding output variables the network will mutate.
-  std::vector<string> outputs_;
 };
 ```
 
@@ -55,7 +53,7 @@ std::unique<NetworkBase> CreateNet(const NetDef& def) {
     case Recurrent:
       return new RecurrentNet(def);
   }
-  return new Network(def);
+  return nullptr;
 }
 ```
 
@@ -69,7 +67,10 @@ Finally, `NetworkBase` can be used as followed
 ```c++
 Scope default_scope;
 auto net = CreateNet(def);
-net.Run(&default_scope);
+
+if (net) {
+  net.Run(&default_scope);
+}
 ```
 
 
@@ -83,10 +84,16 @@ class ScratchNet final : public NetworkBase {
   // Create a network describe by `def`.  NetDef is the definition of a network.
   ScratchNet(const NetDef &def);
 
+  virtual bool InferShape(Scope *scope) override;
+
   // Run all the operators with the `scope`, if no scope is provided, default
   // scope will be used instead.
   virtual bool Run(Scope *scope = nullptr, OpIndex begin,
                    OpIndex end) const override;
+
+  const std::vector<Operator> &GetOps() const;
+
+  std::vector<Operator> *MutableOps();
 
  protected:
   // Create operators accordding to `def`.
