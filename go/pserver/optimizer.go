@@ -5,6 +5,7 @@ package pserver
 #cgo pkg-config: protobuf
 #cgo CFLAGS: -I ../../
 #cgo LDFLAGS: ../../build/paddle/optimizer/libpaddle_optimizer.a ../../build/proto/libpaddle_proto.a ../../third_party/install/glog/lib/libglog.a ../../third_party/install/gtest/lib/libgtest.a ../../third_party/install/gflags/lib/libgflags.a ../../third_party/install/openblas/lib/libopenblas.a -I/usr/local/lib/ -lprotobuf
+#cgo LDFLAGS: /Users/dzh/.go/src/github.com/PaddlePaddle/Paddle/build/lib/libdep.a
 #include "paddle/optimizer/optimizer.h"
 */
 import "C"

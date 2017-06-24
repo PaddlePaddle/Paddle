@@ -28,8 +28,7 @@ const (
 type Parameter struct {
 	Name        string
 	ElementType ElementType
-	Content     *byte
-	Length      int
+	Content     []byte
 }
 
 // ParameterWithConfig contains the parameter and the configuration.
@@ -47,15 +46,13 @@ type Service struct {
 
 	mu sync.Mutex
 	// injection from parameter to optimizer
-	optMap   map[string]*optimizer
-	paramMap map[string]Parameter
+	optMap map[string]*optimizer
 }
 
 // NewService creates a new service.
 func NewService() *Service {
 	s := &Service{}
 	s.optMap = make(map[string]*optimizer)
-	s.paramMap = make(map[string]Parameter)
 	s.initialized = make(chan struct{})
 	return s
 }
@@ -76,7 +73,6 @@ func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, dummy *int) er
 	// TODO(helin): check if paramWithConfigs.Param.Content is
 	// properly memory aligned, if not, make copy to a memory
 	// aligned region.
-	s.paramMap[paramWithConfigs.Param.Name] = paramWithConfigs.Param
 	s.optMap[paramWithConfigs.Param.Name] = newOptimizer(paramWithConfigs)
 	return nil
 }
@@ -106,13 +102,9 @@ func (s *Service) SendGrad(g Gradient, dummy *int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	p, ok := s.paramMap[g.Name]
-	if !ok {
-		return fmt.Errorf("parameter: %s does not exist", g.Name)
-	}
 	o, ok := s.optMap[g.Name]
 	if !ok {
-		return fmt.Errorf("optimizer: %s does not exist", g.Name)
+		return fmt.Errorf("parameter: %s does not exist", g.Name)
 	}
 
 	return o.UpdateParameter(p, g)
