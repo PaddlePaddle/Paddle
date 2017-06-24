@@ -10,6 +10,7 @@ set(GSERVER_SOURCES
     layers/LstmCompute.cu
     layers/GruCompute.cu
     ${GSERVER_SOURCES})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-inconsistent-missing-override")
 
 macro(filter_test VAR_NAME)
     set(tmp)
