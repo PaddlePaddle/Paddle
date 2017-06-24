@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -12,13 +13,13 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/PaddlePaddle/Paddle/go/master"
+	"github.com/PaddlePaddle/Paddle/go/utils/networkhelper"
 )
 
 func main() {
 	port := flag.Int("port", 8080, "port of the master server.")
-
 	ttlSec := flag.Int("ttl", 60, "etcd lease TTL in seconds.")
-	endpoints := flag.String("endpoints", "", "comma separated etcd endpoints. If empty, fault tolerance will not be enabled.")
+	endpoints := flag.String("endpoints", "http://127.0.0.1:2379", "comma separated etcd endpoints. If empty, fault tolerance will not be enabled.")
 	taskTimeoutDur := flag.Duration("task_timout_dur", 20*time.Minute, "task timout duration.")
 	taskTimeoutMax := flag.Int("task_timeout_max", 3, "max timtout count for each task before it being declared failed task.")
 	chunkPerTask := flag.Int("chunk_per_task", 10, "chunk per task.")
@@ -31,8 +32,13 @@ func main() {
 	var store master.Store
 	if *endpoints != "" {
 		eps := strings.Split(*endpoints, ",")
-		var err error
-		store, err = master.NewEtcd(eps, master.DefaultLockPath, master.DefaultStatePath, *ttlSec)
+		ip, err := networkhelper.GetExternalIP()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		addr := fmt.Sprintf("%s:%d", ip, *port)
+		store, err = master.NewEtcdClient(eps, addr, master.DefaultLockPath, master.DefaultAddrPath, master.DefaultStatePath, *ttlSec)
 		if err != nil {
 			log.Fatal(err)
 		}
