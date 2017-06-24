@@ -309,35 +309,35 @@ public:
   void addEvaluator(std::unique_ptr<Evaluator>&& evaluator) {
     evaluators_.emplace_back(std::move(evaluator));
   }
-  virtual void start() {
+  void start() override {
     for (auto& evaluator : evaluators_) {
       evaluator->start();
     }
   }
 
-  virtual void finish() {
+  void finish() override {
     for (auto& evaluator : evaluators_) {
       evaluator->finish();
     }
   }
 
-  virtual void eval(const NeuralNetwork& nn) override {
+  void eval(const NeuralNetwork& nn) override {
     for (auto& evaluator : evaluators_) {
       evaluator->eval(nn);
     }
   }
-  virtual real evalImp(std::vector<Argument>& arguments) {
+  real evalImp(std::vector<Argument>& arguments) override {
     (void)arguments;
     return -1;
   }
-  virtual void printStats(std::ostream& os) const {
+  void printStats(std::ostream& os) const override {
     for (auto& evaluator : evaluators_) {
       evaluator->printStats(os);
       os << ' ';
     }
   }
 
-  virtual void distributeEval(ParameterClient2* client) {
+  void distributeEval(ParameterClient2* client) override {
     for (auto& evaluator : evaluators_) {
       evaluator->distributeEval(client);
     }
@@ -352,7 +352,7 @@ public:
    * @brief getNames will return all inside evaluators' names.
    * @param names [out]: return names.
    */
-  void getNames(std::vector<std::string>* names) {
+  void getNames(std::vector<std::string>* names) override {
     for (auto& eval : evaluators_) {
       eval->getNames(names);
     }
@@ -361,7 +361,7 @@ public:
   /**
    * @brief getValue could get all inside evaluators' value.
    */
-  real getValue(const std::string& name, Error* err) const {
+  real getValue(const std::string& name, Error* err) const override {
     return this->getMethodHelper<real>(
         name, err, [&name, err](const std::unique_ptr<Evaluator>& eval) {
           return eval->getValue(name, err);
@@ -371,7 +371,7 @@ public:
   /**
    * @brief getType could get all inside evaluators' type.
    */
-  std::string getType(const std::string& name, Error* err) const {
+  std::string getType(const std::string& name, Error* err) const override {
     return this->getMethodHelper<std::string>(
         name, err, [&name, err](const std::unique_ptr<Evaluator>& eval) {
           return eval->getType(name, err);
