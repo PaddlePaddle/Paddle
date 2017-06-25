@@ -171,6 +171,12 @@ MultiGradientMachine::MultiGradientMachine(const ModelConfig& config,
   }
 }
 
+MultiGradientMachine::~MultiGradientMachine() {
+  for (auto& thread : threads_) {
+    thread->stop();
+  }
+}
+
 std::vector<const std::vector<ParameterPtr>*>
 MultiGradientMachine::getSlaveParameters() {
   std::vector<const std::vector<ParameterPtr>*> vec;
@@ -323,12 +329,6 @@ void MultiGradientMachine::updateThreadParameters() {
 void MultiGradientMachine::onPassEnd() {
   for (auto& thread : threads_) {
     thread->onPassEnd();
-  }
-}
-
-void MultiGradientMachine::finish() {
-  for (auto& thread : threads_) {
-    thread->stop();
   }
 }
 

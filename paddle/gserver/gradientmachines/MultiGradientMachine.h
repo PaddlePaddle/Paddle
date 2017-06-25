@@ -176,6 +176,8 @@ public:
 
   explicit MultiGradientMachine(const ModelConfig& config, bool useGpu);
 
+  virtual ~MultiGradientMachine();
+
   virtual void prefetch(const std::vector<Argument>& inArgs);
 
   virtual void forward(const std::vector<Argument>& inArgs,
@@ -192,8 +194,6 @@ public:
   virtual Argument getLayerOutput(const std::string& layerName);
 
   virtual void onPassEnd();
-
-  virtual void finish();
 
   virtual Evaluator* makeEvaluator() const;
 
