@@ -31,7 +31,7 @@ In `paddle/memory/memory.h` we have:
 namespace memory {
 template <typename Place> void* Alloc(Place, size_t);
 template <typename Place> void Free(Place, void*);
-template <typename Place> void Used(Place);
+template <typename Place> size_t Used(Place);
 }  // namespace memory
 ```
 
@@ -39,7 +39,7 @@ These function templates have specializations on either `platform::CPUPlace` or 
 
 ```cpp
 template<>
-void Alloc<CPUPlace>(CPUPlace p, size_t size) {
+void* Alloc<CPUPlace>(CPUPlace p, size_t size) {
   return GetCPUBuddyAllocator()->Alloc(size);
 }
 ```
@@ -102,15 +102,11 @@ class BuddyAllocator {
 };
 ```
 
+Because BuddyAllocator has the meta-data of each block, it can trace the used memory -- record the amount returned by `Alloc` freed in `Free`.  Instead, `CPUAllocator` and `GPUAllocator` doesn't know the size of freed memory block and cannot do the trace.
+
 #### System Allocators
 
-The `GPUAllocator` and `CPUAllocator` are calls *system allocators*.  They work as the fallback allocators of `BuddyAllocator`.  A system allocator holds information about a device, including the amount of memory has been allocated, so we can call
-
-- `GPUAllocator::Used()` and
-- `CPUAllocator::Used()`
-
-to get the amount of memory that has been allocated so far.
-
+The `GPUAllocator` and `CPUAllocator` are calls *system allocators*.  They work as the fallback allocators of `BuddyAllocator`.
 
 ## Justification
 
