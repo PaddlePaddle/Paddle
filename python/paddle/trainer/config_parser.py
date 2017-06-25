@@ -1280,20 +1280,23 @@ def parse_maxout(maxout, input_layer_name, maxout_conf):
 
 # Define an evaluator
 @config_func
-def Evaluator(
-        name,
-        type,
-        inputs,
-        chunk_scheme=None,
-        num_chunk_types=None,
-        classification_threshold=None,
-        positive_label=None,
-        dict_file=None,
-        result_file=None,
-        num_results=None,
-        top_k=None,
-        delimited=None,
-        excluded_chunk_types=None, ):
+def Evaluator(name,
+              type,
+              inputs,
+              chunk_scheme=None,
+              num_chunk_types=None,
+              classification_threshold=None,
+              positive_label=None,
+              dict_file=None,
+              result_file=None,
+              num_results=None,
+              top_k=None,
+              delimited=None,
+              excluded_chunk_types=None,
+              overlap_threshold=None,
+              background_id=None,
+              evaluate_difficult=None,
+              ap_type=None):
     evaluator = g_config.model_config.evaluators.add()
     evaluator.type = type
     evaluator.name = MakeLayerNameInSubmodel(name)
@@ -1326,6 +1329,18 @@ def Evaluator(
 
     if excluded_chunk_types:
         evaluator.excluded_chunk_types.extend(excluded_chunk_types)
+
+    if overlap_threshold is not None:
+        evaluator.overlap_threshold = overlap_threshold
+
+    if background_id is not None:
+        evaluator.background_id = background_id
+
+    if evaluate_difficult is not None:
+        evaluator.evaluate_difficult = evaluate_difficult
+
+    if ap_type is not None:
+        evaluator.ap_type = ap_type
 
 
 class LayerBase(object):
@@ -3124,11 +3139,11 @@ def Layer(name, type, **xargs):
 @config_func
 def ParameterHook(type, **kwargs):
     if type == 'pruning':
-        mask_filename = kwargs.get('mask_filename', None)
-        assert mask_filename is not None
         hook = ParameterUpdaterHookConfig()
         hook.type = type
-        hook.purning_mask_filename = mask_filename
+        sparsity_ratio = kwargs.get('sparsity_ratio', None)
+        if sparsity_ratio is not None:
+            hook.sparsity_ratio = sparsity_ratio
         return hook
     else:
         return None
@@ -3236,13 +3251,13 @@ def Parameter(name,
 
     if update_hooks is not None:
         if hasattr(update_hooks, '__call__'):
-            update_hooks = update_hooks(para.name)
+            update_hooks = update_hooks()
 
         if isinstance(update_hooks, list):
             for hook in update_hooks:
                 para.update_hooks.extend([hook])
         else:
-            para.update_hooks.extend(update_hooks)
+            para.update_hooks.extend([update_hooks])
 
     g_parameter_map[name] = para
     if initializer is not None:

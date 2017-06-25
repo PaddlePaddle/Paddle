@@ -84,24 +84,6 @@ IF(DEFINED CMAKE_SYSTEM_NAME)
     ENDIF()
 ENDIF()
 
-# prefix and suffix on different os
-IF(WIN32)
-    SET(LIBRARY_PREFIX "")
-    SET(SHARED_LIBRARY_SUFFIX ".dll")
-    SET(STATIC_LIBRARY_SUFFIX ".lib")
-    SET(EXECUTABLE_SUFFIX ".exe")
-ELSE(WIN32)
-    SET(LIBRARY_PREFIX "lib")
-    IF(APPLE)
-        SET(SHARED_LIBRARY_SUFFIX ".dylib")
-    ELSE(APPLE)
-        SET(SHARED_LIBRARY_SUFFIX ".so")
-    ENDIF(APPLE)
-
-    SET(STATIC_LIBRARY_SUFFIX ".a")
-    SET(EXECUTABLE_SUFFIX "")
-ENDIF(WIN32)
-
 # external dependencies log output
 SET(EXTERNAL_PROJECT_LOG_ARGS
     LOG_DOWNLOAD    0     # Wrap download in script to log output

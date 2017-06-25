@@ -33,9 +33,13 @@ func TestNextRecord(t *testing.T) {
 	}
 
 	go func(l net.Listener) {
-		s := master.NewService(10, time.Second, 1)
+		s, err := master.NewService(&master.InMemStore{}, 10, time.Second, 1)
+		if err != nil {
+			panic(err)
+		}
+
 		server := rpc.NewServer()
-		err := server.Register(s)
+		err = server.Register(s)
 		if err != nil {
 			panic(err)
 		}

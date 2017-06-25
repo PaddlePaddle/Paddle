@@ -489,6 +489,15 @@ message EvaluatorConfig {
   // Used by ClassificationErrorEvaluator
   // top # classification error
   optional int32 top_k = 13 [default = 1];
+
+  // Used by DetectionMAPEvaluator
+  optional double overlap_threshold = 14 [default = 0.5];
+
+  optional int32 background_id = 15 [default = 0];
+
+  optional bool evaluate_difficult = 16 [default = false];
+
+  optional string ap_type = 17 [default = "11point"];
 }
 
 message LinkConfig {
