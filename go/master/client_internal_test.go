@@ -47,9 +47,13 @@ func TestGetFinishTask(t *testing.T) {
 	}
 
 	go func(l net.Listener) {
-		s := NewService(chunkPerTask, time.Second, 1)
+		s, err := NewService(&InMemStore{}, chunkPerTask, time.Second, 1)
+		if err != nil {
+			panic(err)
+		}
+
 		server := rpc.NewServer()
-		err := server.Register(s)
+		err = server.Register(s)
 		if err != nil {
 			panic(err)
 		}
