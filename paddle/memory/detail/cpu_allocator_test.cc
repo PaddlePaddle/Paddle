@@ -22,11 +22,17 @@ TEST(CPUAllocator, NonStaging) {
   a.Free(p);
 }
 
-#ifdef WITH_GPU
+#ifdef PADDLE_WITH_GPU
 TEST(CPUAllocator, Staging) {
   paddle::memory::detail::CPUAllocator<true> a;
-  void* p = a.Alloc(4096);
-  EXPECT_NE(p, nullptr);
-  a.Free(p);
+
+  int devices;
+  if (cudaGetDeviceCount(&devices) == cudaSuccess && devices > 0) {
+    void* p = a.Alloc(4096);
+    EXPECT_NE(p, nullptr);
+    a.Free(p);
+  } else {
+    EXPECT_EQ(a.Alloc(4096), nullptr);
+  }
 }
-#endif  // WITH_GPU
+#endif  // PADDLE_WITH_GPU

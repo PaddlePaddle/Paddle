@@ -19,7 +19,11 @@ namespace memory {
 
 template <>
 void* Alloc<CPUPlace>(CPUPlace, size_t size) {
-  return GetCPUBuddyAllocator()->Alloc(size);
+  return GetCPUBuddyAllocator(false /*non-staging*/)->Alloc(size);
+}
+
+void* AllocStaging(CPUPlace, size_t size) {
+  return GetCPUBuddyAllocator(true /*staging*/)->Alloc(size);
 }
 
 template <>
@@ -29,9 +33,14 @@ void* Alloc<GPUPlace>(GPUPlace pl, size_t size) {
 
 template <>
 void Free<CPUPlace>(CPUPlace, void* p) {
-  return GetCPUBuddyAllocator()->Free(p);
+  return GetCPUBuddyAllocator(false /*non-staging*/)->Free(p);
 }
 
+void FreeStaging(CPUPlace, void* p) {
+  return GetCPUBuddyAllocator(false /*non-staging*/)->Free(p);
+}
+
+#ifdef PADDLE_WITH_GPU
 template <>
 void* Alloc<GPUPlace>(GPUPlace pl, void* p) {
   return GetGPUBuddyAllocator(pl.device)->Free(p);
@@ -46,6 +55,7 @@ template <>
 size_t Alloc<GPUPlace>(GPUPlace pl) {
   return GetGPUBuddyAllocator(pl.device)->Used();
 }
+#endif  // PADDLE_WITH_GPU
 
 }  // namespace memory
 }  // namespace paddle

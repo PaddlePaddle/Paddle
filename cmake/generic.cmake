@@ -78,6 +78,10 @@
 #
 #   cc_test(example_test SRCS example_test.cc DEPS example glog gflags)
 
+if(WITH_GPU)
+  add_definitions(-DPADDLE_WITH_GPU)
+endif()
+
 if(NOT APPLE)
     find_package(Threads REQUIRED)
     link_libraries(${CMAKE_THREAD_LIBS_INIT})

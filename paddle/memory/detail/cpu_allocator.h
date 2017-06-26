@@ -17,6 +17,11 @@ limitations under the License. */
 #include <malloc.h>  // for malloc and free
 #include <stddef.h>  // for size_t
 
+#ifdef PADDLE_WITH_GPU
+#include <cuda.h>
+#include <cuda_runtime_api.h>
+#endif  // PADDLE_WITH_GPU
+
 namespace paddle {
 namespace memory {
 namespace detail {
@@ -40,9 +45,9 @@ public:
   void Free(void* p) { free(p); }
 };
 
-// If CMake macro WITH_GPU is OFF, C++ compiler won't generate the
+// If CMake macro PADDLE_WITH_GPU is OFF, C++ compiler won't generate the
 // following specialization that depends on the CUDA library.
-#ifdef WITH_GPU
+#ifdef PADDLE_WITH_GPU
 template <>
 class CPUAllocator<true> {
 public:
@@ -51,12 +56,12 @@ public:
     if (cudaMallocHost(&p, size) != cudaSuccess) {
       return NULL;
     }
-    return *p;
+    return p;
   }
 
   void Free(void* p) { cudaFreeHost(p); }
 };
-#endif  // WITH_GPU
+#endif  // PADDLE_WITH_GPU
 
 }  // namespace detail
 }  // namespace memory

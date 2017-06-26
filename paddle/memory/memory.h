@@ -19,9 +19,19 @@ limitations under the License. */
 namespace paddle {
 namespace memory {
 
-typename<typename paddle::framework::Place> void* Alloc(Place, size_t);
-typename<typename paddle::framework::Place> void Free(Place, void*);
-typename<typename paddle::framework::Place> size_t Used(Place);
+template <typename paddle::framework::Place>
+void* Alloc(Place, size_t);
+template <typename paddle::framework::Place>
+void Free(Place, void*);
+template <typename paddle::framework::Place>
+size_t Used(Place);
+
+// Staging memory means "pinned" host memory that can be mapped into
+// the CUDA memory space and accessed by the device rapidly.  Don't
+// allocate too much staging memory; otherwise system performance will
+// degrade because the OS cannot find enough swap memory space.
+void* AllocStaging(CPUPlace, size_t);
+void* FreeStaging(CPUPlace, size_t);
 
 }  // namespace memory
 }  // namespace paddle

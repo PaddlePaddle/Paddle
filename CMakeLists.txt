@@ -71,7 +71,7 @@ if(ANDROID)
         "Disable RDMA when cross-compiling for Android" FORCE)
 endif(ANDROID)
 
-set(THIRD_PARTY_PATH "${PROJ_ROOT}/third_party" CACHE STRING
+set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")
 
 if (WITH_C_API AND WITH_PYTHON)
