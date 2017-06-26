@@ -9,6 +9,8 @@ project(cxx_go C Go)
 include(golang)
 include(flags)
 
+cc_library(paddle_go_optimizer DEPS paddle_optimizer paddle_proto glog gflags)
+
 go_library(paddle_pserver_cclient STATIC)
 if(WITH_TESTING)
   add_subdirectory(test)

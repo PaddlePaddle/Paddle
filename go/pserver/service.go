@@ -107,7 +107,7 @@ func (s *Service) SendGrad(g Gradient, dummy *int) error {
 		return fmt.Errorf("parameter: %s does not exist", g.Name)
 	}
 
-	return o.UpdateParameter(p, g)
+	return o.UpdateParameter(g)
 }
 
 // GetParam gets parameters from the parameter server.
@@ -116,7 +116,7 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	p, ok := s.paramMap[name]
+	opt, ok := s.optMap[name]
 	if !ok {
 		return fmt.Errorf("parameter: %s does not exist", name)
 	}
@@ -128,8 +128,11 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	// nature. This race condition is allowed deliberately
 	// to save the program from making a copy of the
 	// paramter content.
-	*parameter = p
-	return nil
+	p.Name = name
+	p.ElementType = opt.ElementType
+
+	ok := opt.GetWeights(&parameter)
+	return ok
 }
 
 // Save tells the parameter server to save parameters.
