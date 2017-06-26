@@ -32,21 +32,21 @@ namespace detail {
 // default, we should use CPUAllocator<staging=false>.
 template <bool staging>
 class CPUAllocator {
-public:
+ public:
   void* Alloc(size_t size);
   void Free(void* p, size_t size);
 };
 
 template <>
 class CPUAllocator<false> {
-public:
+ public:
   void* Alloc(size_t size) { return std::malloc(size); }
   void Free(void* p, size_t size) { std::free(p); }
 };
 
 template <>
 class CPUAllocator<true> {
-public:
+ public:
   void* Alloc(size_t size) {
     void* p = std::malloc(size);
     if (p == nullptr) {
