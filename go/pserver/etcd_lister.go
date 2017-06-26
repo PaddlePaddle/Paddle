@@ -10,7 +10,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const DefaultEtcdTimeout time.Duration = time.Second * time.Duration(5)
+const (
+	DefaultEtcdTimeout time.Duration = time.Second * time.Duration(5)
+)
 
 type pserverEtcdLister struct {
 	client    *clientv3.Client
@@ -59,16 +61,15 @@ func(p pserverEtcdLister) List() []Server {
 			psKey := DefaultPsBasePath + strconv.Itoa(i)
 			log.Debugf("checking %s", psKey)
 			resp, err := p.client.Get(ctx, psKey)
-			cancel()
 			if err != nil {
 				cancel()
-				log.Debugf("Get psKey= %s error, %v", psKey, err)
+				log.Infof("Get psKey= %s error, %v", psKey, err)
 				time.Sleep(p.timeout)
 				continue
 			}
 			kvs := resp.Kvs
 			if len(kvs) == 0 {
-				log.Infoln("Waiting for ps addr registered ...")
+				log.Infof("Waiting for ps addr registered ...")
 				time.Sleep(p.timeout)
 				continue
 			}
@@ -77,14 +78,16 @@ func(p pserverEtcdLister) List() []Server {
 			// TODO(Longfei) check the ps address
 			if  psAddr == "" {
 				cancel()
-				log.Debugf("Get psKey = %s,  psAddr is null illegal", psKey, psAddr)
+				log.Infof("Get psKey = %s,  psAddr is null illegal", psKey, psAddr)
 				time.Sleep(p.timeout)
 				continue
 			}
-			log.Debugf("got value (%s) for key: %s", psAddr, psKey)
+			log.Infof("got value (%s) for key: %s", psAddr, psKey)
 			servers[i].Index = i
 			servers[i].Addr = psAddr
 		}
+		cancel()
+		break
 	}
 	return servers
 }
@@ -104,8 +107,9 @@ func NewEtcdAddrLister(endpoints string) (Lister, int) {
 			time.Sleep(timeout)
 			continue
 		}
+		break
 	}
-	log.Debugf("Connected to etcd: %s\n", endpoints)
+	log.Infof("Connected to etcd: %s\n", endpoints)
 	lister := pserverEtcdLister{
 		client:    cli,
 		timeout:   timeout,
