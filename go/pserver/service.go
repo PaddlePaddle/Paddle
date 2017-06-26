@@ -73,7 +73,7 @@ type Service struct {
 
 // NewService creates a new service, will bypass etcd registration if no
 // endpoints specified.
-func NewService(endpoints string, timeout time.Duration) (*Service, error) {
+func NewService(endpoints string, numPservers int, timeout time.Duration) (*Service, error) {
 	s := &Service{opt: newOptimizer(sgd, 0.005)}
 	s.paramMap = make(map[string]Parameter)
 	s.initialized = make(chan struct{})
@@ -103,6 +103,22 @@ func NewService(endpoints string, timeout time.Duration) (*Service, error) {
 			log.Debugf("inited client to %s", s.etcdEndpoints)
 			break
 		}
+		// init /ps_desired using transaction, for multiple pservers may want to write
+		// it at the same time.
+		for {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			_, err := s.initDesiredPsercers(ctx, numPservers)
+			cancel()
+			if err != nil {
+				log.Warn(err)
+				time.Sleep(s.etcdTimeout)
+				continue
+			}
+			break
+		}
+		// TODO: when implementing extending or reducing pservers, /ps_desired is
+		// changed, then we need to watch /ps_desired node for events. For now, just
+		// write once when init and read from it.
 		// wait and set s.desired init value
 		for {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -139,6 +155,16 @@ func NewService(endpoints string, timeout time.Duration) (*Service, error) {
 	} // if endpoints != ""
 	// Bypass etcd registration if no endpoints specified
 	return s, nil
+}
+
+func (s *Service) initDesiredPsercers(ctx context.Context, numPservers int) (*clientv3.TxnResponse, error) {
+	return concurrency.NewSTM(s.etcdClient, func(c concurrency.STM) error {
+		dsStr := c.Get(PsDesired)
+		if dsStr == "" {
+			c.Put(PsDesired, strconv.Itoa(numPservers))
+		}
+		return nil
+	}, concurrency.WithAbortContext(ctx), concurrency.WithIsolation(concurrency.RepeatableReads))
 }
 
 // registerPserverEtcd registers pserver node on etcd using transaction.

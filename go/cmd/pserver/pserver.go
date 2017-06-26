@@ -18,6 +18,7 @@ func main() {
 	etcdEndpoint := flag.String("etcd-endpoint", "http://127.0.0.1:2379",
 		"comma separated endpoint string for pserver to connect to etcd")
 	etcdTimeout := flag.Int("etcd-timeout", 5, "timeout for etcd calls")
+	numPservers := flag.Int("num-pservers", 1, "total pserver count in a training job")
 	logLevel := flag.String("log-level", "info",
 		"log level, possible values: debug, info, warning, error, fatal, panic")
 	flag.Parse()
@@ -29,7 +30,7 @@ func main() {
 	log.SetLevel(level)
 
 	timeout := time.Second * time.Duration((*etcdTimeout))
-	s, err := pserver.NewService(*etcdEndpoint, timeout)
+	s, err := pserver.NewService(*etcdEndpoint, *numPservers, timeout)
 	if err != nil {
 		panic(err)
 	}
