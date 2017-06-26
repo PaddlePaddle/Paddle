@@ -1,7 +1,7 @@
 package master
 
 import (
-	"context"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -10,14 +10,10 @@ import (
 	"github.com/PaddlePaddle/recordio"
 	"github.com/coreos/etcd/clientv3"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
 )
 
 const masterAddrPath = "/master"
-
-// Addresser provide the address of the master server.
-type Addresser interface {
-	Address() string
-}
 
 // Client is the client of the master server.
 type Client struct {
@@ -25,88 +21,25 @@ type Client struct {
 	ch   chan []byte
 }
 
-// MasterAddresser provide master address
-type masterAddresser struct {
+// EtcdClient is the client of
+type EtcdClient struct {
 	client    *clientv3.Client
-	timeout   time.Duration
 	endpoints []string
-}
-
-// Address return the address
-func (m masterAddresser) Address() string {
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
-		resp, err := m.client.Get(ctx, masterAddrPath)
-		cancel()
-		if err != nil {
-			log.Errorf("Fetch master addr failed, reconnecting to etcd, %v", err)
-			err := m.client.Close()
-			if err != nil {
-				log.Errorln(err)
-				time.Sleep(m.timeout)
-				continue
-			}
-			// reconnect to etcd server
-			m.client, err = clientv3.New(clientv3.Config{
-				Endpoints:   m.endpoints,
-				DialTimeout: m.timeout,
-			})
-			if err != nil {
-				log.Errorf("Reconnecting etcd failed, sleep for %d seconds ...\n%v", m.timeout, err)
-				time.Sleep(m.timeout)
-				continue
-			}
-			continue
-		}
-		kvs := resp.Kvs
-		if len(kvs) == 0 {
-			log.Infoln("Waiting for master be ready ...")
-			time.Sleep(m.timeout)
-			continue
-		}
-		mAddr := kvs[0].Value
-		log.Debugf("Fetched master address: %s\n", mAddr)
-		return string(mAddr)
-	}
+	ch        chan string
+	timeout   time.Duration
 }
 
 // NewClient creates a new Client.
 //
 // bufSize is the record buffer size. NextRecord will read from this
 // buffer.
-func NewClient(addr Addresser, bufSize int) *Client {
+func NewClient(addrCh <-chan string, bufSize int) *Client {
 	c := &Client{}
 	c.conn = connection.New()
 	c.ch = make(chan []byte, bufSize)
-	go c.monitorMaster(addr)
+	go c.monitorMaster(addrCh)
 	go c.getRecords()
 	return c
-}
-
-// NewEtcdClient create a new master client by etcd
-//
-// endpoints is the endpoints for etcd and separated by ",", such as
-// "172.0.1.0:2379,172.0.1.1:2379"
-// timeout is the timeout for etcd calls
-// bufSize is the record buffer size. NextRecord will read from this buffer.
-func NewEtcdClient(endpoints string, timeout int, bufSize int) *Client {
-	t := time.Second * time.Duration(timeout)
-	ep := strings.Split(endpoints, ",")
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   ep,
-		DialTimeout: t,
-	})
-	if err != nil {
-		log.Errorf("Init etcd connection failed: %v", err)
-		panic(err)
-	}
-	log.Debugf("Connected to etcd: %s\n", endpoints)
-	mAddresser := masterAddresser{
-		client:    cli,
-		timeout:   t,
-		endpoints: ep,
-	}
-	return NewClient(mAddresser, bufSize)
 }
 
 func (c *Client) getRecords() {
@@ -148,15 +81,14 @@ func (c *Client) getRecords() {
 	}
 }
 
-func (c *Client) monitorMaster(addr Addresser) {
+func (c *Client) monitorMaster(addrCh <-chan string) {
 	lastMaster := ""
-	monitor := func() {
-		// get the lastest address of the master server,
+	for curMaster := range addrCh {
 		// connect to the new address once address changed.
-		curMaster := addr.Address()
 		if curMaster != lastMaster {
 			if curMaster == "" {
 				err := c.conn.Close()
+				fmt.Printf("close conn error: %s", err)
 				if err != nil {
 					log.Errorln(err)
 				}
@@ -170,17 +102,9 @@ func (c *Client) monitorMaster(addr Addresser) {
 					// to retry next time.
 					curMaster = lastMaster
 				}
-
 			}
 		}
-
 		lastMaster = curMaster
-	}
-
-	monitor()
-	ticker := time.NewTicker(10 * time.Second)
-	for _ = range ticker.C {
-		monitor()
 	}
 }
 
@@ -210,4 +134,78 @@ func (c *Client) taskFinished(taskID int) error {
 // thread-safe.
 func (c *Client) NextRecord() []byte {
 	return <-c.ch
+}
+
+// NewEtcdClient create a new master client by etcd
+//
+// endpoints is the endpoints for etcd and separated by ",", such as
+// "172.0.1.0:2379,172.0.1.1:2379"
+// timeout is the timeout for etcd calls
+// bufSize is the record buffer size. NextRecord will read from this buffer.
+func NewEtcdClient(endpoints string, timeout int, bufSize int) *Client {
+	t := time.Second * time.Duration(timeout)
+	ep := strings.Split(endpoints, ",")
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   ep,
+		DialTimeout: t,
+	})
+	if err != nil {
+		log.Errorf("Init etcd connection failed: %v", err)
+		panic(err)
+	}
+	log.Debugf("Connected to etcd: %s\n", endpoints)
+	etcdClient := EtcdClient{
+		client:    cli,
+		timeout:   t,
+		endpoints: ep,
+	}
+	etcdClient.ch = make(chan string)
+	c := NewClient(etcdClient.ch, bufSize)
+	//go etcdClient.monitorMasterAddr()
+	etcdClient.initMasterAddr(masterAddrPath)
+	go etcdClient.monitorMasterAddr()
+	return c
+}
+func (e *EtcdClient) initMasterAddr(key string) {
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+		resp, err := e.client.Get(ctx, masterAddrPath)
+		cancel()
+		if err != nil {
+			log.Errorf("etcd get key: %s failed: %s, sleep for %d seconds and reconnect...",
+				key, err, e.timeout)
+			time.Sleep(e.timeout)
+			err = e.client.Close()
+			if err != nil {
+				log.Error(err)
+			}
+			e.client, err = clientv3.New(clientv3.Config{
+				Endpoints:   e.endpoints,
+				DialTimeout: e.timeout,
+			})
+			if err != nil {
+				log.Error(err)
+			}
+			continue
+		}
+		if len(resp.Kvs) == 0 {
+			log.Errorf("etcd key: %s does not exists, sleep %d seconds...", key, e.timeout/time.Second)
+			time.Sleep(e.timeout)
+			continue
+		}
+		mAddr := string(resp.Kvs[0].Value)
+		e.ch <- mAddr
+		break
+	}
+	fmt.Println("init master addr finished.")
+}
+func (e *EtcdClient) monitorMasterAddr() {
+	rch := e.client.Watch(context.Background(), masterAddrPath)
+	for wresp := range rch {
+		for _, ev := range wresp.Events {
+			// if event type is DELETE, ev.Kv.Value will be a empty string and Client
+			// will close the connection
+			e.ch <- string(ev.Kv.Value)
+		}
+	}
 }
