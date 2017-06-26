@@ -27,13 +27,17 @@ __all__ = ['DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader']
 
 DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
 
-if not os.path.exists(DATA_HOME):
-    try:
-        os.makedirs(DATA_HOME)
-    except OSError as exc:
-        if exc.errno != errno.EEXIST:
-            raise
-        pass
+# When running unit tests, there could be multiple processes that
+# trying to create DATA_HOME directory simultaneously, so we cannot
+# use a if condition to check for the existence of the directory;
+# instead, we use the filesystem as the synchronization mechanism by
+# catching returned errors.
+try:
+    os.makedirs(DATA_HOME)
+except OSError as exc:
+    if exc.errno != errno.EEXIST:
+        raise
+    pass
 
 
 def md5file(fname):

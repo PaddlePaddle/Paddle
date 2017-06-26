@@ -25,8 +25,10 @@ enum ParameterInitStrategy {
 }
 
 message ParameterUpdaterHookConfig {
+  // hook type such as  'pruning'
   required string type = 1;
-  optional string purning_mask_filename = 2;
+  // this represents the ratio of zero element to be set by the Parameter 
+  optional double sparsity_ratio = 2 [default = 0.6];
 }
 
 message ParameterConfig {
