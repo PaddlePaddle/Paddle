@@ -57,7 +57,7 @@ struct GpuDevice {
 `Tensor` is the combination of Majel's `Buffer` and `Array`.
 
 ```cpp
-template <typename Device, typename T, int Rank>
+template <typename T, int Rank, typename Device>
 class Tensor {
  public:
   // tensor with zero size and no memory
@@ -107,6 +107,13 @@ class Tensor {
   T* ptr_;
 };
 ```
+
+`Tensor` has three template paramters: `T`, `Rank` and `Device`. 
+
+- `T` : Elements' data type
+- `Rank` : Tensor's rank. The reason why rank is a template parameter is because we needed it to specialize member variables of `Dim<Rank>`.
+- `Device` : Device where the tensor is. It could be `CpuDevice` or `GpuDevice`. By the mean of setting it as a template parameter, we can easily ensure that all inputs of a certain `Op::RunOnDevice()` are on the same kind of device.
+
 
 The member variable `allocation_` points to the `Allocation` object where data are stored. However, one `Allocation` object can be shared by several tensors, so we need another raw pointer `ptr_` to indicate where is the head of **this** tensor's data. 
 
@@ -159,9 +166,9 @@ Tensor<CpuDevice, double, 2> t_a(make_dim(2, 3), CpuDevice());
 // make a totally new tensor on GPU 1
 Tensor<GpuDevice, float, 3> t_b(make_dim(2, 3, 4), GpuDevice(1));
 
-// resize t_a
-// resize can not change tensor's rank
-t_a.resize(make_dim(1, 4));
+// reshape t_a
+// reshape can not change tensor's rank and numel
+t_a.reshape(make_dim(3, 2));
 
 // make a new allocation shared tensor with the same numel and differnet rank
 // t_b's numel is 2*3*4=24, t_c's desired numel is 3*8=24, they are same so the
@@ -171,7 +178,3 @@ Tensor<GpuDevice, float, 2> t_c(make_dim(3, 8), t_b);
 // get tensor's data pointer
 void* data_ptr = t_a.raw_ptr();
 ```
-
-## Interface to Eigen
-
-*// todo*
