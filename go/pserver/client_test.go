@@ -8,15 +8,22 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"context"
 
+	"github.com/coreos/etcd/clientv3"
+	log "github.com/sirupsen/logrus"
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
 
-const numPserver = 10
+const (
+	numPserver = 10
+	defaultEtcdAddr = "127.0.0.1:2379"
+	timeout = time.Second * time.Duration(2)
+)
 
 var port [numPserver]int
 
-func init() {
+func initNativeClient() {
 	for i := 0; i < numPserver; i++ {
 		l, err := net.Listen("tcp", ":0")
 		if err != nil {
@@ -51,6 +58,53 @@ func init() {
 	}
 }
 
+func initEtcdClient() {
+	client, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{defaultEtcdAddr},
+		DialTimeout: time.Second * time.Duration(1),
+	})
+	if err != nil {
+		log.Errorf("err %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	client.Put(ctx, pserver.DefaultPsDesiredPath, strconv.Itoa(numPserver))
+
+	for i := 0; i < numPserver; i++ {
+		l, err := net.Listen("tcp", ":0")
+		if err != nil {
+			panic(err)
+		}
+
+		ss := strings.Split(l.Addr().String(), ":")
+		p, err := strconv.Atoi(ss[len(ss)-1])
+		if err != nil {
+			panic(err)
+		}
+		client.Put(ctx, pserver.DefaultPsBasePath + strconv.Itoa(i), ":" + strconv.Itoa(p))
+
+		go func(l net.Listener) {
+			s, err := pserver.NewService("", time.Second*5)
+			if err != nil {
+				panic(err)
+			}
+			server := rpc.NewServer()
+			err = server.Register(s)
+			if err != nil {
+				panic(err)
+			}
+
+			mux := http.NewServeMux()
+			mux.Handle(rpc.DefaultRPCPath, server)
+			err = http.Serve(l, mux)
+			if err != nil {
+				panic(err)
+			}
+		}(l)
+	}
+	cancel()
+	client.Close()
+}
+
 type selector bool
 
 func (s selector) Select() bool {
@@ -63,12 +117,7 @@ func (l lister) List() []pserver.Server {
 	return l
 }
 
-func TestClientFull(t *testing.T) {
-	servers := make([]pserver.Server, numPserver)
-	for i := 0; i < numPserver; i++ {
-		servers[i] = pserver.Server{Index: i, Addr: ":" + strconv.Itoa(port[i])}
-	}
-	c := pserver.NewClient(lister(servers), len(servers), selector(true))
+func ClientTest(t *testing.T, c *pserver.Client) {
 	selected := c.BeginInitParams()
 	if !selected {
 		t.Fatal("should be selected.")
@@ -124,4 +173,21 @@ func TestClientFull(t *testing.T) {
 			t.Fatalf("order of returned parameter does not required: parameter name: %s, required name: %s", names[i], params[i].Name)
 		}
 	}
+}
+
+func TestNativeClient(t *testing.T) {
+	initNativeClient()
+	servers := make([]pserver.Server, numPserver)
+	for i := 0; i < numPserver; i++ {
+		servers[i] = pserver.Server{Index: i, Addr: ":" + strconv.Itoa(port[i])}
+	}
+	c1 := pserver.NewClient(lister(servers), len(servers), selector(true))
+	ClientTest(t, c1)
+}
+
+func TestEtcdClient(t *testing.T) {
+	initEtcdClient()
+	lister, psDesired := pserver.NewEtcdAddrLister(defaultEtcdAddr)
+	c2 := pserver.NewClient(lister, psDesired, selector(true))
+	ClientTest(t, c2)
 }
