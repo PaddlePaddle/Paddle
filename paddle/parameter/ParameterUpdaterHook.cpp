@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <atomic>
 #include <fstream>
+#include <iostream>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
@@ -29,26 +30,11 @@ limitations under the License. */
 
 namespace paddle {
 
-/**
- * The static pruning hook
- * Static means user specify a sparsity_ratio before training started, and the
- * network will prune the parameters based on the sparsity_ratio. More details
- * can be found https://arxiv.org/pdf/1506.02626.pdf.
- */
-
-class StaticPruningHook : public IParameterUpdaterHook {
+class ParameterPruningHook : public IParameterUpdaterHook {
 public:
-  explicit StaticPruningHook(const ParameterUpdaterHookConfig &hookConfig)
-      : initCount_(0) {
-    sparsityRatio_ = hookConfig.sparsity_ratio();
-  }
+  explicit ParameterPruningHook() : initCount_(0) {}
 
-  static bool sortPairAscend(const std::pair<real, size_t> &pair1,
-                             const std::pair<real, size_t> &pair2) {
-    return pair1.first > pair2.first;
-  }
-
-  void update(Parameter *para) {
+  virtual void update(Parameter *para) {
     updateThreadChecker_.check();
     auto &vec = para->getBuf(PARAMETER_GRADIENT);
     if (vec) {
@@ -56,15 +42,18 @@ public:
     }
   }
 
-  void generateMask(Parameter *para) {
+  static bool sortPairAscend(const std::pair<real, size_t> &pair1,
+                             const std::pair<real, size_t> &pair2) {
+    return pair1.first > pair2.first;
+  }
+
+  virtual void generateMask(Parameter *para, size_t nonZeroNum) {
     VectorPtr maskTemp = Vector::create(para->getSize(), false);
     maskTemp->zeroMem();
     real *maskTempData = maskTemp->getData();
-    size_t nonZeroNum = para->getSize() * (1 - sparsityRatio_);
 
     VectorPtr paraVec = para->getBuf(PARAMETER_VALUE);
     VectorPtr paraCpuCopy = Vector::create(para->getSize(), false);
-
     paraCpuCopy->copyFrom(*paraVec);
     std::vector<std::pair<real, size_t>> param;
 
@@ -73,9 +62,9 @@ public:
 
     std::partial_sort(
         param.begin(), param.begin() + nonZeroNum, param.end(), sortPairAscend);
+
     for (size_t i = 0; i < nonZeroNum; i++) maskTempData[param[i].second] = 1.0;
 
-    // Currently just use a mask vector for hack.
     if (para->useGpu()) {
       maskVec_ = Vector::create(para->getSize(), para->useGpu());
       maskVec_->copyFrom(*maskTemp);
@@ -84,27 +73,93 @@ public:
     }
   }
 
-  void init(Parameter *para) {
-    generateMask(para);
+protected:
+  std::atomic<size_t> initCount_;
+  SameThreadChecker updateThreadChecker_;
+  VectorPtr maskVec_;
+};
+
+/**
+ * The static pruning hook
+ * Static means user specify a sparsity_ratio before training started, and the
+ * network will prune the parameters based on the sparsity_ratio. More details
+ * can be found https://arxiv.org/pdf/1506.02626.pdf.
+ */
+
+class StaticPruningHook : public ParameterPruningHook {
+public:
+  explicit StaticPruningHook(const ParameterUpdaterHookConfig &hookConfig)
+      : ParameterPruningHook() {
+    this->sparsityRatio_ = hookConfig.sparsity_ratio();
+  }
+
+  void preprocess(Parameter *para, size_t currentPass) override {}
+  void init(Parameter *para) override {
     size_t initCount = this->initCount_.fetch_add(1);
     CHECK_EQ(initCount, 0UL) << "Currently the StaticPruningHook must invoke "
                                 "in same ParamterUpdater";
     VLOG(3) << "Initialize Parameter " << para;
     SetDevice device(para->getDeviceId());
 
+    size_t nonZeroNum = para->getSize() * (1 - sparsityRatio_);
+    this->generateMask(para, nonZeroNum);
+
     auto &paraVec = para->getBuf(PARAMETER_VALUE);
-    paraVec->dotMul(*maskVec_);
+    paraVec->dotMul(*this->maskVec_);
   }
 
 private:
-  SameThreadChecker updateThreadChecker_;
-  std::atomic<size_t> initCount_;
-  VectorPtr maskVec_;
   real sparsityRatio_;
 };
 
-IParameterUpdaterHook::IParameterUpdaterHook() {}
+class DynamicPruningHook : public ParameterPruningHook {
+public:
+  explicit DynamicPruningHook(const ParameterUpdaterHookConfig &hookConfig)
+      : ParameterPruningHook() {
+    this->upperBound_ = hookConfig.upper_bound();
+    this->interPass_ = hookConfig.inter_pass();
+    this->endPass_ = hookConfig.end_pass();
+  }
 
+  void init(Parameter *para) override {
+    // init mask
+    size_t initCount = this->initCount_.fetch_add(1);
+    CHECK_EQ(initCount, 0UL) << "Currently the StaticPruningHook must invoke "
+                                "in same ParamterUpdater";
+    VLOG(3) << "Initialize Parameter " << para;
+    this->maskVec_ = Vector::create(para->getSize(), para->useGpu());
+    this->maskVec_->reset(1.0);
+
+    /*
+    real *data = this->maskVec_->getData();
+    for (size_t i = 0; i < para->getSize(); i++){
+        std::cout  << data[i] << " " ;
+    }
+    */
+  }
+
+  void preprocess(Parameter *para, size_t currentPass) override {
+    if (currentPass % interPass_ == 0 && currentPass <= endPass_) {
+      real boundWeight =
+          this->upperBound_ / std::log(this->endPass_ / (real)this->interPass_);
+      real sparsityRatio =
+          boundWeight * std::log(2 + currentPass / (real)interPass_);
+      size_t nonZeroNum = para->getSize() * (1 - sparsityRatio);
+      this->generateMask(para, nonZeroNum);
+      auto &paraVec = para->getBuf(PARAMETER_VALUE);
+      paraVec->dotMul(*this->maskVec_);
+      // std::cout << para->getName() << " Current sparsity ratio: " <<
+      // sparsityRatio << std::endl;
+    }
+  }
+
+private:
+  real upperBound_;
+  size_t interPass_;
+  size_t endPass_;
+};
+
+IParameterUpdaterHook::IParameterUpdaterHook() {}
 IParameterUpdaterHook::~IParameterUpdaterHook() {}
 
 /**
@@ -139,6 +194,8 @@ static IParameterUpdaterHook *createImpl(
   auto &type = config.type();
   if (type == "pruning") {
     return new StaticPruningHook(config);
+  } else if (type == "dpruning") {
+    return new DynamicPruningHook(config);
   }
 
   LOG(FATAL) << "Unknown Hook type:  " << type;

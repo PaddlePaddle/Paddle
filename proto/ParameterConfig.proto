@@ -29,6 +29,9 @@ message ParameterUpdaterHookConfig {
   required string type = 1;
   // this represents the ratio of zero element to be set by the Parameter 
   optional double sparsity_ratio = 2 [default = 0.6];
+  optional double upper_bound = 3 [default = 0.8];
+  optional int32 inter_pass = 4 [default = 3];
+  optional int32 end_pass = 5 [default = 60];
 }
 
 message ParameterConfig {

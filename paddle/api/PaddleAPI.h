@@ -880,6 +880,7 @@ public:
    * @param param
    */
   void update(Parameter* param);
+  void preprocess(Parameter* param, size_t currentPass);
 
   /**
    * @breif only get required sparse rows by default.

@@ -257,6 +257,12 @@ public:
    * It could modify gradient/momentum/etc here. Such as drop some gradient,
    * etc.
    */
+  void preProcessHook(size_t currentPass) {
+    for (auto& hook : updaterHooks_) {
+      hook->preprocess(this, currentPass);
+    }
+  }
+
   void updateHook() {
     for (auto& hook : updaterHooks_) {
       hook->update(this);

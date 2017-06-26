@@ -3145,6 +3145,10 @@ def ParameterHook(type, **kwargs):
         if sparsity_ratio is not None:
             hook.sparsity_ratio = sparsity_ratio
         return hook
+    elif type == 'dpruning':
+        hook = ParameterUpdaterHookConfig()
+        hook.type = type
+        return hook
     else:
         return None
 
