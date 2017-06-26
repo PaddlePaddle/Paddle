@@ -21,7 +21,7 @@ type pserverEtcdLister struct {
 }
 
 // read ps desired number from etcd.
-func(p pserverEtcdLister) desired() int {
+func(p *pserverEtcdLister) desired() int {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
 		resp, err := p.client.Get(ctx, DefaultPsDesiredPath)
@@ -51,7 +51,7 @@ func(p pserverEtcdLister) desired() int {
 	}
 }
 
-func(p pserverEtcdLister) List() []Server {
+func(p *pserverEtcdLister) List() []Server {
 	psDesired := p.desired()
 
 	servers := make([]Server, psDesired)
@@ -116,5 +116,5 @@ func NewEtcdAddrLister(endpoints string) (Lister, int) {
 		endpoints: ep,
 	}
 	psDesired := lister.desired()
-	return lister, psDesired
+	return &lister, psDesired
 }

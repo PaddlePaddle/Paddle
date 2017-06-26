@@ -21,9 +21,11 @@ const (
 	timeout = time.Second * time.Duration(2)
 )
 
-var port [numPserver]int
+var pserverClientPorts [numPserver]int
 
-func initNativeClient() {
+// this function init pserver client and return their ports in an array.
+func initClient() [numPserver]int {
+	var ports [numPserver]int
 	for i := 0; i < numPserver; i++ {
 		l, err := net.Listen("tcp", ":0")
 		if err != nil {
@@ -35,7 +37,7 @@ func initNativeClient() {
 		if err != nil {
 			panic(err)
 		}
-		port[i] = p
+		ports[i] = p
 
 		go func(l net.Listener) {
 			s, err := pserver.NewService("", time.Second*5)
@@ -56,6 +58,11 @@ func initNativeClient() {
 			}
 		}(l)
 	}
+	return ports
+}
+
+func initNativeClient() {
+	pserverClientPorts = initClient()
 }
 
 func initEtcdClient() {
@@ -68,38 +75,9 @@ func initEtcdClient() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	client.Put(ctx, pserver.DefaultPsDesiredPath, strconv.Itoa(numPserver))
-
+	ports := initClient()
 	for i := 0; i < numPserver; i++ {
-		l, err := net.Listen("tcp", ":0")
-		if err != nil {
-			panic(err)
-		}
-
-		ss := strings.Split(l.Addr().String(), ":")
-		p, err := strconv.Atoi(ss[len(ss)-1])
-		if err != nil {
-			panic(err)
-		}
-		client.Put(ctx, pserver.DefaultPsBasePath + strconv.Itoa(i), ":" + strconv.Itoa(p))
-
-		go func(l net.Listener) {
-			s, err := pserver.NewService("", time.Second*5)
-			if err != nil {
-				panic(err)
-			}
-			server := rpc.NewServer()
-			err = server.Register(s)
-			if err != nil {
-				panic(err)
-			}
-
-			mux := http.NewServeMux()
-			mux.Handle(rpc.DefaultRPCPath, server)
-			err = http.Serve(l, mux)
-			if err != nil {
-				panic(err)
-			}
-		}(l)
+		client.Put(ctx, pserver.DefaultPsBasePath + strconv.Itoa(i), ":" + strconv.Itoa(ports[i]))
 	}
 	cancel()
 	client.Close()
@@ -179,7 +157,7 @@ func TestNativeClient(t *testing.T) {
 	initNativeClient()
 	servers := make([]pserver.Server, numPserver)
 	for i := 0; i < numPserver; i++ {
-		servers[i] = pserver.Server{Index: i, Addr: ":" + strconv.Itoa(port[i])}
+		servers[i] = pserver.Server{Index: i, Addr: ":" + strconv.Itoa(pserverClientPorts[i])}
 	}
 	c1 := pserver.NewClient(lister(servers), len(servers), selector(true))
 	ClientTest(t, c1)
