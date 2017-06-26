@@ -100,10 +100,11 @@ func paddle_new_pserver_client(addrs *C.char, selected int) C.paddle_pserver_cli
 }
 
 //export paddle_new_etcd_pserver_client
-func paddle_new_etcd_pserver_client(etcd_addr *C.char, pserver_path *C.char, selected int) C.paddle_pserver_client {
+func paddle_new_etcd_pserver_client(etcd_addr *C.char, selected int) C.paddle_pserver_client {
 	addr := C.GoString(etcd_addr)
-	path := C.GoString(pserver_path)
-	lister := pserver.NewEtcd(addr, path)
+	lister, psDesired := pserver.NewEtcdAddrLister(addr)
+	c := pserver.NewClient(lister, psDesired, selector(selected != 0))
+	return add(c)
 }
 
 //export paddle_pserver_client_release

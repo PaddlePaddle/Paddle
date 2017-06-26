@@ -21,6 +21,10 @@ type ElementType int
 const (
 	AlreadyInitialized = "pserver already initialized"
 	Uninitialized      = "pserver not fully initialized"
+	// PsDesired is etcd path for store desired pserver count
+	DefaultPsDesiredPath = "/ps_desired"
+	// PsAddr is the base dir for pserver to store their addr
+	DefaultPsBasePath = "/ps/"
 )
 
 // Supported element types
@@ -32,9 +36,6 @@ const (
 	Float32
 	Float64
 )
-
-// PsDesired is etcd path for store desired pserver count
-const PsDesired = "/ps_desired"
 
 // Parameter is a piece of data to sync with the parameter server.
 type Parameter struct {
@@ -106,17 +107,17 @@ func NewService(endpoints string, timeout time.Duration) (*Service, error) {
 		// wait and set s.desired init value
 		for {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			resp, err := s.etcdClient.Get(ctx, PsDesired)
+			resp, err := s.etcdClient.Get(ctx, DefaultPsDesiredPath)
 			cancel()
 			if err != nil {
-				log.Errorf("getting %s error: %v", PsDesired, err)
+				log.Errorf("getting %s error: %v", DefaultPsDesiredPath, err)
 				time.Sleep(s.etcdTimeout)
 				continue
 			}
 			if len(resp.Kvs) != 0 {
 				s.desired, err = strconv.Atoi(string(resp.Kvs[0].Value))
 				if err != nil {
-					log.Errorf("value of %s invalid %v\n", PsDesired, err)
+					log.Errorf("value of %s invalid %v\n", DefaultPsDesiredPath, err)
 					time.Sleep(s.etcdTimeout)
 					// NOTE: wait util ps_desired value change
 					continue
@@ -146,7 +147,7 @@ func (s *Service) registerPserverEtcd(ctx context.Context) (*clientv3.TxnRespons
 	return concurrency.NewSTM(s.etcdClient, func(c concurrency.STM) error {
 		registered := false
 		for i := 0; i < s.desired; i++ {
-			psKey := "/ps/" + strconv.Itoa(i)
+			psKey := DefaultPsBasePath + strconv.Itoa(i)
 			log.Debugf("checking %s", psKey)
 			ps := c.Get(psKey)
 			log.Debugf("got value (%s) for key: %s", ps, psKey)
