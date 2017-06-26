@@ -4,7 +4,7 @@ cache:
   directories:
     - $HOME/.ccache
     - $HOME/.cache/pip
-    - $HOME/third_party
+    - $TRAVIS_BUILD_DIR/build/third_party
 sudo: required
 dist: trusty
 os:
