@@ -2,6 +2,7 @@ package pserver_test
 
 import (
 	"io/ioutil"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -9,7 +10,7 @@ import (
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
 
-func TestFull(t *testing.T) {
+func TestNewName(t *testing.T) {
 	s := pserver.NewService()
 	var p pserver.Parameter
 	p.Name = "param_a"
@@ -25,69 +26,69 @@ func TestFull(t *testing.T) {
 		t.FailNow()
 	}
 
-	// 	var p1 pserver.Parameter
-	// 	p1.Name = "param_b"
-	// 	p1.Content = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-	// 	p1.ElementType = pserver.Float32
-	// 	fmt.Println("paddle passed")
-	// 	err = s.InitParam(pserver.ParameterWithConfig{Param: p1, Config: config}, nil)
-	// 	if err != nil {
-	// 		t.FailNow()
-	// 	}
+	var p1 pserver.Parameter
+	p1.Name = "param_b"
+	p1.Content = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	p1.ElementType = pserver.Float32
+	err = s.InitParam(pserver.ParameterWithConfig{Param: p1, Config: config}, nil)
+	if err != nil {
+		t.FailNow()
+	}
 
-	// 	err = s.FinishInitParams(0, nil)
-	// 	if err != nil {
-	// 		t.FailNow()
-	// 	}
+	err = s.FinishInitParams(0, nil)
+	if err != nil {
+		t.FailNow()
+	}
 
-	// 	var param pserver.Parameter
-	// 	err = s.GetParam("param_b", &param)
-	// 	if err != nil {
-	// 		t.FailNow()
-	// 	}
+	var param pserver.Parameter
+	err = s.GetParam("param_b", &param)
+	if err != nil {
+		t.FailNow()
+	}
 
-	// 	if !reflect.DeepEqual(param, p1) {
-	// 		t.FailNow()
-	// 	}
+	if !reflect.DeepEqual(param, p1) {
+		t.FailNow()
+	}
 
-	// 	g1, g2 := pserver.Gradient(p1), pserver.Gradient(p)
-	// 	err = s.SendGrad(g1, nil)
-	// 	if err != nil {
-	// 		t.FailNow()
-	// 	}
-	// 	err = s.SendGrad(g2, nil)
+	g1, g2 := pserver.Gradient(p1), pserver.Gradient(p)
 
-	// 	if err != nil {
-	// 		t.FailNow()
-	// 	}
+	err = s.SendGrad(g1, nil)
+	if err != nil {
+		t.FailNow()
+	}
+	err = s.SendGrad(g2, nil)
 
-	// 	var param1 pserver.Parameter
-	// 	err = s.GetParam("param_a", &param1)
-	// 	if err != nil {
-	// 		t.FailNow()
-	// 	}
+	if err != nil {
+		t.FailNow()
+	}
 
-	// 	// don't compare content, since it's already changed by
-	// 	// gradient update.
-	// 	param1.Content = nil
-	// 	p.Content = nil
+	var param1 pserver.Parameter
+	err = s.GetParam("param_a", &param1)
+	if err != nil {
+		t.FailNow()
+	}
 
-	// 	if !reflect.DeepEqual(param1, p) {
-	// 		t.FailNow()
-	// 	}
-	// }
+	// don't compare content, since it's already changed by
+	// gradient update.
+	param1.Content = nil
+	p.Content = nil
 
-	// func TestMultipleInit(t *testing.T) {
-	// 	s := pserver.NewService()
-	// 	err := s.FinishInitParams(0, nil)
-	// 	if err != nil {
-	// 		t.FailNow()
-	// 	}
+	if !reflect.DeepEqual(param1, p) {
+		t.FailNow()
+	}
+}
 
-	// 	err = s.FinishInitParams(0, nil)
-	// 	if err.Error() != pserver.AlreadyInitialized {
-	// 		t.FailNow()
-	// 	}
+func TestMultipleInit(t *testing.T) {
+	s := pserver.NewService()
+	err := s.FinishInitParams(0, nil)
+	if err != nil {
+		t.FailNow()
+	}
+
+	err = s.FinishInitParams(0, nil)
+	if err.Error() != pserver.AlreadyInitialized {
+		t.FailNow()
+	}
 }
 
 func TestUninitialized(t *testing.T) {

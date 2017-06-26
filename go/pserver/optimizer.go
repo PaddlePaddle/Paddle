@@ -47,7 +47,7 @@ func newOptimizer(paramWithConfigs ParameterWithConfig) *optimizer {
 }
 
 func (o *optimizer) GetWeights(p *Parameter) error {
-
+	// FIXME: get weigths from optimizer has bug
 	var buffer unsafe.Pointer
 	buffer_len := C.paddle_optimizer_get_weights(o.opt, &buffer)
 	if buffer_len == 0 || buffer == nullPtr {
@@ -59,7 +59,7 @@ func (o *optimizer) GetWeights(p *Parameter) error {
 
 func (o *optimizer) UpdateParameter(g Gradient) error {
 	if o.ElementType != g.ElementType {
-		return fmt.Errorf("Name: %s, parameter and gradient element type not match, parameter: %v, gradient: %v", g.Name, g.ElementType, g.ElementType)
+		return fmt.Errorf("Name: %s, parameter and gradient element type not match, parameter: %v, gradient: %v", g.Name, o.ElementType, g.ElementType)
 	}
 
 	// FIXME: do we need a copy? discard g.Content by GC ok
