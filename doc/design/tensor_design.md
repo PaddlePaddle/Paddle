@@ -57,18 +57,18 @@ struct GpuDevice {
 `Tensor` is the combination of Majel's `Buffer` and `Array`.
 
 ```cpp
-template <typename Device, typename T, int rank>
+template <typename Device, typename T, int Rank>
 class Tensor {
  public:
   // tensor with zero size and no memory
   Tensor();
   // allocates new densely packed tensor
-  Tensor(const Dim<rank> size, Device device);
+  Tensor(const Dim<Rank> size, Device device);
 
   // make a new tensor by another existing tensor
   // new tensor and source tensor have the same numel but deferent rank
-  template <int src_rank>
-  Tensor(const Dim<rank> &size, Tensor<Device, T, src_rank> &src);
+  template <int SrcRank>
+  Tensor(const Dim<Rank> &size, Tensor<Device, T, SrcRank> &src);
 
   // '=' are not allowed, because users may be confused about
   //     whether it's deep copy or shallow copy.
@@ -78,23 +78,23 @@ class Tensor {
   T* raw_ptr() const;
 
   // return tensor size
-  Dim<rank> size() const;
+  const Dim<Rank>& size() const;
 
   // return the number of tensor elements
   int numel() const;
 
   // return tensor stride
-  Dim<rank> stride() const;
+  const Dim<Rank>& stride() const;
 
   // return raw pointer to the 'idx'th element
-  T* index(const Dim<rank> &idx) const;
+  T* index(const Dim<Rank> &idx) const;
 
   // reset size_ 
   // allocation will not be changed immediately
-  void resize(const Dim<rank> &size);
+  void resize(const Dim<Rank> &size);
 
   // reshape tensor, data will be retained
-  void reshape(const Dim<rank> &size);
+  void reshape(const Dim<Rank> &size);
   
   // check whether allocation_ is suitable for current size_
   // if not, re-allocate then return ptr_
@@ -102,8 +102,8 @@ class Tensor {
 
  private:
   std::shared_ptr<Allocation<Device>> allocation_;
-  Dim<rank> size_;
-  Dim<rank> stride_;
+  Dim<Rank> size_;
+  Dim<Rank> stride_;
   T* ptr_;
 };
 ```
@@ -113,18 +113,19 @@ The member variable `allocation_` points to the `Allocation` object where data a
 `size_` and `stride_` are `Dim` object. Inspired from Majel, `Dim` is a struct template for indicating tensor size and element index:
 
 ```cpp
-template <int rank>
+template <int Rank>
 struct Dim {
   // constructor
   template <typename... Args>
   Dim(int _head, Args... _tail) : head(_head), tail(_tail...) {}
 
   int head;
-  Dim<rank - 1> tail;
+  Dim<Rank - 1> tail;
 }
 
 template <>
 struct Dim<1> {
+  Dim(int _head) : head(_head) {}
   int head;
 }
 
@@ -135,15 +136,17 @@ Dim<sizeof...(Args)> make_dim(Args... idxes) {
 }
 ```
 
+Here I only show the most crucial part of `Dim`. If you are interested in the full definition of `Dim`, please click [here](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/dim.h).
+
 In addition to `Tensor`'s member function, a few related global functions are going to be offered, such as `Copy()` and `ShareData()`:
 
 ```cpp
 // Copy() is used for tensor deep copy
-template <typename Device, typename T, int rank>
-Tensor<Device, T, rank> Copy(const Tensor<Device, T, rank> &src);
+template <typename Device, typename T, int Rank>
+Tensor<Device, T, Rank> Copy(const Tensor<Device, T, Rank> &src);
 
 // ShareDate() is used for tensor shallow copy
-Tensor<Device, T, rank> ShareData(const Tensor<Device, T, rank> &src);
+Tensor<Device, T, Rank> ShareData(const Tensor<Device, T, Rank> &src);
 ```
 
 ## Tensor Usage
