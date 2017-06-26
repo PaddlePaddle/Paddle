@@ -21,14 +21,14 @@ class Allocation {
   // No assigning!
   Allocation &operator=(const Allocation &) = delete;
 
-  void *ptr() const;
-  void *end() const;
+  void* ptr() const;
+  void* end() const;
   Device device() const;
   size_t size() const;
 
  private:
   bool owned_;
-  void *ptr_;
+  void* ptr_;
   size_t size_;
   Device device_;
 };
@@ -79,7 +79,7 @@ class Tensor {
   Tensor &operator=(const Tensor &src) = delete;
 
   // return raw pointer to the data.
-  T *raw_ptr() const;
+  T* raw_ptr() const;
 
   // return tensor size
   Dim<rank> size() const;
@@ -91,19 +91,24 @@ class Tensor {
   Dim<rank> stride() const;
 
   // return raw pointer to the 'idx'th element
-  T *index(const Dim<rank> &idx) const;
+  T* index(const Dim<rank> &idx) const;
 
-  // resize tensor, data may be erased
+  // reset size_ 
+  // allocation will not be changed immediately
   void resize(const Dim<rank> &size);
 
   // reshape tensor, data will be retained
   void reshape(const Dim<rank> &size);
+  
+  // check whether allocation_ is suitable for current size_
+  // if not, re-allocate then return ptr_
+  T* mutable_data();
 
  private:
   std::shared_ptr<Allocation<Device>> allocation_;
   Dim<rank> size_;
   Dim<rank> stride_;
-  T *ptr_;
+  T* ptr_;
 };
 ```
 
@@ -165,7 +170,7 @@ t_a.resize(make_dim(1, 4));
 Tensor<GpuDevice, float, 2> t_c(make_dim(3, 8), t_b);
 
 // get tensor's data pointer
-void *data_ptr = t_a.raw_ptr();
+void* data_ptr = t_a.raw_ptr();
 ```
 
 ## Interface to Eigen
