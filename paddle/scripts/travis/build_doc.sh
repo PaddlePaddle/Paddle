@@ -6,12 +6,13 @@ mkdir -p $TRAVIS_BUILD_DIR/build
 cd $TRAVIS_BUILD_DIR/build
 
 # Compile Documentation only.
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=OFF -DWITH_STYLE_CHECK=OFF
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=OFF -DWITH_STYLE_CHECK=OFF -DTHIRD_PARTY_PATH=$HOME/third_party
+
 mkdir output
 make -j `nproc`
 find .. -name '*whl' | xargs pip install  # install all wheels.
 rm -rf *
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=ON
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=ON -DTHIRD_PARTY_PATH=$HOME/third_party
 make -j `nproc` paddle_docs paddle_docs_cn
 
 # check websites for broken links
