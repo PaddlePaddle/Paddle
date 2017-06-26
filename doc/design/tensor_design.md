@@ -12,9 +12,6 @@ class Allocation {
   Allocation();
   Allocation(size_t size, Device device);
 
-  // Creates a non-owned allocation
-  Allocation(void *ptr, size_t size, Device device);
-
   ~Allocation();
   // No copying!
   Allocation(const Allocation &) = delete;
@@ -27,7 +24,6 @@ class Allocation {
   size_t size() const;
 
  private:
-  bool owned_;
   void* ptr_;
   size_t size_;
   Device device_;
