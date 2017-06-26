@@ -246,6 +246,7 @@ endfunction(nv_test)
 
 set(GOPATH "${CMAKE_CURRENT_BINARY_DIR}/go")
 file(MAKE_DIRECTORY ${GOPATH})
+set(PADDLE_IN_GOPATH "${GOPATH}/src/github.com/PaddlePaddle/Paddle")
 
 # Because api.go defines a GO wrapper to ops and tensor, it depends on
 # both.  This implies that if any of tensor.{h,cc}, ops.{h,cu}, or
@@ -270,14 +271,29 @@ function(go_library TARGET_NAME)
     set(LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
   endif()
 
+  # Add dummy code to support `make target_name` under Terminal Command
   set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
   file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
   add_library(${TARGET_NAME} STATIC ${dummyfile})
-  add_dependencies(${TARGET_NAME} ${go_library_DEPS})
+  if(go_library_DEPS)
+    add_dependencies(${TARGET_NAME} ${go_library_DEPS})
+  endif(go_library_DEPS)
 
+  # we need to symlink Paddle directory into GOPATH. If we
+  # don't do it and we have code that depends on Paddle, go
+  # get ./... will download a new Paddle repo from Github,
+  # without the changes in our current Paddle repo that we
+  # want to build.
   file(GLOB GO_SOURCE RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.go")
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
     COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
+    # Symlink Paddle directory into GOPATH
+    COMMAND mkdir -p ${PADDLE_IN_GOPATH}
+    COMMAND rm -rf ${PADDLE_IN_GOPATH}                                                                                                                                         
+    COMMAND ln -sf ${CMAKE_SOURCE_DIR} ${PADDLE_IN_GOPATH}
+    # Automatically get all dependencies specified in the source code                                                                                                                                 
+    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d .
+    # Golang build source code
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
     -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
     ${GO_SOURCE}
@@ -311,10 +327,3 @@ function(go_test TARGET_NAME)
   add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_test_DEPS})
   add_test(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
 endfunction(go_test)
-
-# go_extern will download extern go project.
-# go_extern(target_name extern_source)
-# go_extern(go_redis github.com/hoisie/redis)
-function(go_extern TARGET_NAME)
-  add_custom_target(${TARGET_NAME} env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d ${ARGN})
-endfunction(go_extern)
