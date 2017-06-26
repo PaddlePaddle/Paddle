@@ -79,10 +79,10 @@ if (net) {
 A very basic implementation is as followed, all it does is simply to run every operators in sequence.
 
 ```c++
-class ScratchNet final : public NetworkBase {
+class PlainNet final : public NetworkBase {
  public:
   // Create a network describe by `def`.  NetDef is the definition of a network.
-  ScratchNet(const NetDef &def);
+  PlainNet(const NetDef &def);
 
   virtual bool InferShape(Scope *scope) override;
 
@@ -113,12 +113,12 @@ class ScratchNet final : public NetworkBase {
 };
 ```
 
-`ScratchNet` will create operators so that a private member `ops_` is defined,
+`PlainNet` will create operators so that a private member `ops_` is defined,
 the operators are created by `CreateNet`, and each operator is created by `AddOp`.
 
 
 ## Usage
-`ScratchNet` can be used to define and run a network as followed
+`PlainNet` can be used to define and run a network as followed
 
 ```c++
 // create an empty scope located on CPU device.
@@ -137,7 +137,7 @@ net.Run(&scope);
 
 ## Compatibility with RNN
 
-Benefit from the decoupling of `ScratchNet.Run` and `Scope`, `ScratchNet` is compatible with future RNN design, 
+Benefit from the decoupling of `PlainNet.Run` and `Scope`, `PlainNet` is compatible with future RNN design, 
 for example we can implement a simple recurrent neural network as followed
 
 ```c++
@@ -148,7 +148,7 @@ void Copy(const Scope &source, Scope &target,
 Scope default_scope;
 // some initial mutations on `default_scope` here.
 
-auto rnn_step_net = ScratchNet(rnn_step_net_def);
+auto rnn_step_net = PlainNet(rnn_step_net_def);
 
 // Create rnn's states, the last scope is used to store rnn outputs.
 Scope *rnn_states = new Scope[num_states + 1];
