@@ -166,3 +166,14 @@ def word_dict():
 
 def fetch():
     paddle.v2.dataset.common.download(URL, 'imdb', MD5)
+
+
+def convert():
+    """
+    Converts dataset to recordio format
+    """
+    word_dict = ds.imdb.word_dict()
+    paddle.v2.dataset.common.convert(path, lambda: train(word_dict), 10,
+                                     "imdb_train")
+    paddle.v2.dataset.common.convert(path, lambda: test(word_dict), 10,
+                                     "imdb_test")

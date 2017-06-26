@@ -18,7 +18,7 @@ This module will download dataset from
 http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse training set and test set
 into paddle reader creators.
 """
-import paddle.v2.dataset.common
+import paddle.v2.dataset.common as common
 import collections
 import tarfile
 
@@ -145,4 +145,14 @@ def test(word_idx, n, data_type=DataType.NGRAM):
 
 
 def fetch():
-    paddle.v2.dataset.common.download(URL, "imikolov", MD5)
+    common.download(URL, "imikolov", MD5)
+
+
+def convert(path):
+    """
+    Converts dataset to recordio format
+    """
+    N = 5
+    word_dict = build_dict()
+    common.convert(path, train(word_dict, N), 10, "imikolov_train")
+    common.convert(path, test(word_dict, N), 10, "imikolov_test")

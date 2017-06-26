@@ -113,3 +113,11 @@ def fetch():
     paddle.v2.dataset.common.download(TRAIN_LABEL_URL, 'mnist', TRAIN_LABEL_MD5)
     paddle.v2.dataset.common.download(TEST_IMAGE_URL, 'mnist', TEST_IMAGE_MD5)
     paddle.v2.dataset.common.download(TEST_LABEL_URL, 'mnist', TRAIN_LABEL_MD5)
+
+
+def convert(path):
+    """
+    Converts dataset to recordio format
+    """
+    paddle.v2.dataset.common.convert(path, train(), 10, "minist_train")
+    paddle.v2.dataset.common.convert(path, test(), 10, "minist_test")
