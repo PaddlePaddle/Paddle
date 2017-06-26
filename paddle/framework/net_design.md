@@ -40,6 +40,8 @@ class NetBase {
   // Infer the shapes of variables required by operators in the network. The
   // `scope` will be mutated according to the inferred shapes.
   virtual bool InferShape(Scope *scope) = 0;
+
+  static std::unique_ptr<NetBase> Create(const NetDef &def = NetDef());
 };
 ```
 
@@ -47,10 +49,10 @@ All network implementations should build networks from a protobuf message which
 describes the structure of a real network; `Run` method should be implemented by 
 all implementations to offer a universal method to forward or backward compute a network.
 
-A method of factory pattern can be defined like
+`NetBase::Create` is a method of factory pattern and can be implemented like
 
 ```c++
-std::unique<NetBase> CreateNet(const NetDef& def) {
+std::unique<NetBase> NetBase::Create(const NetDef& def) {
   switch (def.model_type()) {
     case NN:
       return new Network(def);
@@ -72,14 +74,14 @@ Finally, `NetBase` can be used as followed
 
 ```c++
 Scope default_scope;
-auto net = CreateNet(def);
+auto net = NetBase::CreateNet(def);
 
 if (net) {
   net.Run(&default_scope);
 }
 ```
 
-## A Simple Network Implementation
+## `PlainNet` as a simple implementation of `BaseNet`
 
 A very basic implementation is as followed, all it does is simply to run every operators in sequence.
 
@@ -124,7 +126,7 @@ class PlainNet final : public NetBase {
 the operators are created by `CreateNet`, and each operator is created by `AddOp`.
 
 
-## Usage
+## PlainNet Usage
 `PlainNet` can be used to define and run a network as followed
 
 ```c++
@@ -136,10 +138,75 @@ scope.CreateVariables(net_desc);
 scope.InitVariables(net_desc);
 
 // create a network according to `net_desc`
-auto net = CreateNet(net_desc);
+auto net = NetBase::CreateNet(net_desc);
+// Add more operators if needed.
+net->AddOp(add...);
+net->AddOp(fc...);
+
+net->ApplyGradient();
+net->ApplyOptimizer();
 
 // run the network providing the `scope`.
 net.Run(&scope);
+```
+
+## `NetBuilder` as a C++ syntax wrapper
+This is a detailed description of the user-related C++ network API, and may not needed in the prototype development stage.
+
+The `NetBuilder` will give users a much simpler syntax as followed to create a network, and demonstrates how to use the `BaseNet`'s raw interfaces.
+
+```c++
+Variable* fc_out = builder.AddOp("fc", input=image, size=100, activation="Sigmoid");
+Variable* prediction = builder.AddOp("fc", input=fc_out, size=10, activation="Sigmoid");
+Variable* loss = builder.AddOp("cross_entropy", input=prediction, label=label);
+Variable* avg_loss = builder.AddOp("mean", loss);
+
+builder.BackwardFrom(avg_loss)
+builder.AddOptimization(1e-4, "adam");
+builder.Run();
+```
+
+`NetBuilder` will call `NetBase` 's virtual functions to change the real network structure, here is a sample definition
+
+```c++
+class NetBuilder final {
+ public:
+  NetBuilder(NetBase* net) : net_(net) {}
+
+  Variable* AddOp(const string& type, const vector<Variable>& inputs,
+                  size_t size, Activation act) {
+    // much code here.
+    // ...
+    net_->AddOp(def);
+    need_rebuild_net_ = true;
+    // ...
+  }
+
+  void BackwardFrom(const Variable& cost);
+
+  void Run(Scope* scope, bool need_backward = true) {
+    // backward.
+    if (need_backward) {
+      if (need_rebuild_net_) {
+        ApplyGradient();
+        ApplyOptimizer();
+      }
+      net_->Run(scope);
+      return;
+    }
+    // just forward.
+    net_->Run(scope, 0, last_forward_op_);
+  }
+
+ protected:
+  void ApplyGradient();
+  void ApplyOptimizer();
+
+ private:
+  NetBase* net_;
+  OpIndex last_forward_op_{-1};
+  bool need_rebuild_net_{true};
+}
 ```
 
 ## Compatibility with RNN
