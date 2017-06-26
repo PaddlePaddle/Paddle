@@ -14,48 +14,41 @@ limitations under the License. */
 
 #include "paddle/memory/memory.h"
 
+#include "paddle/memory/detail/cpu_allocator.h"
+#include "paddle/memory/detail/gpu_allocator.h"
+
 namespace paddle {
 namespace memory {
 
-template <>
-void* Alloc<CPUPlace>(CPUPlace, size_t size) {
-  return GetCPUBuddyAllocator(false /*non-staging*/)->Alloc(size);
+void Alloc(paddle::platform::Place pl, size_t size) {
+#ifndef PADDLE_ONLY_CPU
+  if (paddle::platform::is_gpu_place(pl)) {
+    return GetGPUBuddyAllocator(pl.device)->Alloc(size);
+  }
+#endif  // PADDLE_ONLY_CPU
+  PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
+  return GetCPUBuddyAllocator()->Alloc(size);
 }
 
-void* AllocStaging(CPUPlace, size_t size) {
-  return GetCPUBuddyAllocator(true /*staging*/)->Alloc(size);
+void Free(paddle::platform::Place pl, void* p) {
+#ifndef PADDLE_ONLY_CPU
+  if (paddle::platform::is_gpu_place(pl)) {
+    GetGPUBuddyAllocator(pl.device)->Free(p);
+  }
+#endif  // PADDLE_ONLY_CPU
+  PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
+  GetCPUBuddyAllocator()->Free(p);
 }
 
-template <>
-void* Alloc<GPUPlace>(GPUPlace pl, size_t size) {
-  return GetGPUBuddyAllocator(pl.device)->Alloc(size);
-}
-
-template <>
-void Free<CPUPlace>(CPUPlace, void* p) {
-  return GetCPUBuddyAllocator(false /*non-staging*/)->Free(p);
-}
-
-void FreeStaging(CPUPlace, void* p) {
-  return GetCPUBuddyAllocator(false /*non-staging*/)->Free(p);
-}
-
-#ifdef PADDLE_WITH_GPU
-template <>
-void* Alloc<GPUPlace>(GPUPlace pl, void* p) {
-  return GetGPUBuddyAllocator(pl.device)->Free(p);
-}
-
-template <>
-size_t Used<CPUPlace>(CPUPlace) {
+size_t Used(paddle::platform::Place pl) {
+#ifndef PADDLE_ONLY_CPU
+  if (paddle::platform::is_gpu_place(pl)) {
+    return GetGPUBuddyAllocator(pl.device)->Used();
+  }
+#endif  // PADDLE_ONLY_CPU
+  PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
   return GetCPUBuddyAllocator()->Used();
 }
-
-template <>
-size_t Alloc<GPUPlace>(GPUPlace pl) {
-  return GetGPUBuddyAllocator(pl.device)->Used();
-}
-#endif  // PADDLE_WITH_GPU
 
 }  // namespace memory
 }  // namespace paddle
