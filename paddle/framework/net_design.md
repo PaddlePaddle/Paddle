@@ -11,7 +11,7 @@ The `Network` will
 
 # API
 
-## NetworkBase
+## NetBase
 To make the `Network` extendable, a base class is defined like this
 
 ```c++
@@ -19,21 +19,27 @@ To make the `Network` extendable, a base class is defined like this
 typedef int OpIndex;
 
 // The minimum a network should be implemented.
-class NetworkBase {
+class NetBase {
  public:
-  // `def` is a proto message that describe the structure of a network.
-  NetworkBase();
-
-  // Infer the shapes of variables required by operators in the network. The
-  // `scope` will be mutated according to the inferred shapes.
-  virtual bool InferShape(Scope *scope) = 0;
-
   // run all the operators and return success(true) or not, all the
   // variables are located in `scope`. `begin` and `end` specify the scope of
   // `ops_` to run, If no positive indexes are provided, all operators in `ops_`
   // will run.
   virtual bool Run(Scope *scope, OpIndex begin = -1,
                    OpIndex end = -1) const = 0;
+
+  // Add an Operator according to `def`.
+  virtual OpIndex AddOp(const proto::OpDef &def) = 0;
+
+  // Add optimizer operators acctording to `attrs`.
+  virtual void ApplyOptimizer(const OptAttrs &attrs) = 0;
+
+  // Add backward operators.
+  virtual void ApplyGradient() = 0;
+
+  // Infer the shapes of variables required by operators in the network. The
+  // `scope` will be mutated according to the inferred shapes.
+  virtual bool InferShape(Scope *scope) = 0;
 };
 ```
 
@@ -44,7 +50,7 @@ all implementations to offer a universal method to forward or backward compute a
 A method of factory pattern can be defined like
 
 ```c++
-std::unique<NetworkBase> CreateNet(const NetDef& def) {
+std::unique<NetBase> CreateNet(const NetDef& def) {
   switch (def.model_type()) {
     case NN:
       return new Network(def);
@@ -62,7 +68,7 @@ we decoupling it from the related variable resources.
 
 `Run(Scope* scope)` takes the scope as a argument so that it can run in different scopes.
 
-Finally, `NetworkBase` can be used as followed
+Finally, `NetBase` can be used as followed
 
 ```c++
 Scope default_scope;
@@ -78,7 +84,7 @@ if (net) {
 A very basic implementation is as followed, all it does is simply to run every operators in sequence.
 
 ```c++
-class PlainNet final : public NetworkBase {
+class PlainNet final : public NetBase {
  public:
   // Create a network describe by `def`.  NetDef is the definition of a network.
   PlainNet(const NetDef &def);
@@ -87,12 +93,14 @@ class PlainNet final : public NetworkBase {
 
   // Run all the operators with the `scope`, if no scope is provided, default
   // scope will be used instead.
-  virtual bool Run(Scope *scope = nullptr, OpIndex begin,
-                   OpIndex end) const override;
+  virtual bool Run(Scope *scope = nullptr, OpIndex begin = -1,
+                   OpIndex end = -1) const override;
 
-  const std::vector<Operator> &GetOps() const;
+  virtual OpIndex AddOp(const proto::OpDef &def) override;
 
-  std::vector<Operator> *MutableOps();
+  virtual void ApplyOptimizer(const OptAttrs &attrs) override;
+
+  virtual void ApplyGradient() override;
 
  protected:
   // Create operators accordding to `def`.
