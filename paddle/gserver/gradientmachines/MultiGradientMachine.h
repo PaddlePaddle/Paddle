@@ -176,7 +176,9 @@ public:
 
   explicit MultiGradientMachine(const ModelConfig& config, bool useGpu);
 
-  virtual ~MultiGradientMachine();
+  virtual void start();
+
+  virtual void finish();
 
   virtual void prefetch(const std::vector<Argument>& inArgs);
 
