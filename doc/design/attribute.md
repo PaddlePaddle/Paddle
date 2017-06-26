@@ -1,4 +1,4 @@
-# Attribute of operator
+# Design Doc about operator attribute
 
 ## background
 
@@ -50,3 +50,74 @@ message OperatorDescription {
   map<string, Attribute> attrs;
 }
 ```
+
+## CPP implementation
+
+### AttributeReader
+
+In CPP, it should be a helper class for reading `map<string, Attribute>`. The reading method should accept a template parameter, which is the type of Attribute.  If type mismatch or attribute is not found, `Get` method should return an `Error`. That helper class we named `AttributeReader`.
+
+The interface of `AttributeReader` is like this:
+
+```cpp
+using AttributeMap = google::protobuf::Map<std::string, Attribute>;
+class AttributeReader {
+ public:
+  explicit AttributeReader(const AttributeMap& attrs) : attrs_(attrs) {}
+
+  template <typename T>
+  Error __must_check Get(const std::string& attributeName, T* attr) const;
+
+  template <typename T>
+  Error __must_check GetArray(const std::string& attributeName,
+                              std::vector<T>* array) const;
+
+ private:
+  const AttributeMap& attrs_;
+};
+```
+
+There are two methods in `AttributeReader`: `Get` and `GetArray`. `GetArray` is used for `ListValue`, and `Get` is used for the rests. The user should invoke either of them when he wants to get an Attribute value from `AttributeMap`.
+
+### Attribute in Operator
+
+Each operator stores its attributes. For faster attribute access, we should not let user parse `AttributeMap` during `Run` method in Operator. When `NetworkBase` adds an operator to computation graph, the `Attribute` could be parsed, and stored in each operator's the private member.
+
+```cpp
+class OperatorBase {
+ public:
+  Error InitializeAttribute(const AttributeReader& attrs) = 0;
+};
+
+class CosineOp : public OperatorBase {
+ public:
+  Error InitializeAttribute(const AttributeReader& attrs) {
+    auto err = attrs.Get<float>("scale", &scale_);
+    if (!err.isOK() && err != "Attribute Not Found") {
+      return err;
+    }
+    if (scale_ <= 0.0f) {
+      return Error("Scale of cosine op should be larger than 0.0");
+    }
+    return Error();  // OK;
+  }
+
+ private:
+  float scale_ {1.0};
+};
+```
+
+When `NetworkBase` invokes `CreateOperator(const OperatorDescription& desc)`, it create an operator first. Then `CreateOperator` will invoke `InitializeAttribute` and returns error code. The implementation of `CreateOperator` could be
+
+```cpp
+Error CreateOperator(const OperatorDescription& desc, OperatorBase** ptr) {
+  *ptr = OperatorRegister.create(desc.type(), desc.inputs(), desc.outputs());
+  Error err = (*ptr) -> InitializeAttribute(desc.attrs());
+  if (!err.isOK()) {
+    delete (*ptr);
+  }
+  return err;
+}
+```
+
+`InitializeAttribute` will validation the user's configuration, and might return an `Error`. It is clearer to invoke the method `InitializeAttribute` and return an `Error` than let each operator's constructor implement this logic because the constructor cannot return a value.
