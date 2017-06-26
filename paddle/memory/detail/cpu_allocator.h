@@ -14,20 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-#include <malloc.h>  // for malloc and free
 #include <stddef.h>  // for size_t
+#include <cstdlib>   // for malloc and free
 
-#ifdef PADDLE_WITH_GPU
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-#endif  // PADDLE_WITH_GPU
+#ifndef _WIN32
+#include <sys/mman.h>  // for mlock and munlock
+#endif
 
 namespace paddle {
 namespace memory {
 namespace detail {
 
-// CPUAllocator<staging=true> calls cudaMallocHost, which returns
-// pinned and mlocked memory as staging areas for data exchange
+// CPUAllocator<staging=true> calls mlock, which returns
+// pinned and locked memory as staging areas for data exchange
 // between host and device.  Allocates too much would reduce the
 // amount of memory available to the system for paging.  So, by
 // default, we should use CPUAllocator<staging=false>.
@@ -35,33 +34,37 @@ template <bool staging>
 class CPUAllocator {
 public:
   void* Alloc(size_t size);
-  void Free(void* p);
+  void Free(void* p, size_t size);
 };
 
 template <>
 class CPUAllocator<false> {
 public:
-  void* Alloc(size_t size) { return malloc(size); }
-  void Free(void* p) { free(p); }
+  void* Alloc(size_t size) { return std::malloc(size); }
+  void Free(void* p, size_t size) { std::free(p); }
 };
 
-// If CMake macro PADDLE_WITH_GPU is OFF, C++ compiler won't generate the
-// following specialization that depends on the CUDA library.
-#ifdef PADDLE_WITH_GPU
 template <>
 class CPUAllocator<true> {
 public:
   void* Alloc(size_t size) {
-    void* p;
-    if (cudaMallocHost(&p, size) != cudaSuccess) {
-      return NULL;
+    void* p = std::malloc(size);
+    if (p == nullptr) {
+      return p;
     }
+#ifndef _WIN32
+    mlock(p, size);
+#endif
     return p;
   }
 
-  void Free(void* p) { cudaFreeHost(p); }
+  void Free(void* p, size_t size) {
+#ifndef _WIN32
+    munlock(p, size);
+#endif
+    std::free(p);
+  }
 };
-#endif  // PADDLE_WITH_GPU
 
 }  // namespace detail
 }  // namespace memory
