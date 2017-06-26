@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/utils/Util.h"
 
+#include "paddle/framework/error.h"
 #include "paddle/math/SparseMatrix.h"
-#include "paddle/utils/Error.h"
 #include "paddle/utils/Logging.h"
 
 #include "AddtoLayer.h"
@@ -336,7 +336,7 @@ void Layer::showOutputStats() {
 void Layer::forwardActivation() {
   /* activation */
   auto status = activation_->forward(output_);
-  status.check();
+  CHECK(status.isOK()) << status.msg();
 
   /* dropout */
   if (config_.drop_rate() > 0) {
@@ -375,7 +375,7 @@ void Layer::backwardActivation() {
   }
 
   auto status = activation_->backward(output_);
-  status.check();
+  CHECK(status.isOK()) << status.msg();
 }
 
 void Layer::forwardDropOut() {
