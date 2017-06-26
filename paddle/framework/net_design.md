@@ -73,7 +73,6 @@ if (net) {
 }
 ```
 
-
 ## A Simple Network Implementation
 
 A very basic implementation is as followed, all it does is simply to run every operators in sequence.
