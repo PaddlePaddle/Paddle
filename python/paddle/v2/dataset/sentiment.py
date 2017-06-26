@@ -28,7 +28,7 @@ from nltk.corpus import movie_reviews
 
 import paddle.v2.dataset.common
 
-__all__ = ['train', 'test', 'get_word_dict']
+__all__ = ['train', 'test', 'get_word_dict', 'convert']
 NUM_TRAINING_INSTANCES = 1600
 NUM_TOTAL_INSTANCES = 2000
 

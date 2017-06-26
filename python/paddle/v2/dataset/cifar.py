@@ -34,7 +34,7 @@ import numpy
 import paddle.v2.dataset.common
 import tarfile
 
-__all__ = ['train100', 'test100', 'train10', 'test10']
+__all__ = ['train100', 'test100', 'train10', 'test10', 'convert']
 
 URL_PREFIX = 'https://www.cs.toronto.edu/~kriz/'
 CIFAR10_URL = URL_PREFIX + 'cifar-10-python.tar.gz'

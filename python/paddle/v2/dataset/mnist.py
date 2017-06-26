@@ -21,7 +21,7 @@ import paddle.v2.dataset.common
 import subprocess
 import numpy
 import platform
-__all__ = ['train', 'test']
+__all__ = ['train', 'test', 'convert']
 
 URL_PREFIX = 'http://yann.lecun.com/exdb/mnist/'
 TEST_IMAGE_URL = URL_PREFIX + 't10k-images-idx3-ubyte.gz'

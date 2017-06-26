@@ -30,7 +30,8 @@ import functools
 
 __all__ = [
     'train', 'test', 'get_movie_title_dict', 'max_movie_id', 'max_user_id',
-    'age_table', 'movie_categories', 'max_job_id', 'user_info', 'movie_info'
+    'age_table', 'movie_categories', 'max_job_id', 'user_info', 'movie_info',
+    'convert'
 ]
 
 age_table = [1, 18, 25, 35, 45, 50, 56]

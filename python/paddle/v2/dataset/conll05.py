@@ -25,7 +25,7 @@ import gzip
 import itertools
 import paddle.v2.dataset.common
 
-__all__ = ['test, get_dict', 'get_embedding']
+__all__ = ['test, get_dict', 'get_embedding', 'convert']
 
 DATA_URL = 'http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz'
 DATA_MD5 = '387719152ae52d60422c016e92a742fc'
@@ -229,7 +229,7 @@ def fetch():
     paddle.v2.dataset.common.download(DATA_URL, 'conll05st', DATA_MD5)
 
 
-def convert():
+def convert(path):
     """
     Converts dataset to recordio format
     """

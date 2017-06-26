@@ -29,7 +29,7 @@ URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/housing/housing
 MD5 = 'd4accdce7a25600298819f8e28e8d593'
 feature_names = [
     'CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS', 'RAD', 'TAX',
-    'PTRATIO', 'B', 'LSTAT'
+    'PTRATIO', 'B', 'LSTAT', 'convert'
 ]
 
 UCI_TRAIN_DATA = None

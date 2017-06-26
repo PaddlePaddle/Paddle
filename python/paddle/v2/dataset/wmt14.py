@@ -25,7 +25,7 @@ import gzip
 import paddle.v2.dataset.common
 from paddle.v2.parameters import Parameters
 
-__all__ = ['train', 'test', 'build_dict']
+__all__ = ['train', 'test', 'build_dict', 'convert']
 
 URL_DEV_TEST = 'http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/dev+test.tgz'
 MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
