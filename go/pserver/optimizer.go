@@ -4,7 +4,7 @@ package pserver
 // TODO(zhihong): move compile flags to cmake go_library
 #cgo pkg-config: protobuf
 #cgo CFLAGS: -I ../../
-#cgo LDFLAGS: /Users/dzh/.go/src/github.com/PaddlePaddle/Paddle/build/go/pserver/cclient/libpaddle_go_optimizer.a
+#cgo LDFLAGS: /Users/dzh/.go/src/github.com/PaddlePaddle/Paddle/build/go/pserver/cclient/libpaddle_go_optimizer.a -lstdc++
 #include "paddle/optimizer/optimizer.h"
 */
 import "C"
@@ -38,17 +38,20 @@ func newOptimizer(paramWithConfigs ParameterWithConfig) *optimizer {
 	o := &optimizer{}
 	p := paramWithConfigs.Param
 	c := paramWithConfigs.Config
-	buffer := &p.Content[0]
-	o.opt = C.paddle_create_optimizer(C.uchar(c), C.int(len(c)), unsafe.Pointer(buffer), C.int(len(p.Content)), nullPtr, 0)
+	var cbuffer unsafe.Pointer
+	cbuffer = unsafe.Pointer(&p.Content[0])
+	o.opt = C.paddle_create_optimizer((*C.uchar)(&c[0]), C.int(len(c)),
+		C.paddle_element_type(p.ElementType), cbuffer, C.int(len(p.Content)),
+		(*C.char)(nullPtr), 0)
 	return o
 }
 
 func (o *optimizer) GetWeights(p *Parameter) error {
 
 	var buffer unsafe.Pointer
-	buffer_len := C.paddle_optimizer_get_weights(unsafe.Pointer(o), &buffer)
+	buffer_len := C.paddle_optimizer_get_weights(o.opt, &buffer)
 	if buffer_len == 0 || buffer == nullPtr {
-		return fmt.Errorf("parameter optimizer error : %s get failed", p.name)
+		return fmt.Errorf("parameter optimizer error : %s get failed", p.Name)
 	}
 	p.Content = cArrayToSlice(buffer, int(buffer_len))
 	return nil
@@ -60,7 +63,9 @@ func (o *optimizer) UpdateParameter(g Gradient) error {
 	}
 
 	// FIXME: do we need a copy? discard g.Content by GC ok
-	r := C.paddle_update_parameter(o.opt, C.paddle_element_type(g.ElementType), unsafe.Pointer(g.Content), C.int(len(g.Content)))
+	var cbuffer unsafe.Pointer
+	cbuffer = unsafe.Pointer(&g.Content[0])
+	r := C.paddle_update_parameter(o.opt, C.paddle_element_type(g.ElementType), cbuffer, C.int(len(g.Content)))
 	if r != 0 {
 		return fmt.Errorf("optimizer update returned error code: %d", r)
 	}

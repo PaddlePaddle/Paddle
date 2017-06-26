@@ -123,8 +123,9 @@ func paddle_begin_init_params(client C.paddle_pserver_client) C.int {
 func paddle_init_param(client C.paddle_pserver_client, param C.paddle_parameter, param_config unsafe.Pointer, config_len C.int) C.int {
 	et := pserver.ElementType(param.element_type)
 	name := C.GoString(param.name)
+	content := cArrayToSlice(unsafe.Pointer(param.content), int(param.content_len))
 	pc := pserver.ParameterWithConfig{
-		Param:  pserver.Parameter{Name: name, ElementType: et, Content: param.content, Length: para.content_len},
+		Param:  pserver.Parameter{Name: name, ElementType: et, Content: content},
 		Config: cArrayToSlice(param_config, int(config_len)),
 	}
 	c := get(client)
@@ -166,7 +167,8 @@ func paddle_send_grads(client C.paddle_pserver_client, grads **C.paddle_gradient
 		grad := *(**C.paddle_gradient)(unsafe.Pointer((uintptr(unsafe.Pointer(grads)) + uintptr(i)*unsafe.Sizeof(*grads))))
 		et := pserver.ElementType(grad.element_type)
 		name := C.GoString(grad.name)
-		gs = append(gs, pserver.Gradient{Name: name, ElementType: et, Content: grad.content, Length: grad.content_len})
+		content := cArrayToSlice(unsafe.Pointer(grad.content), int(grad.content_len))
+		gs = append(gs, pserver.Gradient{Name: name, ElementType: et, Content: content})
 	}
 
 	c := get(client)
@@ -223,14 +225,14 @@ func paddle_get_params(client C.paddle_pserver_client, dst **C.paddle_parameter,
 		}
 
 		if unsafe.Pointer(param.content) != nullPtr {
-			if int(param.content_len) != p.Length {
+			if int(param.content_len) != len(p.Content) {
 				log.Errorf("the pre-allocated content len does not match parameter content len. Pre-allocated len: %d, returned len: %d", param.content_len, len(p.Content))
 				return C.PSERVER_ERROR
 			}
 		}
 
-		C.memcpy(unsafe.Pointer(param.content), unsafe.Pointer(p.Content), C.size_t(p.Length))
-		param.content_len = C.int(p.Length)
+		C.memcpy(unsafe.Pointer(param.content), unsafe.Pointer(&p.Content[0]), C.size_t(len(p.Content)))
+		param.content_len = C.int(len(p.Content))
 		param.element_type = C.paddle_element_type(p.ElementType)
 	}
 

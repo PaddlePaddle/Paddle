@@ -50,10 +50,10 @@ void getParams(paddle_pserver_client c) {
 int main() {
   char addr[] = "localhost:3000";
   paddle_pserver_client c = paddle_new_pserver_client(addr, 1);
-  char config_proto[1024];
+  char *config_proto;
   size_t config_proto_len = 0;
   ssize_t nread;
-  FILE *fp = fopen("optimizer.pb.txt", "r");
+  FILE *fp = fopen("testdata/optimizer.pb.txt", "r");
   if(!fp) { fail(); }
   while((nread = getline(&config_proto, &config_proto_len, fp)) != -1) {
     printf("%s", config_proto);
@@ -70,7 +70,7 @@ retry:
     param.name = name_a;
     param.content = content_a;
     param.content_len = 2000;
-    int error = paddle_init_param(c, param, config_proto, config_proto_len);
+    int error = paddle_init_param(c, param, (void *)config_proto, config_proto_len);
     if (error != 0) {
       goto retry;
     }
@@ -79,7 +79,7 @@ retry:
     param.name = name_b;
     param.content = content_b;
     param.content_len = 3000;
-    error = paddle_init_param(c, param, NULL, 0);
+    error = paddle_init_param(c, param, (void *)config_proto, config_proto_len);
     if (error != 0) {
       goto retry;
     }

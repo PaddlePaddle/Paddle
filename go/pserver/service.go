@@ -128,11 +128,11 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	// nature. This race condition is allowed deliberately
 	// to save the program from making a copy of the
 	// paramter content.
-	p.Name = name
-	p.ElementType = opt.ElementType
+	parameter.Name = name
+	parameter.ElementType = opt.ElementType
 
-	ok := opt.GetWeights(&parameter)
-	return ok
+	err := opt.GetWeights(parameter)
+	return err
 }
 
 // Save tells the parameter server to save parameters.
