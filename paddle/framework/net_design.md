@@ -22,10 +22,10 @@ typedef int OpIndex;
 class NetBase {
  public:
   // run all the operators and return success(true) or not, all the
-  // variables are located in `scope`. `begin` and `end` specify the scope of
-  // `ops_` to run, If no positive indexes are provided, all operators in `ops_`
-  // will run.
-  virtual bool Run(Scope *scope, OpIndex begin = -1,
+  // variables are located in `scope`. `ctx` describes the detail execution
+  // environment for ops. `begin` and `end` specify the scope of `ops_` to run,
+  // If no positive indexes are provided, all operators in `ops_` will run.
+  virtual bool Run(Scope *scope, OpContext *ctx, OpIndex begin = -1,
                    OpIndex end = -1) const = 0;
 
   // Add an Operator according to `def`.
@@ -74,10 +74,11 @@ Finally, `NetBase` can be used as followed
 
 ```c++
 Scope default_scope;
+OpContext default_ctx;
 auto net = NetBase::CreateNet(def);
 
 if (net) {
-  net.Run(&default_scope);
+  net.Run(&default_scope, &default_ctx);
 }
 ```
 
@@ -94,8 +95,8 @@ class PlainNet final : public NetBase {
   virtual bool InferShape(Scope *scope) override;
 
   // Run all the operators with the `scope`, if no scope is provided, default
-  // scope will be used instead.
-  virtual bool Run(Scope *scope = nullptr, OpIndex begin = -1,
+  // scope will be used instead. If no OpContext is provicded, default context will be used.
+  virtual bool Run(Scope *scope = nullptr, OpContext *ctx=nullptr, OpIndex begin = -1,
                    OpIndex end = -1) const override;
 
   virtual OpIndex AddOp(const proto::OpDef &def) override;
@@ -185,18 +186,18 @@ class NetBuilder final {
 
   void BackwardFrom(const Variable& cost);
 
-  void Run(Scope* scope, bool need_backward = true) {
+  void Run(Scope* scope, OpContext* ctx, bool need_backward = true) {
     // backward.
     if (need_backward) {
       if (need_rebuild_net_) {
         AddBackwardOps();
         AddOptimizerOps();
       }
-      net_->Run(scope);
+      net_->Run(scope, ctx);
       return;
     }
     // just forward.
-    net_->Run(scope, 0, last_forward_op_);
+    net_->Run(scope, ctx, 0, last_forward_op_);
   }
 
  protected:
