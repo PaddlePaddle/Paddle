@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
@@ -30,9 +31,12 @@ func init() {
 		port[i] = p
 
 		go func(l net.Listener) {
-			s := pserver.NewService()
+			s, err := pserver.NewService("", time.Second*5)
+			if err != nil {
+				panic(err)
+			}
 			server := rpc.NewServer()
-			err := server.Register(s)
+			err = server.Register(s)
 			if err != nil {
 				panic(err)
 			}

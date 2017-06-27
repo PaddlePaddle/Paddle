@@ -15,6 +15,7 @@
 import requests
 import hashlib
 import os
+import errno
 import shutil
 import sys
 import importlib
@@ -22,12 +23,24 @@ import paddle.v2.dataset
 import cPickle
 import glob
 
-__all__ = ['DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader']
+__all__ = [
+    'DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader',
+    'convert'
+]
 
 DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
 
-if not os.path.exists(DATA_HOME):
+# When running unit tests, there could be multiple processes that
+# trying to create DATA_HOME directory simultaneously, so we cannot
+# use a if condition to check for the existence of the directory;
+# instead, we use the filesystem as the synchronization mechanism by
+# catching returned errors.
+try:
     os.makedirs(DATA_HOME)
+except OSError as exc:
+    if exc.errno != errno.EEXIST:
+        raise
+    pass
 
 
 def md5file(fname):

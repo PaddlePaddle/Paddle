@@ -133,7 +133,7 @@ func paddle_init_param(client C.paddle_pserver_client, param C.paddle_parameter,
 
 	if err != nil {
 		if err.Error() == pserver.AlreadyInitialized {
-			log.Warningf("parameter %s already initialized, treat paddle_init_param as sucessful.\n", name)
+			log.Warningf("parameter %s already initialized, treat paddle_init_param as sucessful.", name)
 			return C.PSERVER_OK
 		}
 		log.Errorln(err)
@@ -200,7 +200,7 @@ func paddle_get_params(client C.paddle_pserver_client, dst **C.paddle_parameter,
 		for i, p := range ps {
 			pn[i] = p.Name
 		}
-		log.Errorf("pserver returned wrong number of parameters. Requested: %s, returned: %s.\n", strings.Join(pn, ", "), strings.Join(ns, ", "))
+		log.Errorf("pserver returned wrong number of parameters. Requested: %s, returned: %s.", strings.Join(pn, ", "), strings.Join(ns, ", "))
 		return C.PSERVER_ERROR
 	}
 
@@ -210,7 +210,7 @@ func paddle_get_params(client C.paddle_pserver_client, dst **C.paddle_parameter,
 			for i, p := range ps {
 				pn[i] = p.Name
 			}
-			log.Errorf("pserver returned wrong parameters, or not in requested order. Requested: %s, returned: %s.\n", strings.Join(pn, ", "), strings.Join(ns, ", "))
+			log.Errorf("pserver returned wrong parameters, or not in requested order. Requested: %s, returned: %s.", strings.Join(pn, ", "), strings.Join(ns, ", "))
 			return C.PSERVER_ERROR
 		}
 	}

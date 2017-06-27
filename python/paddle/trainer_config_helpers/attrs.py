@@ -14,7 +14,8 @@
 
 from paddle.trainer.config_parser import *
 __all__ = [
-    'ParamAttr', 'ExtraAttr', 'ParameterAttribute', 'ExtraLayerAttribute'
+    'HookAttr', 'ParamAttr', 'ExtraAttr', 'ParameterAttribute',
+    'ExtraLayerAttribute'
 ]
 
 
@@ -53,6 +54,40 @@ def is_compatible_with(x, Type):
             return False
     except:
         return False
+
+
+class HookAttribute(object):
+    """
+    Hook Attribute object. As a member of ParameterAttribute class, the hook is an auxiliary operation that occurs 
+    during training process of a layer with parameters, such as img_conv layer, fc layer.
+
+    :param  type: Hook type, currently supported types: 
+                        'pruning' :  user specify a sparsity_ratio before training started, and the
+                            network will prune the parameters based on the sparsity_ratio. 
+                            eg: The definition of Hook object can be hk = HookAttribute('pruning', 0.6)
+                            The specific usage can be paddle.layer.img_conv(input=img, filter_size=3,
+                                                                       num_channels=3, num_filters=64,
+                                                                       param_attr=ParameterAttribute(update_hooks=hk) )
+                            The pruning details can be found https://arxiv.org/pdf/1506.02626.pdf
+    :type type: string
+
+    :param sparsity_ratio: Must be specified if hook type is 'pruning', 
+                        it represents the ratio of the zero elements to be set by the Parameter.
+    :type sparsity_ratio: float or None
+	
+    """
+
+    def __init__(self, type, sparsity_ratio=None):
+        self.type = type
+        self.sparsity_ratio = sparsity_ratio
+        if self.sparsity_ratio is not None:
+            assert is_compatible_with(
+                self.sparsity_ratio,
+                float), 'sparisity_ratio must be float type'
+            assert self.sparsity_ratio <= 1 and self.sparsity_ratio >= 0, 'sparsity_ratio must be a float between [0, 1] '
+
+    def __call__(self):
+        return ParameterHook(self.type, sparsity_ratio=self.sparsity_ratio)
 
 
 class ParameterAttribute(object):
@@ -114,6 +149,7 @@ class ParameterAttribute(object):
                  momentum=None,
                  gradient_clipping_threshold=None,
                  sparse_update=False,
+                 update_hooks=None,
                  initializer=None):
         self.attr = {}
 
@@ -168,6 +204,9 @@ class ParameterAttribute(object):
                 gradient_clipping_threshold
         if initializer is not None:
             self.attr['initializer'] = initializer
+
+        if update_hooks:
+            self.attr['update_hooks'] = update_hooks
 
     def set_default_parameter_name(self, name):
         """
@@ -244,5 +283,6 @@ class ExtraLayerAttribute(object):
             return attr.attr
 
 
+HookAttr = HookAttribute
 ParamAttr = ParameterAttribute
 ExtraAttr = ExtraLayerAttribute
