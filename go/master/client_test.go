@@ -18,10 +18,7 @@ import (
 
 type testDB struct{}
 
-func (testDB) Save(state []byte) error     { return nil }
-func (testDB) Load() ([]byte, error)       { return nil, nil }
-func (testDB) Put(key, value string) error { return nil }
-func (testDB) BlockedGet(key string, interval int) []byte {
+func (testDB) WaitMasterReady(key string, interval int) []byte {
 	return []byte("localhost:12345")
 }
 func (testDB) WatchWithKey(key string, valCh chan string) {

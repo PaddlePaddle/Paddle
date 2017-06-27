@@ -52,7 +52,7 @@ func remove(client C.paddle_master_client) *master.Client {
 //export paddle_new_etcd_master_client
 func paddle_new_etcd_master_client(etcdEndpoints *C.char, timeout int, bufSize int) C.paddle_master_client {
 	p := C.GoString(etcdEndpoints)
-	e, err := master.NewEtcdClient(strings.Split(p, ","), master.DefaultAddrPath, master.DefaultLockPath, master.DefaultStatePath, 3)
+	e, err := master.NewEtcdClientWithoutLock(strings.Split(p, ","))
 	if err != nil {
 		panic(err)
 	}

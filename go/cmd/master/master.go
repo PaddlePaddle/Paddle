@@ -38,11 +38,7 @@ func main() {
 		}
 
 		addr := fmt.Sprintf("%s:%d", ip, *port)
-		store, err = master.NewEtcdClient(eps, master.DefaultLockPath, master.DefaultAddrPath, master.DefaultStatePath, *ttlSec)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = store.Put(master.DefaultAddrPath, addr)
+		store, err = master.NewEtcdClient(eps, addr, master.DefaultLockPath, master.DefaultAddrPath, master.DefaultStatePath, *ttlSec)
 		if err != nil {
 			log.Fatal(err)
 		}
