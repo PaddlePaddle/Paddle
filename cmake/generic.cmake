@@ -296,7 +296,7 @@ function(go_library TARGET_NAME)
     COMMAND rm -rf ${PADDLE_IN_GOPATH}                                                                                                                                         
     COMMAND ln -sf ${CMAKE_SOURCE_DIR} ${PADDLE_IN_GOPATH}
     # Automatically get all dependencies specified in the source code                                                                                                                                 
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d ./..
+    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d ./...
     # Golang build source code
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
     -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
