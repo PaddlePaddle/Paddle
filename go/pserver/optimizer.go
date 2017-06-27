@@ -51,7 +51,6 @@ func newOptimizer(paramWithConfigs ParameterWithConfig) *optimizer {
 }
 
 func (o *optimizer) GetWeights() []byte {
-	// FIXME: get weigths from optimizer has bug
 	var buffer unsafe.Pointer
 	buffer_len := C.paddle_optimizer_get_weights(o.opt, &buffer)
 	return cArrayToSlice(buffer, int(buffer_len))
