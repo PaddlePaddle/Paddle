@@ -171,7 +171,7 @@ function(cc_library TARGET_NAME)
     if (cc_library_DEPS)
       merge_static_libs(${TARGET_NAME} ${cc_library_DEPS})
     else()
-      message(FATAL "Please specify source file or library in cc_library.")
+      message(FATAL_ERROR "Please specify source file or library in cc_library.")
     endif()
   endif(cc_library_SRCS)
 endfunction(cc_library)
@@ -331,3 +331,42 @@ function(go_test TARGET_NAME)
   add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_test_DEPS})
   add_test(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
 endfunction(go_test)
+
+# go_extern will download extern go project.
+# go_extern(target_name extern_source)
+# go_extern(go_redis github.com/hoisie/redis)
+function(go_extern TARGET_NAME)
+  add_custom_target(${TARGET_NAME} env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get ${ARGN})
+endfunction(go_extern)
+
+
+function(generate_protobuf_cpp SRCS HDRS)
+  set(PROTO_FILES ${ARGN})
+  set(${SRCS})
+  set(${HDRS})
+  foreach(FIL ${PROTO_FILES})
+    get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
+    get_filename_component(FIL_WE ${FIL} NAME_WE)
+    if(NOT PROTOBUF_GENERATE_CPP_APPEND_PATH)
+      get_filename_component(FIL_DIR ${FIL} DIRECTORY)
+      if(FIL_DIR)
+        set(FIL_WE "${FIL_DIR}/${FIL_WE}")
+      endif()
+    endif()
+
+    list(APPEND ${SRCS} "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.cc")
+    list(APPEND ${HDRS} "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.h")
+
+    add_custom_command(
+            OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.cc"
+            "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.h"
+            COMMAND  ${PROTOBUF_PROTOC_EXECUTABLE}
+            ARGS "--cpp_out=${DLL_EXPORT_DECL}${CMAKE_CURRENT_BINARY_DIR}" "-I" ${CMAKE_CURRENT_SOURCE_DIR} ${ABS_FIL}
+            DEPENDS ${ABS_FIL} protoc
+            COMMENT "Running C++ protocol buffer compiler on ${FIL}"
+            VERBATIM )
+  endforeach()
+  set_source_files_properties(${${SRCS}} ${${HDRS}} PROPERTIES GENERATED TRUE)
+  set(${SRCS} ${${SRCS}} PARENT_SCOPE)
+  set(${HDRS} ${${HDRS}} PARENT_SCOPE)
+endfunction()

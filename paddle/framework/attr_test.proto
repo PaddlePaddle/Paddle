@@ -1,0 +1,8 @@
+syntax="proto3";
+package paddle.framework;
+
+import "attr.proto";
+
+message AttributeTestMessage {
+    map<string, Attribute> attrs = 1;
+}
