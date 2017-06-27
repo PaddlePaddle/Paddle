@@ -1,10 +1,10 @@
 # Operator Design
 
-`Operator` in PaddlePaddle mainly describe how to do operation with `Variable`. It does not actually contains any data or state, but with key to find these `Variables/State` from `Scope`.
+`Operator` in PaddlePaddle mainly describes how to do an operation with `Variable`. It does not actually contain any data or state, but with the key to find these `Variables/State` from `Scope`.
 
 Op will get/update data/state from Scope when running. It should not change the information inside op so all it's `Run()` function should be `const`
 
-Operator have a template parameter `DeviceContext`. DeviceContext is used to specify on which device this op will run. Each Op will implement multi Op according to different Context.
+`Operator` has a template parameter `DeviceContext`. DeviceContext is used to specify on which device this op will run. Each Op will implement multi Op according to different Context.
 
 #### We design the Operator class with tree layer.
 
@@ -15,10 +15,10 @@ Operator have a template parameter `DeviceContext`. DeviceContext is used to spe
 
 #### `OperatorBase`
 
-`OperatorBase` cantains the base element of an Operator, but without any specialized information. The reason is that Net can treat all Ops as OperatorBase and donot need to consider the type or context of these ops. It can just call run() of Op:
+`OperatorBase` is the base class of an Operator, but without any specialized information. Because NetworkBase can treat all Ops as OperatorBase and do not need to consider the type or context of these ops. It can just call `Run()` of Op:
 
 ```cpp
-class Net {
+class NetworkBase {
 public:
     Error Run(Scope* scope, Context* context) {
       for (auto& op : operators_) {
@@ -37,24 +37,24 @@ private:
 
 #### `Operator`
 
-`Operator` is the operator with DeviceContext information. It's the middle layer that handle the context converting and data prefetching work.
+`Operator` is the operator with DeviceContext information. It's the middle layer that handles the context converting and data prefetching work.
 
 It has two Run() function.
 
 1. `Error Run(Scope* scope, Context* context) const final`
 
-This Run() is derived from OperatorBase, It's used to convert BaseContext to CPUContext or GPUContext and get Varaibles from scope and then passed them to the next Run()
+This Run() is derived from OperatorBase, It's used to convert BaseContext to CPUContext or GPUContext and get Variables from scope and then passed them to the next Run()
 
 2. `Error Run(std::vector<Variable*>& inputs, std::vector<Variable*>& outputs, DeviceContext* context) const overrid`
 
-This Run() should derived by Custormer Operator class and put there calculate logic in the function. It have all the Variable and Context with right type to run.
+This Run() should be derived by Customer Operator class and put there calculate logic in the function. It has all the Variable and Context with right type to run.
 
 #### `CustomOperator`
 
-`CustomOperator` is operator that should be implemented such as FcLayer. They are derived from the second `Operator` with certain `DeviceContext`, they know where they are running and how to do the right operation.
+`CustomOperator` is the operator that should be implemented such as FcLayer. They are derived from the second `Operator` with certain `DeviceContext`, they know where they are running and how to do the right operation.
 
 
-The following is the pseudocode for these three layaers.
+The following is the pseudocode for these three layers.
 
 
 ```cpp
@@ -123,7 +123,7 @@ public:
     CosineOp(const OpDesc& desc):
             Operator<DeviceContext>(desc) {};
 
-    // init attrs that is needed by this Operator, check the legality here.
+    // init attrs that are needed by this Operator, check the legality here.
     Error InitializeAttributes(const AttrbuteMap& attrs) {
       scale_ = attrs.get<float>("scale");
       if (scale_ <= 0.0) {
