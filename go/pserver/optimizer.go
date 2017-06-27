@@ -2,7 +2,7 @@ package pserver
 
 // #cgo pkg-config: protobuf
 // #cgo CFLAGS: -I ../../
-// FIXME: ldflags contain "build" path
+// //FIXME: ldflags contain "build" path
 // #cgo LDFLAGS: ../../build/go/pserver/cclient/libpaddle_go_optimizer.a -lstdc++
 // #include "paddle/optimizer/optimizer.h"
 // #include <stdlib.h>
@@ -37,6 +37,7 @@ func cArrayToSlice(p unsafe.Pointer, len int) []byte {
 
 func newOptimizer(paramWithConfigs ParameterWithConfig) *optimizer {
 	o := &optimizer{}
+	o.ElementType = paramWithConfigs.Param.ElementType
 	p := paramWithConfigs.Param
 	c := paramWithConfigs.Config
 	var cbuffer unsafe.Pointer
