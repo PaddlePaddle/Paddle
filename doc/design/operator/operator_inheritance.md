@@ -15,7 +15,7 @@ Op will get/update data/state from Scope when running. It should not change the 
 
 #### `OperatorBase`
 
-`OperatorBase` is the base class of an Operator, but without any specialized information. Because NetworkBase can treat all Ops as OperatorBase and do not need to consider the type or context of these ops. It can just call `Run()` of Op:
+`OperatorBase` is the base class of an Operator, but without any specific type information. So that NetworkBase can treat all Ops as OperatorBase and do not need to consider the type or context of these ops. It can just call `Run()` of Op:
 
 ```cpp
 class NetworkBase {
