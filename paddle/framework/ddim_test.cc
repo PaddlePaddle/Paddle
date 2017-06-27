@@ -1,9 +1,6 @@
 #include <sstream>
 #include <vector>
 
-#include "eigen3/Eigen/Core"
-#include "eigen3/Eigen/Dense"
-#include "eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "gtest/gtest.h"
 #include "paddle/framework/ddim.h"
 
@@ -63,45 +60,4 @@ TEST(DDim, Print) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 3, 4});
   ss << ddim;
   EXPECT_EQ("2, 3, 4", ss.str());
-}
-
-template <typename T>
-using Vec =
-    Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>,
-                     Eigen::Aligned>;
-
-template <typename T>
-using Matrix =
-    Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor, Eigen::DenseIndex>,
-                     Eigen::Aligned>;
-
-template <typename T>
-void print(T* input, int size) {
-  for (int i = 0; i < size; i++) {
-    std::cout << input[i] << " ";
-  }
-  std::cout << std::endl;
-}
-
-TEST(Eigen, start) {
-  int size = 4;
-
-  float* t_a = (float*)malloc(size * sizeof(float));
-  float* t_b = (float*)malloc(size * sizeof(float));
-  float* t_c = (float*)malloc(size * sizeof(float));
-  for (int i = 0; i < size; i++) {
-    t_a[i] = i;
-    t_b[i] = i;
-  }
-  Vec<float> a(t_a, size);
-  Vec<float> b(t_b, size);
-  Vec<float> c(t_c, size);
-
-  Eigen::DefaultDevice dd;
-  c.device(dd) = a + b;
-  print<float>(t_c, size);
-
-  free(t_a);
-  free(t_b);
-  free(t_c);
 }

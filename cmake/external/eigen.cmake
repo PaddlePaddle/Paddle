@@ -2,13 +2,13 @@ INCLUDE(ExternalProject)
 
 SET(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3)
 
-INCLUDE_DIRECTORIES(${EIGEN_SOURCE_DIR}/src/)
+INCLUDE_DIRECTORIES(${EIGEN_SOURCE_DIR}/src/eigen3)
 
 ExternalProject_Add(
     eigen3
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    URL            "https://bitbucket.org/eigen/eigen/get/f3a22f35b044.tar.gz"
-    URL_MD5        "4645c66075982da6fa0bcf6b20f3e8f7"
+    URL            "https://bitbucket.org/eigen/eigen/get/3.3.4.tar.gz"
+    URL_MD5        "1a47e78efe365a97de0c022d127607c3"
     PREFIX          ${EIGEN_SOURCE_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
