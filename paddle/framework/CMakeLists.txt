@@ -11,3 +11,4 @@ generate_protobuf_cpp(attr_test_proto_src attr_test_proto_header attr_test.proto
 message(STATUS ${attr_test_proto_src})
 cc_test(attr_test SRCS ${attr_test_proto_src} attr_test.cc
         DEPS attr_proto protobuf glog gflags)
+cc_test(error_test SRCS error_test.cc)
