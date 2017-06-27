@@ -1,0 +1,360 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Design of Scope in Paddle &mdash; PaddlePaddle  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="PaddlePaddle  documentation" href="../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../getstarted/index_en.html">GET STARTED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../howto/index_en.html">HOW TO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index_en.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../getstarted/index_en.html">GET STARTED</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../getstarted/build_and_install/index_en.html">Install and Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/docker_install_en.html">PaddlePaddle in Docker Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/ubuntu_install_en.html">Debian Package installation guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/build_from_source_en.html">Installing from Sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../howto/index_en.html">HOW TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/cmd_parameter/index_en.html">Set Command-line Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/use_case_en.html">Use Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/arguments_en.html">Argument Outline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/detail_introduction_en.html">Detail Description</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/cluster/cluster_train_en.html">Run Distributed Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_en.html">Paddle On Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_aws_en.html">Distributed PaddlePaddle Training on AWS with Kubernetes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/dev/new_layer_en.html">Write New Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/dev/contribute_to_paddle_en.html">Contribute Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/deep_model/rnn/index_en.html">RNN Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/rnn_config_en.html">RNN Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/optimization/gpu_profiling_en.html">Tune GPU Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index_en.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/model_configs.html">Model Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/evaluators.html">Evaluators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/data.html">Data Reader Interface and DataSets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/run_logic.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../about/index_en.html">ABOUT</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Design of Scope in Paddle</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="design-of-scope-in-paddle">
+<span id="design-of-scope-in-paddle"></span><h1>Design of Scope in Paddle<a class="headerlink" href="#design-of-scope-in-paddle" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview">
+<span id="overview"></span><h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>Scope is an important concept in programming languages, which defines a program region that a set of bindings between names and entities applies. In a specific scope, a valid name is uniquely associated with an entity, such as a variable. And in another scope, this name may refer to other entity or nothing at all. It clearly restricts the visibility and validity of names in a program. Hence <strong>Scope</strong> is introduced to PaddlePaddle to manage variables in context. But different from the original abstract concept, Scope now becomes an object with two important attributes:</p>
+<ul class="simple">
+<li>Scope is an association of a name to variable.</li>
+<li>Variables in a parent scope can be retrieved from local scope.</li>
+</ul>
+<p>A detailed explanation of these two attributes goes as following.</p>
+</div>
+<div class="section" id="scope-is-an-association-of-a-name-to-variable">
+<span id="scope-is-an-association-of-a-name-to-variable"></span><h2>Scope is an association of a name to variable.<a class="headerlink" href="#scope-is-an-association-of-a-name-to-variable" title="Permalink to this headline">¶</a></h2>
+<p>Scope is an association of a name to variable. All variables belong to <code class="docutils literal"><span class="pre">Scope</span></code>. You need to specify a scope to run a Net, i.e., <code class="docutils literal"><span class="pre">net.Run(&amp;scope)</span></code>. One net can run in different scopes and update different variable in the scope.</p>
+<ol>
+<li><p class="first">Scope only contains a map of a name to variable.</p>
+<p>All parameters, data, states in a Net should be variables and stored inside a scope. Each op should get inputs and outputs to do computation from a scope, such as data buffer, state(momentum) etc.</p>
+</li>
+<li><p class="first">Variable can only be created by Scope and a variable can only be got from Scope. User cannot create or get a variable outside a scope. This is a constraints of our framework, and will keep our framework simple and clear.</p>
+</li>
+<li><p class="first">Scope only contains methods that are used to Create and Get Variables. Scope do not contain Operators and have no information to run them.
+<code class="docutils literal"><span class="pre">Net</span></code> is designed to drive the computation and Scope only contains a map of variables. There is no computation logic inside a <code class="docutils literal"><span class="pre">Scope</span></code>. Scope just handles the lifetime management of variables.</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">Create</span></code> is used to create a Variable by its name and add the mapping relation.</li>
+<li><code class="docutils literal"><span class="pre">Get</span></code> is used to find a Variable by name.</li>
+</ul>
+</li>
+<li><p class="first">Every variable only belongs to one certain Scope.</p>
+<p>Variable can not belong to many scopes. If you want to use variables from parent scope, you can use <code class="docutils literal"><span class="pre">parent</span> <span class="pre">scope</span></code>.</p>
+</li>
+<li><p class="first">Scope should destruct all Variables inside it when itself is destructed. User can never store <code class="docutils literal"><span class="pre">Variable</span></code> pointer somewhere else.</p>
+<p>Because Variable can only be got from Scope. When destroying Scope, we also need to destroy all the Variables in it. If user store <code class="docutils literal"><span class="pre">Variable</span></code> pointer to private data member or some global variable, the pointer will be a invalid pointer when associated <code class="docutils literal"><span class="pre">Scope</span></code> is destroyed.</p>
+</li>
+</ol>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Scope</span> <span class="p">{</span>
+ <span class="k">public</span><span class="o">:</span>
+  <span class="n">Variable</span><span class="o">*</span> <span class="n">CreateVariable</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">);</span>
+  <span class="k">const</span> <span class="n">Variable</span><span class="o">*</span> <span class="nf">GetVariable</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+
+ <span class="k">private</span><span class="o">:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Vairable</span><span class="o">&gt;&gt;</span> <span class="n">vars_</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="parent-scope-and-local-scope">
+<span id="parent-scope-and-local-scope"></span><h2>Parent scope and local scope<a class="headerlink" href="#parent-scope-and-local-scope" title="Permalink to this headline">¶</a></h2>
+<p>Just like <a class="reference external" href="https://en.wikipedia.org/wiki/Scope_(computer_science)">scope</a> in programming languages, <code class="docutils literal"><span class="pre">Scope</span></code> in the neural network can also be a local scope. There are two attributes about local scope.</p>
+<ol class="simple">
+<li>We can create local variables in a local scope. When that local scope are destroyed, all local variables should also be destroyed.</li>
+<li>Variables in a parent scope can be retrieved from local scopes of that parent scope, i.e., when user get a variable from a scope, it will try to search this variable in current scope. If there is no such variable in the local scope, <code class="docutils literal"><span class="pre">scope</span></code> will keep searching from its parent, until the variable is found or there is no parent.</li>
+</ol>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Scope</span> <span class="p">{</span>
+ <span class="k">public</span><span class="o">:</span>
+  <span class="n">Scope</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Scope</span><span class="o">&gt;&amp;</span> <span class="n">scope</span><span class="p">)</span><span class="o">:</span> <span class="n">parent_</span><span class="p">(</span><span class="n">scope</span><span class="p">)</span> <span class="p">{}</span>
+
+  <span class="n">Variable</span><span class="o">*</span> <span class="n">GetVariable</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+    <span class="n">Variable</span><span class="o">*</span> <span class="n">var</span> <span class="o">=</span> <span class="n">GetVarLocally</span><span class="p">(</span><span class="n">name</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">var</span> <span class="o">!=</span> <span class="k">nullptr</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="n">var</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">parent_</span> <span class="o">!=</span> <span class="k">nullptr</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="n">parent_</span><span class="o">-&gt;</span><span class="n">GetVariable</span><span class="p">(</span><span class="n">name</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="k">nullptr</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+ <span class="k">private</span><span class="o">:</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Scope</span><span class="o">&gt;</span> <span class="n">parent_</span> <span class="p">{</span><span class="k">nullptr</span><span class="p">};</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>In <code class="docutils literal"><span class="pre">Scope</span></code> class, there is a private data member called <code class="docutils literal"><span class="pre">parent_</span></code>. <code class="docutils literal"><span class="pre">parent_</span></code> is a smart pointer to its parent scope. When user <code class="docutils literal"><span class="pre">Get</span></code> a variable by its <code class="docutils literal"><span class="pre">name</span></code>, the <code class="docutils literal"><span class="pre">name</span></code> will be searched inside the current scope. If the variable cannot be found locally and parent scope is not a <code class="docutils literal"><span class="pre">nullptr</span></code>, the variable will be searched inside that parent scope. <code class="docutils literal"><span class="pre">parent_</span></code> pointer&#8217;s default value is <code class="docutils literal"><span class="pre">nullptr</span></code>. It means that the scope is a global scope when <code class="docutils literal"><span class="pre">parent_</span></code> is nullptr.</p>
+<p>A local scope is very useful when we implement Recurrent Neural Network. Each timestep of an RNN should be a <code class="docutils literal"><span class="pre">Net</span></code>. Each <code class="docutils literal"><span class="pre">Net</span></code> of timestep (<code class="docutils literal"><span class="pre">StepNet</span></code> for short) should use an independent local scope. Just like variables in a while loop is inside a local scope in programming languages. By using a single <code class="docutils literal"><span class="pre">StepNet</span></code> and changing local scope, we can implement an RNN easily.</p>
+</div>
+</div>
+<div class="section" id="interface-design">
+<span id="interface-design"></span><h1>Interface Design<a class="headerlink" href="#interface-design" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Variable</span> <span class="p">{</span>
+ <span class="k">private</span><span class="o">:</span>
+  <span class="n">Variable</span><span class="p">()</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>
+  <span class="k">friend</span> <span class="k">class</span> <span class="nc">Scope</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">class</span> <span class="nc">Scope</span> <span class="p">{</span>
+ <span class="k">private</span><span class="o">:</span>
+  <span class="n">Scope</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Scope</span><span class="o">&gt;&amp;</span> <span class="n">parent</span> <span class="o">=</span> <span class="k">nullptr</span><span class="p">);</span>
+
+ <span class="k">public</span><span class="o">:</span>
+  <span class="k">static</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Scope</span><span class="o">&gt;</span> <span class="n">Create</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Scope</span><span class="o">&gt;&amp;</span> <span class="n">parent</span> <span class="o">=</span> <span class="k">nullptr</span><span class="p">);</span>
+
+  <span class="c1">// return nullptr if not found.</span>
+  <span class="n">Variable</span><span class="o">*</span> <span class="nf">GetVariable</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// return Error if already contains same name variable.</span>
+  <span class="n">Error</span> <span class="nf">CreateVariable</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">);</span>
+
+ <span class="k">private</span><span class="o">:</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Scope</span><span class="o">&gt;</span> <span class="n">parent_</span><span class="p">;</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Variable</span><span class="o">&gt;&gt;</span> <span class="n">vars_</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<div class="section" id="only-scope-can-create-a-variable">
+<span id="only-scope-can-create-a-variable"></span><h2>Only scope can create a variable<a class="headerlink" href="#only-scope-can-create-a-variable" title="Permalink to this headline">¶</a></h2>
+<p>To ensure <code class="docutils literal"><span class="pre">only</span> <span class="pre">scope</span> <span class="pre">can</span> <span class="pre">create</span> <span class="pre">a</span> <span class="pre">variable</span></code>, we should mark <code class="docutils literal"><span class="pre">Variable</span></code>&#8216;s constructor as a private member function, and Scope is a friend class of Variable. And then only <code class="docutils literal"><span class="pre">CreateVariable</span></code> can construct <code class="docutils literal"><span class="pre">Variable</span></code>.</p>
+</div>
+<div class="section" id="when-scope-destroyed-all-variables-inside-this-scope-should-be-destroyed-together">
+<span id="when-scope-destroyed-all-variables-inside-this-scope-should-be-destroyed-together"></span><h2>When scope destroyed, all variables inside this scope should be destroyed together<a class="headerlink" href="#when-scope-destroyed-all-variables-inside-this-scope-should-be-destroyed-together" title="Permalink to this headline">¶</a></h2>
+<p>The scope hold unique pointers for all variables. User can <code class="docutils literal"><span class="pre">GetVariable</span></code> from scope, but he should not hold this pointer as a member variable. Because when scope is destroyed, all variables inside this scope will be destroyed together.</p>
+</div>
+<div class="section" id="sharing-a-parent-scope">
+<span id="sharing-a-parent-scope"></span><h2>Sharing a parent scope<a class="headerlink" href="#sharing-a-parent-scope" title="Permalink to this headline">¶</a></h2>
+<p>Local scope contains a <code class="docutils literal"><span class="pre">parent_</span></code> pointer. It is a linked-list for scopes. Using a <code class="docutils literal"><span class="pre">shared_ptr</span></code> because when a local scope is using, its parents cannot be destroyed.</p>
+<p>Also, as the parent scope is a <code class="docutils literal"><span class="pre">shared_ptr</span></code>, we can only <code class="docutils literal"><span class="pre">Create()</span></code> a scope shared pointer. We cannot construct a scope variable, because it cannot be passed to other scope as <code class="docutils literal"><span class="pre">parent</span></code> pointer.</p>
+</div>
+<div class="section" id="orthogonal-interface">
+<span id="orthogonal-interface"></span><h2>Orthogonal interface<a class="headerlink" href="#orthogonal-interface" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal"><span class="pre">GetVariable</span></code> will return <code class="docutils literal"><span class="pre">nullptr</span></code> when <code class="docutils literal"><span class="pre">name</span></code> is not found. It can be used as <code class="docutils literal"><span class="pre">Contains</span></code> method. <code class="docutils literal"><span class="pre">CreateVariable</span></code> will return a <code class="docutils literal"><span class="pre">Error</span></code> when there is a name conflict locally. Combine <code class="docutils literal"><span class="pre">GetVariable</span></code> and <code class="docutils literal"><span class="pre">CreateVariable</span></code>, we can implement <code class="docutils literal"><span class="pre">CreateOrGetVariable</span></code> easily.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>
