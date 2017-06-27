@@ -32,10 +32,10 @@ class NetBase {
   virtual OpIndex AddOp(const proto::OpDef &def) = 0;
 
   // Add optimizer operators acctording to `attrs`.
-  virtual void ApplyOptimizer(const OptAttrs &attrs) = 0;
+  virtual void AddOptimizerOps(const OptAttrs &attrs) = 0;
 
   // Add backward operators.
-  virtual void ApplyGradient() = 0;
+  virtual void AddBackwardOps() = 0;
 
   // Infer the shapes of variables required by operators in the network. The
   // `scope` will be mutated according to the inferred shapes.
@@ -100,9 +100,9 @@ class PlainNet final : public NetBase {
 
   virtual OpIndex AddOp(const proto::OpDef &def) override;
 
-  virtual void ApplyOptimizer(const OptAttrs &attrs) override;
+  virtual void AddOptimizerOps(const OptAttrs &attrs) override;
 
-  virtual void ApplyGradient() override;
+  virtual void AddBackwardOps() override;
 
  protected:
   // Create operators accordding to `def`.
@@ -143,8 +143,8 @@ auto net = NetBase::CreateNet(net_desc);
 net->AddOp(add...);
 net->AddOp(fc...);
 
-net->ApplyGradient();
-net->ApplyOptimizer();
+net->AddBackwardOps();
+net->AddOptimizerOps();
 
 // run the network providing the `scope`.
 net.Run(&scope);
@@ -189,8 +189,8 @@ class NetBuilder final {
     // backward.
     if (need_backward) {
       if (need_rebuild_net_) {
-        ApplyGradient();
-        ApplyOptimizer();
+        AddBackwardOps();
+        AddOptimizerOps();
       }
       net_->Run(scope);
       return;
@@ -200,8 +200,8 @@ class NetBuilder final {
   }
 
  protected:
-  void ApplyGradient();
-  void ApplyOptimizer();
+  void AddBackwardOps();
+  void AddOptimizerOps();
 
  private:
   NetBase* net_;
