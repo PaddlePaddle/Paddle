@@ -1,7 +1,6 @@
 package master
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
@@ -32,9 +31,9 @@ func NewClient(addrCh <-chan string, bufSize int) *Client {
 func NewEtcdMasterClient(db DBOperator, bufSize int) *Client {
 	ch := make(chan string)
 	c := NewClient(ch, bufSize)
-	v := db.Get(MasterAddrKey)
-	go db.WatchWithKey(MasterAddrKey, ch)
-	ch <- v
+	v := db.BlockedGet(DefaultAddrPath, 3)
+	ch <- string(v)
+	go db.WatchWithKey(DefaultAddrPath, ch)
 	return c
 }
 
@@ -84,7 +83,6 @@ func (c *Client) monitorMaster(addrCh <-chan string) {
 		if curMaster != lastMaster {
 			if curMaster == "" {
 				err := c.conn.Close()
-				fmt.Printf("close conn error: %s", err)
 				if err != nil {
 					log.Errorln(err)
 				}

@@ -18,6 +18,15 @@ const (
 	DefaultAddrPath = "/master/addr"
 )
 
+// DBOperator is an interface fo database operator, it's useful for test
+type DBOperator interface {
+	Save(state []byte) error
+	Load() ([]byte, error)
+	Put(key, value string) error
+	BlockedGet(key string, interval int) []byte
+	WatchWithKey(key string, valChan chan string)
+}
+
 // EtcdClient is the etcd client that master uses for fault tolerance
 // and service registry.
 type EtcdClient struct {
@@ -28,7 +37,7 @@ type EtcdClient struct {
 }
 
 // NewEtcdClient creates a new EtcdClient.
-func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePath string, ttlSec int) (*EtcdClient, error) {
+func NewEtcdClient(endpoints []string, lockPath, addrPath, statePath string, ttlSec int) (*EtcdClient, error) {
 	log.Debugf("Connecting to etcd at %v", endpoints)
 	// TODO(helin): gracefully shutdown etcd store. Becuase etcd
 	// store holds a etcd lock, even though the lock will expire
@@ -60,16 +69,6 @@ func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePat
 	}
 	log.Debugf("Successfully acquired lock at %s.", lockPath)
 
-	put := clientv3.OpPut(addrPath, string(addr))
-	resp, err := cli.Txn(context.Background()).If(lock.IsOwner()).Then(put).Commit()
-	if err != nil {
-		return nil, err
-	}
-
-	if !resp.Succeeded {
-		log.Fatal("No longer owns the master lock. Exiting.")
-	}
-
 	e := &EtcdClient{
 		lockPath:  lockPath,
 		statePath: statePath,
@@ -78,6 +77,26 @@ func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePat
 	}
 
 	return e, nil
+}
+
+// Put puts the key and value
+func (e *EtcdClient) Put(key, value string) error {
+	ctx := context.TODO()
+	put := clientv3.OpPut(key, value)
+	resp, err := e.client.Txn(ctx).If(e.lock.IsOwner()).Then(put).Commit()
+	if err != nil {
+		return err
+	}
+	if !resp.Succeeded {
+		log.Errorln("No longer owns the lock, trying to lock and load again.")
+		err = e.lock.Lock(context.Background())
+		if err != nil {
+			return err
+		}
+		return e.Put(key, value)
+	}
+
+	return nil
 }
 
 // Save saves the state into the etcd.
@@ -141,4 +160,37 @@ func (e *EtcdClient) Load() ([]byte, error) {
 
 	state := kvs[0].Value
 	return state, nil
+}
+
+// BlockedGet gets value from the specify key, if the key does not exists, this method will be blocked
+func (e *EtcdClient) BlockedGet(key string, timeout int) []byte {
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
+		resp, err := e.client.Get(ctx, key)
+		cancel()
+		if err != nil {
+			log.Error(err)
+			time.Sleep(time.Second * time.Duration(3))
+			continue
+		}
+		kvs := resp.Kvs
+		if len(kvs) == 0 {
+			log.Error(err)
+			continue
+		}
+		v := kvs[0].Value
+		return v
+	}
+}
+
+// WatchWithKey watch the specify key and send to valChan
+func (e *EtcdClient) WatchWithKey(key string, valChan chan string) {
+	rch := e.client.Watch(context.Background(), key)
+	for wresp := range rch {
+		for _, ev := range wresp.Events {
+			log.Infof("received event %s, %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+			valChan <- string(ev.Kv.Value)
+		}
+	}
+
 }

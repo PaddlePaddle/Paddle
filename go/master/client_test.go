@@ -18,12 +18,15 @@ import (
 
 type testDB struct{}
 
-func (testDB) Get(key string) string {
-	return "localhost:12345"
+func (testDB) Save(state []byte) error     { return nil }
+func (testDB) Load() ([]byte, error)       { return nil, nil }
+func (testDB) Put(key, value string) error { return nil }
+func (testDB) BlockedGet(key string, interval int) []byte {
+	return []byte("localhost:12345")
 }
-func (testDB) WatchWithKey(key string, ch chan string) {
+func (testDB) WatchWithKey(key string, valCh chan string) {
 	for i := 1; i < 100; i++ {
-		ch <- fmt.Sprintf("localhost:%d", 12345+i)
+		valCh <- fmt.Sprintf("localhost:%d", 12345+i)
 		time.Sleep(time.Second * time.Duration(1))
 	}
 }
