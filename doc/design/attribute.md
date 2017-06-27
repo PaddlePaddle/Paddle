@@ -93,6 +93,8 @@ class CosineOp : public OperatorBase {
  public:
   Error InitializeAttribute(const AttributeReader& attrs) {
     auto err = attrs.Get<float>("scale", &scale_);
+
+    // ignore AttributeNotFound because scale_ is default = 1.0
     if (!err.isOK() && err != "Attribute Not Found") {
       return err;
     }
