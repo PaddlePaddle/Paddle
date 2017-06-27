@@ -29,12 +29,22 @@ TEST(Variable, GetMutable) {
   Tensor* t = v->GetMutable<Tensor>();
   t->content_ = 1234;
 
-  const Tensor& tt = v->Get<Tensor>();
+  const Tensor& tt = *v->Get<Tensor>();
   EXPECT_EQ(1234, tt.content_);
 
   std::string* s = v->GetMutable<std::string>();
   *s = "hello";
 
-  const std::string& ss = v->Get<std::string>();
+  const std::string& ss = *v->Get<std::string>();
   EXPECT_EQ("hello", ss);
+}
+
+TEST(Variable, GetMismatchType) {
+  using paddle::framework::Variable;
+  Variable var;
+  *var.GetMutable<int>() = 100;
+  ASSERT_EQ(nullptr, var.Get<float>());
+
+  Variable var_empty;
+  ASSERT_EQ(nullptr, var_empty.Get<int>());
 }
