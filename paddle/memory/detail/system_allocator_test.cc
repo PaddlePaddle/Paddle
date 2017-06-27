@@ -22,10 +22,10 @@ limitations under the License. */
 
 DECLARE_bool(use_pinned_memory);
 
-void TestAllocator(paddle::memory::detail::SystemAllocator* a, size_t size) {
+void TestAllocator(paddle::memory::detail::SystemAllocator& a, size_t size) {
   bool freed = false;
   {
-    void* p = a->Alloc(size);
+    void* p = a.Alloc(size);
     if (size > 0) {
       EXPECT_NE(p, nullptr);
     } else {
@@ -33,9 +33,9 @@ void TestAllocator(paddle::memory::detail::SystemAllocator* a, size_t size) {
     }
 
     int* i = static_cast<int*>(p);
-    std::shared_ptr<int> ptr(i, [&freed, a, size](void* p) {
+    std::shared_ptr<int> ptr(i, [&](void* p) {
       freed = true;
-      a->Free(p, size);
+      a.Free(p, size);
     });
   }
   EXPECT_TRUE(freed);
@@ -44,28 +44,28 @@ void TestAllocator(paddle::memory::detail::SystemAllocator* a, size_t size) {
 TEST(CPUAllocator, NoLockMem) {
   FLAGS_use_pinned_memory = false;
   paddle::memory::detail::CPUAllocator a;
-  TestAllocator(&a, 2048);
-  TestAllocator(&a, 0);
+  TestAllocator(a, 2048);
+  TestAllocator(a, 0);
 }
 
 TEST(CPUAllocator, LockMem) {
   FLAGS_use_pinned_memory = true;
   paddle::memory::detail::CPUAllocator a;
-  TestAllocator(&a, 2048);
-  TestAllocator(&a, 0);
+  TestAllocator(a, 2048);
+  TestAllocator(a, 0);
 }
 
 #ifndef PADDLE_ONLY_CPU
 TEST(GPUAllocator, NoStaging) {
   FLAGS_use_pinned_memory = false;
   paddle::memory::detail::GPUAllocator a;
-  TestAllocator(&a, 2048);
-  TestAllocator(&a, 0);
+  TestAllocator(a, 2048);
+  TestAllocator(a, 0);
 }
 TEST(GPUAllocator, Staging) {
   FLAGS_use_pinned_memory = true;
   paddle::memory::detail::GPUAllocator a;
-  TestAllocator(&a, 2048);
-  TestAllocator(&a, 0);
+  TestAllocator(a, 2048);
+  TestAllocator(a, 0);
 }
 #endif  // PADDLE_ONLY_CPU
