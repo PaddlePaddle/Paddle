@@ -1,5 +1,5 @@
 if(${WITH_GPU})
-  nv_test(system_allocator_test SRCS system_allocator_test.cc)
+  nv_test(system_allocator_test SRCS system_allocator_test.cc DEPS gflags glog)
 else(${WITH_GPU})
-  cc_test(system_allocator_test SRCS system_allocator_test.cc)
+  cc_test(system_allocator_test SRCS system_allocator_test.cc DEPS gflags glog)
 endif(${WITH_GPU})
