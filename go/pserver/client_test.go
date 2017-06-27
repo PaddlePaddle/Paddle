@@ -31,7 +31,7 @@ func init() {
 		port[i] = p
 
 		go func(l net.Listener) {
-			s, err := pserver.NewService("", time.Second*5)
+			s, err := pserver.NewService("", 1, time.Second*5)
 			if err != nil {
 				panic(err)
 			}
