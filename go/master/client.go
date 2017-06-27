@@ -3,30 +3,16 @@ package master
 import (
 	"fmt"
 	"os"
-	"strings"
-	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
 	"github.com/PaddlePaddle/recordio"
-	"github.com/coreos/etcd/clientv3"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 )
-
-const masterAddrPath = "/master"
 
 // Client is the client of the master server.
 type Client struct {
 	conn *connection.Conn
 	ch   chan []byte
-}
-
-// EtcdClient is the client of
-type EtcdClient struct {
-	client    *clientv3.Client
-	endpoints []string
-	ch        chan string
-	timeout   time.Duration
 }
 
 // NewClient creates a new Client.
@@ -39,6 +25,16 @@ func NewClient(addrCh <-chan string, bufSize int) *Client {
 	c.ch = make(chan []byte, bufSize)
 	go c.monitorMaster(addrCh)
 	go c.getRecords()
+	return c
+}
+
+// NewEtcdMasterClient creates a new Client by etcd
+func NewEtcdMasterClient(db DBOperator, bufSize int) *Client {
+	ch := make(chan string)
+	c := NewClient(ch, bufSize)
+	v := db.Get(MasterAddrKey)
+	go db.WatchWithKey(MasterAddrKey, ch)
+	ch <- v
 	return c
 }
 
@@ -134,78 +130,4 @@ func (c *Client) taskFinished(taskID int) error {
 // thread-safe.
 func (c *Client) NextRecord() []byte {
 	return <-c.ch
-}
-
-// NewEtcdClient create a new master client by etcd
-//
-// endpoints is the endpoints for etcd and separated by ",", such as
-// "172.0.1.0:2379,172.0.1.1:2379"
-// timeout is the timeout for etcd calls
-// bufSize is the record buffer size. NextRecord will read from this buffer.
-func NewEtcdClient(endpoints string, timeout int, bufSize int) *Client {
-	t := time.Second * time.Duration(timeout)
-	ep := strings.Split(endpoints, ",")
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   ep,
-		DialTimeout: t,
-	})
-	if err != nil {
-		log.Errorf("Init etcd connection failed: %v", err)
-		panic(err)
-	}
-	log.Debugf("Connected to etcd: %s\n", endpoints)
-	etcdClient := EtcdClient{
-		client:    cli,
-		timeout:   t,
-		endpoints: ep,
-	}
-	etcdClient.ch = make(chan string)
-	c := NewClient(etcdClient.ch, bufSize)
-	//go etcdClient.monitorMasterAddr()
-	etcdClient.initMasterAddr(masterAddrPath)
-	go etcdClient.monitorMasterAddr()
-	return c
-}
-func (e *EtcdClient) initMasterAddr(key string) {
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
-		resp, err := e.client.Get(ctx, masterAddrPath)
-		cancel()
-		if err != nil {
-			log.Errorf("etcd get key: %s failed: %s, sleep for %d seconds and reconnect...",
-				key, err, e.timeout)
-			time.Sleep(e.timeout)
-			err = e.client.Close()
-			if err != nil {
-				log.Error(err)
-			}
-			e.client, err = clientv3.New(clientv3.Config{
-				Endpoints:   e.endpoints,
-				DialTimeout: e.timeout,
-			})
-			if err != nil {
-				log.Error(err)
-			}
-			continue
-		}
-		if len(resp.Kvs) == 0 {
-			log.Errorf("etcd key: %s does not exists, sleep %d seconds...", key, e.timeout/time.Second)
-			time.Sleep(e.timeout)
-			continue
-		}
-		mAddr := string(resp.Kvs[0].Value)
-		e.ch <- mAddr
-		break
-	}
-	fmt.Println("init master addr finished.")
-}
-func (e *EtcdClient) monitorMasterAddr() {
-	rch := e.client.Watch(context.Background(), masterAddrPath)
-	for wresp := range rch {
-		for _, ev := range wresp.Events {
-			// if event type is DELETE, ev.Kv.Value will be a empty string and Client
-			// will close the connection
-			e.ch <- string(ev.Kv.Value)
-		}
-	}
 }

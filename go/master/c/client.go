@@ -48,23 +48,23 @@ func remove(client C.paddle_master_client) *master.Client {
 	return h
 }
 
-type addresser string
-
-func (a addresser) Address() string {
-	return string(a)
-}
-
 //export paddle_new_etcd_master_client
-func paddle_new_etcd_master_client(etcdEndpoints *C.char, bufSize int) C.paddle_master_client {
+func paddle_new_etcd_master_client(etcdEndpoints *C.char, timeout int, bufSize int) C.paddle_master_client {
 	p := C.GoString(etcdEndpoints)
-	c := master.NewEtcdClient(addresser(p), bufSize)
+	e, err := master.NewEtcdClient(p, timeout)
+	if err != nil {
+		panic(err)
+	}
+	c := master.NewEtcdMasterClient(e, bufSize)
 	return add(c)
 }
 
 //export paddle_new_master_client
 func paddle_new_master_client(addr *C.char, bufSize int) C.paddle_master_client {
 	a := C.GoString(addr)
-	c := master.NewClient(addresser(a), bufSize)
+	ch := make(chan string)
+	c := master.NewClient(ch, bufSize)
+	ch <- a
 	return add(c)
 }
 

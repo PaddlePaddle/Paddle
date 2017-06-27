@@ -16,6 +16,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type testDB struct{}
+
+func (testDB) Get(key string) string {
+	return "localhost:12345"
+}
+func (testDB) WatchWithKey(key string, ch chan string) {
+	for i := 1; i < 100; i++ {
+		ch <- fmt.Sprintf("localhost:%d", 12345+i)
+		time.Sleep(time.Second * time.Duration(1))
+	}
+}
+
 func TestNextRecord(t *testing.T) {
 	const (
 		path  = "/tmp/master_client_TestFull"
@@ -77,7 +89,8 @@ func TestNextRecord(t *testing.T) {
 	}
 }
 
-func TestNewEtcdClientFailed(t *testing.T) {
-	assert.Panics(t, func() { master.NewEtcdClient("localhost:1235", 3, 1) },
-		"Invalid etcd address should be panic.")
+func TestNewEtcdMasterClient(t *testing.T) {
+	db := testDB{}
+	c := master.NewEtcdMasterClient(db, 3)
+	assert.NotNil(t, c)
 }
