@@ -17,7 +17,7 @@
 # generic.cmake defines CMakes functions that look like Bazel's
 # building rules (https://bazel.build/).
 #
-# 
+#
 # -------------------------------------------
 #     C++        CUDA C++       Go
 # -------------------------------------------
@@ -25,51 +25,51 @@
 # cc_binary     nv_binary    go_binary
 # cc_test       nv_test      go_test
 # -------------------------------------------
-# 
+#
 # To build a static library example.a from example.cc using the system
 #  compiler (like GCC):
-# 
+#
 #   cc_library(example SRCS example.cc)
-# 
+#
 # To build a static library example.a from multiple source files
 # example{1,2,3}.cc:
-# 
+#
 #   cc_library(example SRCS example1.cc example2.cc example3.cc)
-# 
+#
 # To build a shared library example.so from example.cc:
-# 
+#
 #   cc_library(example SHARED SRCS example.cc)
-# 
+#
 # To build a library using Nvidia's NVCC from .cu file(s), use the nv_
 # prefixed version:
-# 
+#
 #   nv_library(example SRCS example.cu)
-# 
+#
 # To specify that a library new_example.a depends on other libraies:
-# 
+#
 #   cc_library(new_example SRCS new_example.cc DEPS example)
-# 
+#
 # Static libraries can be composed of other static libraries:
-# 
+#
 #   cc_library(composed DEPS dependent1 dependent2 dependent3)
-# 
+#
 # To build an executable binary file from some source files and
 # dependent libraries:
-# 
+#
 #   cc_binary(example SRCS main.cc something.cc DEPS example1 example2)
-# 
+#
 # To build an executable binary file using NVCC, use the nv_ prefixed
 # version:
-# 
+#
 #   nv_binary(example SRCS main.cc something.cu DEPS example1 example2)
-# 
+#
 # To build a unit test binary, which is an executable binary with
 # GoogleTest linked:
-# 
+#
 #   cc_test(example_test SRCS example_test.cc DEPS example)
-# 
+#
 # To build a unit test binary using NVCC, use the nv_ prefixed version:
-# 
+#
 #   nv_test(example_test SRCS example_test.cu DEPS example)
 #
 # It is pretty often that executable and test binaries depend on
@@ -256,6 +256,8 @@ endfunction(nv_test)
 set(GOPATH "${CMAKE_CURRENT_BINARY_DIR}/go")
 file(MAKE_DIRECTORY ${GOPATH})
 set(PADDLE_IN_GOPATH "${GOPATH}/src/github.com/PaddlePaddle/Paddle")
+file(MAKE_DIRECTORY "${PADDLE_IN_GOPATH}")
+set(PADDLE_GO_SRC "${CMAKE_SOURCE_DIR}/go")
 
 function(go_library TARGET_NAME)
   set(options STATIC static SHARED shared)
@@ -280,7 +282,7 @@ function(go_library TARGET_NAME)
     add_library(${TARGET_NAME} STATIC ${dummyfile})
   endif()
   if(go_library_DEPS)
-    add_dependencies(${TARGET_NAME} ${go_library_DEPS})
+    add_dependencies(${TARGET_NAME} ${go_library_DEPS} paddle_go_path_link)
   endif(go_library_DEPS)
 
   # we need to symlink Paddle directory into GOPATH. If we
@@ -289,19 +291,23 @@ function(go_library TARGET_NAME)
   # without the changes in our current Paddle repo that we
   # want to build.
   file(GLOB GO_SOURCE RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.go")
+  string(REPLACE "${PADDLE_GO_SRC}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
     COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
     # Symlink Paddle directory into GOPATH
     COMMAND mkdir -p ${PADDLE_IN_GOPATH}
-    COMMAND rm -rf ${PADDLE_IN_GOPATH}                                                                                                                                         
+    COMMAND rm -rf ${PADDLE_IN_GOPATH}
     COMMAND ln -sf ${CMAKE_SOURCE_DIR} ${PADDLE_IN_GOPATH}
-    # Automatically get all dependencies specified in the source code                                                                                                                                 
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d ./...
+    WORKING_DIRECTORY ${PADDLE_GO_SRC})
+  add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    # Automatically get all dependencies specified in the source code
+    #COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d ./...
     # Golang build source code
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
     -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
-    ${GO_SOURCE}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    "./${CMAKE_CURRENT_SOURCE_REL_DIR}/${GO_SOURCE}"
+    # must run under GOPATH
+  WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
 endfunction(go_library)
 
 function(go_binary TARGET_NAME)
@@ -309,12 +315,20 @@ function(go_binary TARGET_NAME)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(go_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  string(REPLACE "${PADDLE_GO_SRC}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+  add_custom_command(OUTPUT ${TARGET_NAME}_link
+    # Symlink Paddle directory into GOPATH
+    COMMAND mkdir -p ${PADDLE_IN_GOPATH}
+    COMMAND rm -rf ${PADDLE_IN_GOPATH}
+    COMMAND ln -sf ${CMAKE_SOURCE_DIR} ${PADDLE_IN_GOPATH}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
   add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
     -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     ${go_library_SRCS}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_binary_DEPS})
+  WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go/${CMAKE_CURRENT_SOURCE_REL_DIR}")
+  add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_link ${TARGET_NAME}_timestamp ${go_binary_DEPS})
   install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME} DESTINATION bin)
 endfunction(go_binary)
 

@@ -48,6 +48,7 @@ option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
+option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -131,8 +132,7 @@ add_subdirectory(paddle)
 add_subdirectory(python)
 
 if(WITH_GOLANG)
-    #TODO (add go/master/c back when fixed)
-    add_subdirectory(go/pserver/cclient)
+    add_subdirectory(go)
 endif(WITH_GOLANG)
 
 if(WITH_DOC)
