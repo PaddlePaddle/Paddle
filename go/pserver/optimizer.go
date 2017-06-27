@@ -39,22 +39,20 @@ func newOptimizer(paramWithConfigs ParameterWithConfig) *optimizer {
 	p := paramWithConfigs.Param
 	c := paramWithConfigs.Config
 	var cbuffer unsafe.Pointer
-	cbuffer = unsafe.Pointer(&p.Content[0])
+	cbuffer_len := int(unsafe.Sizeof(p.Content[0])) * len(p.Content)
+	cbuffer = C.malloc(C.size_t(cbuffer_len))
+	C.memcpy(cbuffer, unsafe.Pointer(&p.Content[0]), C.size_t(cbuffer_len))
 	o.opt = C.paddle_create_optimizer((*C.uchar)(&c[0]), C.int(len(c)),
 		C.paddle_element_type(p.ElementType), cbuffer, C.int(len(p.Content)),
 		(*C.char)(nullPtr), 0)
 	return o
 }
 
-func (o *optimizer) GetWeights(p *Parameter) error {
+func (o *optimizer) GetWeights() []byte {
 	// FIXME: get weigths from optimizer has bug
 	var buffer unsafe.Pointer
 	buffer_len := C.paddle_optimizer_get_weights(o.opt, &buffer)
-	if buffer_len == 0 || buffer == nullPtr {
-		return fmt.Errorf("parameter optimizer error : %s get failed", p.Name)
-	}
-	p.Content = cArrayToSlice(buffer, int(buffer_len))
-	return nil
+	return cArrayToSlice(buffer, int(buffer_len))
 }
 
 func (o *optimizer) UpdateParameter(g Gradient) error {
@@ -62,10 +60,7 @@ func (o *optimizer) UpdateParameter(g Gradient) error {
 		return fmt.Errorf("Name: %s, parameter and gradient element type not match, parameter: %v, gradient: %v", g.Name, o.ElementType, g.ElementType)
 	}
 
-	// FIXME: do we need a copy? discard g.Content by GC ok
-	var cbuffer unsafe.Pointer
-	cbuffer = unsafe.Pointer(&g.Content[0])
-	r := C.paddle_update_parameter(o.opt, C.paddle_element_type(g.ElementType), cbuffer, C.int(len(g.Content)))
+	r := C.paddle_update_parameter(o.opt, C.paddle_element_type(g.ElementType), unsafe.Pointer(&g.Content[0]), C.int(len(g.Content)))
 	if r != 0 {
 		return fmt.Errorf("optimizer update returned error code: %d", r)
 	}

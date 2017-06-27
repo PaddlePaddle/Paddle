@@ -44,8 +44,7 @@ type Gradient Parameter
 type Service struct {
 	initialized chan struct{}
 
-	mu sync.Mutex
-	// injection from parameter to optimizer
+	mu     sync.Mutex
 	optMap map[string]*optimizer
 }
 
@@ -130,9 +129,8 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	// paramter content.
 	parameter.Name = name
 	parameter.ElementType = opt.ElementType
-
-	err := opt.GetWeights(parameter)
-	return err
+	parameter.Content = opt.GetWeights()
+	return nil
 }
 
 // Save tells the parameter server to save parameters.
