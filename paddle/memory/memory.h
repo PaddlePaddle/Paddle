@@ -14,14 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/frameowork/place.h"
+#include "paddle/platform/place.h"
 
 namespace paddle {
 namespace memory {
 
-void* Alloc(paddle::framework::Place, size_t);
-void Free(paddle::framework::Place, void*);
-size_t Used(paddle::framework::Place);
+void* Alloc(paddle::platform::Place, size_t);
+void Free(paddle::platform::Place, void*);
+size_t Used(paddle::platform::Place);
 
 }  // namespace memory
 }  // namespace paddle

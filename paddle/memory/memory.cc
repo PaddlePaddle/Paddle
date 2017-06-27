@@ -13,41 +13,46 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/memory/memory.h"
+#include "paddle/memory/detail/buddy_allocator.h"
+#include "paddle/memory/detail/system_allocator.h"
+#include "paddle/platform/assert.h"
 
-#include "paddle/memory/detail/cpu_allocator.h"
-#include "paddle/memory/detail/gpu_allocator.h"
+#include <boost/variant.hpp>
 
 namespace paddle {
 namespace memory {
 
-void Alloc(paddle::platform::Place pl, size_t size) {
+void* Alloc(platform::Place pl, size_t size) {
 #ifndef PADDLE_ONLY_CPU
   if (paddle::platform::is_gpu_place(pl)) {
-    return GetGPUBuddyAllocator(pl.device)->Alloc(size);
+    size_t gpu_id = boost::get<platform::GPUPlace>(pl).device;
+    return detail::GetGPUBuddyAllocator(gpu_id)->Alloc(size);
   }
 #endif  // PADDLE_ONLY_CPU
   PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
-  return GetCPUBuddyAllocator()->Alloc(size);
+  return detail::GetCPUBuddyAllocator()->Alloc(size);
 }
 
 void Free(paddle::platform::Place pl, void* p) {
 #ifndef PADDLE_ONLY_CPU
   if (paddle::platform::is_gpu_place(pl)) {
-    GetGPUBuddyAllocator(pl.device)->Free(p);
+    size_t gpu_id = boost::get<platform::GPUPlace>(pl).device;
+    detail::GetGPUBuddyAllocator(gpu_id)->Free(p);
   }
 #endif  // PADDLE_ONLY_CPU
   PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
-  GetCPUBuddyAllocator()->Free(p);
+  detail::GetCPUBuddyAllocator()->Free(p);
 }
 
 size_t Used(paddle::platform::Place pl) {
 #ifndef PADDLE_ONLY_CPU
   if (paddle::platform::is_gpu_place(pl)) {
-    return GetGPUBuddyAllocator(pl.device)->Used();
+    size_t gpu_id = boost::get<platform::GPUPlace>(pl).device;
+    return detail::GetGPUBuddyAllocator(gpu_id)->Used();
   }
 #endif  // PADDLE_ONLY_CPU
   PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
-  return GetCPUBuddyAllocator()->Used();
+  return detail::GetCPUBuddyAllocator()->Used();
 }
 
 }  // namespace memory
