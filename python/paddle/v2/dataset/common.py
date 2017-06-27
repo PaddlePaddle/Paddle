@@ -23,7 +23,10 @@ import paddle.v2.dataset
 import cPickle
 import glob
 
-__all__ = ['DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader']
+__all__ = [
+    'DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader',
+    'convert'
+]
 
 DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
 
