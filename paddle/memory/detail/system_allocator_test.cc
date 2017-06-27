@@ -17,44 +17,55 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
-#include "glog/logging.h"
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 
-template <typename Allocator>
-void TestAllocator(void* p) {
-  p = Allocator::Alloc(1024);
+DECLARE_bool(use_pinned_memory);
 
-  int* i = static_cast<int*>(p);
-  std::shared_ptr<int> ptr(i, [](int* p) { Allocator::Free(p, 1024); });
+void TestAllocator(paddle::memory::detail::SystemAllocator* a, size_t size) {
+  bool freed = false;
+  {
+    void* p = a->Alloc(size);
+    if (size > 0) {
+      EXPECT_NE(p, nullptr);
+    } else {
+      EXPECT_EQ(p, nullptr);
+    }
 
-  EXPECT_NE(p, nullptr);
+    int* i = static_cast<int*>(p);
+    std::shared_ptr<int> ptr(i, [&freed, a, size](void* p) {
+      freed = true;
+      a->Free(p, size);
+    });
+  }
+  EXPECT_TRUE(freed);
 }
 
 TEST(CPUAllocator, NoLockMem) {
-  void* p = nullptr;
-  FLAGS_uses_pinned_memory = false;
-  TestAllocator<paddle::memory::detail::CPUAllocator>(p);
-  EXPECT_EQ(p, nullptr);
+  FLAGS_use_pinned_memory = false;
+  paddle::memory::detail::CPUAllocator a;
+  TestAllocator(&a, 2048);
+  TestAllocator(&a, 0);
 }
 
 TEST(CPUAllocator, LockMem) {
-  void* p = nullptr;
-  FLAGS_uses_pinned_memory = true;
-  TestAllocator<paddle::memory::detail::CPUAllocator>(p);
-  EXPECT_EQ(p, nullptr);
+  FLAGS_use_pinned_memory = true;
+  paddle::memory::detail::CPUAllocator a;
+  TestAllocator(&a, 2048);
+  TestAllocator(&a, 0);
 }
 
 #ifndef PADDLE_ONLY_CPU
 TEST(GPUAllocator, NoStaging) {
-  void* p = nullptr;
-  FLAGS_uses_pinned_memory = false;
-  TestAllocator<paddle::memory::detail::GPUAllocator>(p);
-  EXPECT_EQ(p, nullptr);
+  FLAGS_use_pinned_memory = false;
+  paddle::memory::detail::GPUAllocator a;
+  TestAllocator(&a, 2048);
+  TestAllocator(&a, 0);
 }
 TEST(GPUAllocator, Staging) {
-  void* p = nullptr;
-  FLAGS_uses_pinned_memory = true;
-  TestAllocator<paddle::memory::detail::GPUAllocator>(p);
-  EXPECT_EQ(p, nullptr);
+  FLAGS_use_pinned_memory = true;
+  paddle::memory::detail::GPUAllocator a;
+  TestAllocator(&a, 2048);
+  TestAllocator(&a, 0);
 }
 #endif  // PADDLE_ONLY_CPU
