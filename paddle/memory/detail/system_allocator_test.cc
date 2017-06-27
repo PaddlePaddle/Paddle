@@ -17,34 +17,44 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 template <typename Allocator>
-void TestAllocator() {
-  {
-    auto d = Allocator::Alloc(sizeof(int));
-    EXPECT_NE(d.Ptr(), nullptr);
-    std::unique_ptr<int> p(static_cast<int*>(d.Ptr()), d);
-  }
-  {
-    auto d = Allocator::Alloc(0);
-    EXPECT_EQ(d.Ptr(), nullptr);
-    std::unique_ptr<int> p(static_cast<int*>(d.Ptr()), d);
-  }
+void TestAllocator(void* p) {
+  p = Allocator::Alloc(1024);
+
+  int* i = static_cast<int*>(p);
+  std::shared_ptr<int> ptr(i, [](int* p) { Allocator::Free(p, 1024); });
+
+  EXPECT_NE(p, nullptr);
 }
 
 TEST(CPUAllocator, NoLockMem) {
-  TestAllocator<paddle::memory::detail::CPUAllocator<false>>();
+  void* p = nullptr;
+  FLAGS_uses_pinned_memory = false;
+  TestAllocator<paddle::memory::detail::CPUAllocator>(p);
+  EXPECT_EQ(p, nullptr);
 }
+
 TEST(CPUAllocator, LockMem) {
-  TestAllocator<paddle::memory::detail::CPUAllocator<true>>();
+  void* p = nullptr;
+  FLAGS_uses_pinned_memory = true;
+  TestAllocator<paddle::memory::detail::CPUAllocator>(p);
+  EXPECT_EQ(p, nullptr);
 }
 
 #ifndef PADDLE_ONLY_CPU
 TEST(GPUAllocator, NoStaging) {
-  TestAllocator<paddle::memory::detail::GPUAllocator<false>>();
+  void* p = nullptr;
+  FLAGS_uses_pinned_memory = false;
+  TestAllocator<paddle::memory::detail::GPUAllocator>(p);
+  EXPECT_EQ(p, nullptr);
 }
 TEST(GPUAllocator, Staging) {
-  TestAllocator<paddle::memory::detail::GPUAllocator<true>>();
+  void* p = nullptr;
+  FLAGS_uses_pinned_memory = true;
+  TestAllocator<paddle::memory::detail::GPUAllocator>(p);
+  EXPECT_EQ(p, nullptr);
 }
 #endif  // PADDLE_ONLY_CPU
