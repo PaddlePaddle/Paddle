@@ -1,13 +1,14 @@
 package pserver
 
-/*
-// TODO(zhihong): move compile flags to cmake go_library
-#cgo pkg-config: protobuf
-#cgo CFLAGS: -I ../../
-#cgo LDFLAGS: /Users/dzh/.go/src/github.com/PaddlePaddle/Paddle/build/go/pserver/cclient/libpaddle_go_optimizer.a -lstdc++
-#include "paddle/optimizer/optimizer.h"
-*/
+// #cgo pkg-config: protobuf
+// #cgo CFLAGS: -I ../../
+// FIXME: ldflags contain "build" path
+// #cgo LDFLAGS: ../../build/go/pserver/cclient/libpaddle_go_optimizer.a -lstdc++
+// #include "paddle/optimizer/optimizer.h"
+// #include <stdlib.h>
+// #include <string.h>
 import "C"
+
 import (
 	"fmt"
 	"unsafe"
