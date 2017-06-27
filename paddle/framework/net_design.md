@@ -1,7 +1,7 @@
 # Network Design
 
 `Network` is the container and controller of a set of operators,
-users can build a real network from a `NetDef` in protobuf message 
+users can build a real network from a `NetDef` which is a protobuf message 
 and use `Network.Run()` to run all the operators in the network.
 
 The `Network` will
@@ -179,6 +179,7 @@ class NetBuilder final {
     // ...
     net_->AddOp(def);
     need_rebuild_net_ = true;
+    net_->InferShape();
     // ...
   }
 
