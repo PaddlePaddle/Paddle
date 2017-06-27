@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
 #include <unordered_map>
+#include <vector>
 #include "paddle/framework/variable.h"
 #include "paddle/utils/Error.h"
 
@@ -11,16 +11,16 @@ namespace framework {
 const static Error AlreadyCreated("Variable has already been created");
 
 /**
- * Scope is an association of a name to Variable. All variables belong to `Scope`.
- * You need to specify a scope to run a Net, i.e., `net.Run(&scope)`. One net can
- * run in different scopes and update different variable in the scope.
+ * Scope is an association of a name to Variable. All variables belong to
+ * `Scope`. You need to specify a scope to run a Net, i.e., `net.Run(&scope)`.
+ * One net can run in different scopes and update different variable in the
+ * scope.
  */
 class Scope {
  public:
   Scope() {}
 
-  explicit Scope(const std::shared_ptr<Scope> &scope):
-          parent_(scope) {}
+  explicit Scope(const std::shared_ptr<Scope>& scope) : parent_(scope) {}
 
   ~Scope() {}
 
@@ -29,8 +29,7 @@ class Scope {
   Error __must_check CreateVariable(const std::string& name);
 
   // Get Variable from this Scope, this function will recursive find Variable
-  // from it's parent scope.
-  // Return nullptr if not found.
+  // from it's parent scope. Return nullptr if not found.
   Variable* GetVariable(const std::string& name) const;
 
   // find and return Variables in the scope it self.
@@ -44,7 +43,7 @@ class Scope {
 
  private:
   std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
-  std::shared_ptr<Scope> parent_ {nullptr};
+  std::shared_ptr<Scope> parent_{nullptr};
 };
 
 }  // namespace framework

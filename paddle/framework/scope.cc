@@ -3,7 +3,7 @@
 namespace paddle {
 namespace framework {
 
-Error Scope::CreateVariable(const std::string &name) {
+Error Scope::CreateVariable(const std::string& name) {
   if (name == "") {
     return Error("Variable name should not be empty");
   }
@@ -22,7 +22,7 @@ Variable* Scope::GetVarLocally(const std::string& name) const {
   return nullptr;
 }
 
-Variable* Scope::GetVariable(const std::string &name) const {
+Variable* Scope::GetVariable(const std::string& name) const {
   Variable* var = GetVarLocally(name);
   if (var != nullptr) {
     return var;
@@ -33,7 +33,7 @@ Variable* Scope::GetVariable(const std::string &name) const {
   }
 }
 
-Variable* Scope::GetOrCreateVariable(const std::string &name) {
+Variable* Scope::GetOrCreateVariable(const std::string& name) {
   Variable* var = GetVariable(name);
   if (var != nullptr) {
     return var;
@@ -47,10 +47,9 @@ Variable* Scope::GetOrCreateVariable(const std::string &name) {
   }
 }
 
-bool Scope::HaveVariable(const std::string &name) {
+bool Scope::HaveVariable(const std::string& name) {
   return vars_.count(name) != 0;
 }
 
 }  // namespace framework
 }  // namespace paddle
-
