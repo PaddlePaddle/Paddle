@@ -47,6 +47,7 @@ option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
+option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -70,7 +71,7 @@ if(ANDROID)
         "Disable RDMA when cross-compiling for Android" FORCE)
 endif(ANDROID)
 
-set(THIRD_PARTY_PATH "${PROJ_ROOT}/third_party" CACHE STRING
+set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")
 
 if (WITH_C_API AND WITH_PYTHON)
@@ -107,6 +108,7 @@ include(configure)          # add paddle env configuration
 include_directories("${PROJ_ROOT}")
 include_directories("${PROJ_ROOT}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/cclient")
 
 set(EXTERNAL_LIBS
     ${GFLAGS_LIBRARIES}
@@ -127,6 +129,11 @@ endif(WITH_GPU)
 add_subdirectory(proto)
 add_subdirectory(paddle)
 add_subdirectory(python)
+
+if(WITH_GOLANG)
+    #TODO (add go/master/c back when fixed)
+    add_subdirectory(go/pserver/cclient)
+endif(WITH_GOLANG)
 
 if(WITH_DOC)
     add_subdirectory(doc)

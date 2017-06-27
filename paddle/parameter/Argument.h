@@ -149,6 +149,7 @@ struct Argument {
                                      : getBatchSize();
   }
 
+  bool hasSeq() const { return sequenceStartPositions != nullptr; }
   bool hasSubseq() const { return subSequenceStartPositions != nullptr; }
 
   const int* getCpuStartPositions() const {

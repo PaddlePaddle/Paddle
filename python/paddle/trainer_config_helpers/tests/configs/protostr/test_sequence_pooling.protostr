@@ -9,7 +9,7 @@ layers {
   name: "__seq_pooling_0__"
   type: "max"
   size: 100
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "dat_in"
   }
@@ -19,7 +19,7 @@ layers {
   name: "__seq_pooling_1__"
   type: "max"
   size: 100
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "dat_in"
   }
@@ -29,7 +29,7 @@ layers {
   name: "__seq_pooling_2__"
   type: "average"
   size: 100
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "dat_in"
   }
@@ -40,7 +40,7 @@ layers {
   name: "__seq_pooling_3__"
   type: "average"
   size: 100
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "dat_in"
   }
@@ -51,7 +51,7 @@ layers {
   name: "__seq_pooling_4__"
   type: "average"
   size: 100
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "dat_in"
   }
@@ -62,7 +62,7 @@ layers {
   name: "__seq_pooling_5__"
   type: "average"
   size: 100
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "dat_in"
   }
@@ -73,7 +73,7 @@ layers {
   name: "__seq_pooling_6__"
   type: "max"
   size: 100
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "dat_in"
   }

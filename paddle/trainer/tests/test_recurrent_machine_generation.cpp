@@ -124,6 +124,8 @@ TEST(RecurrentGradientMachine, test_generation) {
                      bool beam_search) {
     FLAGS_config_args = beam_search ? "beam_search=1" : "beam_search=0";
     for (auto useGpu : useGpuConfs) {
+      LOG(INFO) << configFile << " useGpu=" << useGpu
+                << " beam_search=" << beam_search;
       testGeneration(configFile, useGpu, hasSubseq, expRetFile);
     }
   };

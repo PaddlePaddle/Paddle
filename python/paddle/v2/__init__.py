@@ -37,9 +37,25 @@ import plot
 import image
 
 __all__ = [
-    'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
-    'event', 'data_type', 'attr', 'pooling', 'data_feeder', 'dataset', 'reader',
-    'topology', 'networks', 'infer', 'plot', 'evaluator', 'image'
+    'optimizer',
+    'layer',
+    'activation',
+    'parameters',
+    'init',
+    'trainer',
+    'event',
+    'data_type',
+    'attr',
+    'pooling',
+    'data_feeder',
+    'dataset',
+    'reader',
+    'topology',
+    'networks',
+    'infer',
+    'plot',
+    'evaluator',
+    'image',
 ]
 
 

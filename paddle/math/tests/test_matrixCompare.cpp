@@ -1127,4 +1127,18 @@ TEST(Matrix, MaxOutFwdBwd) {
   }
 }
 
+TEST(CpuMatrix, copyFrom) {
+  const size_t height = 1000;
+  const size_t width = 1000;
+  CpuMatrix cpu(height, width);
+  GpuMatrix gpu(height, width);
+  CpuMatrix copy(height, width);
+
+  cpu.randomizeUniform();
+  gpu.copyFrom(cpu);
+  copy.copyFrom(gpu, HPPL_STREAM_DEFAULT);
+
+  TensorCheckEqual(cpu, copy);
+}
+
 #endif

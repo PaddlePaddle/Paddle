@@ -5,6 +5,7 @@ set(proto_filenames
     ParameterConfig.proto
     ParameterService.proto
     TrainerConfig.proto
+    OptimizerConfig.proto
     ParameterServerConfig.proto)
 
 set(PROTO_GEN)
@@ -35,10 +36,8 @@ foreach(filename ${proto_filenames})
         DEPENDS ${filename} ${external_project_dependencies})
 endforeach()
 
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/proto)
-
 add_custom_target(gen_proto_cpp ALL DEPENDS ${PROTO_GEN})
 add_custom_target(gen_proto_py ALL DEPENDS ${PROTO_GEN_PY})
-add_library(paddle_proto STATIC
-    ${PROTO_GEN})
+
+add_library(paddle_proto STATIC ${PROTO_GEN})
 target_include_directories(paddle_proto PUBLIC ${CMAKE_CURRENT_BINARY_DIR})

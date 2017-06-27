@@ -4,6 +4,7 @@ set(TRAINER_SOURCES
         ParameterUpdater.cpp
         ParamUtil.cpp
         RemoteParameterUpdater.cpp
+        NewRemoteParameterUpdater.cpp
         Tester.cpp
         Trainer.cpp
         TrainerInternal.cpp
@@ -16,6 +17,7 @@ set(TRAINER_HEADERS
         ParameterUpdater.h
         ParamUtil.h
         RemoteParameterUpdater.h
+        NewRemoteParameterUpdater.h
         Tester.h
         TesterConfig.h
         Trainer.h
@@ -23,6 +25,13 @@ set(TRAINER_HEADERS
         TrainerInternalConfig.h
         ThreadParameterUpdater.h
         TrainerConfigHelper.h)
+
+if(NOT WITH_GOLANG)
+  list(REMOVE_ITEM TRAINER_SOURCES
+          NewRemoteParameterUpdater.cpp)
+  list(REMOVE_ITEM TRAINER_HEADERS
+          NewRemoteParameterUpdater.h)
+endif()
 
 add_library(paddle_trainer_lib STATIC
     ${TRAINER_SOURCES})
@@ -56,3 +65,13 @@ install(TARGETS paddle_trainer paddle_merge_model
 
 set_target_properties(paddle_trainer PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 set_target_properties(paddle_merge_model PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+if(APPLE)
+  set(CMAKE_EXE_LINKER_FLAGS "-framework CoreFoundation -framework Security")
+endif()
+
+if(WITH_GOLANG)
+  add_dependencies(paddle_trainer_lib paddle_pserver_cclient)
+  target_link_libraries(paddle_trainer ${CMAKE_BINARY_DIR}/go/pserver/cclient/libpaddle_pserver_cclient.a)
+  target_link_libraries(paddle_trainer_lib ${CMAKE_BINARY_DIR}/go/pserver/cclient/libpaddle_pserver_cclient.a)
+endif(WITH_GOLANG)

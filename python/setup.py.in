@@ -1,6 +1,5 @@
 from setuptools import setup
 
-
 packages=['paddle',
           'paddle.proto',
           'paddle.trainer',
@@ -14,6 +13,7 @@ packages=['paddle',
 setup_requires=["requests",
                 "numpy",
                 "protobuf==3.1",
+                "recordio",
                 "matplotlib",
                 "rarfile"]
 
@@ -27,5 +27,5 @@ setup(name='paddle',
       packages=packages,
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}'
-      }
+      },
 )

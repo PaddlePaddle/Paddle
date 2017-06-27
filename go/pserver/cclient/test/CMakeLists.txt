@@ -1,11 +1,3 @@
-cmake_minimum_required(VERSION 3.0)
 
-include_directories(${CMAKE_BINARY_DIR})
-
-add_executable(main main.c)
-add_dependencies(main client)
-
-if(APPLE)
-  set(CMAKE_EXE_LINKER_FLAGS "-framework CoreFoundation -framework Security")
-endif()
-target_link_libraries(main ${CMAKE_BINARY_DIR}/libclient.a)
+cc_library(main SRCS main.c DEPS paddle_pserver_cclient)
+cc_test(test_cclient SRCS test_cclient.c DEPS paddle_pserver_cclient)
