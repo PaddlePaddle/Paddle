@@ -4,6 +4,7 @@ cache:
   directories:
     - $HOME/.ccache
     - $HOME/.cache/pip
+    - $TRAVIS_BUILD_DIR/build/third_party
 sudo: required
 dist: trusty
 os:
@@ -41,7 +42,9 @@ before_install:
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 script:
-  - paddle/scripts/travis/$JOB.sh
+  - |
+    timeout 2580 paddle/scripts/travis/${JOB}.sh  # 43min timeout
+    RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 142 ]; then true; else false; fi;
 notifications:
   email:
     on_success: change

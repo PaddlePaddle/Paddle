@@ -19,7 +19,7 @@ limitations under the License. */
 #include <stdio.h>
 #include <memory>
 #include <string>
-#include "Compiler.h"
+#include "paddle/platform/must_check.h"
 
 namespace paddle {
 
