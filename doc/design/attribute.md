@@ -86,7 +86,7 @@ Each operator stores its attributes. For faster attribute access, we should not 
 ```cpp
 class OperatorBase {
  public:
-  Error InitializeAttribute(const AttributeReader& attrs) = 0;
+  virtual Error InitializeAttribute(const AttributeReader& attrs) = 0;
 };
 
 class CosineOp : public OperatorBase {
