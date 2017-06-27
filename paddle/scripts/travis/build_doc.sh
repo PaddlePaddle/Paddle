@@ -1,15 +1,19 @@
 #!/bin/bash
+set -e
 
-# Add set -e, cd to directory.
-source ./common.sh
+# Create the build directory for CMake.
+mkdir -p $TRAVIS_BUILD_DIR/build
+cd $TRAVIS_BUILD_DIR/build
+
 # Compile Documentation only.
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_Fortran_COMPILER=/usr/bin/gfortran-4.8 -DWITH_GPU=OFF -DWITH_DOC=OFF -DWITH_STYLE_CHECK=OFF ${EXTRA_CMAKE_OPTS}
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=OFF -DWITH_STYLE_CHECK=OFF
+
 mkdir output
 make -j `nproc`
 find .. -name '*whl' | xargs pip install  # install all wheels.
 rm -rf *
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_Fortran_COMPILER=/usr/bin/gfortran-4.8 -DWITH_GPU=OFF -DWITH_DOC=ON ${EXTRA_CMAKE_OPTS}
-make paddle_docs paddle_docs_cn
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=ON
+make -j `nproc` paddle_docs paddle_docs_cn
 
 # check websites for broken links
 linkchecker doc/en/html/index.html
