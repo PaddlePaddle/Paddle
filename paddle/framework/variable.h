@@ -25,19 +25,22 @@ class Variable {
  public:
   template <typename T>
   const T& Get() const {
-    PADDLE_ASSERT(holder_ != nullptr);
-    PADDLE_ASSERT(std::type_index(typeid(T)) ==
-                  std::type_index(holder_->Type()));
+    PADDLE_ASSERT(IsType<T>());
     return *static_cast<const T*>(holder_->Ptr());
   }
 
   template <typename T>
   T* GetMutable() {
-    if (holder_ == nullptr ||
-        std::type_index(typeid(T)) != std::type_index(holder_->Type())) {
+    if (!IsType<T>()) {
       holder_.reset(new PlaceholderImpl<T>(new T()));
     }
     return static_cast<T*>(holder_->Ptr());
+  }
+
+  template <typename T>
+  bool IsType() const {
+    return holder_ != nullptr &&
+           std::type_index(typeid(T)) == std::type_index(holder_->Type());
   }
 
  private:
