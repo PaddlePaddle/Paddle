@@ -23,12 +23,19 @@ namespace framework {
 
 class Variable {
  public:
+  /**
+   * @brief Get variable holding element.
+   * @tparam T element type
+   * @return nullptr if the variable holds nothing or holder's type and type T
+   * are mismatch, otherwise, return the element pointer.
+   */
   template <typename T>
-  const T& Get() const {
-    PADDLE_ASSERT(holder_ != nullptr);
-    PADDLE_ASSERT(std::type_index(typeid(T)) ==
-                  std::type_index(holder_->Type()));
-    return *static_cast<const T*>(holder_->Ptr());
+  const T* Get() const {
+    if (holder_ == nullptr ||
+        std::type_index(typeid(T)) != std::type_index(holder_->Type())) {
+      return nullptr;
+    }
+    return static_cast<const T*>(holder_->Ptr());
   }
 
   template <typename T>
