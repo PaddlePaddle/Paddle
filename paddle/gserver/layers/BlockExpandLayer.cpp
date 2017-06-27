@@ -41,13 +41,13 @@ bool BlockExpandLayer::init(const LayerMap& layerMap,
   std::vector<size_t> paddings = {(size_t)paddingH_, (size_t)paddingW_};
   std::vector<size_t> blocks = {(size_t)blockH_, (size_t)blockW_};
   createFunction(forward_,
-                 "ImageExpand",
+                 "BlockExpand",
                  FuncConfig()
                      .set("strides", strides)
                      .set("paddings", paddings)
                      .set("blocks", blocks));
   createFunction(backward_,
-                 "ImageExpandGrad",
+                 "BlockExpandGrad",
                  FuncConfig()
                      .set("strides", strides)
                      .set("paddings", paddings)

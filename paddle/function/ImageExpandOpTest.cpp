@@ -17,7 +17,7 @@ limitations under the License. */
 
 namespace paddle {
 
-TEST(ImageExpandForward, real) {
+TEST(BlockExpandForward, real) {
   for (size_t batchSize : {5, 32}) {
     for (size_t channels : {1, 5, 32}) {
       for (size_t inputHeight : {5, 33, 100}) {
@@ -29,7 +29,7 @@ TEST(ImageExpandForward, real) {
                 std::vector<size_t> strides = {stride, stride};
                 std::vector<size_t> paddings = {padding, padding};
                 std::vector<size_t> blocks = {block, block};
-                CpuGpuFuncCompare test("ImageExpand",
+                CpuGpuFuncCompare test("BlockExpand",
                                        FuncConfig()
                                            .set("strides", strides)
                                            .set("paddings", paddings)
@@ -60,7 +60,7 @@ TEST(ImageExpandForward, real) {
   }
 }
 
-TEST(ImageExpandBackward, real) {
+TEST(BlockExpandBackward, real) {
   for (size_t batchSize : {5, 32}) {
     for (size_t channels : {1, 5, 32}) {
       for (size_t inputHeight : {5, 33, 100}) {
@@ -72,7 +72,7 @@ TEST(ImageExpandBackward, real) {
                 std::vector<size_t> strides = {stride, stride};
                 std::vector<size_t> paddings = {padding, padding};
                 std::vector<size_t> blocks = {block, block};
-                CpuGpuFuncCompare test("ImageExpandGrad",
+                CpuGpuFuncCompare test("BlockExpandGrad",
                                        FuncConfig()
                                            .set("strides", strides)
                                            .set("paddings", paddings)
