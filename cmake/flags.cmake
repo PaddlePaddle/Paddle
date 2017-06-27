@@ -101,7 +101,6 @@ set(COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
     -Wall
-    -Wextra
     -Werror
     -Wnon-virtual-dtor
     -Wdelete-non-virtual-dtor

@@ -117,6 +117,16 @@ class Error {
    */
   bool isOK() const { return msg_ == nullptr; }
 
+  bool operator==(const Error &o) const {
+    if (msg_ == o.msg_) {
+      return true;
+    } else if (msg_ != nullptr && o.msg_ != nullptr) {
+      return *msg_ == *o.msg_;
+    } else {  // one is nullptr, the other is not.
+      return false;
+    }
+  }
+
  private:
   std::shared_ptr<std::string> msg_;
 };
