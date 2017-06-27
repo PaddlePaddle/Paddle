@@ -20,7 +20,8 @@ limitations under the License. */
 
 namespace paddle {
 
-TEST(Im2ColFunctor, real) {
+template <DeviceType Device, class T>
+void TestIm2ColFunctor() {
   for (size_t channels : {1, 5, 32}) {
     for (size_t inputHeight : {5, 33, 100}) {
       for (size_t inputWidth : {5, 32, 96}) {
@@ -50,16 +51,18 @@ TEST(Im2ColFunctor, real) {
                                                      filterHeight,
                                                      filterWidth});
 
-                VectorPtr input = Vector::create(imShape.getElements(), false);
                 size_t height = channels * filterHeight * filterWidth;
                 size_t width = outputHeight * outputWidth;
+                VectorPtr input1 = Vector::create(imShape.getElements(), false);
+                VectorPtr input2 = Vector::create(imShape.getElements(), false);
                 MatrixPtr output1 = Matrix::create(height, width, false, false);
                 MatrixPtr output2 = Matrix::create(width, height, false, false);
-                Im2ColFunctor<kCFO, DEVICE_TYPE_CPU, real> im2col1;
-                Im2ColFunctor<kOCF, DEVICE_TYPE_CPU, real> im2col2;
+                input1->uniform(0.001, 1);
+                input2->copyFrom(*input1);
 
-                input->uniform(0.001, 1);
-                im2col1(input->getData(),
+                Im2ColFunctor<kCFO, Device, T> im2Col1;
+                Im2ColFunctor<kOCF, Device, T> im2Col2;
+                im2Col1(input1->getData(),
                         imShape,
                         output1->getData(),
                         colShape1,
@@ -67,7 +70,7 @@ TEST(Im2ColFunctor, real) {
                         stride,
                         padding,
                         padding);
-                im2col2(input->getData(),
+                im2Col2(input2->getData(),
                         imShape,
                         output2->getData(),
                         colShape2,
@@ -76,9 +79,32 @@ TEST(Im2ColFunctor, real) {
                         padding,
                         padding);
 
+                // The transposition of the result of ColFormat == kCFO
+                // is equal to the result of ColFormat == kOCF.
                 MatrixPtr test;
                 output2->transpose(test, true);
                 autotest::TensorCheckErr(*output1, *test);
+
+                Col2ImFunctor<kCFO, Device, T> col2Im1;
+                Col2ImFunctor<kOCF, Device, T> col2Im2;
+                col2Im1(input1->getData(),
+                        imShape,
+                        output1->getData(),
+                        colShape1,
+                        stride,
+                        stride,
+                        padding,
+                        padding);
+                col2Im2(input2->getData(),
+                        imShape,
+                        output2->getData(),
+                        colShape2,
+                        stride,
+                        stride,
+                        padding,
+                        padding);
+
+                autotest::TensorCheckErr(*input1, *input2);
               }
             }
           }
@@ -88,23 +114,12 @@ TEST(Im2ColFunctor, real) {
   }
 }
 
-#if 0
-TEST(Col2ImFunctor, real) {
-  for (size_t channels : {1, 5, 32}) {
-    for (size_t inputHeight : {5, 33, 100}) {
-      for (size_t inputWidth : {5, 32, 96}) {
-        for (size_t filterHeight : {1, 5}) {
-          for (size_t filterWidth : {3, 7}) {
-            for (size_t stride : {1, 2}) {
-              for (size_t padding : {0, 1}) {
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
+TEST(Im2ColFunctor, CPU) { TestIm2ColFunctor<DEVICE_TYPE_CPU, float>(); }
+
+#ifndef PADDLE_ONLY_CPU
+
+TEST(Im2ColFunctor, GPU) { TestIm2ColFunctor<DEVICE_TYPE_GPU, float>(); }
+
 #endif
 
 }  // namespace paddle
