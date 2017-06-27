@@ -10,17 +10,9 @@ add_subdirectory(trainer)
 add_subdirectory(scripts)
 add_subdirectory(optimizer)
 add_subdirectory(strings)
-add_subdirectory(memory)
-
-# Do not build go directory until go cmake is working smoothly.
-# if(CMAKE_Go_COMPILER)
-#   add_subdirectory(go)
-# endif()
-
-find_package(Boost QUIET)
 
 if(Boost_FOUND)
-  include_directories(${Boost_INCLUDE_DIRS})
+  add_subdirectory(memory)
   add_subdirectory(platform)
   add_subdirectory(framework)
 endif()
