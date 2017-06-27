@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <stddef.h>  // for size_t
 
-#include <thrust/system_error.h>
 #include <thrust/system/cuda/error.h>
+#include <thrust/system_error.h>
 
 namespace paddle {
 namespace memory {
@@ -36,14 +36,14 @@ inline void throw_on_error(cudaError_t e, const char* message) {
 // default, we should use GPUAllocator<staging=false>.
 template <bool staging>
 class GPUAllocator {
-public:
+ public:
   void* Alloc(size_t size);
   void Free(void* p, size_t size);
 };
 
 template <>
 class GPUAllocator<false> {
-public:
+ public:
   void* Alloc(size_t size) {
     void* p = 0;
     cudaError_t result = cudaMalloc(&p, size);
@@ -60,22 +60,22 @@ public:
     // that is returned if you ever call cudaFree after the
     // driver has already shutdown. This happens only if the
     // process is terminating, in which case we don't care if
-    // cudaFree succeeds. 
+    // cudaFree succeeds.
     auto err = cudaFree(p);
     if (err != cudaErrorCudartUnloading) {
-        throw_on_error(err, "cudaFree failed");
+      throw_on_error(err, "cudaFree failed");
     }
   }
 };
 
 template <>
 class GPUAllocator<true> {
-public:
+ public:
   void* Alloc(size_t size) {
     void* p = 0;
     cudaError_t result = cudaMallocHost(&p, size);
     if (result == cudaSuccess) {
-        return p;
+      return p;
     }
     // clear last error
     cudaGetLastError();
