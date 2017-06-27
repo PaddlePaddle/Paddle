@@ -1,1 +1,5 @@
-cc_test(system_allocator_test SRCS system_allocator_test.cc)
+if(${WITH_GPU})
+  nv_test(system_allocator_test SRCS system_allocator_test.cc)
+else(${WITH_GPU})
+  cc_test(system_allocator_test SRCS system_allocator_test.cc)
+endif(${WITH_GPU})

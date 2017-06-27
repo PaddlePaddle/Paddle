@@ -23,14 +23,31 @@ limitations under the License. */
 #include <thrust/system_error.h>
 #endif  // PADDLE_ONLY_CPU
 
+#include "paddle/platform/assert.h"
+
 namespace paddle {
 namespace memory {
 namespace detail {
 
-class SystemAllocator {
+class CPUDeleter {
  public:
-  virtual void* Alloc(size_t size) = 0;
-  virtual void* Free(void* p) = 0;
+  CPUDeleter(void* ptr, size_t size, bool locked)
+      : ptr_(ptr), size_(size), locked_(locked) {}
+
+  void* Ptr() { return ptr_; }
+
+  void operator()(void* ptr) {
+    PADDLE_ASSERT(ptr == ptr_);
+    if (ptr_ != nullptr && locked_) {
+      munlock(ptr_, size_);
+    }
+    std::free(ptr_);
+  }
+
+ private:
+  void* ptr_;
+  size_t size_;
+  bool locked_;
 };
 
 // CPUAllocator<lock_memory=true> calls mlock, which returns pinned
@@ -39,21 +56,14 @@ class SystemAllocator {
 // available to the system for paging.  So, by default, we should use
 // CPUAllocator<staging=false>.
 template <bool lock_memory>
-class CPUAllocator : public SystemAllocator {
+class CPUAllocator {
  public:
-  virtual void* Alloc(size_t size) {
+  static CPUDeleter Alloc(size_t size) {
     void* p = std::malloc(size);
     if (p != nullptr && lock_memory) {
       mlock(p, size);
     }
-    return p;
-  }
-
-  virtual void Free(void* p, size_t size) {
-    if (p != nullptr && lock_memory) {
-      munlock(p, size);
-    }
-    std::free(p);
+    return CPUDeleter(p, size, lock_memory);
   }
 };
 
@@ -67,6 +77,32 @@ inline void throw_on_error(cudaError_t e, const char* message) {
 }
 }  // namespace
 
+class GPUDeleter {
+ public:
+  GPUDeleter(void* ptr, size_t size, bool staging)
+      : ptr_(ptr), size_(size), staging_(staging) {}
+
+  void* Ptr() { return ptr_; }
+
+  void operator()(void* ptr) {
+    PADDLE_ASSERT(ptr == ptr_);
+    // Purposefully allow cudaErrorCudartUnloading, because
+    // that is returned if you ever call cudaFree after the
+    // driver has already shutdown. This happens only if the
+    // process is terminating, in which case we don't care if
+    // cudaFree succeeds.
+    cudaError_t err = staging_ ? cudaFreeHost(ptr) : cudaFree(ptr);
+    if (err != cudaErrorCudartUnloading) {
+      throw_on_error(err, "cudaFree{Host} failed");
+    }
+  }
+
+ private:
+  void* ptr_;
+  size_t size_;
+  bool staging_;
+};
+
 // GPUAllocator<staging=true> calls cudaHostMalloc, which returns
 // pinned and locked memory as staging areas for data exchange
 // between host and device.  Allocates too much would reduce the
@@ -75,28 +111,14 @@ inline void throw_on_error(cudaError_t e, const char* message) {
 template <bool staging>
 class GPUAllocator {
  public:
-  void* Alloc(size_t size) {
+  static GPUDeleter Alloc(size_t size) {
     void* p = 0;
     cudaError_t result =
         staging ? cudaMallocHost(&p, size) : cudaMalloc(&p, size);
-    if (result == cudaSuccess) {
-      return p;
+    if (result != cudaSuccess) {
+      cudaGetLastError();  // clear error if there is any.
     }
-    // clear last error
-    cudaGetLastError();
-    return nullptr;
-  }
-
-  void Free(void* p, size_t size) {
-    // Purposefully allow cudaErrorCudartUnloading, because
-    // that is returned if you ever call cudaFree after the
-    // driver has already shutdown. This happens only if the
-    // process is terminating, in which case we don't care if
-    // cudaFree succeeds.
-    auto err = staging ? cudaFreeHost(p) : cudaFree(p);
-    if (err != cudaErrorCudartUnloading) {
-      throw_on_error(err, "cudaFree failed");
-    }
+    return GPUDeleter(result == cudaSuccess ? p : nullptr, size, staging);
   }
 };
 

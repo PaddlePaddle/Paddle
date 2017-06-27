@@ -13,36 +13,38 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/memory/detail/system_allocator.h"
+
+#include <memory>
+#include <vector>
+
 #include "gtest/gtest.h"
 
-TEST(CPUAllocator, NoLockMem) {
-  paddle::memory::detail::CPUAllocator<false> a;
-  void* p = a.Alloc(4096);
-  EXPECT_NE(p, nullptr);
-  a.Free(p, 4096);
+template <typename Allocator>
+void TestAllocator() {
+  {
+    auto d = Allocator::Alloc(sizeof(int));
+    EXPECT_NE(d.Ptr(), nullptr);
+    std::unique_ptr<int> p(static_cast<int*>(d.Ptr()), d);
+  }
+  {
+    auto d = Allocator::Alloc(0);
+    EXPECT_EQ(d.Ptr(), nullptr);
+    std::unique_ptr<int> p(static_cast<int*>(d.Ptr()), d);
+  }
 }
 
+TEST(CPUAllocator, NoLockMem) {
+  TestAllocator<paddle::memory::detail::CPUAllocator<false>>();
+}
 TEST(CPUAllocator, LockMem) {
-  paddle::memory::detail::CPUAllocator<true> a;
-  void* p = a.Alloc(4096);
-  EXPECT_NE(p, nullptr);
-  a.Free(p, 4096);
+  TestAllocator<paddle::memory::detail::CPUAllocator<true>>();
 }
 
 #ifndef PADDLE_ONLY_CPU
-
-TEST(GPUAllocator, NonStaging) {
-  paddle::memory::detail::GPUAllocator<false> a;
-  void* p = a.Alloc(4096);
-  EXPECT_NE(p, nullptr);
-  a.Free(p, 4096);
+TEST(GPUAllocator, NoStaging) {
+  TestAllocator<paddle::memory::detail::GPUAllocator<false>>();
 }
-
 TEST(GPUAllocator, Staging) {
-  paddle::memory::detail::GPUAllocator<true> a;
-  void* p = a.Alloc(4096);
-  EXPECT_NE(p, nullptr);
-  a.Free(p, 4096);
+  TestAllocator<paddle::memory::detail::GPUAllocator<true>>();
 }
-
 #endif  // PADDLE_ONLY_CPU
