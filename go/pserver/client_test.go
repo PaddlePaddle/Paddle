@@ -1,6 +1,7 @@
 package pserver_test
 
 import (
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -71,18 +72,22 @@ func TestClientFull(t *testing.T) {
 	}
 
 	const numParameter = 100
+	config, err := ioutil.ReadFile("./cclient/test/testdata/optimizer.pb.txt")
+	if err != nil {
+		t.Fatalf("read optimizer proto failed")
+	}
 	for i := 0; i < numParameter; i++ {
 		var p pserver.Parameter
 		p.Name = "p_" + strconv.Itoa(i)
 		p.ElementType = pserver.Float32
 		p.Content = make([]byte, (i+1)*100)
-		err := c.InitParam(pserver.ParameterWithConfig{Param: p})
+		err := c.InitParam(pserver.ParameterWithConfig{Param: p, Config: config})
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	err := c.FinishInitParams()
+	err = c.FinishInitParams()
 	if err != nil {
 		t.Fatal(err)
 	}

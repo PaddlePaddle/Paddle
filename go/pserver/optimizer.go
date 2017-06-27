@@ -61,6 +61,7 @@ func (o *optimizer) UpdateParameter(g Gradient) error {
 		return fmt.Errorf("Name: %s, parameter and gradient element type not match, parameter: %v, gradient: %v", g.Name, o.ElementType, g.ElementType)
 	}
 
+	fmt.Println(g)
 	r := C.paddle_update_parameter(o.opt, C.paddle_element_type(g.ElementType), unsafe.Pointer(&g.Content[0]), C.int(len(g.Content)))
 	if r != 0 {
 		return fmt.Errorf("optimizer update returned error code: %d", r)
