@@ -77,6 +77,15 @@
 # /cmake/external/*.cmake:
 #
 #   cc_test(example_test SRCS example_test.cc DEPS example glog gflags)
+#
+# To build a go static library using Golang, use the go_ prefixed version:
+#
+#   go_library(example STATIC)
+#
+# To build a go shared library using Golang, use the go_ prefixed version:
+#
+#   go_library(example SHARED)
+#
 
 if(NOT APPLE)
     find_package(Threads REQUIRED)
@@ -248,15 +257,6 @@ set(GOPATH "${CMAKE_CURRENT_BINARY_DIR}/go")
 file(MAKE_DIRECTORY ${GOPATH})
 set(PADDLE_IN_GOPATH "${GOPATH}/src/github.com/PaddlePaddle/Paddle")
 
-# Because api.go defines a GO wrapper to ops and tensor, it depends on
-# both.  This implies that if any of tensor.{h,cc}, ops.{h,cu}, or
-# api.go is changed, api need to be re-built.
-# go_library(api
-#   SRCS
-#   api.go
-#   DEPS
-#   tensor # Because ops depend on tensor, this line is optional.
-#   ops)
 function(go_library TARGET_NAME)
   set(options STATIC static SHARED shared)
   set(oneValueArgs "")
@@ -296,7 +296,7 @@ function(go_library TARGET_NAME)
     COMMAND rm -rf ${PADDLE_IN_GOPATH}                                                                                                                                         
     COMMAND ln -sf ${CMAKE_SOURCE_DIR} ${PADDLE_IN_GOPATH}
     # Automatically get all dependencies specified in the source code                                                                                                                                 
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d .
+    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d ./..
     # Golang build source code
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
     -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
