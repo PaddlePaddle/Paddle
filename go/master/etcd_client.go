@@ -18,10 +18,17 @@ const (
 	DefaultAddrPath = "/master/addr"
 )
 
-// DatabaseOperator is an interface fo database operator, it's useful for unittest
+// DatabaseOperator is an interface fo database operator,
+// it's useful for unittest
 type DatabaseOperator interface {
 	WaitMasterReady(key string, interval int) []byte
 	WatchWithKey(key string, valChan chan string)
+}
+
+// EtcdClientWithoutLock is the etcd client the master users
+// for service discovery
+type EtcdClientWithoutLock struct {
+	client *clientv3.Client
 }
 
 // EtcdClient is the etcd client that master uses for fault tolerance
@@ -34,7 +41,7 @@ type EtcdClient struct {
 }
 
 // NewEtcdClientWithoutLock creates a new EtcdClient without lock
-func NewEtcdClientWithoutLock(endpoints []string) (*EtcdClient, error) {
+func NewEtcdClientWithoutLock(endpoints []string) (*EtcdClientWithoutLock, error) {
 	log.Debugf("Connecting to etcd at %v", endpoints)
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
@@ -43,7 +50,7 @@ func NewEtcdClientWithoutLock(endpoints []string) (*EtcdClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	e := &EtcdClient{
+	e := &EtcdClientWithoutLock{
 		client: cli,
 	}
 
@@ -167,7 +174,7 @@ func (e *EtcdClient) Load() ([]byte, error) {
 }
 
 // WaitMasterReady will wait for master is ready
-func (e *EtcdClient) WaitMasterReady(key string, timeout int) []byte {
+func (e *EtcdClientWithoutLock) WaitMasterReady(key string, timeout int) []byte {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
 		resp, err := e.client.Get(ctx, key)
@@ -189,7 +196,7 @@ func (e *EtcdClient) WaitMasterReady(key string, timeout int) []byte {
 }
 
 // WatchWithKey watch the specify key and send to valChan
-func (e *EtcdClient) WatchWithKey(key string, valChan chan string) {
+func (e *EtcdClientWithoutLock) WatchWithKey(key string, valChan chan string) {
 	rch := e.client.Watch(context.Background(), key)
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
