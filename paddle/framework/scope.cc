@@ -34,15 +34,17 @@ Variable* Scope::GetVariable(const std::string &name) const {
 }
 
 Variable* Scope::GetOrCreateVariable(const std::string &name) {
-  Variable* var;
-  var = GetVariable(name);
-  if (var == nullptr) {
-    auto err = CreateVariable(name);
-    if (!err.isOK()) {
-      return nullptr;
-    }
+  Variable* var = GetVariable(name);
+  if (var != nullptr) {
+    return var;
   }
-  return GetVariable(name);
+
+  Error err = CreateVariable(name);
+  if (!err.isOK()) {
+    return nullptr;
+  } else {
+    return GetVariable(name);
+  }
 }
 
 bool Scope::HaveVariable(const std::string &name) {
