@@ -41,7 +41,7 @@ class Scope {
   const Variable* GetVariable(const std::string& name) const;
 
  private:
-    std::unordered_map<std::string, std::unique_ptr<Vairable>> vars_;
+    std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
 };
 ```
 
