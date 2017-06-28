@@ -1,7 +1,7 @@
 # Network Design
 
 `Network` is the container and controller of a set of operators,
-users can build a real network from a `NetDef` which is a protobuf message 
+user can build a real network from a `NetDef` which is a protobuf message 
 and use `Network.Run()` to run all the operators in the network.
 
 The `Network` will
@@ -21,11 +21,11 @@ typedef int OpIndex;
 // The minimum a network should be implemented.
 class NetBase {
  public:
-  // run all the operators and return success(true) or not, all the
-  // variables are located in `scope`. `ctx` describes the detail execution
+  // run all the operators and return success(true) or not, with all the
+  // variables are located in `scope`. `context` describes the detail execution
   // environment for ops. `begin` and `end` specify the scope of `ops_` to run,
   // If no positive indexes are provided, all operators in `ops_` will run.
-  virtual bool Run(Scope *scope, OpContext *ctx, OpIndex begin = -1,
+  virtual bool Run(Scope *scope, OpContext *context, OpIndex begin = -1,
                    OpIndex end = -1) const = 0;
 
   // Add an Operator according to `def`.
@@ -65,8 +65,8 @@ std::unique<NetBase> NetBase::Create(const NetDef& def) {
 }
 ```
 
-Network is designed as the container of operators, to make it more extendable,
-we decoupling it from the related variable resources. 
+Network is designed as the container of operators. to make it more extendable,
+we decouple it from the related variable resources. 
 
 `Run(Scope* scope)` takes the scope as a argument so that it can run in different scopes.
 
@@ -74,17 +74,17 @@ Finally, `NetBase` can be used as followed
 
 ```c++
 Scope default_scope;
-OpContext default_ctx;
+OpContext default_context;
 auto net = NetBase::CreateNet(def);
 
 if (net) {
-  net.Run(&default_scope, &default_ctx);
+  net.Run(&default_scope, &default_context);
 }
 ```
 
 ## `PlainNet` as a simple implementation of `BaseNet`
 
-A very basic implementation is as followed, all it does is simply to run every operators in sequence.
+A very basic implementation is as follows. All it does is simply to run every operators in sequence.
 
 ```c++
 class PlainNet final : public NetBase {
@@ -96,7 +96,7 @@ class PlainNet final : public NetBase {
 
   // Run all the operators with the `scope`, if no scope is provided, default
   // scope will be used instead. If no OpContext is provicded, default context will be used.
-  virtual bool Run(Scope *scope = nullptr, OpContext *ctx=nullptr, OpIndex begin = -1,
+  virtual bool Run(Scope *scope = nullptr, OpContext *context=nullptr, OpIndex begin = -1,
                    OpIndex end = -1) const override;
 
   virtual OpIndex AddOp(const proto::OpDef &def) override;
@@ -112,7 +112,7 @@ class PlainNet final : public NetBase {
   // Add a operator which is identified as `type` and has attributes described
   // in `attrs`, the `inputs` are the keys of readonly input variables,
   // `outputs` are keys of mutable output variables. An `OpIndex` will be
-  // returned which indicates the offset of the new operator in `ops_`.
+  // returned to indicate the offset of the new operator in `ops_`.
   OpIndex AddOp(const std::string &type, const std::vector<string> &inputs,
                 const std::vector<string> &outputs,
                 const OprAttr &attrs = OprAttr());
@@ -128,7 +128,7 @@ the operators are created by `CreateNet`, and each operator is created by `AddOp
 
 
 ## PlainNet Usage
-`PlainNet` can be used to define and run a network as followed
+`PlainNet` can be used to define and run a network as follows
 
 ```c++
 // create an empty scope located on CPU device.
@@ -154,7 +154,7 @@ net.Run(&scope);
 ## `NetBuilder` as a C++ syntax wrapper
 This is a detailed description of the user-related C++ network API, and may not needed in the prototype development stage.
 
-The `NetBuilder` will give users a much simpler syntax as followed to create a network, and demonstrates how to use the `BaseNet`'s raw interfaces.
+The `NetBuilder` will give users a much simpler syntax as follows to create a network, and demonstrates how to use the `BaseNet`'s raw interfaces.
 
 ```c++
 Variable* fc_out = builder.AddOp("fc", input=image, size=100, activation="Sigmoid");
@@ -186,18 +186,18 @@ class NetBuilder final {
 
   void BackwardFrom(const Variable& cost);
 
-  void Run(Scope* scope, OpContext* ctx, bool need_backward = true) {
+  void Run(Scope* scope, OpContext* context, bool need_backward = true) {
     // backward.
     if (need_backward) {
       if (need_rebuild_net_) {
         AddBackwardOps();
         AddOptimizerOps();
       }
-      net_->Run(scope, ctx);
+      net_->Run(scope, context);
       return;
     }
     // just forward.
-    net_->Run(scope, ctx, 0, last_forward_op_);
+    net_->Run(scope, context, 0, last_forward_op_);
   }
 
  protected:
@@ -213,8 +213,8 @@ class NetBuilder final {
 
 ## Compatibility with RNN
 
-Benefit from the decoupling of `PlainNet.Run` and `Scope`, `PlainNet` is compatible with future RNN design, 
-for example we can implement a simple recurrent neural network as followed
+Benefitting from the decoupling of `PlainNet.Run` and `Scope`, `PlainNet` is compatible with future RNN design, 
+for example we can implement a simple recurrent neural network as follows
 
 ```c++
 // copy some `vars` form `source` to `target`
