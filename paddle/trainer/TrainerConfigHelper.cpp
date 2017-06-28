@@ -74,11 +74,13 @@ TrainerConfigHelper::TrainerConfigHelper(const std::string &configFilePath)
   m->updateDefaultValues();
 }
 
-TrainerConfigHelper::~TrainerConfigHelper() {
-  if (m) {
-    delete m;
-  }
+TrainerConfigHelper::TrainerConfigHelper(const TrainerConfig &config)
+    : m(new TrainerConfigHelperPrivate()) {
+  m->conf = config;
+  m->updateDefaultValues();
 }
+
+TrainerConfigHelper::~TrainerConfigHelper() { delete m; }
 
 const TrainerConfig &TrainerConfigHelper::getConfig() const { return m->conf; }
 
