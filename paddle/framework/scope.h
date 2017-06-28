@@ -31,9 +31,15 @@ namespace framework {
  * scope.
  */
 class Scope {
- public:
+ private:
   explicit Scope(const std::shared_ptr<Scope>& parent = nullptr)
       : parent_(parent) {}
+
+ public:
+  static std::shared_ptr<Scope> Create(
+      const std::shared_ptr<Scope>& parent = nullptr) {
+    return std::make_shared<Scope>(Scope(parent));
+  }
 
   /// Create Variable in this Scope. Failed if Variable already been
   /// created.

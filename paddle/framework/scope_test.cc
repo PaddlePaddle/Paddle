@@ -19,7 +19,7 @@ TEST(Scope, Create) {
   using paddle::framework::Scope;
   using paddle::framework::Variable;
 
-  Scope* scope = new Scope();
+  auto scope = Scope::Create();
 
   Variable* var0 = scope->CreateVariable("");
   EXPECT_NE(var0, nullptr);
@@ -42,10 +42,10 @@ TEST(Scope, Parent) {
   using paddle::framework::Scope;
   using paddle::framework::Variable;
 
-  const auto parent_scope_ptr = std::shared_ptr<Scope>(new Scope());
-  Scope* scope = new Scope(parent_scope_ptr);
+  auto parent_scope = Scope::Create();
+  auto scope = Scope::Create(parent_scope);
 
-  Variable* var0 = parent_scope_ptr->CreateVariable("a");
+  Variable* var0 = parent_scope->CreateVariable("a");
   EXPECT_NE(var0, nullptr);
 
   Variable* var1 = scope->GetVariable("a");
