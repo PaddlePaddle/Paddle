@@ -128,7 +128,7 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	// to save the program from making a copy of the
 	// paramter content.
 	parameter.Name = name
-	parameter.ElementType = opt.ElementType
+	parameter.ElementType = opt.elementType
 	parameter.Content = opt.GetWeights()
 	return nil
 }

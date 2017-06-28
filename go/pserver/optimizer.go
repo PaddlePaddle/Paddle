@@ -12,14 +12,15 @@ import "C"
 import (
 	"fmt"
 	"unsafe"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var nullPtr = unsafe.Pointer(uintptr(0))
 
 type optimizer struct {
-	opt *C.struct_paddle_optimizer
-	// used in GetParam, reconstruct Parameter from optimizer
-	ElementType ElementType
+	opt         *C.struct_paddle_optimizer
+	elementType ElementType
 }
 
 func cArrayToSlice(p unsafe.Pointer, len int) []byte {
@@ -37,13 +38,17 @@ func cArrayToSlice(p unsafe.Pointer, len int) []byte {
 
 func newOptimizer(paramWithConfigs ParameterWithConfig) *optimizer {
 	o := &optimizer{}
-	o.ElementType = paramWithConfigs.Param.ElementType
+	o.elementType = paramWithConfigs.Param.ElementType
 	p := paramWithConfigs.Param
 	c := paramWithConfigs.Config
+	log.WithFields(log.Fields{
+		"ElementType": p.ElementType,
+		"ParamSize":   len(p.Content),
+		"ConfigSize":  len(c),
+	}).Info("New Optimizer Created with config:")
 	var cbuffer unsafe.Pointer
-	cbuffer_len := int(unsafe.Sizeof(p.Content[0])) * len(p.Content)
-	cbuffer = C.malloc(C.size_t(cbuffer_len))
-	C.memcpy(cbuffer, unsafe.Pointer(&p.Content[0]), C.size_t(cbuffer_len))
+	cbuffer = C.malloc(C.size_t(len(p.Content)))
+	C.memcpy(cbuffer, unsafe.Pointer(&p.Content[0]), C.size_t(len(p.Content)))
 	o.opt = C.paddle_create_optimizer((*C.uchar)(&c[0]), C.int(len(c)),
 		C.paddle_element_type(p.ElementType), cbuffer, C.int(len(p.Content)),
 		(*C.char)(nullPtr), 0)
@@ -57,11 +62,10 @@ func (o *optimizer) GetWeights() []byte {
 }
 
 func (o *optimizer) UpdateParameter(g Gradient) error {
-	if o.ElementType != g.ElementType {
-		return fmt.Errorf("Name: %s, parameter and gradient element type not match, parameter: %v, gradient: %v", g.Name, o.ElementType, g.ElementType)
+	if o.elementType != g.ElementType {
+		return fmt.Errorf("Name: %s, parameter and gradient element type not match, parameter: %v, gradient: %v", g.Name, o.elementType, g.ElementType)
 	}
 
-	fmt.Println(g)
 	r := C.paddle_update_parameter(o.opt, C.paddle_element_type(g.ElementType), unsafe.Pointer(&g.Content[0]), C.int(len(g.Content)))
 	if r != 0 {
 		return fmt.Errorf("optimizer update returned error code: %d", r)
