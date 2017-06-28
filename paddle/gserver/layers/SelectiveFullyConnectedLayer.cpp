@@ -193,7 +193,8 @@ void SelectiveFullyConnectedLayer::forward(PassType passType) {
                                /*trans=*/false,
                                /*useGpu=*/useGpu_);
     //! TODO(yuyang18): Why we cannot invoke forwardActivation here?
-    activation_->forward(arg).check();
+    auto err = activation_->forward(arg);
+    CHECK(err.OK()) << err.msg();
   } else /* train and test in train, not generating */ {
     // during training, this layer output value is *Matrix*, which is input of
     // eg. multi-class-cross-entropy

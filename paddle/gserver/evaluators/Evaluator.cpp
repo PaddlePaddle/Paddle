@@ -793,7 +793,7 @@ real PrecisionRecallEvaluator::getValue(const std::string& name,
 std::string PrecisionRecallEvaluator::getType(const std::string& name,
                                               Error* err) const {
   this->getValue(name, err);
-  if (!err->isOK()) {
+  if (!err->OK()) {
     return "";
   }
   return "precision_recall";

@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <glog/logging.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <memory>
@@ -22,10 +21,10 @@ limitations under the License. */
 #include "paddle/platform/must_check.h"
 
 namespace paddle {
+namespace framework {
 
 /**
  * Error is Paddle error code. It only contain a std::string as error message.
- *
  *
  * There are two styles to return error in Paddle.
  *
@@ -49,7 +48,7 @@ namespace paddle {
  *    Example as below.
  *
  * @code{cpp}
- * Error bar();
+ * Error __must_check bar();
  *
  * int foo(Error* error) {
  *   // Do something.
@@ -67,7 +66,7 @@ namespace paddle {
  *   return someValue;
  * }
  *
- * Error foobar() {
+ * Error __must_check foobar() {
  *   Error err;
  *   // do something.
  *   foo(&err);
@@ -75,13 +74,9 @@ namespace paddle {
  * }
  * @endcode{cpp}
  *
- *
- * Currently there is a helper method 'check' in status, because Paddle always
- * use log(FATAL) or CHECK to make program exit before. When we clean all
- * log(FATAL) and CHECK in Paddle, 'check' method will be removed.
  */
 class Error {
-public:
+ public:
   /**
    * Construct a no-error value.
    */
@@ -90,7 +85,7 @@ public:
   /**
    * @brief Create an Error use printf syntax.
    */
-  explicit Error(const char* fmt, ...) {
+  explicit Error(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     constexpr size_t kBufferSize = 1024;
@@ -103,7 +98,7 @@ public:
   /**
    * @brief msg will return the error message. If no error, return nullptr.
    */
-  const char* msg() const {
+  const char *msg() const {
     if (msg_) {
       return msg_->c_str();
     } else {
@@ -120,17 +115,25 @@ public:
    * @brief isOK return True if there is no error.
    * @return True if no error.
    */
-  bool isOK() const { return msg_ == nullptr; }
+  bool OK() const { return msg_ == nullptr; }
 
-  /**
-   * @brief check this status by glog.
-   * @note It is a temp method used during cleaning Paddle code. It will be
-   *       removed later.
-   */
-  void check() const { CHECK(this->isOK()) << msg(); }
+  bool operator==(const Error &o) const {
+    if (msg_ == o.msg_) {
+      return true;
+    } else if (msg_ != nullptr && o.msg_ != nullptr) {
+      return *msg_ == *o.msg_;
+    } else {  // one is nullptr, the other is not.
+      return false;
+    }
+  }
 
-private:
+ private:
   std::shared_ptr<std::string> msg_;
 };
+
+}  // namespace framework
+
+using framework::Error;  // Error is a global name for paddle namespace, not
+                         // only for framework package.
 
 }  // namespace paddle
