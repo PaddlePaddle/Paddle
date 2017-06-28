@@ -1149,10 +1149,10 @@ def pooling_layer(input,
 @layer_support(DROPOUT)
 def lstmemory(input,
               name=None,
+              size=None,
               reverse=False,
               act=None,
               gate_act=None,
-              size=None,
               state_act=None,
               bias_attr=None,
               param_attr=None,
@@ -1194,6 +1194,8 @@ def lstmemory(input,
 
     :param name: The lstmemory layer name.
     :type name: basestring
+    :param size: DEPRECATED. size of the lstm cell
+    :type size: int
     :param input: input layer name.
     :type input: LayerOutput
     :param reverse: is sequence process reversed or not.
@@ -1220,15 +1222,15 @@ def lstmemory(input,
     assert state_act.support_hppl
     assert act.support_hppl
     assert input.size is not None and input.size % 4 == 0
+
     if size is not None:
         if input.size / 4 == size:
             plog = logger.warning
         else:
             plog = logger.fatal
-
-        plog("NOTE: The lstmemory layer[%s]'s size is set by previous input "
-             "layer. The lstm size should be equal with input layer size/4. The"
-             " size which is set explicitly will be ignored." % name)
+        plog("size of lstmemory layer: %s is automatically set to "
+             "size of input layer / 4. The parameter size passing to "
+             "this layer is ignored." % (name))
 
     Layer(
         name=name,
@@ -1255,11 +1257,11 @@ def lstmemory(input,
 @wrap_name_default("gru")
 @layer_support(DROPOUT)
 def grumemory(input,
+              size=None,
               name=None,
               reverse=False,
               act=None,
               gate_act=None,
-              size=None,
               bias_attr=None,
               param_attr=None,
               layer_attr=None):
@@ -1318,6 +1320,8 @@ def grumemory(input,
     :type name: None|basestring
     :param input: input layer.
     :type input: LayerOutput.
+    :param size: DEPRECATED. size of the gru cell
+    :type size: int
     :param reverse: Whether sequence process is reversed or not.
     :type reverse: bool
     :param act: activation type, TanhActivation by default. This activation
@@ -1334,9 +1338,6 @@ def grumemory(input,
     :type param_attr: ParameterAttribute|None|False
     :param layer_attr: Extra Layer attribute
     :type layer_attr: ExtraLayerAttribute|None
-    :param size: Stub parameter of size, but actually not used. If set this size
-                 will get a warning.
-    :type size: None
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -1348,9 +1349,9 @@ def grumemory(input,
             plog = logger.warning
         else:
             plog = logger.fatal
-        plog("NOTE: the gru memory layer's size is set by previous input layer,"
-             " and should be input size / 3. Set size explicitly will be "
-             "ignored.")
+        plog("size of grumemory layer: %s is automatically set to "
+             "size of input layer / 3. The parameter size passing to this "
+             "layer is ignored." % (name))
 
     Layer(
         name=name,
@@ -2524,8 +2525,8 @@ def img_cmrnorm_layer(input,
 
 
 @wrap_bias_attr_default()
-@wrap_param_attr_default(default_factory=lambda _: ParamAttr(initial_mean=1.0,
-                                                             initial_std=0.))
+@wrap_param_attr_default(
+    default_factory=lambda _: ParamAttr(initial_mean=1.0, initial_std=0.))
 @wrap_act_default(act=ReluActivation())
 @wrap_name_default("batch_norm")
 @layer_support(DROPOUT)
@@ -3013,25 +3014,25 @@ def lstm_step_layer(input,
                     bias_attr=None,
                     layer_attr=None):
     """
-    LSTM Step Layer. It used in recurrent_group. The lstm equations are shown
-    as follow.
+    LSTM Step Layer. This function is used only in recurrent_group.
+    The lstm equations are shown as follows.
 
     ..  math::
 
-        i_t & = \\sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)
+        i_t & = \\sigma(W_{x_i}x_{t} + W_{h_i}h_{t-1} + W_{c_i}c_{t-1} + b_i)
 
-        f_t & = \\sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)
+        f_t & = \\sigma(W_{x_f}x_{t} + W_{h_f}h_{t-1} + W_{c_f}c_{t-1} + b_f)
 
-        c_t & = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)
+        c_t & = f_tc_{t-1} + i_t tanh (W_{x_c}x_t+W_{h_c}h_{t-1} + b_c)
 
-        o_t & = \\sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)
+        o_t & = \\sigma(W_{x_o}x_{t} + W_{h_o}h_{t-1} + W_{c_o}c_t + b_o)
 
         h_t & = o_t tanh(c_t)
 
 
     The input of lstm step is :math:`Wx_t + Wh_{t-1}`, and user should use
     :code:`mixed_layer` and :code:`full_matrix_projection` to calculate these
-    input vector.
+    input vectors.
 
     The state of lstm step is :math:`c_{t-1}`. And lstm step layer will do
 
@@ -3042,14 +3043,14 @@ def lstm_step_layer(input,
         ...
 
 
-    This layer contains two outputs. Default output is :math:`h_t`. The other
-    output is :math:`o_t`, which name is 'state' and can use
+    This layer has two outputs. Default output is :math:`h_t`. The other
+    output is :math:`o_t`, whose name is 'state' and can use
     :code:`get_output_layer` to extract this output.
 
     :param name: Layer's name.
     :type name: basestring
-    :param size: Layer's size. NOTE: lstm layer's size, should be equal as
-                 :code:`input.size/4`, and should be equal as
+    :param size: Layer's size. NOTE: lstm layer's size, should be equal to
+                 :code:`input.size/4`, and should be equal to
                  :code:`state.size`.
     :type size: int
     :param input: input layer. :math:`Wx_t + Wh_{t-1}`
