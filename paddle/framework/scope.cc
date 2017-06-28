@@ -42,7 +42,7 @@ Variable* Scope::GetVariable(const std::string& name) const {
   }
 }
 
-bool Scope::HasVariable(const std::string &name) {
+bool Scope::HasVariable(const std::string& name) {
   return (vars_.count(name) > 0 || (parent_ && parent_->HasVariable(name)));
 }
 

@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include <unordered_map>
 #include <vector>
-#include <string>
 
 #include "paddle/framework/variable.h"
 
@@ -49,7 +49,7 @@ class Scope {
   Variable* GetVarLocally(const std::string& name) const;
 
   // Find if there is a Variable in this scope and it's parent scope
-  bool HasVariable(const std::string &name);
+  bool HasVariable(const std::string& name);
 
  private:
   std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
