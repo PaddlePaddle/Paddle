@@ -115,7 +115,7 @@ class Error {
    * @brief isOK return True if there is no error.
    * @return True if no error.
    */
-  bool isOK() const { return msg_ == nullptr; }
+  bool OK() const { return msg_ == nullptr; }
 
   bool operator==(const Error &o) const {
     if (msg_ == o.msg_) {

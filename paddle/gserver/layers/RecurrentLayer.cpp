@@ -220,25 +220,25 @@ void RecurrentLayer::forwardOneSequence(int start, int length) {
       frameOutput_[start].value->mul(*prevOutput_, *weight_->getW(), 1, 1);
     }
     err = activation_->forward(frameOutput_[start]);
-    CHECK(err.isOK()) << err.msg();
+    CHECK(err.OK()) << err.msg();
 
     for (int i = 1; i < length; ++i) {
       frameOutput_[start + i].value->mul(
           *frameOutput_[start + i - 1].value, *weight_->getW(), 1, 1);
       err = activation_->forward(frameOutput_[start + i]);
-      CHECK(err.isOK()) << err.msg();
+      CHECK(err.OK()) << err.msg();
     }
     if (prevOutput_) {
       prevOutput_->assign(*frameOutput_[start + length - 1].value);
     }
   } else {
     err = activation_->forward(frameOutput_[start + length - 1]);
-    CHECK(err.isOK()) << err.msg();
+    CHECK(err.OK()) << err.msg();
     for (int i = length - 2; i >= 0; --i) {
       frameOutput_[start + i].value->mul(
           *frameOutput_[start + i + 1].value, *weight_->getW(), 1, 1);
       err = activation_->forward(frameOutput_[start + i]);
-      CHECK(err.isOK()) << err.msg();
+      CHECK(err.OK()) << err.msg();
     }
   }
 }
@@ -289,12 +289,12 @@ void RecurrentLayer::backwardOneSequence(int start, int length) {
   if (!reversed_) {
     for (int i = length - 1; i > 0; --i) {
       err = activation_->backward(frameOutput_[start + i]);
-      CHECK(err.isOK()) << err.msg();
+      CHECK(err.OK()) << err.msg();
       frameOutput_[start + i - 1].grad->mul(
           *frameOutput_[start + i].grad, *weightT, 1, 1);
     }
     err = activation_->backward(frameOutput_[start]);
-    CHECK(err.isOK()) << err.msg();
+    CHECK(err.OK()) << err.msg();
     if (weight_->getWGrad()) {
       weight_->getWGrad()->mul(
           *output_.value->subMatrix(start, length - 1)->getTranspose(),
@@ -305,12 +305,12 @@ void RecurrentLayer::backwardOneSequence(int start, int length) {
   } else {
     for (int i = 0; i < length - 1; ++i) {
       err = activation_->backward(frameOutput_[start + i]);
-      CHECK(err.isOK()) << err.msg();
+      CHECK(err.OK()) << err.msg();
       frameOutput_[start + i + 1].grad->mul(
           *frameOutput_[start + i].grad, *weightT, 1, 1);
     }
     err = activation_->backward(frameOutput_[start + length - 1]);
-    CHECK(err.isOK()) << err.msg();
+    CHECK(err.OK()) << err.msg();
     if (weight_->getWGrad()) {
       weight_->getWGrad()->mul(
           *output_.value->subMatrix(start + 1, length - 1)->getTranspose(),
@@ -346,7 +346,7 @@ void RecurrentLayer::forwardBatch(int batchSize,
       Argument arg;
       arg.value = batch2;
       Error err = activation_->forward(arg);
-      CHECK(err.isOK()) << err.msg();
+      CHECK(err.OK()) << err.msg();
     }
   }
   batchValue_->copyBackSeq(*output_.value);
@@ -377,7 +377,7 @@ void RecurrentLayer::backwardBatch(int batchSize,
       arg.value = batch1;
       arg.grad = batch2;
       Error err = activation_->backward(arg);
-      CHECK(err.isOK()) << err.msg();
+      CHECK(err.OK()) << err.msg();
 
       if (n != 0) {
         batch1 = batchGrad_->getBatchValue(n - 1, batch2->getHeight());

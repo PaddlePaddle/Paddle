@@ -115,10 +115,10 @@ void testEvaluator(TestConfig testConf,
   paddle::Error err;
   for (auto& name : names) {
     auto value = testEvaluator->getValue(name, &err);
-    ASSERT_TRUE(err.isOK());
+    ASSERT_TRUE(err.OK());
     LOG(INFO) << name << " " << value;
     auto tp = testEvaluator->getType(name, &err);
-    ASSERT_TRUE(err.isOK());
+    ASSERT_TRUE(err.OK());
     ASSERT_EQ(testConf.evaluatorConfig.type(), tp);
   }
 

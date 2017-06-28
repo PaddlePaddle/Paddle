@@ -336,7 +336,7 @@ void Layer::showOutputStats() {
 void Layer::forwardActivation() {
   /* activation */
   auto status = activation_->forward(output_);
-  CHECK(status.isOK()) << status.msg();
+  CHECK(status.OK()) << status.msg();
 
   /* dropout */
   if (config_.drop_rate() > 0) {
@@ -375,7 +375,7 @@ void Layer::backwardActivation() {
   }
 
   auto status = activation_->backward(output_);
-  CHECK(status.isOK()) << status.msg();
+  CHECK(status.OK()) << status.msg();
 }
 
 void Layer::forwardDropOut() {

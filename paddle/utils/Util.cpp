@@ -196,7 +196,7 @@ void initMain(int argc, char** argv) {
 
   version::printVersion();
   auto err = checkCPUFeature();
-  CHECK(err.isOK()) << err.msg();
+  CHECK(err.OK()) << err.msg();
   runInitFunctions();
 }
 
