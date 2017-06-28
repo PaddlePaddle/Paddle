@@ -23,7 +23,7 @@ class Tensor {
   template <typename T>
   const T* Data() const;
 
-  bool NeedReset();
+  bool NeedReset() const;
 
   // must be POD types
   template <typename T, typename = std::enable_if<std::is_pod<T>::value>::type>

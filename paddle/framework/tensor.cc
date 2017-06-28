@@ -11,7 +11,7 @@ const T* Tensor::Data() const {
   return static_cast<const T*>(holder->Ptr());
 }
 
-bool Tensor::NeedReset() {
+bool Tensor::NeedReset() const {
   return (holder_ == nullptr || holder_->Place() != place_ ||
           holder_->Size() < product(dims_) * sizeof(T));
 }
@@ -50,7 +50,7 @@ void Tensor::Reshape(const DDim& dims) {
   if (product(dims) != product(dims_)) {
     // TODO: error: "Reshape() can not change tensor's numel".
   }
-  _dims = dim;
+  dims_ = dims;
   return;
 }
 
@@ -65,7 +65,7 @@ void Tensor::ShareData(const Tensor& src) {
 }
 
 template <typename T>
-void CopyFrom(const Tensor& src) {
+void Tensor::CopyFrom(const Tensor& src) {
   if ((void*)&src == (void*)this) {
     return;
   }
