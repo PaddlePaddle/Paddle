@@ -159,5 +159,5 @@ message TrainerConfig {
   // file path to the trainer config file
   optional string config_file = 9;
 
-  required TrainerDefaultValues default_values = 10;
+  optional TrainerDefaultValues default_values = 10;
 }

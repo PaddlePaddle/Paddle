@@ -41,6 +41,9 @@ struct TrainerConfigHelperPrivate {
    * @brief Update trainer default values to each Parameter.
    */
   void updateDefaultValues() {
+    if (!conf.has_default_values()) {  // if not has default values at all
+      return;
+    }
     // set default gradient clipping.
     if (conf.default_values().has_gradient_clipping_threshold()) {
       auto defaultGradientClipping =
