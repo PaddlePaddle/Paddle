@@ -36,6 +36,22 @@ namespace paddle {
 
 struct TrainerConfigHelperPrivate {
   TrainerConfig conf;
+
+  /**
+   * @brief Update trainer default values to each Parameter.
+   */
+  void updateDefaultValues() {
+    // set default gradient clipping.
+    if (conf.default_values().has_gradient_clipping_threshold()) {
+      auto defaultGradientClipping =
+          conf.default_values().gradient_clipping_threshold();
+      for (auto &param : *conf.mutable_model_config()->mutable_parameters()) {
+        if (!param.has_gradient_clipping_threshold()) {
+          param.set_gradient_clipping_threshold(defaultGradientClipping);
+        }
+      }
+    }
+  }
 };
 
 TrainerConfigHelper::TrainerConfigHelper(const std::string &configFilePath)
@@ -55,11 +71,7 @@ TrainerConfigHelper::TrainerConfigHelper(const std::string &configFilePath)
                      kConfigParserFuncName,
                      {configFilePath, configArgs.str()});
   CHECK(m->conf.ParseFromString(configProtoStr));
-}
-
-TrainerConfigHelper::TrainerConfigHelper(const TrainerConfig &config)
-    : m(new TrainerConfigHelperPrivate()) {
-  m->conf = config;
+  m->updateDefaultValues();
 }
 
 TrainerConfigHelper::~TrainerConfigHelper() {

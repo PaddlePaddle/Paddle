@@ -3515,6 +3515,7 @@ def update_g_config():
         assert name in g_layer_map, \
             'input name "%s" does not correspond to a layer name' % name
 
+    # Set g_default_gradient_clipping_threshold to TrainerConfig.default_values
     if g_default_gradient_clipping_threshold is not None:
         g_config.default_values.gradient_clipping_threshold = g_default_gradient_clipping_threshold
 

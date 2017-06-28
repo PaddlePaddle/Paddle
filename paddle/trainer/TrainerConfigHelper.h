@@ -45,7 +45,6 @@ public:
    * @param configFilePath Config file path.
    */
   explicit TrainerConfigHelper(const std::string& configFilePath);
-  explicit TrainerConfigHelper(const TrainerConfig& config);
 
   /**
    * Dtor
