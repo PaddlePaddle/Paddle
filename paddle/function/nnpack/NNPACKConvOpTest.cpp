@@ -60,12 +60,15 @@ public:
                             << " outputWidth=" << outputSize
                             << " stride=" << stride << " padding=" << padding;
 
+                  std::vector<size_t> paddings = {padding, padding};
+                  std::vector<size_t> strides = {stride, stride};
                   Compare2Function<DEVICE_TYPE_CPU, DEVICE_TYPE_CPU> test(
                       conv1,
                       conv2,
                       FuncConfig()
-                          .set("padding", padding)
-                          .set("stride", stride)
+                          .set("paddings", paddings)
+                          .set("strides", strides)
+                          .set("groups", (size_t)1)
                           .set("algo", algo));
 
                   TensorShape shape0{
