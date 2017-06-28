@@ -62,8 +62,12 @@ func paddle_new_etcd_master_client(etcdEndpoints *C.char, timeout int, bufSize i
 		panic(err)
 	}
 	ch := make(chan string, 1)
-	ch <- master.GetKey(cli, master.DefaultAddrPath)
-	go db.WatchKey(master.DefaultAddrPath)
+	a, err := master.GetKey(cli, master.DefaultAddrPath, timeout)
+	if err != nil {
+		panic(err)
+	}
+	ch <- a
+	go master.WatchKey(cli, master.DefaultAddrPath, ch)
 	c := master.NewClient(ch, bufSize)
 	return add(c)
 }
