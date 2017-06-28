@@ -62,7 +62,7 @@ message ParameterConfig {
   // sparse remote update or not
   optional bool sparse_remote_update = 16 [default = false];
   // gradient clipping threshold, no clipping by default
-  optional double gradient_clipping_threshold = 17 [default = 0.0];
+  optional double gradient_clipping_threshold = 17 ;
   // static parameters are fixed when training
   optional bool is_static = 18 [default = false];
   // para_id should NOT be set by config_parser. It is for
