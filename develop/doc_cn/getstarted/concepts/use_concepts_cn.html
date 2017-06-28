@@ -299,7 +299,7 @@ paddle.init<span class="o">(</span><span class="nv">use_gpu</span><span class="o
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># define training dataset reader</span>
 def train_reader<span class="o">()</span>:
     <span class="nv">train_x</span> <span class="o">=</span> np.array<span class="o">([[</span><span class="m">1</span>, <span class="m">1</span><span class="o">]</span>, <span class="o">[</span><span class="m">1</span>, <span class="m">2</span><span class="o">]</span>, <span class="o">[</span><span class="m">3</span>, <span class="m">4</span><span class="o">]</span>, <span class="o">[</span><span class="m">5</span>, <span class="m">2</span><span class="o">]])</span>
-    <span class="nv">train_y</span> <span class="o">=</span> np.array<span class="o">([</span>-2, -3, -7, -7<span class="o">])</span>
+    <span class="nv">train_y</span> <span class="o">=</span> np.array<span class="o">([[</span>-2<span class="o">]</span>, <span class="o">[</span>-3<span class="o">]</span>, <span class="o">[</span>-7<span class="o">]</span>, <span class="o">[</span>-7<span class="o">]])</span>
     def reader<span class="o">()</span>:
         <span class="k">for</span> i in xrange<span class="o">(</span>train_y.shape<span class="o">[</span><span class="m">0</span><span class="o">])</span>:
             yield train_x<span class="o">[</span>i<span class="o">]</span>, train_y<span class="o">[</span>i<span class="o">]</span>
