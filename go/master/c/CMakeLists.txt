@@ -6,7 +6,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PARENT_DIR}/cmake")
 
 project(cxx_go C Go)
 
-include(golang)
+#include(golang)
 include(flags)
 
 set(MASTER_LIB_NAME "paddle_master")
