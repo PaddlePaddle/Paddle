@@ -111,7 +111,8 @@ class DenseScanner(IScanner):
                     "The dimension of input cannot be greater than 3.")
             if len(self.__shape__) == 0:
                 raise ValueError(
-                    "The input should be a vector, please check your input data.")
+                    "The input should be a vector, please check your input data."
+                )
             self.__dim__ = reduce(lambda x, y: x * y, self.__shape__)
             if len(self.__shape__) == 1 and self.__dim__ != self.input_type.dim:
                 raise ValueError(
