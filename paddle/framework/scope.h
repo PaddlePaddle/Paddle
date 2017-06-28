@@ -1,14 +1,27 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 #pragma once
 
 #include <unordered_map>
 #include <vector>
+#include <string>
+
 #include "paddle/framework/variable.h"
-#include "paddle/utils/Error.h"
 
 namespace paddle {
 namespace framework {
-
-const static Error AlreadyCreated("Variable has already been created");
 
 /**
  * Scope is an association of a name to Variable. All variables belong to
@@ -26,20 +39,17 @@ class Scope {
 
   // Create Variable in this Scope. Return error if Variable already been
   // created.
-  Error __must_check CreateVariable(const std::string& name);
+  Variable* CreateVariable(const std::string& name);
 
   // Get Variable from this Scope, this function will recursive find Variable
   // from it's parent scope. Return nullptr if not found.
   Variable* GetVariable(const std::string& name) const;
 
-  // find and return Variables in the scope it self.
+  // Find and return Variables in the scope it self.
   Variable* GetVarLocally(const std::string& name) const;
 
-  // Get a Variable from Scope, if the Variable is not exist then create it.
-  // User should call this function most of time.
-  Variable* GetOrCreateVariable(const std::string& name);
-
-  bool HaveVariable(const std::string& name);
+  // Find if there is a Variable in this scope and it's parent scope
+  bool HasVariable(const std::string &name);
 
  private:
   std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
