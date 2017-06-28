@@ -40,7 +40,7 @@ add_library(paddle_pserver STATIC
 add_style_check_target(paddle_pserver ${PSERVER_SOURCES})
 add_style_check_target(paddle_pserver ${PSERVER_HEADERS})
 
-add_dependencies(paddle_pserver paddle_proto)
+add_dependencies(paddle_pserver paddle_proto ${external_project_dependencies})
 
 set(PSERVER_MAIN_SOURCES
     ParameterServer2Main.cpp)
