@@ -109,7 +109,10 @@ class DenseScanner(IScanner):
             if len(self.__shape__) > 3:
                 raise ValueError(
                     "The dimension of input cannot be greater than 3.")
-            self.__dim__ = reduce(lambda x, y: x * y, self.__shape__)
+            if len(self.__shape__) == 0:
+                self.__dim__ = 1
+            else:
+                self.__dim__ = reduce(lambda x, y: x * y, self.__shape__)
             if len(self.__shape__) == 1 and self.__dim__ != self.input_type.dim:
                 raise ValueError(
                     "The data size must be equal to it in data layer.")
