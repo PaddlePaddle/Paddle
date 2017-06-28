@@ -28,12 +28,13 @@ TEST(Scope, Create) {
   EXPECT_EQ(var1, nullptr);
 
   Variable* var2 = scope->CreateVariable("a");
-  EXPECT_NE(var2, nullptr);
 
-  Variable* var3 = scope->CreateVariable("a");
+  ASSERT_DEATH({ scope->CreateVariable("a"); }, "");
+
+  Variable* var3 = scope->GetVariable("a");
   EXPECT_EQ(var2, var3);
 
-  Variable* var4 = scope->GetVariable("a");
+  Variable* var4 = scope->GetOrCreateVariable("a");
   EXPECT_EQ(var2, var4);
 }
 
@@ -47,9 +48,6 @@ TEST(Scope, Parent) {
   Variable* var0 = parent_scope_ptr->CreateVariable("a");
   EXPECT_NE(var0, nullptr);
 
-  Variable* var1 = scope->GetVarLocally("a");
-  EXPECT_EQ(var1, nullptr);
-
-  Variable* var2 = scope->GetVariable("a");
-  EXPECT_EQ(var2, var0);
+  Variable* var1 = scope->GetVariable("a");
+  EXPECT_EQ(var0, var1);
 }
