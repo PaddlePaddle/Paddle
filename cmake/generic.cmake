@@ -341,13 +341,6 @@ function(pb_cc_library TARGET_NAME)
   foreach(FIL ${pb_cc_library_SRCS})
     get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
     get_filename_component(FIL_WE ${FIL} NAME_WE)
-    if(NOT PROTOBUF_GENERATE_CPP_APPEND_PATH)
-      get_filename_component(FIL_DIR ${FIL} DIRECTORY)
-      if(FIL_DIR)
-        set(FIL_WE "${FIL_DIR}/${FIL_WE}")
-      endif()
-    endif()
-
     list(APPEND proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.cc")
     list(APPEND proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.h")
 
@@ -363,4 +356,28 @@ function(pb_cc_library TARGET_NAME)
   set_source_files_properties(${proto_srcs} ${proto_hdrs} PROPERTIES GENERATED TRUE)
   include_directories(${CMAKE_CURRENT_BINARY_DIR})
   cc_library(${TARGET_NAME} SRCS ${proto_srcs})
+endfunction()
+
+function(pb_py_library TARGET_NAME)
+  set(oneValueArgs TARGET_DIR)
+  set(multiValueArgs SRCS)
+  cmake_parse_arguments(pb_py_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  if (NOT ${pb_py_library_TARGET_DIR})
+    set(pb_py_library_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
+
+  set(py_srcs)
+  foreach(FIL ${pb_py_library_SRCS})
+    get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
+    get_filename_component(FIL_WE ${FIL} NAME_WE)
+    set(cur_py_src ${pb_py_library_TARGET_DIR}/${FIL_WE}_pb2.py)
+    list(APPEND py_srcs "${cur_py_src}")
+    add_custom_command(OUTPUT ${cur_py_src}
+            COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+            ARGS "--python_out=${pb_py_library_TARGET_DIR}" "-I" ${CMAKE_CURRENT_SOURCE_DIR} ${ABS_FIL}
+            DEPENDS ${ABS_FIL} protoc
+            COMMENT "Running Python protocol buffer compiler on ${FIL}")
+  endforeach()
+
+  add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs})
 endfunction()
