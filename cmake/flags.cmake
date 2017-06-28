@@ -101,7 +101,6 @@ set(COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
     -Wall
-    -Wextra
     -Werror
     -Wnon-virtual-dtor
     -Wdelete-non-virtual-dtor
@@ -109,7 +108,9 @@ set(COMMON_FLAGS
     -Wno-unused-function
     -Wno-error=literal-suffix
     -Wno-error=sign-compare
-    -Wno-error=unused-local-typedefs)
+    -Wno-error=unused-local-typedefs
+    -Wno-error=ignored-qualifiers  # Warning in protobuf 3 Map.h
+    -Wno-error=no-enum-compare)  # Warning in protobuf 3 Map.h
 
 set(GPU_COMMON_FLAGS
     -fPIC

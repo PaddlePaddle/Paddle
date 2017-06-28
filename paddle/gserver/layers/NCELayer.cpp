@@ -195,7 +195,7 @@ public:
     }
 
     auto status = activation_->forward(sampleOut_);
-    status.check();
+    CHECK(status.isOK()) << status.msg();
 
     forwardCost();
   }
@@ -210,7 +210,7 @@ public:
     backwardCost();
 
     auto status = activation_->backward(sampleOut_);
-    status.check();
+    CHECK(status.isOK()) << status.msg();
 
     if (biases_->getWGrad()) {
       backwardBias(callback);

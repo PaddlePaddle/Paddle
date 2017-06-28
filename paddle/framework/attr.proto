@@ -1,0 +1,17 @@
+syntax="proto3";
+package paddle.framework;
+
+message Attribute {
+    message ListValue {
+        repeated int32 ints = 1;
+        repeated float floats = 2;
+        repeated string strings = 3;
+    }
+
+    oneof value {
+        ListValue list = 1;
+        int32 i = 2;
+        float f = 3;
+        string s = 4;
+    }
+}
