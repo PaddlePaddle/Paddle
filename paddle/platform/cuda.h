@@ -29,13 +29,12 @@ inline void throw_on_error(cudaError_t e, const char* message) {
 }
 
 int GetDeviceCount(void) {
-    int count;
-    throw_on_error(cudaGetDeviceCount(&count),
-                   "cudaGetDeviceCount failed");
-    return count;
+  int count;
+  throw_on_error(cudaGetDeviceCount(&count), "cudaGetDeviceCount failed");
+  return count;
 }
 
 }  // namespace platform
 }  // namespace paddle
 
-#endif  // PADDLE_ONLY_CPU 
+#endif  // PADDLE_ONLY_CPU
