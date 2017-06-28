@@ -1,21 +1,14 @@
-# Design Doc about operator attribute
+# Design Doc: Operator Attributes
 
-## background
+## Background
 
-In a neural network, each operator could contain some configurable attributes. For example, a cosine similarity operator may contain an attribute named `scale`. The default cosine similarity returns a value in range [-1.0, 1.0]. But the user can set range scale manually, e.g., user set `scale=5.0`, then that cosine operator will return a value in the range [-5.0, 5.0].
+An operator could have attributes. For example, CosineOp could have a float typed attribute scale, which changes the output range from [-1,1] to [-scale,scale]. The default value of scale is `1.0`.
 
-The configurable attributes could be various types. Some operators need `float` value to configure; some need `string` value.  We need a data structure to represent different types.
+Attributes is defined by a name and a type. An instance of an attribute has a value of that type.
 
-Each operator contains different configurable attributes. The names of attributes are not same.  We need an associate map from attribute name to attribute value for `Operator`.
+As part of the network description, attribute need to be serialized. So we need a protobuf message that describes an attribute, say `Attribute`.
 
-Also as we want to use `protobuf` to serialize and deserialize our model, we need to implement the attribute value and the associated map from attribute name to attribute value in `protobuf`.
-
-In conclusion, there are four things we know as background.
-
-1. We need an attribute type for Operator.
-1. That attribute type could represent different types.
-1. That attribute value should be associated with an attribute name, like a map<string, Attribute>.
-1. We need to implement them in `protobuf`.
+An operator could parse the Attribute and save them into its private data member.
 
 ## Protobuf Implementation
 
@@ -65,12 +58,14 @@ class AttributeReader {
  public:
   explicit AttributeReader(const AttributeMap& attrs) : attrs_(attrs) {}
 
+  // return false if attribute is not found.
+  // For typemismatch, it just called `ENFORCE` and throw exception.
   template <typename T>
-  Error __must_check Get(const std::string& attributeName, T* attr) const;
+  bool Get(const std::string& attributeName, T* attr) const;
 
+  // return false if attribute is not found.
   template <typename T>
-  Error __must_check GetArray(const std::string& attributeName,
-                              std::vector<T>* array) const;
+  bool GetArray(const std::string& attributeName, std::vector<T>* array) const;
 
  private:
   const AttributeMap& attrs_;
@@ -86,22 +81,14 @@ Each operator stores its attributes. For faster attribute access, we should not 
 ```cpp
 class OperatorBase {
  public:
-  virtual Error InitializeAttribute(const AttributeReader& attrs) = 0;
+  virtual void InitializeAttribute(const AttributeReader& attrs) = 0;
 };
 
 class CosineOp : public OperatorBase {
  public:
-  Error InitializeAttribute(const AttributeReader& attrs) {
-    auto err = attrs.Get<float>("scale", &scale_);
-
-    // ignore AttributeNotFound because scale_ is default = 1.0
-    if (!err.isOK() && err != "Attribute Not Found") {
-      return err;
-    }
-    if (scale_ <= 0.0f) {
-      return Error("Scale of cosine op should be larger than 0.0");
-    }
-    return Error();  // OK;
+  void InitializeAttribute(const AttributeReader& attrs) {
+    attrs.Get<float>("scale", &scale_);
+    PADDLE_ENFORCE(scale_ > 0.0f, "Scale of consine op should be larger than 0.0");
   }
 
  private:
@@ -109,17 +96,13 @@ class CosineOp : public OperatorBase {
 };
 ```
 
-When `NetworkBase` invokes `CreateOperator(const OperatorDescription& desc)`, it create an operator first. Then `CreateOperator` will invoke `InitializeAttribute` and returns error code. The implementation of `CreateOperator` could be
+When `NetworkBase` invokes `CreateOperator(const OperatorDescription& desc)`, it create an operator first. Then `CreateOperator` will invoke `InitializeAttribute·. The implementation of `CreateOperator` could be
 
 ```cpp
-Error CreateOperator(const OperatorDescription& desc, OperatorBase** ptr) {
-  *ptr = OperatorRegister.create(desc.type(), desc.inputs(), desc.outputs());
-  Error err = (*ptr) -> InitializeAttribute(desc.attrs());
-  if (!err.isOK()) {
-    delete (*ptr);
-  }
-  return err;
+std::unique_ptr<OperatorBase> CreateOperator(const OperatorDescription& desc) {
+  std::unique_ptr<OperatorBase> op(OperatorRegister.Create(
+          desc.type(), desc.inputs(), desc.outputs()));
+  op->InitializeAttribute(AttributeReader(desc.attrs()));
+  return std::move(op);
 }
 ```
-
-`InitializeAttribute` will validation the user's configuration, and might return an `Error`. It is clearer to invoke the method `InitializeAttribute` and return an `Error` than let each operator's constructor implement this logic because the constructor cannot return a value.
