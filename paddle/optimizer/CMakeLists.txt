@@ -10,7 +10,7 @@ set(OPITMIZER_SRCS
   )
 
 add_library(paddle_optimizer STATIC ${OPITMIZER_SRCS})
-add_dependencies(paddle_optimizer gen_proto_cpp)
+add_dependencies(paddle_optimizer paddle_proto)
 
 if(WITH_TESTING)
   add_simple_unittest(serialization_test)

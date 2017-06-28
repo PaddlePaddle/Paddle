@@ -331,3 +331,36 @@ function(go_test TARGET_NAME)
   add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_test_DEPS})
   add_test(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
 endfunction(go_test)
+
+function(pb_cc_library TARGET_NAME)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS)
+  cmake_parse_arguments(pb_cc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  set(proto_srcs)
+  set(proto_hdrs)
+  foreach(FIL ${pb_cc_library_SRCS})
+    get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
+    get_filename_component(FIL_WE ${FIL} NAME_WE)
+    if(NOT PROTOBUF_GENERATE_CPP_APPEND_PATH)
+      get_filename_component(FIL_DIR ${FIL} DIRECTORY)
+      if(FIL_DIR)
+        set(FIL_WE "${FIL_DIR}/${FIL_WE}")
+      endif()
+    endif()
+
+    list(APPEND proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.cc")
+    list(APPEND proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.h")
+
+    add_custom_command(
+            OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.cc"
+            "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.h"
+            COMMAND  ${PROTOBUF_PROTOC_EXECUTABLE}
+            ARGS "--cpp_out=${DLL_EXPORT_DECL}${CMAKE_CURRENT_BINARY_DIR}" "-I" ${CMAKE_CURRENT_SOURCE_DIR} ${ABS_FIL}
+            DEPENDS ${ABS_FIL} protoc
+            COMMENT "Running C++ protocol buffer compiler on ${FIL}"
+            VERBATIM )
+  endforeach()
+  set_source_files_properties(${proto_srcs} ${proto_hdrs} PROPERTIES GENERATED TRUE)
+  include_directories(${CMAKE_CURRENT_BINARY_DIR})
+  cc_library(${TARGET_NAME} SRCS ${proto_srcs})
+endfunction()
