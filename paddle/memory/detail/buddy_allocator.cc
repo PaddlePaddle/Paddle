@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/memory/detail/system_allocator.h"
+#include "paddle/memory/detail/buddy_allocator.h"
 
 namespace paddle {
 namespace memory {

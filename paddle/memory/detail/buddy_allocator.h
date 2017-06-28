@@ -16,6 +16,9 @@
 
 #include "paddle/memory/detail/system_allocator.h"
 
+#include <vector>
+#include <mutex>
+
 namespace paddle {
 namespace memory {
 namespace detail {
