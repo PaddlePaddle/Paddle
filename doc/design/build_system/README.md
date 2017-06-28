@@ -105,3 +105,37 @@ shared_library(api
 ### Implementation
 
 As above example CMakeLists.txt executes, each function invocation adds "nodes" to a dependency graph.  It also use this graph to generate CMake commands including `add_executable`, `add_dependencies`, `target_link_libraries`, and `add_test`.
+
+### Using Package Manager For Go
+
+Building go binaries and libraries need to satisfy their dependencies, generally
+we can do `go get ./...` to download and compile all external dependencies. The
+problems are:
+
+1. `go get` will always get the latest code from master branch, so when an external
+    project updated and deprecates something or made changes to their APIs, builds
+    may not pass. This is very different with what we already have in `cmake/external`
+    which download a specific version or commit id of the dependency.
+1. Some locations can not access external dependencies through the internet, as mentioned
+   in https://github.com/PaddlePaddle/Paddle/issues/2605. Using package management
+   tools can package the dependencies as a "vendor" package, which can be mirrored
+   at many cloud file hosting, so users what to compile paddle by themselves can
+   download this "vendor" package from a mirror site.
+
+#### Godep vs. Glide
+
+Here's a brief comparison for current Go ecosystem: https://github.com/Masterminds/glide/wiki/Go-Package-Manager-Comparison. There are
+also many complaints about `Godep`. A new "official" pakcage management tool has been
+started: https://github.com/golang/dep to resolve such problems, but it's currently
+at Alpha stage. So the best choice now is glide obviously.
+
+#### Manage Go Packages
+
+- Dependencies: `go/glide.yaml` will store the dependencies and their versions which
+  is directly imported by paddle. `go/glide.lock` will store all dependencies recursively
+  with their commit id. Builds will "lock" to these packages if we don't `glide up`
+  them
+- Vendor package: `go/vendor` directory will generated when running `cmake` command. `cmake`
+  will download the code corresponding to `go/glide.lock`. If we put a vendor folder
+  under `go/`, cmake will just check the commit id to the packages under the folder,
+  if commit id matches, there will be no download at all.
