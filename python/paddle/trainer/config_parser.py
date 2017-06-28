@@ -114,12 +114,12 @@ g_layer_type_map = {}
 def init_config_environment(
         g_default_momentum=None,
         g_default_decay_rate=None,
+        g_default_gradient_clipping_threshold=None,
         g_default_initial_mean=0.,
         g_default_initial_std=0.01,
         g_default_num_batches_regularization=None,
         g_default_initial_strategy=0,
         g_default_initial_smart=False,
-        g_default_gradient_clipping_threshold=None,
         g_default_device=None,
         g_default_update_hooks=None,
         g_default_compact_func=None,
@@ -3214,8 +3214,6 @@ def Parameter(name,
             g_config.opt_config.use_sparse_remote_updater = True
     if sparse_update is not None:
         para.sparse_update = sparse_update
-    gradient_clipping_threshold = default(gradient_clipping_threshold,
-                                          g_default_gradient_clipping_threshold)
     if gradient_clipping_threshold is not None:
         para.gradient_clipping_threshold = gradient_clipping_threshold
     para.initial_strategy = default(initial_strategy,
@@ -3516,6 +3514,10 @@ def update_g_config():
     for name in g_config.model_config.output_layer_names:
         assert name in g_layer_map, \
             'input name "%s" does not correspond to a layer name' % name
+
+    if g_default_gradient_clipping_threshold is not None:
+        g_config.default_values.gradient_clipping_threshold = g_default_gradient_clipping_threshold
+
     return g_config
 
 
