@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "ConvOp.h"
 #include "nnpack.h"
+#include "paddle/function/ConvOp.h"
 
 DEFINE_bool(nnpack_allocate_outside,
             false,
@@ -72,14 +72,22 @@ public:
     }
   }
 
+  virtual void check(const BufferArgs& inputs,
+                     const BufferArgs& outputs) override {
+    const TensorShape& output = inputs[0].shape();
+    const TensorShape& filter = inputs[1].shape();
+    const TensorShape& input = outputs[0].shape();
+    checkShape(input, filter, output);
+  }
+
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
     CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
+    check(inputs, outputs);
     const TensorShape& input = inputs[0].shape();
     const TensorShape& filter = inputs[1].shape();
     const TensorShape& output = outputs[0].shape();
-    check(input, filter, output);
 
     size_t batchSize = input[0];
     size_t inputChannels = input[1];
@@ -92,12 +100,13 @@ public:
     // size_t outputWidth = output[3];
 
     nnp_size inputSize = {.width = inputWidth, .height = inputHeight};
-    nnp_padding padding = {.top = paddingH(),
-                           .right = paddingW(),
-                           .bottom = paddingH(),
-                           .left = paddingW()};
+    nnp_padding padding = {.top = (size_t)paddingH(),
+                           .right = (size_t)paddingW(),
+                           .bottom = (size_t)paddingH(),
+                           .left = (size_t)paddingW()};
     nnp_size kernelSize = {.width = filterWidth, .height = filterHeight};
-    nnp_size outputSubsampling = {.width = strideW(), .height = strideH()};
+    nnp_size outputSubsampling = {.width = (size_t)strideW(),
+                                  .height = (size_t)strideH()};
 
     float* inputData = inputs[0].data<float>();
     float* filterData = inputs[1].data<float>();
@@ -129,7 +138,8 @@ public:
         CHECK_EQ(status, nnp_status_success);
       } else {
         // only supports stride = 1
-        CHECK_EQ(stride_, 1);
+        CHECK_EQ(strideH(), 1);
+        CHECK_EQ(strideW(), 1);
         nnp_status status = nnp_convolution_output(algorithm_,
                                                    batchSize,
                                                    inputChannels,
@@ -189,7 +199,8 @@ public:
       CHECK_EQ(status, nnp_status_success);
     } else {
       // only supports stride = 1
-      CHECK_EQ(stride_, 1);
+      CHECK_EQ(strideH(), 1);
+      CHECK_EQ(strideW(), 1);
       nnp_status status = nnp_convolution_output(algorithm_,
                                                  batchSize,
                                                  inputChannels,

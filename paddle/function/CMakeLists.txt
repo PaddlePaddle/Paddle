@@ -10,6 +10,11 @@ if(WITH_GPU)
     cuda_compile(cu_objs ${cu_files})
 endif()
 
+if(USE_NNPACK)
+  include(nnpack/nnpack.cmake)
+  list(APPEND cpp_files nnpack/NNPACKConvOp.cpp)
+endif()
+
 add_library(paddle_function STATIC ${cpp_files} ${cu_objs})
 add_dependencies(paddle_function ${external_project_dependencies})
 add_dependencies(paddle_function gen_proto_cpp)

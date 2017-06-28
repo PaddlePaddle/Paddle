@@ -48,6 +48,7 @@ option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
+option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -125,6 +126,10 @@ if(WITH_GPU)
         list(APPEND EXTERNAL_LIB ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
     endif(NOT WITH_DSO)
 endif(WITH_GPU)
+
+if(USE_NNPACK)
+  list(APPEND EXTERNAL_LIBS ${NNPACK_LIB} ${PTHREADPOOL_LIB} "rt")
+endif(USE_NNPACK)
 
 add_subdirectory(proto)
 add_subdirectory(paddle)
