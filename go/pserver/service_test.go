@@ -10,7 +10,7 @@ import (
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
 
-func TestNewName(t *testing.T) {
+func TestServiceFull(t *testing.T) {
 	s := pserver.NewService()
 	var p pserver.Parameter
 	p.Name = "param_a"
