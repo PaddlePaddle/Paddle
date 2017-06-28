@@ -21,19 +21,40 @@ class Tensor {
   Tensor& operator=(const Tensor& src) = delete;
 
   template <typename T>
-  const T* Data() const;
+  const T* Data() const {
+    PADDLE_ASSERT(holder_ != nullptr);
+    PADDLE_ASSERT(holder_->Place() == place_);
+    PADDLE_ASSERT(holder_->Size() >= product(dims_) * sizeof(T));
+    return static_cast<const T*>(holder->Ptr());
+  }
 
-  bool NeedReset() const;
+  template <typename T>
+  bool NeedReset() const {
+    return (holder_ == nullptr || holder_->Place() != place_ ||
+            holder_->Size() < product(dims_) * sizeof(T));
+  }
 
   // must be POD types
   template <typename T, typename = std::enable_if<std::is_pod<T>::value>::type>
-  T* MutableData();
+  T* MutableData() {
+    if (NeedReset<T>()) {
+      holder_.reset(new PlaceholderImpl(place_, product(dims_) * sizeof(T)));
+    }
+    return static_cast<T*>(holder_->Ptr());
+  }
 
   template <typename T, typename = std::enable_if<std::is_pod<T>::value>::type>
-  T* MutableData(const DDim& dims);
+  T* MutableData(const DDim& dims) {
+    dims_ = dims;
+    return MutableData<T>();
+  }
 
   template <typename T, typename = std::enable_if<std::is_pod<T>::value>::type>
-  T* MutableData(const DDim& dims, const Place& place);
+  T* MutableData(const DDim& dims, const Place& place) {
+    dims_ = dims;
+    place_ = place;
+    return MutableData<T>();
+  }
 
   int Rank() const;
 
@@ -43,10 +64,31 @@ class Tensor {
 
   void Reshape(const DDim& dims);
 
-  void ShareData(const Tensor& src);
+  template <typename T>
+  void ShareData(const Tensor& src) {
+    if (src.NeedReset<T>()) {
+      // TODO: error: "Src tensor need to be reseted before calling
+      // ShareData()".
+    }
+    holder_ = src.Holder();
+    dims_ = src.Dims();
+    place_ = src.Place();
+    return;
+  }
 
   template <typename T>
-  void CopyFrom(const Tensor& src);
+  void CopyFrom(const Tensor& src) {
+    if ((void*)&src == (void*)this) {
+      return;
+    }
+    int len = product(src.Dims());
+    T* src_ptr = src.Data<T>();
+    T* dst_ptr = MutableData<T>(src.Dims());
+    for (int i = 0; i < len; ++i) {
+      dst_ptr[i] = src_ptr[i];
+    }
+    return;
+  }
 
   const std::shared_ptr<Placeholder>& Holder() const;
 
@@ -55,7 +97,9 @@ class Tensor {
   const paddle::platform::Place& Place() const;
 
   template <typename T>
-  bool IsType() const;
+  bool IsType() const {
+    return typeid(T) == holder_.TypeInfo();
+  }
 
   // Placeholder hides type T, so it doesn't appear as a template
   struct Placeholder {
