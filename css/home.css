@@ -2340,7 +2340,7 @@ html {
   min-width: 1080px;
   position: relative;
   z-index: 1;
-  font-family: 'NotoSansHans', 'Microsoft Yahei', Arial, serif;
+  font-family: tahoma,arial,Hiragino Sans GB,Microsoft YaHei;
   margin: 0;
 }
 ul {
@@ -2361,38 +2361,27 @@ a {
   text-decoration: none;
   cursor: pointer;
 }
-h2 {
-  font-size: 20px;
-  color: #2f323a;
-  text-align: center;
-  line-height: 20px;
-  padding: 50px 0;
-  margin: 0;
-  font-weight: 300;
-  position: relative;
-}
 header.site-header {
-  height: 760px;
-  margin: 0;
-  background: url(./../images/banner.jpg) no-repeat center;
-  background-size: cover;
-  text-align: center;
+  height: 60px;
+  background-color: #000000;
+  padding: 0 100px;
 }
 header.site-header > nav.row > * {
   display: inline-block;
-  height: 70px;
+  height: 60px;
 }
 header.site-header .logo {
-  height: 70px;
+  height: 60px;
   float: left;
 }
 header.site-header .logo > img {
-  height: 50px;
-  margin-top: 10px;
+  height: 40px;
+  margin: 10px 10px 10px 10px;
 }
 header.site-header .top-nav {
-  float: right;
-  font-size: 16px;
+  margin-left: 80px;
+  margin-right: auto;
+  font-size: 14px;
 }
 header.site-header .top-nav .site-links {
   float: left;
@@ -2401,12 +2390,12 @@ header.site-header .top-nav .site-links {
 header.site-header .top-nav .site-links > li {
   display: inline-block;
   float: left;
-  height: 70px;
+  height: 60px;
 }
 header.site-header .top-nav .site-links > li > a {
   display: inline-block;
   height: 100%;
-  line-height: 70px;
+  line-height: 60px;
   padding: 0 20px;
   color: rgba(255, 255, 255, 0.7);
 }
@@ -2414,69 +2403,92 @@ header.site-header .top-nav .site-links > li > a.active,
 header.site-header .top-nav .site-links > li > a:hover {
   color: #fff;
 }
-header.site-header .top-nav .language-switcher {
+header.site-header .top-nav .version-switcher {
   position: relative;
   display: inline-block;
-  height: 70px;
+  height: 60px;
   float: left;
 }
-header.site-header .top-nav .language-switcher:hover > a {
+header.site-header .top-nav .version-switcher:hover > a {
   color: #fff;
 }
-header.site-header .top-nav .language-switcher:hover > a .fa::before {
+header.site-header .top-nav .version-switcher:hover > a .fa::before {
   content: "\F106";
 }
-header.site-header .top-nav .language-switcher::before {
-  content: "";
-  display: inline-block;
-  width: 1px;
-  height: 16px;
-  top: 27px;
-  position: absolute;
-  background-color: #64697b;
-  left: 0;
-}
-header.site-header .top-nav .language-switcher::after {
-  content: "";
-  display: inline-block;
-  width: 1px;
-  height: 16px;
-  top: 27px;
-  position: absolute;
-  background-color: #64697b;
-  right: 0;
-}
-header.site-header .top-nav .language-switcher > a {
+header.site-header .top-nav .version-switcher > a {
   color: rgba(255, 255, 255, 0.7);
-  line-height: 70px;
+  line-height: 60px;
   display: inline-block;
   padding: 0 20px;
 }
-header.site-header .top-nav .language-switcher > a .fa::before {
+header.site-header .top-nav .version-switcher > a .fa::before {
   margin-left: 5px;
   content: "\F107";
 }
-header.site-header .top-nav .language-switcher ul {
+header.site-header .top-nav .version-switcher ul {
   display: none;
   top: 50px;
-  width: 100%;
+  width: 60px;
   text-align: center;
-  line-height: 40px;
-  background: #fff;
-  color: #666;
+  line-height: 30px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #0073eb;
   position: absolute;
   left: 0;
 }
-header.site-header .top-nav .language-switcher ul > li + li {
-  border-top: 1px solid #ccc;
+header.site-header .top-nav .version-switcher ul > li > a {
+  color: #ababab;
 }
-header.site-header .top-nav .language-switcher ul > li > a {
-  color: #333;
+header.site-header .top-nav .version-switcher ul > li > a:hover {
+  color: #0073eb;
 }
-header.site-header .top-nav .language-switcher ul > li > a:hover {
-  color: #000;
+header.site-header .top-nav .version-switcher:hover ul {
+  display: inline-block;
 }
-header.site-header .top-nav .language-switcher:hover ul {
+header.site-header .right-nav {
+  float: right;
+  font-size: 14px;
+}
+header.site-header .right-nav .language-switcher {
+  position: relative;
+  display: inline-block;
+  height: 60px;
+  float: left;
+}
+header.site-header .right-nav .language-switcher:hover > a {
+  color: #fff;
+}
+header.site-header .right-nav .language-switcher:hover > a .fa::before {
+  content: "\F106";
+}
+header.site-header .right-nav .language-switcher > a {
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 60px;
+  display: inline-block;
+  margin-right: 10px;
+}
+header.site-header .right-nav .language-switcher > a .fa::before {
+  margin-left: 5px;
+  content: "\F107";
+}
+header.site-header .right-nav .language-switcher ul {
+  display: none;
+  top: 50px;
+  width: 60px;
+  text-align: center;
+  line-height: 30px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #0073eb;
+  position: absolute;
+  left: 0;
+}
+header.site-header .right-nav .language-switcher ul > li > a {
+  color: #ababab;
+}
+header.site-header .right-nav .language-switcher ul > li > a:hover {
+  color: #0073eb;
+}
+header.site-header .right-nav .language-switcher:hover ul {
   display: inline-block;
 }
 header.site-header .github-fork {
@@ -2485,107 +2497,96 @@ header.site-header .github-fork {
 }
 header.site-header .github-fork > a {
   display: inline-block;
-  line-height: 30px;
-  width: 186px;
-  color: #597cf1;
-  padding: 0 15px;
-  border: 1px solid #3c4f85;
-  margin: 20px 0;
-  border-radius: 15px;
+  line-height: 40px;
+  width: 100px;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 0 10px;
+  margin: 10px 0;
   font-size: 14px;
 }
 header.site-header .github-fork > a .fa {
-  font-size: 22px;
-  margin-right: 8px;
-  margin-top: 3px;
+  font-size: 20px;
+  margin-right: 10px;
+  margin-top: 8px;
+  float: left;
+}
+header.site-header .github-fork > a span {
+  margin-right: 10px;
   float: left;
 }
 header.site-header .github-fork > a:hover {
   color: #fff;
-  background-color: #597cf1;
 }
-header.site-header .banner {
+.head-banner {
+  background: url(./../images/banner.jpg) no-repeat center bottom;
+  background-size: cover;
+  height: 399px;
   color: #fff;
+  text-align: center;
+  padding-top: 126px;
+  padding-bottom: auto;
 }
-header.site-header .banner h1 {
-  margin: 168px 0 46px 0;
-  font-size: 40px;
-  line-height: 50px;
+.head-banner .banner {
+  color: #fff;
+  padding-top: 10px;
+}
+.head-banner .banner h1 {
+  margin: 0 0 0 0;
+  font-size: 48px;
+  line-height: 60px;
   font-weight: normal;
 }
-header.site-header .banner h1 span {
-  letter-spacing: 5px;
+.head-banner .banner p {
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: normal;
+  margin: 40px 0 50px 0;
 }
-header.site-header .banner p {
-  color: #b9bcc4;
-  font-size: 18px;
-  font-weight: 100;
-  line-height: 18px;
-  margin: 0 0 46px 0;
-}
-header.site-header .banner .quick-start {
+.head-banner .banner .quick-start {
   display: inline-block;
-  line-height: 50px;
-  padding: 0 30px;
-  font-size: 20px;
+  line-height: 60px;
   color: #ffffff;
-  background-color: #ff9711;
-  border-radius: 25px;
+  font-size: 18px;
+  width: 212px;
+  border: 1px solid #fff;
 }
-header.site-header .banner .quick-start:hover {
-  background-color: #cc7504;
-}
-header.site-header .banner .github-counter {
-  border-radius: 3px;
-  border: 1px solid #d5d5d5;
+.head-banner .banner .github-counter {
   display: inline-block;
-  margin: 40px 20px 0;
-  height: 26px;
-  line-height: 28px;
-  color: #333;
-  background-color: #fff;
+  margin: 50px 20px 0;
+  line-height: 35px;
+  color: #ffff;
 }
-header.site-header .banner .github-counter > span {
+.head-banner .banner .github-counter > span {
   display: inline-block;
-  font-size: 12px;
+  font-size: 18px;
   line-height: 26px;
   float: left;
-  padding: 0 12px;
+  padding: 0 5px;
 }
-header.site-header .banner .github-counter > span:nth-child(1) {
-  font-weight: 700;
-  border-right: 1px solid #d5d5d5;
-  background-color: #ddd;
-  background-image: linear-gradient(#eee, #ddd);
-}
-header.site-header .banner .github-counter > span:nth-child(1) .fa {
-  margin-right: 5px;
-  font-size: 16px;
+.services {
+  background-color: #f4f5f7;
 }
 .services h2 {
+  padding-top: 80px;
+  position: relative;
   text-align: center;
+  margin-top: 0px;
+  margin-bottom: 0px;
 }
 .services h2 span {
-  padding: 0 20px;
-  background-color: #fff;
+  color: #333;
+  font-size: 30px;
+  font-weight: normal;
   position: relative;
   z-index: 1;
 }
-.services h2::after {
-  content: "";
-  width: 100%;
-  height: 1px;
-  background-color: #e6e8eb;
-  display: inline-block;
-  position: absolute;
-  top: 50%;
-  left: 0;
-}
-.services > .row:nth-child(3) {
-  background-color: #fcfdff;
-}
-.services > .row:nth-child(n+2) {
-  border-bottom: 1px solid #f3f4f5;
+.services .sub-title {
+  text-align: center;
+  font-size: 16px;
+  color: #999;
+  font-weight: normal;
+  margin-top: 30px;
+  margin-bottom: 30px;
 }
 .services > .row > div {
   width: 50%;
@@ -2618,10 +2619,9 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
   max-height: 100%;
 }
 .services .service-desc h3 {
-  color: #2f3443;
+  color: #333;
   font-size: 24px;
-  line-height: 24px;
-  font-weight: 500;
+  font-weight: normal;
   margin: 0;
 }
 .services .service-desc p {
@@ -2629,43 +2629,30 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
   font-size: 16px;
   font-weight: 100;
   line-height: 24px;
-  color: #7f828b;
+  color: #999;
 }
 .services .service-desc a.view-more {
-  color: #597cf1;
-  border: 1px solid #597cf1;
-  font-size: 14px;
-  line-height: 14px;
-  padding: 8px 16px;
-  border-radius: 20px;
+  color: #666;
+  font-size: 16px;
   display: inline-block;
 }
-.services .service-desc a.view-more:hover {
-  color: #fff;
-  background-color: #597cf1;
-}
 .features {
-  background-color: #f1f2f4;
-  padding-bottom: 90px;
+  background-color: #ffffff;
+  padding-top: 80px;
+  padding-bottom: 60px;
 }
 .features h2 {
   text-align: center;
+  margin-bottom: 70px;
+  margin-top: 0px;
+  font-size: 30px;
+  color: #333;
 }
 .features h2 span {
-  padding: 0 20px;
-  background-color: #f1f2f4;
   position: relative;
   z-index: 1;
-}
-.features h2::after {
-  content: "";
-  width: 100%;
-  height: 1px;
-  background-color: #e6e8eb;
-  display: inline-block;
-  position: absolute;
-  top: 50%;
-  left: 0;
+  font-weight: normal;
+  color: #333;
 }
 .features .feature-desc {
   width: 25%;
@@ -2673,79 +2660,100 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
   text-align: center;
 }
 .features .feature-desc h3 {
-  color: #2f3443;
-  margin: 30px 0 28px;
-  font-size: 20px;
-  line-height: 20px;
-  font-weight: 300;
+  color: #333;
+  margin: 30px 0 20px;
+  font-size: 18px;
+  font-weight: normal;
 }
 .features .feature-desc p {
   font-size: 14px;
-  font-weight: 100;
-  line-height: 30px;
-  color: #7f828b;
+  text-align: center;
+  line-height: 24px;
+  color: #999;
   max-width: 75%;
   margin: 0;
   display: inline-block;
 }
 .get-started {
-  background: url(./../images/get-started-bg.jpg) no-repeat center bottom;
-  color: #fff;
+  background-color: #ffffff;
   text-align: center;
-  padding: 60px 0;
+  padding-bottom: 80px;
 }
 .get-started h2 {
-  font-size: 24px;
-  color: #fff;
-  font-weight: 500;
-  margin: 0 0 30px 0;
-  padding: 0;
+  font-size: 30px;
+  color: #333;
+  margin-bottom: 30px;
+  font-weight: normal;
 }
 .get-started p {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 100;
-  color: #b4c3f3;
-  margin: 0 0 30px 0;
+  color: #999;
+  margin-bottom: 30px;
 }
 .get-started .quick-start {
-  color: #ffffff;
-  background-color: #597cf1;
-  padding: 8px 30px;
+  color: #fff;
+  background-color: #0073eb;
+  font-size: 18px;
   display: inline-block;
-  border-radius: 20px;
-}
-.get-started .quick-start:hover {
-  background-color: #3f5fcd;
+  line-height: 60px;
+  width: 212px;
 }
 .footer-nav {
-  background-color: #303646;
+  background-color: #333;
+  color: ccc;
 }
-.footer-nav .tr-code {
-  color: #fff;
-  text-align: center;
-  line-height: 100px;
+.footer-nav .intern-console {
+  margin-left: 50px;
+  margin-right: 19px;
+  color: #ccc;
+  font-size: 12px;
+  line-height: 30px;
+  width: 150px;
+  float: left;
+  display: inline;
+}
+.footer-nav .chat-console {
+  padding-left: 50px;
+  color: #ccc;
+  font-size: 12px;
+  width: 600px;
+  float: left;
+  display: inline;
+  border-left: 1px solid rgba(241, 242, 244, 0.2);
+  border-right: 1px solid rgba(241, 242, 244, 0.2);
+}
+.footer-nav .chat-console .sub-top-nava > li {
+  line-height: 30px;
+  width: 25%;
+  float: left;
+  display: inline;
+  margin-bottom: 20px;
+}
+.footer-nav .public-console {
+  margin-left: 49px;
+  margin-right: 50px;
+  width: 100px;
+  float: left;
+  display: inline;
+}
+.footer-nav .public-console > * {
+  vertical-align: left;
+}
+.footer-nav .public-console > img {
+  margin-right: 5px;
+}
+.footer-nav .public-console > p {
+  color: #ccc;
   font-size: 14px;
-  padding-top: 30px;
-}
-.footer-nav .tr-code > * {
-  vertical-align: middle;
-}
-.footer-nav .tr-code > img {
-  margin-bottom: 0px;
-  margin-top: 0px;
-}
-.footer-nav .tr-code > p {
-  line-height: 40px;
-  margin-top: 0px;
-  margin-bottom: 0px;
 }
 .footer-nav .contact-us {
   color: #fff;
   text-align: center;
-  line-height: 70px;
+  line-height: 30px;
   font-size: 14px;
-  border-bottom: 1px solid #484e5e;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
+  padding-top: 40px;
 }
 .footer-nav .contact-us > * {
   vertical-align: middle;
@@ -2758,7 +2766,7 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
 }
 .footer-nav .friendly-links {
   text-align: center;
-  margin-bottom: 10px;
+  margin-bottom: 40px;
 }
 .footer-nav .friendly-links > li {
   display: inline-block;
@@ -2766,18 +2774,18 @@ header.site-header .banner .github-counter > span:nth-child(1) .fa {
   line-height: 12px;
 }
 .footer-nav .friendly-links > li > a {
-  color: #a7adbd;
+  color: #ccc;
   font-size: 12px;
-}
-.footer-nav .friendly-links > li + li {
-  border-left: 1px solid rgba(241, 242, 244, 0.2);
 }
 .footer-nav .copyright {
-  color: #64697b;
+  color: #666;
   font-size: 12px;
   text-align: center;
-  margin: 0;
-  padding: 0 0 40px;
+  padding: 20px 0 20px;
+  margin-bottom: -10px;
+}
+.footer-nav .copyright > a {
+  color: #fff;
 }
 
 /*# sourceMappingURL=home.css.map*/
