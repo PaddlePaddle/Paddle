@@ -8,6 +8,7 @@ packages=['paddle',
           'paddle.v2',
           'paddle.v2.dataset',
           'paddle.v2.reader',
+          'paddle.v2.master',
           'paddle.v2.plot']
 
 setup_requires=["requests",
@@ -25,6 +26,7 @@ setup(name='paddle',
       description='Parallel Distributed Deep Learning',
       install_requires=setup_requires,
       packages=packages,
+      package_data={'paddle.v2.master': ['${paddle_master_LIB_NAME}'], },
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}'
       },
