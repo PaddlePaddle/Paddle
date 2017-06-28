@@ -27,16 +27,6 @@ func NewClient(addrCh <-chan string, bufSize int) *Client {
 	return c
 }
 
-// NewEtcdMasterClient creates a new Client by etcd
-func NewEtcdMasterClient(db DatabaseOperator, bufSize int) *Client {
-	ch := make(chan string)
-	c := NewClient(ch, bufSize)
-	v := db.WaitMasterReady(DefaultAddrPath, 3)
-	ch <- string(v)
-	go db.WatchWithKey(DefaultAddrPath, ch)
-	return c
-}
-
 func (c *Client) getRecords() {
 	for {
 		t, err := c.getTask()

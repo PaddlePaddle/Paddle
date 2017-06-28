@@ -18,12 +18,6 @@ const (
 	DefaultAddrPath = "/master/addr"
 )
 
-// DatabaseOperator is an interface fo database operator, it's useful for unittest
-type DatabaseOperator interface {
-	WaitMasterReady(key string, interval int) []byte
-	WatchWithKey(key string, valChan chan string)
-}
-
 // EtcdClient is the etcd client that master uses for fault tolerance
 // and service registry.
 type EtcdClient struct {
@@ -166,31 +160,25 @@ func (e *EtcdClient) Load() ([]byte, error) {
 	return state, nil
 }
 
-// WaitMasterReady will wait for master is ready
-func (e *EtcdClient) WaitMasterReady(key string, timeout int) []byte {
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
-		resp, err := e.client.Get(ctx, key)
-		cancel()
-		if err != nil {
-			log.Error(err)
-			time.Sleep(time.Second * time.Duration(3))
-			continue
-		}
-		kvs := resp.Kvs
-		if len(kvs) == 0 {
-			log.Error(err)
-			time.Sleep(time.Second * time.Duration(3))
-			continue
-		}
-		v := kvs[0].Value
-		return v
+// GetKey get the specify key
+func GetKey(c *clientv3.Client, key string, timeout int) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
+	resp, err := c.Get(ctx, key)
+	cancel()
+	if err != nil {
+		return "", err
 	}
+	kvs := resp.Kvs
+	if len(kvs) == 0 {
+		return "", nil
+	}
+	v := kvs[0].Value
+	return string(v), nil
 }
 
-// WatchWithKey watch the specify key and send to valChan
-func (e *EtcdClient) WatchWithKey(key string, valChan chan string) {
-	rch := e.client.Watch(context.Background(), key)
+// WatchKey watch the specify key and send to valChan
+func WatchKey(c *clientv3.Client, key string, valChan chan<- string) {
+	rch := c.Watch(context.Background(), key)
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			// if received event is DELETE, the value will be an empty string

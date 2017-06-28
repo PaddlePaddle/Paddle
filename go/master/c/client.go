@@ -15,9 +15,11 @@ import "C"
 import (
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/PaddlePaddle/Paddle/go/master"
+	"github.com/coreos/etcd/clientv3"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -52,20 +54,26 @@ func remove(client C.paddle_master_client) *master.Client {
 //export paddle_new_etcd_master_client
 func paddle_new_etcd_master_client(etcdEndpoints *C.char, timeout int, bufSize int) C.paddle_master_client {
 	p := C.GoString(etcdEndpoints)
-	e, err := master.NewEtcdClientWithoutLock(strings.Split(p, ","))
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   strings.Split(p, ","),
+		DialTimeout: time.Second * time.Duration(timeout),
+	})
 	if err != nil {
 		panic(err)
 	}
-	c := master.NewEtcdMasterClient(e, bufSize)
+	ch := make(chan string, 1)
+	ch <- master.GetKey(cli, master.DefaultAddrPath)
+	go db.WatchKey(master.DefaultAddrPath)
+	c := master.NewClient(ch, bufSize)
 	return add(c)
 }
 
 //export paddle_new_master_client
 func paddle_new_master_client(addr *C.char, bufSize int) C.paddle_master_client {
 	a := C.GoString(addr)
-	ch := make(chan string)
-	c := master.NewClient(ch, bufSize)
+	ch := make(chan string, 1)
 	ch <- a
+	c := master.NewClient(ch, bufSize)
 	return add(c)
 }
 

@@ -76,9 +76,9 @@ func TestGetFinishTask(t *testing.T) {
 	c := &Client{}
 	c.conn = connection.New()
 	addr := fmt.Sprintf(":%d", p)
-	ch := make(chan string)
-	go c.monitorMaster(ch)
+	ch := make(chan string, 1)
 	ch <- addr
+	go c.monitorMaster(ch)
 	c.SetDataset([]string{path})
 	checkOnePass := func(i int) {
 		var tasks []Task

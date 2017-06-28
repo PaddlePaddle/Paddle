@@ -13,20 +13,7 @@ import (
 
 	"github.com/PaddlePaddle/Paddle/go/master"
 	"github.com/PaddlePaddle/recordio"
-	"github.com/stretchr/testify/assert"
 )
-
-type testDB struct{}
-
-func (testDB) WaitMasterReady(key string, interval int) []byte {
-	return []byte("localhost:12345")
-}
-func (testDB) WatchWithKey(key string, valCh chan string) {
-	for i := 1; i < 100; i++ {
-		valCh <- fmt.Sprintf("localhost:%d", 12345+i)
-		time.Sleep(time.Second * time.Duration(1))
-	}
-}
 
 func TestNextRecord(t *testing.T) {
 	const (
@@ -74,9 +61,9 @@ func TestNextRecord(t *testing.T) {
 	}
 	w.Close()
 	f.Close()
-	curAddr := make(chan string)
-	c := master.NewClient(curAddr, 10)
+	curAddr := make(chan string, 1)
 	curAddr <- fmt.Sprintf(":%d", p)
+	c := master.NewClient(curAddr, 10)
 	c.SetDataset([]string{path})
 	for pass := 0; pass < 50; pass++ {
 		received := make(map[byte]bool)
@@ -91,10 +78,4 @@ func TestNextRecord(t *testing.T) {
 			received[r[0]] = true
 		}
 	}
-}
-
-func TestNewEtcdMasterClient(t *testing.T) {
-	db := testDB{}
-	c := master.NewEtcdMasterClient(db, 3)
-	assert.NotNil(t, c)
 }
