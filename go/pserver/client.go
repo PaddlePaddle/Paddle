@@ -123,6 +123,10 @@ func (c *Client) FinishInitParams() error {
 // SendGrads sends gradients to parameter servers for updating
 // parameters.
 func (c *Client) SendGrads(grads []Gradient) error {
+	if len(grads) == 0 {
+		log.Info("Send Empty Gradient")
+		return nil
+	}
 	errCh := make(chan error, len(grads))
 	for _, g := range grads {
 		go func(g Gradient) {
