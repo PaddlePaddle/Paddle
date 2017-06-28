@@ -27,23 +27,6 @@ type EtcdClient struct {
 	lock      *concurrency.Mutex
 }
 
-// NewEtcdClientWithoutLock creates a new EtcdClient without lock
-func NewEtcdClientWithoutLock(endpoints []string) (*EtcdClient, error) {
-	log.Debugf("Connecting to etcd at %v", endpoints)
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: dialTimeout,
-	})
-	if err != nil {
-		return nil, err
-	}
-	e := &EtcdClient{
-		client: cli,
-	}
-
-	return e, nil
-}
-
 // NewEtcdClient creates a new EtcdClient
 func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePath string, ttlSec int) (*EtcdClient, error) {
 	log.Debugf("Connecting to etcd at %v", endpoints)
@@ -186,5 +169,4 @@ func WatchKey(c *clientv3.Client, key string, valChan chan<- string) {
 			valChan <- string(ev.Kv.Value)
 		}
 	}
-
 }
