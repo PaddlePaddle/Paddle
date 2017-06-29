@@ -61,8 +61,6 @@ class Tensor {
 
   int Numel() const { return product(dims_); }
 
-  void Resize(const DDim& dims) { dims_ = dims; }
-
   void Reshape(const DDim& dims) {
     PADDLE_ENFORCE(product(dims) == product(dims_),
                    "Reshape() can not change tensor's numel!");
@@ -76,19 +74,6 @@ class Tensor {
     holder_ = src.holder_;
     dims_ = src.dims_;
     place_ = src.place_;
-  }
-
-  template <typename T>
-  void CopyFrom(const Tensor& src) {
-    if ((void*)&src == (void*)this) {
-      return;
-    }
-    int len = product(src.Dims());
-    T* src_ptr = src.data<T>();
-    T* dst_ptr = mutable_data<T>(src.Dims());
-    for (int i = 0; i < len; ++i) {
-      dst_ptr[i] = src_ptr[i];
-    }
   }
 
   const DDim& Dims() const { return dims_; }
