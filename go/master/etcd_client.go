@@ -18,8 +18,8 @@ const (
 	DefaultAddrPath = "/master/addr"
 )
 
-// EtcdClient is the etcd client that master uses for fault tolerance
-// and service registry.
+// EtcdClient is the etcd client that the master uses for fault
+// tolerance and service registry.
 type EtcdClient struct {
 	lockPath  string
 	statePath string
