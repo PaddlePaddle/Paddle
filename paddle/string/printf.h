@@ -80,25 +80,19 @@ namespace string {
 
 template <typename... Args>
 void Fprintf(std::ostream& out, const char* fmt, const Args&... args) {
-  tinyformat::vformat(out, fmt, makeFormatList(args...));
+  tinyformat::vformat(out, fmt, tinyformat::makeFormatList(args...));
 }
 
 template <typename... Args>
 std::string Sprintf(const char* fmt, const Args&... args) {
   std::ostringstream oss;
-  tinyformat::format(oss, fmt, args...);
+  Fprintf(oss, fmt, args...);
   return oss.str();
 }
 
 template <typename... Args>
-void printf(const char* fmt, const Args&... args) {
-  tinyformat::format(std::cout, fmt, args...);
-}
-
-template <typename... Args>
-void printfln(const char* fmt, const Args&... args) {
-  tinyformat::format(std::cout, fmt, args...);
-  std::cout << '\n';
+void Printf(const char* fmt, const Args&... args) {
+  Fprintf(std::cout, fmt, args...);
 }
 
 }  // namespace string
