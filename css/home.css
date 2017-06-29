@@ -2379,7 +2379,7 @@ header.site-header .logo > img {
   margin: 10px 10px 10px 10px;
 }
 header.site-header .top-nav {
-  margin-left: 80px;
+  margin-left: 155px;
   margin-right: auto;
   font-size: 14px;
 }
@@ -2548,6 +2548,15 @@ header.site-header .github-fork > a:hover {
   color: #ffffff;
   font-size: 18px;
   width: 212px;
+  border: 1px solid #fff;
+}
+.head-banner .banner .quick-start:hover {
+  display: inline-block;
+  line-height: 60px;
+  color: #333;
+  font-size: 18px;
+  width: 212px;
+  background-color: #fff;
   border: 1px solid #fff;
 }
 .head-banner .banner .github-counter {
