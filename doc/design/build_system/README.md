@@ -108,14 +108,14 @@ As above example CMakeLists.txt executes, each function invocation adds "nodes" 
 
 ### Using Package Manager For Go
 
-Building go binaries and libraries need to satisfy their dependencies, generally
+Building Go binaries and libraries need to satisfy their dependencies, generally
 we can do `go get ./...` to download and compile all external dependencies. The
 problems are:
 
-1. `go get` will always get the latest code from master branch, so when an external
-    project updated and deprecates something or made changes to their APIs, builds
-    may not pass. This is very different with what we already have in `cmake/external`
-    which download a specific version or commit id of the dependency.
+1. `go get` will always get the latest code from the default branch of the
+    remote repo, so changes of dependents might break the build. This is very
+    different with what we already have in `cmake/external` which download a
+    specific version or commit id of the dependency.
 1. Some locations can not access external dependencies through the internet, as mentioned
    in https://github.com/PaddlePaddle/Paddle/issues/2605. Using package management
    tools can package the dependencies as a "vendor" package, which can be mirrored
@@ -124,10 +124,20 @@ problems are:
 
 #### Godep vs. Glide
 
-Here's a brief comparison for current Go ecosystem: https://github.com/Masterminds/glide/wiki/Go-Package-Manager-Comparison. There are
-also many complaints about `Godep`. A new "official" pakcage management tool has been
-started: https://github.com/golang/dep to resolve such problems, but it's currently
-at Alpha stage. So the best choice now is glide obviously.
+As mentioned by @wangkuiyi, [Here](https://github.com/golang/go/wiki/PackageManagementTools)
+list dozens of Go package managers. We choose the tool using following principles:
+
+- Most "active" projects with more stars, more pull requests or commits
+- Commonly used project
+
+Then we shall choose between the most popular tools: Godep and Glide.
+
+Here's a brief comparison between Godep and Glide
+: https://github.com/Masterminds/glide/wiki/Go-Package-Manager-Comparison. There are
+also many complaints about using `Godep`. There's also a new "official" pakcage
+management tool has been started at: https://github.com/golang/dep to resolve
+such problems, but it's currently at Alpha stage. So the best choice now is
+glide obviously.
 
 #### Manage Go Packages
 
