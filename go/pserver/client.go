@@ -1,6 +1,7 @@
 package pserver
 
 import (
+	"errors"
 	"hash/fnv"
 	"sort"
 	"time"
@@ -124,8 +125,7 @@ func (c *Client) FinishInitParams() error {
 // parameters.
 func (c *Client) SendGrads(grads []Gradient) error {
 	if len(grads) == 0 {
-		log.Info("Send Empty Gradient")
-		return nil
+		return errors.New("no gradient received")
 	}
 	errCh := make(chan error, len(grads))
 	for _, g := range grads {
