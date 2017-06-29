@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <typeinfo>
 #include "paddle/framework/ddim.h"
+#include "paddle/framework/enforce.h"
 #include "paddle/platform/assert.h"
 #include "paddle/platform/place.h"
 
@@ -21,10 +22,10 @@ class Tensor {
   Tensor& operator=(const Tensor& src) = delete;
 
   template <typename T>
-  const T* Data() const {
-    PADDLE_ASSERT(holder_ != nullptr);
-    PADDLE_ASSERT(holder_->Place() == place_);
-    PADDLE_ASSERT(holder_->Size() >= product(dims_) * sizeof(T));
+  const T* data() const {
+    PADDLE_ENFORCE(holder_ != nullptr);
+    PADDLE_ENFORCE(holder_->Place() == place_);
+    PADDLE_ENFORCE(holder_->Size() >= product(dims_) * sizeof(T));
     return static_cast<const T*>(holder->Ptr());
   }
 
@@ -36,7 +37,7 @@ class Tensor {
 
   // must be POD types
   template <typename T, typename = std::enable_if<std::is_pod<T>::value>::type>
-  T* MutableData() {
+  T* mutable_data() {
     if (NeedReset<T>()) {
       holder_.reset(new PlaceholderImpl(place_, product(dims_) * sizeof(T)));
     }
@@ -44,36 +45,37 @@ class Tensor {
   }
 
   template <typename T, typename = std::enable_if<std::is_pod<T>::value>::type>
-  T* MutableData(const DDim& dims) {
+  T* mutable_data(const DDim& dims) {
     dims_ = dims;
-    return MutableData<T>();
+    return mutable_data<T>();
   }
 
   template <typename T, typename = std::enable_if<std::is_pod<T>::value>::type>
-  T* MutableData(const DDim& dims, const Place& place) {
+  T* mutable_data(const DDim& dims, const Place& place) {
     dims_ = dims;
     place_ = place;
-    return MutableData<T>();
+    return mutable_data<T>();
   }
 
-  int Rank() const;
+  int Rank() const { return arity(dims_); }
 
-  int Numel() const;
+  int Numel() const { return product(dims_); }
 
-  void Resize(const DDim& dims);
+  void Resize(const DDim& dims) { dims_ = dims; }
 
-  void Reshape(const DDim& dims);
+  void Reshape(const DDim& dims) {
+    PADDLE_ENFORCE(product(dims) == product(dims_),
+                   "Reshape() can not change tensor's numel!");
+    dims_ = dims;
+  }
 
   template <typename T>
   void ShareData(const Tensor& src) {
-    if (src.NeedReset<T>()) {
-      // TODO: error: "Src tensor need to be reseted before calling
-      // ShareData()".
-    }
-    holder_ = src.Holder();
-    dims_ = src.Dims();
-    place_ = src.Place();
-    return;
+    PADDLE_ENFORCE(!src.NeedReset<T>(),
+                   "Src tensor need to be reseted before calling ShareData().");
+    holder_ = src.holder_;
+    dims_ = src.dims_;
+    place_ = src.place_;
   }
 
   template <typename T>
@@ -82,25 +84,23 @@ class Tensor {
       return;
     }
     int len = product(src.Dims());
-    T* src_ptr = src.Data<T>();
-    T* dst_ptr = MutableData<T>(src.Dims());
+    T* src_ptr = src.data<T>();
+    T* dst_ptr = mutable_data<T>(src.Dims());
     for (int i = 0; i < len; ++i) {
       dst_ptr[i] = src_ptr[i];
     }
-    return;
   }
 
-  const std::shared_ptr<Placeholder>& Holder() const;
+  const DDim& Dims() const { return dims_; }
 
-  const DDim& Dims() const;
-
-  const paddle::platform::Place& Place() const;
+  const paddle::platform::Place& Place() const { return place_; }
 
   template <typename T>
   bool IsType() const {
     return typeid(T) == holder_.TypeInfo();
   }
 
+ private:
   // Placeholder hides type T, so it doesn't appear as a template
   struct Placeholder {
     virtual ~Placeholder() {}
@@ -110,7 +110,6 @@ class Tensor {
     virtual size_t Size() const = 0;
   };
 
- private:
   template <typename T>
   struct PlaceholderImpl : public Placeholder {
     PlaceholderImpl(Place place, size_t size)
