@@ -10,7 +10,7 @@ import (
 )
 
 func TestFull(t *testing.T) {
-	s, err := pserver.NewService("", time.Second*5)
+	s, err := pserver.NewService(0)
 	if err != nil {
 		t.Error(err)
 	}
@@ -75,7 +75,7 @@ func TestFull(t *testing.T) {
 }
 
 func TestMultipleInit(t *testing.T) {
-	s, err := pserver.NewService("", time.Second*5)
+	s, err := pserver.NewService(0)
 	if err != nil {
 		t.Error(err)
 	}
@@ -91,7 +91,7 @@ func TestMultipleInit(t *testing.T) {
 }
 
 func TestUninitialized(t *testing.T) {
-	s, err := pserver.NewService("", time.Second*5)
+	s, err := pserver.NewService(0)
 	err = s.SendGrad(pserver.Gradient{}, nil)
 	if err.Error() != pserver.Uninitialized {
 		t.FailNow()
@@ -99,7 +99,7 @@ func TestUninitialized(t *testing.T) {
 }
 
 func TestBlockUntilInitialized(t *testing.T) {
-	s, err := pserver.NewService("", time.Second*5)
+	s, err := pserver.NewService(0)
 	if err != nil {
 		t.Error(err)
 	}
