@@ -452,16 +452,16 @@ False if no bias.</li>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.v2.networks.</code><code class="descname">lstmemory_unit</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>Define calculations that a LSTM unit performs in a single time step.
-This function itself is not a recurrent layer, so that it can not be
-directly applied to sequence input. This function is always used in
+<dd><p>Define calculations that a LSTM unit performs during a single time step.
+This function itself is not a recurrent layer, so it can not be
+directly used to process sequence inputs. This function is always used in
 recurrent_group (see layers.py for more details) to implement attention
 mechanism.</p>
 <p>Please refer to  <strong>Generating Sequences With Recurrent Neural Networks</strong>
 for more details about LSTM. The link goes as follows:
 .. _Link: <a class="reference external" href="https://arxiv.org/abs/1308.0850">https://arxiv.org/abs/1308.0850</a></p>
 <div class="math">
-\[ \begin{align}\begin{aligned}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\\f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\\c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\\o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\\h_t &amp; = o_t tanh(c_t)\end{aligned}\end{align} \]</div>
+\[ \begin{align}\begin{aligned}i_t &amp; = \sigma(W_{x_i}x_{t} + W_{h_i}h_{t-1} + W_{c_i}c_{t-1} + b_i)\\f_t &amp; = \sigma(W_{x_f}x_{t} + W_{h_f}h_{t-1} + W_{c_f}c_{t-1} + b_f)\\c_t &amp; = f_tc_{t-1} + i_t tanh (W_{x_c}x_t+W_{h_c}h_{t-1} + b_c)\\o_t &amp; = \sigma(W_{x_o}x_{t} + W_{h_o}h_{t-1} + W_{c_o}c_t + b_o)\\h_t &amp; = o_t tanh(c_t)\end{aligned}\end{align} \]</div>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">lstm_step</span> <span class="o">=</span> <span class="n">lstmemory_unit</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">],</span>
                            <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
@@ -476,6 +476,7 @@ for more details about LSTM. The link goes as follows:
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer name.</li>
+<li><strong>memory_boot</strong> (<em>LayerOutput | None</em>) &#8211; the initialization state of the LSTM cell.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; lstmemory unit name.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; lstmemory unit size.</li>
 <li><strong>param_attr</strong> (<em>ParameterAttribute</em>) &#8211; Parameter config, None if use default.</li>
@@ -508,7 +509,7 @@ False means no bias, None means default bias.</li>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.v2.networks.</code><code class="descname">lstmemory_group</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>lstm_group is a recurrent layer group version of Long Short Term Memory. It
+<dd><p>lstm_group is a recurrent_group version of Long Short Term Memory. It
 does exactly the same calculation as the lstmemory layer (see lstmemory in
 layers.py for the maths) does. A promising benefit is that LSTM memory
 cell states, or hidden states in every time step are accessible to the
@@ -518,8 +519,8 @@ it is recommended to use the lstmemory, which is relatively faster than
 lstmemory_group.</p>
 <p>NOTE: In PaddlePaddle&#8217;s implementation, the following input-to-hidden
 multiplications:
-<span class="math">\(W_{xi}x_{t}\)</span> , <span class="math">\(W_{xf}x_{t}\)</span>,
-<span class="math">\(W_{xc}x_t\)</span>, <span class="math">\(W_{xo}x_{t}\)</span> are not done in lstmemory_unit to
+<span class="math">\(W_{x_i}x_{t}\)</span> , <span class="math">\(W_{x_f}x_{t}\)</span>,
+<span class="math">\(W_{x_c}x_t\)</span>, <span class="math">\(W_{x_o}x_{t}\)</span> are not done in lstmemory_unit to
 speed up the calculations. Consequently, an additional mixed_layer with
 full_matrix_projection must be included before lstmemory_unit is called.</p>
 <p>The example usage is:</p>
@@ -536,8 +537,9 @@ full_matrix_projection must be included before lstmemory_unit is called.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer name.</li>
-<li><strong>name</strong> (<em>basestring</em>) &#8211; lstmemory group name.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; lstmemory group size.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; name of the lstmemory group.</li>
+<li><strong>memory_boot</strong> (<em>LayerOutput | None</em>) &#8211; the initialization state of LSTM cell.</li>
 <li><strong>reverse</strong> (<em>bool</em>) &#8211; is lstm reversed</li>
 <li><strong>param_attr</strong> (<em>ParameterAttribute</em>) &#8211; Parameter config, None if use default.</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; lstm final activiation type</li>
@@ -662,8 +664,8 @@ concatenated and returned.</li>
 <dt>
 <code class="descclassname">paddle.v2.networks.</code><code class="descname">gru_unit</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Define calculations that a gated recurrent unit performs in a single time
-step. This function itself is not a recurrent layer, so that it can not be
-directly applied to sequence input. This function is almost always used in
+step. This function itself is not a recurrent layer, so it can not be
+directly used to process sequence inputs. This function is always used in
 the recurrent_group (see layers.py for more details) to implement attention
 mechanism.</p>
 <p>Please see grumemory in layers.py for the details about the maths.</p>
@@ -673,6 +675,7 @@ mechanism.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer name.</li>
+<li><strong>memory_boot</strong> (<em>LayerOutput | None</em>) &#8211; the initialization state of the LSTM cell.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; name of the gru group.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; hidden size of the gru.</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; type of the activation</li>
@@ -697,7 +700,7 @@ mechanism.</p>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.v2.networks.</code><code class="descname">gru_group</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>gru_group is a recurrent layer group version of Gated Recurrent Unit. It
+<dd><p>gru_group is a recurrent_group version of Gated Recurrent Unit. It
 does exactly the same calculation as the grumemory layer does. A promising
 benefit is that gru hidden states are accessible to the user. This is
 especially useful in attention model. If you do not need to access
@@ -717,6 +720,7 @@ to use the grumemory, which is relatively faster.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer name.</li>
+<li><strong>memory_boot</strong> (<em>LayerOutput | None</em>) &#8211; the initialization state of the LSTM cell.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; name of the gru group.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; hidden size of the gru.</li>
 <li><strong>reverse</strong> (<em>bool</em>) &#8211; whether to process the input data in a reverse order</li>

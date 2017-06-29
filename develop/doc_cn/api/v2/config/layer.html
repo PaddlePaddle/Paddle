@@ -1032,6 +1032,7 @@ more details about LSTM.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The lstmemory layer name.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; DEPRECATED. size of the lstm cell</li>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; input layer name.</li>
 <li><strong>reverse</strong> (<em>bool</em>) &#8211; is sequence process reversed or not.</li>
 <li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; activation type, paddle.v2.activation.Tanh by default. <span class="math">\(h_t\)</span></li>
@@ -1098,6 +1099,7 @@ Recurrent Neural Networks on Sequence Modeling.</a></p>
 <tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The gru layer name.</li>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer.</em>) &#8211; input layer.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; DEPRECATED. size of the gru cell</li>
 <li><strong>reverse</strong> (<em>bool</em>) &#8211; Whether sequence process is reversed or not.</li>
 <li><strong>act</strong> (<em>paddle.v2.activation.Base</em>) &#8211; activation type, paddle.v2.activation.Tanh by default. This activation
 affects the <span class="math">\({\tilde{h_t}}\)</span>.</li>
@@ -1108,8 +1110,6 @@ This activation affects the <span class="math">\(z_t\)</span> and <span class="m
 bias.</li>
 <li><strong>param_attr</strong> (<em>paddle.v2.attr.ParameterAttribute|None|False</em>) &#8211; Parameter Attribute.</li>
 <li><strong>layer_attr</strong> (<em>paddle.v2.attr.ExtraAttributeNone</em>) &#8211; Extra Layer attribute</li>
-<li><strong>size</strong> (<em>None</em>) &#8211; Stub parameter of size, but actually not used. If set this size
-will get a warning.</li>
 </ul>
 </td>
 </tr>
@@ -1264,18 +1264,18 @@ be paddle.v2.config_base.Layer.</li>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.v2.layer.</code><code class="descname">lstm_step</code></dt>
-<dd><p>LSTM Step Layer. It used in recurrent_group. The lstm equations are shown
-as follow.</p>
+<dd><p>LSTM Step Layer. This function is used only in recurrent_group.
+The lstm equations are shown as follows.</p>
 <div class="math">
-\[ \begin{align}\begin{aligned}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\\f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\\c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\\o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\\h_t &amp; = o_t tanh(c_t)\end{aligned}\end{align} \]</div>
+\[ \begin{align}\begin{aligned}i_t &amp; = \sigma(W_{x_i}x_{t} + W_{h_i}h_{t-1} + W_{c_i}c_{t-1} + b_i)\\f_t &amp; = \sigma(W_{x_f}x_{t} + W_{h_f}h_{t-1} + W_{c_f}c_{t-1} + b_f)\\c_t &amp; = f_tc_{t-1} + i_t tanh (W_{x_c}x_t+W_{h_c}h_{t-1} + b_c)\\o_t &amp; = \sigma(W_{x_o}x_{t} + W_{h_o}h_{t-1} + W_{c_o}c_t + b_o)\\h_t &amp; = o_t tanh(c_t)\end{aligned}\end{align} \]</div>
 <p>The input of lstm step is <span class="math">\(Wx_t + Wh_{t-1}\)</span>, and user should use
 <code class="code docutils literal"><span class="pre">mixed</span></code> and <code class="code docutils literal"><span class="pre">full_matrix_projection</span></code> to calculate these
-input vector.</p>
+input vectors.</p>
 <p>The state of lstm step is <span class="math">\(c_{t-1}\)</span>. And lstm step layer will do</p>
 <div class="math">
 \[ \begin{align}\begin{aligned}i_t = \sigma(input + W_{ci}c_{t-1} + b_i)\\...\end{aligned}\end{align} \]</div>
-<p>This layer contains two outputs. Default output is <span class="math">\(h_t\)</span>. The other
-output is <span class="math">\(o_t\)</span>, which name is &#8216;state&#8217; and can use
+<p>This layer has two outputs. Default output is <span class="math">\(h_t\)</span>. The other
+output is <span class="math">\(o_t\)</span>, whose name is &#8216;state&#8217; and can use
 <code class="code docutils literal"><span class="pre">get_output</span></code> to extract this output.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1283,8 +1283,8 @@ output is <span class="math">\(o_t\)</span>, which name is &#8216;state&#8217; a
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer&#8217;s name.</li>
-<li><strong>size</strong> (<em>int</em>) &#8211; Layer&#8217;s size. NOTE: lstm layer&#8217;s size, should be equal as
-<code class="code docutils literal"><span class="pre">input.size/4</span></code>, and should be equal as
+<li><strong>size</strong> (<em>int</em>) &#8211; Layer&#8217;s size. NOTE: lstm layer&#8217;s size, should be equal to
+<code class="code docutils literal"><span class="pre">input.size/4</span></code>, and should be equal to
 <code class="code docutils literal"><span class="pre">state.size</span></code>.</li>
 <li><strong>input</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; input layer. <span class="math">\(Wx_t + Wh_{t-1}\)</span></li>
 <li><strong>state</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; State Layer. <span class="math">\(c_{t-1}\)</span></li>
