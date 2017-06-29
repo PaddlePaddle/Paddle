@@ -9,7 +9,7 @@ add_subdirectory(pserver)
 add_subdirectory(trainer)
 add_subdirectory(scripts)
 add_subdirectory(optimizer)
-add_subdirectory(strings)
+add_subdirectory(string)
 
 if(Boost_FOUND)
   add_subdirectory(memory)
