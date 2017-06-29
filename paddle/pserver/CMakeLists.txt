@@ -17,7 +17,7 @@ add_library(paddle_network STATIC
 add_style_check_target(paddle_network ${NETWORK_SOURCES})
 add_style_check_target(paddle_network ${NETWORK_HEADERS})
 
-add_dependencies(paddle_network paddle_proto)
+add_dependencies(paddle_network paddle_proto ${external_project_dependencies})
 
 ################### paddle_pserver ######################
 set(PSERVER_SOURCES
