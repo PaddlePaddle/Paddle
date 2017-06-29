@@ -22,6 +22,7 @@ if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
   add_subdirectory(platform)
   add_subdirectory(framework)
+  add_subdirectory(operators)
 endif()
 
 if(WITH_C_API)
