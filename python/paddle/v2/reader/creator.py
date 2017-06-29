@@ -79,7 +79,6 @@ def recordio_local(paths):
 
     return reader
 
-
 def recordio(paths, addr="", buf_size=100):
     """
     Creates a data reader that outputs record one one by one 
@@ -90,8 +89,8 @@ def recordio(paths, addr="", buf_size=100):
     import os
     import paddle.v2.master.client as cloud
 
-    if len(os.environ["KUBERNETES_SERVICE_HOST"]) == 0:
-        return recordio_local(path)
+    if "KUBERNETES_SERVICE_HOST" not in os.environ.keys():
+        return recordio_local(paths)
 
     def reader():
         c = cloud(addr, buf_size)
@@ -106,4 +105,3 @@ def recordio(paths, addr="", buf_size=100):
         c.close()
 
     return reader
-
