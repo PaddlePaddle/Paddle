@@ -65,7 +65,7 @@ class AttributeReader {
   void GetArray(const std::string& attributeName, std::vector<T>* array) const;
 
   template <typename T>
-  bool Contain(const std::string& name) const;
+  bool Contains(const std::string& name) const;
 
  private:
   const AttributeMap& attrs_;

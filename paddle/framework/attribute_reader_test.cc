@@ -26,16 +26,16 @@ TEST(AttributeReader, ReadPlain) {
 
   AttributeReader reader(test);
 
-  ASSERT_TRUE(reader.Contain<int>("intValue"));
-  ASSERT_TRUE(reader.Contain<std::string>("strValue"));
-  ASSERT_TRUE(reader.Contain<float>("floatValue"));
+  ASSERT_TRUE(reader.Contains<int>("intValue"));
+  ASSERT_TRUE(reader.Contains<std::string>("strValue"));
+  ASSERT_TRUE(reader.Contains<float>("floatValue"));
 
   ASSERT_EQ(-1, reader.Get<int>("intValue"));
   ASSERT_EQ("unittest string", reader.Get<std::string>("strValue"));
   ASSERT_NEAR(0.23f, reader.Get<float>("floatValue"), 1e-5);
 
-  ASSERT_FALSE(reader.Contain<float>("intValue"));
-  ASSERT_FALSE(reader.Contain<int>("otherValue"));
+  ASSERT_FALSE(reader.Contains<float>("intValue"));
+  ASSERT_FALSE(reader.Contains<int>("otherValue"));
 }
 
 TEST(AttributeReader, ReadArray) {
@@ -64,6 +64,6 @@ TEST(AttributeReader, ReadArray) {
   ASSERT_EQ(expected, actual);
   ASSERT_EQ(expectedStr, actualStr);
 
-  ASSERT_TRUE(reader.Contain<std::vector<int>>("listInt"));
-  ASSERT_TRUE(reader.Contain<std::vector<std::string>>("listStr"));
+  ASSERT_TRUE(reader.Contains<std::vector<int>>("listInt"));
+  ASSERT_TRUE(reader.Contains<std::vector<std::string>>("listStr"));
 }

@@ -46,7 +46,7 @@ class AttributeReader {
    * mismatch or not contains that name.
    */
   template <typename T>
-  bool Contain(const std::string& name) const;
+  bool Contains(const std::string& name) const;
 
   /**
    * @brief Get Attribute value. Not support std::vector. If want to return a
@@ -91,10 +91,10 @@ template <typename T>
 inline bool IsType(const ::paddle::framework::Attribute* attr);
 
 template <typename T, bool IsArray>
-struct ContainImpl {};
+struct ContainsImpl {};
 
 template <typename T>
-struct ContainImpl<T, false> {
+struct ContainsImpl<T, false> {
   bool operator()(const AttributeMap& attrs, const std::string& name) {
     auto attr = GetField(attrs, name);
     if (attr) {
@@ -106,7 +106,7 @@ struct ContainImpl<T, false> {
 };
 
 template <typename T>
-struct ContainImpl<T, true> {
+struct ContainsImpl<T, true> {
   bool operator()(const AttributeMap& attrs, const std::string& name) {
     auto attr = GetField(attrs, name);
     if (attr) {
@@ -119,11 +119,11 @@ struct ContainImpl<T, true> {
 }  // namespace details
 
 template <typename T>
-bool AttributeReader::Contain(const std::string& name) const {
+bool AttributeReader::Contains(const std::string& name) const {
   constexpr bool is_vec = std::is_same<T, std::vector<int>>::value ||
                           std::is_same<T, std::vector<float>>::value ||
                           std::is_same<T, std::vector<std::string>>::value;
-  return details::ContainImpl<T, is_vec>()(attrs_, name);
+  return details::ContainsImpl<T, is_vec>()(attrs_, name);
 }
 
 #define ATTR_READER_ISTYPE_IMPL(T, CASE)                              \
