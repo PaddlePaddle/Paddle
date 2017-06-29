@@ -19,17 +19,13 @@ limitations under the License. */
 #include "DetectionUtil.h"
 #include "Layer.h"
 
-using std::vector;
-using std::map;
-using std::pair;
-
 namespace paddle {
 
 /**
  * The detection output layer for a SSD detection task. This layer apply the
  * Non-maximum suppression to the all predicted bounding box and keep the
  * Top-K bounding boxes.
- * - Input: This layer need three input layers: This first input layer
+ * - Input: This layer needs three input layers: This first input layer
  *          is the priorbox layer. The rest two input layers are convolution
  *          layers for generating bbox location offset and the classification
  *          confidence.

@@ -17,10 +17,6 @@ limitations under the License. */
 #include <vector>
 #include "DataLayer.h"
 
-using std::vector;
-using std::map;
-using std::pair;
-
 namespace paddle {
 
 REGISTER_LAYER(multibox_loss, MultiBoxLossLayer);
@@ -133,7 +129,7 @@ void MultiBoxLossLayer::forward(PassType passType) {
   }
 
   // Get max scores for each prior bbox. Used in negative mining
-  vector<vector<real>> allMaxConfScore;
+  std::vector<std::vector<real>> allMaxConfScore;
   numPriors_ = priorValue->getElementCnt() / 8;
   getMaxConfidenceScores(confBuffer_->getData(),
                          batchSize,
@@ -151,18 +147,18 @@ void MultiBoxLossLayer::forward(PassType passType) {
   allMatchIndices_.clear();
   allNegIndices_.clear();
 
-  pair<size_t, size_t> retPair = generateMatchIndices(*priorValue,
-                                                      numPriors_,
-                                                      *labelValue,
-                                                      labelIndex,
-                                                      seqNum,
-                                                      allMaxConfScore,
-                                                      batchSize,
-                                                      overlapThreshold_,
-                                                      negOverlap_,
-                                                      negPosRatio_,
-                                                      &allMatchIndices_,
-                                                      &allNegIndices_);
+  std::pair<size_t, size_t> retPair = generateMatchIndices(*priorValue,
+                                                           numPriors_,
+                                                           *labelValue,
+                                                           labelIndex,
+                                                           seqNum,
+                                                           allMaxConfScore,
+                                                           batchSize,
+                                                           overlapThreshold_,
+                                                           negOverlap_,
+                                                           negPosRatio_,
+                                                           &allMatchIndices_,
+                                                           &allNegIndices_);
   numMatches_ = retPair.first;
   numNegs_ = retPair.second;
 
@@ -175,30 +171,31 @@ void MultiBoxLossLayer::forward(PassType passType) {
     Matrix::resizeOrCreate(locGTData_, numMatches_ * 4, 1, false, false);
     Matrix::resizeOrCreate(locDiff_, numMatches_ * 4, 1, false, false);
     locDiff_->zeroMem();
-    vector<real> locGTData;
+    std::vector<real> locGTData;
 
+    real* locDiffData = locDiff_->getData();
+    const real* locBufferData = locBuffer_->getData();
     for (size_t n = 0; n < batchSize; ++n) {
       for (size_t i = 0; i < numPriors_; ++i) {
         if (allMatchIndices_[n][i] == -1) continue;  // match none
         size_t locOffset =
             n * (locBuffer_->getElementCnt() / batchSize) + i * 4;
-        locDiff_->getData()[count++] = (locBuffer_->getData() + locOffset)[0];
-        locDiff_->getData()[count++] = (locBuffer_->getData() + locOffset)[1];
-        locDiff_->getData()[count++] = (locBuffer_->getData() + locOffset)[2];
-        locDiff_->getData()[count++] = (locBuffer_->getData() + locOffset)[3];
-
+        std::copy(locBufferData + locOffset,
+                  locBufferData + locOffset + 4,
+                  locDiffData + count);
+        count += 4;
         const int gtIdx = allMatchIndices_[n][i];
         size_t priorOffset = i * 8;
-        vector<NormalizedBBox> priorBBoxVec;
+        std::vector<NormalizedBBox> priorBBoxVec;
         getBBoxFromPriorData(
             priorValue->getData() + priorOffset, 1, priorBBoxVec);
-        vector<vector<real>> priorBBoxVar;
+        std::vector<std::vector<real>> priorBBoxVar;
         getBBoxVarFromPriorData(
             priorValue->getData() + priorOffset, 1, priorBBoxVar);
         size_t labelOffset = (labelIndex[n] + gtIdx) * 6;
-        vector<NormalizedBBox> gtBBoxVec;
+        std::vector<NormalizedBBox> gtBBoxVec;
         getBBoxFromLabelData(labelValue->getData() + labelOffset, 1, gtBBoxVec);
-        vector<real> gtEncode;
+        std::vector<real> gtEncode;
         encodeBBoxWithVar(
             priorBBoxVec[0], priorBBoxVar[0], gtBBoxVec[0], gtEncode);
         locGTData.insert(locGTData.end(), gtEncode.begin(), gtEncode.end());
@@ -218,7 +215,9 @@ void MultiBoxLossLayer::forward(PassType passType) {
     confProb_->zeroMem();
     size_t count = 0;
 
-    vector<real> confPredData;
+    std::vector<real> confPredData;
+    real* confProbData = confProb_->getData();
+    const real* confBufferData = confBuffer_->getData();
     for (size_t n = 0; n < batchSize; ++n) {
       for (size_t i = 0; i < numPriors_; ++i) {
         if (allMatchIndices_[n][i] == -1) continue;
@@ -226,11 +225,13 @@ void MultiBoxLossLayer::forward(PassType passType) {
         const int gtLabel = (labelValue->getData() + labelOffset)[0];
         confGTData_->getData()[count] = gtLabel;
         size_t confOffset = n * numPriors_ * numClasses_ + i * numClasses_;
-        for (size_t j = 0; j < numClasses_; ++j) {
-          confProb_->getData()[count * numClasses_ + j] =
-              (confBuffer_->getData() + confOffset)[j];
-          confPredData.push_back((confBuffer_->getData() + confOffset)[j]);
-        }
+        std::copy(confBufferData + confOffset,
+                  confBufferData + confOffset + numClasses_,
+                  confProbData + count * numClasses_);
+        confPredData.reserve(confPredData.size() + numClasses_);
+        confPredData.insert(confPredData.end(),
+                            confBufferData + confOffset,
+                            confBufferData + confOffset + numClasses_);
         ++count;
       }
       // Negative mining samples
@@ -238,14 +239,17 @@ void MultiBoxLossLayer::forward(PassType passType) {
         confGTData_->getData()[count] = backgroundId_;
         size_t confOffset =
             n * numPriors_ * numClasses_ + allNegIndices_[n][i] * numClasses_;
-        for (size_t j = 0; j < numClasses_; ++j) {
-          confProb_->getData()[count * numClasses_ + j] =
-              (confBuffer_->getData() + confOffset)[j];
-          confPredData.push_back((confBuffer_->getData() + confOffset)[j]);
-        }
-        count++;
+        std::copy(confBufferData + confOffset,
+                  confBufferData + confOffset + numClasses_,
+                  confProbData + count * numClasses_);
+        confPredData.reserve(confPredData.size() + numClasses_);
+        confPredData.insert(confPredData.end(),
+                            confBufferData + confOffset,
+                            confBufferData + confOffset + numClasses_);
+        ++count;
       }
     }
+    CHECK_EQ(numConf_, count);
     confProb_->softmax(*confProb_);
     MatrixPtr confLossOutput;
     Matrix::resizeOrCreate(confLossOutput, numConf_, 1, false, false);
@@ -254,7 +258,7 @@ void MultiBoxLossLayer::forward(PassType passType) {
   }
   real loss = locLoss_ + confLoss_;
   MatrixPtr outV = getOutputValue();
-  vector<real> tmp(batchSize, loss);
+  std::vector<real> tmp(batchSize, loss);
   outV->copyFrom(&tmp[0], batchSize);
 }
 
@@ -274,16 +278,18 @@ void MultiBoxLossLayer::backward(const UpdateCallback& callback) {
       locDiff_->getData()[i] *= (1. / numMatches_);
     // Copy gradient back
     size_t count = 0;
-    for (size_t n = 0; n < batchSize; ++n)
+    const real* locDiffData = locDiff_->getData();
+    for (size_t n = 0; n < batchSize; ++n) {
       for (size_t i = 0; i < numPriors_; ++i) {
         if (allMatchIndices_[n][i] == -1) continue;
-        real* locDiffData = locBuffer_->getData() + n * numPriors_ * 4 + i * 4;
-        locDiffData[0] = (locDiff_->getData() + count * 4)[0];
-        locDiffData[1] = (locDiff_->getData() + count * 4)[1];
-        locDiffData[2] = (locDiff_->getData() + count * 4)[2];
-        locDiffData[3] = (locDiff_->getData() + count * 4)[3];
+        real* locBufferData =
+            locBuffer_->getData() + n * numPriors_ * 4 + i * 4;
+        std::copy(locDiffData + count * 4,
+                  locDiffData + (count + 1) * 4,
+                  locBufferData);
         ++count;
       }
+    }
     CHECK_EQ(count, numMatches_);
   }
 
@@ -293,21 +299,24 @@ void MultiBoxLossLayer::backward(const UpdateCallback& callback) {
     for (size_t i = 0; i < numConf_ * numClasses_; ++i)
       confProb_->getData()[i] *= (1. / numMatches_);
     size_t count = 0;
+    const real* confProbData = confProb_->getData();
     for (size_t n = 0; n < batchSize; ++n) {
       for (size_t i = 0; i < numPriors_; ++i) {
         if (allMatchIndices_[n][i] == -1) continue;
         real* confDiffData = confBuffer_->getData() +
                              n * numPriors_ * numClasses_ + i * numClasses_;
-        for (size_t j = 0; j < numClasses_; ++j)
-          confDiffData[j] = (confProb_->getData() + count * numClasses_)[j];
+        std::copy(confProbData + count * numClasses_,
+                  confProbData + (count + 1) * numClasses_,
+                  confDiffData);
         ++count;
       }
       for (size_t i = 0; i < allNegIndices_[n].size(); ++i) {
         int idx = allNegIndices_[n][i];
         real* confDiffData = confBuffer_->getData() +
                              n * numPriors_ * numClasses_ + idx * numClasses_;
-        for (size_t j = 0; j < numClasses_; ++j)
-          confDiffData[j] = (confProb_->getData() + count * numClasses_)[j];
+        std::copy(confProbData + count * numClasses_,
+                  confProbData + (count + 1) * numClasses_,
+                  confDiffData);
         ++count;
       }
     }

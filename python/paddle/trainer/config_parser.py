@@ -1679,7 +1679,7 @@ class PriorBoxLayer(LayerBase):
 @config_layer('multibox_loss')
 class MultiBoxLossLayer(LayerBase):
     def __init__(self, name, inputs, input_num, num_classes, overlap_threshold,
-                 neg_pos_ratio, neg_overlap, background_id):
+                 neg_pos_ratio, neg_overlap, background_id, **xargs):
         super(MultiBoxLossLayer, self).__init__(name, 'multibox_loss', 0,
                                                 inputs)
         config_assert(
@@ -1701,7 +1701,7 @@ class MultiBoxLossLayer(LayerBase):
 class DetectionOutputLayer(LayerBase):
     def __init__(self, name, inputs, size, input_num, num_classes,
                  nms_threshold, nms_top_k, keep_top_k, confidence_threshold,
-                 background_id):
+                 background_id, **xargs):
         super(DetectionOutputLayer, self).__init__(name, 'detection_output', 0,
                                                    inputs)
         config_assert(

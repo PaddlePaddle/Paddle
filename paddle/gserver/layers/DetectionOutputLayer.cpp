@@ -48,8 +48,6 @@ void DetectionOutputLayer::forward(PassType passType) {
   Matrix::resizeOrCreate(locTmpBuffer_, 1, locSizeSum_, false, useGpu_);
   Matrix::resizeOrCreate(
       confTmpBuffer_, confSizeSum_ / numClasses_, numClasses_, false, useGpu_);
-  locBuffer_ = locTmpBuffer_;
-  confBuffer_ = confTmpBuffer_;
 
   size_t locOffset = 0;
   size_t confOffset = 0;
@@ -68,7 +66,7 @@ void DetectionOutputLayer::forward(PassType passType) {
                                    locSizeSum_,
                                    locOffset,
                                    batchSize,
-                                   *locBuffer_,
+                                   *locTmpBuffer_,
                                    kNCHWToNHWC);
     confOffset += appendWithPermute(*inConf,
                                     height,
@@ -76,7 +74,7 @@ void DetectionOutputLayer::forward(PassType passType) {
                                     confSizeSum_,
                                     confOffset,
                                     batchSize,
-                                    *confBuffer_,
+                                    *confTmpBuffer_,
                                     kNCHWToNHWC);
   }
   CHECK_EQ(locOffset, locSizeSum_ / batchSize);
@@ -100,23 +98,25 @@ void DetectionOutputLayer::forward(PassType passType) {
     priorValue = priorCpuValue_;
   } else {
     priorValue = getInputValue(*getPriorBoxLayer());
+    locBuffer_ = locTmpBuffer_;
+    confBuffer_ = confTmpBuffer_;
   }
   confBuffer_->softmax(*confBuffer_);
 
   size_t numPriors = priorValue->getElementCnt() / 8;
-  vector<vector<NormalizedBBox>> allDecodedBBoxes;
+  std::vector<std::vector<NormalizedBBox>> allDecodedBBoxes;
   for (size_t n = 0; n < batchSize; ++n) {
-    vector<NormalizedBBox> decodedBBoxes;
+    std::vector<NormalizedBBox> decodedBBoxes;
     for (size_t i = 0; i < numPriors; ++i) {
       size_t priorOffset = i * 8;
       size_t locPredOffset = n * numPriors * 4 + i * 4;
-      vector<NormalizedBBox> priorBBoxVec;
+      std::vector<NormalizedBBox> priorBBoxVec;
       getBBoxFromPriorData(
           priorValue->getData() + priorOffset, 1, priorBBoxVec);
-      vector<vector<real>> priorBBoxVar;
+      std::vector<std::vector<real>> priorBBoxVar;
       getBBoxVarFromPriorData(
           priorValue->getData() + priorOffset, 1, priorBBoxVar);
-      vector<real> locPredData;
+      std::vector<real> locPredData;
       for (size_t j = 0; j < 4; ++j)
         locPredData.push_back(*(locBuffer_->getData() + locPredOffset + j));
       NormalizedBBox bbox =
@@ -126,7 +126,7 @@ void DetectionOutputLayer::forward(PassType passType) {
     allDecodedBBoxes.push_back(decodedBBoxes);
   }
 
-  vector<map<size_t, vector<size_t>>> allIndices;
+  std::vector<std::map<size_t, std::vector<size_t>>> allIndices;
   size_t numKept = getDetectionIndices(confBuffer_->getData(),
                                        numPriors,
                                        numClasses_,
