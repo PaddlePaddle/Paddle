@@ -370,6 +370,45 @@ Trainer.train.</p>
 </table>
 </dd></dl>
 
+<dl class="staticmethod">
+<dt>
+<em class="property">static </em><code class="descname">from_tar</code><span class="sig-paren">(</span><em>f</em><span class="sig-paren">)</span></dt>
+<dd><p>Create a <cite>Parameters</cite> object from the given file. And
+the <cite>Parameters</cite> only contains the parameters in this
+file. It is adapted the parameters are same in the
+defined network and the given file. For example, it
+can be used in the inference.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>f</strong> (<em>tar file</em>) &#8211; the initialized model file.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A Parameters object.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">Parameters.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">init_from_tar</code><span class="sig-paren">(</span><em>f</em><span class="sig-paren">)</span></dt>
+<dd><p>Different from <cite>from_tar</cite>, this interface can be used to
+init partial network parameters from another saved model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>f</strong> (<em>tar file</em>) &#8211; the initialized model file.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Nothing.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </dd></dl>
 
 </div>
