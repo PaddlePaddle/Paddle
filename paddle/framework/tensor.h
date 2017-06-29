@@ -25,21 +25,21 @@ class Tensor {
   const T* data() const {
     PADDLE_ENFORCE(holder_ != nullptr);
     PADDLE_ENFORCE(holder_->Place() == place_);
-    PADDLE_ENFORCE(holder_->Size() >= product(dims_) * sizeof(T));
+    PADDLE_ENFORCE(holder_->Size() >= Numel() * sizeof(T));
     return static_cast<const T*>(holder->Ptr());
   }
 
   template <typename T>
   bool NeedReset() const {
     return (holder_ == nullptr || holder_->Place() != place_ ||
-            holder_->Size() < product(dims_) * sizeof(T));
+            holder_->Size() < Numel() * sizeof(T));
   }
 
   // must be POD types
   template <typename T, typename = std::enable_if<std::is_pod<T>::value>::type>
   T* mutable_data() {
     if (NeedReset<T>()) {
-      holder_.reset(new PlaceholderImpl(place_, product(dims_) * sizeof(T)));
+      holder_.reset(new PlaceholderImpl(place_, Numel() * sizeof(T)));
     }
     return static_cast<T*>(holder_->Ptr());
   }
@@ -62,7 +62,7 @@ class Tensor {
   int Numel() const { return product(dims_); }
 
   void Reshape(const DDim& dims) {
-    PADDLE_ENFORCE(product(dims) == product(dims_),
+    PADDLE_ENFORCE(product(dims) == Numel(),
                    "Reshape() can not change tensor's numel!");
     dims_ = dims;
   }

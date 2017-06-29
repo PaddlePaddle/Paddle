@@ -27,6 +27,7 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
+find_package(Boost QUIET)
 
 include(simd)
 
@@ -110,6 +111,7 @@ include_directories("${PROJ_ROOT}")
 include_directories("${PROJ_ROOT}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/cclient")
+include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXTERNAL_LIBS
     ${GFLAGS_LIBRARIES}

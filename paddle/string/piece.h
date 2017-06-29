@@ -20,33 +20,34 @@
 #include <string>
 
 namespace paddle {
+namespace string {
 
-// StringPiece points into a std::string object but doesn't own the
+// Piece points into a std::string object but doesn't own the
 // string.  It is for efficient access to strings.  Like Go's string
-// type.  Not that StringPiece doesn't mutate the underlying string,
+// type.  Not that Piece doesn't mutate the underlying string,
 // so it is thread-safe given that the underlying string doesn't
-// change.  Because StringPiece contains a little data members, and
+// change.  Because Piece contains a little data members, and
 // its syntax is simple as it doesn't own/manage the string, it is
-// cheap to construct StringPieces and pass them around.
-class StringPiece {
+// cheap to construct Pieces and pass them around.
+class Piece {
 public:
   static const size_t npos = static_cast<size_t>(-1);
 
   // We provide non-explicit singleton constructors so users can
-  // pass in a "const char*" or a "string" wherever a "StringPiece"
+  // pass in a "const char*" or a "string" wherever a "Piece"
   // is expected.  These contructors ensure that if data_ is NULL,
   // size_ is 0.
-  StringPiece();
-  StringPiece(const char* d, size_t n);
-  StringPiece(const char* d);
-  StringPiece(const std::string& s);
+  Piece();
+  Piece(const char* d, size_t n);
+  Piece(const char* d);
+  Piece(const std::string& s);
 
   const char* data() const { return data_; }
   size_t len() const { return size_; }
 
   char operator[](size_t n) const;
 
-  // StringPiece doesn't own the string, so both iterator and const
+  // Piece doesn't own the string, so both iterator and const
   // iterator are const char* indeed.
   typedef const char* const_iterator;
   typedef const char* iterator;
@@ -63,43 +64,44 @@ private:
   // Intentionally copyable
 };
 
-int Compare(StringPiece a, StringPiece b);
+int Compare(Piece a, Piece b);
 
-bool operator==(StringPiece x, StringPiece y);
-bool operator!=(StringPiece x, StringPiece y);
-bool operator<(StringPiece x, StringPiece y);
-bool operator>(StringPiece x, StringPiece y);
-bool operator<=(StringPiece x, StringPiece y);
-bool operator>=(StringPiece x, StringPiece y);
+bool operator==(Piece x, Piece y);
+bool operator!=(Piece x, Piece y);
+bool operator<(Piece x, Piece y);
+bool operator>(Piece x, Piece y);
+bool operator<=(Piece x, Piece y);
+bool operator>=(Piece x, Piece y);
 
-bool HasPrefix(StringPiece s, StringPiece prefix);
-bool HasSuffix(StringPiece s, StringPiece suffix);
+bool HasPrefix(Piece s, Piece prefix);
+bool HasSuffix(Piece s, Piece suffix);
 
-StringPiece SkipPrefix(StringPiece s, size_t n);
-StringPiece SkipSuffix(StringPiece s, size_t n);
+Piece SkipPrefix(Piece s, size_t n);
+Piece SkipSuffix(Piece s, size_t n);
 
 // Skip the prefix (or suffix) if it matches with the string.
-StringPiece TrimPrefix(StringPiece s, StringPiece prefix);
-StringPiece TrimSuffix(StringPiece s, StringPiece suffix);
+Piece TrimPrefix(Piece s, Piece prefix);
+Piece TrimSuffix(Piece s, Piece suffix);
 
 // Returns if s contains sub.  Any s except for empty s contains an
 // empty sub.
-bool Contains(StringPiece s, StringPiece sub);
+bool Contains(Piece s, Piece sub);
 
 // Return the first occurrence of sub in s, or npos.  If both s and
 // sub is empty, it returns npos; otherwise, if only sub is empty, it
 // returns 0.
-size_t Index(StringPiece s, StringPiece sub);
+size_t Index(Piece s, Piece sub);
 
 // Return the first occurrence of c in s[pos:end], or npos.
-size_t Find(StringPiece s, char c, size_t pos);
+size_t Find(Piece s, char c, size_t pos);
 
 // Search range is [0..pos] inclusive.  If pos == npos, search everything.
-size_t RFind(StringPiece s, char c, size_t pos);
+size_t RFind(Piece s, char c, size_t pos);
 
-StringPiece SubStr(StringPiece s, size_t pos, size_t n);
+Piece SubStr(Piece s, size_t pos, size_t n);
 
-// allow StringPiece to be logged
-std::ostream& operator<<(std::ostream& o, StringPiece piece);
+// allow Piece to be logged
+std::ostream& operator<<(std::ostream& o, Piece piece);
 
+}  // namespace string
 }  // namespace paddle

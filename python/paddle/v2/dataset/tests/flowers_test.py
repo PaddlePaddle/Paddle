@@ -31,13 +31,13 @@ class TestFlowers(unittest.TestCase):
     def test_train(self):
         instances, max_label_value = self.check_reader(
             paddle.v2.dataset.flowers.train())
-        self.assertEqual(instances, 1020)
+        self.assertEqual(instances, 6149)
         self.assertEqual(max_label_value, 102)
 
     def test_test(self):
         instances, max_label_value = self.check_reader(
             paddle.v2.dataset.flowers.test())
-        self.assertEqual(instances, 6149)
+        self.assertEqual(instances, 1020)
         self.assertEqual(max_label_value, 102)
 
     def test_valid(self):
