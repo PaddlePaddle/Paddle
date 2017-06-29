@@ -59,9 +59,9 @@ class Scope {
   Scope(const std::shared_ptr<Scope>& scope): parent_(scope) {}
 
   Variable* GetVariable(const std::string& name) const {
-    Variable* var = GetVarLocally(name);
-    if (var != nullptr) {
-      return var;
+    auto it = vars_.find(name);
+    if (it != vars_.end()) {
+      return it->second.get();
     } else if (parent_ != nullptr) {
       return parent_->GetVariable(name);
     } else {
@@ -97,8 +97,8 @@ class Scope {
   // return nullptr if not found.
   Variable* GetVariable(const std::string& name) const;
 
-  // return Error if already contains same name variable.
-  Error CreateVariable(const std::string& name);
+  // return if already contains same name variable.
+  Variable* CreateVariable(const std::string& name);
 
  private:
   std::shared_ptr<Scope> parent_;
