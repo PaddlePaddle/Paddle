@@ -10,10 +10,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <paddle/platform/enforce.h>
+#include <paddle/framework/enforce.h>
 
 TEST(ENFORCE, OK) {
-  PADDLE_ENFORCE(true, "Enforce is ok", 123, "now", 0.345);
+  PADDLE_ENFORCE(true, "Enforce is ok %d now %f", 123, 0.345);
   size_t val = 1;
   const size_t limit = 10;
   PADDLE_ENFORCE(val < limit, "Enforce is OK too");
@@ -22,8 +22,8 @@ TEST(ENFORCE, OK) {
 TEST(ENFORCE, FAILED) {
   bool in_catch = false;
   try {
-    PADDLE_ENFORCE(false, "Enforce is not ok ", 123, " at all");
-  } catch (paddle::platform::EnforceNotMet err) {
+    PADDLE_ENFORCE(false, "Enforce is not ok %d at all", 123);
+  } catch (paddle::framework::EnforceNotMet err) {
     in_catch = true;
     std::string msg = "Enforce is not ok 123 at all";
     const char* what = err.what();
@@ -31,6 +31,5 @@ TEST(ENFORCE, FAILED) {
       ASSERT_EQ(what[i], msg[i]);
     }
   }
-
   ASSERT_TRUE(in_catch);
 }

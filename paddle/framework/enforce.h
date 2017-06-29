@@ -10,11 +10,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <paddle/string/printf.h>
 #include <exception>
 #include <sstream>
 
 namespace paddle {
-namespace platform {
+namespace framework {
 
 /**
  * @brief Enforce exception. Inherits std::exception
@@ -23,10 +24,9 @@ namespace platform {
  */
 class EnforceNotMet : public std::exception {
  public:
-  EnforceNotMet(const std::string& msg, const char* file, int fileline)
-      : file_(file), fileline_(fileline) {
+  EnforceNotMet(const std::string& msg, const char* file, int fileline) {
     std::ostringstream sout;
-    sout << msg << " at [" << file_ << ":" << fileline_ << "];";
+    sout << msg << " at [" << file << ":" << fileline << "];";
     all_msg_ = sout.str();
   }
 
@@ -34,51 +34,7 @@ class EnforceNotMet : public std::exception {
 
  private:
   std::string all_msg_;
-  const char* file_;
-  int fileline_;
 };
-
-namespace details {
-
-inline void MakeStringInternal(std::ostringstream& stream) {}
-
-template <typename T>
-inline void MakeStringInternal(std::ostringstream& stream, T v) {
-  stream << v;
-}
-
-template <typename T, typename... ARGS>
-inline void MakeStringInternal(std::ostringstream& stream, T v, ARGS... args) {
-  MakeStringInternal(stream, v);
-  MakeStringInternal(stream, args...);
-};
-
-/**
- * @brief Make string will concat all args into a string.
- */
-template <typename... ARGS>
-inline std::string MakeString(ARGS... args) {
-  std::ostringstream sout;
-  details::MakeStringInternal(sout, args...);
-  return sout.str();
-}
-
-/**
- * @brief special handle string
- */
-template <>
-inline std::string MakeString<std::string>(std::string str) {
-  return str;
-}
-
-/**
- * @brief special handle const char*
- */
-template <>
-inline std::string MakeString<const char*>(const char* str) {
-  return std::string(str);
-}
-}  // namespace details
 
 // From https://stackoverflow.com/questions/30130930/
 // __buildin_expect is in C++ 11 standard. Since the condition which enforced
@@ -93,11 +49,10 @@ inline std::string MakeString<const char*>(const char* str) {
  * This macro take __VA_ARGS__, user can pass any type if that type can
  * serialize to std::ostream
  */
-#define PADDLE_THROW(...)                                               \
-  do {                                                                  \
-    throw ::paddle::platform::EnforceNotMet(                            \
-        ::paddle::platform::details::MakeString(__VA_ARGS__), __FILE__, \
-        __LINE__);                                                      \
+#define PADDLE_THROW(...)                                            \
+  do {                                                               \
+    throw ::paddle::framework::EnforceNotMet(                        \
+        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
   } while (0)
 
 /**
@@ -110,5 +65,5 @@ inline std::string MakeString<const char*>(const char* str) {
     }                                  \
   } while (0)
 
-}  // namespace platform
+}  // namespace framework
 }  // namespace paddle
