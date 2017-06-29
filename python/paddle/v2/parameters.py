@@ -300,7 +300,7 @@ class Parameters(object):
         return params
 
     def init_from_tar(self, f):
-        tar_param = self.from_tar(f)
+        tar_param = Parameters.from_tar(f)
         for pname in tar_param.names():
             if pname in self.names():
                 self.set(pname, tar_param.get(pname))
