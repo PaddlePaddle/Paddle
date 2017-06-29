@@ -224,7 +224,7 @@
   <span class="k">const</span> <span class="n">Variable</span><span class="o">*</span> <span class="nf">GetVariable</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
 
  <span class="k">private</span><span class="o">:</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Vairable</span><span class="o">&gt;&gt;</span> <span class="n">vars_</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Variable</span><span class="o">&gt;&gt;</span> <span class="n">vars_</span><span class="p">;</span>
 <span class="p">};</span>
 </pre></div>
 </div>
@@ -241,9 +241,9 @@
   <span class="n">Scope</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Scope</span><span class="o">&gt;&amp;</span> <span class="n">scope</span><span class="p">)</span><span class="o">:</span> <span class="n">parent_</span><span class="p">(</span><span class="n">scope</span><span class="p">)</span> <span class="p">{}</span>
 
   <span class="n">Variable</span><span class="o">*</span> <span class="n">GetVariable</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
-    <span class="n">Variable</span><span class="o">*</span> <span class="n">var</span> <span class="o">=</span> <span class="n">GetVarLocally</span><span class="p">(</span><span class="n">name</span><span class="p">);</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">var</span> <span class="o">!=</span> <span class="k">nullptr</span><span class="p">)</span> <span class="p">{</span>
-      <span class="k">return</span> <span class="n">var</span><span class="p">;</span>
+    <span class="k">auto</span> <span class="n">it</span> <span class="o">=</span> <span class="n">vars_</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">name</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">it</span> <span class="o">!=</span> <span class="n">vars_</span><span class="p">.</span><span class="n">end</span><span class="p">())</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">.</span><span class="n">get</span><span class="p">();</span>
     <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">parent_</span> <span class="o">!=</span> <span class="k">nullptr</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">return</span> <span class="n">parent_</span><span class="o">-&gt;</span><span class="n">GetVariable</span><span class="p">(</span><span class="n">name</span><span class="p">);</span>
     <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
@@ -278,8 +278,8 @@
   <span class="c1">// return nullptr if not found.</span>
   <span class="n">Variable</span><span class="o">*</span> <span class="nf">GetVariable</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
 
-  <span class="c1">// return Error if already contains same name variable.</span>
-  <span class="n">Error</span> <span class="nf">CreateVariable</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">);</span>
+  <span class="c1">// return if already contains same name variable.</span>
+  <span class="n">Variable</span><span class="o">*</span> <span class="nf">CreateVariable</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">);</span>
 
  <span class="k">private</span><span class="o">:</span>
   <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Scope</span><span class="o">&gt;</span> <span class="n">parent_</span><span class="p">;</span>
