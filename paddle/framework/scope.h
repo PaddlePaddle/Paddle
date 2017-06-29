@@ -24,24 +24,31 @@ namespace paddle {
 namespace framework {
 
 /**
+ * @brief Scope that manage all variables.
+ *
  * Scope is an association of a name to Variable. All variables belong to
  * Scope. You need to specify a scope to run a Net, i.e., `net.Run(&scope)`.
  * One net can run in different scopes and update different variable in the
  * scope.
  */
 class Scope {
- private:
-  explicit Scope(const std::shared_ptr<Scope>& parent = nullptr)
-      : parent_(parent) {}
-
  public:
-  static std::shared_ptr<Scope> Create(
-      const std::shared_ptr<Scope>& parent = nullptr) {
-    return std::make_shared<Scope>(Scope(parent));
-  }
+  /**
+   * @brief Initialize s Scope without parent.
+   */
+  Scope() {}
 
-  /// Create Variable in this Scope. Failed if Variable already been
-  /// created.
+  /**
+   * @brief Initialize a Scope with parent.
+   */
+  explicit Scope(const std::shared_ptr<Scope>& parent) : parent_(parent) {}
+
+  /**
+   * @brief Create Variable
+   *
+   * Create Variable in this Scope. Return the exist one if Variable already
+   * been created.
+   */
   Variable* CreateVariable(const std::string& name) {
     auto var = GetVariable(name);
     if (var) {
@@ -52,8 +59,12 @@ class Scope {
     }
   }
 
-  /// Get Variable from this Scope, this function will recursive find Variable
-  /// from it's parent scope. Return nullptr if not found.
+  /**
+   * @brief Get Variable.
+   *
+   * Get Variable from this Scope, this function will recursive find Variable
+   * from it's parent scope. Return nullptr if not found.
+   */
   Variable* GetVariable(const std::string& name) const {
     auto it = vars_.find(name);
     if (it != vars_.end()) {
@@ -65,7 +76,11 @@ class Scope {
     }
   }
 
-  /// Find if there is a Variable in this scope and it's parent scope
+  /**
+   * @brief If this scope has a Var named name.
+   *
+   * Find if there is a Variable in this scope and it's parent scope
+   */
   bool HasVariable(const std::string& name) const {
     return (vars_.find(name) != vars_.end() ||
             (parent_ && parent_->HasVariable(name)));
