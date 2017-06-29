@@ -1,0 +1,20 @@
+syntax="proto3";
+package paddle.framework;
+
+import "attribute.proto";
+
+// The protobuf description of each operator
+message OperatorDescription {
+    // All input variable name. All variable store in `Scope`.
+    repeated string inputs = 1;
+
+    // All output variable name.
+    repeated string outputs = 2;
+
+    // type name of Op. Such as `fc`, `cos`, etc.
+    string type = 3;
+
+    // Attribute Map: Name -> Attribute Value.
+    // The configurable attributes for Op, e.g., `scale` in `cos` Op.
+    map<string, Attribute> attrs = 4;
+}
