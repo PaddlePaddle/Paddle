@@ -37,6 +37,9 @@ class NetBase {
   // Add backward operators.
   virtual void AddBackwardOps() = 0;
 
+  // Infer the shapes of variables required by operators in the network. The
+  // `scope` will be mutated according to the inferred shapes.
+
   static std::unique_ptr<NetBase> Create(const NetDef &def = NetDef());
 };
 ```
@@ -87,6 +90,10 @@ class PlainNet final : public NetBase {
  public:
   // Create a network describe by `def`.  NetDef is the definition of a network.
   PlainNet(const NetDef &def);
+
+  // Infer all the operators' input and output varialbes' shapes, will be called before every mini-batch
+  training.
+  virtual bool InferShape(Scope *scope) override;
 
   // Run all the operators with the `scope`, if no scope is provided, default
   // scope will be used instead. If no OpContext is provicded, default context will be used.
@@ -174,6 +181,7 @@ class NetBuilder final {
     // ...
     net_->AddOp(def);
     need_rebuild_net_ = true;
+    net_->InferShape();
     // ...
   }
 
