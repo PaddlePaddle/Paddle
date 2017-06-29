@@ -122,15 +122,16 @@ problems are:
    at many cloud file hosting, so users what to compile paddle by themselves can
    download this "vendor" package from a mirror site.
 
-#### Godep vs. Glide
+#### Choose A Suitable Tool
 
 As mentioned by @wangkuiyi, [Here](https://github.com/golang/go/wiki/PackageManagementTools)
 list dozens of Go package managers. We choose the tool using following principles:
 
 - Most "active" projects with more stars, more pull requests or commits
-- Commonly used project
+- Widely used project
 
-Then we shall choose between the most popular tools: Godep and Glide.
+After comparing all these projects, we shall choose between the most popular
+tools: Godep and Glide.
 
 Here's a brief comparison between Godep and Glide
 : https://github.com/Masterminds/glide/wiki/Go-Package-Manager-Comparison. There are
