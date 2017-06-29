@@ -770,12 +770,12 @@ def lstmemory_group(input,
 
     :param input: input layer name.
     :type input: LayerOutput
+    :param size: lstmemory group size.
+    :type size: int
     :param name: name of the lstmemory group.
     :type name: basestring
     :param memory_boot: the initialization state of LSTM cell.
     :type memory_boot: LayerOutput | None
-    :param size: lstmemory group size.
-    :type size: int
     :param reverse: is lstm reversed
     :type reverse: bool
     :param param_attr: Parameter config, None if use default.
