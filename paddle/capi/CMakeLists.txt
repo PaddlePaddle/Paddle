@@ -26,7 +26,7 @@ target_include_directories(paddle_capi PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 add_style_check_target(paddle_capi ${CAPI_SOURCES} ${CAPI_HEADER}
   ${CAPI_PRIVATE_HEADER})
 
-add_dependencies(paddle_capi gen_proto_cpp)
+add_dependencies(paddle_capi paddle_proto)
 
 
 # combine all paddle static libraries together, into libpaddle_capi_whole.a

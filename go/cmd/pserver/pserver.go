@@ -30,7 +30,13 @@ func main() {
 	log.SetLevel(level)
 
 	timeout := time.Second * time.Duration((*etcdTimeout))
-	s, err := pserver.NewService(*etcdEndpoint, *numPservers, timeout)
+	e := pserver.NewEtcdClient(*etcdEndpoint, *numPservers, timeout)
+	idx, err := e.Register()
+	if err != nil {
+		panic(err)
+	}
+
+	s, err := pserver.NewService(idx)
 	if err != nil {
 		panic(err)
 	}
