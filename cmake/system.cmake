@@ -33,6 +33,7 @@ ELSE(WIN32)
             SET(CMAKE_OSX_DEPLOYMENT_TARGET ${MACOS_VERSION} CACHE STRING
                 "Minimum OS X version to target for deployment (at runtime); newer APIs weak linked. Set to empty string for default value.")
         ENDIF()
+        set(CMAKE_EXE_LINKER_FLAGS "-framework CoreFoundation -framework Security")
     ELSE(APPLE)
 
         IF(EXISTS "/etc/issue")
