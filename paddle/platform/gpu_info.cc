@@ -42,7 +42,32 @@ size_t GpuMaxAllocSize() {
 
   GpuMemoryUsage(available, total);
 
+  // Reserve the rest for page tables, etc.
   return total * FLAGS_fraction_of_gpu_memory_to_use;
+}
+
+size_t GpuMinChunkSize() {
+  // Allow to allocate the minimum chunk size is 256 bytes.
+  return 1 << 8;
+}
+
+size_t GpuMaxChunkSize() {
+  // Allow to allocate the maximum chunk size is roughly 3% of CPU memory.
+  size_t total = 0;
+  size_t available = 0;
+
+  GpuMemoryUsage(available, total);
+
+  // Reserving the rest memory for page tables, etc.
+  size_t reserving = (1 - FLAGS_fraction_of_gpu_memory_to_use) * total;
+
+  // If available less than minimum chunk size, no usable memory exists.
+  available = std::max(available, GpuMinChunkSize()) - GpuMinChunkSize();
+
+  // If available less than reserving, no usable memory exists.
+  size_t usable = std::max(available, reserving) - reserving;
+
+  return usable;
 }
 
 }  // namespace platform

@@ -30,6 +30,12 @@ void GpuMemoryUsage(size_t& available, size_t& total);
 //! Get the maximum allocation size of current GPU device.
 size_t GpuMaxAllocSize();
 
+//! Get the minimum chunk size for GPU buddy allocator.
+size_t GpuMinChunkSize();
+
+//! Get the maximum chunk size for GPU buddy allocator.
+size_t GpuMaxChunkSize();
+
 }  // namespace platform
 }  // namespace paddle
 
