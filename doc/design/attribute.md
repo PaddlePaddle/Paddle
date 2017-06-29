@@ -58,14 +58,14 @@ class AttributeReader {
  public:
   explicit AttributeReader(const AttributeMap& attrs) : attrs_(attrs) {}
 
-  // return false if attribute is not found.
-  // For typemismatch, it just called `ENFORCE` and throw exception.
   template <typename T>
-  bool Get(const std::string& attributeName, T* attr) const;
+  T Get(const std::string& attributeName) const;
 
-  // return false if attribute is not found.
   template <typename T>
-  bool GetArray(const std::string& attributeName, std::vector<T>* array) const;
+  void GetArray(const std::string& attributeName, std::vector<T>* array) const;
+
+  template <typename T>
+  bool Contain(const std::string& name) const;
 
  private:
   const AttributeMap& attrs_;
@@ -87,8 +87,10 @@ class OperatorBase {
 class CosineOp : public OperatorBase {
  public:
   void InitializeAttribute(const AttributeReader& attrs) {
-    attrs.Get<float>("scale", &scale_);
-    PADDLE_ENFORCE(scale_ > 0.0f, "Scale of consine op should be larger than 0.0");
+    if (attrs.Contain<float>("scale")) {
+      scale_ = attrs.Get<float>("scale");
+      PADDLE_ENFORCE(scale_ > 0.0f, "Scale of consine op should be larger than 0.0");
+    }
   }
 
  private:
@@ -96,7 +98,7 @@ class CosineOp : public OperatorBase {
 };
 ```
 
-When `NetworkBase` invokes `CreateOperator(const OperatorDescription& desc)`, it create an operator first. Then `CreateOperator` will invoke `InitializeAttribute·. The implementation of `CreateOperator` could be
+When `NetworkBase` invokes `CreateOperator(const OperatorDescription& desc)`, it create an operator first. Then `CreateOperator` will invoke `InitializeAttribute`. The implementation of `CreateOperator` could be
 
 ```cpp
 std::unique_ptr<OperatorBase> CreateOperator(const OperatorDescription& desc) {

@@ -101,7 +101,8 @@ set(COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
     -Wall
-    -Wextra
+#    -Wextra  # Because map implementation of protobuf 3.1 has
+              # several warnings in GCC Wextra. Disable Wextra until we upgrad our protobuf library.
     -Werror
     -Wnon-virtual-dtor
     -Wdelete-non-virtual-dtor

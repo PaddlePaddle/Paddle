@@ -1,3 +1,17 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 #include "attribute_reader.h"
 #include <gtest/gtest.h>
 
@@ -12,16 +26,16 @@ TEST(AttributeReader, ReadPlain) {
 
   AttributeReader reader(test);
 
-  ASSERT_TRUE(reader.ContainPlain<int>("intValue"));
-  ASSERT_TRUE(reader.ContainPlain<std::string>("strValue"));
-  ASSERT_TRUE(reader.ContainPlain<float>("floatValue"));
+  ASSERT_TRUE(reader.Contain<int>("intValue"));
+  ASSERT_TRUE(reader.Contain<std::string>("strValue"));
+  ASSERT_TRUE(reader.Contain<float>("floatValue"));
 
   ASSERT_EQ(-1, reader.Get<int>("intValue"));
   ASSERT_EQ("unittest string", reader.Get<std::string>("strValue"));
   ASSERT_NEAR(0.23f, reader.Get<float>("floatValue"), 1e-5);
 
-  ASSERT_FALSE(reader.ContainPlain<float>("intValue"));
-  ASSERT_FALSE(reader.ContainPlain<int>("otherValue"));
+  ASSERT_FALSE(reader.Contain<float>("intValue"));
+  ASSERT_FALSE(reader.Contain<int>("otherValue"));
 }
 
 TEST(AttributeReader, ReadArray) {
@@ -49,4 +63,7 @@ TEST(AttributeReader, ReadArray) {
   reader.GetArray("listStr", &actualStr);
   ASSERT_EQ(expected, actual);
   ASSERT_EQ(expectedStr, actualStr);
+
+  ASSERT_TRUE(reader.Contain<std::vector<int>>("listInt"));
+  ASSERT_TRUE(reader.Contain<std::vector<std::string>>("listStr"));
 }
