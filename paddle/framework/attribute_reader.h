@@ -1,7 +1,7 @@
 #pragma once
 #include <google/protobuf/map.h>
+#include <paddle/framework/attribute.pb.h>
 #include <paddle/framework/enforce.h>
-#include "attribute.pb.h"
 
 namespace paddle {
 namespace framework {
