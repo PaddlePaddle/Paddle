@@ -19,8 +19,14 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-//! Get the total memory on host machine.
-size_t CpuTotalMemory();
+//! Get the maximum allocation size for a machine.
+size_t CpuMaxAllocSize();
+
+//! Get the minimum chunk size for buddy allocator.
+size_t CpuMinChunkSize();
+
+//! Get the maximum chunk size for buddy allocator.
+size_t CpuMaxChunkSize();
 
 }  // namespace platform
 }  // namespace paddle

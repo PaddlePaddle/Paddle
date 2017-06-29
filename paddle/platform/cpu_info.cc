@@ -47,8 +47,20 @@ inline size_t CpuTotalPhysicalMemory() {
 #endif
 }
 
-size_t CpuTotalMemory() {
+size_t CpuMaxAllocSize() {
+  // For distributed systems, it requires configuring and limiting
+  // the fraction of memory to use.
   return FLAGS_fraction_of_cpu_memory_to_use * CpuTotalPhysicalMemory();
+}
+
+size_t CpuMinChunkSize() {
+  // Allow to allocate the minimum chunk size is 256 bytes.
+  return 1 << 8;
+}
+
+size_t CpuMaxChunkSize() {
+  // Allow to allocate the maximum chunk size is roughly 3% of CPU memory.
+  return CpuMaxAllocSize() / 32;
 }
 
 }  // namespace platform
