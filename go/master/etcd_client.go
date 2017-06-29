@@ -27,7 +27,7 @@ type EtcdClient struct {
 	lock      *concurrency.Mutex
 }
 
-// NewEtcdClient creates a new EtcdClient
+// NewEtcdClient creates a new EtcdClient.
 func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePath string, ttlSec int) (*EtcdClient, error) {
 	log.Debugf("Connecting to etcd at %v", endpoints)
 	// TODO(helin): gracefully shutdown etcd store. Becuase etcd
@@ -143,7 +143,7 @@ func (e *EtcdClient) Load() ([]byte, error) {
 	return state, nil
 }
 
-// GetKey gets the value by the specify key
+// GetKey gets the value by the specify key.
 func GetKey(c *clientv3.Client, key string, timeout int) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
 	resp, err := c.Get(ctx, key)
@@ -159,7 +159,7 @@ func GetKey(c *clientv3.Client, key string, timeout int) (string, error) {
 	return string(v), nil
 }
 
-// WatchKey watches the specify key and send to valChan if there is some event
+// WatchKey watches the specify key and send to valChan if there is some event.
 func WatchKey(c *clientv3.Client, key string, valChan chan<- string) {
 	rch := c.Watch(context.Background(), key)
 	for wresp := range rch {
