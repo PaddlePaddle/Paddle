@@ -1,6 +1,9 @@
 syntax="proto3";
 package paddle.framework;
 
+// Attribute for OperatorDescription.
+// It represent a variant type of value.
+// The int, float, string and repeated of them are supported.
 message Attribute {
     message ListValue {
         repeated int32 ints = 1;
@@ -9,7 +12,10 @@ message Attribute {
     }
 
     oneof value {
+        // Since proto3 not support repeated filed in `oneof`, we use
+        // ListValue to support repeated.
         ListValue list = 1;
+        
         int32 i = 2;
         float f = 3;
         string s = 4;
