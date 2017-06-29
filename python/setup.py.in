@@ -15,7 +15,8 @@ setup_requires=["requests",
                 "protobuf==3.1",
                 "recordio",
                 "matplotlib",
-                "rarfile"]
+                "rarfile",
+                "pyDes"]
 
 if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
     setup_requires+=["opencv-python"]
