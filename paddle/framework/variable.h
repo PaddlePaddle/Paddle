@@ -25,8 +25,9 @@ class Variable {
  public:
   template <typename T>
   const T& Get() const {
-    PADDLE_ASSERT(IsType<T>());
-    return *static_cast<const T*>(holder_->Ptr());
+    auto holder = dynamic_cast<PlaceholderImpl<T>*>(holder_.get());
+    PADDLE_ASSERT(holder != nullptr);
+    return *(holder->Ptr());
   }
 
   template <typename T>
@@ -34,33 +35,27 @@ class Variable {
     if (!IsType<T>()) {
       holder_.reset(new PlaceholderImpl<T>(new T()));
     }
-    return static_cast<T*>(holder_->Ptr());
+    return dynamic_cast<PlaceholderImpl<T>*>(holder_.get())->Ptr();
   }
 
   template <typename T>
   bool IsType() const {
-    return holder_ != nullptr &&
-           std::type_index(typeid(T)) == std::type_index(holder_->Type());
+    return dynamic_cast<PlaceholderImpl<T>*>(holder_.get()) != nullptr;
   }
 
  private:
   struct Placeholder {
     virtual ~Placeholder() {}
-    virtual const std::type_info& Type() const = 0;
-    virtual void* Ptr() const = 0;
   };
 
   // Placeholder hides type T, so it doesn't appear as a template
   // parameter of Variable.
   template <typename T>
   struct PlaceholderImpl : public Placeholder {
-    PlaceholderImpl(T* ptr) : ptr_(ptr), type_(typeid(T)) {}
-
-    virtual const std::type_info& Type() const { return type_; }
-    virtual void* Ptr() const { return static_cast<void*>(ptr_.get()); }
+    PlaceholderImpl(T* ptr) : ptr_(ptr) {}
+    T* Ptr() const { return ptr_.get(); }
 
     std::unique_ptr<T> ptr_;
-    const std::type_info& type_;
   };
 
   std::unique_ptr<Placeholder>
