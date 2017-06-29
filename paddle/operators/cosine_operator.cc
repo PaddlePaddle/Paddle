@@ -12,8 +12,11 @@ class CosineOp final : public Operator<DeviceContext> {
   explicit CosineOp(const OpDesc& desc) : Operator<DeviceContext>(desc) {}
 
   /// init attrs that is needed by this Operator, check the legality here.
-  Error InitializeAttributes(const AttrbuteMap& attrs) {
-    attrs.get<float>("scale", &scale_);
+  Error InitializeAttributes(const AttributeMap& attrs) {
+    AttributeReader reader(attrs);
+    if (reader.Contains("scale")) {
+      scale_ = reader.Get<float>("scale");
+    }
     if (scale_ <= 0.0) {
       return Error("scale of CosineOp must be larger than 0.0, get %f", scale_);
     }
@@ -28,7 +31,8 @@ class CosineOp final : public Operator<DeviceContext> {
   }
 
  private:
-  float scale_;
+  /// scale_ has a default value 1
+  float scale_{1};
 };
 
 }  // namespace operators

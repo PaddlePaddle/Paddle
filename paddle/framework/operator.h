@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/framework/attribute_reader.h"
+#include "paddle/framework/scope.h"
 #include "paddle/framework/variable.h"
 #include "paddle/utils/Error.h"
 
@@ -29,18 +31,7 @@ class Context {};
 class CpuContext : public Context {};
 class GpuContext : public Context {};
 
-class Scope {
- public:
-  Variable* getOrCreateVariable(const std::string name);
-};
-
 class OpDesc {};
-
-class AttrbuteMap {
- public:
-  template <typename T>
-  Error get(const std::string key, T* attr) const;
-};
 
 /// OperatorBase provide base element of an Operator without any template.
 class OperatorBase {
@@ -50,7 +41,7 @@ class OperatorBase {
 
   /// initialize Attributes of this OP from proto message desc.attrs()
   /// you should derive this function to init the attr you need in OP.
-  virtual Error InitializeAttributes(const AttrbuteMap& attrs) = 0;
+  virtual Error InitializeAttributes(const AttributeMap& attrs) = 0;
   virtual Error Run(Scope* scope, Context* context) const = 0;
 
  protected:
@@ -80,11 +71,11 @@ class Operator : public OperatorBase {
 
     input_vars.reserve(inputs_.size());
     for (auto& input : inputs_) {
-      input_vars.push_back(scope->getOrCreateVariable(input));
+      input_vars.push_back(scope->CreateVariable(input));
     }
     output_vars.reserve(outputs_.size());
     for (auto& input : outputs_) {
-      output_vars.push_back(scope->getOrCreateVariable(input));
+      output_vars.push_back(scope->CreateVariable(input));
     }
 
     return Run(input_vars, output_vars, dev_context);
