@@ -1,30 +1,39 @@
 ## Context Design
 
+`Net` is the container and controller of a set of `Operator`. Each `Operator` in `Net` has a method called `Run`, which will take `Variable` (containing `Tensor`) from `Scope` to make computation. There will be single or several threads to execute operator's `Run` method.
 
-A Net is executed by single or several threads. A Context is related to a thread and records necessary runtime resources.
+Since the Tensor computation are executed by Eigen library, which needs an Eigen::GpuDevice type object as  parameter in a GPU card, and the GpuDevice parameter is constructed with an Eigen::CudaStreamDevice object. We need to set both a specific GpuID and CudaStream to create a Eigen::CudaStream object.
 
-Context is defined as follows:
+At the same time, some computation work will executed by cuBLAS or cuDNN library. Take cuBLAS library as an example, we have to acquire a cublasHandle which binds on a CudaStream to make computation. It's the same way as Eigen library does.
+
+A `Context` is corresponded to a thread and holds runtime resources, such as CudaStream, cublasHandle and so on. And the `Run` method of `Operator` will take `Context` from a specific thread as a parameter to get necessary runtime resources.
+
+The `Run` method of `Operator` is defined as follows:
+
+```c++
+Error Run(Scope* scope, Context* context);
+```
+
+
+
+The future DAGNet is run by multi-threads, and each thread will have its own Eigen::GpuDevice object binding on different CudaStream, so that multi-threads can run parallelly on a same GPU card.
+
+And a specific thread will be in charge of copy(communication) work. The copy thread will only need to get a CudaStream from corresponding Context to make data copy between CPU/GPU or GPUs.
+
+We can make a summary:
+
+- Differnet GPU cards have different GpuID, and we can make data parallelism on multi-GPUs.
+- Multi-threads can run a Net parallelly on a single GPU card, and each thread has one Context.
+- There also exists one single thread executing a Net sequentially, and all computation and communication work will use the same Context.
+
+
+Context is defined as follows(just using for unify class CUDAContext and class CPUContext):
 
 ```
 class Context {};
 ```
 
 ### CUDAContext
-
-Because the Tensor computation are executed by Eigen library, which needs an Eigen::GpuDevice type object as  parameter. And the GpuDevice parameter is constructed with an Eigen::CudaStreamDevice object. We need to set a specific GpuID and CudaStream to create a Eigen::CudaStream object.
-
-At the same time, some computation work will executed by cublas or cudnn library. Take cublas library as an example, we have to acquire a cublasHandle which binds on a CudaStream to make computation. It's the same way as Eigen library does.
-
-The future DAGNet is run by multi-threads. And each thread will have its own Eigen::GpuDevice object binding on different CudaStream. Multi-threads can run parallelly on a same GPU card.
-
-And Copy(Communication) work will be in charge of specific thread. The copy thread will only get CudaStream from corresponding Context.
-
-We can make a summary:
-
-- Differnet GPU cards have different GpuID, and we can do data parallelism on multi-GPUs.
-- Multi-threads can run a Net parallelly on a single GPU card, and each thread has one Context.
-- There is also single thread executing a Net sequentially. All computation and communication work will use same Context.
-
 
 CUDAContext is defined as follows:：
 
@@ -40,7 +49,7 @@ class DeviceGuard {
     }
   }
 
-  ~DeviceGuard() noexcept {
+  ~DeviceGuard() {
     cudaError_t err = cudaSetDevice(previous_);
     PADDLE_ASSERT(err == cudaSuccess);
   }
@@ -73,7 +82,7 @@ public:
     return *eigen_handle_;
   }
   
-  cublasHandle_t GetBlasHandle() {
+  cublasHandle_t GetCuBLASHandle() {
     if (!blas_handle_) {
       DeviceGuard guard(gpu_id_);      
       cudaError_t err = cublasCreate(&blas_handle_);
@@ -84,7 +93,7 @@ public:
     return blas_handle_;
   }
   
-  cudnnHandle_t GetDnnHandle() {
+  cudnnHandle_t GetCuDNNHandle() {
     if (!dnn_handle_) {
       DeviceGuard guard(gpu_id_);
       cudaError_t err = cudnnCreate(&dnn_handle_);
@@ -95,7 +104,7 @@ public:
     return dnn_handle_;
   }
   
-  curandGenerator_t GetRandHandle() {
+  curandGenerator_t GetCuRandHandle() {
     if (! rand_handle_) {
       DeviceGuard guard(gpu_id_);
       cudaError_t err = curandCreateGenerator(&curand_generator_, CURAND_RNG_PSEUDO_DEFAULT);
@@ -110,8 +119,6 @@ public:
   
   ~CUDAContext() {
     Wait();
-    cudaError_t err = cudaStreamDestroy(stream_);
-    PADDLE_ASSERT(err == cudaSuccess);
     
     if (blas_handle_) {
       cudaError_t err = cublasDestroy(blas_handle_);
@@ -129,7 +136,9 @@ public:
     }
     
     delete eigen_stream_;
-    delete eigen_handle_;    
+    delete eigen_handle_;
+    cudaError_t err = cudaStreamDestroy(stream_);
+    PADDLE_ASSERT(err == cudaSuccess);
   }
 
 private:
@@ -150,7 +159,7 @@ private:
 
 ### CPUContext
 
-The CPUContext is defined as follows:
+CPUContext is defined as follows:
 
 ```c++
 class CPUContext : public Context{
