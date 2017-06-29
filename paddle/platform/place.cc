@@ -8,8 +8,8 @@ namespace detail {
 class PlacePrinter : public boost::static_visitor<> {
  public:
   PlacePrinter(std::ostream &os) : os_(os) {}
-  void operator()(const CpuPlace &) { os_ << "CpuPlace"; }
-  void operator()(const GpuPlace &p) { os_ << "GpuPlace(" << p.device << ")"; }
+  void operator()(const CPUPlace &) { os_ << "CPUPlace"; }
+  void operator()(const GPUPlace &p) { os_ << "GPUPlace(" << p.device << ")"; }
 
  private:
   std::ostream &os_;
@@ -22,14 +22,14 @@ static Place the_default_place;
 void set_place(const Place &place) { the_default_place = place; }
 const Place &get_place() { return the_default_place; }
 
-const GpuPlace default_gpu() { return GpuPlace(0); }
-const CpuPlace default_cpu() { return CpuPlace(); }
+const GPUPlace default_gpu() { return GPUPlace(0); }
+const CPUPlace default_cpu() { return CPUPlace(); }
 
 bool is_gpu_place(const Place &p) {
-  return boost::apply_visitor(IsGpuPlace(), p);
+  return boost::apply_visitor(IsGPUPlace(), p);
 }
 bool is_cpu_place(const Place &p) {
-  return !boost::apply_visitor(IsGpuPlace(), p);
+  return !boost::apply_visitor(IsGPUPlace(), p);
 }
 
 bool places_are_same_class(const Place &p1, const Place &p2) {
