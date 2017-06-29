@@ -12,7 +12,7 @@ endif()
 
 add_library(paddle_function STATIC ${cpp_files} ${cu_objs})
 add_dependencies(paddle_function ${external_project_dependencies})
-add_dependencies(paddle_function gen_proto_cpp)
+add_dependencies(paddle_function paddle_proto)
 
 if(WITH_TESTING)
 if(WITH_GPU)
