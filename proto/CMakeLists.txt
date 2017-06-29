@@ -1,4 +1,5 @@
 file(GLOB proto_filenames . *.proto)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 proto_library(paddle_proto SRCS ${proto_filenames})
 
 set(PROTO_GEN)

@@ -87,6 +87,9 @@
 #   go_library(example SHARED)
 #
 
+# including binary directory for generated headers.
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 if(NOT APPLE)
     find_package(Threads REQUIRED)
     link_libraries(${CMAKE_THREAD_LIBS_INIT})
@@ -339,6 +342,5 @@ function(proto_library TARGET_NAME)
   set(proto_srcs)
   set(proto_hdrs)
   protobuf_generate_cpp(proto_srcs proto_hdrs ${proto_library_SRCS})
-  include_directories(${CMAKE_CURRENT_BINARY_DIR})
-  cc_library(${TARGET_NAME} SRCS ${proto_srcs})
+  cc_library(${TARGET_NAME} SRCS ${proto_srcs} DEPS protobuf)
 endfunction()
