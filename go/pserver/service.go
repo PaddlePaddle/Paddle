@@ -1,18 +1,9 @@
 package pserver
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"sync"
-	"time"
-
-	"github.com/PaddlePaddle/Paddle/go/utils/networkhelper"
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
-	log "github.com/sirupsen/logrus"
 )
 
 // ElementType is the type of elements of a Parameter.
@@ -56,26 +47,20 @@ type Gradient Parameter
 // Service is the RPC service for pserver.
 type Service struct {
 	initialized chan struct{}
+	idx         int
 
 	mu       sync.Mutex
 	opt      *optimizer
 	paramMap map[string]Parameter
-
-	etcdEndpoints string
-	etcdClient    *clientv3.Client
-	// etcdTimeout is also used as retry intervals.
-	etcdTimeout time.Duration
-	// desired number of pservers in the job.
-	// assume desired will not change during one training job.
-	desired int
-	// FIXME: ensure GetExternalIP gets the correct ip for trainers to connect.
-	externalIP string
 }
 
 // NewService creates a new service, will bypass etcd registration if no
 // endpoints specified.
-func NewService(endpoints string, timeout time.Duration) (*Service, error) {
-	s := &Service{opt: newOptimizer(sgd, 0.005)}
+func NewService(idx int) (*Service, error) {
+	s := &Service{
+		idx: idx,
+		opt: newOptimizer(sgd, 0.005),
+	}
 	s.paramMap = make(map[string]Parameter)
 	s.initialized = make(chan struct{})
 	s.etcdEndpoints = endpoints

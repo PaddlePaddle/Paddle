@@ -239,7 +239,8 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  // asynchronous copy
+  // For GpuMatrix this is an asynchronous copy interface
+  // For CpuMatrix this is an synchronous copy interface
   virtual void copyFrom(const Matrix& src, hl_stream_t stream) {
     LOG(FATAL) << "Not implemented";
   }

@@ -7,6 +7,7 @@ cd $TRAVIS_BUILD_DIR/build
 
 # Compile Documentation only.
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=OFF -DWITH_STYLE_CHECK=OFF
+
 mkdir output
 make -j `nproc`
 find .. -name '*whl' | xargs pip install  # install all wheels.
