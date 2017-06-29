@@ -24,18 +24,22 @@ TEST(Scope, Create) {
   Variable* var0 = scope->CreateVariable("");
   EXPECT_NE(var0, nullptr);
 
+  /// GetVariable will return nullptr if not exist.
   Variable* var1 = scope->GetVariable("a");
   EXPECT_EQ(var1, nullptr);
 
+  /// CreateVariable will return one.
   Variable* var2 = scope->CreateVariable("a");
+  EXPECT_NE(var2, nullptr);
 
-  ASSERT_DEATH({ scope->CreateVariable("a"); }, "");
-
+  /// Get the created variable.
   Variable* var3 = scope->GetVariable("a");
   EXPECT_EQ(var2, var3);
 
-  Variable* var4 = scope->GetOrCreateVariable("a");
-  EXPECT_EQ(var2, var4);
+  /// CreateVariable will just return the variable if it's
+  /// already exist.
+  Variable* var4 = scope->CreateVariable("a");
+  EXPECT_EQ(var4, var2);
 }
 
 TEST(Scope, Parent) {
@@ -48,6 +52,7 @@ TEST(Scope, Parent) {
   Variable* var0 = parent_scope->CreateVariable("a");
   EXPECT_NE(var0, nullptr);
 
+  /// GetVariable will get Variable from parent scope if exist.
   Variable* var1 = scope->GetVariable("a");
   EXPECT_EQ(var0, var1);
 }

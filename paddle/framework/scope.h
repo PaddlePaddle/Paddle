@@ -19,7 +19,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/variable.h"
-#include "paddle/platform/assert.h"
 
 namespace paddle {
 namespace framework {
@@ -44,9 +43,13 @@ class Scope {
   /// Create Variable in this Scope. Failed if Variable already been
   /// created.
   Variable* CreateVariable(const std::string& name) {
-    PADDLE_ASSERT(!HasVariable(name));
-    vars_[name] = std::unique_ptr<Variable>(new Variable());
-    return GetVariable(name);
+    auto var = GetVariable(name);
+    if (var) {
+      return var;
+    } else {
+      vars_[name] = std::unique_ptr<Variable>(new Variable());
+      return GetVariable(name);
+    }
   }
 
   /// Get Variable from this Scope, this function will recursive find Variable
@@ -59,16 +62,6 @@ class Scope {
       return parent_->GetVariable(name);
     } else {
       return nullptr;
-    }
-  }
-
-  /// Get Variable from scope, if Variable is not exist, creat one and return.
-  Variable* GetOrCreateVariable(const std::string& name) {
-    auto var = GetVariable(name);
-    if (var) {
-      return var;
-    } else {
-      return CreateVariable(name);
     }
   }
 
