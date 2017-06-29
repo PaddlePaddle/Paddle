@@ -113,7 +113,7 @@ func (c *Client) monitorMaster(addr Addresser) {
 //
 // SetDataset can be call multiple times from different nodes. But
 // only the first call will be honored.
-func (c *Client) SetDataset(globPaths ...string) error {
+func (c *Client) SetDataset(globPaths []string) error {
 	return c.conn.Call("Service.SetDataset", globPaths, nil)
 }
 

@@ -93,13 +93,17 @@ def recordio(paths, addr="", buf_size=100):
     if len(os.environ["KUBERNETES_SERVICE_HOST"]) == 0:
         return recordio_local(path)
 
-    c = cloud(addr, buf_size)
-    c.set_dataset(paths)
+    def reader():
+        c = cloud(addr, buf_size)
+        c.set_dataset(paths)
 
-    while True:
-        r = client.next_record()
-        if r is None:
-            break
-        yield r
+        while True:
+            r = client.next_record()
+            if r is None:
+                break
+            yield r
 
-    c.close()
+        c.close()
+
+    return reader
+
