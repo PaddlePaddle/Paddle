@@ -30,21 +30,24 @@ namespace detail {
 class SystemAllocator {
  public:
   virtual ~SystemAllocator() {}
-  virtual void* Alloc(size_t size) = 0;
-  virtual void Free(void* p, size_t size) = 0;
+  virtual void* Alloc(size_t& index, size_t size) = 0;
+  virtual void Free(void* p, size_t size, size_t index) = 0;
 };
 
 class CPUAllocator : public SystemAllocator {
  public:
-  virtual void* Alloc(size_t size);
-  virtual void Free(void* p, size_t size);
+  virtual void* Alloc(size_t& index, size_t size);
+  virtual void Free(void* p, size_t size, size_t index);
 };
 
 #ifndef PADDLE_ONLY_CPU
 class GPUAllocator : public SystemAllocator {
  public:
-  virtual void* Alloc(size_t size);
-  virtual void Free(void* p, size_t size);
+  virtual void* Alloc(size_t& index, size_t size);
+  virtual void Free(void* p, size_t size, size_t index);
+
+ private:
+  size_t total_alloc_size_ = 0;
 };
 #endif  // PADDLE_ONLY_CPU
 
