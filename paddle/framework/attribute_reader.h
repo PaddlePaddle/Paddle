@@ -2,6 +2,8 @@
 #include <google/protobuf/map.h>
 #include <paddle/framework/attribute.pb.h>
 #include <paddle/framework/enforce.h>
+#include <algorithm>
+#include <vector>
 
 namespace paddle {
 namespace framework {
@@ -103,6 +105,25 @@ ATTR_READER_GETVALUE_IMPL(float, f);
 ATTR_READER_GETVALUE_IMPL(std::string, s);
 
 #undef ATTR_READER_GETVALUE_IMPL
+
+#define ATTR_GETARRAY_IMPL(T, FIELD)                                     \
+  template <>                                                            \
+  void AttributeReader::GetArray<T>(const std::string& name,             \
+                                    std::vector<T>* vec) const {         \
+    PADDLE_ENFORCE(vec->empty(), "Input vector should be empty");        \
+    auto attr = details::GetField(attrs_, name);                         \
+    PADDLE_ENFORCE(attr != nullptr, "Attribute %s not found", name);     \
+    PADDLE_ENFORCE(attr->has_list(), "Attribute %s is not array", name); \
+    auto& field = attr->list().FIELD();                                  \
+    vec->reserve(field.size());                                          \
+    std::copy(field.begin(), field.end(), std::back_inserter(*vec));     \
+  }
+
+ATTR_GETARRAY_IMPL(int, ints);
+ATTR_GETARRAY_IMPL(float, floats);
+ATTR_GETARRAY_IMPL(std::string, strings);
+
+#undef ATTR_GETARRAY_IMPL
 
 }  // namespace framework
 }  // namespace paddle
