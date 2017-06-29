@@ -144,7 +144,7 @@ class DenseScanner(IScanner):
         if len(self.__shape__) > 1:
             # The last-two dimenstions are the frame height and width.
             # For example, the layout is CHW for 3-D feature of image.
-            # The H and W are the fram height and width.
+            # The H and W are the frame height and width.
             h, w = self.__shape__[-2:]
             argument.setSlotFrameHeight(self.pos, h)
             argument.setSlotFrameWidth(self.pos, w)
