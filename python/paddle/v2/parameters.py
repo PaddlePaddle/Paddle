@@ -284,6 +284,18 @@ class Parameters(object):
 
     @staticmethod
     def from_tar(f):
+        """
+        Create a `Parameters` object from the given file. And
+        the `Parameters` only contains the parameters in this
+        file. It is adapted the parameters are same in the
+        defined network and the given file. For example, it
+        can be used in the inference.
+
+        :param f: the initialized model file.
+        :type f: tar file
+        :return: A Parameters object.
+        :rtype: Parameters.
+        """
         params = Parameters()
         tar = tarfile.TarFile(fileobj=f, mode='r')
         for finfo in tar:
@@ -300,6 +312,15 @@ class Parameters(object):
         return params
 
     def init_from_tar(self, f):
+        """
+        Different from `from_tar`, this interface can be used to
+        init partial network parameters from another saved model.
+
+        :param f: the initialized model file.
+        :type f: tar file
+        :return: Nothing.
+        """
+
         tar_param = Parameters.from_tar(f)
         for pname in tar_param.names():
             if pname in self.names():
