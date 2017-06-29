@@ -100,8 +100,8 @@ class PlainNet final : public NetBase {
   virtual void AddBackwardOps() override;
 
  protected:
-  // Create operators accordding to `def`.
-  bool CreateNet(const NetDef &def);
+  // Create operators accordding to `def`, will be called by the constructor.
+  bool BuildNet(const NetDef &def);
 
   // Add a operator which is identified as `type` and has attributes described
   // in `attrs`, the `inputs` are the keys of readonly input variables,
