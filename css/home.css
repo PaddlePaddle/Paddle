@@ -2708,6 +2708,14 @@ header.site-header .github-fork > a:hover {
   line-height: 60px;
   width: 212px;
 }
+.get-started .quick-start:hover {
+  color: #fff;
+  background-color: #3095ff;
+  font-size: 18px;
+  display: inline-block;
+  line-height: 60px;
+  width: 212px;
+}
 .footer-nav {
   background-color: #333;
   color: ccc;
