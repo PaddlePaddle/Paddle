@@ -1,10 +1,10 @@
 # ddim lib
+proto_library(attribute SRCS attribute.proto)
 cc_library(ddim SRCS ddim.cc)
-cc_library(operator SRCS operator.cc)
+cc_library(operator SRCS operator.cc DEPS attribute)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 cc_test(variable_test SRCS variable_test.cc)
 cc_test(scope_test SRCS scope_test.cc)
 cc_test(enforce_test SRCS enforce_test.cc)
-proto_library(attribute SRCS attribute.proto)
 cc_test(attribute_reader_test SRCS attribute_reader_test.cc DEPS attribute protobuf)

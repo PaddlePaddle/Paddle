@@ -14,7 +14,7 @@ class CosineOp final : public Operator<DeviceContext> {
   /// init attrs that is needed by this Operator, check the legality here.
   Error InitializeAttributes(const AttributeMap& attrs) {
     AttributeReader reader(attrs);
-    if (reader.Contains("scale")) {
+    if (reader.Contains<float>("scale")) {
       scale_ = reader.Get<float>("scale");
     }
     if (scale_ <= 0.0) {
