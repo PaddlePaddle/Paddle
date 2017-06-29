@@ -47,7 +47,8 @@ class GPUAllocator : public SystemAllocator {
   virtual void Free(void* p, size_t size, size_t index);
 
  private:
-  size_t total_alloc_size_ = 0;
+  size_t gpu_alloc_size_ = 0;
+  size_t fallback_alloc_size_ = 0;
 };
 #endif  // PADDLE_ONLY_CPU
 
