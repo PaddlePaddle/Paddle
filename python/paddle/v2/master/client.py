@@ -30,6 +30,9 @@ class client(object):
         p = ctypes.c_char_p()
         ret = ctypes.pointer(p)
         size = lib.paddle_next_record(self.c, ret)
+        if size < 0:
+            # EOF
+            return None
         if size == 0:
             # Empty record
             return ""

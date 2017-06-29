@@ -88,7 +88,12 @@ func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int
 func paddle_next_record(client C.paddle_master_client, record **C.uchar) C.int {
 	c := get(client)
 	r := c.NextRecord()
+	if r == nil {
+		// EOF
+		return -1
+	}
 	if len(r) == 0 {
+		// Empty record
 		*record = (*C.uchar)(nullPtr)
 		return 0
 	}
