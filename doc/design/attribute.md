@@ -48,7 +48,7 @@ message OperatorDescription {
 
 ### AttributeReader
 
-In CPP, it should be a helper class for reading `map<string, Attribute>`. The reading method should accept a template parameter, which is the type of Attribute.  If type mismatch or attribute is not found, `Get` method should return an `Error`. That helper class we named `AttributeReader`.
+In CPP, it should be a helper class for reading `map<string, Attribute>`. The reading methods in that helper class should accept a template parameter, which is the type of Attribute. That helper class we named `AttributeReader`.
 
 The interface of `AttributeReader` is like this:
 
@@ -58,12 +58,16 @@ class AttributeReader {
  public:
   explicit AttributeReader(const AttributeMap& attrs) : attrs_(attrs) {}
 
+  // Get a plain type T attribute, which name is `name`
   template <typename T>
-  T Get(const std::string& attributeName) const;
+  T Get(const std::string& name) const;
 
+  // Get attribute with a array of type T, which name is `name`
   template <typename T>
-  void GetArray(const std::string& attributeName, std::vector<T>* array) const;
+  void GetArray(const std::string& name, std::vector<T>* vec) const;
 
+  // Is that `name` attribute with type T in map or not.
+  // T could be int, float, string and std::vector of them
   template <typename T>
   bool Contains(const std::string& name) const;
 
@@ -72,11 +76,9 @@ class AttributeReader {
 };
 ```
 
-There are two methods in `AttributeReader`: `Get` and `GetArray`. `GetArray` is used for `ListValue`, and `Get` is used for the rests. The user should invoke either of them when he wants to get an Attribute value from `AttributeMap`.
-
 ### Attribute in Operator
 
-Each operator stores its attributes. For faster attribute access, we should not let user parse `AttributeMap` during `Run` method in Operator. When `NetworkBase` adds an operator to computation graph, the `Attribute` could be parsed, and stored in each operator's the private member.
+Each operator parse and store its attribute into private member data when `InitializeAttribute`. That method will be invoked by `CreateOperator `. User can use `PADDLE_ENFORCE` to validate attribute. Also, use `Contains` method, user can set default value of attributes.
 
 ```cpp
 class OperatorBase {
@@ -87,7 +89,7 @@ class OperatorBase {
 class CosineOp : public OperatorBase {
  public:
   void InitializeAttribute(const AttributeReader& attrs) {
-    if (attrs.Contain<float>("scale")) {
+    if (attrs.Contains<float>("scale")) {
       scale_ = attrs.Get<float>("scale");
       PADDLE_ENFORCE(scale_ > 0.0f, "Scale of consine op should be larger than 0.0");
     }
@@ -98,7 +100,7 @@ class CosineOp : public OperatorBase {
 };
 ```
 
-When `NetworkBase` invokes `CreateOperator(const OperatorDescription& desc)`, it create an operator first. Then `CreateOperator` will invoke `InitializeAttribute`. The implementation of `CreateOperator` could be
+`InitializeAttribute` will be invoked by `CreateOperator`. Since `InitializeAttribute ` could throw an EnforceNotMet, a `unique_ptr` is used to make code exception-safe.
 
 ```cpp
 std::unique_ptr<OperatorBase> CreateOperator(const OperatorDescription& desc) {
