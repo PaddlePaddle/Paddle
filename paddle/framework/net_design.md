@@ -1,17 +1,16 @@
 # Network Design
 
 `Network` is the container and controller of a set of operators,
-user can build a real network from a `NetDef` which is a protobuf message 
+user can build a real network from a `NetDesc` which is a protobuf message 
 and use `Network.Run()` to run all the operators in the network.
 
-The `Network` will
-
-- manage all the operators contained in the network.
-- not own any `Variable`.
+A network object knows all Operators belonging to this network. Variables, 
+which are inputs and outputs of these operators, 
+are created and managed by a hierarchy of Scope objects.
 
 # API
 
-## NetBase
+## Net
 To make the `Network` extendable, a base class is defined like this
 
 ```c++
@@ -19,28 +18,28 @@ To make the `Network` extendable, a base class is defined like this
 typedef int OpIndex;
 
 // The minimum a network should be implemented.
-class NetBase {
+class Net {
  public:
   // run all the operators and return success(true) or not, with all the
   // variables are located in `scope`. `context` describes the detail execution
   // environment for ops. `begin` and `end` specify the scope of `ops_` to run,
   // If no positive indexes are provided, all operators in `ops_` will run.
-  virtual bool Run(Scope *scope, OpContext *context, OpIndex begin = -1,
+  virtual Error Run(Scope *scope, OpContext *context, OpIndex begin = -1,
                    OpIndex end = -1) const = 0;
 
   // Add an Operator according to `def`.
   virtual OpIndex AddOp(const proto::OpDef &def) = 0;
 
   // Add optimizer operators acctording to `attrs`.
-  virtual void AddOptimizerOps(const OptAttrs &attrs) = 0;
+  virtual Error AddOptimizerOps(const OptAttrs &attrs) = 0;
 
   // Add backward operators.
-  virtual void AddBackwardOps() = 0;
+  virtual Error AddBackwardOps() = 0;
 
   // Infer the shapes of variables required by operators in the network. The
   // `scope` will be mutated according to the inferred shapes.
 
-  static std::unique_ptr<NetBase> Create(const NetDef &def = NetDef());
+  static std::unique_ptr<Net> Create(const NetDesc &def = NetDesc());
 };
 ```
 
@@ -48,10 +47,10 @@ All network implementations should build networks from a protobuf message which
 describes the structure of a real network; `Run` method should be implemented by 
 all implementations to offer a universal method to forward or backward compute a network.
 
-`NetBase::Create` is a method of factory pattern and can be implemented like
+`Net::Create` is a method of factory pattern and can be implemented like
 
 ```c++
-std::unique<NetBase> NetBase::Create(const NetDef& def) {
+std::unique<Net> Net::Create(const NetDesc& def) {
   switch (def.model_type()) {
     case NN:
       return new Network(def);
@@ -69,12 +68,12 @@ we decouple it from the related variable resources.
 
 `Run(Scope* scope)` takes the scope as a argument so that it can run in different scopes.
 
-Finally, `NetBase` can be used as followed
+Finally, `Net` can be used as followed
 
 ```c++
 Scope default_scope;
 OpContext default_context;
-auto net = NetBase::CreateNet(def);
+auto net = Net::CreateNet(def);
 
 if (net) {
   net.Run(&default_scope, &default_context);
@@ -86,29 +85,29 @@ if (net) {
 A very basic implementation is as follows. All it does is simply to run every operators in sequence.
 
 ```c++
-class PlainNet final : public NetBase {
+class PlainNet : public Net {
  public:
-  // Create a network describe by `def`.  NetDef is the definition of a network.
-  PlainNet(const NetDef &def);
+  // Create a network describe by `def`.  NetDesc is the definition of a network.
+  PlainNet(const NetDesc &def);
 
   // Infer all the operators' input and output varialbes' shapes, will be called before every mini-batch
   training.
-  virtual bool InferShape(Scope *scope) override;
+  virtual Error InferShape(Scope *scope) override;
 
   // Run all the operators with the `scope`, if no scope is provided, default
   // scope will be used instead. If no OpContext is provicded, default context will be used.
-  virtual bool Run(Scope *scope = nullptr, OpContext *context=nullptr, OpIndex begin = -1,
+  virtual Error Run(Scope *scope = nullptr, OpContext *context=nullptr, OpIndex begin = -1,
                    OpIndex end = -1) const override;
 
   virtual OpIndex AddOp(const proto::OpDef &def) override;
 
-  virtual void AddOptimizerOps(const OptAttrs &attrs) override;
+  virtual Error AddOptimizerOps(const OptAttrs &attrs) override;
 
-  virtual void AddBackwardOps() override;
+  virtual Error AddBackwardOps() override;
 
  protected:
   // Create operators accordding to `def`, will be called by the constructor.
-  bool BuildNet(const NetDef &def);
+  Error BuildNet(const NetDesc &def);
 
   // Add a operator which is identified as `type` and has attributes described
   // in `attrs`, the `inputs` are the keys of readonly input variables,
@@ -140,7 +139,7 @@ scope.CreateVariables(net_desc);
 scope.InitVariables(net_desc);
 
 // create a network according to `net_desc`
-auto net = NetBase::CreateNet(net_desc);
+auto net = Net::CreateNet(net_desc);
 // Add more operators if needed.
 net->AddOp(add...);
 net->AddOp(fc...);
@@ -168,12 +167,12 @@ builder.AddOptimization(1e-4, "adam");
 builder.Run();
 ```
 
-`NetBuilder` will call `NetBase` 's virtual functions to change the real network structure, here is a sample definition
+`NetBuilder` will call `Net` 's virtual functions to change the real network structure, here is a sample definition
 
 ```c++
 class NetBuilder final {
  public:
-  NetBuilder(NetBase* net) : net_(net) {}
+  NetBuilder(Net* net) : net_(net) {}
 
   Variable* AddOp(const string& type, const vector<Variable>& inputs,
                   size_t size, Activation act) {
@@ -185,9 +184,9 @@ class NetBuilder final {
     // ...
   }
 
-  void BackwardFrom(const Variable& cost);
+  Error BackwardFrom(const Variable& cost);
 
-  void Run(Scope* scope, OpContext* context, bool need_backward = true) {
+  Error Run(Scope* scope, OpContext* context, bool need_backward = true) {
     // backward.
     if (need_backward) {
       if (need_rebuild_net_) {
@@ -202,11 +201,11 @@ class NetBuilder final {
   }
 
  protected:
-  void AddBackwardOps();
-  void AddOptimizerOps();
+  Error AddBackwardOps();
+  Error AddOptimizerOps();
 
  private:
-  NetBase* net_;
+  Net* net_;
   OpIndex last_forward_op_{-1};
   bool need_rebuild_net_{true};
 }
