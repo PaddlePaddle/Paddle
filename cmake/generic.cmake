@@ -87,6 +87,9 @@
 #   go_library(example SHARED)
 #
 
+# including binary directory for generated headers.
+include_directories(${CMAKE_BINARY_DIR})
+
 if(NOT APPLE)
     find_package(Threads REQUIRED)
     link_libraries(${CMAKE_THREAD_LIBS_INIT})
@@ -331,3 +334,13 @@ function(go_test TARGET_NAME)
   add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_test_DEPS})
   add_test(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
 endfunction(go_test)
+
+function(proto_library TARGET_NAME)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS)
+  cmake_parse_arguments(proto_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  set(proto_srcs)
+  set(proto_hdrs)
+  protobuf_generate_cpp(proto_srcs proto_hdrs ${proto_library_SRCS})
+  cc_library(${TARGET_NAME} SRCS ${proto_srcs} DEPS protobuf)
+endfunction()
