@@ -1,5 +1,5 @@
 file(GLOB proto_filenames . *.proto)
-pb_cc_library(paddle_proto SRCS ${proto_filenames})
+proto_library(paddle_proto SRCS ${proto_filenames})
 
 set(PROTO_GEN)
 set(PROTO_GEN_PY)
