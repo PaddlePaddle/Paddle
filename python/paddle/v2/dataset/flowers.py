@@ -62,7 +62,7 @@ def default_mapper(is_train, sample):
     img, label = sample
     img = load_image_bytes(img)
     img = simple_transform(
-        img, 256, 224, is_train, mean=[103.94, 116.78, 123, 68])
+        img, 256, 224, is_train, mean=[103.94, 116.78, 123.68])
     return img.flatten().astype('float32'), label
 
 
