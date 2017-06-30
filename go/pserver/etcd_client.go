@@ -68,7 +68,7 @@ func (e *EtcdClient) Register() (int, error) {
 	// it at the same time.
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		_, err := e.initDesiredPsercers(ctx, e.numPservers)
+		_, err := e.initDesiredPservers(ctx, e.numPservers)
 		cancel()
 		if err != nil {
 			log.Warn(err)
@@ -120,7 +120,7 @@ func (e *EtcdClient) Register() (int, error) {
 	return pserverIdx, nil
 }
 
-func (e *EtcdClient) initDesiredPsercers(ctx context.Context, numPservers int) (*clientv3.TxnResponse, error) {
+func (e *EtcdClient) initDesiredPservers(ctx context.Context, numPservers int) (*clientv3.TxnResponse, error) {
 	return concurrency.NewSTM(e.etcdClient, func(c concurrency.STM) error {
 		dsStr := c.Get(PsDesired)
 		if dsStr == "" {
