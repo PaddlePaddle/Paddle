@@ -86,7 +86,6 @@ func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int
 
 // return value:
 //     0:ok
-//    -1:EOF
 //    -2:error
 //export paddle_next_record
 func paddle_next_record(client C.paddle_master_client, record **C.uchar) C.int {
