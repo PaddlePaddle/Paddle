@@ -50,7 +50,7 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
                          .set("paddings", paddings)
                          .set("strides", strides)
                          .set("groups", (size_t)groups_[i])
-                         .set("algo", "auto"));
+                         .set("algo", std::string("auto")));
     } else {
       createFunction(forward_,
                      !isDeconv_ ? "GemmConv" : "GemmConvGradInput",
