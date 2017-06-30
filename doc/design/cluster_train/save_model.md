@@ -7,24 +7,34 @@ ways from which user can obtain a model:
 
 - Save model triggered by user code: user code asks PaddlePaddle to
   save a model.
-- Convert model from the snapshot: model being converted from
-  pservers' periodic snapshot. In this way, the user can cancel a job
-  at any time, and still have a relatively fresh model (we snapshot
-  around every 5 minutes).
+- Convert model from the checkpoint: model being converted from
+  pservers' periodic checkpoint. In this way, the user can cancel a
+  job at any time, and still have a relatively fresh model (we
+  checkpoint around every 5 minutes).
 
-### Save Model Triggered by User Code
+### Trainer Saving Model vs. Pservers Saving Model
 
 Both trainers and pservers have access to the model. So the model can
 be saved from a trainer or pservers. We need to decide on where the
 model is saved from.
 
-#### Dense Model vs. Sparse Model
+#### Dense Update vs. Sparse Update
 
-There are two types of model: dense and sparse model (when the
-parameter is configured to be sparse). Pservers always jointly have
-the entire model at any given time. Trainers only have the entire
-dense model, but only have a fraction of the sparse model at any given
-time.
+There are two types of model update methods: dense update and sparse
+update (when the parameter is configured to be sparse).
+
+- Dense update
+
+  Every trainer has it's own full copy of the model. Every model
+  update will update the entire model.
+
+- Sparse update
+
+  The training input is sparse, and the trainer does not have the
+  entire model. It will only download the sub-model necessary related
+  to the input. When updating the model, only the sub-model related to
+  the training input is updated.
+
 
 #### Pservers Saving Model
 
@@ -32,15 +42,15 @@ The benefit of letting pservers save model is they have the entire
 model all the time. However, since pservers are on different nodes, it
 requires a merging process to merge model shards into the same
 model. Thus requires the pservers to write models to a distributed
-filesystem, making the snapshot shards visible to the merge program.
+filesystem, making the checkpoint shards visible to the merge program.
 
 #### Trainer Saving Model
 
 The benefit of letting one trainer to save the model is it does not
 require a distributed filesystem. And it's reusing the same save model
-logic when the trainer is training locally - except when training
-sparse model, the trainer needs to download the entire sparse model
-during the saving process.
+logic when the trainer is training locally - except when doing sparse
+update, the trainer needs to download the entire model during the
+saving process.
 
 #### Conclusion
 
@@ -49,7 +59,7 @@ and is an intuitive extension to training locally, we decide to let
 the trainer save the model.
 
 
-### Convert Model from Snapshot
+### Convert Model from Checkpoint
 
 TODO
 
@@ -86,15 +96,15 @@ when save model is taking place.
 When saving a dense model, the trainer uses the local model. Pservers
 does not need to pause model update.
 
-When saving a sparse model. The trainer needs to download the entire
-sparse model while saving. To get the most accurate model, the model
-update needs to be paused before the download starts and resumed after
-the download finishes. Otherwise, the trainer gets a model that is
+When doing sparse update. The trainer needs to download the entire
+model while saving. To get the most accurate model, the model update
+needs to be paused before the download starts and resumed after the
+download finishes. Otherwise, the trainer gets a model that is
 "polluted": some part of the model is old, some part of the model is
 new.
 
 It's unclear that the "polluted" model will be inferiod due to the
 stochastic nature of deep learning, and pausing the model update will
-add more complexity to the system. Since supporting sparse model is a
+add more complexity to the system. Since supporting sparse update is a
 TODO item. We defer the evaluation of pause the model update or not
 during saving model to the future.
