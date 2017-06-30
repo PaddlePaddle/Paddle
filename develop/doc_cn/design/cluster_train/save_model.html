@@ -1,0 +1,352 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Design Doc: Save Model &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../../genindex.html"/>
+        <link rel="search" title="搜索" href="../../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/rnn_config_cn.html">RNN配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/evaluators.html">Evaluators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Design Doc: Save Model</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="design-doc-save-model">
+<span id="design-doc-save-model"></span><h1>Design Doc: Save Model<a class="headerlink" href="#design-doc-save-model" title="永久链接至标题">¶</a></h1>
+<div class="section" id="overview">
+<span id="overview"></span><h2>Overview<a class="headerlink" href="#overview" title="永久链接至标题">¶</a></h2>
+<p>The model is the output of the training process. There are two
+ways from which user can obtain a model:</p>
+<ul class="simple">
+<li>Save model triggered by user code: user code asks PaddlePaddle to
+save a model.</li>
+<li>Convert model from the checkpoint: model being converted from
+pservers&#8217; periodic checkpoint. In this way, the user can cancel a
+job at any time, and still have a relatively fresh model (we
+checkpoint around every 5 minutes).</li>
+</ul>
+<div class="section" id="trainer-saving-model-vs-pservers-saving-model">
+<span id="trainer-saving-model-vs-pservers-saving-model"></span><h3>Trainer Saving Model vs. Pservers Saving Model<a class="headerlink" href="#trainer-saving-model-vs-pservers-saving-model" title="永久链接至标题">¶</a></h3>
+<p>Both trainers and pservers have access to the model. So the model can
+be saved from a trainer or pservers. We need to decide where the model
+is saved from.</p>
+<div class="section" id="dense-update-vs-sparse-update">
+<span id="dense-update-vs-sparse-update"></span><h4>Dense Update vs. Sparse Update<a class="headerlink" href="#dense-update-vs-sparse-update" title="永久链接至标题">¶</a></h4>
+<p>There are two types of model update methods: dense update and sparse
+update (when the model parameter is configured to be sparse).</p>
+<ul>
+<li><p class="first">Dense update</p>
+<p>Every trainer has it&#8217;s own full copy of the model. Every model
+update will update the entire model.</p>
+</li>
+<li><p class="first">Sparse update</p>
+<p>The training input is sparse, and the trainer does not have the
+entire model. It will only download the sub-model necessary related
+to the input. When updating the model, only the sub-model related to
+the training input is updated.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="pservers-saving-model">
+<span id="pservers-saving-model"></span><h4>Pservers Saving Model<a class="headerlink" href="#pservers-saving-model" title="永久链接至标题">¶</a></h4>
+<p>The benefit of letting pservers save model is they have the entire
+model all the time. However, since pservers are on different nodes, it
+requires a merging process to merge model shards into the same
+model. Thus requires the pservers to write models to a distributed
+filesystem, making the checkpoint shards visible to the merge program.</p>
+</div>
+<div class="section" id="trainer-saving-model">
+<span id="trainer-saving-model"></span><h4>Trainer Saving Model<a class="headerlink" href="#trainer-saving-model" title="永久链接至标题">¶</a></h4>
+<p>The benefit of letting one trainer to save the model is it does not
+require a distributed filesystem. And it&#8217;s reusing the same save model
+logic when training locally - except when doing sparse update, the
+trainer needs to download the entire model during the saving process.</p>
+</div>
+<div class="section" id="conclusion">
+<span id="conclusion"></span><h4>Conclusion<a class="headerlink" href="#conclusion" title="永久链接至标题">¶</a></h4>
+<p>Given trainer saving model does not require a distributed filesystem,
+and is an intuitive extension to trainer saving model when training
+locally, we decide to let the trainer save the model when doing
+distributed training.</p>
+</div>
+</div>
+<div class="section" id="convert-model-from-checkpoint">
+<span id="convert-model-from-checkpoint"></span><h3>Convert Model from Checkpoint<a class="headerlink" href="#convert-model-from-checkpoint" title="永久链接至标题">¶</a></h3>
+<p>TODO</p>
+</div>
+</div>
+<div class="section" id="timeline">
+<span id="timeline"></span><h2>Timeline<a class="headerlink" href="#timeline" title="永久链接至标题">¶</a></h2>
+<p>We first implement trainer save the model. Converting the latest
+snapshot to a model will be a TODO for future.</p>
+</div>
+<div class="section" id="trainer-save-model">
+<span id="trainer-save-model"></span><h2>Trainer Save Model<a class="headerlink" href="#trainer-save-model" title="永久链接至标题">¶</a></h2>
+<div class="section" id="trainer-election">
+<span id="trainer-election"></span><h3>Trainer Election<a class="headerlink" href="#trainer-election" title="永久链接至标题">¶</a></h3>
+<p>One trainer will be elected as the one to save the model. When using
+etcd, trainer ID is a randomly generated UUID, we will utilize etcd to
+elect one trainer. When not using etcd, unique trainer IDs will be
+given by the administrator, the trainer whose ID is &#8220;0&#8221; is elected to
+save the model.</p>
+</div>
+<div class="section" id="model-save-path">
+<span id="model-save-path"></span><h3>Model Save Path<a class="headerlink" href="#model-save-path" title="永久链接至标题">¶</a></h3>
+<p>Each trainer will be given the directory to save the model. The
+elected trainer will save the model to
+<code class="docutils literal"><span class="pre">given-directory/trainerID</span></code>. Since the trainer ID is unique, this
+would prevent concurrent save to the same file when multiple trainers
+are elected to save the model when split-brain problem happens.</p>
+</div>
+<div class="section" id="what-happens-when-model-is-saving">
+<span id="what-happens-when-model-is-saving"></span><h3>What Happens When Model Is Saving<a class="headerlink" href="#what-happens-when-model-is-saving" title="永久链接至标题">¶</a></h3>
+<p>It takes some time to save model, we need to define what will happen
+when save model is taking place.</p>
+<p>When doing dense update, the trainer uses the local model. Pservers
+does not need to pause model update.</p>
+<p>When doing sparse update. The trainer needs to download the entire
+model while saving. To get the most accurate model, the model update
+needs to be paused before the download starts and resumed after the
+download finishes. Otherwise, the trainer gets a model that is
+&#8220;polluted&#8221;: some part of the model is old, some part of the model is
+new.</p>
+<p>It&#8217;s unclear that the &#8220;polluted&#8221; model will be inferior due to the
+stochastic nature of deep learning, and pausing the model update will
+add more complexity to the system. Since supporting sparse update is a
+TODO item. We defer the evaluation of pause the model update or not
+during saving model to the future.</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>
