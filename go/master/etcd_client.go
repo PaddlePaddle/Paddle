@@ -142,3 +142,31 @@ func (e *EtcdClient) Load() ([]byte, error) {
 	state := kvs[0].Value
 	return state, nil
 }
+
+// GetKey gets the value by the specify key.
+func GetKey(c *clientv3.Client, key string, timeout int) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
+	resp, err := c.Get(ctx, key)
+	cancel()
+	if err != nil {
+		return "", err
+	}
+	kvs := resp.Kvs
+	if len(kvs) == 0 {
+		return "", nil
+	}
+	v := kvs[0].Value
+	return string(v), nil
+}
+
+// WatchKey watches the specify key and send to valChan if there is some event.
+func WatchKey(c *clientv3.Client, key string, valChan chan<- string) {
+	rch := c.Watch(context.Background(), key)
+	for wresp := range rch {
+		for _, ev := range wresp.Events {
+			// if received event is DELETE, the value will be an empty string
+			log.Infof("received event %s, %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+			valChan <- string(ev.Kv.Value)
+		}
+	}
+}
