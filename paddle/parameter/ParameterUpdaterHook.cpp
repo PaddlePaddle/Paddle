@@ -22,6 +22,7 @@ limitations under the License. */
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include <iostream>
 
 #include "paddle/math/Vector.h"
 #include "paddle/parameter/Parameter.h"
@@ -141,15 +142,15 @@ public:
   void preprocess(Parameter *para, size_t currentPass) override {
     if (currentPass % interPass_ == 0 && currentPass <= endPass_) {
       real boundWeight =
-          this->upperBound_ / std::log(this->endPass_ / (real)this->interPass_);
+          this->upperBound_ / std::log(this->endPass_ / (real)this->interPass_ + 2);
       real sparsityRatio =
           boundWeight * std::log(2 + currentPass / (real)interPass_);
       size_t nonZeroNum = para->getSize() * (1 - sparsityRatio);
       this->generateMask(para, nonZeroNum);
       auto &paraVec = para->getBuf(PARAMETER_VALUE);
       paraVec->dotMul(*this->maskVec_);
-      // std::cout << para->getName() << " Current sparsity ratio: " <<
-      // sparsityRatio << std::endl;
+      std::cout << para->getName() << " Current sparsity ratio: " <<
+      sparsityRatio << std::endl;
     }
   }
 
