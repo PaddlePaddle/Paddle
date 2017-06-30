@@ -281,6 +281,53 @@
 <span id="implementation"></span><h1>Implementation<a class="headerlink" href="#implementation" title="Permalink to this headline">¶</a></h1>
 <p>As above example CMakeLists.txt executes, each function invocation adds &#8220;nodes&#8221; to a dependency graph.  It also use this graph to generate CMake commands including <code class="docutils literal"><span class="pre">add_executable</span></code>, <code class="docutils literal"><span class="pre">add_dependencies</span></code>, <code class="docutils literal"><span class="pre">target_link_libraries</span></code>, and <code class="docutils literal"><span class="pre">add_test</span></code>.</p>
 </div>
+<div class="section" id="using-package-manager-for-go">
+<span id="using-package-manager-for-go"></span><h1>Using Package Manager For Go<a class="headerlink" href="#using-package-manager-for-go" title="Permalink to this headline">¶</a></h1>
+<p>Building Go binaries and libraries need to satisfy their dependencies, generally
+we can do <code class="docutils literal"><span class="pre">go</span> <span class="pre">get</span> <span class="pre">./...</span></code> to download and compile all external dependencies. The
+problems are:</p>
+<ol class="simple">
+<li><code class="docutils literal"><span class="pre">go</span> <span class="pre">get</span></code> will always get the latest code from the default branch of the
+remote repo, so changes of dependents might break the build. This is very
+different with what we already have in <code class="docutils literal"><span class="pre">cmake/external</span></code> which download a
+specific version or commit id of the dependency.</li>
+<li>Some locations can not access external dependencies through the internet, as mentioned
+in https://github.com/PaddlePaddle/Paddle/issues/2605. Using package management
+tools can package the dependencies as a &#8220;vendor&#8221; package, which can be mirrored
+at many cloud file hosting, so users what to compile paddle by themselves can
+download this &#8220;vendor&#8221; package from a mirror site.</li>
+</ol>
+<div class="section" id="choose-a-suitable-tool">
+<span id="choose-a-suitable-tool"></span><h2>Choose A Suitable Tool<a class="headerlink" href="#choose-a-suitable-tool" title="Permalink to this headline">¶</a></h2>
+<p>As mentioned by &#64;wangkuiyi, <a class="reference external" href="https://github.com/golang/go/wiki/PackageManagementTools">Here</a>
+list dozens of Go package managers. We choose the tool using following principles:</p>
+<ul class="simple">
+<li>Most &#8220;active&#8221; projects with more stars, more pull requests or commits</li>
+<li>Widely used project</li>
+</ul>
+<p>After comparing all these projects, we shall choose between the most popular
+tools: Godep and Glide.</p>
+<p>Here&#8217;s a brief comparison between Godep and Glide
+: https://github.com/Masterminds/glide/wiki/Go-Package-Manager-Comparison. There are
+also many complaints about using <code class="docutils literal"><span class="pre">Godep</span></code>. There&#8217;s also a new &#8220;official&#8221; pakcage
+management tool has been started at: https://github.com/golang/dep to resolve
+such problems, but it&#8217;s currently at Alpha stage. So the best choice now is
+glide obviously.</p>
+</div>
+<div class="section" id="manage-go-packages">
+<span id="manage-go-packages"></span><h2>Manage Go Packages<a class="headerlink" href="#manage-go-packages" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Dependencies: <code class="docutils literal"><span class="pre">go/glide.yaml</span></code> will store the dependencies and their versions which
+is directly imported by paddle. <code class="docutils literal"><span class="pre">go/glide.lock</span></code> will store all dependencies recursively
+with their commit id. Builds will &#8220;lock&#8221; to these packages if we don&#8217;t <code class="docutils literal"><span class="pre">glide</span> <span class="pre">up</span></code>
+them</li>
+<li>Vendor package: <code class="docutils literal"><span class="pre">go/vendor</span></code> directory will generated when running <code class="docutils literal"><span class="pre">cmake</span></code> command. <code class="docutils literal"><span class="pre">cmake</span></code>
+will download the code corresponding to <code class="docutils literal"><span class="pre">go/glide.lock</span></code>. If we put a vendor folder
+under <code class="docutils literal"><span class="pre">go/</span></code>, cmake will just check the commit id to the packages under the folder,
+if commit id matches, there will be no download at all.</li>
+</ul>
+</div>
+</div>
 
 
            </div>
