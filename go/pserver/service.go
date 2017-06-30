@@ -12,10 +12,10 @@ type ElementType int
 const (
 	AlreadyInitialized = "pserver already initialized"
 	Uninitialized      = "pserver not fully initialized"
-        // PsDesired is etcd path for store desired pserver count
+	// PsDesired is etcd path for store desired pserver count
 	PsDesired = "/ps_desired"
-        // PsAddr is the base dir for pserver to store their addr
-        PsPath = "/ps/"
+	// PsAddr is the base dir for pserver to store their addr
+	PsPath = "/ps/"
 )
 
 // Supported element types

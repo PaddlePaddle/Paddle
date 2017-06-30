@@ -14,14 +14,22 @@ const (
 	DefaultEtcdTimeout time.Duration = 5 * time.Second
 )
 
-type EtcdCClient struct {
+type EtcdCClient interface {
+	Desired() int
+	List() []Server
+}
+
+// TODO(Longfei)
+// 1. add watcher to watch the change state of pservers)
+// 1. add etcd lock)
+type EtcdCClientImpl struct {
 	client    *clientv3.Client
 	timeout   time.Duration
 	endpoints []string
 }
 
 // read ps desired number from etcd.
-func (p *EtcdCClient) Desired() int {
+func (p *EtcdCClientImpl) Desired() int {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
 		resp, err := p.client.Get(ctx, PsDesired)
@@ -51,7 +59,7 @@ func (p *EtcdCClient) Desired() int {
 	}
 }
 
-func (p *EtcdCClient) List() []Server {
+func (p *EtcdCClientImpl) List() []Server {
 	psDesired := p.Desired()
 
 	servers := make([]Server, psDesired)
@@ -93,7 +101,7 @@ func (p *EtcdCClient) List() []Server {
 	return servers
 }
 
-func NewEtcdCClient(endpoints string) (*EtcdCClient, error) {
+func NewEtcdCClient(endpoints string) (EtcdCClient, error) {
 	ep := strings.Split(endpoints, ",")
 	timeout := DefaultEtcdTimeout
 	var cli *clientv3.Client
@@ -111,7 +119,7 @@ func NewEtcdCClient(endpoints string) (*EtcdCClient, error) {
 		break
 	}
 	log.Infof("Connected to etcd: %s\n", endpoints)
-	client := &EtcdCClient{
+	client := &EtcdCClientImpl{
 		client:    cli,
 		timeout:   timeout,
 		endpoints: ep,
