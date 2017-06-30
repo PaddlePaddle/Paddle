@@ -146,9 +146,9 @@ function(merge_static_libs TARGET_NAME)
     set(outlibfile "$<TARGET_FILE:${TARGET_NAME}>")
 
     foreach(lib ${libs})
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND ${CMAKE_AR} ru ${outlibfile} @"../${objlistfile}"
-      WORKING_DIRECTORY ${objdir})
+      add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND ${CMAKE_AR} ru ${outlibfile} @"../${lib}.objlist"
+      WORKING_DIRECTORY ${lib}.objdir)
     endforeach()
 
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
