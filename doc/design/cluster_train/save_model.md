@@ -15,13 +15,13 @@ ways from which user can obtain a model:
 ### Trainer Saving Model vs. Pservers Saving Model
 
 Both trainers and pservers have access to the model. So the model can
-be saved from a trainer or pservers. We need to decide on where the
-model is saved from.
+be saved from a trainer or pservers. We need to decide where the model
+is saved from.
 
 #### Dense Update vs. Sparse Update
 
 There are two types of model update methods: dense update and sparse
-update (when the parameter is configured to be sparse).
+update (when the model parameter is configured to be sparse).
 
 - Dense update
 
@@ -48,15 +48,15 @@ filesystem, making the checkpoint shards visible to the merge program.
 
 The benefit of letting one trainer to save the model is it does not
 require a distributed filesystem. And it's reusing the same save model
-logic when the trainer is training locally - except when doing sparse
-update, the trainer needs to download the entire model during the
-saving process.
+logic when training locally - except when doing sparse update, the
+trainer needs to download the entire model during the saving process.
 
 #### Conclusion
 
 Given trainer saving model does not require a distributed filesystem,
-and is an intuitive extension to training locally, we decide to let
-the trainer save the model.
+and is an intuitive extension to trainer saving model when training
+locally, we decide to let the trainer save the model when doing
+distributed training.
 
 
 ### Convert Model from Checkpoint
@@ -84,16 +84,16 @@ save the model.
 
 Each trainer will be given the directory to save the model. The
 elected trainer will save the model to
-`given-directory/trainerID`. Since the tainerID is unique, this would
-prevent concurrent save to the same file when multiple trainers are
-elected to save the model when split-brain problem happens.
+`given-directory/trainerID`. Since the trainer ID is unique, this
+would prevent concurrent save to the same file when multiple trainers
+are elected to save the model when split-brain problem happens.
 
 ### What Happens When Model Is Saving
 
 It takes some time to save model, we need to define what will happen
 when save model is taking place.
 
-When saving a dense model, the trainer uses the local model. Pservers
+When doing dense update, the trainer uses the local model. Pservers
 does not need to pause model update.
 
 When doing sparse update. The trainer needs to download the entire
@@ -103,7 +103,7 @@ download finishes. Otherwise, the trainer gets a model that is
 "polluted": some part of the model is old, some part of the model is
 new.
 
-It's unclear that the "polluted" model will be inferiod due to the
+It's unclear that the "polluted" model will be inferior due to the
 stochastic nature of deep learning, and pausing the model update will
 add more complexity to the system. Since supporting sparse update is a
 TODO item. We defer the evaluation of pause the model update or not
