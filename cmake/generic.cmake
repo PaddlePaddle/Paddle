@@ -256,10 +256,6 @@ function(nv_test TARGET_NAME)
   endif()
 endfunction(nv_test)
 
-set(GOPATH "${CMAKE_CURRENT_BINARY_DIR}/go")
-file(MAKE_DIRECTORY ${GOPATH})
-set(PADDLE_IN_GOPATH "${GOPATH}/src/github.com/PaddlePaddle/Paddle")
-
 function(go_library TARGET_NAME)
   set(options STATIC static SHARED shared)
   set(oneValueArgs "")
@@ -268,10 +264,10 @@ function(go_library TARGET_NAME)
 
   if (go_library_SHARED OR go_library_shared)
     set(BUILD_MODE "-buildmode=c-shared")
-    set(LIB_NAME "${CMAKE_SHARED_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    set(${TARGET_NAME}_LIB_NAME "${CMAKE_SHARED_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}" CACHE STRING "output library name for target ${TARGET_NAME}")
   else()
     set(BUILD_MODE "-buildmode=c-archive")
-    set(LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(${TARGET_NAME}_LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "output library name for target ${TARGET_NAME}")
   endif()
 
   # Add dummy code to support `make target_name` under Terminal Command
@@ -286,25 +282,17 @@ function(go_library TARGET_NAME)
     add_dependencies(${TARGET_NAME} ${go_library_DEPS})
   endif(go_library_DEPS)
 
-  # we need to symlink Paddle directory into GOPATH. If we
-  # don't do it and we have code that depends on Paddle, go
-  # get ./... will download a new Paddle repo from Github,
-  # without the changes in our current Paddle repo that we
-  # want to build.
+  set(${TARGET_NAME}_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/${${TARGET_NAME}_LIB_NAME}" CACHE STRING "output library path for target ${TARGET_NAME}")
+
   file(GLOB GO_SOURCE RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.go")
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-    COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
-    # Symlink Paddle directory into GOPATH
-    COMMAND mkdir -p ${PADDLE_IN_GOPATH}
-    COMMAND rm -rf ${PADDLE_IN_GOPATH}                                                                                                                                         
-    COMMAND ln -sf ${CMAKE_SOURCE_DIR} ${PADDLE_IN_GOPATH}
-    # Automatically get all dependencies specified in the source code                                                                                                                                 
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d ./...
+    COMMAND rm "${${TARGET_NAME}_LIB_PATH}"
     # Golang build source code
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
-    -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
+    -o "${${TARGET_NAME}_LIB_PATH}"
     ${GO_SOURCE}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  add_dependencies(${TARGET_NAME} go_path)
 endfunction(go_library)
 
 function(go_binary TARGET_NAME)
