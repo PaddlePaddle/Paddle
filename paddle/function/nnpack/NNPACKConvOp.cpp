@@ -70,6 +70,9 @@ public:
     if (threadpool_) {
       pthreadpool_destroy(threadpool_);
     }
+    if (workspaceBuffer_) {
+      free(workspaceBuffer_);
+    }
   }
 
   virtual void check(const BufferArgs& inputs,
@@ -160,7 +163,7 @@ public:
         CHECK_EQ(status, nnp_status_success);
       }
 
-      LOG(INFO) << "workspace size is " << needSize;
+      VLOG(3) << "workspace size is " << needSize;
       if (needSize > workspaceSize_) {
         workspaceSize_ = needSize;
         if (workspaceBuffer_) {
