@@ -13,8 +13,10 @@ packages=['paddle',
 setup_requires=["requests",
                 "numpy",
                 "protobuf==3.1",
+                "recordio",
                 "matplotlib",
-                "rarfile"]
+                "rarfile",
+                "scipy>=0.19.0"]
 
 if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
     setup_requires+=["opencv-python"]

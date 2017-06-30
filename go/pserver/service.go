@@ -24,6 +24,9 @@ const (
 	Float64
 )
 
+// PsDesired is etcd path for store desired pserver count
+const PsDesired = "/ps_desired"
+
 // Parameter is a piece of data to sync with the parameter server.
 type Parameter struct {
 	Name        string
@@ -43,17 +46,21 @@ type Gradient Parameter
 // Service is the RPC service for pserver.
 type Service struct {
 	initialized chan struct{}
+	idx         int
 
 	mu     sync.Mutex
 	optMap map[string]*optimizer
 }
 
-// NewService creates a new service.
-func NewService() *Service {
-	s := &Service{}
-	s.optMap = make(map[string]*optimizer)
+// NewService creates a new service, will bypass etcd registration if no
+// endpoints specified.
+func NewService(idx int) (*Service, error) {
+	s := &Service{
+		idx: idx,
+	}
+  s.optMap = make(map[string]*optimizer)
 	s.initialized = make(chan struct{})
-	return s
+	return s, nil
 }
 
 // InitParam initializes a parameter.

@@ -13,12 +13,53 @@
 # limitations under the License.
 
 INCLUDE(ExternalProject)
+# Always invoke `FIND_PACKAGE(Protobuf)` for importing function protobuf_generate_cpp
+FIND_PACKAGE(Protobuf QUIET)
+SET(PROTOBUF_FOUND "OFF")
 
+
+# Print and set the protobuf library information,
+# finish this cmake process and exit from this file.
 macro(PROMPT_PROTOBUF_LIB)
+    SET(protobuf_DEPS ${ARGN})
+
     MESSAGE(STATUS "Protobuf protoc executable: ${PROTOBUF_PROTOC_EXECUTABLE}")
     MESSAGE(STATUS "Protobuf library: ${PROTOBUF_LIBRARY}")
     MESSAGE(STATUS "Protobuf version: ${PROTOBUF_VERSION}")
     INCLUDE_DIRECTORIES(${PROTOBUF_INCLUDE_DIR})
+
+    # Assuming that all the protobuf libraries are of the same type.
+    IF(${PROTOBUF_LIBRARY} MATCHES "${CMAKE_STATIC_LIBRARY_SUFFIX}$")
+        SET(protobuf_LIBTYPE STATIC)
+    ELSEIF(${PROTOBUF_LIBRARY} MATCHES "${CMAKE_SHARED_LIBRARY_SUFFIX}$")
+        SET(protobuf_LIBTYPE SHARED)
+    ELSE()
+        MESSAGE(FATAL_ERROR "Unknown library type: ${PROTOBUF_LIBRARY}")
+    ENDIF()
+
+    ADD_LIBRARY(protobuf ${protobuf_LIBTYPE} IMPORTED GLOBAL)
+    SET_PROPERTY(TARGET protobuf PROPERTY IMPORTED_LOCATION ${PROTOBUF_LIBRARY})
+
+    ADD_LIBRARY(protobuf_lite ${protobuf_LIBTYPE} IMPORTED GLOBAL)
+    SET_PROPERTY(TARGET protobuf_lite PROPERTY IMPORTED_LOCATION ${PROTOBUF_LITE_LIBRARY})
+
+    ADD_LIBRARY(libprotoc ${protobuf_LIBTYPE} IMPORTED GLOBAL)
+    SET_PROPERTY(TARGET libprotoc PROPERTY IMPORTED_LOCATION ${PROTOC_LIBRARY})
+
+    ADD_EXECUTABLE(protoc IMPORTED GLOBAL)
+    SET_PROPERTY(TARGET protoc PROPERTY IMPORTED_LOCATION ${PROTOBUF_PROTOC_EXECUTABLE})
+    # FIND_Protobuf.cmake uses `Protobuf_PROTOC_EXECUTABLE`.
+    # make `protobuf_generate_cpp` happy.
+    SET(Protobuf_PROTOC_EXECUTABLE ${PROTOBUF_PROTOC_EXECUTABLE})
+
+    FOREACH(dep ${protobuf_DEPS})
+        ADD_DEPENDENCIES(protobuf ${dep})
+        ADD_DEPENDENCIES(protobuf_lite ${dep})
+        ADD_DEPENDENCIES(libprotoc ${dep})
+        ADD_DEPENDENCIES(protoc ${dep})
+    ENDFOREACH()
+
+    LIST(APPEND external_project_dependencies protobuf)
     RETURN()
 endmacro()
 macro(SET_PROTOBUF_VERSION)
@@ -43,22 +84,23 @@ if (NOT "${PROTOBUF_ROOT}" STREQUAL "")
 endif()
 
 FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
-    SET(PROTOBUF_SOURCES_DIR ${THIRD_PARTY_PATH}/${TARGET_NAME})
-    SET(PROTOBUF_INSTALL_DIR ${THIRD_PARTY_PATH}/install/${TARGET_NAME})
+    STRING(REPLACE "extern_" "" TARGET_DIR_NAME "${TARGET_NAME}")
+    SET(PROTOBUF_SOURCES_DIR ${THIRD_PARTY_PATH}/${TARGET_DIR_NAME})
+    SET(PROTOBUF_INSTALL_DIR ${THIRD_PARTY_PATH}/install/${TARGET_DIR_NAME})
 
     SET(${TARGET_NAME}_INCLUDE_DIR "${PROTOBUF_INSTALL_DIR}/include" PARENT_SCOPE)
     SET(PROTOBUF_INCLUDE_DIR "${PROTOBUF_INSTALL_DIR}/include" PARENT_SCOPE)
     SET(${TARGET_NAME}_LITE_LIBRARY
-        "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf-lite${STATIC_LIBRARY_SUFFIX}"
+        "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf-lite${CMAKE_STATIC_LIBRARY_SUFFIX}"
          PARENT_SCOPE)
     SET(${TARGET_NAME}_LIBRARY
-        "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf${STATIC_LIBRARY_SUFFIX}"
+        "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf${CMAKE_STATIC_LIBRARY_SUFFIX}"
          PARENT_SCOPE)
     SET(${TARGET_NAME}_PROTOC_LIBRARY
-        "${PROTOBUF_INSTALL_DIR}/lib/libprotoc${STATIC_LIBRARY_SUFFIX}"
+        "${PROTOBUF_INSTALL_DIR}/lib/libprotoc${CMAKE_STATIC_LIBRARY_SUFFIX}"
          PARENT_SCOPE)
     SET(${TARGET_NAME}_PROTOC_EXECUTABLE
-        "${PROTOBUF_INSTALL_DIR}/bin/protoc${EXECUTABLE_SUFFIX}"
+        "${PROTOBUF_INSTALL_DIR}/bin/protoc${CMAKE_EXECUTABLE_SUFFIX}"
          PARENT_SCOPE)
 
     SET(OPTIONAL_CACHE_ARGS "")
@@ -109,6 +151,8 @@ IF(NOT CMAKE_CROSSCOMPILING)
         SET_PROTOBUF_VERSION()
         IF("${PROTOBUF_VERSION}" VERSION_LESS "3.1.0")
             SET(PROTOBUF_FOUND OFF)
+        ELSE()
+            PROMPT_PROTOBUF_LIB()
         ENDIF()
     ENDIF(PROTOBUF_FOUND)
 ELSE()
@@ -120,18 +164,22 @@ ELSE()
 ENDIF()
 
 IF(NOT PROTOBUF_FOUND)
-    build_protobuf(protobuf FALSE)
-    LIST(APPEND external_project_dependencies protobuf)
+    build_protobuf(extern_protobuf FALSE)
 
-    SET(PROTOBUF_INCLUDE_DIR ${protobuf_INCLUDE_DIR}
+    SET(PROTOBUF_INCLUDE_DIR ${extern_protobuf_INCLUDE_DIR}
         CACHE PATH "protobuf include directory." FORCE)
-    IF(NOT CMAKE_CROSSCOMPILING)
-        SET(PROTOBUF_PROTOC_EXECUTABLE ${protobuf_PROTOC_EXECUTABLE}
-            CACHE FILEPATH "protobuf executable." FORCE)
-    ENDIF()
-    SET(PROTOBUF_LITE_LIBRARY ${protobuf_LITE_LIBRARY} CACHE FILEPATH "protobuf lite library." FORCE)
-    SET(PROTOBUF_LIBRARY ${protobuf_LIBRARY} CACHE FILEPATH "protobuf library." FORCE)
-    SET(PROTOBUF_PROTOC_LIBRARY ${protobuf_PROTOC_LIBRARY} CACHE FILEPATH "protoc library." FORCE)
-ENDIF(NOT PROTOBUF_FOUND)
+    SET(PROTOBUF_LITE_LIBRARY ${extern_protobuf_LITE_LIBRARY}
+        CACHE FILEPATH "protobuf lite library." FORCE)
+    SET(PROTOBUF_LIBRARY ${extern_protobuf_LIBRARY}
+        CACHE FILEPATH "protobuf library." FORCE)
+    SET(PROTOBUF_PROTOC_LIBRARY ${extern_protobuf_PROTOC_LIBRARY}
+        CACHE FILEPATH "protoc library." FORCE)
 
-PROMPT_PROTOBUF_LIB()
+    IF(CMAKE_CROSSCOMPILING)
+        PROMPT_PROTOBUF_LIB(protobuf_host extern_protobuf)
+    ELSE()
+        SET(PROTOBUF_PROTOC_EXECUTABLE ${extern_protobuf_PROTOC_EXECUTABLE}
+            CACHE FILEPATH "protobuf executable." FORCE)
+        PROMPT_PROTOBUF_LIB(extern_protobuf)
+    ENDIF()
+ENDIF(NOT PROTOBUF_FOUND)

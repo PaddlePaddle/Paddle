@@ -16,7 +16,7 @@ Creator package contains some simple reader creator, which could be used in user
 program.
 """
 
-__all__ = ['np_array', 'text_file']
+__all__ = ['np_array', 'text_file', "recordio"]
 
 
 def np_array(x):
@@ -52,6 +52,27 @@ def text_file(path):
         f = open(path, "r")
         for l in f:
             yield l.rstrip('\n')
+        f.close()
+
+    return reader
+
+
+def recordio(path):
+    """
+    Creates a data reader that outputs record one one by one from given recordio file
+    :path: path of recordio file
+    :returns: data reader of recordio file
+    """
+
+    import recordio as rec
+
+    def reader():
+        f = rec.reader(path)
+        while True:
+            r = f.read()
+            if r is None:
+                break
+            yield r
         f.close()
 
     return reader

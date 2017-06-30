@@ -10,8 +10,12 @@ import (
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
 
-func TestServiceFull(t *testing.T) {
-	s := pserver.NewService()
+
+func TestFull(t *testing.T) {
+	s, err := pserver.NewService(0)
+	if err != nil {
+		t.Error(err)
+	}
 	var p pserver.Parameter
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
@@ -79,8 +83,11 @@ func TestServiceFull(t *testing.T) {
 }
 
 func TestMultipleInit(t *testing.T) {
-	s := pserver.NewService()
-	err := s.FinishInitParams(0, nil)
+	s, err := pserver.NewService(0)
+	if err != nil {
+		t.Error(err)
+	}
+	err = s.FinishInitParams(0, nil)
 	if err != nil {
 		t.FailNow()
 	}
@@ -92,15 +99,18 @@ func TestMultipleInit(t *testing.T) {
 }
 
 func TestUninitialized(t *testing.T) {
-	s := pserver.NewService()
-	err := s.SendGrad(pserver.Gradient{}, nil)
+	s, err := pserver.NewService(0)
+	err = s.SendGrad(pserver.Gradient{}, nil)
 	if err.Error() != pserver.Uninitialized {
 		t.FailNow()
 	}
 }
 
 func TestBlockUntilInitialized(t *testing.T) {
-	s := pserver.NewService()
+	s, err := pserver.NewService(0)
+	if err != nil {
+		t.Error(err)
+	}
 	ch := make(chan struct{}, 2)
 	errCh := make(chan error, 2)
 	var wg sync.WaitGroup
@@ -145,6 +155,7 @@ func TestBlockUntilInitialized(t *testing.T) {
 		t.Fatalf("read optimizer proto failed")
 	}
 	err = s.InitParam(pserver.ParameterWithConfig{Param: p, Config: config}, nil)
+
 	if err != nil {
 		t.FailNow()
 	}

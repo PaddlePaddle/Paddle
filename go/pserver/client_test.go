@@ -31,9 +31,12 @@ func init() {
 		port[i] = p
 
 		go func(l net.Listener) {
-			s := pserver.NewService()
+			s, err := pserver.NewService(0)
+			if err != nil {
+				panic(err)
+			}
 			server := rpc.NewServer()
-			err := server.Register(s)
+			err = server.Register(s)
 			if err != nil {
 				panic(err)
 			}

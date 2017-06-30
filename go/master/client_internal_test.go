@@ -26,12 +26,6 @@ func init() {
 	log.SetLevel(log.ErrorLevel)
 }
 
-type TestAddresser string
-
-func (a TestAddresser) Address() string {
-	return string(a)
-}
-
 func TestGetFinishTask(t *testing.T) {
 	const path = "/tmp/master_client_test_0"
 
@@ -45,11 +39,14 @@ func TestGetFinishTask(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
 	go func(l net.Listener) {
-		s := NewService(chunkPerTask, time.Second, 1)
+		s, err := NewService(&InMemStore{}, chunkPerTask, time.Second, 1)
+		if err != nil {
+			panic(err)
+		}
+
 		server := rpc.NewServer()
-		err := server.Register(s)
+		err = server.Register(s)
 		if err != nil {
 			panic(err)
 		}
@@ -78,9 +75,11 @@ func TestGetFinishTask(t *testing.T) {
 	// Manually intialize client to avoid calling c.getRecords()
 	c := &Client{}
 	c.conn = connection.New()
-	go c.monitorMaster(TestAddresser(fmt.Sprintf(":%d", p)))
+	addr := fmt.Sprintf(":%d", p)
+	ch := make(chan string, 1)
+	ch <- addr
+	go c.monitorMaster(ch)
 	c.SetDataset([]string{path})
-
 	checkOnePass := func(i int) {
 		var tasks []Task
 		for idx := 0; idx < totalTask; idx++ {

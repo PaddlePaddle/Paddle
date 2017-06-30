@@ -31,6 +31,7 @@ Configuring cmake in /paddle/build ...
       -DWITH_DOC=OFF
       -DWITH_GPU=${WITH_GPU:-OFF}
       -DWITH_AVX=${WITH_AVX:-OFF}
+      -DWITH_GOLANG=${WITH_GOLANG:-OFF}
       -DWITH_SWIG_PY=ON
       -DCUDNN_ROOT=/usr/
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
@@ -43,6 +44,7 @@ cmake .. \
       -DWITH_DOC=OFF \
       -DWITH_GPU=${WITH_GPU:-OFF} \
       -DWITH_AVX=${WITH_AVX:-OFF} \
+      -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
       -DWITH_SWIG_PY=ON \
       -DCUDNN_ROOT=/usr/ \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
