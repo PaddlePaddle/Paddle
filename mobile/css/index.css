@@ -1,0 +1,84 @@
+
+.ai-ecology {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+}
+.ai-ecology-item {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1;
+          flex: 1;
+  position: relative;
+  padding-bottom: 50%;
+}
+.ai-ecology-main {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+.ai-ecology-main-paddle {
+  top: 50%;
+  -webkit-transform: translateY(-50%);
+          transform: translateY(-50%);
+}
+.ai-ecology-title,
+.ai-ecology-intro {
+  text-align: center;
+  color: #fff;
+}
+.ai-ecology-title {
+  margin-bottom: .5rem;
+  padding: 0.2rem;
+  line-height: 1;
+  font-size: 1.7rem;
+}
+.ai-ecology-title-paddle {
+  font-size: 2rem;
+}
+.ai-ecology-intro {
+  line-height: 1;
+  font-size: 1rem;
+  color: #ccc;
+  letter-spacing: 1px;
+}
+.ai-ecology-intro-paddle {
+  font-size: 1rem;
+  color: #fff;
+  margin-bottom: 1.5rem;
+}
+.ai-ecology-mask {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(35, 35, 35, 0.75);
+}
+.ai-ecology-mask-paddle {
+  background: #000000;
+  opacity: 0.4;
+}
+.ai-ecology-icon {
+  width: 3.75rem;
+  height: 3.75rem;
+  margin: 25% auto .875rem;
+  background-size: contain;
+}
+.ai-ecology-btn {
+  display: inline-block;
+  font-size: 1.2rem;
+  color: #fff;
+  line-height: 3rem;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #fff;
+  border-radius: 100px;
+}
+.ai-ecology-btn-content {
+  margin: 0 1rem;
+}
+.ai-ecology-btn-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
