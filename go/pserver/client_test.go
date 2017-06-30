@@ -74,10 +74,10 @@ func initEtcdClient() {
 		log.Errorf("err %v", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	client.Put(ctx, pserver.DefaultPsDesiredPath, strconv.Itoa(numPserver))
+	client.Put(ctx, pserver.PsDesired, strconv.Itoa(numPserver))
 	ports := initClient()
 	for i := 0; i < numPserver; i++ {
-		client.Put(ctx, pserver.DefaultPsBasePath + strconv.Itoa(i), ":" + strconv.Itoa(ports[i]))
+		client.Put(ctx, pserver.PsDesired + strconv.Itoa(i), ":" + strconv.Itoa(ports[i]))
 	}
 	cancel()
 	client.Close()
@@ -164,8 +164,9 @@ func TestNativeClient(t *testing.T) {
 }
 
 func TestEtcdClient(t *testing.T) {
+	t.Fail()
 	initEtcdClient()
-	lister, psDesired := pserver.NewEtcdAddrLister(defaultEtcdAddr)
-	c2 := pserver.NewClient(lister, psDesired, selector(true))
+	client, _ := pserver.NewEtcdCClient(defaultEtcdAddr)
+	c2 := pserver.NewClient(client, client.Desired(), selector(true))
 	ClientTest(t, c2)
 }

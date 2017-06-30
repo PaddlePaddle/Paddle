@@ -12,10 +12,10 @@ type ElementType int
 const (
 	AlreadyInitialized = "pserver already initialized"
 	Uninitialized      = "pserver not fully initialized"
-	// PsDesired is etcd path for store desired pserver count
-	DefaultPsDesiredPath = "/ps_desired"
-	// PsAddr is the base dir for pserver to store their addr
-	DefaultPsBasePath = "/ps/"
+        // PsDesired is etcd path for store desired pserver count
+	PsDesired = "/ps_desired"
+        // PsAddr is the base dir for pserver to store their addr
+        PsPath = "/ps/"
 )
 
 // Supported element types
@@ -63,110 +63,7 @@ func NewService(idx int) (*Service, error) {
 	}
 	s.paramMap = make(map[string]Parameter)
 	s.initialized = make(chan struct{})
-	s.etcdEndpoints = endpoints
-	s.etcdTimeout = timeout
-
-	var err error
-	s.externalIP, err = networkhelper.GetExternalIP()
-	if err != nil {
-		return nil, err
-	}
-
-	if endpoints != "" {
-		// initialize connection to etcd, try
-		ep := strings.Split(s.etcdEndpoints, ",")
-		for {
-			cli, err := clientv3.New(clientv3.Config{
-				Endpoints:   ep,
-				DialTimeout: s.etcdTimeout,
-			})
-			if err != nil {
-				log.Errorf("connect to etcd error: %v", err)
-				time.Sleep(s.etcdTimeout)
-				continue
-			}
-			s.etcdClient = cli
-			log.Debugf("inited client to %s", s.etcdEndpoints)
-			break
-		}
-		// wait and set s.desired init value
-		for {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			resp, err := s.etcdClient.Get(ctx, DefaultPsDesiredPath)
-			cancel()
-			if err != nil {
-				log.Errorf("getting %s error: %v", DefaultPsDesiredPath, err)
-				time.Sleep(s.etcdTimeout)
-				continue
-			}
-			if len(resp.Kvs) != 0 {
-				s.desired, err = strconv.Atoi(string(resp.Kvs[0].Value))
-				if err != nil {
-					log.Errorf("value of %s invalid %v\n", DefaultPsDesiredPath, err)
-					time.Sleep(s.etcdTimeout)
-					// NOTE: wait util ps_desired value change
-					continue
-				}
-				break
-			}
-		}
-		// try register pserver node on etcd
-		for {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			_, err := s.registerPserverEtcd(ctx)
-			cancel()
-			if err != nil {
-				log.Warn(err)
-				time.Sleep(s.etcdTimeout)
-				continue
-			}
-			break
-		}
-	} // if endpoints != ""
-	// Bypass etcd registration if no endpoints specified
 	return s, nil
-}
-
-// registerPserverEtcd registers pserver node on etcd using transaction.
-func (s *Service) registerPserverEtcd(ctx context.Context) (*clientv3.TxnResponse, error) {
-	return concurrency.NewSTM(s.etcdClient, func(c concurrency.STM) error {
-		registered := false
-		for i := 0; i < s.desired; i++ {
-			psKey := DefaultPsBasePath + strconv.Itoa(i)
-			log.Debugf("checking %s", psKey)
-			ps := c.Get(psKey)
-			log.Debugf("got value (%s) for key: %s", ps, psKey)
-
-			if ps == "" {
-				resp, err := s.etcdClient.Grant(context.TODO(), 5)
-				if err != nil {
-					log.Fatal(err)
-				}
-				// find the first id and write info
-				c.Put(psKey, s.externalIP, clientv3.WithLease(resp.ID))
-				log.Debugf("set pserver node %s with value %s", psKey, s.externalIP)
-				ch, kaerr := s.etcdClient.KeepAlive(context.TODO(), resp.ID)
-				if kaerr != nil {
-					log.Errorf("keepalive etcd node error: %v", kaerr)
-					return kaerr
-				}
-
-				// Eat the keep alive message so etcd
-				// will not expire the lease.
-				go func(ch <-chan *clientv3.LeaseKeepAliveResponse) {
-					ka := <-ch
-					log.Debugf("keepalive: %d\n", ka.TTL)
-				}(ch)
-				log.Debug("register finished")
-				registered = true
-				break
-			}
-		}
-		if registered == true {
-			return nil
-		}
-		return errors.New("not registerd, may due to already have enough pservers")
-	}, concurrency.WithAbortContext(ctx), concurrency.WithIsolation(concurrency.RepeatableReads))
 }
 
 // InitParam initializes a parameter.

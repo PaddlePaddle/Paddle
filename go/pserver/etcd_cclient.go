@@ -1,30 +1,30 @@
 package pserver
 
 import (
-	"time"
 	"context"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/clientv3"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
-	DefaultEtcdTimeout time.Duration = time.Second * time.Duration(5)
+	DefaultEtcdTimeout time.Duration = 5 * time.Second
 )
 
-type pserverEtcdLister struct {
+type EtcdCClient struct {
 	client    *clientv3.Client
 	timeout   time.Duration
 	endpoints []string
 }
 
 // read ps desired number from etcd.
-func(p *pserverEtcdLister) desired() int {
+func (p *EtcdCClient) Desired() int {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
-		resp, err := p.client.Get(ctx, DefaultPsDesiredPath)
+		resp, err := p.client.Get(ctx, PsDesired)
 		cancel()
 		if err != nil {
 			log.Errorf("Get ps dresire number failed! recnnectiong..., %v", err)
@@ -51,14 +51,14 @@ func(p *pserverEtcdLister) desired() int {
 	}
 }
 
-func(p *pserverEtcdLister) List() []Server {
-	psDesired := p.desired()
+func (p *EtcdCClient) List() []Server {
+	psDesired := p.Desired()
 
 	servers := make([]Server, psDesired)
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
 		for i := 0; i < psDesired; i++ {
-			psKey := DefaultPsBasePath + strconv.Itoa(i)
+			psKey := PsPath + strconv.Itoa(i)
 			log.Debugf("checking %s", psKey)
 			resp, err := p.client.Get(ctx, psKey)
 			if err != nil {
@@ -69,6 +69,7 @@ func(p *pserverEtcdLister) List() []Server {
 			}
 			kvs := resp.Kvs
 			if len(kvs) == 0 {
+				cancel()
 				log.Infof("Waiting for ps addr registered ...")
 				time.Sleep(p.timeout)
 				continue
@@ -76,9 +77,9 @@ func(p *pserverEtcdLister) List() []Server {
 
 			psAddr := string(resp.Kvs[0].Value)
 			// TODO(Longfei) check the ps address
-			if  psAddr == "" {
+			if psAddr == "" {
 				cancel()
-				log.Infof("Get psKey = %s,  psAddr is null illegal", psKey, psAddr)
+				log.Infof("Get psKey = %s, psAddr is empty", psKey)
 				time.Sleep(p.timeout)
 				continue
 			}
@@ -92,7 +93,7 @@ func(p *pserverEtcdLister) List() []Server {
 	return servers
 }
 
-func NewEtcdAddrLister(endpoints string) (Lister, int) {
+func NewEtcdCClient(endpoints string) (*EtcdCClient, error) {
 	ep := strings.Split(endpoints, ",")
 	timeout := DefaultEtcdTimeout
 	var cli *clientv3.Client
@@ -110,11 +111,10 @@ func NewEtcdAddrLister(endpoints string) (Lister, int) {
 		break
 	}
 	log.Infof("Connected to etcd: %s\n", endpoints)
-	lister := pserverEtcdLister{
+	client := &EtcdCClient{
 		client:    cli,
 		timeout:   timeout,
 		endpoints: ep,
 	}
-	psDesired := lister.desired()
-	return &lister, psDesired
+	return client, nil
 }

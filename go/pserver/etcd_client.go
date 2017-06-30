@@ -136,7 +136,7 @@ func (e *EtcdClient) registerPserverEtcd(ctx context.Context) (int, error) {
 	_, err := concurrency.NewSTM(e.etcdClient, func(c concurrency.STM) error {
 		registered := false
 		for i := 0; i < e.desired; i++ {
-			psKey := "/ps/" + strconv.Itoa(i)
+			psKey := PsPath + strconv.Itoa(i)
 			log.Debugf("checking %s", psKey)
 			ps := c.Get(psKey)
 			log.Debugf("got value (%s) for key: %s", ps, psKey)
