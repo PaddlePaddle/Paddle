@@ -130,14 +130,16 @@ if(WITH_GPU)
 endif(WITH_GPU)
 
 add_subdirectory(proto)
-add_subdirectory(paddle)
-add_subdirectory(python)
 
+# "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
+# placed after this block, because they depends on it.
 if(WITH_GOLANG)
-    #TODO (add go/master/c back when fixed)
-    add_subdirectory(go/pserver/cclient)
+  add_subdirectory(go/master/c)
+  add_subdirectory(go/pserver/cclient)
 endif(WITH_GOLANG)
 
+add_subdirectory(paddle)
+add_subdirectory(python)
 if(WITH_DOC)
     add_subdirectory(doc)
 endif()
