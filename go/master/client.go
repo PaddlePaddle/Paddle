@@ -1,7 +1,6 @@
 package master
 
 import (
-	"io"
 	"os"
 	"time"
 
@@ -70,8 +69,6 @@ func (c *Client) getRecords() {
 			if err != nil {
 				log.Errorln(err)
 			}
-
-			c.ch <- record{nil, io.EOF}
 		}
 
 		// We treat a task as finished whenever the last data

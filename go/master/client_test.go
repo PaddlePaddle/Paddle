@@ -2,7 +2,6 @@ package master_test
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -70,12 +69,8 @@ func TestNextRecord(t *testing.T) {
 
 	for pass := 0; pass < 50; pass++ {
 		received := make(map[byte]bool)
-		for i := 0; i <= total; i++ {
+		for i := 0; i < total; i++ {
 			r, err := c.NextRecord()
-			if err == io.EOF {
-				break
-			}
-
 			if err != nil {
 				t.Fatal(pass, i, "Read error:", err)
 			}

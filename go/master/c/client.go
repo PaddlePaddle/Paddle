@@ -13,7 +13,6 @@ typedef int paddle_master_client;
 import "C"
 
 import (
-	"io"
 	"sync"
 	"unsafe"
 
@@ -93,12 +92,6 @@ func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int
 func paddle_next_record(client C.paddle_master_client, record **C.uchar) C.int {
 	c := get(client)
 	r, err := c.NextRecord()
-	if err == io.EOF {
-		// EOF
-		*record = (*C.uchar)(nullPtr)
-		return -1
-	}
-
 	if err != nil {
 		// Error
 		// TODO: return the type of error?
