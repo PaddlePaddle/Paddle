@@ -1,6 +1,7 @@
 package pserver_test
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -8,17 +9,16 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"context"
 
+	"github.com/PaddlePaddle/Paddle/go/pserver"
 	"github.com/coreos/etcd/clientv3"
 	log "github.com/sirupsen/logrus"
-	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
 
 const (
-	numPserver = 10
+	numPserver      = 10
 	defaultEtcdAddr = "127.0.0.1:2379"
-	timeout = time.Second * time.Duration(2)
+	timeout         = time.Second * time.Duration(2)
 )
 
 var pserverClientPorts [numPserver]int
@@ -74,10 +74,12 @@ func initEtcdClient() {
 		log.Errorf("err %v", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	client.Delete(ctx, pserver.PsDesired)
+	client.Delete(ctx, pserver.PsPath)
 	client.Put(ctx, pserver.PsDesired, strconv.Itoa(numPserver))
 	ports := initClient()
 	for i := 0; i < numPserver; i++ {
-		client.Put(ctx, pserver.PsDesired + strconv.Itoa(i), ":" + strconv.Itoa(ports[i]))
+		client.Put(ctx, pserver.PsPath+strconv.Itoa(i), ":"+strconv.Itoa(ports[i]))
 	}
 	cancel()
 	client.Close()
@@ -164,7 +166,6 @@ func TestNativeClient(t *testing.T) {
 }
 
 func TestEtcdClient(t *testing.T) {
-	t.Fail()
 	initEtcdClient()
 	client, _ := pserver.NewEtcdCClient(defaultEtcdAddr)
 	c2 := pserver.NewClient(client, client.Desired(), selector(true))
