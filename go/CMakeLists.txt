@@ -13,18 +13,9 @@
 # limitations under the License.
 #
 # FIXME(typhoonzero): Download glide into cmake build temprary GOPATH
-if(EXISTS $ENV{GOPATH}/bin/glide)
-  set(GLIDE "$ENV{GOPATH}/bin/glide")
-else()
-  message(FATAL_ERROR "no glide executeble found: $ENV{GOPATH}/bin/glide")
-endif()
 
-set(PADDLE_GO_PATH "${CMAKE_SOURCE_DIR}/go")
-
-if (GLIDE_INSTALL)
-  message(STATUS ${PADDLE_GO_PATH})
-  execute_process(COMMAND ${GLIDE} install WORKING_DIRECTORY ${PADDLE_GO_PATH})
-endif()
-
-add_subdirectory(go/pserver/cclient)
+add_subdirectory(pserver/cclient)
+add_subdirectory(cmd/pserver)
+add_subdirectory(cmd/master)
+add_subdirectory(master/c)
 #TODO (add go/master/c back when fixed)

@@ -16,7 +16,7 @@ set(API_HEADER
     Internal.h)
 
 add_library(paddle_api STATIC ${API_SOURCES})
-add_dependencies(paddle_api gen_proto_cpp paddle_trainer_lib)
+add_dependencies(paddle_api paddle_proto paddle_trainer_lib)
 
 INCLUDE(${SWIG_USE_FILE})
 INCLUDE_DIRECTORIES(${PROJ_ROOT}/paddle)
