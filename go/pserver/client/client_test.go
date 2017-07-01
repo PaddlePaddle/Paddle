@@ -167,7 +167,7 @@ func TestNativeClient(t *testing.T) {
 }
 
 //TODO(Qiao: tmperary disable etcdClient test for dependency of etcd)
-func TestEtcdClient(t *testing.T) {
+func EtcdClient(t *testing.T) {
 	initEtcdClient()
 	etcd_client, _ := client.NewEtcd(etcdEndpoints)
 	c2 := client.NewClient(etcd_client, etcd_client.Desired(), selector(true))
