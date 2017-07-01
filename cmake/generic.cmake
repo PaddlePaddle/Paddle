@@ -77,6 +77,18 @@
 # /cmake/external/*.cmake:
 #
 #   cc_test(example_test SRCS example_test.cc DEPS example glog gflags)
+#
+# To build a go static library using Golang, use the go_ prefixed version:
+#
+#   go_library(example STATIC)
+#
+# To build a go shared library using Golang, use the go_ prefixed version:
+#
+#   go_library(example SHARED)
+#
+
+# including binary directory for generated headers.
+include_directories(${CMAKE_BINARY_DIR})
 
 if(NOT APPLE)
     find_package(Threads REQUIRED)
@@ -89,23 +101,16 @@ function(merge_static_libs TARGET_NAME)
 
   # First get the file names of the libraries to be merged
   foreach(lib ${libs})
-    get_target_property(libtype ${lib} TYPE)
-    if(NOT libtype STREQUAL "STATIC_LIBRARY")
-      message(FATAL_ERROR "merge_static_libs can only process static libraries")
-    endif()
     set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
   endforeach()
 
   if(APPLE) # Use OSX's libtool to merge archives
-    add_custom_target(${TARGET_NAME}_archive
-      COMMAND libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles}
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-      DEPENDS ${libs}
-      )
-    add_library(${TARGET_NAME} STATIC IMPORTED GLOBAL)
-    set_property(TARGET ${TARGET_NAME} PROPERTY
-      IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a")
-    add_dependencies(${TARGET_NAME} ${TARGET_NAME}_archive)
+    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+    file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
+    add_library(${TARGET_NAME} STATIC ${dummyfile})
+		add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
+      COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles})
 	else() # general UNIX: use "ar" to extract objects and re-add to a common lib
     foreach(lib ${libs})
       set(objlistfile ${lib}.objlist) # list of objects in the input library
@@ -134,9 +139,9 @@ function(merge_static_libs TARGET_NAME)
     set(outlibfile "$<TARGET_FILE:${TARGET_NAME}>")
 
     foreach(lib ${libs})
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND ${CMAKE_AR} ru ${outlibfile} @"../${objlistfile}"
-      WORKING_DIRECTORY ${objdir})
+      add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND ${CMAKE_AR} ru ${outlibfile} @"../${lib}.objlist"
+      WORKING_DIRECTORY ${lib}.objdir)
     endforeach()
 
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
@@ -244,44 +249,43 @@ function(nv_test TARGET_NAME)
   endif()
 endfunction(nv_test)
 
-set(GOPATH "${CMAKE_CURRENT_BINARY_DIR}/go")
-file(MAKE_DIRECTORY ${GOPATH})
-
-# Because api.go defines a GO wrapper to ops and tensor, it depends on
-# both.  This implies that if any of tensor.{h,cc}, ops.{h,cu}, or
-# api.go is changed, api need to be re-built.
-# go_library(api
-#   SRCS
-#   api.go
-#   DEPS
-#   tensor # Because ops depend on tensor, this line is optional.
-#   ops)
 function(go_library TARGET_NAME)
-  set(options OPTIONAL)
+  set(options STATIC static SHARED shared)
   set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
+  set(multiValueArgs DEPS)
   cmake_parse_arguments(go_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  if (${go_library_OPTIONAL} STREQUAL "SHARED")
+
+  if (go_library_SHARED OR go_library_shared)
     set(BUILD_MODE "-buildmode=c-shared")
-    if(APPLE)
-      set(LIB_NAME "lib${TARGET_NAME}.dylib")
-    else()
-      set(LIB_NAME "lib${TARGET_NAME}.so")
-    endif()
+    set(${TARGET_NAME}_LIB_NAME "${CMAKE_SHARED_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}" CACHE STRING "output library name for target ${TARGET_NAME}")
   else()
     set(BUILD_MODE "-buildmode=c-archive")
-    set(LIB_NAME "lib${TARGET_NAME}.a")
+    set(${TARGET_NAME}_LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "output library name for target ${TARGET_NAME}")
   endif()
-  add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
+
+  # Add dummy code to support `make target_name` under Terminal Command
+  set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+  file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
+  if (go_library_SHARED OR go_library_shared)
+    add_library(${TARGET_NAME} SHARED ${dummyfile})
+  else()
+    add_library(${TARGET_NAME} STATIC ${dummyfile})
+  endif()
+  if(go_library_DEPS)
+    add_dependencies(${TARGET_NAME} ${go_library_DEPS})
+  endif(go_library_DEPS)
+
+  set(${TARGET_NAME}_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/${${TARGET_NAME}_LIB_NAME}" CACHE STRING "output library path for target ${TARGET_NAME}")
+
+  file(GLOB GO_SOURCE RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.go")
+  add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND rm "${${TARGET_NAME}_LIB_PATH}"
+    # Golang build source code
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
-    -o "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}"
-    ${go_library_SRCS}
+    -o "${${TARGET_NAME}_LIB_PATH}"
+    ${GO_SOURCE}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  add_custom_target(${TARGET_NAME}_lib ALL DEPENDS ${TARGET_NAME}_timestamp ${go_library_DEPS})
-  add_library(${TARGET_NAME} STATIC IMPORTED)
-  set_property(TARGET ${TARGET_NAME} PROPERTY
-    IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}")
-  add_dependencies(${TARGET_NAME} ${TARGET_NAME}_lib)
+  add_dependencies(${TARGET_NAME} go_path)
 endfunction(go_library)
 
 function(go_binary TARGET_NAME)
@@ -312,9 +316,12 @@ function(go_test TARGET_NAME)
   add_test(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
 endfunction(go_test)
 
-# go_extern will download extern go project.
-# go_extern(target_name extern_source)
-# go_extern(go_redis github.com/hoisie/redis)
-function(go_extern TARGET_NAME)
-  add_custom_target(${TARGET_NAME} env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get ${ARGN})
-endfunction(go_extern)
+function(proto_library TARGET_NAME)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS)
+  cmake_parse_arguments(proto_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  set(proto_srcs)
+  set(proto_hdrs)
+  protobuf_generate_cpp(proto_srcs proto_hdrs ${proto_library_SRCS})
+  cc_library(${TARGET_NAME} SRCS ${proto_srcs} DEPS protobuf)
+endfunction()
