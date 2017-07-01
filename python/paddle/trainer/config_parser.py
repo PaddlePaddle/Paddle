@@ -3148,6 +3148,9 @@ def ParameterHook(type, **kwargs):
     elif type == 'dpruning':
         hook = ParameterUpdaterHookConfig()
         hook.type = type
+        upper_bound = kwargs.get('upper_bound', None)
+        if upper_bound is not None:
+            hook.upper_bound = upper_bound
         return hook
     else:
         return None

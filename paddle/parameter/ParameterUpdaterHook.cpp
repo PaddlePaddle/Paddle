@@ -150,7 +150,7 @@ public:
       auto &paraVec = para->getBuf(PARAMETER_VALUE);
       paraVec->dotMul(*this->maskVec_);
       std::cout << para->getName() << " Current sparsity ratio: " <<
-      sparsityRatio << std::endl;
+      sparsityRatio << " Num: " << para->getSize() << " nonzeroNum: " << nonZeroNum<< " " << this->upperBound_<<std::endl;
     }
   }
 
