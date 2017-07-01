@@ -1,4 +1,4 @@
-package pserver_test
+package client_test
 
 import (
 	"context"
@@ -11,14 +11,15 @@ import (
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/pserver"
+	"github.com/PaddlePaddle/Paddle/go/pserver/client"
 	"github.com/coreos/etcd/clientv3"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
-	numPserver      = 10
-	defaultEtcdEndpoints = "127.0.0.1:2379"
-	timeout         = time.Second * time.Duration(2)
+	numPserver    = 10
+	etcdEndpoints = "127.0.0.1:2379"
+	timeout       = 2 * time.Second
 )
 
 var pserverClientPorts [numPserver]int
@@ -67,7 +68,7 @@ func initNativeClient() {
 
 func initEtcdClient() {
 	client, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{defaultEtcdEndpoints},
+		Endpoints:   []string{etcdEndpoints},
 		DialTimeout: time.Second * time.Duration(1),
 	})
 	if err != nil {
@@ -91,13 +92,13 @@ func (s selector) Select() bool {
 	return bool(s)
 }
 
-type lister []pserver.Server
+type lister []client.Server
 
-func (l lister) List() []pserver.Server {
+func (l lister) List() []client.Server {
 	return l
 }
 
-func ClientTest(t *testing.T, c *pserver.Client) {
+func ClientTest(t *testing.T, c *client.Client) {
 	selected := c.BeginInitParams()
 	if !selected {
 		t.Fatal("should be selected.")
@@ -157,18 +158,18 @@ func ClientTest(t *testing.T, c *pserver.Client) {
 
 func TestNativeClient(t *testing.T) {
 	initNativeClient()
-	servers := make([]pserver.Server, numPserver)
+	servers := make([]client.Server, numPserver)
 	for i := 0; i < numPserver; i++ {
-		servers[i] = pserver.Server{Index: i, Addr: ":" + strconv.Itoa(pserverClientPorts[i])}
+		servers[i] = client.Server{Index: i, Addr: ":" + strconv.Itoa(pserverClientPorts[i])}
 	}
-	c1 := pserver.NewClient(lister(servers), len(servers), selector(true))
+	c1 := client.NewClient(lister(servers), len(servers), selector(true))
 	ClientTest(t, c1)
 }
 
 //TODO(Qiao: tmperary disable etcdClient test for dependency of etcd)
-func EtcdClient(t *testing.T) {
+func TestEtcdClient(t *testing.T) {
 	initEtcdClient()
-	client, _ := pserver.NewEtcdCClient(defaultEtcdEndpoints)
-	c2 := pserver.NewClient(client, client.Desired(), selector(true))
+	etcd_client, _ := client.NewEtcd(etcdEndpoints)
+	c2 := client.NewClient(etcd_client, etcd_client.Desired(), selector(true))
 	ClientTest(t, c2)
 }

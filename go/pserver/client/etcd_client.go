@@ -1,4 +1,4 @@
-package pserver
+package client
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PaddlePaddle/Paddle/go/pserver"
 	"github.com/coreos/etcd/clientv3"
 	log "github.com/sirupsen/logrus"
 )
@@ -14,25 +15,20 @@ const (
 	DefaultEtcdTimeout time.Duration = 5 * time.Second
 )
 
-type EtcdCClient interface {
-	Desired() int
-	List() []Server
-}
-
-// TODO(Longfei)
+// TODO
 // 1. add watcher to watch the change state of pservers)
 // 1. add etcd lock)
-type EtcdCClientImpl struct {
+type EtcdClient struct {
 	client    *clientv3.Client
 	timeout   time.Duration
 	endpoints []string
 }
 
 // read ps desired number from etcd.
-func (p *EtcdCClientImpl) Desired() int {
+func (p *EtcdClient) Desired() int {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
-		resp, err := p.client.Get(ctx, PsDesired)
+		resp, err := p.client.Get(ctx, pserver.PsDesired)
 		cancel()
 		if err != nil {
 			log.Errorf("Get ps dresire number failed! recnnectiong..., %v", err)
@@ -59,14 +55,14 @@ func (p *EtcdCClientImpl) Desired() int {
 	}
 }
 
-func (p *EtcdCClientImpl) List() []Server {
+func (p *EtcdClient) List() []Server {
 	psDesired := p.Desired()
 
 	servers := make([]Server, psDesired)
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
 		for i := 0; i < psDesired; i++ {
-			psKey := PsPath + strconv.Itoa(i)
+			psKey := pserver.PsPath + strconv.Itoa(i)
 			log.Debugf("checking %s", psKey)
 			resp, err := p.client.Get(ctx, psKey)
 			if err != nil {
@@ -101,7 +97,7 @@ func (p *EtcdCClientImpl) List() []Server {
 	return servers
 }
 
-func NewEtcdCClient(endpoints string) (EtcdCClient, error) {
+func NewEtcd(endpoints string) (*EtcdClient, error) {
 	ep := strings.Split(endpoints, ",")
 	timeout := DefaultEtcdTimeout
 	var cli *clientv3.Client
@@ -119,7 +115,7 @@ func NewEtcdCClient(endpoints string) (EtcdCClient, error) {
 		break
 	}
 	log.Infof("Connected to etcd: %s\n", endpoints)
-	client := &EtcdCClientImpl{
+	client := &EtcdClient{
 		client:    cli,
 		timeout:   timeout,
 		endpoints: ep,

@@ -110,7 +110,7 @@ include(configure)          # add paddle env configuration
 include_directories("${PROJ_ROOT}")
 include_directories("${PROJ_ROOT}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
-include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/cclient")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
 include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXTERNAL_LIBS
@@ -135,7 +135,7 @@ add_subdirectory(proto)
 # placed after this block, because they depends on it.
 if(WITH_GOLANG)
   add_subdirectory(go/master/c)
-  add_subdirectory(go/pserver/cclient)
+  add_subdirectory(go/pserver/client/c)
 endif(WITH_GOLANG)
 
 add_subdirectory(paddle)
