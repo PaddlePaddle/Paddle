@@ -2082,10 +2082,10 @@ class MaxOutLayer(LayerBase):
 class RowConvLayer(LayerBase):
     def __init__(self, name, inputs, context_length, **xargs):
         super(RowConvLayer, self).__init__(
-            name, 'maxout', 0, inputs=inputs, **xargs)
+            name, 'row_conv', 0, inputs=inputs, **xargs)
         config_assert(
             len(self.inputs) == 1,
-            'TransLayer must have one and only one input')
+            'row convolution layer must have one and only one input.')
         input_layer = self.get_input_layer(0)
         row_conv_conf = self.config.inputs[0].row_conv_conf
         row_conv_conf.context_length = context_length
