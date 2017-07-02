@@ -21,7 +21,7 @@ class Net(object):
         add
         :return:
         """
-        pass
+        self._net.AddGradientOps()
 
     def optimize(self, type, lr):
         """
@@ -30,7 +30,7 @@ class Net(object):
         :param lr:
         :return:
         """
-        pass
+        self._net.Optimize(type, lr)
 
 
     def run(self, scope):
