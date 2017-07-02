@@ -1,6 +1,5 @@
 package pserver
 
-// #cgo pkg-config: protobuf
 // #cgo CFLAGS: -I ../../
 // //FIXME: ldflags contain "build" path
 // #cgo LDFLAGS: ../../build/go/pserver/cclient/libpaddle_go_optimizer.a -lstdc++
@@ -50,7 +49,7 @@ func newOptimizer(paramWithConfigs ParameterWithConfig) *optimizer {
 	cbuffer = C.malloc(C.size_t(len(p.Content)))
 	C.memcpy(cbuffer, unsafe.Pointer(&p.Content[0]), C.size_t(len(p.Content)))
 	o.opt = C.paddle_create_optimizer((*C.uchar)(&c[0]), C.int(len(c)),
-		C.paddle_element_type(p.ElementType), cbuffer, C.int(len(p.Content)),
+		C.paddle_element_type(p.ElementType), cbuffer, C.int(len(p.Content)*C.sizeof_float),
 		(*C.char)(nullPtr), 0)
 	return o
 }
