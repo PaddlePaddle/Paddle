@@ -1,0 +1,45 @@
+syntax="proto3";
+
+message VarProto {
+    required string name = 1;
+    required string comment = 2;
+};
+
+enum AttrType {
+    INT = 1;
+    FLOAT = 2;
+    STRING = 3;
+    INTS = 4;
+    FLOATS = 5;
+    STRINGS = 6;
+}
+message AttrProto {
+    required string name = 1;
+    required string comment = 2;
+    required AttrType type = 3;
+};
+
+message OpProto {
+    repeated VarProto inputs = 1;
+    repeated VarProto outputs = 2;
+    required string comment = 3;
+    repeated AttrProto attrs = 4;
+    required string type = 5;
+};
+
+message AttrDesc {
+    AttrType type = 1;
+    optional int i = 2;
+    optional float f = 3;
+    optional string s = 4;
+    repeated int ints = 5;
+    repeated float floats = 6;
+    repeated string strings = 7;
+};
+
+message OpDesc {
+    repeated string inputs = 1;
+    repeated string outputs = 2;
+    string type = 3;
+    map<string, AttrDesc> attrs = 4;
+};
