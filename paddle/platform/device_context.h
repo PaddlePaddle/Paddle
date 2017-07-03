@@ -22,6 +22,7 @@ limitations under the License. */
 #define EIGEN_USE_GPU
 #endif
 
+#include "paddle/framework/enforce.h"
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -29,19 +30,20 @@ namespace paddle {
 namespace platform {
 
 class DeviceContext {
-  virtual ~Context() {}
+ public:
+  virtual ~DeviceContext() {}
 };
 
 class CpuDeviceContext : public DeviceContext {
-  Eigen::DefaultDevice eigen_handle() {
-    if (!eigen_handle_) {
-      eigen_handle_ = new Eigen::DefaultDevice();
+  Eigen::DefaultDevice eigen_device() {
+    if (!eigen_device_) {
+      eigen_device_ = new Eigen::DefaultDevice();
     }
-    return *eigen_handle_;
+    return *eigen_device_;
   }
 
  private:
-  Eigen::DefaultDevice* eigen_handle_{nullptr};
+  Eigen::DefaultDevice* eigen_device_{nullptr};
 };
 
 #ifndef PADDLE_ONLY_CPU
@@ -61,12 +63,12 @@ class DeviceGuard {
 
 class CudaDeviceContext : public DeviceContext {
  public:
-  explicit CDUAContext(const GPUPlace gpu_place) : gpu_place_(gpu_place) {
-    DeviceGuard(gpu_place_);
+  explicit CudaDeviceContext(const GPUPlace gpu_place) : gpu_place_(gpu_place) {
+    DeviceGuard guard(gpu_place_);
     paddle::platform::throw_on_error(cudaStreamCreate(&stream_),
                                      "cudaStreamCreate failed");
     eigen_stream_ = new Eigen::CudaStreamDevice(&stream_);
-    eigen_handle_ = new Eigen::GpuDevice(eigen_stream_);
+    eigen_device_ = new Eigen::GpuDevice(eigen_stream_);
   }
 
   void Wait() {
@@ -76,15 +78,16 @@ class CudaDeviceContext : public DeviceContext {
 
   cudaStream_t stream() { return stream_; }
 
-  Eigen::GpuDevice eigen_handle() { return *eigen_handle_; }
+  Eigen::GpuDevice eigen_device() { return *eigen_device_; }
 
   cublasHandle_t cublas_handle() {
     if (!blas_handle_) {
       DeviceGuard guard(gpu_place_);
-      paddle::platform::throw_on_error(cublasCreate(&blas_handle_),
-                                       "cublasCreate failed");
-      paddle::platform::throw_on_error(cublasSetStream(blas_handle_, stream_),
-                                       "cublasSetStream failed");
+      PADDLE_ENFORCE(cublasCreate(&blas_handle_) == CUBLAS_STATUS_SUCCESS,
+                     "cublasCreate failed");
+      PADDLE_ENFORCE(
+          cublasSetStream(blas_handle_, stream_) == CUBLAS_STATUS_SUCCESS,
+          "cublasSetStream failed");
     }
     return blas_handle_;
   }
@@ -92,50 +95,54 @@ class CudaDeviceContext : public DeviceContext {
   cudnnHandle_t cudnn_handle() {
     if (!dnn_handle_) {
       DeviceGuard guard(gpu_place_);
-      paddle::platform::throw_on_error(cudnnCreate(&dnn_handle_),
-                                       "cudnnCreate failed");
-      paddle::platform::throw_on_error(cudnnSetStream(dnn_handle_, stream_),
-                                       "cudnnSetStream failed");
+      PADDLE_ENFORCE(cudnnCreate(&dnn_handle_) == CUDNN_STATUS_SUCCESS,
+                     "cudnnCreate failed");
+      PADDLE_ENFORCE(
+          cudnnSetStream(dnn_handle_, stream_) == CUDNN_STATUS_SUCCESS,
+          "cudnnSetStream failed");
     }
     return dnn_handle_;
   }
 
-  curandGenerator_t curand_handle() {
-    if (!rand_handle_) {
+  curandGenerator_t curand_generator() {
+    if (!rand_generator_) {
       DeviceGuard guard(gpu_place_);
-      paddle::platform::throw_on_error(
-          curandCreateGenerator(&curand_generator_, CURAND_RNG_PSEUDO_DEFAULT),
+      PADDLE_ENFORCE(
+          curandCreateGenerator(&rand_generator_, CURAND_RNG_PSEUDO_DEFAULT) ==
+              CURAND_STATUS_SUCCESS,
           "curandCreateGenerator failed");
-      paddle::platform::throw_on_error(
-          curandSetPseudoRandomGeneratorSeed(curand_generator_, random_seed_),
+      PADDLE_ENFORCE(
+          curandSetPseudoRandomGeneratorSeed(rand_generator_, random_seed_) ==
+              CURAND_STATUS_SUCCESS,
           "curandSetPseudoRandomGeneratorSeed failed");
-      paddle::platform::throw_on_error(
-          curandSetStream(curand_generator_, stream_),
+      PADDLE_ENFORCE(
+          curandSetStream(rand_generator_, stream_) == CURAND_STATUS_SUCCESS,
           "curandSetStream failed");
     }
-    return rand_handle_;
+    return rand_generator_;
   }
 
-  ~CUDAContext() {
+  ~CudaDeviceContext() {
     Wait();
-
+    /* TODO dynamic load cudnn, cublas and curand libraries
     if (blas_handle_) {
-      paddle::platform::throw_on_error(cublasDestroy(blas_handle_),
-                                       "cublasDestroy failed");
+      PADDLE_ENFORCE(cublasDestroy(blas_handle_) == CUBLAS_STATUS_SUCCESS,
+    "cublasDestroy failed");
     }
 
     if (dnn_handle_) {
-      paddle::platform::throw_on_error(cudnnDestroy(dnn_handle_),
-                                       "cudnnDestroy failed");
+      PADDLE_ENFORCE(cudnnDestroy(dnn_handle_) == CUDNN_STATUS_SUCCESS,
+    "cudnnDestroy failed");
     }
 
-    if (rand_handle_) {
-      paddle::platform::throw_on_error(curandDestroyGenerator(rand_handle_),
-                                       "curandDestroyGenerator failed");
+    if (rand_generator_) {
+      PADDLE_ENFORCE(curandDestroyGenerator(rand_generator_) ==
+    CURAND_STATUS_SUCCESS, "curandDestroyGenerator failed");
     }
+    */
 
     delete eigen_stream_;
-    delete eigen_handle_;
+    delete eigen_device_;
 
     paddle::platform::throw_on_error(cudaStreamDestroy(stream_),
                                      "cudaStreamDestroy failed");
@@ -146,14 +153,14 @@ class CudaDeviceContext : public DeviceContext {
   cudaStream_t stream_;
 
   Eigen::CudaStreamDevice* eigen_stream_;
-  Eigen::GpuDevice* eigen_handle_;
+  Eigen::GpuDevice* eigen_device_;
 
   cublasHandle_t blas_handle_{nullptr};
 
   cudnnHandle_t dnn_handle_{nullptr};
 
   int random_seed_;
-  curandGenerator_t rand_handle_{nullptr};
+  curandGenerator_t rand_generator_{nullptr};
 };
 #endif
 }  // namespace platform
