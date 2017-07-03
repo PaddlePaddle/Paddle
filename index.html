@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-cn">
 <head>
     <meta charset="UTF-8">
     <title>PaddlePaddle</title>
@@ -15,7 +15,25 @@
         })();
     </script>
 </head>
-<body>   
+<body> 
+<script type="text/javascript">
+    function browserRedirect() {
+        var sUserAgent= navigator.userAgent.toLowerCase();
+        var bIsIpad= sUserAgent.match(/ipad/i) == "ipad";
+        var bIsIphoneOs= sUserAgent.match(/iphone os/i) == "iphone os";
+        var bIsMidp= sUserAgent.match(/midp/i) == "midp";
+        var bIsUc7= sUserAgent.match(/rv:1.2.3.4/i) == "rv:1.2.3.4";
+        var bIsUc= sUserAgent.match(/ucweb/i) == "ucweb";
+        var bIsAndroid= sUserAgent.match(/android/i) == "android";
+        var bIsCE= sUserAgent.match(/windows ce/i) == "windows ce";
+        var bIsWM= sUserAgent.match(/windows mobile/i) == "windows mobile";
+
+        if (bIsIpad || bIsIphoneOs || bIsMidp || bIsUc7 || bIsUc || bIsAndroid || bIsCE || bIsWM) {
+            window.location.href = 'http://www.paddlepaddle.org/mobile/index.html';
+        } 
+    }
+    browserRedirect();
+</script>
 <header class="site-header">
     <nav class="row">
         <div class="logo">
@@ -25,7 +43,7 @@
             <ul class="site-links">
                 <li><a class="active">Home</a></li>
                 <li><a href="http://book.paddlepaddle.org/index.html" target="_blank">Quick Start</a></li>
-                <li><a href="http://www.paddlepaddle.org/doc/howto/index_en.html" target="_blank">Documents</a></li>
+                <li><a href="http://www.paddlepaddle.org/doc/howto/index_en.html" target="_blank">Documentation</a></li>
                 <li class="version-switcher">
                     <a>Version<i class="fa" aria-hidden="true"></i></a>
                     <ul>
@@ -50,9 +68,8 @@
 </header>
 <section class="head-banner">
     <div class="row banner">
-        <h1>Easy to Learn and Use Distributed</h1>
-        <h1>Deep Learning Platform</h1>
-        <p>Providing deep learning algorithms for 100+ products</p>
+        <h1>PArallel Distributed Deep LEarning</h1>
+        <p>An Easy-to-use, Efficient, Flexible and Scalable Deep Learning Platform</p>
         <div>
             <a class="quick-start" href="http://book.paddlepaddle.org/index.html" target="_blank">Quick Start</a>
         </div>
@@ -61,8 +78,8 @@
 </section>
 <section class="services">
     <div class="row">
-        <h2><span>Extensive Algorithmic Service</span></h2>
-        <p class="sub-title">Easy to use, efficient, flexible, and scalable</p>
+        <h2><span>Diverse Application Scenarios</span></h2>
+        <p class="sub-title">Powers hundreds of baidu and partner products</p>
     </div>
     <div class="row">
         <div>
@@ -70,8 +87,8 @@
         </div>
         <div>
             <div class="service-desc">
-                <h3>Machine Vision</h3>
-                <p>The convoluted neural network can identify the main object in the image and output the classification result</p>
+                <h3>Computer Vision</h3>
+                <p>Using a Convolutional Neural Network (CNN) for Image Recognition and Object Detection.</p>
                 <div>
                     <a role="button" class="view-more" href="http://book.paddlepaddle.org/03.image_classification/index.html" target="_blank">Read more ></a>
                 </div>
@@ -82,7 +99,7 @@
         <div>
             <div class="service-desc">
                 <h3>Natural Language Understanding</h3>
-                <p>Using the LSTM network to analyze the positive and negative aspects of the commenter's emotions from IMDB film review</p>
+                <p>Using a Recurrent Neural Network (RNN) for Sentiment Analysis.</p>
                 <div>
                     <a role="button" class="view-more" href="http://book.paddlepaddle.org/06.understand_sentiment/index.html" target="_blank">Read more ></a>
                 </div>
@@ -98,8 +115,8 @@
         </div>
         <div>
             <div class="service-desc">
-                <h3>Search Engine Ranking</h3>
-                <p>Analyze user characteristics, movie features, rating scores, predict new users' ratings for different movies</p>
+                <h3>Recommender System</h3>
+                <p>Using Deep Learning on Recommendation Systems to Help Users Find Interests.</p>
                 <div>
                     <a role="button" class="view-more" href="http://book.paddlepaddle.org/05.recommender_system/index.html" target="_blank">Read more ></a>
                 </div>
@@ -109,7 +126,7 @@
 </section>
 <section class="features">
     <div class="row">
-        <h2><span>Technology and Service Advantages</span></h2>
+        <h2><span>Technical Features</span></h2>
     </div>
     <div class="row">
         <div class="feature-desc">
@@ -117,35 +134,35 @@
                 <img src="./images/feature-1.png">
             </div>
             <h3>Ease of use</h3>
-            <p>Provids an intuitive and flexible interface for loading data and specifying model structure.</p>
+            <p>Provides an intuitive and flexible interface for loading data and specifying model structure.</p>
         </div>
         <div class="feature-desc">
             <div class="feature-icon">
                 <img src="./images/feature-2.png">
             </div>
             <h3>Flexibility</h3>
-            <p>Supports CNN, RNN and other neural network. Easy to configure complex models.</p>
+            <p>Supports CNN, RNN and various variants and ease to configure complicated deep models.</p>
         </div>
         <div class="feature-desc">
             <div class="feature-icon">
                 <img src="./images/feature-3.png">
             </div>
             <h3>Efficiency</h3>
-            <p>Efficient optimization of computing, memory, communications and architecture.</p>
+            <p>Provides extremely optimized operations, memory recycling, network communication.</p>
         </div>
         <div class="feature-desc">
             <div class="feature-icon">
                 <img src="./images/feature-4.png">
             </div>
             <h3>Scalability</h3>
-            <p>Easy to use many CPUs/GPUs and machines to speed up your training and handle large-scale data easily.</p>
+            <p>Ease to scale heterogeneous computing resource and storage to accelerate training process.</p>
         </div>
     </div>
 </section>
 <section class="get-started">
     <div class="row">
-        <h2>Start Using PaddlePaddle</h2>
-        <p>Easy to Learn and Use Distributed Deep Learning Platform</p>
+        <h2>PaddlePaddle</h2>
+        <p>An Easy-to-use, Efficient, Flexible and Scalable Deep Learning Platform</p>
         <div>
             <a role="button" class="quick-start" href="http://book.paddlepaddle.org/index.html" target="_blank">Quick Start</a>
         </div>
