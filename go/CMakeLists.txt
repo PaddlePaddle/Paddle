@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# FIXME(typhoonzero): Download glide into cmake build temprary GOPATH
 
 add_subdirectory(pserver/cclient)
 add_subdirectory(cmd/pserver)
 add_subdirectory(cmd/master)
 add_subdirectory(master/c)
-#TODO (add go/master/c back when fixed)
