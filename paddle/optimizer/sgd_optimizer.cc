@@ -31,8 +31,6 @@ const char *SGDOptimizer::SerializeState(int *state_len) {
   SGDOptimizerState state;
   state.set_num_sample_passed(num_sample_passed_);
   std::string lr_str = this->lr_policy_->SerializeState(state_len);
-  LrPolicyState lr_state;
-  lr_state.ParseFromString(lr_str);
   state.mutable_lr_state()->ParseFromString(lr_str);
   TensorToProto(*parameter_, state.mutable_parameter());
   if (momentum_ != 0.0) TensorToProto(*momentums_, state.mutable_momentums());
