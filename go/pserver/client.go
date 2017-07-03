@@ -136,15 +136,19 @@ func (c *Client) SendGrads(grads []Gradient) error {
 	}
 
 	recv := 0
+	var errs []error
 	for err := range errCh {
 		if err != nil {
-			return err
+			errs = append(errs, err)
 		}
 
 		recv++
 		if recv == len(grads) {
 			break
 		}
+	}
+	if len(errs) != 0 {
+		return errs[0]
 	}
 	return nil
 }
@@ -182,17 +186,22 @@ func (c *Client) GetParams(names []string) ([]Parameter, error) {
 	}
 
 	var rs results
+	var errs []error
 	recv := 0
 	for r := range rCh {
 		if r.err != nil {
-			return nil, r.err
+			errs = append(errs, r.err)
+		} else {
+			rs = append(rs, r)
 		}
-		rs = append(rs, r)
 
 		recv++
 		if recv == len(names) {
 			break
 		}
+	}
+	if len(errs) != 0 {
+		return nil, errs[0]
 	}
 	sort.Sort(rs)
 
@@ -214,15 +223,19 @@ func (c *Client) Save(path string) error {
 	}
 
 	recv := 0
+	var errs []error
 	for err := range errCh {
 		if err != nil {
-			return err
+			errs = append(errs, err)
 		}
 
 		recv++
 		if recv == len(c.pservers) {
 			break
 		}
+	}
+	if len(errs) != 0 {
+		return errs[0]
 	}
 
 	// TODO(helin): there will be many files under path, need to
