@@ -79,6 +79,8 @@ func TestServiceFull(t *testing.T) {
 	if !reflect.DeepEqual(param1, p) {
 		t.FailNow()
 	}
+	var dummy int
+	s.Save("", &dummy)
 }
 
 func TestMultipleInit(t *testing.T) {
@@ -165,4 +167,8 @@ func TestBlockUntilInitialized(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestCheckpointSpeed(t *testing.T) {
+	//TODO: test speed
 }
