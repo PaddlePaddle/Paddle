@@ -47,31 +47,6 @@ public:
     return pair1.first > pair2.first;
   }
 
-  virtual void generateMask(Parameter *para, size_t nonZeroNum) {
-    VectorPtr maskTemp = Vector::create(para->getSize(), false);
-    maskTemp->zeroMem();
-    real *maskTempData = maskTemp->getData();
-
-    VectorPtr paraVec = para->getBuf(PARAMETER_VALUE);
-    VectorPtr paraCpuCopy = Vector::create(para->getSize(), false);
-    paraCpuCopy->copyFrom(*paraVec);
-    std::vector<std::pair<real, size_t>> param;
-
-    for (size_t i = 0; i < para->getSize(); i++)
-      param.push_back(std::make_pair(fabs(paraCpuCopy->getData()[i]), i));
-
-    std::partial_sort(
-        param.begin(), param.begin() + nonZeroNum, param.end(), sortPairAscend);
-
-    for (size_t i = 0; i < nonZeroNum; i++) maskTempData[param[i].second] = 1.0;
-
-    if (para->useGpu()) {
-      maskVec_ = Vector::create(para->getSize(), para->useGpu());
-      maskVec_->copyFrom(*maskTemp);
-    } else {
-      maskVec_ = maskTemp;
-    }
-  }
 
 protected:
   std::atomic<size_t> initCount_;
@@ -93,7 +68,33 @@ public:
     this->sparsityRatio_ = hookConfig.sparsity_ratio();
   }
 
-  void preprocess(Parameter *para, size_t currentPass) override {}
+  void generateMask(Parameter *para, size_t nonZeroNum) {
+    VectorPtr maskTemp = Vector::create(para->getSize(), false);
+    maskTemp->zeroMem();
+    real *maskTempData = maskTemp->getData();
+
+    VectorPtr paraVec = para->getBuf(PARAMETER_VALUE);
+    VectorPtr paraCpuCopy = Vector::create(para->getSize(), false);
+    paraCpuCopy->copyFrom(*paraVec);
+    std::vector<std::pair<real, size_t>> param;
+
+    for (size_t i = 0; i < para->getSize(); i++)
+      param.push_back(std::make_pair(fabs(paraCpuCopy->getData()[i]), i));
+
+    std::partial_sort(
+        param.begin(), param.begin() + nonZeroNum, param.end(), sortPairAscend);
+
+    for (size_t i = 0; i < nonZeroNum; i++) maskTempData[param[i].second] = 1.0;
+
+    if (para->useGpu()) {
+      this-> maskVec_ = Vector::create(para->getSize(), para->useGpu());
+      this-> maskVec_->copyFrom(*maskTemp);
+    } else {
+      this-> maskVec_ = maskTemp;
+    }
+  }
+
+  void preprocess(Parameter *para, size_t currentPass, size_t currentBatch) override {}
   void init(Parameter *para) override {
     size_t initCount = this->initCount_.fetch_add(1);
     CHECK_EQ(initCount, 0UL) << "Currently the StaticPruningHook must invoke "
@@ -138,19 +139,67 @@ public:
     */
   }
 
-  void preprocess(Parameter *para, size_t currentPass) override {
-    if (currentPass % interPass_ == 0 && currentPass <= endPass_) {
+  void generateMask(Parameter *para, size_t ZeroNumDiff) {
+    VectorPtr maskTemp = Vector::create(para->getSize(), false);
+    maskTemp->copyFrom(*this->maskVec_);
+    real *maskTempData = maskTemp->getData();
+
+    VectorPtr paraVec = para->getBuf(PARAMETER_VALUE);
+    VectorPtr paraCpuCopy = Vector::create(para->getSize(), false);
+    paraCpuCopy->copyFrom(*paraVec);
+    std::vector<std::pair<real, size_t>> param;
+
+    for (size_t i = 0; i < para->getSize(); i++)
+      param.push_back(std::make_pair(fabs(paraCpuCopy->getData()[i]), i));
+
+    std::sort(
+        param.begin(), param.end(), sortPairAscend);
+    
+    size_t numDiff = 0;
+    for (int i  = para->getSize() - 1; i >= 0 && numDiff < ZeroNumDiff; i--) {
+        if (maskTempData[param[i].second] == 1.0){
+            maskTempData[param[i].second] = 0.0;
+            numDiff += 1;
+        }
+    }
+    
+    if (para->useGpu()) {
+      this-> maskVec_->copyFrom(*maskTemp);
+    } else {
+      this-> maskVec_ = maskTemp;
+    }
+  }
+ 
+  void update(Parameter *para) override{/*do nothing*/}
+
+  void preprocess(Parameter *para, size_t currentPass, size_t currentBatch) override {
+    if (currentPass % interPass_ == 0 && currentPass <= endPass_ && currentBatch  == 0) {
       real boundWeight =
           this->upperBound_ / std::log(this->endPass_ / (real)this->interPass_);
       real sparsityRatio =
           boundWeight * std::log(2 + currentPass / (real)interPass_);
-      size_t nonZeroNum = para->getSize() * (1 - sparsityRatio);
-      this->generateMask(para, nonZeroNum);
-      auto &paraVec = para->getBuf(PARAMETER_VALUE);
-      paraVec->dotMul(*this->maskVec_);
-      // std::cout << para->getName() << " Current sparsity ratio: " <<
-      // sparsityRatio << std::endl;
+      real sparsityRatioDiff =
+          boundWeight * (std::log(2 + currentPass / (real)interPass_) - 
+                         std::log(1 + currentPass / (real)interPass_));
+      size_t zeroNumDiff = para->getSize() * (sparsityRatioDiff);
+      this->generateMask(para, zeroNumDiff);
+      std::cout << para->getName() << " Current sparsity ratio: " <<
+       sparsityRatio <<" " << zeroNumDiff<<std::endl;
     }
+    auto &paraVec = para->getBuf(PARAMETER_VALUE);
+    paraVec->dotMul(*this->maskVec_);
+      /*
+    VectorPtr paraCopyCpu = Vector::create(para->getSize(), false);
+    paraCopyCpu->copyFrom(*paraVec);
+    real *data = paraCopyCpu->getData();
+    size_t sum_non = 0;
+      for(size_t i = 0; i < para->getSize(); i++){
+          if(data[i] != 0.0)
+          sum_non += 1;
+      }
+    std::cout<<"sum_non: " <<sum_non << " " << para->getSize()<< std::endl;
+   */ 
+
   }
 
 private:
