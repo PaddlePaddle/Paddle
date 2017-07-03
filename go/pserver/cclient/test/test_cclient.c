@@ -51,7 +51,7 @@ int main() {
   char *config_proto;
   size_t config_proto_len = 0;
   ssize_t nread;
-  FILE *fp = fopen("testdata/optimizer.pb.txt", "r");
+  FILE *fp = fopen("testdata/optimizer.pb", "r");
   if (!fp) {
     fail();
   }

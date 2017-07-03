@@ -11,7 +11,7 @@ func TestOptimizerCreateRelease(t *testing.T) {
 		ElementType: Int32,
 	}
 	p.Content = []byte{1, 3}
-	config, err := ioutil.ReadFile("./cclient/test/testdata/optimizer.pb.txt")
+	config, err := ioutil.ReadFile("./cclient/test/testdata/optimizer.pb")
 	if err != nil {
 		t.Fatalf("read optimizer proto failed")
 	}

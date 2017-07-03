@@ -75,7 +75,7 @@ func TestClientFull(t *testing.T) {
 	}
 
 	const numParameter = 100
-	config, err := ioutil.ReadFile("./cclient/test/testdata/optimizer.pb.txt")
+	config, err := ioutil.ReadFile("./cclient/test/testdata/optimizer.pb")
 	if err != nil {
 		t.Fatalf("read optimizer proto failed")
 	}

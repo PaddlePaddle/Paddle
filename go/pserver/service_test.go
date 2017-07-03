@@ -19,7 +19,7 @@ func TestServiceFull(t *testing.T) {
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
 	p.ElementType = pserver.Int32
-	config, err := ioutil.ReadFile("./cclient/test/testdata/optimizer.pb.txt")
+	config, err := ioutil.ReadFile("./cclient/test/testdata/optimizer.pb")
 	if err != nil {
 		t.Fatalf("read optimizer proto failed")
 	}
@@ -151,7 +151,7 @@ func TestBlockUntilInitialized(t *testing.T) {
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
 	p.ElementType = pserver.Int32
-	config, err := ioutil.ReadFile("./cclient/test/testdata/optimizer.pb.txt")
+	config, err := ioutil.ReadFile("./cclient/test/testdata/optimizer.pb")
 	if err != nil {
 		t.Fatalf("read optimizer proto failed")
 	}
