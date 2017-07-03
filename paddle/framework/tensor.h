@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <memory>
 #include <type_traits>
-#include <typeinfo>
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/enforce.h"
 #include "paddle/memory/memory.h"
