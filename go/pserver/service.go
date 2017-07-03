@@ -38,6 +38,7 @@ type Parameter struct {
 type ParameterWithConfig struct {
 	Param  Parameter
 	Config []byte // parameter configuration in Proto Buffer format
+	State  []byte // parameter training state
 }
 
 // Gradient is the gradient of the parameter.
@@ -58,7 +59,7 @@ func NewService(idx int) (*Service, error) {
 	s := &Service{
 		idx: idx,
 	}
-  s.optMap = make(map[string]*optimizer)
+	s.optMap = make(map[string]*optimizer)
 	s.initialized = make(chan struct{})
 	return s, nil
 }
@@ -143,7 +144,12 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 // Save tells the parameter server to save parameters.
 func (s *Service) Save(path string, dummy *int) error {
 	<-s.initialized
-
-	// TODO
+	for opt, ok := range s.optMap {
+		if ok != nil {
+			return fmt.Errorf("parameter optimizerMap error: ", ok)
+		}
+		state := opt.GetStates()
+		weights := opt.GetWeights()
+	}
 	return nil
 }
