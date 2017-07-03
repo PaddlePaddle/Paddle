@@ -2398,19 +2398,22 @@ header.site-header .top-nav .site-links > li > a {
   line-height: 60px;
   padding: 0 20px;
   color: rgba(255, 255, 255, 0.7);
+  /*&.active,*/
 }
-header.site-header .top-nav .site-links > li > a.active,
 header.site-header .top-nav .site-links > li > a:hover {
-  color: #fff;
+  color: #0073eb;
+  background-color: #222222;
 }
 header.site-header .top-nav .version-switcher {
   position: relative;
   display: inline-block;
+  width: 100px;
   height: 60px;
   float: left;
 }
 header.site-header .top-nav .version-switcher:hover > a {
   color: #fff;
+  cursor: default;
 }
 header.site-header .top-nav .version-switcher:hover > a .fa::before {
   content: "\F106";
@@ -2427,10 +2430,10 @@ header.site-header .top-nav .version-switcher > a .fa::before {
 }
 header.site-header .top-nav .version-switcher ul {
   display: none;
-  top: 50px;
-  width: 60px;
+  top: 60px;
+  width: 100px;
   text-align: center;
-  line-height: 30px;
+  line-height: 50px;
   background: rgba(0, 0, 0, 0.85);
   color: #0073eb;
   position: absolute;
@@ -2438,9 +2441,13 @@ header.site-header .top-nav .version-switcher ul {
 }
 header.site-header .top-nav .version-switcher ul > li > a {
   color: #ababab;
+  width: 99px;
+  height: 50px;
+  display: block;
 }
 header.site-header .top-nav .version-switcher ul > li > a:hover {
   color: #0073eb;
+  background-color: #222;
 }
 header.site-header .top-nav .version-switcher:hover ul {
   display: inline-block;
