@@ -30,6 +30,7 @@ http://www.robots.ox.ac.uk/~vgg/publications/papers/nilsback08.{pdf,ps.gz}.
 """
 import cPickle
 import itertools
+import functools
 from common import download
 import tarfile
 import scipy.io as scio
@@ -54,21 +55,26 @@ TEST_FLAG = 'trnid'
 VALID_FLAG = 'valid'
 
 
-def default_mapper(sample):
+def default_mapper(is_train, sample):
     '''
     map image bytes data to type needed by model input layer
     '''
     img, label = sample
     img = load_image_bytes(img)
-    img = simple_transform(img, 256, 224, True)
+    img = simple_transform(
+        img, 256, 224, is_train, mean=[103.94, 116.78, 123.68])
     return img.flatten().astype('float32'), label
+
+
+train_mapper = functools.partial(default_mapper, True)
+test_mapper = functools.partial(default_mapper, False)
 
 
 def reader_creator(data_file,
                    label_file,
                    setid_file,
                    dataset_name,
-                   mapper=default_mapper,
+                   mapper,
                    buffered_size=1024,
                    use_xmap=True):
     '''
@@ -118,7 +124,7 @@ def reader_creator(data_file,
         return map_readers(mapper, reader)
 
 
-def train(mapper=default_mapper, buffered_size=1024, use_xmap=True):
+def train(mapper=train_mapper, buffered_size=1024, use_xmap=True):
     '''
     Create flowers training set reader.
     It returns a reader, each sample in the reader is
@@ -141,7 +147,7 @@ def train(mapper=default_mapper, buffered_size=1024, use_xmap=True):
         buffered_size, use_xmap)
 
 
-def test(mapper=default_mapper, buffered_size=1024, use_xmap=True):
+def test(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     '''
     Create flowers test set reader.
     It returns a reader, each sample in the reader is
@@ -164,7 +170,7 @@ def test(mapper=default_mapper, buffered_size=1024, use_xmap=True):
         buffered_size, use_xmap)
 
 
-def valid(mapper=default_mapper, buffered_size=1024, use_xmap=True):
+def valid(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     '''
     Create flowers validation set reader.
     It returns a reader, each sample in the reader is
