@@ -25,7 +25,7 @@ const (
 )
 
 const (
-	checkpoint_path = "/checkpoints/"
+	checkpoint_path = "./checkpoints/"
 )
 
 // Supported element types
@@ -67,10 +67,10 @@ type Service struct {
 	optMap map[string]*optimizer
 }
 
-type Checkpoint struct {
-	uuid      string
-	md5sum    string
-	timestamp string
+type checkpoint struct {
+	Uuid      string
+	Md5sum    string
+	Timestamp string
 }
 
 //serialize ParameterWithConfig to byte stream
@@ -93,6 +93,8 @@ func NewService(idx int) (*Service, error) {
 	}
 	s.optMap = make(map[string]*optimizer)
 	s.initialized = make(chan struct{})
+	gob.Register(ParameterWithConfig{})
+	gob.Register(checkpoint{})
 	return s, nil
 }
 
@@ -190,32 +192,33 @@ func (s *Service) Save(path string, dummy *int) error {
 		if err != nil {
 			log.Errorln(err)
 		}
-		ck := Checkpoint{}
+		ck := checkpoint{}
 		h := md5.New()
-		ck.md5sum = hex.EncodeToString(h.Sum(content))
-		ck.timestamp = time.Now().String()
-		ck.uuid = checkpoint_path + strconv.Itoa(s.idx)
+		ck.Md5sum = hex.EncodeToString(h.Sum(content))
+		ck.Timestamp = time.Now().String()
+		ck.Uuid = checkpoint_path + strconv.Itoa(s.idx)
 		ckbytes, err := GetBytes(ck)
 		if err != nil {
 			log.Errorln(err)
 		}
-		// TODO: according design doc, need to save uuid to etcd in json format
-		// {\"uuid\": [UUID], \"md5\", \"MD5 sum\", \"timestamp\": xxxx}
+		// TODO: according design doc, need to save Uuid to etcd in json format
+		// {\"Uuid\": [UUID], \"md5\", \"MD5 sum\", \"Timestamp\": xxxx}
 		log.Infof("parameter checkpoint %s", ckbytes)
 
-		if _, err = os.Stat(ck.uuid); os.IsNotExist(err) {
+		if _, err = os.Stat(ck.Uuid); os.IsNotExist(err) {
 			log.Info("checkpoint not exists.")
 		} else {
-			err = os.Remove(ck.uuid)
-			log.Infof("remove %s", ck.uuid)
+			err = os.Remove(ck.Uuid)
+			log.Infof("remove %s", ck.Uuid)
 		}
-		f, err := os.Create(ck.uuid)
+		f, err := os.Create(ck.Uuid)
 		defer f.Close()
 		if err != nil {
 			log.Errorln(err)
 		}
 		writer := bufio.NewWriter(f)
 		_, err = writer.Write(content)
+		writer.Flush()
 		if err != nil {
 			log.Errorln(err)
 		}
