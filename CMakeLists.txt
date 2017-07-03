@@ -97,6 +97,7 @@ include(external/warpctc)   # download, build, install warpctc
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 
+include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
@@ -105,7 +106,6 @@ include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(rdma)               # set rdma libraries
 include(flags)              # set paddle compile flags
-include(cudnn)              # set cudnn libraries
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
 
