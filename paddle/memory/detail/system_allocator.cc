@@ -60,6 +60,8 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
   free(p);
 }
 
+bool CPUAllocator::UseGpu() { return false; }
+
 #ifndef PADDLE_ONLY_CPU
 
 void* GPUAllocator::Alloc(size_t& index, size_t size) {
@@ -130,6 +132,8 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
                              "cudaFree{Host} failed in GPUAllocator::Free.");
   }
 }
+
+bool GPUAllocator::UseGpu() { return true; }
 
 #endif  // PADDLE_ONLY_CPU
 
