@@ -1,5 +1,23 @@
 | Github account | name |
 |---|---|
+| beckett1124 | Bin Qi |
+| Canpio | Jiayi Feng |
+| chengxiaohua1105 | Xiaohua Cheng |
+| xushaoyong | Shaoyong Xu |
+| liuyuan | Yuan Liu |
+| xujun05 | Jun Xu |
+| dzhwinter | Zhihong Dong |
+| Guo Sheng | Sheng Guo |
+| kuke | Yibing Liu |
+| llxxxll | YongFeng Liu |
+| cxysteven | Xingyi Cheng |
+| NHZlX | Zhaolong Xing |
+| pakchoi | Chuanjiang Song |
+| pkuyym | Yaming Yang |
+| Superjom | Chunwei Yan |
+| wanghaoshuang | Haoshuang Wang |
+| wangzhen-nlp | Zhen Wang |
+| wwhu | Weiwei Hu |
 | reyoung | Yang Yu |
 | gangliao | Gang Liao |
 | luotao01 | Tao Luo |
