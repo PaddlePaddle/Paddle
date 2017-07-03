@@ -86,7 +86,7 @@ message LrPolicyState {
 }
 
 message SGDOptimizerState {
-  optional LrPolicyState lrstate = 101;
+  optional LrPolicyState lr_state = 101;
   optional double num_sample_passed = 104;
   // state
   optional TensorProto parameter = 1;
@@ -106,7 +106,7 @@ message AdadeltaOptimizerState {
 
 
 message AdagradOptimizerState {
-  optional LrPolicyState lrstate = 101;
+  optional LrPolicyState lr_state = 101;
   optional double num_sample_passed = 104;
   // state
   optional TensorProto parameter = 1;
@@ -114,7 +114,7 @@ message AdagradOptimizerState {
 }
 
 message AdamOptimizerState {
-  optional LrPolicyState lrstate = 101;
+  optional LrPolicyState lr_state = 101;
   optional double num_sample_passed = 104;
   // state
   optional TensorProto parameter = 1;
