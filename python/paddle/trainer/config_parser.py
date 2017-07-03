@@ -2420,10 +2420,14 @@ class MaxLayer(LayerBase):
                  trans_type='non-seq',
                  bias=False,
                  output_max_index=None,
+                 stride=-1,
                  **xargs):
         super(MaxLayer, self).__init__(name, 'max', 0, inputs=inputs, **xargs)
         config_assert(len(self.inputs) == 1, 'MaxLayer must have 1 input')
+        if trans_type == 'seq':
+            config_assert(stride == -1, 'subseq does not support stride window')
         self.config.trans_type = trans_type
+        self.config.seq_pool_stride = stride
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             self.set_layer_size(input_layer.size)
@@ -2685,11 +2689,15 @@ class AverageLayer(LayerBase):
                  average_strategy='average',
                  trans_type='non-seq',
                  bias=False,
+                 stride=-1,
                  **xargs):
         super(AverageLayer, self).__init__(
             name, 'average', 0, inputs=inputs, **xargs)
         self.config.average_strategy = average_strategy
+        if trans_type == 'seq':
+            config_assert(stride == -1, 'subseq does not support stride window')
         self.config.trans_type = trans_type
+        self.config.seq_pool_stride = stride
         config_assert(len(inputs) == 1, 'AverageLayer must have 1 input')
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)

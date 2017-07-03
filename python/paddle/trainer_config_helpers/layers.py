@@ -1090,9 +1090,15 @@ def pooling_layer(input,
                   name=None,
                   bias_attr=None,
                   agg_level=AggregateLevel.TO_NO_SEQUENCE,
+                  stride=-1,
                   layer_attr=None):
     """
     Pooling layer for sequence inputs, not used for Image.
+
+    If stride > 0, this layer slides a window whose size is determined by stride,
+    and return the pooling value of the window as the output. Thus, a long sequence
+    will be shorten. Note that for sequence with sub-sequence, the default value
+    of stride is -1.
 
     The example usage is:
 
@@ -1112,6 +1118,8 @@ def pooling_layer(input,
     :param pooling_type: Type of pooling, MaxPooling(default), AvgPooling,
                          SumPooling, SquareRootNPooling.
     :type pooling_type: BasePoolingType|None
+    :param stride: window size.
+    :type stride: Int
     :param bias_attr: Bias parameter attribute. False if no bias.
     :type bias_attr: ParameterAttribute|None|False
     :param layer_attr: The Extra Attributes for layer, such as dropout.
@@ -1129,12 +1137,16 @@ def pooling_layer(input,
         extra_dict['output_max_index'] = pooling_type.output_max_index
     extra_dict.update(ExtraLayerAttribute.to_kwargs(layer_attr))
 
+    if agg_level == AggregateLevel.TO_SEQUENCE:
+        assert stride == -1
+
     Layer(
         name=name,
         type=pooling_type.name,
         inputs=[Input(input.name)],
         bias=ParamAttr.to_bias(bias_attr),
         trans_type=agg_level,
+        stride=stride,
         **extra_dict)
 
     return LayerOutput(

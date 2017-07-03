@@ -73,8 +73,7 @@ bool SequenceLastInstanceLayer::init(const LayerMap& layerMap,
 void SequenceLastInstanceLayer::forward(PassType passType) {
   SequencePoolLayer::forward(passType);
 
-  auto starts = (stride_ > 0) ? stridePositions_->getData()
-                              : startPositions_->getData(false);
+  auto starts = startPositions_->getData(false);
   MatrixPtr inputValue = getInputValue(0);
   MatrixPtr outputValue = getOutputValue();
 
