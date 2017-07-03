@@ -16,7 +16,7 @@ void sendGrads(paddle_pserver_client c) {
       "param_a", PADDLE_ELEMENT_TYPE_FLOAT32, grad_a, 2000};
   paddle_gradient grad2 = {
       "param_b", PADDLE_ELEMENT_TYPE_FLOAT32, grad_b, 3000};
-  paddle_gradient* grads[2] = {&grad1, &grad2};
+  paddle_gradient *grads[2] = {&grad1, &grad2};
   if (paddle_send_grads(c, grads, 2)) {
     fail();
   }
@@ -39,13 +39,11 @@ void getParams(paddle_pserver_client c) {
   param_b.content = content_b;
   param_b.content_len = 3000;
 
-  paddle_parameter* params[2] = {&param_a, &param_b};
+  paddle_parameter *params[2] = {&param_a, &param_b};
   if (paddle_get_params(c, params, 2)) {
     fail();
   }
 }
-
-
 
 int main() {
   char addr[] = "localhost:3000";
@@ -54,8 +52,10 @@ int main() {
   size_t config_proto_len = 0;
   ssize_t nread;
   FILE *fp = fopen("testdata/optimizer.pb.txt", "r");
-  if(!fp) { fail(); }
-  while((nread = getline(&config_proto, &config_proto_len, fp)) != -1) {
+  if (!fp) {
+    fail();
+  }
+  while ((nread = getline(&config_proto, &config_proto_len, fp)) != -1) {
     printf("%s", config_proto);
   }
   fclose(fp);
@@ -70,7 +70,8 @@ retry:
     param.name = name_a;
     param.content = content_a;
     param.content_len = 2000;
-    int error = paddle_init_param(c, param, (void *)config_proto, config_proto_len);
+    int error =
+        paddle_init_param(c, param, (void *)config_proto, config_proto_len);
     if (error != 0) {
       goto retry;
     }
