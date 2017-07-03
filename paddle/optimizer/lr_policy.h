@@ -17,7 +17,7 @@ public:
 // constant learning rate policy
 class ConstLr final : public LrPolicy {
 public:
-  ConstLr(double lr) : learning_rate(lr){};
+  ConstLr(double lr) : learning_rate_(lr){};
   double LearningRate(const uint64_t num_sample_passed) {
     return learning_rate_;
   }
@@ -28,7 +28,7 @@ public:
     *state_len = str.size();
     return str.c_str();
   }
-  void DeserializeState(const std::string &state) {
+  void DeserializeState(const std::string &str) {
     LrPolicyState state;
     state.ParseFromString(str);
     learning_rate_ = state.learning_rate();

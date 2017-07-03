@@ -95,7 +95,7 @@ message SGDOptimizerState {
 
 message AdadeltaOptimizerState {
   // learning rate policy
-  optional LrPolicyState lrstate = 101;
+  optional LrPolicyState lr_state = 101;
   optional double num_sample_passed = 104;
   // state
   optional TensorProto parameter = 1;
