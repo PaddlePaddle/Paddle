@@ -1,18 +1,9 @@
 package pserver
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"sync"
-	"time"
-
-	"github.com/PaddlePaddle/Paddle/go/utils/networkhelper"
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
-	log "github.com/sirupsen/logrus"
 )
 
 // ElementType is the type of elements of a Parameter.
@@ -55,132 +46,23 @@ type Gradient Parameter
 // Service is the RPC service for pserver.
 type Service struct {
 	initialized chan struct{}
+	idx         int
 
 	mu       sync.Mutex
 	opt      *optimizer
 	paramMap map[string]Parameter
-
-	etcdEndpoints string
-	etcdClient    *clientv3.Client
-	// etcdTimeout is also used as retry intervals.
-	etcdTimeout time.Duration
-	// desired number of pservers in the job.
-	// assume desired will not change during one training job.
-	desired int
-	// FIXME: ensure GetExternalIP gets the correct ip for trainers to connect.
-	externalIP string
 }
 
 // NewService creates a new service, will bypass etcd registration if no
 // endpoints specified.
-func NewService(endpoints string, timeout time.Duration) (*Service, error) {
-	s := &Service{opt: newOptimizer(sgd, 0.005)}
+func NewService(idx int) (*Service, error) {
+	s := &Service{
+		idx: idx,
+		opt: newOptimizer(sgd, 0.005),
+	}
 	s.paramMap = make(map[string]Parameter)
 	s.initialized = make(chan struct{})
-	s.etcdEndpoints = endpoints
-	s.etcdTimeout = timeout
-
-	var err error
-	s.externalIP, err = networkhelper.GetExternalIP()
-	if err != nil {
-		return nil, err
-	}
-
-	if endpoints != "" {
-		// initialize connection to etcd, try
-		ep := strings.Split(s.etcdEndpoints, ",")
-		for {
-			cli, err := clientv3.New(clientv3.Config{
-				Endpoints:   ep,
-				DialTimeout: s.etcdTimeout,
-			})
-			if err != nil {
-				log.Errorf("connect to etcd error: %v", err)
-				time.Sleep(s.etcdTimeout)
-				continue
-			}
-			s.etcdClient = cli
-			log.Debugf("inited client to %s", s.etcdEndpoints)
-			break
-		}
-		// wait and set s.desired init value
-		for {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			resp, err := s.etcdClient.Get(ctx, PsDesired)
-			cancel()
-			if err != nil {
-				log.Errorf("getting %s error: %v", PsDesired, err)
-				time.Sleep(s.etcdTimeout)
-				continue
-			}
-			if len(resp.Kvs) != 0 {
-				s.desired, err = strconv.Atoi(string(resp.Kvs[0].Value))
-				if err != nil {
-					log.Errorf("value of %s invalid %v\n", PsDesired, err)
-					time.Sleep(s.etcdTimeout)
-					// NOTE: wait util ps_desired value change
-					continue
-				}
-				break
-			}
-		}
-		// try register pserver node on etcd
-		for {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			_, err := s.registerPserverEtcd(ctx)
-			cancel()
-			if err != nil {
-				log.Warn(err)
-				time.Sleep(s.etcdTimeout)
-				continue
-			}
-			break
-		}
-	} // if endpoints != ""
-	// Bypass etcd registration if no endpoints specified
 	return s, nil
-}
-
-// registerPserverEtcd registers pserver node on etcd using transaction.
-func (s *Service) registerPserverEtcd(ctx context.Context) (*clientv3.TxnResponse, error) {
-	return concurrency.NewSTM(s.etcdClient, func(c concurrency.STM) error {
-		registered := false
-		for i := 0; i < s.desired; i++ {
-			psKey := "/ps/" + strconv.Itoa(i)
-			log.Debugf("checking %s", psKey)
-			ps := c.Get(psKey)
-			log.Debugf("got value (%s) for key: %s", ps, psKey)
-
-			if ps == "" {
-				resp, err := s.etcdClient.Grant(context.TODO(), 5)
-				if err != nil {
-					log.Fatal(err)
-				}
-				// find the first id and write info
-				c.Put(psKey, s.externalIP, clientv3.WithLease(resp.ID))
-				log.Debugf("set pserver node %s with value %s", psKey, s.externalIP)
-				ch, kaerr := s.etcdClient.KeepAlive(context.TODO(), resp.ID)
-				if kaerr != nil {
-					log.Errorf("keepalive etcd node error: %v", kaerr)
-					return kaerr
-				}
-
-				// Eat the keep alive message so etcd
-				// will not expire the lease.
-				go func(ch <-chan *clientv3.LeaseKeepAliveResponse) {
-					ka := <-ch
-					log.Debugf("keepalive: %d\n", ka.TTL)
-				}(ch)
-				log.Debug("register finished")
-				registered = true
-				break
-			}
-		}
-		if registered == true {
-			return nil
-		}
-		return errors.New("not registerd, may due to already have enough pservers")
-	}, concurrency.WithAbortContext(ctx), concurrency.WithIsolation(concurrency.RepeatableReads))
 }
 
 // InitParam initializes a parameter.
