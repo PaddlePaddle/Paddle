@@ -10,8 +10,7 @@ import (
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
 
-
-func TestFull(t *testing.T) {
+func TestServiceFull(t *testing.T) {
 	s, err := pserver.NewService(0)
 	if err != nil {
 		t.Error(err)
