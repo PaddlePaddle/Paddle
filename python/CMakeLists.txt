@@ -16,7 +16,7 @@ set(PY_FILES paddle/__init__.py
 if(WITH_GOLANG)
   add_custom_target(copy_paddle_master)
   add_custom_command(TARGET copy_paddle_master
-    COMMAND cp ${paddle_master_LIB_PATH} ${PROJ_ROOT}/python/paddle/v2/master/
+    COMMAND cp -r ${paddle_master_LIB_PATH} ${PROJ_ROOT}/python/paddle/v2/master/
     )
   add_dependencies(copy_paddle_master paddle_master)
   LIST(APPEND external_project_dependencies copy_paddle_master)
