@@ -26,6 +26,7 @@ set(IGNORE_PATTERN
     .*ImportanceSampler.*
     .*cblas\\.h.*
     .*LtrDataProvider.*
+    .*\\.pb\\.txt
     .*MultiDataProvider.*)
 
 # add_style_check_target
