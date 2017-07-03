@@ -1,0 +1,433 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Interaction between C++ and Python &mdash; PaddlePaddle  文档</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+  
+        <link rel="index" title="索引"
+              href="../genindex.html"/>
+        <link rel="search" title="搜索" href="../search.html"/>
+    <link rel="top" title="PaddlePaddle  文档" href="../index.html"/> 
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/override.css" type="text/css" />
+  <script>
+  var _hmt = _hmt || [];
+  (function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+    var s = document.getElementsByTagName("script")[0]; 
+    s.parentNode.insertBefore(hm, s);
+  })();
+  </script>
+
+  
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  
+  <header class="site-header">
+    <div class="site-logo">
+      <a href="/"><img src="../_static/images/PP_w.png"></a>
+    </div>
+    <div class="site-nav-links">
+      <div class="site-menu">
+        <a class="fork-on-github" href="https://github.com/PaddlePaddle/Paddle" target="_blank"><i class="fa fa-github"></i>Folk me on Github</a>
+        <div class="language-switcher dropdown">
+          <a type="button" data-toggle="dropdown">
+            <span>English</span>
+            <i class="fa fa-angle-up"></i>
+            <i class="fa fa-angle-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="/doc_cn">中文</a></li>
+            <li><a href="/doc">English</a></li>
+          </ul>
+        </div>
+        <ul class="site-page-links">
+          <li><a href="/">Home</a></li>
+        </ul>
+      </div>
+      <div class="doc-module">
+        
+        <ul>
+<li class="toctree-l1"><a class="reference internal" href="../getstarted/index_cn.html">新手入门</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../howto/index_cn.html">进阶指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>        
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-content-wrap">
+
+    
+    <nav class="doc-menu-vertical" role="navigation">
+        
+          
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../getstarted/index_cn.html">新手入门</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../getstarted/build_and_install/index_cn.html">安装与编译</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/docker_install_cn.html">PaddlePaddle的Docker容器使用方式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/ubuntu_install_cn.html">Ubuntu部署PaddlePaddle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getstarted/build_and_install/cmake/build_from_source_cn.html">PaddlePaddle的编译选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../getstarted/concepts/use_concepts_cn.html">基本使用概念</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../howto/index_cn.html">进阶指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/cmd_parameter/index_cn.html">设置命令行参数</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/use_case_cn.html">使用案例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/arguments_cn.html">参数概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/usage/cmd_parameter/detail_introduction_cn.html">细节描述</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/cluster/cluster_train_cn.html">运行分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_basis_cn.html">Kubernetes 简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_cn.html">Kubernetes单机训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/usage/k8s/k8s_distributed_cn.html">Kubernetes分布式训练</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/dev/write_docs_cn.html">如何贡献/修改文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/dev/contribute_to_paddle_cn.html">如何贡献代码</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/deep_model/rnn/index_cn.html">RNN相关模型</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/rnn_config_cn.html">RNN配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/recurrent_group_cn.html">Recurrent Group教程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../howto/deep_model/rnn/hrnn_rnn_api_compare_cn.html">单双层RNN API对比介绍</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/model_configs.html">模型配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/activation.html">Activation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/layer.html">Layers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/evaluators.html">Evaluators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/optimizer.html">Optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/pooling.html">Pooling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/networks.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/v2/config/attr.html">Parameter Attribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/data.html">数据访问</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/v2/run_logic.html">训练与应用</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../faq/index_cn.html">FAQ</a></li>
+</ul>
+
+        
+    </nav>
+    
+    <section class="doc-content-wrap">
+
+      
+
+ 
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      
+    <li>Interaction between C++ and Python</li>
+  </ul>
+</div>
+      
+      <div class="wy-nav-content" id="doc-content">
+        <div class="rst-content">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="interaction-between-c-and-python">
+<span id="interaction-between-c-and-python"></span><h1>Interaction between C++ and Python<a class="headerlink" href="#interaction-between-c-and-python" title="永久链接至标题">¶</a></h1>
+<p>Users employ API in Python to describe their own network, however, the network construction actually happens in C++. so Protobuf is introduced to send the message between Python and C++.</p>
+<p>The Interaction between Python and C++ can be simplified as two steps:</p>
+<ol class="simple">
+<li>C++ tells Python how many Ops there are, and what parameter do users need to offer to initialize a new Op. Python then builds API for each Op at compile time.</li>
+<li>Users invoke APIs built by Python and provide necessary parameters. These parameters will be sent to C++ fo finish Op construction task.</li>
+</ol>
+<div class="section" id="message-form-c-to-python">
+<span id="message-form-c-to-python"></span><h2>Message form C++ to Python<a class="headerlink" href="#message-form-c-to-python" title="永久链接至标题">¶</a></h2>
+<p>We define a Protobuf message class <code class="docutils literal"><span class="pre">OpProto</span></code> to hold message needed in the first step. What should an <code class="docutils literal"><span class="pre">OpProto</span></code> contain? This question is equivalent to “What message do we need to offer, to build a Python API which is legal and user oriented and can use to describe a whole Op.”</p>
+<p>Following message are necessary:</p>
+<ol class="simple">
+<li>Op&#8217;s name, and its simple comment.</li>
+<li>Input and output variable number; each variable&#8217;s name, type, and comment.</li>
+<li>Op&#8217;s attributes; each attribute includes name, type, comment, <strong>default value</strong> and <strong>value range</strong>.</li>
+</ol>
+<p>So <code class="docutils literal"><span class="pre">OpProto</span></code> can be defined as follows:</p>
+<div class="highlight-proto"><div class="highlight"><pre><span></span><span class="kd">enum</span> <span class="n">AttrType</span> <span class="p">{</span>
+    <span class="na">INT</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="na">FLOAT</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="na">STRING</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+    <span class="na">INTS</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+    <span class="na">FLOATS</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+    <span class="na">STRINGS</span> <span class="o">=</span> <span class="mi">6</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="kd">message</span> <span class="nc">AttrValue</span> <span class="p">{</span>
+    <span class="n">AttrType</span> <span class="na">type</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">optional</span> <span class="n">int</span> <span class="na">iv</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="k">optional</span> <span class="kt">float</span> <span class="na">fv</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+    <span class="k">optional</span> <span class="kt">string</span> <span class="na">sv</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+    <span class="k">repeated</span> <span class="n">int</span> <span class="na">ivs</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+    <span class="k">repeated</span> <span class="kt">float</span> <span class="na">fvs</span> <span class="o">=</span> <span class="mi">6</span><span class="p">;</span>
+    <span class="k">repeated</span> <span class="kt">string</span> <span class="na">svs</span> <span class="o">=</span> <span class="mi">7</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="kd">message</span> <span class="nc">AttrProto</span> <span class="p">{</span>
+    <span class="k">required</span> <span class="kt">string</span> <span class="na">name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">required</span> <span class="kt">string</span> <span class="na">comment</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="k">required</span> <span class="n">AttrType</span> <span class="na">type</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="kd">message</span> <span class="nc">VarProto</span> <span class="p">{</span>
+    <span class="k">required</span> <span class="kt">string</span> <span class="na">name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">required</span> <span class="kt">string</span> <span class="na">comment</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="kd">message</span> <span class="nc">OpProto</span> <span class="p">{</span>
+    <span class="k">repeated</span> <span class="n">VarProto</span> <span class="na">inputs</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">repeated</span> <span class="n">VarProto</span> <span class="na">outputs</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="k">repeated</span> <span class="n">AttrProto</span> <span class="na">attrs</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+    <span class="k">required</span> <span class="kt">string</span> <span class="na">type</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+    <span class="k">required</span> <span class="kt">string</span> <span class="na">comment</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>To generate Python code automatically:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>def create_python_ops_creatation_functions():
+    op_protos = paddle.framework.OpRegistry.get_all_op_proto()
+    for type_name in op_protos:
+        op_proto = op_protos[type_name]
+        def __impl__(**kwargs):  # User must use key word args in Paddle API
+            inputs = [kwargs.get(ipt.name, &quot;&quot;) for ipt in op_proto.inputs]
+            outputs = [kwargs.get(opt.name, &quot;&quot;) for opt in op_proto.outputs]
+            attrs = [cast_to_op_attr(attr, kwargs.get(attr.name, None)) for attr in op_proto.attrs]
+            opdesc = （input, outputs, type_name, attrs）
+            return paddle.framework.OpRegistry.CreateOp(opdesc)
+        __impl__.__doc__ = create_doc_string(op_proto)
+        globals()[type_name] = __impl__
+
+create_python_ops_creatation_functions()
+</pre></div>
+</div>
+</div>
+<div class="section" id="message-from-python-to-c">
+<span id="message-from-python-to-c"></span><h2>Message from Python to C++<a class="headerlink" href="#message-from-python-to-c" title="永久链接至标题">¶</a></h2>
+<p>To hold message needed in the above second step, we define Protobuf message class <code class="docutils literal"><span class="pre">OpDesc</span></code>. It is used to hold user-specified parameters in Op describing.</p>
+<div class="highlight-proto"><div class="highlight"><pre><span></span><span class="kd">message</span> <span class="nc">OpDesc</span> <span class="p">{</span>
+    <span class="k">required</span> <span class="kt">string</span> <span class="na">type</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>   
+    <span class="k">repeated</span> <span class="kt">string</span> <span class="na">inputs</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="k">repeated</span> <span class="kt">string</span> <span class="na">outputs</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+    <span class="n">map</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">,</span> <span class="n">AttrValue</span><span class="p">&gt;</span> <span class="na">attrs</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="opproto-register">
+<span id="opproto-register"></span><h1>OpProto Register<a class="headerlink" href="#opproto-register" title="永久链接至标题">¶</a></h1>
+<p>Every Op has its own <code class="docutils literal"><span class="pre">OpProto</span></code>. For using convenience, we need to register them and record all their messages. For each <code class="docutils literal"><span class="pre">Op</span></code> class, we define a corresponding <code class="docutils literal"><span class="pre">OpMaker</span></code> class, in whose constructor we implement the <code class="docutils literal"><span class="pre">OpProto</span></code>&#8216;s building process. <code class="docutils literal"><span class="pre">OpMaker</span></code>&#8216;s constructor will be invoked by another function <code class="docutils literal"><span class="pre">OpRegistry::RegisterOp()</span></code>.</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">OpProtoMaker</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">OpProtoMaker</span><span class="p">(</span><span class="n">OpProto</span><span class="o">*</span> <span class="n">proto</span><span class="p">)</span><span class="o">:</span> <span class="n">proto_</span><span class="p">(</span><span class="n">proto</span><span class="p">)</span> <span class="p">{}</span>
+<span class="k">protected</span><span class="o">:</span>
+    <span class="n">OpProto</span><span class="o">*</span> <span class="n">proto_</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="nf">AddInput</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">desc</span><span class="p">)</span> <span class="p">{...}</span>
+    <span class="kt">void</span> <span class="nf">AddAttr</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">desc</span><span class="p">,</span> <span class="n">TypeId</span> <span class="n">type</span><span class="p">)</span> <span class="p">{...}</span>
+    <span class="kt">void</span> <span class="nf">AddComment</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">comment</span><span class="p">)</span> <span class="p">{</span> <span class="p">...</span> <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="k">class</span> <span class="nc">OpRegistry</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="k">using</span> <span class="n">OpCreator</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="n">OperatorBase</span><span class="o">*</span> <span class="p">(</span><span class="n">OpDesc</span><span class="o">&amp;</span> <span class="n">desc</span><span class="p">)</span><span class="o">&gt;</span><span class="p">;</span>
+    
+    <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">OpType</span><span class="p">,</span> <span class="k">typename</span> <span class="n">OpMaker</span><span class="o">&gt;</span>
+    <span class="k">static</span> <span class="kt">void</span> <span class="n">RegisterOp</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">gCreators_</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[](</span><span class="k">const</span> <span class="n">OpDesc</span><span class="o">&amp;</span> <span class="n">desc</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="k">new</span> <span class="n">OpType</span><span class="p">(</span><span class="n">desc</span><span class="p">);</span>
+        <span class="p">};</span>
+        <span class="n">OpProto</span><span class="o">&amp;</span> <span class="n">opProto</span> <span class="o">=</span> <span class="n">gProtos_</span><span class="p">[</span><span class="n">name</span><span class="p">];</span>
+        <span class="n">OpMaker</span><span class="p">()(</span><span class="o">&amp;</span><span class="n">opProto</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">static</span> <span class="n">map</span><span class="o">&lt;</span><span class="n">string</span><span class="p">,</span> <span class="n">OpCreator</span><span class="o">&gt;</span> <span class="n">gCreators_</span><span class="p">;</span>
+    <span class="k">static</span> <span class="n">map</span><span class="o">&lt;</span><span class="n">string</span><span class="p">,</span> <span class="n">OpProto</span><span class="o">&gt;</span> <span class="n">gProtos_</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">OpType</span><span class="p">,</span> <span class="k">typename</span> <span class="n">OpMaker</span><span class="o">&gt;</span>
+<span class="k">class</span> <span class="nc">OpRegister</span> <span class="p">{</span>
+  <span class="k">public</span><span class="o">:</span>
+    <span class="n">OpRegister</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">type</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">OpRegistry</span><span class="o">::</span><span class="n">RegisterOp</span><span class="o">&lt;</span><span class="n">OpType</span><span class="p">,</span> <span class="n">OpMaker</span><span class="o">&gt;</span><span class="p">(</span><span class="n">type</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="cp">#define REGISTER_OP(op_class, op_maker_class, type_name)         \</span>
+<span class="cp">    class op_class##Register {                                   \</span>
+<span class="cp">      private:                                                   \</span>
+<span class="cp">        const static OpRegister&lt;#op_class, #op_maker_class&gt; reg; \</span>
+<span class="cp">    };                                                           \</span>
+<span class="cp">    const Register op_class##Register::reg(#type_name);</span>
+    
+<span class="k">class</span> <span class="nc">CosineOp</span> <span class="p">{</span>
+<span class="c1">// ...</span>
+<span class="p">}</span>
+
+<span class="k">struct</span> <span class="nl">CosineOpProtoMaker</span> <span class="p">:</span> <span class="k">public</span> <span class="n">OpProtoMaker</span> <span class="p">{</span>
+    <span class="n">CosineOpProtoMaker</span><span class="p">(</span><span class="n">OpProto</span><span class="o">*</span> <span class="n">proto</span><span class="p">)</span> <span class="o">:</span> <span class="n">OpProtoMaker</span><span class="p">(</span><span class="n">proto</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">AddInput</span><span class="p">(</span><span class="s">&quot;input&quot;</span><span class="p">,</span> <span class="s">&quot;input of cosine op&quot;</span><span class="p">);</span>
+        <span class="n">AddAttr</span><span class="p">(</span><span class="s">&quot;scale&quot;</span><span class="p">,</span> <span class="s">&quot;scale of cosine op&quot;</span><span class="p">,</span> <span class="kt">float</span><span class="p">).</span><span class="n">Default</span><span class="p">(</span><span class="mf">1.0</span><span class="p">).</span><span class="n">LargerThan</span><span class="p">(</span><span class="mf">0.0</span><span class="p">);</span>
+        <span class="n">AddType</span><span class="p">(</span><span class="s">&quot;cos&quot;</span><span class="p">);</span>
+        <span class="n">AddComment</span><span class="p">(</span><span class="s">&quot;This is cos op&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">REGISTER_OP</span><span class="p">(</span><span class="n">CosineOp</span><span class="p">,</span> <span class="n">CosineOpProtoMaker</span><span class="p">,</span> <span class="n">cos</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>In <code class="docutils literal"><span class="pre">REGISTER_OP(CosineOp,</span> <span class="pre">CosineOpProtoMaker,</span> <span class="pre">cos)</span></code>, we register not only <code class="docutils literal"><span class="pre">CosineOp</span></code> but also <code class="docutils literal"><span class="pre">CosineOpProto</span></code>. As fields of <code class="docutils literal"><span class="pre">CosineOpProto</span></code>, the default value and value range of <code class="docutils literal"><span class="pre">scale</span></code> are also registered here.</p>
+</div>
+<div class="section" id="python-api">
+<span id="python-api"></span><h1>Python API<a class="headerlink" href="#python-api" title="永久链接至标题">¶</a></h1>
+<p>Python  APIs are divided into two types, high-level API and low-level API.</p>
+<div class="section" id="high-level-api">
+<span id="high-level-api"></span><h2>High-Level API<a class="headerlink" href="#high-level-api" title="永久链接至标题">¶</a></h2>
+<p>High-level API is called by users directly, so it should keep its style consistent with existing V2 APIs.</p>
+<p>Here is a sample about how a define a fc layer:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">hd</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">56</span><span class="p">,</span> <span class="n">with_bias</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;sigmoid&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">hd</span></code> is the output of <code class="docutils literal"><span class="pre">fc_layer</span></code> and it&#8217;s a <code class="docutils literal"><span class="pre">variable</span></code>. It can be further sent into other layers as input.</p>
+<p>The definition of <code class="docutils literal"><span class="pre">fc_layer()</span></code>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">with_bias</span><span class="p">,</span> <span class="n">activation</span><span class="p">):</span>
+    <span class="n">attr_map</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;size&quot;</span><span class="p">:</span><span class="n">size</span><span class="p">}</span>
+    <span class="n">check_attrs</span><span class="p">(</span><span class="n">attr_map</span><span class="p">)</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">make_variable</span><span class="p">(</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">with_bias</span><span class="p">:</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">make_variable</span><span class="p">(</span><span class="s1">&#39;b&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">fc_output</span> <span class="o">=</span> <span class="n">make_variable</span><span class="p">(</span><span class="s1">&#39;fc_output&#39;</span><span class="p">);</span>
+    <span class="n">fc_op</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">fc_output</span><span class="p">,</span> <span class="n">attr_map</span><span class="p">)</span>
+    <span class="n">act_output</span> <span class="o">=</span> <span class="n">make_variable</span><span class="p">(</span><span class="s1">&#39;sigmod_output&#39;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="n">activation</span> <span class="o">==</span> <span class="s2">&quot;sigmod&quot;</span><span class="p">:</span>
+        <span class="n">sigmod_op</span><span class="p">(</span><span class="n">fc_output</span><span class="p">,</span> <span class="n">act_output</span><span class="p">);</span>
+    <span class="k">elif</span><span class="p">:</span>
+        <span class="c1"># ...</span>
+    <span class="k">return</span> <span class="n">act_output</span><span class="p">;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="low-leval-api">
+<span id="low-leval-api"></span><h2>Low Leval API<a class="headerlink" href="#low-leval-api" title="永久链接至标题">¶</a></h2>
+<p>In above sample, <code class="docutils literal"><span class="pre">fc_op</span></code> and <code class="docutils literal"><span class="pre">sigmod_op</span></code> are low-level API. They build <code class="docutils literal"><span class="pre">OpDesc</span></code> and invoke corresponding C++ code.</p>
+<p><em>TODO</em></p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, PaddlePaddle developers.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: ".txt",
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="../_static/translations.js"></script>
+      <script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js"></script>
+       
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+  
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
+  <script src="../_static/js/paddle_doc_init.js"></script> 
+
+</body>
+</html>
