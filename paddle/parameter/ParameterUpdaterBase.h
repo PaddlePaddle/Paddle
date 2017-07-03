@@ -61,9 +61,9 @@ public:
     this->updateImpl(para);
   }
 
-  void preprocess(Parameter* para, size_t currentPass) {
+  void preprocess(Parameter* para, size_t currentPass, size_t currentBatch) {
     SetDevice setDevice(para->getDeviceId());
-    para->preProcessHook(currentPass);
+    para->preProcessHook(currentPass, currentBatch);
   }
   // only get required sparse rows by default,
   // get full matrix parameter if *fullSize* set

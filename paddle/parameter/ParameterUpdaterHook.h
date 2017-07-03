@@ -52,7 +52,7 @@ public:
    * The init hook method. Invoke in ParameterUpdater::init
    */
   virtual void init(Parameter* para) = 0;
-  virtual void preprocess(Parameter* para, size_t current_pass) = 0;
+  virtual void preprocess(Parameter* para, size_t currentPass, size_t currentBatch) = 0;
 
 protected:
   /**
