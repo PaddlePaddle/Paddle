@@ -19,13 +19,12 @@ namespace framework {
 
 class Tensor {
   using paddle::platform::Place;
-  using paddle::platform::get_place;
 
  public:
   template <typename T>
   const T* data() const {
-    PADDLE_ASSERT(holder_ != nullptr,
-                  "Tensor::data must be called after Tensor::mutable_data");
+    PADDLE_ENFORCE(holder_ != nullptr,
+                   "Tensor::data must be called after Tensor::mutable_data");
     return static_cast<const T*>(holder->Ptr());
   }
 
