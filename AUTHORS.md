@@ -18,6 +18,8 @@
 | wanghaoshuang | Haoshuang Wang |
 | wangzhen-nlp | Zhen Wang |
 | wwhu | Weiwei Hu |
+| xinghai-sun | XingHai Sun |
+| zhaopu7 | Pu Zhao |
 | reyoung | Yang Yu |
 | gangliao | Gang Liao |
 | luotao01 | Tao Luo |
