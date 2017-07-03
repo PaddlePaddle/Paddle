@@ -15,7 +15,8 @@ const (
 	DefaultEtcdTimeout time.Duration = 5 * time.Second
 )
 
-// TODO
+// EtcdClient is used by pserver client that is a part of trainer process.
+// TODO:
 // 1. add watcher to watch the change state of pservers)
 // 1. add etcd lock)
 type EtcdClient struct {
@@ -24,8 +25,9 @@ type EtcdClient struct {
 	endpoints []string
 }
 
-// read ps desired number from etcd.
+// Desired read ps desired number from etcd.
 func (p *EtcdClient) Desired() int {
+	var psDesired int
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
 		resp, err := p.client.Get(ctx, pserver.PsDesired)
@@ -43,18 +45,20 @@ func (p *EtcdClient) Desired() int {
 			continue
 		}
 
-		psDesired, err := strconv.Atoi(string(resp.Kvs[0].Value))
+		psDesired, err = strconv.Atoi(string(resp.Kvs[0].Value))
 		if err != nil {
 			log.Errorf("psDesired %s invalid %v", psDesired, err)
 			time.Sleep(p.timeout)
 			continue
 		}
 
-		log.Debugf("Get psDesired number: %d\n", psDesired)
-		return psDesired
+		log.Debugf("Get psDesired number: %d", psDesired)
+		break
 	}
+	return psDesired
 }
 
+// List return the pserver list read from etcd.
 func (p *EtcdClient) List() []Server {
 	psDesired := p.Desired()
 
@@ -97,19 +101,19 @@ func (p *EtcdClient) List() []Server {
 	return servers
 }
 
+// NewEtcd create a etcd client to return the state of pserver on etcd.
 func NewEtcd(endpoints string) (*EtcdClient, error) {
 	ep := strings.Split(endpoints, ",")
-	timeout := DefaultEtcdTimeout
 	var cli *clientv3.Client
 	var err error
 	for {
 		cli, err = clientv3.New(clientv3.Config{
 			Endpoints:   ep,
-			DialTimeout: timeout,
+			DialTimeout: DefaultEtcdTimeout,
 		})
 		if err != nil {
 			log.Errorf("Init etcd connection failed: %v", err)
-			time.Sleep(timeout)
+			time.Sleep(DefaultEtcdTimeout)
 			continue
 		}
 		break
@@ -117,7 +121,7 @@ func NewEtcd(endpoints string) (*EtcdClient, error) {
 	log.Infof("Connected to etcd: %s\n", endpoints)
 	client := &EtcdClient{
 		client:    cli,
-		timeout:   timeout,
+		timeout:   DefaultEtcdTimeout,
 		endpoints: ep,
 	}
 	return client, nil

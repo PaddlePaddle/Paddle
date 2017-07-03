@@ -15,9 +15,9 @@ import (
 
 const (
 	// PsDesired is etcd path for store desired pserver count
-	PsDesired = "/ps/desired"
+	PsDesired = "/ps_desired"
 	// PsAddr is the base dir for pserver to store their addr
-	PsPath = "/ps/addr/"
+	PsPath = "/ps/"
 )
 
 // EtcdClient is the etcd client that the pserver uses for fault
