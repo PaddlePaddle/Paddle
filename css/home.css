@@ -2459,17 +2459,12 @@ header.site-header .right-nav {
 header.site-header .right-nav .language-switcher {
   position: relative;
   display: inline-block;
-  height: 60px;
   float: left;
-}
-header.site-header .right-nav .language-switcher:hover > a {
-  color: #fff;
-}
-header.site-header .right-nav .language-switcher:hover > a .fa::before {
-  content: "\F106";
 }
 header.site-header .right-nav .language-switcher > a {
   color: rgba(255, 255, 255, 0.7);
+  width: 80px;
+  text-align: center;
   line-height: 60px;
   display: inline-block;
   margin-right: 10px;
@@ -2478,29 +2473,13 @@ header.site-header .right-nav .language-switcher > a .fa::before {
   margin-left: 5px;
   content: "\F107";
 }
-header.site-header .right-nav .language-switcher ul {
-  display: none;
-  top: 50px;
-  width: 60px;
-  text-align: center;
-  line-height: 30px;
-  background: rgba(0, 0, 0, 0.85);
+header.site-header .right-nav .language-switcher > a:hover {
   color: #0073eb;
-  position: absolute;
-  left: 0;
-}
-header.site-header .right-nav .language-switcher ul > li > a {
-  color: #ababab;
-}
-header.site-header .right-nav .language-switcher ul > li > a:hover {
-  color: #0073eb;
-}
-header.site-header .right-nav .language-switcher:hover ul {
-  display: inline-block;
+  background-color: #222;
 }
 header.site-header .github-fork {
   float: left;
-  margin-left: 20px;
+  /* margin-left: 20px; */
 }
 header.site-header .github-fork > a {
   display: inline-block;
@@ -2648,9 +2627,12 @@ header.site-header .github-fork > a:hover {
   color: #999;
 }
 .services .service-desc a.view-more {
-  color: #666;
+  color: #0073eb;
   font-size: 16px;
   display: inline-block;
+}
+.services .service-desc a.view-more:hover {
+  text-decoration: underline;
 }
 .features {
   background-color: #ffffff;
