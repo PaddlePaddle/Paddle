@@ -28,12 +28,12 @@ class client(object):
 
     # return format: (record, errno)
     # errno =  0: ok
-    #       < -1: error
+    #       <  0: error
     def next_record(self):
         p = ctypes.c_char_p()
         ret = ctypes.pointer(p)
         size = lib.paddle_next_record(self.c, ret)
-        if size < -1:
+        if size < 0:
             # Error
             return None, size
 
