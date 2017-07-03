@@ -30,10 +30,10 @@ void SGDOptimizer::Update(const Tensor *gradient) {
 const char *SGDOptimizer::SerializeState(int *state_len) {
   SGDOptimizerState state;
   state.set_num_sample_passed(num_sample_passed_);
-  TensorToProto(*parameter_, state.mutable_parameter());
+  state.set_lr_ TensorToProto(*parameter_, state.mutable_parameter());
   if (momentum_ != 0.0) TensorToProto(*momentums_, state.mutable_momentums());
   auto str = state.SerializeAsString();
-  *state_len = str.size();
+  *state_len += str.size();
   return str.c_str();
 }
 

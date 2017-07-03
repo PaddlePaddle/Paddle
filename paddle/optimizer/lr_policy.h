@@ -19,34 +19,54 @@ class ConstLr final : public LrPolicy {
 public:
   ConstLr(double lr) : learning_rate(lr){};
   double LearningRate(const uint64_t num_sample_passed) {
-    return learning_rate;
+    return learning_rate_;
   }
-  const char *SerializeState(int *state_len) { return nullptr; }
-  void DeserializeState(const std::string &state) {}
+  const char *SerializeState(int *state_len) {
+    LrPolicyState state;
+    state.set_learning_rate(learning_rate_);
+    auto str = state.SerializeAsString();
+    *state_len = str.size();
+    return str.c_str();
+  }
+  void DeserializeState(const std::string &state) {
+    LrPolicyState state;
+    state.ParseFromString(str);
+    learning_rate_ = state.learning_rate();
+  }
 
 private:
-  double learning_rate;
+  double learning_rate_;
 };
 
 class LinearLr final : public LrPolicy {
 public:
   LinearLr(double lr, double lr_decay_a, double lr_decay_b)
-      : learning_rate(lr), lr_decay_a(lr_decay_a), lr_decay_b(lr_decay_b) {}
+      : learning_rate_(lr), lr_decay_a_(lr_decay_a), lr_decay_b_(lr_decay_b) {}
   double LearningRate(const uint64_t num_sample_passed) {
-    return std::max(learning_rate - lr_decay_a * num_sample_passed, lr_decay_b);
+    return std::max(learning_rate_ - lr_decay_a_ * num_sample_passed,
+                    lr_decay_b_);
   }
   const char *SerializeState(int *state_len) {
-    // TODO(zhihong) : add lr_policy serialization
-    return nullptr;
+    LrPolicyState state;
+    state.set_learning_rate(learning_rate_);
+    state.set_lr_decay_a(lr_decay_a_);
+    state.set_lr_decay_b(lr_decay_b_);
+    auto str = state.SerializeAsString();
+    *state_len = str.size();
+    return str.c_str();
   }
-  void DeserializeState(const std::string &state) {
-    // TODO(zhihong) : add lr_policy serialization
+  void DeserializeState(const std::string &str) {
+    LrPolicyState state;
+    state.ParseFromString(str);
+    learning_rate_ = state.learning_rate();
+    lr_decay_a_ = state.lr_decay_a();
+    lr_decay_b_ = state.lr_decay_b();
   }
 
 private:
-  double learning_rate;
-  double lr_decay_a;
-  double lr_decay_b;
+  double learning_rate_;
+  double lr_decay_a_;
+  double lr_decay_b_;
 };
 
 }  // namespace optimizer
