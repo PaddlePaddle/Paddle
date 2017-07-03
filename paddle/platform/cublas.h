@@ -3,7 +3,6 @@
 
 namespace paddle {
 namespace dyload {
-namespace dynload {
 
 std::once_flag cublas_dso_flag;
 void *cublas_dso_handle = nullptr;
@@ -66,8 +65,6 @@ CUBLAS_BLAS_ROUTINE_EACH(DYNAMIC_LOAD_CUBLAS_V2_WRAP)
 #undef DYNAMIC_LOAD_CUBLAS_WRAP
 #undef DYNAMIC_LOAD_CUBLAS_V2_WRAP
 #undef CUBLAS_BLAS_ROUTINE_EACH
-
-} /* namespace dynload */
 
 // clang-format on
 #ifndef PADDLE_TYPE_DOUBLE

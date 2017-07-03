@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "dynamic_loader.h"
 #include <gflags/gflags.h>
-#include "DynamicLoader.h"
-#include "Logging.h"
+#include <glog/logging.h>
 
 DEFINE_string(cudnn_dir, "",
               "Specify path for loading libcudnn.so. For instance, "

@@ -3,6 +3,8 @@
 
 namespace paddle {
 namespace dyload {
+std::once_flag curand_dso_flag;
+void *curand_dso_handle = nullptr;
 #ifdef PADDLE_USE_DSO
 #define DYNAMIC_LOAD_CURAND_WRAP(__name)                                       \
   struct DynLoad__##__name {                                                   \
@@ -31,7 +33,8 @@ namespace dyload {
   __macro(curandSetStream)                   \
   __macro(curandSetPseudoRandomGeneratorSeed)\
   __macro(curandGenerateUniform)             \
-  __macro(curandGenerateUniformDouble)
+  __macro(curandGenerateUniformDouble)       \
+  __macro(curandDestroyGenerator)
 // clang-format on
 
 CURAND_RAND_ROUTINE_EACH(DYNAMIC_LOAD_CURAND_WRAP)
