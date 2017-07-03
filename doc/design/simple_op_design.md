@@ -43,10 +43,7 @@ message AttrValue {
 message AttrProto {
 	required string name = 1;
 	required string comment = 2;
-	optional AttrValue default = 3;
-	optional AttrValue max = 4;
-	optional AttrValue min = 5;
-	required AttrType type = 6;
+	required AttrType type = 3;
 };
 
 message VarProto {
@@ -63,7 +60,24 @@ message OpProto {
 };
 ```
 
-The default value and value range didn't appear in out previous design. By adding these two fields, we are able to check attribute validity in Python and find out possible error as soon as possible. What's more, by providing the message about default value and value range to Python docstring, it helps to automatically generate more comprehensive documents.
+To generate Python code automatically:
+
+```python 
+def create_python_ops_creatation_functions():
+	op_protos = paddle.framework.OpRegistry.get_all_op_proto()
+	for type_name in op_protos:
+		op_proto = op_protos[type_name]
+		def __impl__(**kwargs):  # User must use key word args in Paddle API
+			inputs = [kwargs.get(ipt.name, "") for ipt in op_proto.inputs]
+			outputs = [kwargs.get(opt.name, "") for opt in op_proto.outputs]
+			attrs = [cast_to_op_attr(attr, kwargs.get(attr.name, None)) for attr in op_proto.attrs]
+			opdesc = （input, outputs, type_name, attrs）
+			return paddle.framework.OpRegistry.CreateOp(opdesc)
+		__impl__.__doc__ = create_doc_string(op_proto)
+		globals()[type_name] = __impl__
+
+create_python_ops_creatation_functions()
+```
 
 ### Message from Python to C++
 
@@ -185,89 +199,3 @@ def fc_layer(input, size, with_bias, activation):
 In above sample, `fc_op` and `sigmod_op` are low-level API. They build `OpDesc` and invoke corresponding C++ code.
 
 *TODO*
-
-## Op and Kernal
-
-After completely defined, an Op will be run in a network. However, Op's computing method may differ on different devices. One solution is that write an `Op`'s member function `Op::run()`, which contains computing methods of all possible devices. That may be a bad idea because we have to change all `Op`'s code to add a new device.
-
-Another choice is adding a concept named `kernal`. A `Kernal` describes an op's computing process on a certain device. After stripping `Variable` and `kernal`, `Op` becomes a pure conceptual class, which holds neither data nor detailed computing process.
-
-```cpp
-class KernalBase {
-public:
-  virtual void RunOnDevice(std::vector<Variable*> input_vars,
-                           std::vector<Variable*> input_vars,
-                           const OpAttrs* attrs) = 0;  
-};
-
-template <typename Device>
-class CosineKernal : public KernalBase {
-public:
-  virtual void RunOnDevice(std::vector<Variable*> input_vars,
-                           std::vector<Variable*> input_vars,
-                           const OpAttrs* attrs) {
-    // no implementation
-  }
-};
-
-template <>
-class CosineKernal<CpuDevice> : public KernalBase {
-public:
-  virtual void RunOnDevice(std::vector<Variable*> input_vars,
-                           std::vector<Variable*> input_vars,
-                           const OpAttrs* attrs) {
-    CosineOpAttrs* cosine_attrs = static_cast<CosineOpAttrs*>(attrs);
-    // computing code
-    // ...
-  }
-};
-
-struct OpAttrs {...};
-
-class Op {
- public:
-   std::string get_kernal_name() {
-     return kernel_name_;
-   }
-   const vector<std::string>& get_input_names() {
-     return input_names_;
-    }
-   const vector<std::string>& get_output_names() {
-     return output_names_;
-   }
- // ...
- private:
-  std::vector<std::string> input_names_;
-  std::vector<std::string> output_names_;
-  std::string kernal_name_;
-  
-}
-
-struct CosineOpAttrs : public OpAttrs {
-  float scale_;
-}
-  
-class CosineOp : public Op {
- public:
-  const CosineOpAtrrs* get_attrs() {
-    return &attrs;
-  }
-  
- private:
-  CosineOpAttrs attrs;
-}
-
-RunOp(const Op& op, Scope scope) {
-  Kernal* kernal = get_kernal(scope, op.get_kernal_name());
-  std::vector<Variable*> input_vars = 
-               get_variables(scope, op.get_input_name());
-  std::vector<Variable*> output_vars = 
-               get_variables(scope, op.get_output_name());
-  	  
-  kernal->RunOnDevice(input_vars, output_vars, op.get_attrs());
-}
-```
-
-All `Kernal` need to be registered beforehand, just like `Op`.
-
-Now, `Op` is no longer has `Run()` function. It only contains names of variables and kernels. During network running, `RunOp()` is called to invoke `Op`'s corresponding `Kernal`. `get_kernal()` is supposed to return `kernal` for current device.
