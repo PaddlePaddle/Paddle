@@ -6,6 +6,6 @@ img_layers img_trans_layers util_layers simple_rnn_layers unused_layers test_cos
 test_rnn_group shared_fc shared_lstm shared_gru test_cost_layers_with_weight
 test_spp_layer test_bilinear_interp test_maxout test_bi_grumemory math_ops
 test_seq_concat_reshape test_pad test_smooth_l1 test_multiplex_layer
-test_prelu_layer test_row_conv)
+test_prelu_layer test_row_conv test_resize)
 
 export whole_configs=(test_split_datasource)

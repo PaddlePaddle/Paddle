@@ -33,7 +33,7 @@ def main(print_whole_config, globals, locals):
             functionstr = functionstr + "  " + line
 
     cmdstr = cmdstr + importstr + """def configs():\n""" + functionstr
-    #cmdstr = cmdstr + """def configs():\n""" + importstr + functionstr
+
     if print_whole_config:
         cmdstr = cmdstr + """print parse_config(configs, "")"""
     else:
