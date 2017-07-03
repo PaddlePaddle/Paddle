@@ -34,11 +34,12 @@ RUN apt-get update && \
     net-tools && \
     apt-get clean -y
 
-# Install Go
+# Install Go and glide
 RUN wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go.tgz && \
     mkdir /root/gopath && \
-    rm go.tgz
+    rm go.tgz \
+    curl https://glide.sh/get | sh
 ENV GOROOT=/usr/local/go GOPATH=/root/gopath
 # should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
 ENV PATH=${PATH}:${GOROOT}/bin
@@ -57,7 +58,7 @@ RUN pip install --upgrade pip && \
     pip install -U docopt PyYAML sphinx && \
     pip install -U sphinx-rtd-theme==0.1.9 recommonmark && \
     pip install pre-commit 'requests==2.9.2' 'ipython==5.3.0' && \
-    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \ 
+    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip install rarfile
 
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
