@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/enforce.h"
 #include "paddle/memory/memory.h"
-#include "paddle/platform/assert.h"
 #include "paddle/platform/place.h"
 
 namespace paddle {
@@ -63,21 +62,35 @@ class Tensor {
 
   template <typename T>
   struct PlaceholderImpl : public Placeholder {
-    PlaceholderImpl(paddle::platform::Place pl, size_t size)
-        : ptr_(paddle::memory::Alloc(pl, size), paddle::memory::Deleter(pl)),
-          place_(pl),
+   private:
+    class Deleter {
+     public:
+      Deleter(platform::Place place) : place_(place) {}
+      void operator()(T* ptr) {
+        paddle::memory::Free(place_, static_cast<void*>(ptr));
+      }
+
+     private:
+      paddle::platform::Place place_;
+    };
+
+   public:
+    PlaceholderImpl(paddle::platform::Place place, size_t size)
+        : ptr_(static_cast<T*>(paddle::memory::Alloc(place, size)),
+               Deleter(place)),
+          place_(place),
           size_(size) {}
 
     virtual void* Ptr() const { return static_cast<void*>(ptr_.get()); }
     virtual size_t Size() const { return size_; }
     virtual paddle::platform::Place Place() const { return place_; }
 
-    std::unique_ptr<T, memory::Deleter> ptr_;
+    std::unique_ptr<T, Deleter> ptr_;
     paddle::platform::Place place_;  // record the place of ptr_.
     size_t size_;                    // size of the memory block.
   };
 
-  std::unique_ptr<Placeholder> holder_;  // holds the memory block if allocated.
+  std::shared_ptr<Placeholder> holder_;  // holds the memory block if allocated.
 };
 
 }  // namespace framework
