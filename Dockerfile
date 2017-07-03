@@ -38,11 +38,12 @@ RUN apt-get update && \
 RUN wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go.tgz && \
     mkdir /root/gopath && \
-    rm go.tgz \
-    curl https://glide.sh/get | sh
+    rm go.tgz
 ENV GOROOT=/usr/local/go GOPATH=/root/gopath
 # should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
 ENV PATH=${PATH}:${GOROOT}/bin
+# install glide
+RUN curl https://glide.sh/get | sh
 
 # git credential to skip password typing
 RUN git config --global credential.helper store
