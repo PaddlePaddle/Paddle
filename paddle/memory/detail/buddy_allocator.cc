@@ -12,22 +12,161 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#pragma once
-
 #include "paddle/memory/detail/buddy_allocator.h"
+#include "glog/logging.h"
 
 namespace paddle {
 namespace memory {
 namespace detail {
 
-BuddyAllocator::BuddyAllocator(size_t pool_size, size_t max_pools,
-                               SystemAllocator* system_allocator)
-    : pool_size_(pool_size),
-      max_pools_(max_pools),
-      system_allocator_(system_allocator) {
-  PADDLE_ASSERT(pool_size > 0);
-  PADDLE_ASSERT(max_pools > 0);
+BuddyAllocator::BuddyAllocator(SystemAllocator* system_allocator,
+                               size_t min_chunk_size, size_t max_chunk_size) {
+  PADDLE_ASSERT(min_chunk_size > 0);
+  PADDLE_ASSERT(max_chunk_size > 0);
   PADDLE_ASSERT(system_allocator != nullptr);
+
+  system_allocator_ = std::move(system_allocator);
+  min_chunk_size_ = min_chunk_size;
+  max_chunk_size_ = max_chunk_size;
+}
+
+inline size_t align(size_t size, size_t alignment) {
+  size_t remaining = size % alignment;
+  return remaining == 0 ? size : size + (alignment - remaining);
+}
+
+void* BuddyAllocator::Alloc(size_t unaligned_size) {
+  // adjust allocation alignment
+  size_t size = align(unaligned_size + sizeof(Metadata), min_chunk_size_);
+
+  // acquire the allocator lock
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  DLOG(INFO) << "Allocate " << unaligned_size << " bytes from chunk size "
+             << size;
+
+  // if the allocation is huge, send directly to the system allocator
+  if (size > max_chunk_size_) {
+    DLOG(INFO) << "Allocate from system allocator.";
+
+    return SystemAlloc(size);
+  }
+
+  // query and allocate from the existing chunk
+  auto it = FindExistChunk(size);
+
+  // refill the pool if failure
+  if (it == pool_.end()) {
+    it = RefillPool();
+  } else {
+    DLOG(INFO) << " Allocation from existing memory block " << std::get<2>(*it)
+               << " at address "
+               << reinterpret_cast<MemoryBlock*>(std::get<2>(*it))->data();
+  }
+
+  // if still failure, fail fatally
+  if (it == pool_.end()) {
+    return nullptr;
+  }
+
+  total_used_ += size;
+  total_free_ -= size;
+
+  // split the allocation and return data for use
+  return reinterpret_cast<MemoryBlock*>(SplitToAlloc(it, size))->data();
+}
+
+void* BuddyAllocator::SystemAlloc(size_t size) {
+  size_t index = 0;
+  void* p = system_allocator_->Alloc(index, size);
+
+  DLOG(INFO) << "Allocated " << p << " from system allocator.";
+
+  if (p == nullptr) return nullptr;
+
+  static_cast<MemoryBlock*>(p)->init(cache_, MemoryBlock::HUGE_CHUNK, index,
+                                     size, nullptr, nullptr);
+
+  return static_cast<MemoryBlock*>(p)->data();
+}
+
+BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
+#ifndef PADDLE_ONLY_CPU
+  if (system_allocator_->UseGpu()) {
+    if ((total_used_ + total_free_) == 0) {
+      // Compute the maximum allocation size for the first allocation.
+      max_chunk_size_ = platform::GpuMaxChunkSize();
+    }
+  }
+#endif  // PADDLE_ONLY_CPU
+
+  // Allocate a new maximum sized block
+  size_t index = 0;
+  void* p = system_allocator_->Alloc(index, max_chunk_size_);
+
+  if (p == nullptr) return pool_.end();
+
+  DLOG(INFO) << " Creating and inserting new block " << p
+             << " from system allocator";
+
+  static_cast<MemoryBlock*>(p)->init(cache_, MemoryBlock::FREE_CHUNK, index,
+                                     max_chunk_size_, nullptr, nullptr);
+
+  total_free_ += max_chunk_size_;
+
+  // dump the block into pool
+  return pool_.insert({index, max_chunk_size_, p}).first;
+}
+
+BuddyAllocator::PoolSet::iterator BuddyAllocator::FindExistChunk(size_t size) {
+  size_t index = 0;
+
+  while (1) {
+    auto it = pool_.lower_bound({index, size, nullptr});
+    if (it == pool_.end()) return it;
+
+    if (std::get<0>(*it) > index) {
+      if (std::get<1>(*it) >= size) {
+        return it;
+      }
+
+      index = std::get<0>(*it);
+      continue;
+    }
+    return it;
+  }
+}
+
+void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
+                                   size_t size) {
+  auto block = static_cast<MemoryBlock*>(std::get<2>(*it));
+
+  pool_.erase(it);
+
+  DLOG(INFO) << " Split block (" << block << ", " << block->total_size(cache_)
+             << ") into";
+
+  block->split(cache_, size);
+
+  DLOG(INFO) << " Left block (" << block << ", " << block->total_size(cache_)
+             << ")";
+
+  block->set_type(cache_, MemoryBlock::ARENA_CHUNK);
+
+  // the rest of memory if exist
+  if (block->has_right_buddy(cache_)) {
+    if (block->right_buddy(cache_)->type(cache_) == MemoryBlock::FREE_CHUNK) {
+      DLOG(INFO) << " Insert right block (" << block->right_buddy(cache_)
+                 << ", " << block->right_buddy(cache_)->total_size(cache_)
+                 << ")";
+
+      pool_.insert({block->right_buddy(cache_)->index(cache_),
+                    block->right_buddy(cache_)->total_size(cache_),
+                    block->right_buddy(cache_)});
+    }
+  }
+
+  return block;
 }
 
 }  // namespace detail

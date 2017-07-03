@@ -15,9 +15,15 @@
 #pragma once
 
 #include "paddle/memory/detail/system_allocator.h"
+#include "paddle/memory/detail/metadata.h"
+#include "paddle/platform/assert.h"
+#include "paddle/platform/cpu_info.h"
+#include "paddle/platform/gpu_info.h"
 
+#include <set>
 #include <mutex>
 #include <vector>
+#include <unordered_map>
 
 namespace paddle {
 namespace memory {
@@ -25,55 +31,83 @@ namespace detail {
 
 class BuddyAllocator {
  public:
-  BuddyAllocator(size_t pool_size, size_t max_pools,
-                 SystemAllocator* system_allocator);
+  BuddyAllocator(SystemAllocator* system_allocator, size_t min_chunk_size,
+                 size_t max_chunk_size);
+
   ~BuddyAllocator();
 
-  void* Alloc(size_t size);
+ public:
+  void* Alloc(size_t unaligned_size);
   void Free(void*);
   size_t Used();
 
- private:
-  struct Block {
-    size_t size_;
-    Block* left_;   // left buddy
-    Block* right_;  // right buddy
-  };
-
-  // Initially, there is only one pool.  If a Alloc founds not enough
-  // memory from that pool, and there has not been max_num_pools_,
-  // create a new pool by calling system_allocator_.Alloc(pool_size_).
-  std::vector<void*> pools_;
-
-  size_t pool_size_;      // the size of each pool;
-  size_t max_num_pools_;  // the size of all pools;
-
-  SystemAllocator* system_allocator_;
-
-  std::mutex mutex_;
-
+ public:
   // Disable copy and assignment.
   BuddyAllocator(const BuddyAllocator&) = delete;
   BuddyAllocator& operator=(const BuddyAllocator&) = delete;
+
+ private:
+  // Tuple type: allocator index, memory size, memory address
+  using IndexSizeAddress = std::tuple<size_t, size_t, void*>;
+  using PoolSet = std::set<IndexSizeAddress>;
+
+  /*! \brief Allocate fixed-size memory from system */
+  void* SystemAlloc(size_t size);
+
+  /*! \brief If existing chunks are not suitable, refill pool */
+  PoolSet::iterator RefillPool();
+
+  /** 
+   *  \brief Find the suitable chunk from existing pool
+   *  
+   *  \param it   pool iterator which contains suitable block.
+   *  \param size the size of allocation.
+   */
+  void* SplitToAlloc(PoolSet::iterator it, size_t size);
+
+  /*! \brief Find the existing chunk which used to allocation  */
+  PoolSet::iterator FindExistChunk(size_t size);
+
+ private:
+  size_t total_used_ = 0;  // the total size of used memory
+  size_t total_free_ = 0;  // the total size of free memory
+
+  size_t min_chunk_size_;  // the minimum size of each chunk
+  size_t max_chunk_size_;  // the maximum size of each chunk
+
+ private:
+  PoolSet pool_;
+
+ private:
+  // Unify the metadata format between GPU and CPU allocations
+  using MetadataCache = std::unordered_map<const MemoryBlock*, Metadata>;
+  MetadataCache cache_;
+
+ private:
+  SystemAllocator* system_allocator_;
+  std::mutex mutex_;
 };
 
-BuddyAllocator<CPUAllocator>* GetCPUBuddyAllocator() {
-  static BuddyAllocator<CPUAllocator>* a = nullptr;
+BuddyAllocator* GetCPUBuddyAllocator() {
+  static BuddyAllocator* a = nullptr;
   if (a == nullptr) {
-    a = new BuddyAllocator<CPUAllocator>();
+    a = new BuddyAllocator(new CPUAllocator, platform::CpuMinChunkSize(),
+                           platform::CpuMaxChunkSize());
   }
   return a;
 }
 
 #ifndef PADDLE_ONLY_CPU  // The following code are for CUDA.
 
-BuddyAllocator<GPUAllocator>* GetGPUBuddyAllocator(int gpu_id) {
-  static BuddyAllocator<GPUAllocator>** as = NULL;
+BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
+  static BuddyAllocator** as = NULL;
   if (as == NULL) {
-    int gpu_num = platform::GetDeviceCount();
-    as = new BuddyAllocator<GPUAllocator>*[gpu_num];
+    int gpu_num = platform::GpuDeviceCount();
+    as = new BuddyAllocator*[gpu_num];
     for (int gpu = 0; gpu < gpu_num; gpu++) {
-      as[gpu] = new BuddyAllocator<GPUAllocator>();
+      as[gpu] =
+          new BuddyAllocator(new GPUAllocator, platform::GpuMinChunkSize(),
+                             platform::GpuMaxChunkSize());
     }
   }
   return as[gpu_id];
