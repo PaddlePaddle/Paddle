@@ -23,7 +23,7 @@ TEST(Tensor, ASSERT) {
     const double* p __attribute__((unused)) = cpu_tensor.data<double>();
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
-    std::string msg = "Tensor::data must be called after Tensor::mutable_data";
+    std::string msg = "Tensor::data must be called after Tensor::mutable_data.";
     const char* what = err.what();
     for (size_t i = 0; i < msg.length(); ++i) {
       ASSERT_EQ(what[i], msg[i]);
