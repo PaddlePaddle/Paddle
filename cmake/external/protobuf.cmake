@@ -13,6 +13,10 @@
 # limitations under the License.
 
 INCLUDE(ExternalProject)
+# Always invoke `FIND_PACKAGE(Protobuf)` for importing function protobuf_generate_cpp
+FIND_PACKAGE(Protobuf QUIET)
+SET(PROTOBUF_FOUND "OFF")
+
 
 # Print and set the protobuf library information,
 # finish this cmake process and exit from this file.
@@ -39,12 +43,19 @@ macro(PROMPT_PROTOBUF_LIB)
     ADD_LIBRARY(protobuf_lite ${protobuf_LIBTYPE} IMPORTED GLOBAL)
     SET_PROPERTY(TARGET protobuf_lite PROPERTY IMPORTED_LOCATION ${PROTOBUF_LITE_LIBRARY})
 
-    ADD_LIBRARY(protoc ${protobuf_LIBTYPE} IMPORTED GLOBAL)
-    SET_PROPERTY(TARGET protoc PROPERTY IMPORTED_LOCATION ${PROTOC_LIBRARY})
+    ADD_LIBRARY(libprotoc ${protobuf_LIBTYPE} IMPORTED GLOBAL)
+    SET_PROPERTY(TARGET libprotoc PROPERTY IMPORTED_LOCATION ${PROTOC_LIBRARY})
+
+    ADD_EXECUTABLE(protoc IMPORTED GLOBAL)
+    SET_PROPERTY(TARGET protoc PROPERTY IMPORTED_LOCATION ${PROTOBUF_PROTOC_EXECUTABLE})
+    # FIND_Protobuf.cmake uses `Protobuf_PROTOC_EXECUTABLE`.
+    # make `protobuf_generate_cpp` happy.
+    SET(Protobuf_PROTOC_EXECUTABLE ${PROTOBUF_PROTOC_EXECUTABLE})
 
     FOREACH(dep ${protobuf_DEPS})
         ADD_DEPENDENCIES(protobuf ${dep})
         ADD_DEPENDENCIES(protobuf_lite ${dep})
+        ADD_DEPENDENCIES(libprotoc ${dep})
         ADD_DEPENDENCIES(protoc ${dep})
     ENDFOREACH()
 
@@ -133,18 +144,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
 ENDFUNCTION()
 
 SET(PROTOBUF_VERSION 3.1)
-IF(NOT CMAKE_CROSSCOMPILING)
-    FIND_PACKAGE(Protobuf ${PROTOBUF_VERSION})
-
-    IF(PROTOBUF_FOUND)
-        SET_PROTOBUF_VERSION()
-        IF("${PROTOBUF_VERSION}" VERSION_LESS "3.1.0")
-            SET(PROTOBUF_FOUND OFF)
-        ELSE()
-            PROMPT_PROTOBUF_LIB()
-        ENDIF()
-    ENDIF(PROTOBUF_FOUND)
-ELSE()
+IF(CMAKE_CROSSCOMPILING)
     build_protobuf(protobuf_host TRUE)
     LIST(APPEND external_project_dependencies protobuf_host)
 

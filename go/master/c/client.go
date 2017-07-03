@@ -13,10 +13,13 @@ typedef int paddle_master_client;
 import "C"
 
 import (
+	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/PaddlePaddle/Paddle/go/master"
+	"github.com/coreos/etcd/clientv3"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -48,16 +51,33 @@ func remove(client C.paddle_master_client) *master.Client {
 	return h
 }
 
-type addresser string
-
-func (a addresser) Address() string {
-	return string(a)
+//export paddle_new_etcd_master_client
+func paddle_new_etcd_master_client(etcdEndpoints *C.char, timeout int, bufSize int) C.paddle_master_client {
+	p := C.GoString(etcdEndpoints)
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   strings.Split(p, ","),
+		DialTimeout: time.Second * time.Duration(timeout),
+	})
+	if err != nil {
+		panic(err)
+	}
+	ch := make(chan string, 1)
+	a, err := master.GetKey(cli, master.DefaultAddrPath, timeout)
+	if err != nil {
+		panic(err)
+	}
+	ch <- a
+	go master.WatchKey(cli, master.DefaultAddrPath, ch)
+	c := master.NewClient(ch, bufSize)
+	return add(c)
 }
 
 //export paddle_new_master_client
 func paddle_new_master_client(addr *C.char, bufSize int) C.paddle_master_client {
 	a := C.GoString(addr)
-	c := master.NewClient(addresser(a), bufSize)
+	ch := make(chan string, 1)
+	ch <- a
+	c := master.NewClient(ch, bufSize)
 	return add(c)
 }
 

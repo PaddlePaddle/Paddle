@@ -601,7 +601,7 @@ void TrainerThread::backward() {
 
 void TrainerThread::backwardCallback(Parameter* para) {
   // CPU parameters are merged in the end
-  if (!para->useGpu()) return;
+  if (!para->useGpu() || para->isStatic()) return;
 
   int paramId = para->getID();
   if (multiMachine_->getNumThreads() == 1) {

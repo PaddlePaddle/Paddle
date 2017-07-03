@@ -14,7 +14,7 @@
 """
 UCI Housing dataset.
 
-This module will paddle.v2.dataset.common.download dataset from
+This module will download dataset from
 https://archive.ics.uci.edu/ml/machine-learning-databases/housing/ and
 parse training set and test set into paddle reader creators.
 """

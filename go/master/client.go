@@ -2,17 +2,11 @@ package master
 
 import (
 	"os"
-	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
 	"github.com/PaddlePaddle/recordio"
 	log "github.com/sirupsen/logrus"
 )
-
-// Addresser provide the address of the master server.
-type Addresser interface {
-	Address() string
-}
 
 // Client is the client of the master server.
 type Client struct {
@@ -29,11 +23,11 @@ type record struct {
 //
 // bufSize is the record buffer size. NextRecord will read from this
 // buffer.
-func NewClient(addr Addresser, bufSize int) *Client {
+func NewClient(addrCh <-chan string, bufSize int) *Client {
 	c := &Client{}
 	c.conn = connection.New()
 	c.ch = make(chan record, bufSize)
-	go c.monitorMaster(addr)
+	go c.monitorMaster(addrCh)
 	go c.getRecords()
 	return c
 }
@@ -78,12 +72,10 @@ func (c *Client) getRecords() {
 	}
 }
 
-func (c *Client) monitorMaster(addr Addresser) {
+func (c *Client) monitorMaster(addrCh <-chan string) {
 	lastMaster := ""
-	monitor := func() {
-		// get the lastest address of the master server,
+	for curMaster := range addrCh {
 		// connect to the new address once address changed.
-		curMaster := addr.Address()
 		if curMaster != lastMaster {
 			if curMaster == "" {
 				err := c.conn.Close()
@@ -100,17 +92,9 @@ func (c *Client) monitorMaster(addr Addresser) {
 					// to retry next time.
 					curMaster = lastMaster
 				}
-
 			}
 		}
-
 		lastMaster = curMaster
-	}
-
-	monitor()
-	ticker := time.NewTicker(10 * time.Second)
-	for _ = range ticker.C {
-		monitor()
 	}
 }
 

@@ -97,6 +97,7 @@ class BuddyAllocator {
   struct Block {
     size_t size;
     Block* left, right;
+    size_t index; // allocator id
   };
   ...
 };
