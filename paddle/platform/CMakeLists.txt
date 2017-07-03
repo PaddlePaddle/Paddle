@@ -2,3 +2,6 @@ nv_test(cuda_test SRCS cuda_test.cu)
 
 cc_library(place SRCS place.cc)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
+
+cc_library(dynamic_loader SRCS dynamic_loader.cc)
+nv_test(device_context_test SRCS device_context_test.cu DEPS place dynamic_loader glog gflags)
