@@ -7,7 +7,7 @@ layers {
 }
 layers {
   name: "__row_conv_layer_0__"
-  type: "maxout"
+  type: "row_conv"
   size: 2560
   active_type: "relu"
   inputs {

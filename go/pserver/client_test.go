@@ -1,13 +1,13 @@
 package pserver_test
 
 import (
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/rpc"
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
@@ -31,7 +31,7 @@ func init() {
 		port[i] = p
 
 		go func(l net.Listener) {
-			s, err := pserver.NewService("", time.Second*5)
+			s, err := pserver.NewService(0)
 			if err != nil {
 				panic(err)
 			}
@@ -75,18 +75,22 @@ func TestClientFull(t *testing.T) {
 	}
 
 	const numParameter = 100
+	config, err := ioutil.ReadFile("./cclient/test/testdata/optimizer.pb")
+	if err != nil {
+		t.Fatalf("read optimizer proto failed")
+	}
 	for i := 0; i < numParameter; i++ {
 		var p pserver.Parameter
 		p.Name = "p_" + strconv.Itoa(i)
 		p.ElementType = pserver.Float32
 		p.Content = make([]byte, (i+1)*100)
-		err := c.InitParam(pserver.ParameterWithConfig{Param: p})
+		err := c.InitParam(pserver.ParameterWithConfig{Param: p, Config: config})
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	err := c.FinishInitParams()
+	err = c.FinishInitParams()
 	if err != nil {
 		t.Fatal(err)
 	}

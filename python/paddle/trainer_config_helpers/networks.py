@@ -614,6 +614,7 @@ def simple_lstm(input,
 
 @wrap_name_default('lstm_unit')
 def lstmemory_unit(input,
+                   memory_boot=None,
                    name=None,
                    size=None,
                    param_attr=None,
@@ -626,9 +627,9 @@ def lstmemory_unit(input,
                    lstm_layer_attr=None,
                    get_output_layer_attr=None):
     """
-    Define calculations that a LSTM unit performs in a single time step.
-    This function itself is not a recurrent layer, so that it can not be
-    directly applied to sequence input. This function is always used in
+    Define calculations that a LSTM unit performs during a single time step.
+    This function itself is not a recurrent layer, so it can not be
+    directly used to process sequence inputs. This function is always used in
     recurrent_group (see layers.py for more details) to implement attention
     mechanism.
 
@@ -638,13 +639,13 @@ def lstmemory_unit(input,
 
     ..  math::
 
-        i_t & = \\sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)
+        i_t & = \\sigma(W_{x_i}x_{t} + W_{h_i}h_{t-1} + W_{c_i}c_{t-1} + b_i)
 
-        f_t & = \\sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)
+        f_t & = \\sigma(W_{x_f}x_{t} + W_{h_f}h_{t-1} + W_{c_f}c_{t-1} + b_f)
 
-        c_t & = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)
+        c_t & = f_tc_{t-1} + i_t tanh (W_{x_c}x_t+W_{h_c}h_{t-1} + b_c)
 
-        o_t & = \\sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)
+        o_t & = \\sigma(W_{x_o}x_{t} + W_{h_o}h_{t-1} + W_{c_o}c_t + b_o)
 
         h_t & = o_t tanh(c_t)
 
@@ -661,6 +662,8 @@ def lstmemory_unit(input,
 
     :param input: input layer name.
     :type input: LayerOutput
+    :param memory_boot: the initialization state of the LSTM cell.
+    :type memory_boot: LayerOutput | None
     :param name: lstmemory unit name.
     :type name: basestring
     :param size: lstmemory unit size.
@@ -692,7 +695,8 @@ def lstmemory_unit(input,
         assert input.size % 4 == 0
         size = input.size / 4
     out_mem = memory(name=name, size=size)
-    state_mem = memory(name="%s_state" % name, size=size)
+    state_mem = memory(
+        name="%s_state" % name, size=size, boot_layer=memory_boot)
 
     with mixed_layer(
             name="%s_input_recurrent" % name,
@@ -726,6 +730,7 @@ def lstmemory_unit(input,
 def lstmemory_group(input,
                     size=None,
                     name=None,
+                    memory_boot=None,
                     reverse=False,
                     param_attr=None,
                     act=None,
@@ -737,7 +742,7 @@ def lstmemory_group(input,
                     lstm_layer_attr=None,
                     get_output_layer_attr=None):
     """
-    lstm_group is a recurrent layer group version of Long Short Term Memory. It
+    lstm_group is a recurrent_group version of Long Short Term Memory. It
     does exactly the same calculation as the lstmemory layer (see lstmemory in
     layers.py for the maths) does. A promising benefit is that LSTM memory
     cell states, or hidden states in every time step are accessible to the
@@ -748,8 +753,8 @@ def lstmemory_group(input,
 
     NOTE: In PaddlePaddle's implementation, the following input-to-hidden
     multiplications:
-    :math:`W_{xi}x_{t}` , :math:`W_{xf}x_{t}`,
-    :math:`W_{xc}x_t`, :math:`W_{xo}x_{t}` are not done in lstmemory_unit to
+    :math:`W_{x_i}x_{t}` , :math:`W_{x_f}x_{t}`,
+    :math:`W_{x_c}x_t`, :math:`W_{x_o}x_{t}` are not done in lstmemory_unit to
     speed up the calculations. Consequently, an additional mixed_layer with
     full_matrix_projection must be included before lstmemory_unit is called.
 
@@ -765,10 +770,12 @@ def lstmemory_group(input,
 
     :param input: input layer name.
     :type input: LayerOutput
-    :param name: lstmemory group name.
-    :type name: basestring
     :param size: lstmemory group size.
     :type size: int
+    :param name: name of the lstmemory group.
+    :type name: basestring
+    :param memory_boot: the initialization state of LSTM cell.
+    :type memory_boot: LayerOutput | None
     :param reverse: is lstm reversed
     :type reverse: bool
     :param param_attr: Parameter config, None if use default.
@@ -798,6 +805,7 @@ def lstmemory_group(input,
     def __lstm_step__(ipt):
         return lstmemory_unit(
             input=ipt,
+            memory_boot=memory_boot,
             name=name,
             size=size,
             mixed_bias_attr=mixed_bias_attr,
@@ -819,6 +827,7 @@ def lstmemory_group(input,
 
 @wrap_name_default('gru_unit')
 def gru_unit(input,
+             memory_boot=None,
              size=None,
              name=None,
              gru_bias_attr=None,
@@ -829,8 +838,8 @@ def gru_unit(input,
              naive=False):
     """
     Define calculations that a gated recurrent unit performs in a single time
-    step. This function itself is not a recurrent layer, so that it can not be
-    directly applied to sequence input. This function is almost always used in
+    step. This function itself is not a recurrent layer, so it can not be
+    directly used to process sequence inputs. This function is always used in
     the recurrent_group (see layers.py for more details) to implement attention
     mechanism.
 
@@ -838,6 +847,8 @@ def gru_unit(input,
 
     :param input: input layer name.
     :type input: LayerOutput
+    :param memory_boot: the initialization state of the LSTM cell.
+    :type memory_boot: LayerOutput | None
     :param name: name of the gru group.
     :type name: basestring
     :param size: hidden size of the gru.
@@ -856,7 +867,7 @@ def gru_unit(input,
     if size is None:
         size = input.size / 3
 
-    out_mem = memory(name=name, size=size)
+    out_mem = memory(name=name, size=size, boot_layer=memory_boot)
 
     if naive:
         __step__ = gru_step_naive_layer
@@ -878,6 +889,7 @@ def gru_unit(input,
 
 @wrap_name_default('gru_group')
 def gru_group(input,
+              memory_boot=None,
               size=None,
               name=None,
               reverse=False,
@@ -888,7 +900,7 @@ def gru_group(input,
               gru_layer_attr=None,
               naive=False):
     """
-    gru_group is a recurrent layer group version of Gated Recurrent Unit. It
+    gru_group is a recurrent_group version of Gated Recurrent Unit. It
     does exactly the same calculation as the grumemory layer does. A promising
     benefit is that gru hidden states are accessible to the user. This is
     especially useful in attention model. If you do not need to access
@@ -908,6 +920,8 @@ def gru_group(input,
 
     :param input: input layer name.
     :type input: LayerOutput
+    :param memory_boot: the initialization state of the LSTM cell.
+    :type memory_boot: LayerOutput | None
     :param name: name of the gru group.
     :type name: basestring
     :param size: hidden size of the gru.
@@ -929,6 +943,7 @@ def gru_group(input,
     def __gru_step__(ipt):
         return gru_unit(
             input=ipt,
+            memory_boot=memory_boot,
             name=name,
             size=size,
             gru_bias_attr=gru_bias_attr,
@@ -1083,7 +1098,6 @@ def simple_gru2(input,
 
     return grumemory(
         name=name,
-        size=size,
         input=m,
         reverse=reverse,
         bias_attr=gru_bias_attr,
@@ -1381,7 +1395,7 @@ def inputs(layers, *args):
     if len(args) != 0:
         layers.extend(args)
 
-    Inputs(*[l.name for l in layers])
+    Inputs(* [l.name for l in layers])
 
 
 def outputs(layers, *args):
@@ -1424,7 +1438,7 @@ def outputs(layers, *args):
     assert len(layers) > 0
 
     if HasInputsSet():  # input already set
-        Outputs(*[l.name for l in layers])
+        Outputs(* [l.name for l in layers])
         return  # just return outputs.
 
     if len(layers) != 1:
