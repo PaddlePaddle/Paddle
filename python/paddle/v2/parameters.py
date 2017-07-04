@@ -136,6 +136,7 @@ class Parameters(object):
             for each_gradient_machine in self.__gradient_machines__:
                 param = __get_parameter_in_gradient_machine__(
                     each_gradient_machine, key)
+                param.handleBeforeSave()
                 # for simplify implementation now, we always copy from C++
                 assert isinstance(param, api.Parameter)
                 val = param.getBuf(api.PARAMETER_VALUE)

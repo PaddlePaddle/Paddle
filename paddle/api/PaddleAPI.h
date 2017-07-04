@@ -573,7 +573,7 @@ public:
 
   ParameterConfig* getConfig();
   void setValueUpdated();
-
+  void handleBeforeSave();
   bool save(const std::string& filename) const;
 
   bool load(const std::string& filename) const;
