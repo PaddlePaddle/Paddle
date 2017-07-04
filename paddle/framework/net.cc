@@ -5,7 +5,7 @@ namespace framework {
 
 PlainNet::PlainNet(const NetDesc& def) {}
 
-virtual Error PlainNet::InferShape() {
+Error PlainNet::InferShape(Scope* scope) {
   for (auto& op : ops_) {
     // wrong shape
     auto err = op.InferShape();
@@ -15,9 +15,11 @@ virtual Error PlainNet::InferShape() {
   return Error();
 }
 
-virtual Error PlainNet::Run(Scope* scope = nullptr,
-                            OpContext* context = nullptr, OpIndex begin = -1,
-                            OpIndex end = -1) const {}
+Error PlainNet::Run(Scope* scope, OpContext* context, OpIndex begin,
+                    OpIndex end) const {
+  // TODO Add implementation here.
+  return Error();
+}
 
 }  // namespace framework
 }  // namespace paddle

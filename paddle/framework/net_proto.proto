@@ -1,7 +1,7 @@
 syntax="proto2";
 package paddle.framework;
 
-import "op_proto.proto"
+import "op_proto.proto";
 
 message NetDesc {
   // network identification
@@ -13,4 +13,3 @@ message NetDesc {
   // num worker always
   optional int32 num_workers = 4;
 }
-
