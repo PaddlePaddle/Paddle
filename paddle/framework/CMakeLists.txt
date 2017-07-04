@@ -8,3 +8,6 @@ cc_test(enforce_test SRCS enforce_test.cc)
 proto_library(attr_type SRCS attr_type.proto)
 proto_library(op_proto SRCS op_proto.proto DEPS attr_type)
 cc_test(op_proto_test SRCS op_proto_test.cc DEPS op_proto protobuf)
+
+proto_library(op_desc SRCS op_desc.proto DEPS attr_type)
+cc_test(op_desc_test SRCS op_desc_test.cc DEPS op_desc protobuf)
