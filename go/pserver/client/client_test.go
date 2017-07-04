@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"context"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -105,18 +106,22 @@ func ClientTest(t *testing.T, c *client.Client) {
 	}
 
 	const numParameter = 100
+	config, err := ioutil.ReadFile("./c/test/testdata/optimizer.pb")
+	if err != nil {
+		t.Fatalf("read optimizer proto failed")
+	}
 	for i := 0; i < numParameter; i++ {
 		var p pserver.Parameter
 		p.Name = "p_" + strconv.Itoa(i)
 		p.ElementType = pserver.Float32
 		p.Content = make([]byte, (i+1)*100)
-		err := c.InitParam(pserver.ParameterWithConfig{Param: p})
+		err := c.InitParam(pserver.ParameterWithConfig{Param: p, Config: config})
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	err := c.FinishInitParams()
+	err = c.FinishInitParams()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +171,7 @@ func TestNativeClient(t *testing.T) {
 	ClientTest(t, c1)
 }
 
-//TODO(Qiao: tmperary disable etcdClient test for dependency of etcd)
+// TODO: tmperary disable etcdClient test for dependency of etcd)
 func EtcdClient(t *testing.T) {
 	initEtcdClient()
 	etcd_client, _ := client.NewEtcd(etcdEndpoints)
