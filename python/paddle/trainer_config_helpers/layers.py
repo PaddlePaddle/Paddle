@@ -1072,10 +1072,10 @@ def multibox_loss_layer(input_loc,
 
     :param name: The Layer Name.
     :type name: basestring
-    :param input_loc: The input predict location.
-    :type input_loc: LayerOutput
+    :param input_loc: The input predict locations.
+    :type input_loc: LayerOutput | List of LayerOutput
     :param input_conf: The input priorbox confidence.
-    :type input_conf: LayerOutput
+    :type input_conf: LayerOutput | List of LayerOutput
     :param priorbox: The input priorbox location and the variance.
     :type priorbox: LayerOutput
     :param label: The input label.
@@ -1146,10 +1146,10 @@ def detection_output_layer(input_loc,
 
     :param name: The Layer Name.
     :type name: basestring
-    :param input_loc: The input predict location.
-    :type input_loc: LayerOutput
+    :param input_loc: The input predict locations.
+    :type input_loc: LayerOutput | List of LayerOutput.
     :param input_conf: The input priorbox confidence.
-    :type input_conf: LayerOutput
+    :type input_conf: LayerOutput | List of LayerOutput.
     :param priorbox: The input priorbox location and the variance.
     :type priorbox: LayerOutput
     :param num_classes: The number of the classification.
@@ -1166,22 +1166,20 @@ def detection_output_layer(input_loc,
     :type background_id: int
     :return: LayerOutput
     """
-    input_loc_num = 0
-    input_conf_num = 0
-
     if isinstance(input_loc, LayerOutput):
         input_loc = [input_loc]
     assert isinstance(input_loc, collections.Sequence)  # list or tuple
     for each in input_loc:
         assert isinstance(each, LayerOutput)
-        input_loc_num += 1
+    input_loc_num = len(input_loc)
 
     if isinstance(input_conf, LayerOutput):
         input_conf = [input_conf]
     assert isinstance(input_conf, collections.Sequence)  # list or tuple
     for each in input_conf:
         assert isinstance(each, LayerOutput)
-        input_conf_num += 1
+    input_conf_num = len(input_conf)
+
     # Check the input layer number.
     assert input_loc_num == input_conf_num
 

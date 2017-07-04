@@ -258,8 +258,7 @@ void MultiBoxLossLayer::forward(PassType passType) {
   }
   real loss = locLoss_ + confLoss_;
   MatrixPtr outV = getOutputValue();
-  std::vector<real> tmp(batchSize, loss);
-  outV->copyFrom(&tmp[0], batchSize);
+  outV->assign(loss);
 }
 
 void MultiBoxLossLayer::backward(const UpdateCallback& callback) {
@@ -336,6 +335,9 @@ void MultiBoxLossLayer::backward(const UpdateCallback& callback) {
     const MatrixPtr inLocG = getInputGrad(*getLocInputLayer(n));
     const MatrixPtr inConfG = getInputGrad(*getConfInputLayer(n));
     size_t height = getInput(*getLocInputLayer(n)).getFrameHeight();
+    // only for unittest, there are no width and height information
+    // when constructing matrix in unittest, so we should
+    // set the shape in configuration
     if (!height) height = layerConf.height();
     size_t width = getInput(*getLocInputLayer(n)).getFrameWidth();
     if (!width) width = layerConf.width();

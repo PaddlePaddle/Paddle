@@ -30,7 +30,7 @@ namespace paddle {
  * The loss is composed by the location loss and the confidence loss.
  * The location loss is a smooth L1 loss and the confidence loss is
  * a softmax loss.
- * - Input: This layer need four input layers: This first input layer
+ * - Input: This layer needs four input layers: The first input layer
  *          is the priorbox layer and the second layer is a label layer.
  *          The rest two input layers are convolution layers for generating
  *          bbox location offset and the classification confidence.

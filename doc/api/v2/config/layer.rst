@@ -478,6 +478,6 @@ Detection output Layer
 ======================
 
 detection_output
----
+----------------
 ..  autoclass:: paddle.v2.layer.detection_output
     :noindex:

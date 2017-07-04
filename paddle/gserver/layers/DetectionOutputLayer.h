@@ -22,14 +22,14 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * The detection output layer for a SSD detection task. This layer apply the
- * Non-maximum suppression to the all predicted bounding box and keep the
+ * The detection output layer for a SSD detection task. This layer applies the
+ * Non-maximum suppression to the all predicted bounding box and keeps the
  * Top-K bounding boxes.
- * - Input: This layer needs three input layers: This first input layer
+ * - Input: This layer needs three input layers: The first input layer
  *          is the priorbox layer. The rest two input layers are convolution
  *          layers for generating bbox location offset and the classification
  *          confidence.
- * - Output: The predict bounding box location.
+ * - Output: The predict bounding box locations.
  */
 
 class DetectionOutputLayer : public Layer {
