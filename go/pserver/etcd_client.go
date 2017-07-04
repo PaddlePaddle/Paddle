@@ -71,7 +71,7 @@ func (e *EtcdClient) Register() (int, error) {
 		log.Debugf("inited client to %s", e.etcdEndpoints)
 		break
 	}
-	// init /ps/desired using transaction, for multiple pservers may want to write
+	// init /ps_desired using transaction, for multiple pservers may want to write
 	// it at the same time.
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -84,8 +84,8 @@ func (e *EtcdClient) Register() (int, error) {
 		}
 		break
 	}
-	// TODO: when implementing extending or reducing pservers, /ps/desired is
-	// changed, then we need to watch /ps/desired node for events. For now, just
+	// TODO: when implementing extending or reducing pservers, /ps_desired is
+	// changed, then we need to watch /ps_desired node for events. For now, just
 	// write once when init and read from it.
 	// wait and set s.desired init value
 	for {
