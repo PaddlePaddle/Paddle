@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <curand.h>
-#include "paddle/platform/dynamic_loader.h"
+#include <dlfcn.h>
+#include <mutex>
+#include "paddle/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
 namespace platform {
