@@ -13,6 +13,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	// PsDesired is etcd path for store desired pserver count
+	PsDesired = "/ps_desired"
+	// PsAddr is the base dir for pserver to store their addr
+	PsPath = "/ps/"
+)
+
 // EtcdClient is the etcd client that the pserver uses for fault
 // tolerance, service registry and coordination.
 type EtcdClient struct {
@@ -68,7 +75,7 @@ func (e *EtcdClient) Register() (int, error) {
 	// it at the same time.
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		_, err := e.initDesiredPsercers(ctx, e.numPservers)
+		_, err := e.initDesiredPservers(ctx, e.numPservers)
 		cancel()
 		if err != nil {
 			log.Warn(err)
@@ -120,7 +127,7 @@ func (e *EtcdClient) Register() (int, error) {
 	return pserverIdx, nil
 }
 
-func (e *EtcdClient) initDesiredPsercers(ctx context.Context, numPservers int) (*clientv3.TxnResponse, error) {
+func (e *EtcdClient) initDesiredPservers(ctx context.Context, numPservers int) (*clientv3.TxnResponse, error) {
 	return concurrency.NewSTM(e.etcdClient, func(c concurrency.STM) error {
 		dsStr := c.Get(PsDesired)
 		if dsStr == "" {
@@ -136,7 +143,7 @@ func (e *EtcdClient) registerPserverEtcd(ctx context.Context) (int, error) {
 	_, err := concurrency.NewSTM(e.etcdClient, func(c concurrency.STM) error {
 		registered := false
 		for i := 0; i < e.desired; i++ {
-			psKey := "/ps/" + strconv.Itoa(i)
+			psKey := PsPath + strconv.Itoa(i)
 			log.Debugf("checking %s", psKey)
 			ps := c.Get(psKey)
 			log.Debugf("got value (%s) for key: %s", ps, psKey)

@@ -1,6 +1,7 @@
 package pserver_test
 
 import (
+	"io/ioutil"
 	"reflect"
 	"sync"
 	"testing"
@@ -9,7 +10,11 @@ import (
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
 
-func TestFull(t *testing.T) {
+const (
+	OptimizerConfig = "./client/c/test/testdata/optimizer.pb"
+)
+
+func TestServiceFull(t *testing.T) {
 	s, err := pserver.NewService(0)
 	if err != nil {
 		t.Error(err)
@@ -18,7 +23,12 @@ func TestFull(t *testing.T) {
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
 	p.ElementType = pserver.Int32
-	err = s.InitParam(pserver.ParameterWithConfig{Param: p, Config: nil}, nil)
+	config, err := ioutil.ReadFile(OptimizerConfig)
+	if err != nil {
+		t.Fatalf("read optimizer proto failed")
+	}
+
+	err = s.InitParam(pserver.ParameterWithConfig{Param: p, Config: config}, nil)
 	if err != nil {
 		t.FailNow()
 	}
@@ -27,7 +37,7 @@ func TestFull(t *testing.T) {
 	p1.Name = "param_b"
 	p1.Content = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	p1.ElementType = pserver.Float32
-	err = s.InitParam(pserver.ParameterWithConfig{Param: p1, Config: nil}, nil)
+	err = s.InitParam(pserver.ParameterWithConfig{Param: p1, Config: config}, nil)
 	if err != nil {
 		t.FailNow()
 	}
@@ -48,6 +58,7 @@ func TestFull(t *testing.T) {
 	}
 
 	g1, g2 := pserver.Gradient(p1), pserver.Gradient(p)
+
 	err = s.SendGrad(g1, nil)
 	if err != nil {
 		t.FailNow()
@@ -142,7 +153,12 @@ func TestBlockUntilInitialized(t *testing.T) {
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
 	p.ElementType = pserver.Int32
-	err = s.InitParam(pserver.ParameterWithConfig{Param: p, Config: nil}, nil)
+	config, err := ioutil.ReadFile(OptimizerConfig)
+	if err != nil {
+		t.Fatalf("read optimizer proto failed")
+	}
+	err = s.InitParam(pserver.ParameterWithConfig{Param: p, Config: config}, nil)
+
 	if err != nil {
 		t.FailNow()
 	}

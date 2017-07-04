@@ -1,42 +1,71 @@
 package pserver
 
-/*
-#include "optimizer.h"
-*/
+// #cgo CFLAGS: -I ../../
+// //FIXME: ldflags contain "build" path
+// #cgo LDFLAGS: ../../build/go/pserver/client/c/libpaddle_go_optimizer.a -lstdc++
+// #include "paddle/optimizer/optimizer.h"
+// #include <stdlib.h>
+// #include <string.h>
 import "C"
+
 import (
 	"fmt"
 	"unsafe"
-)
 
-type optimizerType int
-
-const (
-	sgd optimizerType = iota
+	log "github.com/sirupsen/logrus"
 )
 
 var nullPtr = unsafe.Pointer(uintptr(0))
 
 type optimizer struct {
-	opt *C.struct_paddle_optimizer
+	opt         *C.struct_paddle_optimizer
+	elementType ElementType
 }
 
-func newOptimizer(t optimizerType, learning_rate float64) *optimizer {
+func cArrayToSlice(p unsafe.Pointer, len int) []byte {
+	if p == nullPtr {
+		return nil
+	}
+
+	// create a Go clice backed by a C array, reference:
+	// https://github.com/golang/go/wiki/cgo#turning-c-arrays-into-go-slices
+	//
+	// Go garbage collector will not interact with this data, need
+	// to be freed properly.
+	return (*[1 << 30]byte)(p)[:len:len]
+}
+
+func newOptimizer(paramWithConfigs ParameterWithConfig) *optimizer {
 	o := &optimizer{}
-	o.opt = C.paddle_create_SGD_optimizer(C.double(learning_rate))
+	o.elementType = paramWithConfigs.Param.ElementType
+	p := paramWithConfigs.Param
+	c := paramWithConfigs.Config
+	log.WithFields(log.Fields{
+		"ElementType": p.ElementType,
+		"ParamSize":   len(p.Content),
+		"ConfigSize":  len(c),
+	}).Info("New Optimizer Created with config:")
+	var cbuffer unsafe.Pointer
+	cbuffer = C.malloc(C.size_t(len(p.Content)))
+	C.memcpy(cbuffer, unsafe.Pointer(&p.Content[0]), C.size_t(len(p.Content)))
+	o.opt = C.paddle_create_optimizer((*C.uchar)(&c[0]), C.int(len(c)),
+		C.paddle_element_type(p.ElementType), cbuffer, C.int(len(p.Content)/C.sizeof_float),
+		(*C.char)(nullPtr), 0)
 	return o
 }
 
-func (o *optimizer) UpdateParameter(p Parameter, g Gradient) error {
-	if len(p.Content) != len(g.Content) {
-		return fmt.Errorf("Name: %s, parameter and gradient length not match, parameter: %d, gradient: %d", p.Name, len(p.Content), len(g.Content))
+func (o *optimizer) GetWeights() []byte {
+	var buffer unsafe.Pointer
+	buffer_len := C.paddle_optimizer_get_weights(o.opt, &buffer)
+	return cArrayToSlice(buffer, int(buffer_len)*C.sizeof_float)
+}
+
+func (o *optimizer) UpdateParameter(g Gradient) error {
+	if o.elementType != g.ElementType {
+		return fmt.Errorf("Name: %s, parameter and gradient element type not match, parameter: %v, gradient: %v", g.Name, o.elementType, g.ElementType)
 	}
 
-	if p.ElementType != g.ElementType {
-		return fmt.Errorf("Name: %s, parameter and gradient element type not match, parameter: %v, gradient: %v", p.Name, p.ElementType, g.ElementType)
-	}
-
-	r := C.paddle_update_parameter(o.opt, unsafe.Pointer(&p.Content[0]), C.paddle_element_type(p.ElementType), unsafe.Pointer(&g.Content[0]), C.int(len(g.Content)))
+	r := C.paddle_update_parameter(o.opt, C.paddle_element_type(g.ElementType), unsafe.Pointer(&g.Content[0]), C.int(len(g.Content))/C.sizeof_float)
 	if r != 0 {
 		return fmt.Errorf("optimizer update returned error code: %d", r)
 	}
