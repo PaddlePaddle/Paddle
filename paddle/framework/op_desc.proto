@@ -1,0 +1,29 @@
+syntax="proto2";
+package paddle.framework;
+
+enum AttrType {
+    INT = 1;
+    FLOAT = 2;
+    STRING = 3;
+    INTS = 4;
+    FLOATS = 5;
+    STRINGS = 6;
+}
+
+message AttrDesc {
+    required AttrType type = 1;
+    optional int32 i = 2;
+    optional float f = 3;
+    optional string s = 4;
+    repeated int32 ints = 5;
+    repeated float floats = 6;
+    repeated string strings = 7;
+    required string name = 8;
+};
+
+message OpDesc {
+    repeated string inputs = 1;
+    repeated string outputs = 2;
+    required string type = 3;
+    repeated AttrDesc attrs = 4;
+};
