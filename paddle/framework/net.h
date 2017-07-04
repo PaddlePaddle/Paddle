@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/framework/scope.h"
+#include "paddle/framework/op_proto.pb.h"
 
 namespace paddle {
 namespace framework {
@@ -24,7 +25,7 @@ typedef int OpIndex;
 /**
  * NOTE following codes are some definitions of unimplemented concepts.
  * We write some basic implementation to make Net compilable. These APIs will
- * keep updating if the concepts related are implemented.
+ * keep updating if the concepts related are implemented latter.
  */
 
 // Operator's runtime context.
