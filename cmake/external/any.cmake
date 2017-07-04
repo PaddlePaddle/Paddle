@@ -2,7 +2,7 @@ INCLUDE(ExternalProject)
 
 SET(ANY_SOURCE_DIR ${THIRD_PARTY_PATH}/any)
 
-INCLUDE_DIRECTORIES(${ANY_SOURCE_DIR}/src/linb_any)
+INCLUDE_DIRECTORIES(${ANY_SOURCE_DIR}/src/extern_lib_any)
 
 ExternalProject_Add(
     extern_lib_any

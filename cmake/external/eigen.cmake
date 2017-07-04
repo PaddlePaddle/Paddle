@@ -2,7 +2,7 @@ INCLUDE(ExternalProject)
 
 SET(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3)
 
-INCLUDE_DIRECTORIES(${EIGEN_SOURCE_DIR}/src/eigen3)
+INCLUDE_DIRECTORIES(${EIGEN_SOURCE_DIR}/src/extern_eigen3)
 
 ExternalProject_Add(
     extern_eigen3
