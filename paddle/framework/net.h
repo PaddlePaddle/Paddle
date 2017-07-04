@@ -17,7 +17,6 @@
 #include "paddle/framework/net_proto.pb.h"
 #include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/scope.h"
-#include "paddle/utils/Error.h"
 
 namespace paddle {
 namespace framework {
@@ -38,8 +37,8 @@ struct OpAttrs {};
 class Operator {
  public:
   Operator(const OpDesc &def) {}
-  Error InferShape() { return Error(); }
-  Error Run() { return Error(); }
+  void InferShape() {}
+  void Run() {}
 };
 
 /**
@@ -61,7 +60,7 @@ class Net {
   /**
    * @brief Infer shapes of all inputs and outputs of operators.
    */
-  virtual Error InferShape(Scope *scope) = 0;
+  virtual void InferShape(Scope *scope) = 0;
   /**
    * @brief Run the network.
    *
@@ -70,7 +69,7 @@ class Net {
    * environment for ops. `begin` and `end` specify the scope of `ops_` to run,
    * If no positive indexes are provided, all operators in `ops_` will run.
    */
-  virtual Error Run(Scope *scope, OpContext *context, OpIndex begin = -1,
+  virtual void Run(Scope *scope, OpContext *context, OpIndex begin = -1,
                     OpIndex end = -1) const = 0;
 
   /**
@@ -81,12 +80,12 @@ class Net {
   /**
    * @brief Add optimizer operators acctording to `attrs`.
    */
-  virtual Error AddOptimizerOps(const OpAttrs &attrs) = 0;
+  virtual void AddOptimizerOps(const OpAttrs &attrs) = 0;
 
   /**
    * @brief Add backward operators.
    */
-  virtual Error AddBackwardOps() = 0;
+  virtual void AddBackwardOps() = 0;
 
   /**
    * @brief Create a network.
@@ -116,7 +115,7 @@ class PlainNet : public Net {
    * Infer all the operators' input and output varialbes' shapes, will be called
    * before every mini-batch
    */
-  virtual Error InferShape(Scope *scope) override;
+  virtual void InferShape(Scope *scope) override;
 
   /**
    * @brief Run the network.
@@ -125,7 +124,7 @@ class PlainNet : public Net {
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  virtual Error Run(Scope *scope = nullptr, OpContext *context = nullptr,
+  virtual void Run(Scope *scope = nullptr, OpContext *context = nullptr,
                     OpIndex begin = -1, OpIndex end = -1) const override;
 
   /**
@@ -136,12 +135,12 @@ class PlainNet : public Net {
   /**
    * @brief Add all optimizer operators related into the network.
    */
-  virtual Error AddOptimizerOps(const OpAttrs &attrs) override;
+  virtual void AddOptimizerOps(const OpAttrs &attrs) override;
 
   /**
    * @brief Add all backward operators related into the network.
    */
-  virtual Error AddBackwardOps() override;
+  virtual void AddBackwardOps() override;
 
  protected:
   /**
@@ -149,7 +148,7 @@ class PlainNet : public Net {
    *
    * Create operators accordding to `def`, will be called by the constructor.
    */
-  Error BuildNet(const NetDesc &def);
+  void BuildNet(const NetDesc &def);
 
   /**
    * @brief Add an operator into this network.

@@ -5,20 +5,15 @@ namespace framework {
 
 PlainNet::PlainNet(const NetDesc& def) {}
 
-Error PlainNet::InferShape(Scope* scope) {
+void PlainNet::InferShape(Scope* scope) {
   for (auto& op : ops_) {
-    // wrong shape
-    auto err = op.InferShape();
-    if (!err) return err;
+    op.InferShape();
   }
-  // ok
-  return Error();
 }
 
-Error PlainNet::Run(Scope* scope, OpContext* context, OpIndex begin,
+void PlainNet::Run(Scope* scope, OpContext* context, OpIndex begin,
                     OpIndex end) const {
   // TODO Add implementation here.
-  return Error();
 }
 
 }  // namespace framework
