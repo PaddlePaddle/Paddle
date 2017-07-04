@@ -19,24 +19,24 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
-namespace dyload {
+namespace dynload {
 
 std::once_flag cudnn_dso_flag;
 void* cudnn_dso_handle = nullptr;
 
 #ifdef PADDLE_USE_DSO
 
-#define DYNAMIC_LOAD_CUDNN_WRAP(__name)                           \
-  struct DynLoad__##__name {                                      \
-    template <typename... Args>                                   \
-    auto operator()(Args... args) -> decltype(__name(args...)) {  \
-      using cudnn_func = decltype(__name(args...)) (*)(Args...);  \
-      std::call_once(cudnn_dso_flag,                              \
-                     paddle::platform::dyload::GetCudnnDsoHandle, \
-                     &cudnn_dso_handle);                          \
-      void* p_##__name = dlsym(cudnn_dso_handle, #__name);        \
-      return reinterpret_cast<cudnn_func>(p_##__name)(args...);   \
-    }                                                             \
+#define DYNAMIC_LOAD_CUDNN_WRAP(__name)                            \
+  struct DynLoad__##__name {                                       \
+    template <typename... Args>                                    \
+    auto operator()(Args... args) -> decltype(__name(args...)) {   \
+      using cudnn_func = decltype(__name(args...)) (*)(Args...);   \
+      std::call_once(cudnn_dso_flag,                               \
+                     paddle::platform::dynload::GetCudnnDsoHandle, \
+                     &cudnn_dso_handle);                           \
+      void* p_##__name = dlsym(cudnn_dso_handle, #__name);         \
+      return reinterpret_cast<cudnn_func>(p_##__name)(args...);    \
+    }                                                              \
   } __name; /* struct DynLoad__##__name */
 
 #else
@@ -129,6 +129,6 @@ CUDNN_DNN_ROUTINE_EACH_R5(DYNAMIC_LOAD_CUDNN_WRAP)
 
 #undef CUDNN_DNN_ROUTINE_EACH
 // clang-format on
-}  // namespace dyload
+}  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

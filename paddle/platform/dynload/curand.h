@@ -19,21 +19,21 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
-namespace dyload {
+namespace dynload {
 std::once_flag curand_dso_flag;
 void *curand_dso_handle = nullptr;
 #ifdef PADDLE_USE_DSO
-#define DYNAMIC_LOAD_CURAND_WRAP(__name)                           \
-  struct DynLoad__##__name {                                       \
-    template <typename... Args>                                    \
-    curandStatus_t operator()(Args... args) {                      \
-      typedef curandStatus_t (*curandFunc)(Args...);               \
-      std::call_once(curand_dso_flag,                              \
-                     paddle::platform::dyload::GetCurandDsoHandle, \
-                     &curand_dso_handle);                          \
-      void *p_##__name = dlsym(curand_dso_handle, #__name);        \
-      return reinterpret_cast<curandFunc>(p_##__name)(args...);    \
-    }                                                              \
+#define DYNAMIC_LOAD_CURAND_WRAP(__name)                            \
+  struct DynLoad__##__name {                                        \
+    template <typename... Args>                                     \
+    curandStatus_t operator()(Args... args) {                       \
+      typedef curandStatus_t (*curandFunc)(Args...);                \
+      std::call_once(curand_dso_flag,                               \
+                     paddle::platform::dynload::GetCurandDsoHandle, \
+                     &curand_dso_handle);                           \
+      void *p_##__name = dlsym(curand_dso_handle, #__name);         \
+      return reinterpret_cast<curandFunc>(p_##__name)(args...);     \
+    }                                                               \
   } __name; /* struct DynLoad__##__name */
 #else
 #define DYNAMIC_LOAD_CURAND_WRAP(__name)      \
@@ -60,6 +60,6 @@ CURAND_RAND_ROUTINE_EACH(DYNAMIC_LOAD_CURAND_WRAP)
 
 #undef CURAND_RAND_ROUTINE_EACH
 #undef DYNAMIC_LOAD_CURAND_WRAP
-}  // namespace dyload
+}  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

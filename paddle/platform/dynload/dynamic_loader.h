@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
-namespace dyload {
+namespace dynload {
 
 /**
  * @brief    load the DSO of CUBLAS
@@ -58,6 +58,6 @@ void GetWarpCTCDsoHandle(void** dso_handle);
  */
 void GetLapackDsoHandle(void** dso_handle);
 
-}  // namespace dyload
+}  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

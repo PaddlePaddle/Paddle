@@ -36,7 +36,7 @@ DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
 
 namespace paddle {
 namespace platform {
-namespace dyload {
+namespace dynload {
 
 static inline std::string join(const std::string& part1,
                                const std::string& part2) {
@@ -164,6 +164,6 @@ void GetLapackDsoHandle(void** dso_handle) {
 #endif
 }
 
-}  // namespace dyload
+}  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
