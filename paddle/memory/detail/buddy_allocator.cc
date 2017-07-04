@@ -75,10 +75,49 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
 }
 
 void BuddyAllocator::Free(void* p) {
+  // Point back to metadata
   auto block = static_cast<MemoryBlock*>(p)->metadata();
 
-  // acquire the allocator lock
+  // Acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
+
+  DLOG(INFO) << "Free from address " << block;
+
+  if (block->type(cache_) == MemoryBlock::HUGE_CHUNK) {
+    DLOG(INFO) << "Free directly from system allocator";
+    system_allocator_->Free(block, block->total_size(cache_),
+                            block->index(cache_));
+
+    // Invalidate GPU allocation from cache
+    if (system_allocator_->UseGpu()) {
+      cache_.erase(block);
+    }
+    return;
+  }
+
+  block->mark_as_free(cache_);
+
+  total_used_ -= block->total_size(cache_);
+  total_free_ += block->total_size(cache_);
+
+  // Trying to merge the right buddy
+  if (block->has_right_buddy(cache_)) {
+    DLOG(INFO) << "Merging this block " << block << " with its right buddy "
+               << block->right_buddy(cache_);
+  }
+
+  // Trying to merge the left buddy
+  if (block->has_left_buddy(cache_)) {
+    DLOG(INFO) << "Merging this block " << block << " with its left buddy "
+               << block->left_buddy(cache_);
+  }
+
+  // Dumping this block into pool
+  DLOG(INFO) << "Inserting free block (" << block << ", "
+             << block->total_size(cache_) << ")";
+  pool_.insert({block->index(cache_), block->total_size(cache_), block});
+
+  // TODO(gangliao): Clean up if existing too much free memory
 }
 
 void* BuddyAllocator::SystemAlloc(size_t size) {

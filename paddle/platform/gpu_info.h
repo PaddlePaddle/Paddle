@@ -24,6 +24,12 @@ namespace platform {
 //! Get the total number of GPU devices in system.
 int GpuDeviceCount();
 
+//! Get the current GPU device id in system.
+int GetCurrentDeviceId();
+
+//! Set the GPU device id for next execution.
+void SetDeviceId(int device_id);
+
 //！Get the memory usage of current GPU device.
 void GpuMemoryUsage(size_t& available, size_t& total);
 

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/memory/detail/metadata.h"
+#include "paddle/memory/detail/meta_data.h"
 
 #include <cstddef>
 #include <unordered_map>

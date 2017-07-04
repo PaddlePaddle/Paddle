@@ -31,6 +31,19 @@ int GpuDeviceCount() {
   return count;
 }
 
+int GetCurrentDeviceId() {
+  int device_id;
+  throw_on_error(
+      cudaGetDevice(&device_id),
+      "cudaGetDevice failed in paddle::platform::GetCurrentDeviceId");
+  return device_id;
+}
+
+void SetDeviceId(int id) {
+  throw_on_error(cudaSetDevice(id),
+                 "cudaSetDevice failed in paddle::platform::SetDeviceId");
+}
+
 void GpuMemoryUsage(size_t& available, size_t& total) {
   throw_on_error(cudaMemGetInfo(&available, &total),
                  "cudaMemGetInfo failed in paddle::platform::GetMemoryUsage");

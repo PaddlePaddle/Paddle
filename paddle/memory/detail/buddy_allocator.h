@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/memory/detail/metadata.h"
+#include "paddle/memory/detail/meta_data.h"
 #include "paddle/memory/detail/system_allocator.h"
 #include "paddle/platform/assert.h"
 #include "paddle/platform/cpu_info.h"
