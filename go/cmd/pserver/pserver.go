@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/namsral/flag"
+	"github.com/topicai/candy"
 
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 	log "github.com/sirupsen/logrus"
@@ -25,42 +26,42 @@ func main() {
 	flag.Parse()
 
 	level, err := log.ParseLevel(*logLevel)
-	if err != nil {
-		panic(err)
-	}
+	candy.Must(err)
+
 	log.SetLevel(level)
 
 	var idx int
+	var cp *pserver.Checkpoint
 	if *index >= 0 {
 		idx = *index
 	} else {
 		timeout := time.Second * time.Duration((*etcdTimeout))
 		e := pserver.NewEtcdClient(*etcdEndpoint, *numPservers, timeout)
 		idx, err = e.Register()
+		candy.Must(err)
+		cp, err = pserver.NewCheckpoint(idx, checkpointPath, e)
 		if err != nil {
-			panic(err)
+			log.Infof("Fetch checkpoint failed, %s\n", err)
 		}
 	}
 
-	s, err := pserver.NewService(idx)
-	if err != nil {
-		panic(err)
+	var s *pserver.Service
+	var err error
+	if cp != nil {
+		s, err = pserver.NewServiceFromCheckpoint(idx, cp)
+	} else {
+		s, err = pserver.NewService(idx)
 	}
+	candy.Must(err)
+
 	err = rpc.Register(s)
-	if err != nil {
-		panic(err)
-	}
+	candy.Must(err)
 
 	rpc.HandleHTTP()
 	l, err := net.Listen("tcp", ":"+strconv.Itoa(*port))
-	if err != nil {
-		panic(err)
-	}
+	candy.Must(err)
 
 	log.Infof("start pserver at port %d", *port)
 	err = http.Serve(l, nil)
-
-	if err != nil {
-		panic(err)
-	}
+	candy.Must(err)
 }

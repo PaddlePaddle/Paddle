@@ -1,8 +1,12 @@
 package pserver
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -49,13 +53,58 @@ type Service struct {
 	optMap map[string]*optimizer
 }
 
+// Checkpoint saves the checkpoint for pserver
+type Checkpoint struct {
+	UUID      string `json:"uuid"`
+	MD5       string `json:"md5"`
+	Timestamp string `json:"timestamp"`
+	State     []byte
+	ParameterWithConfig
+}
+
+// NewCheckpoint creates a new checkpoint.
+func NewCheckpoint(idx int, cpPath string, e *EtcdClient) (*Checkpoint, error) {
+	v, err := e.GetCheckpointInfo(idx)
+	if err != nil {
+		return nil, err
+	}
+	var cp Checkpoint
+	if err = json.Unmarshal(v, &cp); err != nil {
+		return nil, err
+	}
+	fn := filepath.Join(cpPath, cp.UUID)
+	if _, err = os.Stat(fn); os.IsNotExist(err) {
+		return nil, err
+	}
+
+	f, err := os.Open(fn)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	buf, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: create checkpoint from file
+
+	return nil, nil
+}
+
+// NewServiceFromCheckpoint creates a new service with the specified checkpoint
+func NewServiceFromCheckpoint(idx int, cp *Checkpoint) (*Service, error) {
+	// TODO: create service from checkpoint
+	return nil, nil
+}
+
 // NewService creates a new service, will bypass etcd registration if no
 // endpoints specified.
 func NewService(idx int) (*Service, error) {
 	s := &Service{
 		idx: idx,
 	}
-  s.optMap = make(map[string]*optimizer)
+	s.optMap = make(map[string]*optimizer)
 	s.initialized = make(chan struct{})
 	return s, nil
 }

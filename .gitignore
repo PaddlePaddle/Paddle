@@ -19,3 +19,5 @@ third_party/
 
 # clion workspace.
 cmake-build-*
+CMakeFiles
+cmake_install.cmake
