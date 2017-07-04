@@ -5,6 +5,8 @@ import paddle.trainer_config_helpers.optimizers as v1_optimizers
 """
 Optimizers(update equation) for SGD method.
 
+TODO(zhihong) : create new optimizer with proto config, add new optimizer here
+
 TODO(yuyang18): Complete comments.
 """
 
