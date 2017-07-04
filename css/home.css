@@ -2375,8 +2375,8 @@ header.site-header .logo {
   float: left;
 }
 header.site-header .logo > img {
-  height: 40px;
-  margin: 10px 10px 10px 10px;
+  height: 60px;
+  /*margin: 10px 10px 10px 10px;*/
 }
 header.site-header .top-nav {
   margin-left: 155px;
@@ -2397,20 +2397,23 @@ header.site-header .top-nav .site-links > li > a {
   height: 100%;
   line-height: 60px;
   padding: 0 20px;
-  color: rgba(255, 255, 255, 0.7);
-}
-header.site-header .top-nav .site-links > li > a.active,
-header.site-header .top-nav .site-links > li > a:hover {
   color: #fff;
+  /*&.active,*/
+}
+header.site-header .top-nav .site-links > li > a:hover {
+  color: #0073eb;
+  background-color: #222222;
 }
 header.site-header .top-nav .version-switcher {
   position: relative;
   display: inline-block;
+  width: 100px;
   height: 60px;
   float: left;
 }
 header.site-header .top-nav .version-switcher:hover > a {
   color: #fff;
+  cursor: default;
 }
 header.site-header .top-nav .version-switcher:hover > a .fa::before {
   content: "\F106";
@@ -2427,10 +2430,10 @@ header.site-header .top-nav .version-switcher > a .fa::before {
 }
 header.site-header .top-nav .version-switcher ul {
   display: none;
-  top: 50px;
-  width: 60px;
+  top: 60px;
+  width: 100px;
   text-align: center;
-  line-height: 30px;
+  line-height: 50px;
   background: rgba(0, 0, 0, 0.85);
   color: #0073eb;
   position: absolute;
@@ -2438,9 +2441,13 @@ header.site-header .top-nav .version-switcher ul {
 }
 header.site-header .top-nav .version-switcher ul > li > a {
   color: #ababab;
+  width: 99px;
+  height: 50px;
+  display: block;
 }
 header.site-header .top-nav .version-switcher ul > li > a:hover {
   color: #0073eb;
+  background-color: #222;
 }
 header.site-header .top-nav .version-switcher:hover ul {
   display: inline-block;
@@ -2452,17 +2459,12 @@ header.site-header .right-nav {
 header.site-header .right-nav .language-switcher {
   position: relative;
   display: inline-block;
-  height: 60px;
   float: left;
 }
-header.site-header .right-nav .language-switcher:hover > a {
-  color: #fff;
-}
-header.site-header .right-nav .language-switcher:hover > a .fa::before {
-  content: "\F106";
-}
 header.site-header .right-nav .language-switcher > a {
-  color: rgba(255, 255, 255, 0.7);
+  color: #fff;
+  width: 80px;
+  text-align: center;
   line-height: 60px;
   display: inline-block;
   margin-right: 10px;
@@ -2471,35 +2473,19 @@ header.site-header .right-nav .language-switcher > a .fa::before {
   margin-left: 5px;
   content: "\F107";
 }
-header.site-header .right-nav .language-switcher ul {
-  display: none;
-  top: 50px;
-  width: 60px;
-  text-align: center;
-  line-height: 30px;
-  background: rgba(0, 0, 0, 0.85);
+header.site-header .right-nav .language-switcher > a:hover {
   color: #0073eb;
-  position: absolute;
-  left: 0;
-}
-header.site-header .right-nav .language-switcher ul > li > a {
-  color: #ababab;
-}
-header.site-header .right-nav .language-switcher ul > li > a:hover {
-  color: #0073eb;
-}
-header.site-header .right-nav .language-switcher:hover ul {
-  display: inline-block;
+  background-color: #222;
 }
 header.site-header .github-fork {
   float: left;
-  margin-left: 20px;
+  /* margin-left: 20px; */
 }
 header.site-header .github-fork > a {
   display: inline-block;
   line-height: 40px;
   width: 100px;
-  color: rgba(255, 255, 255, 0.7);
+  color: #fff;
   padding: 0 10px;
   margin: 10px 0;
   font-size: 14px;
@@ -2641,9 +2627,12 @@ header.site-header .github-fork > a:hover {
   color: #999;
 }
 .services .service-desc a.view-more {
-  color: #666;
+  color: #0073eb;
   font-size: 16px;
   display: inline-block;
+}
+.services .service-desc a.view-more:hover {
+  text-decoration: underline;
 }
 .features {
   background-color: #ffffff;
