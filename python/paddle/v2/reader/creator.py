@@ -106,7 +106,7 @@ def recordio(paths, buf_size=100):
 
         while True:
             r, err = client.next_record()
-            if r is None:
+            if err < 0:
                 break
             yield r
 
