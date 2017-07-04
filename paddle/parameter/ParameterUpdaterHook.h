@@ -53,6 +53,7 @@ public:
    */
   virtual void init(Parameter* para) = 0;
   virtual void preprocess(Parameter* para, size_t currentPass, size_t currentBatch) = 0;
+  virtual void handleBeforeSave(Parameter* para) = 0;
 
 protected:
   /**
