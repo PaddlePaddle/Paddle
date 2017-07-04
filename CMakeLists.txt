@@ -49,6 +49,7 @@ option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
+option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
 
 # CMAKE_BUILD_TYPE
@@ -96,6 +97,8 @@ include(external/warpctc)   # download, build, install warpctc
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 
+include(cudnn)              # set cudnn libraries, must before configure
+include(configure)          # add paddle env configuration
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
 include(cpplint)            # set paddle c++ style
@@ -103,15 +106,14 @@ include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(rdma)               # set rdma libraries
 include(flags)              # set paddle compile flags
-include(cudnn)              # set cudnn libraries
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
-include(configure)          # add paddle env configuration
+
 
 include_directories("${PROJ_ROOT}")
 include_directories("${PROJ_ROOT}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
-include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/cclient")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
 include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXTERNAL_LIBS
@@ -139,8 +141,7 @@ add_subdirectory(proto)
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
 # placed after this block, because they depends on it.
 if(WITH_GOLANG)
-  add_subdirectory(go/master/c)
-  add_subdirectory(go/pserver/cclient)
+    add_subdirectory(go)
 endif(WITH_GOLANG)
 
 add_subdirectory(paddle)

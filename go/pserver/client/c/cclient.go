@@ -30,15 +30,16 @@ import (
 	"unsafe"
 
 	"github.com/PaddlePaddle/Paddle/go/pserver"
+	"github.com/PaddlePaddle/Paddle/go/pserver/client"
 	log "github.com/sirupsen/logrus"
 )
 
 var nullPtr = unsafe.Pointer(uintptr(0))
 var mu sync.Mutex
-var handleMap = make(map[C.paddle_pserver_client]*pserver.Client)
+var handleMap = make(map[C.paddle_pserver_client]*client.Client)
 var curHandle C.paddle_pserver_client
 
-func add(c *pserver.Client) C.paddle_pserver_client {
+func add(c *client.Client) C.paddle_pserver_client {
 	mu.Lock()
 	defer mu.Unlock()
 	client := curHandle
@@ -47,13 +48,13 @@ func add(c *pserver.Client) C.paddle_pserver_client {
 	return client
 }
 
-func get(client C.paddle_pserver_client) *pserver.Client {
+func get(client C.paddle_pserver_client) *client.Client {
 	mu.Lock()
 	defer mu.Unlock()
 	return handleMap[client]
 }
 
-func remove(client C.paddle_pserver_client) *pserver.Client {
+func remove(client C.paddle_pserver_client) *client.Client {
 	mu.Lock()
 	defer mu.Unlock()
 	h := handleMap[client]
@@ -80,9 +81,9 @@ func (s selector) Select() bool {
 	return bool(s)
 }
 
-type lister []pserver.Server
+type lister []client.Server
 
-func (l lister) List() []pserver.Server {
+func (l lister) List() []client.Server {
 	return l
 }
 
@@ -90,19 +91,22 @@ func (l lister) List() []pserver.Server {
 func paddle_new_pserver_client(addrs *C.char, selected int) C.paddle_pserver_client {
 	a := C.GoString(addrs)
 	as := strings.Split(a, ",")
-	servers := make([]pserver.Server, len(as))
+	servers := make([]client.Server, len(as))
 	for i := range as {
 		servers[i].Index = i
 		servers[i].Addr = as[i]
 	}
-	c := pserver.NewClient(lister(servers), len(as), selector(selected != 0))
+	c := client.NewClient(lister(servers), len(as), selector(selected != 0))
 	return add(c)
 }
 
 //export paddle_new_etcd_pserver_client
-func paddle_new_etcd_pserver_client(etcd_addr *C.char) C.paddle_pserver_client {
-	// TODO(helin): fault tolerant pserver client using etcd.
-	panic("not implemented.")
+func paddle_new_etcd_pserver_client(etcd_endpoints *C.char, selected int) C.paddle_pserver_client {
+	// TODO(Longfei: use etcd lock to decide which trainer to initialize the parameters)
+	addr := C.GoString(etcd_endpoints)
+	etcd_client := client.NewEtcd(addr)
+	c := client.NewClient(etcd_client, etcd_client.Desired(), selector(selected != 0))
+	return add(c)
 }
 
 //export paddle_pserver_client_release

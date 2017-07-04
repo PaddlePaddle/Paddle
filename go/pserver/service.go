@@ -24,9 +24,6 @@ const (
 	Float64
 )
 
-// PsDesired is etcd path for store desired pserver count
-const PsDesired = "/ps_desired"
-
 // Parameter is a piece of data to sync with the parameter server.
 type Parameter struct {
 	Name        string
@@ -48,9 +45,8 @@ type Service struct {
 	initialized chan struct{}
 	idx         int
 
-	mu       sync.Mutex
-	opt      *optimizer
-	paramMap map[string]Parameter
+	mu     sync.Mutex
+	optMap map[string]*optimizer
 }
 
 // NewService creates a new service, will bypass etcd registration if no
@@ -58,9 +54,8 @@ type Service struct {
 func NewService(idx int) (*Service, error) {
 	s := &Service{
 		idx: idx,
-		opt: newOptimizer(sgd, 0.005),
 	}
-	s.paramMap = make(map[string]Parameter)
+  s.optMap = make(map[string]*optimizer)
 	s.initialized = make(chan struct{})
 	return s, nil
 }
@@ -81,7 +76,7 @@ func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, dummy *int) er
 	// TODO(helin): check if paramWithConfigs.Param.Content is
 	// properly memory aligned, if not, make copy to a memory
 	// aligned region.
-	s.paramMap[paramWithConfigs.Param.Name] = paramWithConfigs.Param
+	s.optMap[paramWithConfigs.Param.Name] = newOptimizer(paramWithConfigs)
 	return nil
 }
 
@@ -110,12 +105,12 @@ func (s *Service) SendGrad(g Gradient, dummy *int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	p, ok := s.paramMap[g.Name]
+	o, ok := s.optMap[g.Name]
 	if !ok {
 		return fmt.Errorf("parameter: %s does not exist", g.Name)
 	}
 
-	return s.opt.UpdateParameter(p, g)
+	return o.UpdateParameter(g)
 }
 
 // GetParam gets parameters from the parameter server.
@@ -124,7 +119,7 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	p, ok := s.paramMap[name]
+	opt, ok := s.optMap[name]
 	if !ok {
 		return fmt.Errorf("parameter: %s does not exist", name)
 	}
@@ -136,7 +131,9 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	// nature. This race condition is allowed deliberately
 	// to save the program from making a copy of the
 	// paramter content.
-	*parameter = p
+	parameter.Name = name
+	parameter.ElementType = opt.elementType
+	parameter.Content = opt.GetWeights()
 	return nil
 }
 
