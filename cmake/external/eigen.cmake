@@ -5,7 +5,7 @@ SET(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3)
 INCLUDE_DIRECTORIES(${EIGEN_SOURCE_DIR}/src/eigen3)
 
 ExternalProject_Add(
-    eigen3
+    extern_eigen3
     ${EXTERNAL_PROJECT_LOG_ARGS}
     # for latest version, please get from official website
     # URL            "https://bitbucket.org/eigen/eigen/get/3.3.4.tar.gz"
@@ -26,4 +26,7 @@ ExternalProject_Add(
     TEST_COMMAND      ""
 )
 
-LIST(APPEND external_project_dependencies eigen3)
+ADD_LIBRARY(eigen3 INTERFACE)
+ADD_DEPENDENCIES(eigen3 extern_eigen3)
+
+LIST(APPEND external_project_dependencies extern_eigen3)
