@@ -13,8 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "dynamic_loader.h"
-#include <gflags/gflags.h>
-#include <glog/logging.h>
+#include <dlfcn.h>
+#include <memory>
+#include <mutex>
+#include <string>
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 
 DEFINE_string(cudnn_dir, "",
               "Specify path for loading libcudnn.so. For instance, "
@@ -29,6 +33,10 @@ DEFINE_string(cuda_dir, "",
 DEFINE_string(warpctc_dir, "", "Specify path for loading libwarpctc.so.");
 
 DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
+
+namespace paddle {
+namespace platform {
+namespace dyload {
 
 static inline std::string join(const std::string& part1,
                                const std::string& part2) {
@@ -155,3 +163,7 @@ void GetLapackDsoHandle(void** dso_handle) {
   GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.so", dso_handle);
 #endif
 }
+
+}  // namespace dyload
+}  // namespace platform
+}  // namespace paddle
