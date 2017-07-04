@@ -1,11 +1,11 @@
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -79,6 +79,9 @@ if(WITH_GOLANG)
   set(GOPATH "${CMAKE_CURRENT_BINARY_DIR}/go")
   file(MAKE_DIRECTORY ${GOPATH})
   set(PADDLE_IN_GOPATH "${GOPATH}/src/github.com/PaddlePaddle/Paddle")
+  file(MAKE_DIRECTORY "${PADDLE_IN_GOPATH}")
+  set(PADDLE_GO_PATH "${CMAKE_SOURCE_DIR}/go")
+
   add_custom_target(go_path)
   add_custom_command(TARGET go_path
     # Symlink Paddle directory into GOPATH
@@ -89,7 +92,22 @@ if(WITH_GOLANG)
     # We can't run `go get -d ./...` for every target, because
     # multiple `go get` can not run concurrently, but make need to be
     # able to run with multiple jobs.
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} get -d ./go/...
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
+
+  if (GLIDE_INSTALL)
+    if(EXISTS $ENV{GOPATH}/bin/glide)
+      set(GLIDE "$ENV{GOPATH}/bin/glide")
+    else()
+      message(FATAL_ERROR "no glide executeble found: $ENV{GOPATH}/bin/glide")
+    endif()
+
+    add_custom_target(go_vendor)
+    add_custom_command(TARGET go_vendor
+      COMMAND env GOPATH=${GOPATH} ${GLIDE} install
+      WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go"
+    )
+    add_dependencies(go_vendor go_path)
+  endif()
+
 endif(WITH_GOLANG)
