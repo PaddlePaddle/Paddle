@@ -15,14 +15,14 @@ limitations under the License. */
 #pragma once
 
 #ifndef PADDLE_ONLY_CPU
-#include <cublas_v2.h>
-#include <cudnn.h>
-#include <curand.h>
 #include "paddle/platform/cuda.h"
 #define EIGEN_USE_GPU
 #endif
 
 #include "paddle/framework/enforce.h"
+#include "paddle/platform/dynload/cublas.h"
+#include "paddle/platform/dynload/cudnn.h"
+#include "paddle/platform/dynload/curand.h"
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -83,11 +83,12 @@ class CudaDeviceContext : public DeviceContext {
   cublasHandle_t cublas_handle() {
     if (!blas_handle_) {
       DeviceGuard guard(gpu_place_);
-      PADDLE_ENFORCE(cublasCreate(&blas_handle_) == CUBLAS_STATUS_SUCCESS,
+      PADDLE_ENFORCE(paddle::platform::dynload::cublasCreate(&blas_handle_) ==
+                         CUBLAS_STATUS_SUCCESS,
                      "cublasCreate failed");
-      PADDLE_ENFORCE(
-          cublasSetStream(blas_handle_, stream_) == CUBLAS_STATUS_SUCCESS,
-          "cublasSetStream failed");
+      PADDLE_ENFORCE(paddle::platform::dynload::cublasSetStream(
+                         blas_handle_, stream_) == CUBLAS_STATUS_SUCCESS,
+                     "cublasSetStream failed");
     }
     return blas_handle_;
   }
@@ -95,11 +96,12 @@ class CudaDeviceContext : public DeviceContext {
   cudnnHandle_t cudnn_handle() {
     if (!dnn_handle_) {
       DeviceGuard guard(gpu_place_);
-      PADDLE_ENFORCE(cudnnCreate(&dnn_handle_) == CUDNN_STATUS_SUCCESS,
+      PADDLE_ENFORCE(paddle::platform::dynload::cudnnCreate(&dnn_handle_) ==
+                         CUDNN_STATUS_SUCCESS,
                      "cudnnCreate failed");
-      PADDLE_ENFORCE(
-          cudnnSetStream(dnn_handle_, stream_) == CUDNN_STATUS_SUCCESS,
-          "cudnnSetStream failed");
+      PADDLE_ENFORCE(paddle::platform::dynload::cudnnSetStream(
+                         dnn_handle_, stream_) == CUDNN_STATUS_SUCCESS,
+                     "cudnnSetStream failed");
     }
     return dnn_handle_;
   }
@@ -107,39 +109,40 @@ class CudaDeviceContext : public DeviceContext {
   curandGenerator_t curand_generator() {
     if (!rand_generator_) {
       DeviceGuard guard(gpu_place_);
+      PADDLE_ENFORCE(paddle::platform::dynload::curandCreateGenerator(
+                         &rand_generator_, CURAND_RNG_PSEUDO_DEFAULT) ==
+                         CURAND_STATUS_SUCCESS,
+                     "curandCreateGenerator failed");
       PADDLE_ENFORCE(
-          curandCreateGenerator(&rand_generator_, CURAND_RNG_PSEUDO_DEFAULT) ==
-              CURAND_STATUS_SUCCESS,
-          "curandCreateGenerator failed");
-      PADDLE_ENFORCE(
-          curandSetPseudoRandomGeneratorSeed(rand_generator_, random_seed_) ==
-              CURAND_STATUS_SUCCESS,
+          paddle::platform::dynload::curandSetPseudoRandomGeneratorSeed(
+              rand_generator_, random_seed_) == CURAND_STATUS_SUCCESS,
           "curandSetPseudoRandomGeneratorSeed failed");
-      PADDLE_ENFORCE(
-          curandSetStream(rand_generator_, stream_) == CURAND_STATUS_SUCCESS,
-          "curandSetStream failed");
+      PADDLE_ENFORCE(paddle::platform::dynload::curandSetStream(
+                         rand_generator_, stream_) == CURAND_STATUS_SUCCESS,
+                     "curandSetStream failed");
     }
     return rand_generator_;
   }
 
   ~CudaDeviceContext() {
     Wait();
-    /* TODO dynamic load cudnn, cublas and curand libraries
     if (blas_handle_) {
-      PADDLE_ENFORCE(cublasDestroy(blas_handle_) == CUBLAS_STATUS_SUCCESS,
-    "cublasDestroy failed");
+      PADDLE_ENFORCE(paddle::platform::dynload::cublasDestroy(blas_handle_) ==
+                         CUBLAS_STATUS_SUCCESS,
+                     "cublasDestroy failed");
     }
 
     if (dnn_handle_) {
-      PADDLE_ENFORCE(cudnnDestroy(dnn_handle_) == CUDNN_STATUS_SUCCESS,
-    "cudnnDestroy failed");
+      PADDLE_ENFORCE(paddle::platform::dynload::cudnnDestroy(dnn_handle_) ==
+                         CUDNN_STATUS_SUCCESS,
+                     "cudnnDestroy failed");
     }
 
     if (rand_generator_) {
-      PADDLE_ENFORCE(curandDestroyGenerator(rand_generator_) ==
-    CURAND_STATUS_SUCCESS, "curandDestroyGenerator failed");
+      PADDLE_ENFORCE(paddle::platform::dynload::curandDestroyGenerator(
+                         rand_generator_) == CURAND_STATUS_SUCCESS,
+                     "curandDestroyGenerator failed");
     }
-    */
 
     delete eigen_stream_;
     delete eigen_device_;

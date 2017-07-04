@@ -15,17 +15,19 @@ limitations under the License. */
 #include "paddle/platform/device_context.h"
 #include "gtest/gtest.h"
 
-
 TEST(DeviceContext, CudaDevice) {
   int count = paddle::platform::GetDeviceCount();
   for (int i = 0; i < count; i++) {
-    paddle::platform::CudaDeviceContext* device_context = new paddle::platform::CudaDeviceContext(i);
-    __attribute__((unused)) Eigen::GpuDevice gpu_device = device_context->eigen_device();
-    /* TODO dynamic load cudnn, cublas and curand libraries
-    __attribute__((unused)) cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
-    __attribute__((unused)) cublasHandle_t cublas_handle = device_context->cublas_handle();
-    __attribute__((unused)) curandGenerator_t curand_handle = device_context->curand_generator();
-    */
+    paddle::platform::CudaDeviceContext* device_context =
+        new paddle::platform::CudaDeviceContext(i);
+    __attribute__((unused)) Eigen::GpuDevice gpu_device =
+        device_context->eigen_device();
+    __attribute__((unused)) cudnnHandle_t cudnn_handle =
+        device_context->cudnn_handle();
+    __attribute__((unused)) cublasHandle_t cublas_handle =
+        device_context->cublas_handle();
+    __attribute__((unused)) curandGenerator_t curand_handle =
+        device_context->curand_generator();
     delete device_context;
   }
 }
