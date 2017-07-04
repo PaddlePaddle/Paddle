@@ -1,14 +1,7 @@
 syntax="proto2";
 package paddle.framework;
 
-enum AttrType {
-    INT = 1;
-    FLOAT = 2;
-    STRING = 3;
-    INTS = 4;
-    FLOATS = 5;
-    STRINGS = 6;
-}
+import "attr_type.proto";
 
 message AttrDesc {
     required AttrType type = 1;
