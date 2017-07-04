@@ -17,7 +17,6 @@
 #include "paddle/framework/net_proto.pb.h"
 #include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/scope.h"
-#include "paddle/framework/op_proto.pb.h"
 
 namespace paddle {
 namespace framework {
@@ -30,6 +29,8 @@ typedef int OpIndex;
  * keep updating if the concepts related are implemented latter.
  */
 
+// TODO(superjom) Add op interface according to
+// https://github.com/PaddlePaddle/Paddle/pull/2725
 class Operator {
  public:
   Operator(const OpDesc &def) {}
