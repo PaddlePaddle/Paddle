@@ -64,20 +64,19 @@ func (p *EtcdClient) List() []Server {
 
 	servers := make([]Server, psDesired)
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
 		for i := 0; i < psDesired; i++ {
+			ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
+			cancel()
 			psKey := pserver.PsPath + strconv.Itoa(i)
 			log.Debugf("checking %s", psKey)
 			resp, err := p.client.Get(ctx, psKey)
 			if err != nil {
-				cancel()
 				log.Infof("Get psKey= %s error, %v", psKey, err)
 				time.Sleep(p.timeout)
 				continue
 			}
 			kvs := resp.Kvs
 			if len(kvs) == 0 {
-				cancel()
 				log.Infof("Waiting for ps addr registered ...")
 				time.Sleep(p.timeout)
 				continue
@@ -86,7 +85,6 @@ func (p *EtcdClient) List() []Server {
 			psAddr := string(resp.Kvs[0].Value)
 			// TODO(Longfei) check the ps address
 			if psAddr == "" {
-				cancel()
 				log.Infof("Get psKey = %s, psAddr is empty", psKey)
 				time.Sleep(p.timeout)
 				continue
@@ -95,7 +93,6 @@ func (p *EtcdClient) List() []Server {
 			servers[i].Index = i
 			servers[i].Addr = psAddr
 		}
-		cancel()
 		break
 	}
 	return servers
