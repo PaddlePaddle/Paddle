@@ -41,7 +41,7 @@ type Task struct {
 type taskEntry struct {
 	NumTimeout int
 	Task       Task
-	FailedNum  int
+	NumFailed  int
 }
 
 type taskQueues struct {
@@ -275,13 +275,13 @@ func (s *Service) checkTaskStatus(t taskEntry, epoch int) {
 	delete(s.taskQueues.Pending, t.Task.ID)
 
 	t.NumTimeout++
-	if t.NumTimeout+t.FailedNum > s.failortimeoutMax {
-		log.Warningf("Task %v timed out %d times and failed %d times, discard.", t.Task, t.NumTimeout, t.FailedNum)
+	if t.NumTimeout+t.NumFailed > s.failortimeoutMax {
+		log.Warningf("Task %v timed out %d times and failed %d times, discard.", t.Task, t.NumTimeout, t.NumFailed)
 		s.taskQueues.Failed = append(s.taskQueues.Failed, t)
 		return
 	}
 
-	log.Warningf("Task %v timed out %d times and failed %d times, discard.", t.Task, t.NumTimeout, t.FailedNum)
+	log.Warningf("Task %v timed out %d times and failed %d times, discard.", t.Task, t.NumTimeout, t.NumFailed)
 	s.taskQueues.Todo = append(s.taskQueues.Todo, t)
 	return
 }
@@ -378,7 +378,7 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 
 	// task finished, reset timeout
 	t.NumTimeout = 0
-	t.FailedNum = 0
+	t.NumFailed = 0
 	s.taskQueues.Done = append(s.taskQueues.Done, t)
 	delete(s.taskQueues.Pending, taskID)
 
