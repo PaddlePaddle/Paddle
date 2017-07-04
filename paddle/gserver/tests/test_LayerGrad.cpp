@@ -873,7 +873,7 @@ TEST(Layer, SequenceLastInstanceLayer) {
 TEST(Layer, AverageLayer) {
   testDegradeLayer(false, "average", "non-seq", -1);  // seq average to non-seq
   testDegradeLayer(false,
-                   "max",
+                   "average",
                    "non-seq",
                    5);  // seq average to a shorten seq, stride window = 5
   testDegradeLayer(
