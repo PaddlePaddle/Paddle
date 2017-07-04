@@ -26,6 +26,7 @@ class Metadata {
  public:
   Metadata(MemoryBlock::Type t, size_t i, size_t s, size_t ts, MemoryBlock* l,
            MemoryBlock* r);
+  Metadata();
 
  public:
   /*! \brief Update the guards when metadata is changed */

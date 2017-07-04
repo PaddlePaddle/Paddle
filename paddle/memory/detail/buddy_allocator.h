@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/memory/detail/meta_cache.h"
 #include "paddle/memory/detail/meta_data.h"
 #include "paddle/memory/detail/system_allocator.h"
 #include "paddle/platform/assert.h"
@@ -80,7 +81,6 @@ class BuddyAllocator {
 
  private:
   // Unify the metadata format between GPU and CPU allocations
-  using MetadataCache = std::unordered_map<const MemoryBlock*, Metadata>;
   MetadataCache cache_;
 
  private:

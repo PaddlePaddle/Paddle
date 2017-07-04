@@ -20,14 +20,14 @@ namespace memory {
 namespace detail {
 
 BuddyAllocator::BuddyAllocator(SystemAllocator* system_allocator,
-                               size_t min_chunk_size, size_t max_chunk_size) {
+                               size_t min_chunk_size, size_t max_chunk_size)
+    : min_chunk_size_(min_chunk_size),
+      max_chunk_size_(max_chunk_size),
+      cache_(system_allocator->UseGpu()),
+      system_allocator_(std::move(system_allocator)) {
   PADDLE_ASSERT(min_chunk_size > 0);
   PADDLE_ASSERT(max_chunk_size > 0);
   PADDLE_ASSERT(system_allocator != nullptr);
-
-  system_allocator_ = std::move(system_allocator);
-  min_chunk_size_ = min_chunk_size;
-  max_chunk_size_ = max_chunk_size;
 }
 
 inline size_t align(size_t size, size_t alignment) {
@@ -90,7 +90,7 @@ void BuddyAllocator::Free(void* p) {
 
     // Invalidate GPU allocation from cache
     if (system_allocator_->UseGpu()) {
-      cache_.erase(block);
+      cache_.invalidate(block);
     }
     return;
   }

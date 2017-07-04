@@ -14,24 +14,18 @@
 
 #pragma once
 
-#include "paddle/memory/detail/meta_data.h"
-
 #include <cstddef>
-#include <unordered_map>
 
 namespace paddle {
 namespace memory {
 namespace detail {
 
-// Forward Declaration
-class Metadata;
+// Forward Declarations
+class MetadataCache;
 
 /*! \brief A class used to interpret the contents of a memory block */
 class MemoryBlock {
  public:
-  // Unify the metadata format between GPU and CPU allocations
-  using MetadataCache = std::unordered_map<const MemoryBlock*, Metadata>;
-
   enum Type {
     FREE_CHUNK,    // memory is free and idle
     ARENA_CHUNK,   // memory is being occupied

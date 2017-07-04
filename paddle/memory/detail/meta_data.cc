@@ -29,6 +29,14 @@ Metadata::Metadata(MemoryBlock::Type t, size_t i, size_t s, size_t ts,
       left_buddy(l),
       right_buddy(r) {}
 
+Metadata::Metadata()
+    : type(MemoryBlock::INVALID_CHUNK),
+      index(0),
+      size(0),
+      total_size(0),
+      left_buddy(nullptr),
+      right_buddy(nullptr) {}
+
 template <class T>
 inline void hash_combine(std::size_t& seed, const T& v) {
   std::hash<T> hasher;

@@ -1,4 +1,20 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
+
 #include "paddle/memory/detail/memory_block.h"
+#include "paddle/memory/detail/meta_cache.h"
+#include "paddle/memory/detail/meta_data.h"
 #include "paddle/platform/assert.h"
 
 namespace paddle {
@@ -7,10 +23,9 @@ namespace detail {
 
 void MemoryBlock::init(MetadataCache& cache, Type t, size_t index, size_t size,
                        void* left_buddy, void* right_buddy) {
-  cache.store(this,
-              MemoryBlockMetadata(t, index, size - overhead(), size,
-                                  static_cast<MemoryBlock*>(left_buddy),
-                                  static_cast<MemoryBlock*>(right_buddy)));
+  cache.store(this, Metadata(t, index, size - sizeof(Metadata), size,
+                             static_cast<MemoryBlock*>(left_buddy),
+                             static_cast<MemoryBlock*>(right_buddy)));
 }
 
 MemoryBlock::Type MemoryBlock::type(MetadataCache& cache) const {
@@ -35,10 +50,10 @@ MemoryBlock* MemoryBlock::right_buddy(MetadataCache& cache) const {
 
 void MemoryBlock::split(MetadataCache& cache, size_t size) {
   // make sure the split fits
-  assert(total_size(cache) >= size);
+  PADDLE_ASSERT(total_size(cache) >= size);
 
   // bail out if there is no room for another partition
-  if (total_size(cache) - size <= overhead()) {
+  if (total_size(cache) - size <= sizeof(Metadata)) {
     return;
   }
 
@@ -53,13 +68,13 @@ void MemoryBlock::split(MetadataCache& cache, size_t size) {
   // Write the metadata for the new block
   auto new_block_right_buddy = metadata.right_buddy;
 
-  cache.store(static_cast<MemoryBlock*>(right_partition),
-              MemoryBlockMetadata(FREE_MEMORY, index(cache),
-                                  remaining_size - overhead(), remaining_size,
-                                  this, new_block_right_buddy));
+  cache.store(
+      static_cast<MemoryBlock*>(right_partition),
+      Metadata(FREE_CHUNK, index(cache), remaining_size - sizeof(Metadata),
+               remaining_size, this, new_block_right_buddy));
 
   metadata.right_buddy = static_cast<MemoryBlock*>(right_partition);
-  metadata.size = size - overhead();
+  metadata.size = size - sizeof(Metadata);
   metadata.total_size = size;
 
   cache.store(this, metadata);
@@ -76,8 +91,8 @@ void MemoryBlock::split(MetadataCache& cache, size_t size) {
 
 void MemoryBlock::merge(MetadataCache& cache, MemoryBlock* right_buddy) {
   // only free blocks can be merged
-  assert(type(cache) == FREE_MEMORY);
-  assert(right_buddy->type(cache) == FREE_MEMORY);
+  PADDLE_ASSERT(type(cache) == FREE_MEMORY);
+  PADDLE_ASSERT(right_buddy->type(cache) == FREE_MEMORY);
 
   auto metadata = cache.load(this);
 
@@ -97,16 +112,15 @@ void MemoryBlock::merge(MetadataCache& cache, MemoryBlock* right_buddy) {
   metadata.total_size += right_buddy->total_size(cache);
 
   cache.store(this, metadata);
-  cache.store(right_buddy,
-              MemoryBlockMetadata(INVALID_MEMORY, 0, 0, 0, nullptr, nullptr));
+  cache.store(right_buddy, Metadata(INVALID_CHUNK, 0, 0, 0, nullptr, nullptr));
 }
 
 void MemoryBlock::mark_as_free(MetadataCache& cache) {
   // check for double free or corruption
-  assert(type(cache) != FREE_MEMORY);
-  assert(type(cache) != INVALID_MEMORY);
+  PADDLE_ASSERT(type(cache) != FREE_CHUNK);
+  PADDLE_ASSERT(type(cache) != INVALID_CHUNK);
 
-  set_type(cache, FREE_MEMORY);
+  set_type(cache, FREE_CHUNK);
 }
 
 void MemoryBlock::set_type(MetadataCache& cache, Type t) {
@@ -130,14 +144,12 @@ size_t MemoryBlock::index(MetadataCache& cache) const {
 }
 
 void* MemoryBlock::data() const {
-  return const_cast<MemoryBlockMetadata*>(
-             reinterpret_cast<const MemoryBlockMetadata*>(this)) +
-         1;
+  return const_cast<Metadata*>(reinterpret_cast<const Metadata*>(this)) + 1;
 }
 
 MemoryBlock* MemoryBlock::metadata() const {
   return const_cast<MemoryBlock*>(reinterpret_cast<const MemoryBlock*>(
-      reinterpret_cast<const MemoryBlockMetadata*>(this) - 1));
+      reinterpret_cast<const Metadata*>(this) - 1));
 }
 
 }  // detail
