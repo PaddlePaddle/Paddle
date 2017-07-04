@@ -62,8 +62,10 @@ a {
           align-items: center;
 }
 .ai-top-nav-logo {
-  max-width: 10.54rem;
-  max-height: 1.5rem;
+  /*max-width: 10.54rem;
+        max-height: 1.5rem;*/
+  width: 139.6px;
+  height: 24px;
 }
 .ai-top-nav-menu {
   position: absolute;
@@ -94,7 +96,8 @@ a {
 }
 .ai-main {
   position: absolute;
-  top: 50px;
+  /*top: 50px;*/
+  top: 64px;
   bottom: 0;
   left: 0;
   right: 0;
@@ -231,8 +234,10 @@ a {
 
 .ai-top-nav {
   position: relative;
-  height: 50px;
-  line-height: 50px;
+  /*height: 50px;
+    line-height: 50px;*/
+  height: 64px;
+  line-height: 64px;
   background-color: #000;
   padding: 0 1.04rem;
   display: -webkit-box;
@@ -246,8 +251,10 @@ a {
   color: #fff;
 }
 .ai-top-nav-logo {
-  max-width: 10.54rem;
-  max-height: 1.5rem;
+  /*max-width: 10.54rem;
+        max-height: 1.5rem;*/
+  width: 139.6px;
+  height: 24px;
   margin: 0 .4rem;
 }
 .ai-top-nav-item {
@@ -255,6 +262,7 @@ a {
   position: absolute;
   right: 1.04rem;
   margin: 0 .4rem;
+  font-size: 14px;
 }
 .ai-top-nav-item a {
   color: #fff;
