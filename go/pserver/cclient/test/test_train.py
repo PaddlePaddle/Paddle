@@ -22,6 +22,8 @@ def main():
     # create optimizer
     optimizer = paddle.optimizer.Momentum(momentum=0)
 
+    #TODO(zhihong) : replace optimizer with new OptimizerConfig
+
     trainer = paddle.trainer.SGD(cost=cost,
                                  parameters=parameters,
                                  update_equation=optimizer,
