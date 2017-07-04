@@ -17,8 +17,15 @@ ExternalProject_Add(
     TEST_COMMAND      ""
 )
 
-ADD_LIBRARY(lib_any INTERFACE)
-ADD_DEPENDENCIES(lib_any extern_lib_any)
+if (${CMAKE_VERSION} VERSION_LESS "3.3.0")
+    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/lib_any_dummy.c)
+    file(WRITE ${dummyfile} "const char * dummy_any = \"${dummyfile}\";")
+    add_library(lib_any STATIC ${dummyfile})
+else()
+    add_library(lib_any INTERFACE)
+endif()
+
+add_dependencies(lib_any extern_lib_any)
 
 add_definitions(-DANY_IMPL_ANY_CAST_MOVEABLE)
-LIST(APPEND external_project_dependencies extern_lib_any)
+LIST(APPEND external_project_dependencies lib_any)
