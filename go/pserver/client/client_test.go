@@ -174,7 +174,7 @@ func TestNativeClient(t *testing.T) {
 // TODO: tmperary disable etcdClient test for dependency of etcd)
 func EtcdClient(t *testing.T) {
 	initEtcdClient()
-	etcd_client, _ := client.NewEtcd(etcdEndpoints)
+	etcd_client := client.NewEtcd(etcdEndpoints)
 	c2 := client.NewClient(etcd_client, etcd_client.Desired(), selector(true))
 	ClientTest(t, c2)
 }

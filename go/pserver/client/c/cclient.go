@@ -104,7 +104,7 @@ func paddle_new_pserver_client(addrs *C.char, selected int) C.paddle_pserver_cli
 func paddle_new_etcd_pserver_client(etcd_endpoints *C.char, selected int) C.paddle_pserver_client {
 	// TODO(Longfei: use etcd lock to decide which trainer to initialize the parameters)
 	addr := C.GoString(etcd_endpoints)
-	etcd_client, _ := client.NewEtcd(addr)
+	etcd_client := client.NewEtcd(addr)
 	c := client.NewClient(etcd_client, etcd_client.Desired(), selector(selected != 0))
 	return add(c)
 }

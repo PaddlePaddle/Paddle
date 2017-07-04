@@ -99,7 +99,7 @@ func (p *EtcdClient) List() []Server {
 }
 
 // NewEtcd create a etcd client to return the state of pserver on etcd.
-func NewEtcd(endpoints string) (*EtcdClient, error) {
+func NewEtcd(endpoints string) *EtcdClient {
 	ep := strings.Split(endpoints, ",")
 	var cli *clientv3.Client
 	var err error
@@ -121,5 +121,5 @@ func NewEtcd(endpoints string) (*EtcdClient, error) {
 		timeout:   DefaultEtcdTimeout,
 		endpoints: ep,
 	}
-	return client, nil
+	return client
 }
