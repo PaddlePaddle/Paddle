@@ -48,6 +48,7 @@ class GPUAllocator : public SystemAllocator {
   virtual void* Alloc(size_t& index, size_t size);
   virtual void Free(void* p, size_t size, size_t index);
   virtual bool UseGpu();
+
  private:
   size_t gpu_alloc_size_ = 0;
   size_t fallback_alloc_size_ = 0;

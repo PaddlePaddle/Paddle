@@ -58,15 +58,14 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
   // refill the pool if failure
   if (it == pool_.end()) {
     it = RefillPool();
+    // if still failure, fail fatally
+    if (it == pool_.end()) {
+      return nullptr;
+    }
   } else {
     DLOG(INFO) << " Allocation from existing memory block " << std::get<2>(*it)
                << " at address "
                << reinterpret_cast<MemoryBlock*>(std::get<2>(*it))->data();
-  }
-
-  // if still failure, fail fatally
-  if (it == pool_.end()) {
-    return nullptr;
   }
 
   total_used_ += size;
@@ -74,6 +73,13 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
 
   // split the allocation and return data for use
   return reinterpret_cast<MemoryBlock*>(SplitToAlloc(it, size))->data();
+}
+
+void BuddyAllocator::Free(void* p) {
+  auto block = static_cast<MemoryBlock*>(p)->metadata();
+
+  // acquire the allocator lock
+  std::lock_guard<std::mutex> lock(mutex_);
 }
 
 void* BuddyAllocator::SystemAlloc(size_t size) {
@@ -140,17 +146,14 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::FindExistChunk(size_t size) {
 void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
                                    size_t size) {
   auto block = static_cast<MemoryBlock*>(std::get<2>(*it));
-
   pool_.erase(it);
 
   DLOG(INFO) << " Split block (" << block << ", " << block->total_size(cache_)
              << ") into";
-
   block->split(cache_, size);
 
   DLOG(INFO) << " Left block (" << block << ", " << block->total_size(cache_)
              << ")";
-
   block->set_type(cache_, MemoryBlock::ARENA_CHUNK);
 
   // the rest of memory if exist

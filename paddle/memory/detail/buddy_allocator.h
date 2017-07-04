@@ -14,16 +14,16 @@
 
 #pragma once
 
-#include "paddle/memory/detail/system_allocator.h"
 #include "paddle/memory/detail/metadata.h"
+#include "paddle/memory/detail/system_allocator.h"
 #include "paddle/platform/assert.h"
 #include "paddle/platform/cpu_info.h"
 #include "paddle/platform/gpu_info.h"
 
-#include <set>
 #include <mutex>
-#include <vector>
+#include <set>
 #include <unordered_map>
+#include <vector>
 
 namespace paddle {
 namespace memory {
@@ -57,9 +57,9 @@ class BuddyAllocator {
   /*! \brief If existing chunks are not suitable, refill pool */
   PoolSet::iterator RefillPool();
 
-  /** 
+  /**
    *  \brief Find the suitable chunk from existing pool
-   *  
+   *
    *  \param it   pool iterator which contains suitable block.
    *  \param size the size of allocation.
    */
