@@ -17,9 +17,10 @@ package paddle.framework;
 
 import "attr_type.proto";
 
-// AttrDesc is used to set Attrubute for Operator. It contain's
-// name, type and the value of this Attrubute.
-// e.g, for scale=3.0, name=scala, type=AttrType.FLOAT, value=3.0
+// AttrDesc is used to describe Attributes of an Operator. It contain's
+// name, type, and value of Attribute.
+//
+// e.g, for scale=3.0: name=scala, type=AttrType.FLOAT, value=3.0
 message AttrDesc {
     required string name = 1;
     required AttrType type = 2;
@@ -33,10 +34,10 @@ message AttrDesc {
 
 // Protocol Message to describe an Operator.
 //
-// In PaddlePaddle, Operator is used to do a certain computation, such
-// as "add" "sub" "cosin". To do this, it need to know what is the input
-// and output variables, and some ops may have special attributes for
-// computing, such as "scale" in "CosinOp".
+// In PaddlePaddle, Operator is used to do a certain computation such
+// as "add", "sub", "cosine", etc.
+//  (1) Operator needs to know the input and output variable names.
+//  (2) Some ops may have special attributes such as "scale" in "CosineOp".
 //
 // 3rd-party language can build this proto message and call
 // AddOp(const OpDesc& op_desc) of Paddle core to create an Operator.
@@ -47,7 +48,7 @@ message OpDesc {
     // output names of this Operator.
     repeated string outputs = 2;
 
-    // type of this Operator, such as "add" "sub" "fc".
+    // type of this Operator, such as "add", "sub", "fc".
     required string type = 3;
 
     // Attributes of this Operator. e.g., scale=3.0 in cosine op.
