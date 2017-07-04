@@ -48,7 +48,6 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
   // if the allocation is huge, send directly to the system allocator
   if (size > max_chunk_size_) {
     DLOG(INFO) << "Allocate from system allocator.";
-
     return SystemAlloc(size);
   }
 
