@@ -57,6 +57,7 @@ __all__ = [
     'classification_cost',
     'LayerOutput',
     'img_conv_layer',
+    'img_depthwise_conv_layer',
     'img_pool_layer',
     'batch_norm_layer',
     'img_cmrnorm_layer',
@@ -148,6 +149,7 @@ class LayerType(object):
     HSIGMOID = 'hsigmoid'
     CONV_LAYER = 'conv'
     CONVTRANS_LAYER = 'convt'
+    DEPTHWISE_CONV_LAYER = 'depthwise_conv'
     EXCONV_LAYER = 'exconv'
     EXCONVTRANS_LAYER = 'exconvt'
     CUDNNCONV_LAYER = 'cudnn_conv'
@@ -2083,6 +2085,94 @@ def hsigmoid(input,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name, LayerType.HSIGMOID, parents=parents, size=l.config.size)
+
+
+@wrap_name_default("depthwise_conv")
+@wrap_param_attr_default()
+@wrap_bias_attr_default()
+@wrap_act_default(act=ReluActivation())
+@layer_support(DROPOUT)
+def img_depthwise_conv_layer(input,
+                             filter_size,
+                             num_filters,
+                             name=None,
+                             num_channels=None,
+                             act=None,
+                             groups=1,
+                             stride=1,
+                             padding=0,
+                             bias_attr=None,
+                             param_attr=None,
+                             shared_biases=True,
+                             layer_attr=None,
+                             filter_size_y=None,
+                             stride_y=None,
+                             padding_y=None,
+                             trans=False,
+                             layer_type=None):
+
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+
+    if filter_size_y is None:
+        if isinstance(filter_size, collections.Sequence):
+            assert len(filter_size) == 2
+            filter_size, filter_size_y = filter_size
+        else:
+            filter_size_y = filter_size
+
+    if stride_y is None:
+        if isinstance(stride, collections.Sequence):
+            assert len(stride) == 2
+            stride, stride_y = stride
+        else:
+            stride_y = stride
+
+    if padding_y is None:
+        if isinstance(padding, collections.Sequence):
+            assert len(padding) == 2
+            padding, padding_y = padding
+        else:
+            padding_y = padding
+
+    if param_attr.attr.get('initial_smart'):
+        # special initial for conv layers.
+        init_w = (2.0 / (filter_size**2 * num_channels))**0.5
+        param_attr.attr["initial_mean"] = 0.0
+        param_attr.attr["initial_std"] = init_w
+        param_attr.attr["initial_strategy"] = 0
+        param_attr.attr["initial_smart"] = False
+
+    lt = LayerType.DEPTHWISE_CONV_LAYER
+
+    l = Layer(
+        name=name,
+        inputs=Input(
+            input.name,
+            conv=Conv(
+                filter_size=filter_size,
+                padding=padding,
+                stride=stride,
+                channels=num_channels,
+                groups=groups,
+                filter_size_y=filter_size_y,
+                padding_y=padding_y,
+                stride_y=stride_y),
+            **param_attr.attr),
+        active_type=act.name,
+        num_filters=num_filters,
+        bias=ParamAttr.to_bias(bias_attr),
+        shared_biases=shared_biases,
+        type=lt,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name,
+        lt,
+        parents=[input],
+        activation=act,
+        num_filters=num_filters,
+        size=l.config.size)
 
 
 @wrap_name_default("conv")
