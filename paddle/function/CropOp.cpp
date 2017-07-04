@@ -148,7 +148,7 @@ public:
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(1UL, inputs.size());
     CHECK_EQ(1UL, outputs.size());
-    CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
+    CHECK_EQ(outputs[0].getArgType(), ADD_TO);
 
     TensorShape outShape = outputs[0].shape();
 

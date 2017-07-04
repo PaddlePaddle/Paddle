@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "CropLayer.h"
 #include "paddle/utils/Stat.h"
-
 namespace paddle {
 
 REGISTER_LAYER(crop, CropLayer);
@@ -24,10 +23,9 @@ bool CropLayer::init(const LayerMap& layerMap,
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
 
-  auto& crop_conf = config_.inputs(0).crop_conf();
-  crop_axis_ = crop_conf.axis();
-  for (int i = 0; i < crop_conf.offset_size(); i++) {
-    crop_offsets_[i] = crop_conf.offset(i);
+  crop_axis_ = config_.axis();
+  for (int i = 0; i < config_.offset_size(); i++) {
+    crop_offsets_.push_back(config_.offset(i));
   }
 
   // 1. get input_0 shape
@@ -38,7 +36,6 @@ bool CropLayer::init(const LayerMap& layerMap,
                              ? input0_img_conf.img_size_y()
                              : input0_img_conf.img_size(),
                          input0_img_conf.img_size()});
-
   // 2. get output shape from input_1 or crop shap conf
   if (config_.inputs_size() == 2) {
     auto& input1_img_conf = config_.inputs(1).image_conf();
@@ -49,19 +46,19 @@ bool CropLayer::init(const LayerMap& layerMap,
                                    : input1_img_conf.img_size(),
                                input1_img_conf.img_size()});
   } else {
-    targetDims_ = TensorShape({crop_conf.shape(0),
-                               crop_conf.shape(1),
-                               crop_conf.shape(2),
-                               crop_conf.shape(3)});
+    targetDims_ = TensorShape({config_.shape(0),
+                               config_.shape(1),
+                               config_.shape(2),
+                               config_.shape(3)});
   }
 
   // 3. get final crop shape
   int dimSize = 4;
   for (int i = 0; i < dimSize; i++) {
     if (i >= crop_axis_) {
-      crop_shape_[i] = targetDims_[i];
+      crop_shape_.push_back(targetDims_[i]);
     } else {
-      crop_shape_[i] = inDims_[i];
+      crop_shape_.push_back(inDims_[i]);
     }
   }
 
@@ -99,7 +96,7 @@ void CropLayer::setOutDims(const size_t batchSize) {
 }
 
 void CropLayer::setTensorDim(const size_t batchSize) {
-  CHECK_EQ(static_cast<int>(inputLayers_.size()), 1);
+  CHECK_EQ(static_cast<int>(inputLayers_.size()), 2);
   inDims_.setDim(0, batchSize);
   int h = inputLayers_[0]->getOutput().getFrameHeight();
   if (h != 0) inDims_.setDim(2, h);

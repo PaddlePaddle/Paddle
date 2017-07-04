@@ -25,7 +25,7 @@ TEST(Crop, real) {
           VLOG(3) << " numSamples=" << numSamples << " channels=" << channels
                   << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW;
           for (bool test_grad : {false, true}) {
-            FunctionCompare compare(
+            CpuGpuFuncCompare compare(
                 test_grad ? "CropGrad" : "Crop",
                 FuncConfig()
                     .set<std::vector<uint32_t>>("crop_corner", {0, 1, 1, 1})
