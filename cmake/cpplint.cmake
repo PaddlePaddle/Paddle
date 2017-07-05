@@ -25,6 +25,7 @@ set(STYLE_FILTER "${STYLE_FILTER}-readability/casting")
 set(IGNORE_PATTERN
     .*ImportanceSampler.*
     .*cblas\\.h.*
+    .*\\.pb\\.txt
     .*LtrDataProvider.*
     .*MultiDataProvider.*)
 
