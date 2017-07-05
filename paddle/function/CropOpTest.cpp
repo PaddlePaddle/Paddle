@@ -34,8 +34,10 @@ TEST(Crop, real) {
             TensorShape outDims{numSamples, 2, 3, 3};
             compare.addInputs(
                 BufferArg(VALUE_TYPE_FLOAT, test_grad ? outDims : inDims));
-            compare.addOutputs(BufferArg(
-                VALUE_TYPE_FLOAT, test_grad ? inDims : outDims, ASSIGN_TO));
+            compare.addOutputs(BufferArg(VALUE_TYPE_FLOAT,
+                                         test_grad ? inDims : outDims,
+                                         tes_grad ? ADD_TO : ASSIGN_TO),
+                               test_grad ? ADD_TO : ASSIGN_TO);
             compare.run();
           }
         }
