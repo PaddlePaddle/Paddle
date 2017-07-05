@@ -42,7 +42,7 @@ class Operator {
   /**
    * InferShape is used to infer the shape of tensors related to this Operator.
    */
-  virtual Error InferShape() = 0;
+  virtual void InferShape() = 0;
 
   /**
    * Run take a OpContext as parameter.
@@ -50,7 +50,7 @@ class Operator {
    * 1. it will get input/output variable from OpContext.scope
    * 2. It will get computing resource such as cpu/gpu from OpContext.
    */
-  virtual Error Run(OpContext *context) const = 0;
+  virtual void Run(OpContext *context) const = 0;
   const std::string DebugString() const {
     return op_desc_.ShortDebugString();
   }
