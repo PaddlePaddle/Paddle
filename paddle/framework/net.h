@@ -91,6 +91,8 @@ class Net {
    * @brief Create a network.
    */
   static std::unique_ptr<Net> Create(const NetDesc &def = NetDesc());
+
+  virtual ~Net() {}
 };
 
 /**
@@ -139,6 +141,8 @@ class PlainNet : public Net {
    * @brief Add all backward operators related into the network.
    */
   virtual void AddBackwardOps() override;
+
+  virtual ~PlainNet() override {}
 
  protected:
   /**
