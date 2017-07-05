@@ -845,8 +845,12 @@ void testDegradeLayer(bool hasSubseq,
 
 TEST(Layer, MaxLayer) {
   testDegradeLayer(false, "max", "non-seq", -1);  // seq max to non-seq
-  testDegradeLayer(true, "max", "non-seq", -1);   // hasSubseq max to non-seq
-  testDegradeLayer(true, "max", "seq", -1);       // hasSubseq max to seq
+  testDegradeLayer(false,
+                   "max",
+                   "non-seq",
+                   5);  // seq max to a shorten seq, stride window = 5
+  testDegradeLayer(true, "max", "non-seq", -1);  // hasSubseq max to non-seq
+  testDegradeLayer(true, "max", "seq", -1);      // hasSubseq max to seq
 }
 
 TEST(Layer, SequenceLastInstanceLayer) {
@@ -868,6 +872,10 @@ TEST(Layer, SequenceLastInstanceLayer) {
 
 TEST(Layer, AverageLayer) {
   testDegradeLayer(false, "average", "non-seq", -1);  // seq average to non-seq
+  testDegradeLayer(false,
+                   "average",
+                   "non-seq",
+                   5);  // seq average to a shorten seq, stride window = 5
   testDegradeLayer(
       true, "average", "non-seq", -1);           // hasSubseq average to non-seq
   testDegradeLayer(true, "average", "seq", -1);  // hasSubseq average to seq
