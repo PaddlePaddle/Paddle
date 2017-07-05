@@ -36,7 +36,7 @@ TEST(Crop, real) {
                 BufferArg(VALUE_TYPE_FLOAT, test_grad ? outDims : inDims));
             compare.addOutputs(BufferArg(VALUE_TYPE_FLOAT,
                                          test_grad ? inDims : outDims,
-                                         tes_grad ? ADD_TO : ASSIGN_TO),
+                                         test_grad ? ADD_TO : ASSIGN_TO),
                                test_grad ? ADD_TO : ASSIGN_TO);
             compare.run();
           }
