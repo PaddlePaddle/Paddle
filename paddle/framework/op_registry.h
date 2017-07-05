@@ -1,8 +1,7 @@
 #pragma once
 
-#include <unordered_map>
 #include "paddle/framework/attr_checker.h"
-#include "paddle/framework/enforce.h"
+
 #include "paddle/framework/op_base.h"
 #include "paddle/framework/op_proto.pb.h"
 
@@ -40,23 +39,24 @@ class OpProtoAndCheckerMaker {
 };
 
 class OpRegistry {
-  typedef std::function<OperatorBase*(OpDesc& op_desc)> OpCreator;
+  typedef std::function<OperatorBase*(AttributeMap& attr_map)> OpCreator;
 
  public:
   template <typename OpType, typename ProtoMakerType>
   static void RegisterOp(const std::string& op_type) {
-    creators_[op_type] = [](const OpDesc& op_desc) {
-      return new OpType(op_desc);
+    creators_[op_type] = [](const AttributeMap& attr_map) {
+      return new OpType(attr_map);
     };
     OpProto& op_proto = protos_[op_type];
     OpAttrChecker& op_checker = op_checkers_[op_type];
     ProtoMakerType(&op_proto, &op_checker);
   }
 
-  static OpBase* CreateOp(const std::string& op_type, OpDesc op_desc) const {
+  static OpBase* CreateOp(const std::string& op_type,
+                          AttributeMap attr_map) const {
     const OpAttrChecker& op_checker = op_checkers_.at(op_type);
-    PADDLE_ENFORCE(op_checker.PassCheck(op_desc), "op attribute error.");
-    return (creators_.at(op_type))(op_desc);
+    op_checker.Check(attr_map);
+    return (creators_.at(op_type))(attr_map);
   }
 
  private:
