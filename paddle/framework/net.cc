@@ -12,7 +12,7 @@ void PlainNet::InferShape(Scope* scope) {
 }
 
 void PlainNet::Run(Scope* scope, OpContext* context, OpIndex begin,
-                    OpIndex end) const {
+                   OpIndex end) const {
   // TODO Add implementation here.
 }
 

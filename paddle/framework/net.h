@@ -70,7 +70,7 @@ class Net {
    * If no positive indexes are provided, all operators in `ops_` will run.
    */
   virtual void Run(Scope *scope, OpContext *context, OpIndex begin = -1,
-                    OpIndex end = -1) const = 0;
+                   OpIndex end = -1) const = 0;
 
   /**
    * @brief Add an Operator according to `def`.
@@ -125,7 +125,7 @@ class PlainNet : public Net {
    * will be used.
    */
   virtual void Run(Scope *scope = nullptr, OpContext *context = nullptr,
-                    OpIndex begin = -1, OpIndex end = -1) const override;
+                   OpIndex begin = -1, OpIndex end = -1) const override;
 
   /**
    * @brief Add an operator to this network.
@@ -141,6 +141,8 @@ class PlainNet : public Net {
    * @brief Add all backward operators related into the network.
    */
   virtual void AddBackwardOps() override;
+
+  virtual ~PlainNet() override {}
 
  protected:
   /**
