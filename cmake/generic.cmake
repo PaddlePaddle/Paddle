@@ -284,7 +284,7 @@ function(go_library TARGET_NAME)
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
     COMMAND rm "${${TARGET_NAME}_LIB_PATH}"
     # Golang build source code
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
+    COMMAND env LIBRARY_PATH=${CMAKE_BINARY_DIR}/go/pserver/client/c/:$ENV{LIBRARY_PATH} GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
     -o "${${TARGET_NAME}_LIB_PATH}"
     "./${CMAKE_CURRENT_SOURCE_REL_DIR}/${GO_SOURCE}"
     # must run under GOPATH
@@ -300,10 +300,11 @@ function(go_binary TARGET_NAME)
   string(REPLACE "${PADDLE_GO_PATH}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
   add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
+      COMMAND env LIBRARY_PATH=${CMAKE_BINARY_DIR}/go/pserver/client/c/:$ENV{LIBRARY_PATH}
+      GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
     -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     "./${CMAKE_CURRENT_SOURCE_REL_DIR}/${go_binary_SRCS}"
-  WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
+    WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
   # TODO: don't know what ${TARGET_NAME}_link does
   add_custom_target(${TARGET_NAME} ALL DEPENDS go_vendor ${TARGET_NAME}_timestamp ${go_binary_DEPS})
   install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME} DESTINATION bin)
