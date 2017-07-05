@@ -1669,6 +1669,8 @@ TEST(Layer, PadLayer) {
 
 TEST(Layer, CrossChannelNormLayer) {
   TestConfig config;
+  config.paramInitialMean = 1.;
+  config.paramInitialStd = 0.;
   config.layerConfig.set_type("norm");
   config.layerConfig.set_size(100);
   LayerInputConfig* input = config.layerConfig.add_inputs();
@@ -1682,7 +1684,7 @@ TEST(Layer, CrossChannelNormLayer) {
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 100, 10});
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "cross-channel-norm", 10, false, useGpu, false, 5);
+    testLayerGrad(config, "cross-channel-norm", 10, false, useGpu, false);
   }
 }
 
