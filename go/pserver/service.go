@@ -24,9 +24,6 @@ const (
 	Float64
 )
 
-// PsDesired is etcd path for store desired pserver count
-const PsDesired = "/ps_desired"
-
 // Parameter is a piece of data to sync with the parameter server.
 type Parameter struct {
 	Name        string

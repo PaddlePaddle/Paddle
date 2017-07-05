@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 
-add_subdirectory(pserver/cclient)
+add_subdirectory(pserver/client/c)
 add_subdirectory(cmd/pserver)
 add_subdirectory(cmd/master)
 add_subdirectory(master/c)

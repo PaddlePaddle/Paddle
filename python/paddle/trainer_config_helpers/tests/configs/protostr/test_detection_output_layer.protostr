@@ -1,0 +1,66 @@
+type: "nn"
+layers {
+  name: "input_loc"
+  type: "data"
+  size: 16
+  active_type: ""
+  height: 16
+  width: 1
+}
+layers {
+  name: "input_conf"
+  type: "data"
+  size: 8
+  active_type: ""
+  height: 1
+  width: 8
+}
+layers {
+  name: "priorbox"
+  type: "data"
+  size: 32
+  active_type: ""
+  height: 4
+  width: 8
+}
+layers {
+  name: "test_detection_output"
+  type: "detection_output"
+  size: 1400
+  active_type: ""
+  inputs {
+    input_layer_name: "priorbox"
+    detection_output_conf {
+      num_classes: 21
+      nms_threshold: 0.45
+      nms_top_k: 400
+      background_id: 0
+      input_num: 1
+      keep_top_k: 200
+      confidence_threshold: 0.01
+    }
+  }
+  inputs {
+    input_layer_name: "input_loc"
+  }
+  inputs {
+    input_layer_name: "input_conf"
+  }
+}
+input_layer_names: "priorbox"
+input_layer_names: "input_loc"
+input_layer_names: "input_conf"
+output_layer_names: "test_detection_output"
+sub_models {
+  name: "root"
+  layer_names: "input_loc"
+  layer_names: "input_conf"
+  layer_names: "priorbox"
+  layer_names: "test_detection_output"
+  input_layer_names: "priorbox"
+  input_layer_names: "input_loc"
+  input_layer_names: "input_conf"
+  output_layer_names: "test_detection_output"
+  is_recurrent_layer_group: false
+}
+

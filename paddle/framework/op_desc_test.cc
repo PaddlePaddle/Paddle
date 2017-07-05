@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/operator.h"
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
+#include <paddle/framework/op_desc.pb.h>
 
-TEST(Operator, Create) {
-  using paddle::framework::Operator;
+TEST(OpDesc, Create) {
   paddle::framework::OpDesc op_desc;
-  op_desc.set_type("ADD");
+  op_desc.set_type("add");
   op_desc.add_inputs("X");
   op_desc.add_inputs("Y");
   op_desc.add_outputs("Z");
@@ -27,5 +26,10 @@ TEST(Operator, Create) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  auto op = new Operator(op_desc);
+  // required field name is not set, so IsInitialized should be false.
+  ASSERT_FALSE(op_desc.IsInitialized());
+
+  attr->set_name("add");
+  // after all required fields are set, IsInitialized should be true now.
+  ASSERT_TRUE(op_desc.IsInitialized());
 }
