@@ -2,7 +2,7 @@ package pserver
 
 // #cgo CFLAGS: -I ../../
 // //FIXME: ldflags contain "build" path
-// #cgo LDFLAGS: ../../build/go/pserver/client/c/libpaddle_go_optimizer.a -lstdc++
+// #cgo LDFLAGS: ../../build/go/pserver/client/c/libpaddle_go_optimizer.a -lstdc++ -lm
 // #include "paddle/optimizer/optimizer.h"
 // #include <stdlib.h>
 // #include <string.h>

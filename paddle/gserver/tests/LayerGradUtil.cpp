@@ -387,6 +387,31 @@ void initDataLayer(TestConfig testConf,
         data.value->sigmoid(*data.value);
         data.grad->zeroMem();
         break;
+      case INPUT_SELF_DEFINE_DATA: {
+        size_t height = testConf.inputDefs[i].selfDefinedData->getHeight();
+        size_t width = testConf.inputDefs[i].selfDefinedData->getWidth();
+        CHECK_GT(static_cast<int>(height), 0);
+        CHECK_GT(static_cast<int>(width), 0);
+        data.value = Matrix::create(height, width, false, useGpu);
+        data.grad = Matrix::create(height, width, false, useGpu);
+        data.value->copyFrom(*testConf.inputDefs[i].selfDefinedData);
+        data.grad->zeroMem();
+
+        const std::vector<int>& labelSeqStartPositions =
+            testConf.inputDefs[i].labelSeqStartPositions;
+        if (labelSeqStartPositions.size() != 0) {
+          CHECK(!sequenceStartPositions);
+          CHECK_GE(static_cast<int>(labelSeqStartPositions.size()), 2);
+
+          sequenceStartPositions =
+              ICpuGpuVector::create(labelSeqStartPositions.size(), useGpu);
+          sequenceStartPositions->copyFrom(labelSeqStartPositions.data(),
+                                           labelSeqStartPositions.size(),
+                                           useGpu);
+          data.sequenceStartPositions = sequenceStartPositions;
+        }
+        break;
+      }
       default:
         LOG(FATAL) << " unknown inputType ";
         return;
