@@ -29,7 +29,7 @@ detail::BuddyAllocator* GetCPUBuddyAllocator() {
                                    platform::CpuMinChunkSize(),
                                    platform::CpuMaxChunkSize());
   }
-   return a;
+  return a;
 }
 
 #ifndef PADDLE_ONLY_CPU  // The following code are for CUDA.
