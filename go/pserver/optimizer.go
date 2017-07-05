@@ -2,7 +2,7 @@ package pserver
 
 // #cgo CFLAGS: -I ../../
 // //FIXME: ldflags contain "build" path
-// #cgo LDFLAGS: ../../build/go/pserver/client/c/libpaddle_go_optimizer.a -lstdc++
+// #cgo LDFLAGS: ../../build/go/pserver/client/c/libpaddle_go_optimizer.a -lstdc++ -lpthread -lm
 // #include "paddle/optimizer/optimizer.h"
 // #include <stdlib.h>
 // #include <string.h>
@@ -77,4 +77,10 @@ func (o *optimizer) Cleanup() {
 		C.paddle_release_optimizer(o.opt)
 		o.opt = (*C.struct_paddle_optimizer)(nullPtr)
 	}
+}
+
+func (o *optimizer) SetState(state []byte) {
+	var buffer *C.char = C.CString(string(state))
+	defer C.free(unsafe.Pointer(buffer))
+	C.paddle_optimizer_set_state(o.opt, &buffer)
 }

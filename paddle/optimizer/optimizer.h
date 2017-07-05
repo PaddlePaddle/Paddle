@@ -88,6 +88,12 @@ int paddle_optimizer_get_weights(paddle_optimizer* o, void** param_buffer);
  */
 int paddle_optimizer_get_state(paddle_optimizer* o, const char** state);
 
+/**
+ *  @brief optimizer for recovering training state
+ *  @param training state for DeserializeState
+ */
+void paddle_optimizer_set_state(paddle_optimizer* o, const char** state);
+
 #ifdef __cplusplus
 }
 #endif

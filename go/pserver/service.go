@@ -1,12 +1,13 @@
 package pserver
 
 import (
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 )
 
@@ -53,49 +54,86 @@ type Service struct {
 	optMap map[string]*optimizer
 }
 
-// Checkpoint saves the checkpoint for pserver
-type Checkpoint struct {
+// CheckpointMeta saves the checkpoint information
+type CheckpointMeta struct {
 	UUID      string `json:"uuid"`
 	MD5       string `json:"md5"`
 	Timestamp string `json:"timestamp"`
-	State     []byte
-	ParameterWithConfig
 }
 
-// NewCheckpoint creates a new checkpoint.
-func NewCheckpoint(idx int, cpPath string, e *EtcdClient) (*Checkpoint, error) {
-	v, err := e.GetCheckpointInfo(idx)
+// ParameterCheckpoint saves parameter checkpoint
+type ParameterCheckpoint struct {
+	ParameterWithConfig
+	Stat []byte
+}
+
+// Checkpoint saves all parameters' checkpoint
+type Checkpoint struct {
+	idx    int
+	path   string
+	client *EtcdClient
+	data   []ParameterCheckpoint
+}
+
+// NewCheckpoint creates a new checkpoint
+func NewCheckpoint(idx int, cpPath string, e *EtcdClient) *Checkpoint {
+	return &Checkpoint{
+		idx:    idx,
+		path:   cpPath,
+		client: e,
+	}
+}
+
+// LoadFromFile loads parameters and state from checkpoint file
+func (cp *Checkpoint) LoadFromFile() error {
+	v, err := cp.client.GetKey(filepath.Join(PsCheckpoint, strconv.Itoa(cp.idx)), 3)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	var cp Checkpoint
-	if err = json.Unmarshal(v, &cp); err != nil {
-		return nil, err
+
+	var cpMeta CheckpointMeta
+	if err = json.Unmarshal(v, &cpMeta); err != nil {
+		return err
 	}
-	fn := filepath.Join(cpPath, cp.UUID)
+
+	fn := filepath.Join(cp.path, cpMeta.UUID)
 	if _, err = os.Stat(fn); os.IsNotExist(err) {
-		return nil, err
+		return err
 	}
 
 	f, err := os.Open(fn)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer f.Close()
 
-	buf, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: create checkpoint from file
+	dec := gob.NewDecoder(f)
 
-	return nil, nil
+	if err = dec.Decode(&cp.data); err != nil {
+		return err
+	}
+	return nil
 }
 
 // NewServiceFromCheckpoint creates a new service with the specified checkpoint
 func NewServiceFromCheckpoint(idx int, cp *Checkpoint) (*Service, error) {
-	// TODO: create service from checkpoint
-	return nil, nil
+	s := &Service{
+		idx: idx,
+	}
+	s.optMap = make(map[string]*optimizer)
+	s.initialized = make(chan struct{})
+
+	for _, parameterCheckpoint := range cp.data {
+		p := ParameterWithConfig{
+			Param:  parameterCheckpoint.Param,
+			Config: parameterCheckpoint.Config,
+		}
+
+		opt := newOptimizer(p)
+		opt.SetState(parameterCheckpoint.Stat)
+		s.optMap[parameterCheckpoint.Param.Name] = opt
+	}
+	return s, nil
 }
 
 // NewService creates a new service, will bypass etcd registration if no

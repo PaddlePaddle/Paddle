@@ -189,19 +189,18 @@ func (e *EtcdClient) registerPserverEtcd(ctx context.Context) (int, error) {
 	return idx, nil
 }
 
-// GetCheckpoints gets the checkpoint information by the specified pserver id
-func (e *EtcdClient) GetCheckpointInfo(string idx) (string, error) {
-	key := PsCheckpoint + idx
+// GetKey gets the value by the specified key
+func (e *EtcdClient) GetKey(key string, timeout int) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
-	resp, err := c.Get(ctx, key)
+	resp, err := e.etcdClient.Get(ctx, key)
 	cancel()
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	}
 	kvs := resp.Kvs
 	if len(kvs) == 0 {
-		return "", nil
+		return []byte{}, nil
 	}
 	v := kvs[0].Value
-	return string(v), nil
+	return v, nil
 }

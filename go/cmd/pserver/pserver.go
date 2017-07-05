@@ -23,6 +23,7 @@ func main() {
 	numPservers := flag.Int("num-pservers", 1, "total pserver count in a training job")
 	logLevel := flag.String("log-level", "info",
 		"log level, possible values: debug, info, warning, error, fatal, panic")
+	checkpointPath := flag.String("checkpoint-path", "/checkpoints/", "the checkpoint files path")
 	flag.Parse()
 
 	level, err := log.ParseLevel(*logLevel)
@@ -31,7 +32,9 @@ func main() {
 	log.SetLevel(level)
 
 	var idx int
-	var cp *pserver.Checkpoint
+
+	var cp *Checkpoint
+	newPserver := true
 	if *index >= 0 {
 		idx = *index
 	} else {
@@ -39,20 +42,24 @@ func main() {
 		e := pserver.NewEtcdClient(*etcdEndpoint, *numPservers, timeout)
 		idx, err = e.Register()
 		candy.Must(err)
-		cp, err = pserver.NewCheckpoint(idx, checkpointPath, e)
+
+		cp = pserver.NewCheckpoint(idx, checkpointPath, e)
+		err := cp.LoadFromFile()
 		if err != nil {
 			log.Infof("Fetch checkpoint failed, %s\n", err)
+		} else {
+			newPserver = false
 		}
 	}
 
 	var s *pserver.Service
-	var err error
-	if cp != nil {
-		s, err = pserver.NewServiceFromCheckpoint(idx, cp)
-	} else {
+	if newPserver {
 		s, err = pserver.NewService(idx)
+		candy.Must(err)
+	} else {
+		s, err = pserver.NewServiceFromCheckpoint(idx, cp)
+		candy.Must(err)
 	}
-	candy.Must(err)
 
 	err = rpc.Register(s)
 	candy.Must(err)
