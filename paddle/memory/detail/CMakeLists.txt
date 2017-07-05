@@ -12,4 +12,4 @@ cc_library(meta_cache SRCS meta_cache.cc)
 
 cc_library(memory_block SRCS memory_block.cc)
 
-cc_library(buddy_allocator SRCS buddy_allocator.cc)
+cc_library(buddy_allocator SRCS buddy_allocator.cc DEPS glog)
