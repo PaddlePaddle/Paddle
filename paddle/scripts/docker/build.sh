@@ -3,7 +3,7 @@
 set -xe
 
 # Set BASE_IMAGE according to env variables
-if [ ${WITH_GPU} == "ON" ]; then
+if [[ ${WITH_GPU} == "ON" ]]; then
   BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu16.04"
 else
   BASE_IMAGE="ubuntu:16.04"
