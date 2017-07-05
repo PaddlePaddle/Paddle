@@ -281,6 +281,7 @@ function(go_library TARGET_NAME)
 
   file(GLOB GO_SOURCE RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.go")
   string(REPLACE "${PADDLE_GO_PATH}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+  # FIXME: link path
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
     COMMAND rm "${${TARGET_NAME}_LIB_PATH}"
     # Golang build source code
@@ -299,6 +300,7 @@ function(go_binary TARGET_NAME)
   cmake_parse_arguments(go_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   string(REPLACE "${PADDLE_GO_PATH}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
+  # FIXME: link path
   add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
       COMMAND env LIBRARY_PATH=${CMAKE_BINARY_DIR}/go/pserver/client/c/:$ENV{LIBRARY_PATH}
       GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
