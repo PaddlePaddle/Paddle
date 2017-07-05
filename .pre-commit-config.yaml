@@ -21,3 +21,10 @@
     sha: 28c0ea8a67a3e2dbbf4822ef44e85b63a0080a29
     hooks:
     -   id: clang-formater
+-   repo: https://github.com/dnephin/pre-commit-golang
+    sha: e4693a4c282b4fc878eda172a929f7a6508e7d16
+    hooks:
+      -   id: go-fmt
+      -   id: go-vet
+      -   id: go-lint
+      -   id: gometalinter
