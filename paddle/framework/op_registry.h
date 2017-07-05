@@ -73,12 +73,12 @@ class OpRegisterHelper {
   }
 };
 
-#define REGISTER_OP(op_class, op_maker_class, op_type)             \
-  class op_class##Register {                                       \
-   private:                                                        \
-    const static OpRegisterHelper<#op_class, #op_maker_class> reg; \
-  };                                                               \
-  const Register op_class##Register::reg(#op_type);
+#define REGISTER_OP(__op_class, __op_maker_class, __op_type)           \
+  class __op_class##Register {                                         \
+   private:                                                            \
+    const static OpRegisterHelper<#__op_class, #__op_maker_class> reg; \
+  };                                                                   \
+  const Register __op_class##Register::reg(#__op_type);
 
 class CosineOp {
   // ...
@@ -98,7 +98,7 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-REGISTER_OP(CosineOp, CosineOpProtoAndCheckerMaker, "cos");
+REGISTER_OP(CosineOp, CosineOpProtoAndCheckerMaker, "cos_sim");
 
 }  // namespace framework
 }  // namespace paddle
