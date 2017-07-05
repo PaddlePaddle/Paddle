@@ -498,12 +498,9 @@ void initTestLayer(TestConfig testConf,
         paraConfig.add_dims((*layerMap)[input.input_layer_name()]->getSize());
         paraConfig.add_dims(testConf.layerConfig.size());
       }
-      if (testConf.hasParamInitialValue) {
-        paraConfig.set_initial_mean(testConf.paramInitialMean);
-        paraConfig.set_initial_std(testConf.paramInitialStd);
-      } else {
-        paraConfig.set_initial_std(1);
-      }
+      CHECK_GE(testConf.paramInitialStd, 0);
+      paraConfig.set_initial_mean(testConf.paramInitialMean);
+      paraConfig.set_initial_std(testConf.paramInitialStd);
       initParameter(paraName, paraSize, inputDef.isStatic, false, paraConfig);
     }
   }

@@ -1661,7 +1661,6 @@ TEST(Layer, PadLayer) {
 
 TEST(Layer, CrossChannelNormLayer) {
   TestConfig config;
-  config.hasParamInitialValue = true;
   config.paramInitialMean = 1.;
   config.paramInitialStd = 0.;
   config.layerConfig.set_type("norm");

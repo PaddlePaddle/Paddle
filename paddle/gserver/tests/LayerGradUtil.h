@@ -127,7 +127,6 @@ struct TestConfig {
   size_t biasSize;
   real paramInitialMean;
   real paramInitialStd;
-  bool hasParamInitialValue;
   bool testAccumulate;
   bool testState;
   bool staticBias;
@@ -136,7 +135,6 @@ struct TestConfig {
       : biasSize(0),
         paramInitialMean(0.0),
         paramInitialStd(1.0),
-        hasParamInitialValue(false),
         testAccumulate(true),
         testState(false),
         staticBias(false),
