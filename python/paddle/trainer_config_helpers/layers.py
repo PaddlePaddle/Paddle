@@ -1097,7 +1097,10 @@ def pooling_layer(input,
 
     If stride > 0, this layer slides a window whose size is determined by stride,
     and return the pooling value of the window as the output. Thus, a long sequence
-    will be shorten. Note that for sequence with sub-sequence, the default value
+    will be shorten. 
+    
+    The parameter stride specifies the intervals at which to apply the pooling 
+    operation. Note that for sequence with sub-sequence, the default value
     of stride is -1.
 
     The example usage is:
@@ -1118,7 +1121,7 @@ def pooling_layer(input,
     :param pooling_type: Type of pooling, MaxPooling(default), AvgPooling,
                          SumPooling, SquareRootNPooling.
     :type pooling_type: BasePoolingType|None
-    :param stride: window size.
+    :param stride: The step size between successive pooling regions.
     :type stride: Int
     :param bias_attr: Bias parameter attribute. False if no bias.
     :type bias_attr: ParameterAttribute|None|False
@@ -1408,7 +1411,7 @@ def last_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
-    :param stride: window size.
+    :param stride: The step size between successive pooling regions.
     :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
@@ -1464,7 +1467,7 @@ def first_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
-    :param stride: window size.
+    :param stride: The step size between successive pooling regions.
     :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.

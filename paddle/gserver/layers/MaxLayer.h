@@ -27,10 +27,9 @@ namespace paddle {
  *    Output: output size is the number of input sequences (NOT input instances)
  *    output[i] = max_{for each instance in this sequence}{input[i]}
  *    If stride_ > 0:
- *      Output: a shorten sequence. The operation of getting max instance of a
- *              sequence is independently performed on every slice of the input
- *              sequence, which is obtained by sliding a window with the window
- *              size set to stride_.
+ *      Output: a shorten sequence. Stride is the step size by which we slide a
+ *              window upon the input sequence, and the max pooling operation is
+ *              then applied to each interval independently.
  * If SequenceLevel = kSeq:
  *    Check input sequence must has sub-sequence
  *    Output: output size is the number of input sub-sequences

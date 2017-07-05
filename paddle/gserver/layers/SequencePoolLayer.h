@@ -28,8 +28,9 @@ namespace paddle {
  * sequence}{input[i]}
  *    If stride_ > 0:
  *        Check input sequence must not have sub-sequence
- *        Output: a shorten sequence, pooling is performed upon a small local
- *                area
+ *        Output: a shorten sequence. Stride is the step size by which we slide
+ *                a window upon the input sequence, and the pooling operation
+ *                is then applied to each interval independently.
  * If SequenceLevel = kSeq:
  *    Check input sequence must has sub-sequence
  *    Output: output size is the number of input sub-sequences
