@@ -24,10 +24,20 @@ BuddyAllocator::BuddyAllocator(SystemAllocator* system_allocator,
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
       cache_(system_allocator->UseGpu()),
-      system_allocator_(std::move(system_allocator)) {
-  PADDLE_ASSERT(min_chunk_size > 0);
-  PADDLE_ASSERT(max_chunk_size > 0);
-  PADDLE_ASSERT(system_allocator != nullptr);
+      system_allocator_(std::move(system_allocator)) {}
+
+BuddyAllocator::~BuddyAllocator() {
+  DLOG(INFO) << "BuddyAllocator Disconstructor makes sure that all of these "
+                "have actually been freed";
+  while (!pool_.empty()) {
+    auto block = static_cast<MemoryBlock*>(std::get<2>(*pool_.begin()));
+    DLOG(INFO) << "Free from block (" << block << ", " << max_chunk_size_
+               << ")";
+
+    system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
+    cache_.invalidate(block);
+    pool_.erase(pool_.begin());
+  }
 }
 
 inline size_t align(size_t size, size_t alignment) {
@@ -62,7 +72,7 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
       return nullptr;
     }
   } else {
-    DLOG(INFO) << " Allocation from existing memory block " << std::get<2>(*it)
+    DLOG(INFO) << "Allocation from existing memory block " << std::get<2>(*it)
                << " at address "
                << reinterpret_cast<MemoryBlock*>(std::get<2>(*it))->data();
   }
@@ -142,6 +152,8 @@ void BuddyAllocator::Free(void* p) {
   // TODO(gangliao): Clean up if existing too much free memory
 }
 
+size_t BuddyAllocator::Used() { return total_used_; }
+
 void* BuddyAllocator::SystemAlloc(size_t size) {
   size_t index = 0;
   void* p = system_allocator_->Alloc(index, size);
@@ -172,7 +184,7 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
 
   if (p == nullptr) return pool_.end();
 
-  DLOG(INFO) << " Creating and inserting new block " << p
+  DLOG(INFO) << "Creating and inserting new block " << p
              << " from system allocator";
 
   static_cast<MemoryBlock*>(p)->init(cache_, MemoryBlock::FREE_CHUNK, index,
@@ -211,20 +223,19 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
   auto block = static_cast<MemoryBlock*>(std::get<2>(*it));
   pool_.erase(it);
 
-  DLOG(INFO) << " Split block (" << block << ", " << block->total_size(cache_)
+  DLOG(INFO) << "Split block (" << block << ", " << block->total_size(cache_)
              << ") into";
   block->split(cache_, size);
 
-  DLOG(INFO) << " Left block (" << block << ", " << block->total_size(cache_)
+  DLOG(INFO) << "Left block (" << block << ", " << block->total_size(cache_)
              << ")";
   block->set_type(cache_, MemoryBlock::ARENA_CHUNK);
 
   // the rest of memory if exist
   if (block->has_right_buddy(cache_)) {
     if (block->right_buddy(cache_)->type(cache_) == MemoryBlock::FREE_CHUNK) {
-      DLOG(INFO) << " Insert right block (" << block->right_buddy(cache_)
-                 << ", " << block->right_buddy(cache_)->total_size(cache_)
-                 << ")";
+      DLOG(INFO) << "Insert right block (" << block->right_buddy(cache_) << ", "
+                 << block->right_buddy(cache_)->total_size(cache_) << ")";
 
       pool_.insert({block->right_buddy(cache_)->index(cache_),
                     block->right_buddy(cache_)->total_size(cache_),

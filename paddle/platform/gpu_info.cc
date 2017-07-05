@@ -56,7 +56,7 @@ size_t GpuMaxAllocSize() {
   GpuMemoryUsage(available, total);
 
   // Reserve the rest for page tables, etc.
-  return total * FLAGS_fraction_of_gpu_memory_to_use;
+  return static_cast<size_t>(total * FLAGS_fraction_of_gpu_memory_to_use);
 }
 
 size_t GpuMinChunkSize() {

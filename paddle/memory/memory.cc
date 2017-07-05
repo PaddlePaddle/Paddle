@@ -22,37 +22,67 @@ limitations under the License. */
 namespace paddle {
 namespace memory {
 
+detail::BuddyAllocator* GetCPUBuddyAllocator() {
+  static detail::BuddyAllocator* a = nullptr;
+  if (a == nullptr) {
+    a = new detail::BuddyAllocator(new detail::CPUAllocator,
+                                   platform::CpuMinChunkSize(),
+                                   platform::CpuMaxChunkSize());
+  }
+   return a;
+}
+
+#ifndef PADDLE_ONLY_CPU  // The following code are for CUDA.
+
+detail::BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
+  static detail::BuddyAllocator** as = NULL;
+  if (as == NULL) {
+    int gpu_num = platform::GpuDeviceCount();
+    as = new detail::BuddyAllocator*[gpu_num];
+    for (int gpu = 0; gpu < gpu_num; gpu++) {
+      platform::SetDeviceId(gpu);
+      as[gpu] = new detail::BuddyAllocator(new detail::GPUAllocator,
+                                           platform::GpuMinChunkSize(),
+                                           platform::GpuMaxChunkSize());
+    }
+  }
+  return as[gpu_id];
+}
+
+#endif  // PADDLE_ONLY_CPU
+
 void* Alloc(platform::Place pl, size_t size) {
 #ifndef PADDLE_ONLY_CPU
   if (paddle::platform::is_gpu_place(pl)) {
     size_t gpu_id = boost::get<platform::GPUPlace>(pl).device;
-    return detail::GetGPUBuddyAllocator(gpu_id)->Alloc(size);
+    return GetGPUBuddyAllocator(gpu_id)->Alloc(size);
   }
 #endif  // PADDLE_ONLY_CPU
   PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
-  return detail::GetCPUBuddyAllocator()->Alloc(size);
+  return GetCPUBuddyAllocator()->Alloc(size);
 }
 
 void Free(paddle::platform::Place pl, void* p) {
 #ifndef PADDLE_ONLY_CPU
   if (paddle::platform::is_gpu_place(pl)) {
     size_t gpu_id = boost::get<platform::GPUPlace>(pl).device;
-    detail::GetGPUBuddyAllocator(gpu_id)->Free(p);
+    GetGPUBuddyAllocator(gpu_id)->Free(p);
+    return;
   }
 #endif  // PADDLE_ONLY_CPU
   PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
-  detail::GetCPUBuddyAllocator()->Free(p);
+  GetCPUBuddyAllocator()->Free(p);
 }
 
 size_t Used(paddle::platform::Place pl) {
 #ifndef PADDLE_ONLY_CPU
   if (paddle::platform::is_gpu_place(pl)) {
     size_t gpu_id = boost::get<platform::GPUPlace>(pl).device;
-    return detail::GetGPUBuddyAllocator(gpu_id)->Used();
+    return GetGPUBuddyAllocator(gpu_id)->Used();
   }
 #endif  // PADDLE_ONLY_CPU
   PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
-  return detail::GetCPUBuddyAllocator()->Used();
+  return GetCPUBuddyAllocator()->Used();
 }
 
 }  // namespace memory

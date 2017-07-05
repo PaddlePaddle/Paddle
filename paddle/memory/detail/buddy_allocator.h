@@ -93,33 +93,6 @@ class BuddyAllocator {
   std::mutex mutex_;
 };
 
-BuddyAllocator* GetCPUBuddyAllocator() {
-  static BuddyAllocator* a = nullptr;
-  if (a == nullptr) {
-    a = new BuddyAllocator(new CPUAllocator, platform::CpuMinChunkSize(),
-                           platform::CpuMaxChunkSize());
-  }
-  return a;
-}
-
-#ifndef PADDLE_ONLY_CPU  // The following code are for CUDA.
-
-BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
-  static BuddyAllocator** as = NULL;
-  if (as == NULL) {
-    int gpu_num = platform::GpuDeviceCount();
-    as = new BuddyAllocator*[gpu_num];
-    for (int gpu = 0; gpu < gpu_num; gpu++) {
-      as[gpu] =
-          new BuddyAllocator(new GPUAllocator, platform::GpuMinChunkSize(),
-                             platform::GpuMaxChunkSize());
-    }
-  }
-  return as[gpu_id];
-}
-
-#endif  // PADDLE_ONLY_CPU
-
 }  // namespace detail
 }  // namespace memory
 }  // namespace paddle
