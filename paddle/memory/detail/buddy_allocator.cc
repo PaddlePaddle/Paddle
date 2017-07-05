@@ -89,9 +89,8 @@ void BuddyAllocator::Free(void* p) {
                             block->index(cache_));
 
     // Invalidate GPU allocation from cache
-    if (system_allocator_->UseGpu()) {
-      cache_.invalidate(block);
-    }
+    cache_.invalidate(block);
+
     return;
   }
 
@@ -104,12 +103,35 @@ void BuddyAllocator::Free(void* p) {
   if (block->has_right_buddy(cache_)) {
     DLOG(INFO) << "Merging this block " << block << " with its right buddy "
                << block->right_buddy(cache_);
+
+    auto right_buddy = block->right_buddy(cache_);
+
+    if (right_buddy->type(cache_) == MemoryBlock::FREE_CHUNK) {
+      // Take away right buddy from pool
+      pool_.erase({right_buddy->index(cache_), right_buddy->total_size(cache_),
+                   right_buddy});
+
+      // merge its right buddy to the block
+      block->merge(cache_, right_buddy);
+    }
   }
 
   // Trying to merge the left buddy
   if (block->has_left_buddy(cache_)) {
     DLOG(INFO) << "Merging this block " << block << " with its left buddy "
                << block->left_buddy(cache_);
+
+    auto left_buddy = block->left_buddy(cache_);
+
+    if (left_buddy->type(cache_) == MemoryBlock::FREE_CHUNK) {
+      // Take away right buddy from pool
+      pool_.erase({left_buddy->index(cache_), left_buddy->total_size(cache_),
+                   left_buddy});
+
+      // merge the block to its left buddy
+      left_buddy->merge(cache_, block);
+      block = left_buddy;
+    }
   }
 
   // Dumping this block into pool
@@ -167,13 +189,16 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::FindExistChunk(size_t size) {
 
   while (1) {
     auto it = pool_.lower_bound({index, size, nullptr});
+
+    // no match chunk memory
     if (it == pool_.end()) return it;
 
     if (std::get<0>(*it) > index) {
+      // find suitable one
       if (std::get<1>(*it) >= size) {
         return it;
       }
-
+      // update and continue
       index = std::get<0>(*it);
       continue;
     }

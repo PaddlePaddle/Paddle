@@ -42,14 +42,14 @@ class BuddyAllocator {
   void Free(void*);
   size_t Used();
 
- public:
+ private:
   // Disable copy and assignment.
   BuddyAllocator(const BuddyAllocator&) = delete;
   BuddyAllocator& operator=(const BuddyAllocator&) = delete;
 
- private:
-  // Tuple type: allocator index, memory size, memory address
+  // Tuple (allocator index, memory size, memory address)
   using IndexSizeAddress = std::tuple<size_t, size_t, void*>;
+  // Each element in PoolSet is a free allocation
   using PoolSet = std::set<IndexSizeAddress>;
 
   /*! \brief Allocate fixed-size memory from system */
@@ -57,7 +57,6 @@ class BuddyAllocator {
 
   /*! \brief If existing chunks are not suitable, refill pool */
   PoolSet::iterator RefillPool();
-
   /**
    *  \brief Find the suitable chunk from existing pool
    *
@@ -77,13 +76,19 @@ class BuddyAllocator {
   size_t max_chunk_size_;  // the maximum size of each chunk
 
  private:
+  /**
+   * \brief A list of free allocation
+   *
+   * \note  Only store free chunk memory in pool
+   */
   PoolSet pool_;
 
  private:
-  // Unify the metadata format between GPU and CPU allocations
+  /*! Unify the metadata format between GPU and CPU allocations */
   MetadataCache cache_;
 
  private:
+  /*! Allocate CPU/GPU memory from system */
   SystemAllocator* system_allocator_;
   std::mutex mutex_;
 };

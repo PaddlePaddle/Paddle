@@ -91,8 +91,8 @@ void MemoryBlock::split(MetadataCache& cache, size_t size) {
 
 void MemoryBlock::merge(MetadataCache& cache, MemoryBlock* right_buddy) {
   // only free blocks can be merged
-  PADDLE_ASSERT(type(cache) == FREE_MEMORY);
-  PADDLE_ASSERT(right_buddy->type(cache) == FREE_MEMORY);
+  PADDLE_ASSERT(type(cache) == FREE_CHUNK);
+  PADDLE_ASSERT(right_buddy->type(cache) == FREE_CHUNK);
 
   auto metadata = cache.load(this);
 
