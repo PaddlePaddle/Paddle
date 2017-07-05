@@ -33,7 +33,7 @@ addons:
       - ccache
 before_install:
   - if [[ "$JOB" == "check_style" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
-  # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python 
+  # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python
   # protobuf version.
   - pip install numpy wheel 'protobuf==3.1' sphinx==1.5.6 recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit requests==2.9.2 LinkChecker
   - pip install rarfile
@@ -42,7 +42,7 @@ before_install:
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 script:
   - |
-    export WITH_GOLANG=ON && timeout 2580 paddle/scripts/travis/${JOB}.sh # 43min timeout
+    timeout 2580 paddle/scripts/travis/${JOB}.sh # 43min timeout
     RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 142 ]; then true; else false; fi;
 notifications:
   email:
