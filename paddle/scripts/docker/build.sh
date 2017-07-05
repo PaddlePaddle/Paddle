@@ -78,7 +78,7 @@ paddle version
 # PaddlePaddle.  This awkwardness is due to
 # https://github.com/PaddlePaddle/Paddle/issues/1854.  It also
 # describes a solution.
-if [ ${WITH_DOC} == "ON" ]; then
+if [[ ${WITH_DOC} == "ON" ]]; then
     cat <<EOF
 ========================================
 Building documentation ...

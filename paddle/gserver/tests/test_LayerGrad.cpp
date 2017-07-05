@@ -845,8 +845,12 @@ void testDegradeLayer(bool hasSubseq,
 
 TEST(Layer, MaxLayer) {
   testDegradeLayer(false, "max", "non-seq", -1);  // seq max to non-seq
-  testDegradeLayer(true, "max", "non-seq", -1);   // hasSubseq max to non-seq
-  testDegradeLayer(true, "max", "seq", -1);       // hasSubseq max to seq
+  testDegradeLayer(false,
+                   "max",
+                   "non-seq",
+                   5);  // seq max to a shorten seq, stride window = 5
+  testDegradeLayer(true, "max", "non-seq", -1);  // hasSubseq max to non-seq
+  testDegradeLayer(true, "max", "seq", -1);      // hasSubseq max to seq
 }
 
 TEST(Layer, SequenceLastInstanceLayer) {
@@ -868,6 +872,10 @@ TEST(Layer, SequenceLastInstanceLayer) {
 
 TEST(Layer, AverageLayer) {
   testDegradeLayer(false, "average", "non-seq", -1);  // seq average to non-seq
+  testDegradeLayer(false,
+                   "average",
+                   "non-seq",
+                   5);  // seq average to a shorten seq, stride window = 5
   testDegradeLayer(
       true, "average", "non-seq", -1);           // hasSubseq average to non-seq
   testDegradeLayer(true, "average", "seq", -1);  // hasSubseq average to seq
@@ -1661,6 +1669,8 @@ TEST(Layer, PadLayer) {
 
 TEST(Layer, CrossChannelNormLayer) {
   TestConfig config;
+  config.paramInitialMean = 1.;
+  config.paramInitialStd = 0.;
   config.layerConfig.set_type("norm");
   config.layerConfig.set_size(100);
   LayerInputConfig* input = config.layerConfig.add_inputs();
@@ -1674,7 +1684,7 @@ TEST(Layer, CrossChannelNormLayer) {
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 100, 10});
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "cross-channel-norm", 10, false, useGpu, false, 5);
+    testLayerGrad(config, "cross-channel-norm", 10, false, useGpu, false);
   }
 }
 
