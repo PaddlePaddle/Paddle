@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "CropOp.h"
-#include "paddle/math/Vector.h"
 #include "paddle/function/TensorShape.h"
+#include "paddle/math/Vector.h"
+
 namespace paddle {
 
 template <>
