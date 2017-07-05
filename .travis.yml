@@ -37,6 +37,7 @@ before_install:
   # protobuf version.
   - pip install numpy wheel 'protobuf==3.1' sphinx==1.5.6 recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit requests==2.9.2 LinkChecker
   - pip install rarfile
+  - curl https://glide.sh/get | bash
   - eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
