@@ -37,7 +37,7 @@ class Operator {
   explicit Operator(const OpDesc& desc);
   virtual ~Operator() {}
 
-  Error InitializeAttrs(const std::vector<AttrDesc>& attrs);
+  void InitializeAttrs();
 
   /**
    * InferShape is used to infer the shape of tensors related to this Operator.
