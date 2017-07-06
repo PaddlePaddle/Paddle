@@ -15,8 +15,10 @@ import (
 type ElementType int
 
 const (
+	// AlreadyInitialized is true if pserver is initialized
 	AlreadyInitialized = "pserver already initialized"
-	Uninitialized      = "pserver not fully initialized"
+	// Uninitialized is true if pserver not fully initialized
+	Uninitialized = "pserver not fully initialized"
 )
 
 // Supported element types
