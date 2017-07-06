@@ -21,22 +21,22 @@ namespace framework {
 std::string OperatorBase::DebugString() const {
   std::stringstream ss;
   ss << "inputs = [";
-  for(auto& ipt : inputs) {
+  for (auto& ipt : inputs_) {
     ss << ipt << ", ";
   }
   ss << "]\n";
   ss << "outputs = [";
-  for(auto& opt : outputs) {
+  for (auto& opt : outputs_) {
     ss << opt << ", ";
   }
   ss << "]\n";
   ss << "attr_keys = [";
-  for(auto& attr : attrs) {
+  for (auto& attr : attrs_) {
     ss << attr.first << ", ";
   }
   ss << "]\n";
   return ss.str();
 }
 
-} // namespace framework
-} // namespace paddle
+}  // namespace framework
+}  // namespace paddle

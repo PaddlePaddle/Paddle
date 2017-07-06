@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/operator.h"
-#include "paddle/framework/scope.h"
 #include "gtest/gtest.h"
+#include "paddle/framework/scope.h"
 
 namespace paddle {
 namespace framework {
 
-class OperatorTest: public OperatorBase {
+class OperatorTest : public OperatorBase {
   void Run(OpRunContext* context) const override {}
   void InferShape(const Scope* scope) const override {}
 };
@@ -32,14 +32,13 @@ TEST(OperatorBase, DebugString) {
   op_context->device_context = device_context;
 
   auto op = new OperatorTest();
-  op->inputs.push_back("X");
-  op->inputs.push_back("Y");
-  op->outputs.push_back("O");
-  op->attrs["scale"] = 0;
+  op->inputs_.push_back("X");
+  op->inputs_.push_back("Y");
+  op->outputs_.push_back("O");
+  op->attrs_["scale"] = 0;
 
   printf("%s\n", op->DebugString().c_str());
-
 }
 
-} // namespace framework
-} // namespace paddle
+}  // namespace framework
+}  // namespace paddle
