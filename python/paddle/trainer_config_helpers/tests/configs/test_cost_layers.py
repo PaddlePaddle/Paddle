@@ -40,4 +40,6 @@ outputs(
             name='huber_label', size=1)),
     multi_binary_label_cross_entropy(
         input=probs, label=xe_label),
-    sum_cost(input=hidden))
+    sum_cost(input=hidden),
+    nce_layer(
+        input=hidden, label=labels))

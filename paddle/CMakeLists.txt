@@ -8,13 +8,13 @@ add_subdirectory(gserver)
 add_subdirectory(pserver)
 add_subdirectory(trainer)
 add_subdirectory(scripts)
-
-find_package(boost QUIET)
+add_subdirectory(optimizer)
+add_subdirectory(string)
 
 if(Boost_FOUND)
-  include_directories(${Boost_INCLUDE_DIRS})
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-  add_subdirectory(majel)
+  add_subdirectory(memory)
+  add_subdirectory(platform)
+  add_subdirectory(framework)
 endif()
 
 if(WITH_C_API)

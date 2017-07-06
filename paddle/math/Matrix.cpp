@@ -1565,6 +1565,8 @@ void CpuMatrix::copyFrom(const Matrix& src, hl_stream_t stream) {
                     const_cast<real*>(src.getData()),
                     sizeof(real) * elementCnt_,
                     stream);
+    // There is a need to add synchronization to ensure that the data is copied.
+    hl_stream_synchronize(stream);
   } else if (typeid(src) == typeid(CpuMatrix)) {
     memcpy(data_, src.getData(), sizeof(real) * elementCnt_);
   } else {
@@ -3606,7 +3608,7 @@ void CpuMatrix::sumOfSquaresBp(Matrix& output, Matrix& label) {
   }
 }
 
-void CpuMatrix::smoothL1(Matrix& output, Matrix& label) {
+void CpuMatrix::smoothL1(Matrix& output, Matrix& label, real destScale) {
   CHECK(output.useGpu_ == false && label.useGpu_ == false)
       << "Matrix type are not equal";
 
@@ -3624,6 +3626,7 @@ void CpuMatrix::smoothL1(Matrix& output, Matrix& label) {
   for (size_t i = 0; i < numSamples; ++i, out += dim, lbl += dim) {
     for (size_t j = 0; j < dim; ++j) {
       real absVal = std::fabs(out[j] - lbl[j]);
+      cost[i] *= destScale;
       if (absVal < 1.0)
         cost[i] += 0.5 * absVal * absVal;
       else
@@ -3632,7 +3635,7 @@ void CpuMatrix::smoothL1(Matrix& output, Matrix& label) {
   }
 }
 
-void CpuMatrix::smoothL1Bp(Matrix& output, Matrix& label) {
+void CpuMatrix::smoothL1Bp(Matrix& output, Matrix& label, real destScale) {
   CHECK(output.useGpu_ == false && label.useGpu_ == false)
       << "Matrix type are not equal";
 
@@ -3650,6 +3653,7 @@ void CpuMatrix::smoothL1Bp(Matrix& output, Matrix& label) {
   for (size_t i = 0; i < numSamples; ++i, out += dim, grad += dim, lbl += dim) {
     for (size_t j = 0; j < dim; ++j) {
       real val = out[j] - lbl[j];
+      grad[j] *= destScale;
       if (std::fabs(val) < 1) {
         grad[j] += val;
       } else {

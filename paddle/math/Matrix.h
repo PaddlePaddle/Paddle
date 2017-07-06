@@ -239,7 +239,8 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  // asynchronous copy
+  // For GpuMatrix this is an asynchronous copy interface
+  // For CpuMatrix this is an synchronous copy interface
   virtual void copyFrom(const Matrix& src, hl_stream_t stream) {
     LOG(FATAL) << "Not implemented";
   }
@@ -794,11 +795,11 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  virtual void smoothL1(Matrix& output, Matrix& label) {
+  virtual void smoothL1(Matrix& output, Matrix& label, real destScale) {
     LOG(FATAL) << "Not implemented";
   }
 
-  virtual void smoothL1Bp(Matrix& outputV, Matrix& label) {
+  virtual void smoothL1Bp(Matrix& outputV, Matrix& label, real destScale) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -1746,8 +1747,8 @@ public:
   /// gradient of sumOfSquares.
   void sumOfSquaresBp(Matrix& outputV, Matrix& label);
 
-  void smoothL1(Matrix& output, Matrix& label);
-  void smoothL1Bp(Matrix& output, Matrix& label);
+  void smoothL1(Matrix& output, Matrix& label, real destScale);
+  void smoothL1Bp(Matrix& output, Matrix& label, real destScale);
 
   void tanh(Matrix& output);
   void tanhDerivative(Matrix& output);

@@ -10,7 +10,7 @@ A dataset is a list of files in *RecordIO* format. A RecordIO file consists of c
 
 ## Task Queue
 
-As mentioned in [distributed training design doc](./README.md), a *task* is a data shard that the master server assigns to the trainer process to train on. A task consists of one or multiple *blocks* from one or multiple files. The master server maintains *task queues* to track the training progress.
+As mentioned in [distributed training design doc](./README.md), a *task* is a data shard that the master server assigns to the trainer process to train on. A task consists of one or multiple *chunks* from one or multiple files. The master server maintains *task queues* to track the training progress.
 
 ### Task Queue Creation
 
@@ -21,23 +21,23 @@ As mentioned in [distributed training design doc](./README.md), a *task* is a da
 	func (m *RPCServer) ReportDataset(Paths []string, dummy *int) error {
 	}
 	```
-1. The master server will scan through each RecordIO file to generate the *block index* and know how many blocks does each file have. A block can be referenced by the file path and the index of the block within the file. The block index is in memory data structure that enables fast access to each block, and the index of the block with the file is an integer start from 0, representing the n-th block within the file.
+1. The master server will scan through each RecordIO file to generate the *chunk index* and know how many chunks does each file have. A chunk can be referenced by the file path and the index of the chunk within the file. The chunk index is in memory data structure that enables fast access to each chunk, and the index of the chunk with the file is an integer start from 0, representing the n-th chunk within the file.
 
-	The definition of the block is:
+	The definition of the chunk is:
 	```go
-	type Block struct {
-		Idx   int // index of the block within the file
+	type Chunk struct {
+		Idx   int // index of the chunk within the file
 		Path  string
-		Index recordio.Index // block index
+		Index recordio.Index // chunk index
 	}
 	```
-1. Blocks are grouped into tasks, and tasks are filled into the todo queue. The pending queue and the done queue are initialized with no element.
+1. Chunks are grouped into tasks, and tasks are filled into the todo queue. The pending queue and the done queue are initialized with no element.
 
 	The definition of the task is:
 	```go
 	type Task struct {
 		Index  int
-		Blocks []Block
+		Chunks []Chunk
 	}
 	```
 

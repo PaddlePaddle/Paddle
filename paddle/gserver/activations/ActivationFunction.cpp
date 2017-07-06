@@ -397,6 +397,44 @@ Error __must_check backward(Argument& act) {
 END_DEFINE_ACTIVATION(exponential)
 
 /**
+ * @brief Reciprocal Activation.
+ * \f[
+ * f(z) = 1/z
+ * \f]
+ */
+BEGIN_DEFINE_ACTIVATION(reciprocal)
+Error __must_check forward(Argument& act) {
+  act.value->reciprocal2();
+  return Error();
+}
+
+Error __must_check backward(Argument& act) {
+  act.grad->dotMulSquare(*act.value);
+  act.grad->neg();
+  return Error();
+}
+END_DEFINE_ACTIVATION(reciprocal)
+
+/**
+ * @brief Square Root Activation.
+ * \f[
+ * f(z) = sqrt(z)
+ * \f]
+ */
+BEGIN_DEFINE_ACTIVATION(sqrt)
+Error __must_check forward(Argument& act) {
+  act.value->sqrt2();
+  return Error();
+}
+
+Error __must_check backward(Argument& act) {
+  act.grad->dotDiv(*act.grad, *act.value);
+  act.grad->mulScalar(0.5);
+  return Error();
+}
+END_DEFINE_ACTIVATION(sqrt)
+
+/**
  * @brief Logarithm Activation.
  * \f[
  * f(z) = log(z)

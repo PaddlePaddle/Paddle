@@ -13,9 +13,9 @@
 # limitations under the License.
 
 # Detects the OS and sets appropriate variables.
-# CMAKE_SYSTEM_NAME only give us a coarse-grained name,
-# but the name like centos is necessary in some scenes
-# to distinguish system for customization.
+# CMAKE_SYSTEM_NAME only give us a coarse-grained name of the OS CMake is
+# building for, but the host processor name like centos is necessary
+# in some scenes to distinguish system for customization.
 #
 # for instance, protobuf libs path is <install_dir>/lib64
 # on CentOS, but <install_dir>/lib on other systems.
@@ -33,6 +33,7 @@ ELSE(WIN32)
             SET(CMAKE_OSX_DEPLOYMENT_TARGET ${MACOS_VERSION} CACHE STRING
                 "Minimum OS X version to target for deployment (at runtime); newer APIs weak linked. Set to empty string for default value.")
         ENDIF()
+        set(CMAKE_EXE_LINKER_FLAGS "-framework CoreFoundation -framework Security")
     ELSE(APPLE)
 
         IF(EXISTS "/etc/issue")
@@ -72,9 +73,15 @@ MARK_AS_ADVANCED(HOST_SYSTEM CPU_CORES)
 MESSAGE(STATUS "Found Paddle host system: ${HOST_SYSTEM}")
 MESSAGE(STATUS "Found Paddle host system's CPU: ${CPU_CORES} cores")
 
+# configuration for cross-compiling
 IF(DEFINED CMAKE_SYSTEM_NAME)
+    INCLUDE(cross_compiling/host)
     IF(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
         SET(ANDROID TRUE)
+        INCLUDE(cross_compiling/android)
+    ELSEIF(${CMAKE_SYSTEM_NAME} STREQUAL "RPi")
+        SET(RPI TRUE)
+        INCLUDE(cross_compiling/raspberry_pi)
     ENDIF()
 ENDIF()
 
