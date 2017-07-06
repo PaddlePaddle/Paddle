@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import pdb
 '''
 The following functions are available in the config file:
 
@@ -761,8 +762,8 @@ class DotMulOperator(Operator):
 
     def check_dims(self):
         for i in range(2):
-            config_assert(self.operator_conf.input_sizes[i] ==
-                          self.operator_conf.output_size,
+            config_assert(self.operator_conf.input_sizes[
+                i] == self.operator_conf.output_size,
                           "DotMul input_size != output_size")
 
     def calc_output_size(self, input_sizes):
@@ -1193,8 +1194,7 @@ def parse_image(image, input_layer_name, image_conf):
 def parse_norm(norm, input_layer_name, norm_conf):
     norm_conf.norm_type = norm.norm_type
     config_assert(
-        norm.norm_type in
-        ['rnorm', 'cmrnorm-projection', 'cross-channel-norm'],
+        norm.norm_type in ['rnorm', 'cmrnorm-projection', 'cross-channel-norm'],
         "norm-type %s is not in [rnorm, cmrnorm-projection, cross-channel-norm]"
         % norm.norm_type)
     norm_conf.channels = norm.channels
@@ -1571,7 +1571,13 @@ class MultiClassCrossEntropySelfNormCostLayer(LayerBase):
 
 @config_layer('fc')
 class FCLayer(LayerBase):
-    def __init__(self, name, size, inputs, bias=True, **xargs):
+    def __init__(self,
+                 name,
+                 size,
+                 inputs,
+                 bias=True,
+                 error_clipping_threshold=None,
+                 **xargs):
         super(FCLayer, self).__init__(name, 'fc', size, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
@@ -1588,6 +1594,9 @@ class FCLayer(LayerBase):
             self.create_input_parameter(input_index, psize, dims, sparse,
                                         format)
         self.create_bias_parameter(bias, self.config.size)
+
+        if error_clipping_threshold is not None:
+            self.config.error_clipping_threshold = error_clipping_threshold
 
 
 @config_layer('selective_fc')
@@ -3425,7 +3434,8 @@ DEFAULT_SETTING = dict(
 
 settings = copy.deepcopy(DEFAULT_SETTING)
 
-settings_deprecated = dict(usage_ratio=1., )
+settings_deprecated = dict(
+    usage_ratio=1., )
 
 trainer_settings = dict(
     save_dir="./output/model",
