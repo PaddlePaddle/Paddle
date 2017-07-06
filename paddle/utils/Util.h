@@ -26,6 +26,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include <paddle/framework/init_function.h>
 #include "Common.h"
 #include "Logging.h"
 #include "TrainerConfig.pb.h"
@@ -138,7 +139,7 @@ typename Container::value_type pop_get_front(Container& c) {
  * call runInitFunctions if they don't need the commandline flags
  * designed for PADDLE main procedure.
  */
-void runInitFunctions();
+inline void runInitFunctions() { paddle::framework::RunInitFunctions(); }
 
 /**
  * Initialize logging and parse commandline
@@ -165,18 +166,7 @@ void rmDir(const char* folderName);
 void loadFileList(const std::string& fileListFileName,
                   std::vector<std::string>& fileList);
 
-/**
- * Register a function, the function will be called in initMain(). Functions
- * with higher priority will be called first. The execution order of functions
- * with same priority is not defined.
- */
-void registerInitFunction(std::function<void()> func, int priority = 0);
-class InitFunction {
-public:
-  explicit InitFunction(std::function<void()> func, int priority = 0) {
-    registerInitFunction(func, priority);
-  }
-};
+using paddle::framework::InitFunction;
 
 /**
  * Class SetDevice provides a mechanism for set device enviroment.

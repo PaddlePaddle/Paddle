@@ -12,3 +12,5 @@ cc_test(op_proto_test SRCS op_proto_test.cc DEPS op_proto protobuf)
 
 proto_library(op_desc SRCS op_desc.proto DEPS attr_type)
 cc_test(op_desc_test SRCS op_desc_test.cc DEPS op_desc protobuf)
+cc_library(init_function SRCS init_function.cc)
+cc_test(init_function_test SRCS init_function_test.cc DEPS init_function)

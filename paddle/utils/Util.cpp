@@ -114,41 +114,6 @@ pid_t getTID() {
   return tid;
 }
 
-static bool g_initialized = false;
-typedef std::pair<int, std::function<void()>> PriorityFuncPair;
-typedef std::vector<PriorityFuncPair> InitFuncList;
-static InitFuncList* g_initFuncs = nullptr;
-static std::once_flag g_onceFlag;
-void registerInitFunction(std::function<void()> func, int priority) {
-  if (g_initialized) {
-    LOG(FATAL) << "registerInitFunction() should only called before initMain()";
-  }
-  if (!g_initFuncs) {
-    g_initFuncs = new InitFuncList();
-  }
-  g_initFuncs->push_back(std::make_pair(priority, func));
-}
-
-void runInitFunctions() {
-  std::call_once(g_onceFlag, []() {
-    VLOG(3) << "Calling runInitFunctions";
-    if (g_initFuncs) {
-      std::sort(g_initFuncs->begin(),
-                g_initFuncs->end(),
-                [](const PriorityFuncPair& x, const PriorityFuncPair& y) {
-                  return x.first > y.first;
-                });
-      for (auto& f : *g_initFuncs) {
-        f.second();
-      }
-      delete g_initFuncs;
-      g_initFuncs = nullptr;
-    }
-    g_initialized = true;
-    VLOG(3) << "Call runInitFunctions done.";
-  });
-}
-
 void initMain(int argc, char** argv) {
   installLayerStackTracer();
   std::string line;
