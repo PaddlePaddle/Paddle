@@ -289,6 +289,18 @@ message DetectionOutputConfig {
   optional uint32 width = 9 [default = 1];
 }
 
+message AnchorConfig {
+  required uint32 base_size = 1;
+  repeated float aspect_ratio = 2;
+  repeated float scale_ratio = 3;
+  required uint32 feat_stride = 4;
+  optional uint32 allowed_border = 5 [default = 0];
+  optional float pos_overlap_threshold = 6 [default = 0.7];
+  optional float neg_overlap_threshold = 7 [default = 0.3];
+  required uint32 rpn_batch_size = 8;
+  required uint32 rpn_fg_ratio = 9;
+}
+
 message LayerInputConfig {
   required string input_layer_name = 1;
   optional string input_parameter_name = 2;
@@ -309,6 +321,7 @@ message LayerInputConfig {
   optional RowConvConfig row_conv_conf = 15;
   optional MultiBoxLossConfig multibox_loss_conf = 16;
   optional DetectionOutputConfig detection_output_conf = 17;
+  optional AnchorConfig anchor_conf = 18;
 }
 
 message LayerConfig {

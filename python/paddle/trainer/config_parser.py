@@ -1720,6 +1720,24 @@ class DetectionOutputLayer(LayerBase):
         self.config.size = size
 
 
+@config_layer('anchor')
+class AnchorLayer(LayerBase):
+    def __init__(self, name, inputs, base_size, aspect_ratio, scale_ratio,
+                 feat_stride, allowed_border, pos_overlap_threshold,
+                 neg_overlap_threshold, rpn_batch_size, rpn_fg_ratio):
+        super(AnchorLayer, self).__init__(name, 'anchor', 0, inputs)
+        config_assert(len(inputs) == 3, 'AnchorLayer must have 3 inputs')
+        self.config.inputs[0].anchor_conf.base_size = base_size
+        self.config.inputs[0].anchor_conf.aspect_ratio.extend(aspect_ratio)
+        self.config.inputs[0].anchor_conf.scale_ratio.extend(scale_ratio)
+        self.config.inputs[0].anchor_conf.feat_stride = feat_stride
+        self.config.inputs[0].anchor_conf.allowed_border = allowed_border
+        self.config.inputs[
+            0].anchor_conf.pos_overlap_threshold = pos_overlap_threshold
+        self.config.inputs[0].anchor_conf.rpn_batch_size = rpn_batch_size
+        self.config.inputs[0].anchor_conf.rpn_fg_ratio = rpn_fg_ratio
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self, name, size, height=None, width=None, device=None):

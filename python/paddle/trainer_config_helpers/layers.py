@@ -117,6 +117,7 @@ __all__ = [
     'cross_channel_norm_layer',
     'multibox_loss_layer',
     'detection_output_layer',
+    'anchor_layer',
     'spp_layer',
     'pad_layer',
     'eos_layer',
@@ -199,6 +200,7 @@ class LayerType(object):
     PRIORBOX_LAYER = 'priorbox'
     MULTIBOX_LOSS_LAYER = 'multibox_loss'
     DETECTION_OUTPUT_LAYER = 'detection_output'
+    ANCHOR_LAYER = 'anchor'
 
     CTC_LAYER = 'ctc'
     WARP_CTC_LAYER = 'warp_ctc'
@@ -1195,6 +1197,71 @@ def detection_output_layer(input_loc,
         background_id=background_id)
     return LayerOutput(
         name, LayerType.DETECTION_OUTPUT_LAYER, parents=parents, size=size)
+
+
+@wrap_name_default("anchor")
+def anchor_layer(input_feat_map,
+                 input_image,
+                 input_gtBBoxes,
+                 base_size,
+                 aspect_ratio,
+                 scale_ratio,
+                 feat_stride,
+                 allowed_border,
+                 pos_overlap_threshold,
+                 neg_overlap_threshold,
+                 rpn_batch_size,
+                 rpn_fg_ratio,
+                 name=None):
+    """
+    Generate the default anchors and compute the corresponding labels and targets.
+    This layer is necessary for the Region Proposal Networks of Faster R-CNN.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input_feat_map: The last feature map to get size.
+    :type input_feat_map: LayerOutput
+    :param input_image: The raw image to get size.
+    :type input_image: LayerOutput
+    :param input_gtBBoxes: The ground-truth bounding-boxes.
+    :type input_gtBBoxes: LayerOutput
+    :param base_size: The basic anchor size.
+    :type base_size: int
+    :param aspect_ratio: The aspect ratio used to generate anchors.
+    :type aspect_ratio: list
+    :param scale_ratio: The scales used to generate anchors.
+    :type scale_ratio: list
+    :param feat_stride: The stride used to generate anchors.
+    :type feat_stride: int
+    :param allowed_border: The length added to image size to bound anchors.
+    :type allowed_border: int
+    :param pos_overlap_threshold: IoU overlap threshold for foreground.
+    :type pos_overlap_threshold: float
+    :param neg_overlap_threshold: IoU overlap threshold for background.
+    :type neg_overlap_threshold: float
+    :param rpn_batch_size: batch size of anchors for RPN training.
+    :type rpn_batch_size: int
+    :param rpn_fg_ratio: the ratio of foreground anchors in each batch.
+    :type rpn_fg_ratio: float
+    :return: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.ANCHOR_LAYER,
+        inputs=[input_feat_map.name, input_image.name, input_gtBBoxes.name],
+        base_size=base_size,
+        aspect_ratio=aspect_ratio,
+        scale_ratio=scale_ratio,
+        feat_stride=feat_stride,
+        allowed_border=allowed_border,
+        pos_overlap_threshold=pos_overlap_threshold,
+        neg_overlap_threshold=neg_overlap_threshold,
+        rpn_batch_size=rpn_batch_size,
+        rpn_fg_ratio=rpn_fg_ratio)
+    return LayerOutput(
+        name,
+        LayerType.ANCHOR_LAYER,
+        parents=[input_feat_map, input_image, input_gtBBoxes])
 
 
 @wrap_name_default("cross_channel_norm")
