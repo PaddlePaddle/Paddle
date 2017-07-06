@@ -31,7 +31,7 @@ TEST(Argument, poolSequenceWithStride) {
   int strideResultReversed[] = {0, 4, 9, 14, 17, 20, 25, 30};
 
   for (auto reversed : {false, true}) {
-    IVectorPtr stridePositions;
+    ICpuGpuVectorPtr stridePositions;
     output.poolSequenceWithStride(
         input, 5 /* stride */, &stridePositions, reversed);
 
@@ -45,7 +45,7 @@ TEST(Argument, poolSequenceWithStride) {
     CHECK_EQ(stridePositions->getSize(), 8UL);
     auto result = reversed ? strideResultReversed : strideResult;
     for (int i = 0; i < 8; i++) {
-      CHECK_EQ(stridePositions->getData()[i], result[i]);
+      CHECK_EQ(stridePositions->getData(false)[i], result[i]);
     }
   }
 }
