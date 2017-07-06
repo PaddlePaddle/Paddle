@@ -32,7 +32,22 @@ detail::BuddyAllocator* GetCPUBuddyAllocator() {
   return a;
 }
 
-#ifndef PADDLE_ONLY_CPU  // The following code are for CUDA.
+template <>
+void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
+  return GetCPUBuddyAllocator()->Alloc(size);
+}
+
+template <>
+void Free<platform::CPUPlace>(platform::CPUPlace place, void* p) {
+  GetCPUBuddyAllocator()->Free(p);
+}
+
+template <>
+size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
+  return GetCPUBuddyAllocator()->Used();
+}
+
+#ifndef PADDLE_ONLY_CPU
 
 detail::BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   static detail::BuddyAllocator** as = NULL;
@@ -49,41 +64,22 @@ detail::BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   return as[gpu_id];
 }
 
-#endif  // PADDLE_ONLY_CPU
-
-void* Alloc(platform::Place pl, size_t size) {
-#ifndef PADDLE_ONLY_CPU
-  if (paddle::platform::is_gpu_place(pl)) {
-    size_t gpu_id = boost::get<platform::GPUPlace>(pl).device;
-    return GetGPUBuddyAllocator(gpu_id)->Alloc(size);
-  }
-#endif  // PADDLE_ONLY_CPU
-  PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
-  return GetCPUBuddyAllocator()->Alloc(size);
+template <>
+void* Alloc<platform::GPUPlace>(platform::GPUPlace place, size_t size) {
+  return GetGPUBuddyAllocator(place.device)->Alloc(size);
 }
 
-void Free(paddle::platform::Place pl, void* p) {
-#ifndef PADDLE_ONLY_CPU
-  if (paddle::platform::is_gpu_place(pl)) {
-    size_t gpu_id = boost::get<platform::GPUPlace>(pl).device;
-    GetGPUBuddyAllocator(gpu_id)->Free(p);
-    return;
-  }
-#endif  // PADDLE_ONLY_CPU
-  PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
-  GetCPUBuddyAllocator()->Free(p);
+template <>
+void Free<platform::GPUPlace>(platform::GPUPlace place, void* p) {
+  GetGPUBuddyAllocator(place.device)->Free(p);
 }
 
-size_t Used(paddle::platform::Place pl) {
-#ifndef PADDLE_ONLY_CPU
-  if (paddle::platform::is_gpu_place(pl)) {
-    size_t gpu_id = boost::get<platform::GPUPlace>(pl).device;
-    return GetGPUBuddyAllocator(gpu_id)->Used();
-  }
-#endif  // PADDLE_ONLY_CPU
-  PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
-  return GetCPUBuddyAllocator()->Used();
+template <>
+size_t Used<platform::GPUPlace>(platform::GPUPlace place) {
+  return GetGPUBuddyAllocator(place.device)->Used();
 }
+
+#endif  // PADDLE_ONLY_CPU
 
 }  // namespace memory
 }  // namespace paddle
