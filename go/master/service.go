@@ -414,7 +414,7 @@ func (s *Service) TaskFailed(taskID TaskID, dummy *int) error {
 	t, ok := s.taskQueues.Pending[taskID.ID]
 	if !ok {
 		err := errors.New("pending task not found")
-		log.WithFields(s.logFields()).Warningln("TaskFailed:Pending task #%d not found.", taskID)
+		log.WithFields(s.logFields()).Warningln("TaskFailed:Pending task #%v not found.", taskID)
 		return err
 	}
 
