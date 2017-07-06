@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <vector>
 #include "paddle/framework/enforce.h"
-#include "paddle/framework/op_desc.pb.h"
 
 namespace paddle {
 namespace framework {
@@ -21,7 +20,7 @@ template <typename T>
 class LargerThanChecker {
  public:
   LargerThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
-  void operator()(const T& value) const {
+  void operator()(T& value) const {
     PADDLE_ENFORCE(value > lower_bound_, "larger_than check fail");
   }
 
@@ -40,13 +39,13 @@ class DefaultValueSetter {
 
  private:
   T default_value_;
-}
+};
 
 // check whether a certain attribute fit its limits
 // an attribute can have more than one limits
 template <typename T>
 class TypedAttrChecker {
-  typedef std::function<void(const T&)> ValueChecker;
+  typedef std::function<void(T&)> ValueChecker;
 
  public:
   TypedAttrChecker(const std::string& attr_name) : attr_name_(attr_name) {}
@@ -72,17 +71,16 @@ class TypedAttrChecker {
   }
 
   void operator()(AttributeMap& attr_map) const {
-    Attribute& attr = attr_map.at(attr_name_);
-    const int blank_idx = 0;
-    if (attr_map.which() == blank_idx) {
+    if (!attr_map.count(attr_name_)) {
       // user do not set this attr
       PADDLE_ENFORCE(!default_value_setter_.empty(),
                      "The value of %s is required.", attr_name_);
       // default_value_setter_ has no more than one element
       T val;
       (default_value_setter_[0])(val);
-      attr = val;
+      attr_map[attr_name_] = val;
     }
+    Attribute& attr = attr_map.at(attr_name_);
     T& attr_value = boost::get<T>(attr);
     for (const auto& checker : value_checkers_) {
       checker(attr_value);
@@ -97,17 +95,17 @@ class TypedAttrChecker {
 
 // check whether op's all attributes fit their own limits
 class OpAttrChecker {
-  typedef std::function<void<AttributeMap&>> AttrChecker;
+  typedef std::function<void(AttributeMap&)> AttrChecker;
 
  public:
   template <typename T>
   TypedAttrChecker<T>& AddAttrChecker(const std::string& attr_name) {
     attr_checkers_.push_back(TypedAttrChecker<T>(attr_name));
     AttrChecker& checker = attr_checkers_.back();
-    return *(checker.target<TypedAttrChecker<T>>())
+    return *(checker.target<TypedAttrChecker<T>>());
   }
 
-  void Check(AttributeMap& attr_map) {
+  void Check(AttributeMap& attr_map) const {
     for (const auto& checker : attr_checkers_) {
       checker(attr_map);
     }
