@@ -14,15 +14,14 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/framework/enforce.h"
 #ifndef PADDLE_ONLY_CPU
 #include "paddle/platform/cuda.h"
-#define EIGEN_USE_GPU
-#endif
-
-#include "paddle/framework/enforce.h"
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/dynload/curand.h"
+#define EIGEN_USE_GPU
+#endif
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -34,37 +33,27 @@ class DeviceContext {
   virtual ~DeviceContext() {}
 };
 
-class CpuDeviceContext : public DeviceContext {
-  Eigen::DefaultDevice eigen_device() {
-    if (!eigen_device_) {
-      eigen_device_ = new Eigen::DefaultDevice();
-    }
-    return *eigen_device_;
-  }
-
- private:
-  Eigen::DefaultDevice* eigen_device_{nullptr};
-};
+class CPUDeviceContext : public DeviceContext {};
 
 #ifndef PADDLE_ONLY_CPU
-class DeviceGuard {
+class GPUPlaceGuard {
  public:
-  explicit DeviceGuard(GPUPlace new_place) : previous_(GetCurrentDeviceId()) {
+  explicit GPUPlaceGuard(GPUPlace new_place) : previous_(GetCurrentDeviceId()) {
     if (previous_ != new_place) {
       paddle::platform::SetDeviceId(new_place.device);
     }
   }
 
-  ~DeviceGuard() { paddle::platform::SetDeviceId(previous_.device); }
+  ~GPUPlaceGuard() { paddle::platform::SetDeviceId(previous_.device); }
 
  private:
   GPUPlace previous_;
 };
 
-class CudaDeviceContext : public DeviceContext {
+class CUDADeviceContext : public DeviceContext {
  public:
-  explicit CudaDeviceContext(const GPUPlace gpu_place) : gpu_place_(gpu_place) {
-    DeviceGuard guard(gpu_place_);
+  explicit CUDADeviceContext(const GPUPlace gpu_place) : gpu_place_(gpu_place) {
+    GPUPlaceGuard guard(gpu_place_);
     paddle::platform::throw_on_error(cudaStreamCreate(&stream_),
                                      "cudaStreamCreate failed");
     eigen_stream_ = new Eigen::CudaStreamDevice(&stream_);
@@ -82,7 +71,7 @@ class CudaDeviceContext : public DeviceContext {
 
   cublasHandle_t cublas_handle() {
     if (!blas_handle_) {
-      DeviceGuard guard(gpu_place_);
+      GPUPlaceGuard guard(gpu_place_);
       PADDLE_ENFORCE(paddle::platform::dynload::cublasCreate(&blas_handle_) ==
                          CUBLAS_STATUS_SUCCESS,
                      "cublasCreate failed");
@@ -95,7 +84,7 @@ class CudaDeviceContext : public DeviceContext {
 
   cudnnHandle_t cudnn_handle() {
     if (!dnn_handle_) {
-      DeviceGuard guard(gpu_place_);
+      GPUPlaceGuard guard(gpu_place_);
       PADDLE_ENFORCE(paddle::platform::dynload::cudnnCreate(&dnn_handle_) ==
                          CUDNN_STATUS_SUCCESS,
                      "cudnnCreate failed");
@@ -108,7 +97,7 @@ class CudaDeviceContext : public DeviceContext {
 
   curandGenerator_t curand_generator() {
     if (!rand_generator_) {
-      DeviceGuard guard(gpu_place_);
+      GPUPlaceGuard guard(gpu_place_);
       PADDLE_ENFORCE(paddle::platform::dynload::curandCreateGenerator(
                          &rand_generator_, CURAND_RNG_PSEUDO_DEFAULT) ==
                          CURAND_STATUS_SUCCESS,
@@ -124,7 +113,7 @@ class CudaDeviceContext : public DeviceContext {
     return rand_generator_;
   }
 
-  ~CudaDeviceContext() {
+  ~CUDADeviceContext() {
     Wait();
     if (blas_handle_) {
       PADDLE_ENFORCE(paddle::platform::dynload::cublasDestroy(blas_handle_) ==
