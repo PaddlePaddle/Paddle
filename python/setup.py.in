@@ -1,5 +1,7 @@
 from setuptools import setup
+import os
 
+PADDLE_C_LOCATION = os.getenv("PADDLE_C_LOCATION")
 packages=['paddle',
           'paddle.proto',
           'paddle.trainer',
@@ -30,6 +32,7 @@ setup(name='paddle',
       install_requires=setup_requires,
       packages=packages,
       package_data={'paddle.v2.master': ['libpaddle_master.so'], },
+      data_files = [("paddle_c.so", [PADDLE_C_LOCATION])],
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}',
           # The paddle.v2.framework.proto will be generated while compiling.
