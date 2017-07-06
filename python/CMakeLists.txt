@@ -17,15 +17,21 @@ add_custom_target(copy_paddle_master)
 SET(COPY_PADDLE_MASTER "")
 if(WITH_GOLANG)
   SET(COPY_PADDLE_MASTER "copy_paddle_master")
+  message("paddle_master_lib_path:" ${paddle_master_LIB_PATH})
+  message("PROJ_ROOT:" ${PROJ_ROOT})
   add_custom_command(TARGET ${COPY_PADDLE_MASTER}
     COMMAND cp ${paddle_master_LIB_PATH} ${PROJ_ROOT}/python/paddle/v2/master/
     )
   add_dependencies(copy_paddle_master paddle_master)
 endif(WITH_GOLANG)
 
+message("paddle_master_LIB_NAME:" ${paddle_master_LIB_NAME})
+message("CMAKE_CURRENT_BINARY_DIR:" ${CMAKE_CURRENT_BINARY_DIR})
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
+message("OUTPUT_DIR:" ${OUTPUT_DIR})
+message("py_env:" ${py_env})
 add_custom_command(OUTPUT ${OUTPUT_DIR}/.timestamp
     COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
     COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT_DIR}/.timestamp
