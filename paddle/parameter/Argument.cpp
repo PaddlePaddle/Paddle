@@ -561,7 +561,7 @@ void Argument::degradeSequence(const Argument& input) {
 
 void Argument::poolSequenceWithStride(const Argument& input,
                                       size_t stride,
-                                      IVectorPtr* stridePostions,
+                                      ICpuGpuVectorPtr* stridePostions,
                                       bool reversed) {
   // If input.sequenceStartPositions = [0, 9, 14, 17, 30] and stride = 5,
   // then sequenceStartPositions = [0, 2, 3, 4, 7].
@@ -598,8 +598,8 @@ void Argument::poolSequenceWithStride(const Argument& input,
   stridePos.emplace_back(starts[numSequences]);
   int size = stridePos.size();
   CHECK_EQ(size - 1, tgtBuf[numSequences]);
-  IVector::resizeOrCreate(*stridePostions, size, false);
-  (*stridePostions)->copyFrom(stridePos.data(), size);
+  ICpuGpuVector::resizeOrCreate(*stridePostions, size, false);
+  (*stridePostions)->getMutableVector(false)->copyFrom(stridePos.data(), size);
 }
 
 void Argument::getValueString(

@@ -162,6 +162,7 @@ function(cc_library TARGET_NAME)
     endif()
     if (cc_library_DEPS)
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
+      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     endif()
   else(cc_library_SRCS)
     if (cc_library_DEPS)
@@ -191,9 +192,9 @@ function(cc_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main -lstdc++ -lm)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
-    add_test(${TARGET_NAME} ${TARGET_NAME})
+    add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME} WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endif()
 endfunction(cc_test)
 
@@ -211,6 +212,7 @@ function(nv_library TARGET_NAME)
       endif()
       if (nv_library_DEPS)
         add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
+        target_link_libraries(${TARGET_NAME} ${nv_library_DEPS})
       endif()
     else(nv_library_SRCS)
       if (nv_library_DEPS)
@@ -279,10 +281,11 @@ function(go_library TARGET_NAME)
 
   file(GLOB GO_SOURCE RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.go")
   string(REPLACE "${PADDLE_GO_PATH}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+  # FIXME: link path
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
     COMMAND rm "${${TARGET_NAME}_LIB_PATH}"
     # Golang build source code
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
+    COMMAND env LIBRARY_PATH=${CMAKE_BINARY_DIR}/go/pserver/client/c/:$ENV{LIBRARY_PATH} GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
     -o "${${TARGET_NAME}_LIB_PATH}"
     "./${CMAKE_CURRENT_SOURCE_REL_DIR}/${GO_SOURCE}"
     # must run under GOPATH
@@ -297,11 +300,13 @@ function(go_binary TARGET_NAME)
   cmake_parse_arguments(go_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   string(REPLACE "${PADDLE_GO_PATH}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
+  # FIXME: link path
   add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
+      COMMAND env LIBRARY_PATH=${CMAKE_BINARY_DIR}/go/pserver/client/c/:$ENV{LIBRARY_PATH}
+      GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
     -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     "./${CMAKE_CURRENT_SOURCE_REL_DIR}/${go_binary_SRCS}"
-  WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
+    WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
   # TODO: don't know what ${TARGET_NAME}_link does
   add_custom_target(${TARGET_NAME} ALL DEPENDS go_vendor ${TARGET_NAME}_timestamp ${go_binary_DEPS})
   install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME} DESTINATION bin)
@@ -323,10 +328,10 @@ endfunction(go_test)
 
 function(proto_library TARGET_NAME)
   set(oneValueArgs "")
-  set(multiValueArgs SRCS)
+  set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(proto_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   set(proto_srcs)
   set(proto_hdrs)
   protobuf_generate_cpp(proto_srcs proto_hdrs ${proto_library_SRCS})
-  cc_library(${TARGET_NAME} SRCS ${proto_srcs} DEPS protobuf)
+  cc_library(${TARGET_NAME} SRCS ${proto_srcs} DEPS ${proto_library_DEPS} protobuf)
 endfunction()
