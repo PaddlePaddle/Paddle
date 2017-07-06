@@ -103,38 +103,33 @@ function(merge_static_libs TARGET_NAME)
   foreach(lib ${libs})
     list(APPEND libs_deps ${${lib}_LIB_DEPENDS})
   endforeach()
-  list(REMOVE_DUPLICATES libs_deps)
-
-  # To produce a library we need at least one source file.
-  # It is created by add_custom_command below and will helps 
-  # also help to track dependencies.
-  set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
-
-  # Make the generated dummy source file depended on all static input
-  # libs. If input lib changes,the source file is touched
-  # which causes the desired effect (relink).
-  add_custom_command(OUTPUT ${dummyfile}
-    COMMAND ${CMAKE_COMMAND} -E touch ${dummyfile}
-    DEPENDS ${libs})
-
-  # Generate dummy staic lib
-  file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
-  add_library(${TARGET_NAME} STATIC ${dummyfile})
-  target_link_libraries(${TARGET_NAME} ${libs_deps})
-
-  foreach(lib ${libs})
-    # Get the file names of the libraries to be merged
-    set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
-  endforeach()
-
-  # Get the file name of the generated library
-  set(outlibfile "$<TARGET_FILE:${TARGET_NAME}>")
 
   if(APPLE) # Use OSX's libtool to merge archives
+    # To produce a library we need at least one source file.
+    # It is created by add_custom_command below and will helps 
+    # also help to track dependencies.
+    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+
+    # Make the generated dummy source file depended on all static input
+    # libs. If input lib changes,the source file is touched
+    # which causes the desired effect (relink).
+    add_custom_command(OUTPUT ${dummyfile}
+      COMMAND ${CMAKE_COMMAND} -E touch ${dummyfile}
+      DEPENDS ${libs})
+
+    # Generate dummy staic lib
+    file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
+    add_library(${TARGET_NAME} STATIC ${dummyfile})
+    target_link_libraries(${TARGET_NAME} ${libs_deps})
+
+    foreach(lib ${libs})
+      # Get the file names of the libraries to be merged
+      set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
+    endforeach()
 		add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
       COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
       COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles})
-	else() # general UNIX: use "ar" to extract objects and re-add to a common lib
+  else() # general UNIX: use "ar" to extract objects and re-add to a common lib
     foreach(lib ${libs})
       set(objlistfile ${lib}.objlist) # list of objects in the input library
       set(objdir ${lib}.objdir)
@@ -149,13 +144,27 @@ function(merge_static_libs TARGET_NAME)
         DEPENDS ${lib} ${objdir}
         WORKING_DIRECTORY ${objdir})
 
-      add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-        COMMAND ${CMAKE_AR} ru ${outlibfile} *.o 
-        WORKING_DIRECTORY ${objdir})
+      # Empty dummy source file that goes into merged library		
+      set(mergebase ${lib}.mergebase.c)		
+      add_custom_command(OUTPUT ${mergebase}		
+        COMMAND ${CMAKE_COMMAND} -E touch ${mergebase}		
+        DEPENDS ${objlistfile})		
+
+      list(APPEND mergebases "${mergebase}")
     endforeach()
 
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND ${CMAKE_RANLIB} ${outlibfile})
+    add_library(${TARGET_NAME} STATIC ${mergebases})
+    target_link_libraries(${TARGET_NAME} ${libs_deps}) 
+
+    # Get the file name of the generated library
+    set(outlibfile "$<TARGET_FILE:${TARGET_NAME}>")
+
+    foreach(lib ${libs})
+      add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMAND ${CMAKE_AR} cr ${outlibfile} *.o  
+        COMMAND ${CMAKE_RANLIB} ${outlibfile}
+        WORKING_DIRECTORY ${lib}.objdir)
+    endforeach()
   endif()
 endfunction(merge_static_libs)
 
