@@ -910,18 +910,43 @@ TEST(Layer, SequenceReshapeLayer) {
   }
 }
 
-TEST(Layer, ConvShiftLayer) {
+void testConvShiftLayer(string trans_type, size_t maxLen = 0) {
   TestConfig config;
   config.layerConfig.set_type("conv_shift");
   config.layerConfig.set_size(10);
+  size_t batch_size = 100;
 
-  config.inputDefs.push_back({INPUT_DATA, "layer_0", 10, 0});
+  if (trans_type == "non-seq") {
+    config.inputDefs.push_back({INPUT_DATA, "layer_0", 10, 0});
+  } else {
+    // Generate sequence data
+    vector<int> seqStartPositions(batch_size + 1, 0);
+    int seqLen = 0;
+    size_t pos = 0;
+    for (size_t i = 0; i < batch_size; ++i) {
+      seqLen = uniformRandom(maxLen) + 1;
+      seqStartPositions[i] = pos;
+      pos += seqLen;
+    }
+    seqStartPositions[batch_size] = pos;
+
+    MatrixPtr matValuePtr = Matrix::create(pos, 10, false, false);
+    matValuePtr->randomizeUniform();
+
+    config.inputDefs.push_back(
+        {INPUT_SELF_DEFINE_DATA, "layer_0", matValuePtr, seqStartPositions});
+  }
   config.inputDefs.push_back({INPUT_DATA, "layer_1", 3, 0});
   config.layerConfig.add_inputs();
   config.layerConfig.add_inputs();
 
   // Not support GPU now
-  testLayerGrad(config, "conv_shift", 100, false, false);
+  testLayerGrad(config, "conv_shift", batch_size, false, false);
+}
+
+TEST(Layer, ConvShiftLayer) {
+  testConvShiftLayer("non-seq");
+  testConvShiftLayer("seq", 5);
 }
 
 TEST(Layer, PowerLayer) {
