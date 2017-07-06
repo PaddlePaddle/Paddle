@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-import pdb
 '''
 The following functions are available in the config file:
 
@@ -762,8 +761,8 @@ class DotMulOperator(Operator):
 
     def check_dims(self):
         for i in range(2):
-            config_assert(self.operator_conf.input_sizes[
-                i] == self.operator_conf.output_size,
+            config_assert(self.operator_conf.input_sizes[i] ==
+                          self.operator_conf.output_size,
                           "DotMul input_size != output_size")
 
     def calc_output_size(self, input_sizes):
@@ -1194,7 +1193,8 @@ def parse_image(image, input_layer_name, image_conf):
 def parse_norm(norm, input_layer_name, norm_conf):
     norm_conf.norm_type = norm.norm_type
     config_assert(
-        norm.norm_type in ['rnorm', 'cmrnorm-projection', 'cross-channel-norm'],
+        norm.norm_type in
+        ['rnorm', 'cmrnorm-projection', 'cross-channel-norm'],
         "norm-type %s is not in [rnorm, cmrnorm-projection, cross-channel-norm]"
         % norm.norm_type)
     norm_conf.channels = norm.channels
@@ -2475,10 +2475,14 @@ class MaxLayer(LayerBase):
                  trans_type='non-seq',
                  bias=False,
                  output_max_index=None,
+                 stride=-1,
                  **xargs):
         super(MaxLayer, self).__init__(name, 'max', 0, inputs=inputs, **xargs)
         config_assert(len(self.inputs) == 1, 'MaxLayer must have 1 input')
+        if trans_type == 'seq':
+            config_assert(stride == -1, 'subseq does not support stride window')
         self.config.trans_type = trans_type
+        self.config.seq_pool_stride = stride
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             self.set_layer_size(input_layer.size)
@@ -2740,11 +2744,15 @@ class AverageLayer(LayerBase):
                  average_strategy='average',
                  trans_type='non-seq',
                  bias=False,
+                 stride=-1,
                  **xargs):
         super(AverageLayer, self).__init__(
             name, 'average', 0, inputs=inputs, **xargs)
         self.config.average_strategy = average_strategy
+        if trans_type == 'seq':
+            config_assert(stride == -1, 'subseq does not support stride window')
         self.config.trans_type = trans_type
+        self.config.seq_pool_stride = stride
         config_assert(len(inputs) == 1, 'AverageLayer must have 1 input')
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
@@ -3434,8 +3442,7 @@ DEFAULT_SETTING = dict(
 
 settings = copy.deepcopy(DEFAULT_SETTING)
 
-settings_deprecated = dict(
-    usage_ratio=1., )
+settings_deprecated = dict(usage_ratio=1., )
 
 trainer_settings = dict(
     save_dir="./output/model",
