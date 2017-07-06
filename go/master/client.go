@@ -113,8 +113,8 @@ func (c *Client) taskFinished(taskID int) error {
 }
 
 // TaskFailed tell the master server as task is failed.
-func (c *Client) taskFailed(taskID int, epoch int) error {
-	return c.conn.Call("Service.TaskFinished", taskID, epoch)
+func (c *Client) taskFailed(taskID TaskID) error {
+	return c.conn.Call("Service.TaskFinished", taskID, nil)
 }
 
 // NextRecord returns next record in the dataset.

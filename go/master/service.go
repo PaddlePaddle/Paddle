@@ -396,8 +396,14 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 	return err
 }
 
-// TaskFailed tell the service that a task is failed.
-func (s *Service) TaskFailed(taskID int, epoch int) error {
+// TaskID is a struct which client uses for reports failure.
+type TaskID struct {
+	ID    int
+	Epoch int
+}
+
+// TaskFailed tells the service that a task is failed.
+func (s *Service) TaskFailed(taskID TaskID, dummy *int) error {
 	select {
 	case <-s.ready:
 	}
@@ -405,13 +411,13 @@ func (s *Service) TaskFailed(taskID int, epoch int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	t, ok := s.taskQueues.Pending[taskID]
+	t, ok := s.taskQueues.Pending[taskID.ID]
 	if !ok {
 		err := errors.New("pending task not found")
 		log.WithFields(s.logFields()).Warningln("TaskFailed:Pending task #%d not found.", taskID)
 		return err
 	}
 
-	s.procFailedTask(t, epoch)
+	s.procFailedTask(t, taskID.Epoch)
 	return nil
 }
