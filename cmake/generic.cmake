@@ -103,6 +103,7 @@ function(merge_static_libs TARGET_NAME)
   foreach(lib ${libs})
     list(APPEND libs_deps ${${lib}_LIB_DEPENDS})
   endforeach()
+  list(REMOVE_DUPLICATES libs_deps)
 
   # To produce a library we need at least one source file.
   # It is created by add_custom_command below and will helps 
