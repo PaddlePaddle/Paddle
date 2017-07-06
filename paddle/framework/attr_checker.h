@@ -33,9 +33,9 @@ class LargerThanChecker {
 // 'BetweenChecker'...
 
 template <typename T>
-class DefaultChecker {
+class DefaultValueSetter {
  public:
-  DefaultChecker(T default_value) : default_value_(default_value) {}
+  DefaultValueSetter(T default_value) : default_value_(default_value) {}
   void operator()(T& value) const { value = default_value_; }
 
  private:
@@ -59,9 +59,9 @@ class TypedAttrChecker {
   // we can add more common limits, like LessThan(), Between()...
 
   TypedAttrChecker& SetDefault(const T& default_value) {
-    PADDLE_ENFORCE(default_checker_.empty(),
+    PADDLE_ENFORCE(default_value_setter_.empty(),
                    "%s can't have more than one default value!", attr_name_);
-    default_checker_.push_back(DefaultChecker<T>(default_value));
+    default_value_setter_.push_back(DefaultValueSetter<T>(default_value));
     return *this;
   }
 
@@ -76,11 +76,11 @@ class TypedAttrChecker {
     const int blank_idx = 0;
     if (attr_map.which() == blank_idx) {
       // user do not set this attr
-      PADDLE_ENFORCE(!default_checker_.empty(), "The value of %s is required.",
-                     attr_name_);
-      // default_checker_ has no more than one element
+      PADDLE_ENFORCE(!default_value_setter_.empty(),
+                     "The value of %s is required.", attr_name_);
+      // default_value_setter_ has no more than one element
       T val;
-      (default_checker_[0])(val);
+      (default_value_setter_[0])(val);
       attr = val;
     }
     T& attr_value = boost::get<T>(attr);
@@ -92,7 +92,7 @@ class TypedAttrChecker {
  private:
   std::string attr_name_;
   std::vector<ValueChecker> value_checkers_;
-  std::vector<ValueChecker> default_checker_;
+  std::vector<ValueChecker> default_value_setter_;
 };
 
 // check whether op's all attributes fit their own limits
