@@ -17,22 +17,27 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-Operator::Operator(const OpDesc &desc): op_desc_(desc) {
+OperatorBase::OperatorBase(const OpDesc &desc): desc_(desc) {
   inputs_.reserve(desc.inputs_size());
-  for(const std::string& input: op_desc_.inputs()) {
+  for(const std::string& input: desc_.inputs()) {
     inputs_.push_back(input);
   }
-  outputs_.reserve(op_desc_.outputs_size());
-  for(const std::string& output: op_desc_.outputs()) {
+  outputs_.reserve(desc_.outputs_size());
+  for(const std::string& output: desc_.outputs()) {
     outputs_.push_back(output);
   }
-  std::vector<AttrDesc> attrs;
-  attrs.reserve(desc.attrs_size());
-  for(const AttrDesc& attr: op_desc_.attrs()) {
-    attrs.push_back(attr);
-  }
-  InitializeAttrs(attrs);
 }
 
+std::string OperatorBase::DebugString() {
+  return desc_.DebugString();
+}
+
+Variable* OperatorBase::input(Scope *scope, int index) {
+  return scope->CreateVariable(inputs_[index]);
+}
+
+Variable* OperatorBase::output(Scope *scope, int index) {
+  return scope->CreateVariable(outputs_[index]);
+}
 } // namespace framework
 } // namespace paddle

@@ -18,47 +18,45 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 #include "paddle/utils/Error.h"
-
-#include <paddle/framework/op_desc.pb.h>
+#include "paddle/framework/scope.h"
+#include "paddle/framework/ddim.h"
+#include "paddle/framework/op_desc.pb.h"
 
 namespace paddle {
 namespace framework {
 
-class OpContext {};
+class DeviceContext {};
+class CpuContext : public DeviceContext {};
+class GpuContext : public DeviceContext {};
 
 /**
  * @brief Operator is used to do some computation.
  *
  * We use a OpDesc proto Message to describe and create a operator.
- * Operator will get the Variables and computing resource from OpContext when Run.
+ * Operator will get the Variables from scope and computing resource from DeviceContext.
  */
-class Operator {
+class OperatorBase {
  public:
-  explicit Operator(const OpDesc& desc);
-  virtual ~Operator() {}
+  explicit OperatorBase(const OpDesc& desc);
+  virtual ~OperatorBase() {}
 
-  void InitializeAttrs();
+  /// initialize Attributes of this OP from proto message desc.attrs()
+  /// you should derive this function to init the attr you need in OP.
+  virtual void InitializeAttributes() = 0;
 
-  /**
-   * InferShape is used to infer the shape of tensors related to this Operator.
-   */
-  virtual void InferShape() = 0;
+  virtual void InferShape(const Scope* scope) const = 0;
 
-  /**
-   * Run take a OpContext as parameter.
-   *
-   * 1. it will get input/output variable from OpContext.scope
-   * 2. It will get computing resource such as cpu/gpu from OpContext.
-   */
-  virtual void Run(OpContext *context) const = 0;
-  const std::string DebugString() const {
-    return op_desc_.ShortDebugString();
-  }
+  /// when implement an Op, your should implement this function.
+  virtual void Run(Scope* scope, DeviceContext* device_context) const = 0;
+
+  std::string DebugString();
+  Variable* input(Scope* scope, int index);
+  Variable* output(Scope* scope, int index);
 
 protected:
-  OpDesc op_desc_;
-  std::vector<std::string> inputs_;
-  std::vector<std::string> outputs_;
+ const OpDesc desc_;
+ std::vector<std::string> inputs_;
+ std::vector<std::string> outputs_;
 };
 
 } // namespace framework
