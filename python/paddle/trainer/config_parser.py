@@ -1724,6 +1724,63 @@ class DetectionOutputLayer(LayerBase):
         self.config.size = size
 
 
+@config_layer('anchor')
+class AnchorLayer(LayerBase):
+    def __init__(self,
+                 name,
+                 inputs,
+                 base_size,
+                 aspect_ratio,
+                 scale_ratio,
+                 feat_stride_x=None,
+                 feat_stride_y=None):
+        super(AnchorLayer, self).__init__(name, 'anchor', 0, inputs)
+        config_assert(len(inputs) == 2, 'AnchorLayer must have 3 inputs')
+        self.config.inputs[0].anchor_conf.base_size = base_size
+        self.config.inputs[0].anchor_conf.aspect_ratio.extend(aspect_ratio)
+        self.config.inputs[0].anchor_conf.scale_ratio.extend(scale_ratio)
+        self.config.inputs[0].anchor_conf.feat_stride_x = feat_stride_x
+        self.config.inputs[0].anchor_conf.feat_stride_y = feat_stride_y
+
+
+@config_layer('rpn_loss')
+class RPNLossLayer(LayerBase):
+    def __init__(self, name, inputs, pos_overlap_threshold,
+                 neg_overlap_threshold, rpn_batch_size, rpn_fg_ratio,
+                 loss_ratio):
+        super(RPNLossLayer, self).__init__(name, 'rpn_loss', 0, inputs)
+        config_assert(len(inputs) == 4, 'RPNLossLayer must have 3 inputs')
+        self.config.inputs[
+            0].rpn_loss_conf.pos_overlap_threshold = pos_overlap_threshold
+        self.config.inputs[
+            0].rpn_loss_conf.neg_overlap_threshold = neg_overlap_threshold
+        self.config.inputs[0].rpn_loss_conf.rpn_batch_size = rpn_batch_size
+        self.config.inputs[0].rpn_loss_conf.rpn_fg_ratio = rpn_fg_ratio
+        self.config.inputs[0].rpn_loss_conf.loss_ratio = loss_ratio
+
+
+@config_layer('proposal')
+class ProposalLayer(LayerBase):
+    def __init__(self,
+                 name,
+                 inputs,
+                 nms_threshold,
+                 confidence_threshold,
+                 nms_top_k,
+                 keep_top_k,
+                 min_width=0,
+                 min_height=0):
+        super(ProposalLayer, self).__init__(name, 'proposal', 0, inputs)
+        config_assert(len(inputs) == 3, 'ProposalLayer must have 3 inputs')
+        self.config.inputs[0].proposal_conf.nms_threshold = nms_threshold
+        self.config.inputs[
+            0].proposal_conf.confidence_threshold = confidence_threshold
+        self.config.inputs[0].proposal_conf.nms_top_k = nms_top_k
+        self.config.inputs[0].proposal_conf.keep_top_k = keep_top_k
+        self.config.inputs[0].proposal_conf.min_width = min_width
+        self.config.inputs[0].proposal_conf.min_height = min_height
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self, name, size, height=None, width=None, device=None):

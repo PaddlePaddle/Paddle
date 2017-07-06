@@ -1766,6 +1766,75 @@ TEST(Layer, multibox_loss) {
   }
 }
 
+TEST(Layer, rpn_loss) {
+  TestConfig config;
+  config.layerConfig.set_type("rpn_loss");
+  config.biasSize = 0;
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  RPNLossConfig* rpnLoss = input->mutable_rpn_loss_conf();
+  rpnLoss->set_pos_overlap_threshold(0.7);
+  rpnLoss->set_neg_overlap_threshold(0.3);
+  rpnLoss->set_rpn_batch_size(2);
+  rpnLoss->set_rpn_fg_ratio(0.5);
+  rpnLoss->set_loss_ratio(10);
+  rpnLoss->set_height(3);
+  rpnLoss->set_width(3);
+
+  size_t gtNum = 1;
+  MatrixPtr labelValue = Matrix::create(gtNum, 4, false, false);
+  real* labelData = labelValue->getData();
+  size_t labelWidth = labelValue->getWidth();
+  for (size_t i = 0; i < gtNum; ++i) {
+    *(labelData + i * labelWidth + 0) = 1;
+    *(labelData + i * labelWidth + 1) = 1;
+    *(labelData + i * labelWidth + 2) = 6;
+    *(labelData + i * labelWidth + 3) = 6;
+  }
+  vector<int> seqStartPositions(gtNum + 1, 0);
+  for (size_t i = 1; i <= gtNum; ++i) {
+    seqStartPositions[i] = i;
+  }
+
+  // Ensure at lease one matched bbox
+  MatrixPtr priorValue = Matrix::create(1, 63, false, false);
+  real* priorData = priorValue->getData();
+  for (size_t i = 0; i < priorValue->getElementCnt() / 7; ++i) {
+    *priorData++ = std::rand() % 16;
+    *priorData++ = std::rand() % 16;
+    *priorData++ = std::rand() % 16 + std::rand() % 16;
+    *priorData++ = std::rand() % 16 + std::rand() % 16;
+    if (*(priorData - 2) < 16 && *(priorData - 1) < 16) {
+      *priorData++ = 1;
+    } else {
+      *priorData++ = -1;
+    }
+    *priorData++ = 16;
+    *priorData++ = 16;
+  }
+  priorData = priorValue->getData();
+  *(priorData + 0) = 1;
+  *(priorData + 1) = 2;
+  *(priorData + 2) = 6;
+  *(priorData + 3) = 7;
+  *(priorData + 4) = 1;
+  *(priorData + 5) = 16;
+  *(priorData + 6) = 16;
+
+  config.inputDefs.push_back(
+      {INPUT_SELF_DEFINE_DATA, "anchorbox", priorValue, {}});
+  config.inputDefs.push_back(
+      {INPUT_SELF_DEFINE_DATA, "label", labelValue, seqStartPositions});
+  config.inputDefs.push_back({INPUT_DATA, "locPred", 36, 0});
+  config.inputDefs.push_back({INPUT_DATA, "confPred", 18, 0});
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "rpn_loss", 1, false, useGpu, false);
+  }
+}
+
 TEST(Layer, TransLayer) {
   TestConfig config;
   const int height = 128;

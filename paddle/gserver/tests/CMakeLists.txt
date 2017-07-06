@@ -52,6 +52,13 @@ add_unittest_without_exec(test_DetectionOutput
 
 add_test(NAME test_DetectionOutput 
     COMMAND test_DetectionOutput)
+################# test_Proposal #######################
+add_unittest_without_exec(test_Proposal
+    test_Proposal.cpp
+    LayerGradUtil.cpp)
+
+add_test(NAME test_Proposal 
+    COMMAND test_Proposal)
 ################# test_ConvUnify #######################
 add_unittest_without_exec(test_ConvUnify
     test_ConvUnify.cpp

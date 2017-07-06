@@ -117,6 +117,9 @@ __all__ = [
     'cross_channel_norm_layer',
     'multibox_loss_layer',
     'detection_output_layer',
+    'anchor_layer',
+    'rpn_loss_layer',
+    'proposal_layer',
     'spp_layer',
     'pad_layer',
     'eos_layer',
@@ -199,6 +202,9 @@ class LayerType(object):
     PRIORBOX_LAYER = 'priorbox'
     MULTIBOX_LOSS_LAYER = 'multibox_loss'
     DETECTION_OUTPUT_LAYER = 'detection_output'
+    ANCHOR_LAYER = 'anchor'
+    RPN_LOSS_LAYER = 'rpn_loss'
+    PROPOSAL_LAYER = 'proposal'
 
     CTC_LAYER = 'ctc'
     WARP_CTC_LAYER = 'warp_ctc'
@@ -1195,6 +1201,153 @@ def detection_output_layer(input_loc,
         background_id=background_id)
     return LayerOutput(
         name, LayerType.DETECTION_OUTPUT_LAYER, parents=parents, size=size)
+
+
+@wrap_name_default("anchor")
+def anchor_layer(input,
+                 image,
+                 base_size,
+                 aspect_ratio,
+                 scale_ratio,
+                 feat_stride_x=None,
+                 feat_stride_y=None,
+                 name=None):
+    """
+    Generate the default anchor boxes. This layer is necessary for the 
+    Region Proposal Networks of Faster R-CNN.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param image: The network input image.
+    :type image: LayerOutput
+    :param base_size: The basic anchor size.
+    :type base_size: int
+    :param aspect_ratio: The aspect ratio used to generate anchors.
+    :type aspect_ratio: list
+    :param scale_ratio: The scales used to generate anchors.
+    :type scale_ratio: list
+    :param feat_stride_x: The spatial scale between the image and feature map.
+    :type feat_stride: int
+    :param feat_stride_y: The spatial scale between the image and feature map.
+    :type feat_stride: int
+    :return: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.ANCHOR_LAYER,
+        inputs=[input.name, image.name],
+        base_size=base_size,
+        aspect_ratio=aspect_ratio,
+        scale_ratio=scale_ratio,
+        feat_stride_x=feat_stride_x,
+        feat_stride_y=feat_stride_y)
+    return LayerOutput(name, LayerType.ANCHOR_LAYER, parents=[input, image])
+
+
+@wrap_name_default("rpn_loss")
+def rpn_loss_layer(input_loc,
+                   input_conf,
+                   anchors,
+                   label,
+                   pos_overlap_threshold=0.7,
+                   neg_overlap_threshold=0.3,
+                   rpn_batch_size=256,
+                   rpn_fg_ratio=0.5,
+                   loss_ratio=10,
+                   name=None):
+    """
+    Compute the location loss and the confidence loss for the 
+    Region Proposal Networks of Faster R-CNN.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input_loc: The input predict locations.
+    :type input_loc: LayerOutput
+    :param input_conf: The input anchor box confidence.
+    :type input_conf: LayerOutput
+    :param anchors: The input anchor boxes location.
+    :type anchors: LayerOutput
+    :param label: The input label.
+    :type label: LayerOutput
+    :param pos_overlap_threshold: The threshold of the overlap for foreground.
+    :type pos_overlap_threshold: float
+    :param neg_overlap_threshold: The threshold of the overlap for background.
+    :type neg_overlap_threshold: float
+    :param rpn_batch_size: The size of bbox batch for RPN training.
+    :type rpn_batch_size: int
+    :param rpn_fg_ratio: The ratio of the positive bbox in bbox batch
+    :type rpn_fg_ratio: float
+    :param loss_ratio: The ratio of location lossx to confidence loss.
+    :type loss_ratio: float
+    :return: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.RPN_LOSS_LAYER,
+        inputs=[anchors.name, label.name, input_loc.name, input_conf.name],
+        pos_overlap_threshold=pos_overlap_threshold,
+        neg_overlap_threshold=neg_overlap_threshold,
+        rpn_batch_size=rpn_batch_size,
+        rpn_fg_ratio=rpn_fg_ratio,
+        loss_ratio=loss_ratio)
+    return LayerOutput(
+        name,
+        LayerType.RPN_LOSS_LAYER,
+        parents=[anchors.name, label.name, input_loc.name, input_conf.name])
+
+
+@wrap_name_default("proposal")
+def proposal_layer(input_loc,
+                   input_conf,
+                   anchors,
+                   nms_threshold=0.45,
+                   confidence_threshold=0.01,
+                   nms_top_k=400,
+                   keep_top_k=200,
+                   min_width=16,
+                   min_height=16,
+                   name=None):
+    """
+    Apply the NMS to the output of RPN and compute the proposal location.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input_loc: The input predict locations.
+    :type input_loc: LayerOutput.
+    :param input_conf: The input anchor box confidence.
+    :type input_conf: LayerOutput.
+    :param anchors: The input anchor boxes location.
+    :type priorbox: LayerOutput
+    :param nms_threshold: The Non-maximum suppression threshold.
+    :type nms_threshold: float
+    :param confidence_threshold: The classification confidence threshold
+    :type confidence_threshold: float
+    :param nms_top_k: The bbox number kept of the NMS's output
+    :type nms_top_k: int
+    :param keep_top_k: The bbox number kept of the layer's output
+    :type keep_top_k: int
+    :param min_width: The proposal width threshold.
+    :type min_width: float
+    :param min_height: The proposal height threshold.
+    :type min_height: float
+    :return: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.PROPOSAL_LAYER,
+        inputs=[anchors.name, input_loc.name, input_conf.name],
+        nms_threshold=nms_threshold,
+        confidence_threshold=confidence_threshold,
+        nms_top_k=nms_top_k,
+        keep_top_k=keep_top_k,
+        min_width=min_width,
+        min_height=min_height)
+    return LayerOutput(
+        name,
+        LayerType.PROPOSAL_LAYER,
+        parents=[anchors, input_loc, input_conf])
 
 
 @wrap_name_default("cross_channel_norm")
