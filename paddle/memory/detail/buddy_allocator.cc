@@ -118,8 +118,9 @@ void BuddyAllocator::Free(void* p) {
 
     if (right_buddy->type(cache_) == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
-      pool_.erase({right_buddy->index(cache_), right_buddy->total_size(cache_),
-                   right_buddy});
+      pool_.erase(IndexSizeAddress(right_buddy->index(cache_),
+                                   right_buddy->total_size(cache_),
+                                   right_buddy));
 
       // merge its right buddy to the block
       block->merge(cache_, right_buddy);
@@ -135,8 +136,8 @@ void BuddyAllocator::Free(void* p) {
 
     if (left_buddy->type(cache_) == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
-      pool_.erase({left_buddy->index(cache_), left_buddy->total_size(cache_),
-                   left_buddy});
+      pool_.erase(IndexSizeAddress(left_buddy->index(cache_),
+                                   left_buddy->total_size(cache_), left_buddy));
 
       // merge the block to its left buddy
       left_buddy->merge(cache_, block);
@@ -147,7 +148,8 @@ void BuddyAllocator::Free(void* p) {
   // Dumping this block into pool
   DLOG(INFO) << "Inserting free block (" << block << ", "
              << block->total_size(cache_) << ")";
-  pool_.insert({block->index(cache_), block->total_size(cache_), block});
+  pool_.insert(
+      IndexSizeAddress(block->index(cache_), block->total_size(cache_), block));
 
   // TODO(gangliao): Clean up if existing too much free memory
 }
@@ -193,14 +195,14 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
   total_free_ += max_chunk_size_;
 
   // dump the block into pool
-  return pool_.insert({index, max_chunk_size_, p}).first;
+  return pool_.insert(IndexSizeAddress(index, max_chunk_size_, p)).first;
 }
 
 BuddyAllocator::PoolSet::iterator BuddyAllocator::FindExistChunk(size_t size) {
   size_t index = 0;
 
   while (1) {
-    auto it = pool_.lower_bound({index, size, nullptr});
+    auto it = pool_.lower_bound(IndexSizeAddress(index, size, nullptr));
 
     // no match chunk memory
     if (it == pool_.end()) return it;
@@ -237,9 +239,10 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
       DLOG(INFO) << "Insert right block (" << block->right_buddy(cache_) << ", "
                  << block->right_buddy(cache_)->total_size(cache_) << ")";
 
-      pool_.insert({block->right_buddy(cache_)->index(cache_),
-                    block->right_buddy(cache_)->total_size(cache_),
-                    block->right_buddy(cache_)});
+      pool_.insert(
+          IndexSizeAddress(block->right_buddy(cache_)->index(cache_),
+                           block->right_buddy(cache_)->total_size(cache_),
+                           block->right_buddy(cache_)));
     }
   }
 
