@@ -11,5 +11,6 @@ proto_library(op_proto SRCS op_proto.proto DEPS attr_type)
 cc_test(op_proto_test SRCS op_proto_test.cc DEPS op_proto protobuf)
 proto_library(net_proto SRCS net_proto.proto DEPS op_proto)
 #cc_library(net SRCS net.cc DEPS net_proto attr_type op_proto)
+
 proto_library(op_desc SRCS op_desc.proto DEPS attr_type)
 cc_test(op_desc_test SRCS op_desc_test.cc DEPS op_desc protobuf)
