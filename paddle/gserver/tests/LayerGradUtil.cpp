@@ -387,25 +387,6 @@ void initDataLayer(TestConfig testConf,
         data.value->sigmoid(*data.value);
         data.grad->zeroMem();
         break;
-      case INPUT_SEQUENCE_MNUM_DATA: {
-        // first calculate height
-        sequenceStartPositions =
-            ICpuGpuVector::create(batchSize + 1, /*useGpu=*/false);
-        int seqLen = 0;
-        int* buf = sequenceStartPositions->getMutableData(false);
-        int64_t pos = 0;
-        for (size_t j = 0; j < batchSize; ++j) {
-          seqLen = uniformRandom(testConf.inputDefs[i].maxLen) + 1;
-          buf[j] = pos;
-          pos += seqLen;
-        }
-        buf[batchSize] = pos;
-        fillData(trans, layer->getSize(), pos);
-        data.value->randomizeUniform();
-        data.value->add(-0.5);
-        data.grad->zeroMem();
-        break;
-      }
       default:
         LOG(FATAL) << " unknown inputType ";
         return;
@@ -413,12 +394,10 @@ void initDataLayer(TestConfig testConf,
     if (testConf.inputDefs[i].inputType == INPUT_SEQUENCE_DATA ||
         testConf.inputDefs[i].inputType == INPUT_HASSUB_SEQUENCE_DATA ||
         testConf.inputDefs[i].inputType == INPUT_SEQUENCE_LABEL ||
-        testConf.inputDefs[i].inputType == INPUT_SEQUENCE_MDIM_DATA ||
-        testConf.inputDefs[i].inputType == INPUT_SEQUENCE_MNUM_DATA) {
+        testConf.inputDefs[i].inputType == INPUT_SEQUENCE_MDIM_DATA) {
       if (!sequenceStartPositions) {
         generateSequenceStartPositions(batchSize, sequenceStartPositions);
       }
-
       data.sequenceStartPositions = sequenceStartPositions;
     }
     if (testConf.inputDefs[i].inputType == INPUT_HASSUB_SEQUENCE_DATA) {

@@ -31,8 +31,7 @@ enum InputType {
   INPUT_SEQUENCE_LABEL,
   INPUT_SPARSE_NON_VALUE_DATA,
   INPUT_SPARSE_FLOAT_VALUE_DATA,
-  INPUT_DENSE_DIM_DATA,      // using sequence length to init dense data
-  INPUT_SEQUENCE_MNUM_DATA,  // regard batchSize as sequence number
+  INPUT_DENSE_DIM_DATA,  // using sequence length to init dense data
 };
 
 struct ParaSparse {
@@ -63,7 +62,6 @@ struct InputDef {
   string name;
   size_t dim;
   size_t paraSize;
-  size_t maxLen;  // maximum length of sequence data
   ParaSparse sparse;
   bool isStatic;
   std::vector<int> labelInitValue;
@@ -74,20 +72,6 @@ struct InputDef {
     name = nameIn;
     dim = dimIn;
     paraSize = sizeIn;
-    sparse = {""};
-    isStatic = false;
-  }
-
-  InputDef(InputType type,
-           string nameIn,
-           size_t dimIn,
-           size_t sizeIn,
-           size_t maxSeqLen) {
-    inputType = type;
-    name = nameIn;
-    dim = dimIn;
-    paraSize = sizeIn;
-    maxLen = maxSeqLen;
     sparse = {""};
     isStatic = false;
   }
