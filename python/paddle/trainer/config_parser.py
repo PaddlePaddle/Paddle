@@ -1353,7 +1353,8 @@ class LayerBase(object):
             device=None,
             active_type="",
             drop_rate=0.,
-            coeff=None):
+            coeff=None,
+            error_clipping_threshold=None):
         config_assert('@' not in name,
                       "layer name: %s contain special character @" % name)
         global g_current_submodel
@@ -1386,6 +1387,9 @@ class LayerBase(object):
             self.config.device = device
         elif g_default_device is not None:
             self.config.device = g_default_device
+
+        if error_clipping_threshold is not None:
+            self.config.error_clipping_threshold = error_clipping_threshold
 
         for input_index in xrange(len(self.inputs)):
             input = self.inputs[input_index]
@@ -1571,13 +1575,7 @@ class MultiClassCrossEntropySelfNormCostLayer(LayerBase):
 
 @config_layer('fc')
 class FCLayer(LayerBase):
-    def __init__(self,
-                 name,
-                 size,
-                 inputs,
-                 bias=True,
-                 error_clipping_threshold=None,
-                 **xargs):
+    def __init__(self, name, size, inputs, bias=True, **xargs):
         super(FCLayer, self).__init__(name, 'fc', size, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
@@ -1594,9 +1592,6 @@ class FCLayer(LayerBase):
             self.create_input_parameter(input_index, psize, dims, sparse,
                                         format)
         self.create_bias_parameter(bias, self.config.size)
-
-        if error_clipping_threshold is not None:
-            self.config.error_clipping_threshold = error_clipping_threshold
 
 
 @config_layer('selective_fc')
@@ -2791,13 +2786,7 @@ class TensorLayer(LayerBase):
 
 @config_layer('mixed')
 class MixedLayer(LayerBase):
-    def __init__(self,
-                 name,
-                 inputs,
-                 size=0,
-                 bias=True,
-                 error_clipping_threshold=None,
-                 **xargs):
+    def __init__(self, name, inputs, size=0, bias=True, **xargs):
         config_assert(inputs, 'inputs cannot be empty')
         super(MixedLayer, self).__init__(
             name, 'mixed', size, inputs=inputs, **xargs)
@@ -2878,9 +2867,6 @@ class MixedLayer(LayerBase):
         if bias:
             self.config.bias_size = psize
             self.create_bias_parameter(bias, psize)
-
-        if error_clipping_threshold is not None:
-            self.config.error_clipping_threshold = error_clipping_threshold
 
 
 # like MixedLayer, but no bias parameter
