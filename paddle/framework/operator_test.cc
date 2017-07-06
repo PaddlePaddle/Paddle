@@ -13,29 +13,32 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/operator.h"
-#include <boost/lexical_cast.hpp>
+#include "paddle/framework/scope.h"
+#include "gtest/gtest.h"
 
 namespace paddle {
 namespace framework {
 
-std::string OperatorBase::DebugString() const {
-  std::stringstream ss;
-  ss << "inputs = [";
-  for(auto& ipt : inputs) {
-    ss << ipt << ", ";
-  }
-  ss << "]\n";
-  ss << "outputs = [";
-  for(auto& opt : outputs) {
-    ss << opt << ", ";
-  }
-  ss << "]\n";
-  ss << "attr_keys = [";
-  for(auto& attr : attrs) {
-    ss << attr.first << ", ";
-  }
-  ss << "]\n";
-  return ss.str();
+class OperatorTest: public OperatorBase {
+  void Run(OpRunContext* context) const override {}
+  void InferShape(const Scope* scope) const override {}
+};
+
+TEST(OperatorBase, DebugString) {
+  Scope* scope = new Scope();
+  DeviceContext* device_context = new DeviceContext();
+  OpRunContext* op_context = new OpRunContext();
+  op_context->scope = scope;
+  op_context->device_context = device_context;
+
+  auto op = new OperatorTest();
+  op->inputs.push_back("X");
+  op->inputs.push_back("Y");
+  op->outputs.push_back("O");
+  op->attrs["scale"] = 0;
+
+  printf("%s\n", op->DebugString().c_str());
+
 }
 
 } // namespace framework
