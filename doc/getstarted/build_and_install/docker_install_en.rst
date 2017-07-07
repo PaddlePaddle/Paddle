@@ -23,7 +23,7 @@ Docker is simple as long as we understand a few basic concepts:
 
   .. code-block:: bash
 		  
-     docker pull paddlepaddle/paddle:0.10.0rc2
+     docker pull paddlepaddle/paddle:0.10.0
 
   to download a Docker image, paddlepaddle/paddle in this example,
   from Dockerhub.com.
@@ -35,7 +35,7 @@ Docker is simple as long as we understand a few basic concepts:
 
   .. code-block:: bash
 
-     docker run paddlepaddle/paddle:0.10.0rc2
+     docker run paddlepaddle/paddle:0.10.0
 
   to start a container to run a Docker image, paddlepaddle/paddle in this example.
 
@@ -89,7 +89,7 @@ the commands to docker.paddlepaddle.org/paddle.
 
    .. code-block:: bash
 
-      docker run -it --rm paddlepaddle/paddle:0.10.0rc2 /bin/bash
+      docker run -it --rm paddlepaddle/paddle:0.10.0 /bin/bash
 
    Above method work with the GPU image too -- the recommended way is
    using `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_.
@@ -101,7 +101,7 @@ the commands to docker.paddlepaddle.org/paddle.
 
    .. code-block:: bash
 
-      nvidia-docker run -it --rm paddlepaddle/paddle:0.10.0rc2-gpu /bin/bash
+      nvidia-docker run -it --rm paddlepaddle/paddle:0.10.0-gpu /bin/bash
 
 2. development image :code:`paddlepaddle/paddle:<version>-dev`
 
@@ -149,13 +149,13 @@ Run the program using docker:
 
 .. code-block:: bash
 
-   docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2 python /workspace/example.py
+   docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0 python /workspace/example.py
 
 Or if you are using GPU for training:
 
 .. code-block:: bash
 
-   nvidia-docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2-gpu python /workspace/example.py
+   nvidia-docker run --rm -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0-gpu python /workspace/example.py
 
 Above commands will start a docker container by running :code:`python
 /workspace/example.py`. It will stop once :code:`python
@@ -166,7 +166,7 @@ run PaddlePaddle program interactively:
 
 .. code-block:: bash
 
-   docker run -it -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2 /bin/bash
+   docker run -it -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0 /bin/bash
    # now we are inside docker container
    cd /workspace
    python example.py
@@ -175,7 +175,7 @@ Running with GPU is identical:
 
 .. code-block:: bash
 
-   nvidia-docker run -it -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0rc2-gpu /bin/bash
+   nvidia-docker run -it -v ~/workspace:/workspace paddlepaddle/paddle:0.10.0-gpu /bin/bash
    # now we are inside docker container
    cd /workspace
    python example.py
