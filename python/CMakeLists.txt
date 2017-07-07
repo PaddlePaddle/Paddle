@@ -23,6 +23,7 @@ if(WITH_GOLANG)
   add_dependencies(copy_paddle_master paddle_master)
 endif(WITH_GOLANG)
 
+message("paddle_master_LIB_NAME:" ${paddle_master_LIB_NAME})
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
