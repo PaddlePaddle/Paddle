@@ -21,13 +21,14 @@ limitations under the License. */
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/scope.h"
 #include "paddle/utils/Error.h"
+#include "paddle/framework/attr_checker.h"
 
 namespace paddle {
 namespace framework {
 
 class DeviceContext {};
-class CpuContext : public DeviceContext {};
-class GpuContext : public DeviceContext {};
+class CPUContext : public DeviceContext {};
+class GPUContext : public DeviceContext {};
 
 /**
  * OpRunContext is the only parameter of Operator's Run function.
@@ -41,11 +42,6 @@ class OpRunContext {
   DeviceContext* device_context;
 };
 
-using Attribute =
-    boost::variant<boost::blank, int, float, std::string, std::vector<int>,
-                   std::vector<float>, std::vector<std::string>>;
-using AttributeMap = std::unordered_map<std::string, Attribute>;
-
 /**
  * OperatorBase has the basic element that Net will call to do compute.
  * It have no construct function because CreateOperator(const& op_desc)
@@ -54,18 +50,42 @@ using AttributeMap = std::unordered_map<std::string, Attribute>;
 class OperatorBase {
  public:
   virtual ~OperatorBase() {}
-  /// when implement an Op, your should implement this function.
-  virtual void Run(OpRunContext* context) const = 0;
+
+  void Init(const OpDesc& op_desc, AttributeMap& attrs);
+
+  std::string type() const {
+    return desc_.type();
+  }
+
+  Variable* Input(Scope* scope, int index) const;
+  Variable* Output(Scope* scope, int index) const;
+
+  Attribute GetAttr(std::string name);
+
+  inline const AttributeMap attrs() const {
+    return attrs_;
+  }
+
+  inline const std::vector<std::string> inputs() const {
+    return inputs_;
+  }
+
+  inline const std::vector<std::string> outputs() const {
+    return outputs_;
+  }
+
+  std::string DebugString() const;
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information
   /// inside scope
-  virtual void InferShape(const Scope* scope) const = 0;
+  void InferShape(Scope* scope) const;
 
-  std::string DebugString() const;
+  /// when implement an Op, your should implement this function.
+  virtual void Run(OpRunContext* context) const = 0;
 
- public:
-  std::string type_;
+ protected:
+  OpDesc desc_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
   AttributeMap attrs_;

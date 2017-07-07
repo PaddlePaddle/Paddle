@@ -18,8 +18,39 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+void OperatorBase::Init(const OpDesc &op_desc, AttributeMap& attrs) {
+  desc_ = op_desc;
+  inputs_.reserve(desc_.inputs_size());
+  for (auto& input : desc_.inputs()) {
+    inputs_.push_back(input);
+  }
+  outputs_.reserve(desc_.outputs_size());
+  for (auto& output : desc_.outputs()) {
+    outputs_.push_back(output);
+  }
+  for(auto it = attrs.begin(); it != attrs.end(); ++it) {
+    attrs_[it->first] = it->second;
+  }
+}
+
+Variable* OperatorBase::Input(Scope* scope, int index) const {
+  return scope->GetVariable(inputs_[index]);
+}
+
+Variable* OperatorBase::Output(Scope* scope, int index) const {
+  return scope->GetVariable(outputs_[index]);
+}
+
+Attribute OperatorBase::GetAttr(std::string name) {
+  return attrs_[name];
+}
+
+void OperatorBase::InferShape(Scope *scope) const {}
+
 std::string OperatorBase::DebugString() const {
   std::stringstream ss;
+  ss << "=================\n";
+  ss << "type = " << type() << "\n";
   ss << "inputs = [";
   for (auto& ipt : inputs_) {
     ss << ipt << ", ";

@@ -20,9 +20,13 @@ namespace paddle {
 namespace framework {
 
 class OperatorTest : public OperatorBase {
-  void Run(OpRunContext* context) const override {}
-  void InferShape(const Scope* scope) const override {}
+ public:
+  void Run(OpRunContext* context) const override {
+    printf("%s\n", DebugString().c_str());
+  }
 };
+
+
 
 TEST(OperatorBase, DebugString) {
   Scope* scope = new Scope();
@@ -32,12 +36,7 @@ TEST(OperatorBase, DebugString) {
   op_context->device_context = device_context;
 
   auto op = new OperatorTest();
-  op->inputs_.push_back("X");
-  op->inputs_.push_back("Y");
-  op->outputs_.push_back("O");
-  op->attrs_["scale"] = 0;
-
-  printf("%s\n", op->DebugString().c_str());
+  op->Run(op_context);
 }
 
 }  // namespace framework

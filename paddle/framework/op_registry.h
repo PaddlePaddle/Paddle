@@ -2,24 +2,12 @@
 
 #include "paddle/framework/attr_checker.h"
 
-//#include "paddle/framework/op_base.h"
+#include "paddle/framework/operator.h"
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/op_proto.pb.h"
 
 namespace paddle {
 namespace framework {
-
-//==================For test================//
-class OpBase {
- public:
-  std::vector<std::string> inputs_;
-  std::vector<std::string> outputs_;
-  AttributeMap attr_map_;
-
-  virtual std::string Run() const = 0;
-  virtual ~OpBase() {}
-};
-//=========================================//
 
 // helper class to set attribute type
 struct AttrTypeHelper {
@@ -134,7 +122,7 @@ class OpProtoAndCheckerMaker {
 };
 
 class OpRegistry {
-  typedef std::function<OpBase*()> OpCreator;
+  typedef std::function<OperatorBase*()> OpCreator;
 
  public:
   template <typename OpType, typename ProtoMakerType>
@@ -143,28 +131,22 @@ class OpRegistry {
     OpProto& op_proto = protos_[op_type];
     OpAttrChecker& op_checker = op_checkers_[op_type];
     ProtoMakerType(&op_proto, &op_checker);
-    PADDLE_ENFORCE(op_proto.IsInitialized() == true,
+    PADDLE_ENFORCE(op_proto.IsInitialized(),
                    "Fail to initialize %s's OpProto !", op_type);
   }
 
-  static OpBase* CreateOp(const OpDesc& op_desc) {
+  static OperatorBase* CreateOp(const OpDesc& op_desc) {
     std::string op_type = op_desc.type();
-    OpBase* op = (creators_.at(op_type))();
-    (op->inputs_).resize(op_desc.inputs_size());
-    for (int i = 0; i < op_desc.inputs_size(); ++i) {
-      (op->inputs_)[i] = op_desc.inputs(i);
-    }
-    (op->outputs_).resize(op_desc.outputs_size());
-    for (int i = 0; i < op_desc.outputs_size(); ++i) {
-      (op->outputs_)[i] = op_desc.outputs(i);
-    }
+    OperatorBase* op = (creators_.at(op_type))();
+    AttributeMap attrs;
     for (int i = 0; i < op_desc.attrs_size(); ++i) {
       const AttrDesc& ith_attr = op_desc.attrs(i);
       std::string name = ith_attr.name();
-      (op->attr_map_)[name] = AttrTypeHelper::GetAttrValue(ith_attr);
+      (attrs)[name] = AttrTypeHelper::GetAttrValue(ith_attr);
     }
-    const OpAttrChecker& op_checker = op_checkers_.at(op_type);
-    op_checker.Check(op->attr_map_);
+    const OpAttrChecker& op_checker = OpRegistry::op_checkers_.at(op_type);
+    op_checker.Check(attrs);
+    op->Init(op_desc, attrs);
     return op;
   }
 
@@ -174,7 +156,7 @@ class OpRegistry {
   static std::unordered_map<std::string, OpAttrChecker> op_checkers_;
 };
 
-std::unordered_map<std::string, std::function<OpBase*()>> OpRegistry::creators_;
+std::unordered_map<std::string, std::function<OperatorBase*()>> OpRegistry::creators_;
 std::unordered_map<std::string, OpProto> OpRegistry::protos_;
 std::unordered_map<std::string, OpAttrChecker> OpRegistry::op_checkers_;
 
@@ -196,12 +178,10 @@ class OpRegisterHelper {
 
 // Demos
 
-class CosineOp : public OpBase {
+class CosineOp : public OperatorBase {
  public:
-  virtual std::string Run() const {
-    std::string msg = "CosineOp runs! scale = " +
-                      std::to_string(boost::get<float>(attr_map_.at("scale")));
-    return msg;
+  void Run(OpRunContext* context) const override {
+    printf("%s\n", DebugString().c_str());
   }
 };
 
@@ -221,13 +201,10 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 REGISTER_OP(CosineOp, CosineOpProtoAndCheckerMaker, cos_sim)
 
-class MyTestOp : public OpBase {
+class MyTestOp : public OperatorBase {
  public:
-  virtual std::string Run() const {
-    std::string msg =
-        "MyTestOp runs! test_attr = " +
-        std::to_string(boost::get<int>(attr_map_.at("test_attr")));
-    return msg;
+  void Run(OpRunContext* context) const override {
+    printf("%s\n", DebugString().c_str());
   }
 };
 
