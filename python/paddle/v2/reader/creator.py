@@ -57,22 +57,59 @@ def text_file(path):
     return reader
 
 
-def recordio(path):
+def recordio_local(paths, buf_size=100):
     """
-    Creates a data reader that outputs record one one by one from given recordio file
-    :path: path of recordio file
-    :returns: data reader of recordio file
+    Creates a data reader from given RecordIO file paths separated by ",", 
+        glob pattern is supported.
+    :path: path of recordio files.
+    :returns: data reader of recordio files.
     """
 
     import recordio as rec
+    import paddle.v2.reader.decorator as dec
 
     def reader():
-        f = rec.reader(path)
+        a = ','.join(paths)
+        f = rec.reader(a)
         while True:
             r = f.read()
             if r is None:
                 break
             yield r
         f.close()
+
+    return dec.buffered(reader, buf_size)
+
+
+def recordio(paths, buf_size=100):
+    """
+    Creates a data reader that outputs record one one by one 
+        from given local or cloud recordio path.
+    :path: path of recordio files.
+    :returns: data reader of recordio files.
+    """
+    import os
+    import paddle.v2.master.client as cloud
+
+    if "KUBERNETES_SERVICE_HOST" not in os.environ.keys():
+        return recordio_local(paths)
+
+    host_name = "MASTER_SERVICE_HOST"
+    if host_name not in os.environ.keys():
+        raise Exception('not find ' + host_name + ' in environ.')
+
+    addr = os.environ(host)
+
+    def reader():
+        c = cloud(addr, buf_size)
+        c.set_dataset(paths)
+
+        while True:
+            r, err = client.next_record()
+            if err < 0:
+                break
+            yield r
+
+        c.close()
 
     return reader
