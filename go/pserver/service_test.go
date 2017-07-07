@@ -15,7 +15,8 @@ const (
 )
 
 func TestServiceFull(t *testing.T) {
-	s, err := pserver.NewService(0)
+	var cp pserver.Checkpoint
+	s, err := pserver.NewService(0, 1, "", nil, cp)
 	if err != nil {
 		t.Error(err)
 	}
@@ -83,8 +84,6 @@ func TestServiceFull(t *testing.T) {
 	if !reflect.DeepEqual(param1, p) {
 		t.FailNow()
 	}
-	var dummy int
-	s.Save("", &dummy)
 }
 
 func TestMultipleInit(t *testing.T) {

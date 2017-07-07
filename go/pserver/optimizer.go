@@ -35,12 +35,12 @@ func cArrayToSlice(p unsafe.Pointer, len int) []byte {
 	return (*[1 << 30]byte)(p)[:len:len]
 }
 
-func newOptimizer(paramWithConfigs ParameterWithConfig) *optimizer {
+func newOptimizer(paramWithConfigs ParameterWithConfig, State []byte) *optimizer {
 	o := &optimizer{}
 	o.elementType = paramWithConfigs.Param.ElementType
 	p := paramWithConfigs.Param
 	c := paramWithConfigs.Config
-	s := paramWithConfigs.State
+	s := State
 	log.WithFields(log.Fields{
 		"ElementType": p.ElementType,
 		"ParamSize":   len(p.Content),
