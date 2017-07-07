@@ -108,7 +108,7 @@ class RecurrentGroupForwardOp {
   /*
    * Prepare steps' states and relations.
    */
-  void PrepareStates(Scope* scope);
+  void PrepareMemorys(Scope* scope);
 
  protected:
   /*
@@ -118,8 +118,8 @@ class RecurrentGroupForwardOp {
    * std::vector<std::string> outputs_;
    */
 
-  // State of a RNN (same as the role of `Momory` in PaddlePaddle)
-  struct StateAttr {
+  // Memory of a RNN (same as the role of `Momory` in PaddlePaddle)
+  struct MemoryAttr {
     // name of current state variable
     std::string var;
     // name of previous step's state variable
@@ -129,7 +129,7 @@ class RecurrentGroupForwardOp {
     std::string boot_var;
   };
 
-  std::vector<StateAttr> states_;
+  std::vector<MemoryAttr> memorys_;
   std::string name_;
 
   const std::string net_name_;
