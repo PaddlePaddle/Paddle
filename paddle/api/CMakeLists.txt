@@ -66,6 +66,7 @@ SWIG_LINK_LIBRARIES(swig_paddle
     paddle_trainer_lib
     paddle_network
     paddle_parameter
+    paddle_optimizer
     paddle_math
     paddle_utils
     paddle_proto

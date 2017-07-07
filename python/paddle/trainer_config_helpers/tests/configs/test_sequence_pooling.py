@@ -14,6 +14,14 @@ for pt in POOL_TYPE:
     for al in AGG_LEVEL:
         opts.append(pooling_layer(input=din, agg_level=al, pooling_type=pt()))
 
+for pt in POOL_TYPE:
+    opts.append(
+        pooling_layer(
+            input=din,
+            agg_level=AggregateLevel.TO_NO_SEQUENCE,
+            pooling_type=pt(),
+            stride=5))
+
 opts.append(
     pooling_layer(
         input=din, pooling_type=MaxPooling(output_max_index=True)))

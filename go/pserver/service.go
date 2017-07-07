@@ -20,8 +20,10 @@ import (
 type ElementType int
 
 const (
+	// AlreadyInitialized is true if pserver is initialized
 	AlreadyInitialized = "pserver already initialized"
-	Uninitialized      = "pserver not fully initialized"
+	// Uninitialized is true if pserver not fully initialized
+	Uninitialized = "pserver not fully initialized"
 )
 
 const (
@@ -37,9 +39,6 @@ const (
 	Float32
 	Float64
 )
-
-// PsDesired is etcd path for store desired pserver count
-const PsDesired = "/ps_desired"
 
 // Parameter is a piece of data to sync with the parameter server.
 type Parameter struct {

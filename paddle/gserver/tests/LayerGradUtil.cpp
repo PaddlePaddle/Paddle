@@ -241,7 +241,7 @@ void testBatchState(LayerPtr testLayer,
 
     std::vector<Argument> args;
     args.push_back(out);
-    EXPECT_EQ(0, Argument::sum(args)) << "testBatchState failed";
+    ASSERT_NEAR(0, Argument::sum(args), 1e-5) << "testBatchState failed";
     for (size_t seqId = 0; seqId < numSequences; ++seqId) {
       start[seqId] += seqLens[seqId];
     }
@@ -387,6 +387,31 @@ void initDataLayer(TestConfig testConf,
         data.value->sigmoid(*data.value);
         data.grad->zeroMem();
         break;
+      case INPUT_SELF_DEFINE_DATA: {
+        size_t height = testConf.inputDefs[i].selfDefinedData->getHeight();
+        size_t width = testConf.inputDefs[i].selfDefinedData->getWidth();
+        CHECK_GT(static_cast<int>(height), 0);
+        CHECK_GT(static_cast<int>(width), 0);
+        data.value = Matrix::create(height, width, false, useGpu);
+        data.grad = Matrix::create(height, width, false, useGpu);
+        data.value->copyFrom(*testConf.inputDefs[i].selfDefinedData);
+        data.grad->zeroMem();
+
+        const std::vector<int>& labelSeqStartPositions =
+            testConf.inputDefs[i].labelSeqStartPositions;
+        if (labelSeqStartPositions.size() != 0) {
+          CHECK(!sequenceStartPositions);
+          CHECK_GE(static_cast<int>(labelSeqStartPositions.size()), 2);
+
+          sequenceStartPositions =
+              ICpuGpuVector::create(labelSeqStartPositions.size(), useGpu);
+          sequenceStartPositions->copyFrom(labelSeqStartPositions.data(),
+                                           labelSeqStartPositions.size(),
+                                           useGpu);
+          data.sequenceStartPositions = sequenceStartPositions;
+        }
+        break;
+      }
       default:
         LOG(FATAL) << " unknown inputType ";
         return;
@@ -440,7 +465,6 @@ void initTestLayer(TestConfig testConf,
                            ParameterConfig paraConfig) {
     paraConfig.set_name(paraName);
     paraConfig.set_size(paraSize);
-    paraConfig.set_initial_std(1);
     paraConfig.set_is_static(isStatic);
     auto para =
         std::make_shared<Parameter>(paraConfig, FLAGS_use_gpu, initialize);
@@ -474,6 +498,9 @@ void initTestLayer(TestConfig testConf,
         paraConfig.add_dims((*layerMap)[input.input_layer_name()]->getSize());
         paraConfig.add_dims(testConf.layerConfig.size());
       }
+      CHECK_GE(testConf.paramInitialStd, 0);
+      paraConfig.set_initial_mean(testConf.paramInitialMean);
+      paraConfig.set_initial_std(testConf.paramInitialStd);
       initParameter(paraName, paraSize, inputDef.isStatic, false, paraConfig);
     }
   }

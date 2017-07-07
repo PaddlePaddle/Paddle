@@ -113,7 +113,7 @@ include(coveralls)          # set code coverage
 include_directories("${PROJ_ROOT}")
 include_directories("${PROJ_ROOT}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
-include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/cclient")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
 include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXTERNAL_LIBS
