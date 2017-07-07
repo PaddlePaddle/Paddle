@@ -50,7 +50,7 @@ func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePat
 	lock := concurrency.NewMutex(sess, lockPath)
 	// It's fine for the lock to get stuck, in this case we have
 	// multiple master servers running (only configured to have
-	// one master running, but split-brain problem may cuase
+	// one master running, but split-brain problem may cause
 	// multiple master servers running), and the cluster management
 	// software will kill one of them.
 	log.Debugf("Trying to acquire lock at %s.", lockPath)
@@ -98,7 +98,7 @@ func (e *EtcdClient) Save(state []byte) error {
 			// We lost the master lock and can not acquire
 			// it back, it means some other master is
 			// already started. We don't want cluster
-			// managment system to kill the master server
+			// management system to kill the master server
 			// who is holding the lock and running
 			// correctly. So the most feasible solution is
 			// to kill current master server. The current

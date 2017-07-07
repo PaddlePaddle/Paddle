@@ -15,6 +15,7 @@ import (
 
 func main() {
 	port := flag.Int("port", 0, "port of the pserver")
+	index := flag.Int("index", -1, "index of this pserver, should be larger or equal than 0")
 	etcdEndpoint := flag.String("etcd-endpoint", "http://127.0.0.1:2379",
 		"comma separated endpoint string for pserver to connect to etcd")
 	etcdTimeout := flag.Int("etcd-timeout", 5, "timeout for etcd calls")
@@ -29,11 +30,16 @@ func main() {
 	}
 	log.SetLevel(level)
 
-	timeout := time.Second * time.Duration((*etcdTimeout))
-	e := pserver.NewEtcdClient(*etcdEndpoint, *numPservers, timeout)
-	idx, err := e.Register()
-	if err != nil {
-		panic(err)
+	var idx int
+	if *index >= 0 {
+		idx = *index
+	} else {
+		timeout := time.Second * time.Duration((*etcdTimeout))
+		e := pserver.NewEtcdClient(*etcdEndpoint, *numPservers, timeout)
+		idx, err = e.Register()
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	s, err := pserver.NewService(idx)

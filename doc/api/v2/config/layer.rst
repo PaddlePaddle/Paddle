@@ -445,6 +445,11 @@ smooth_l1_cost
 ..  autoclass:: paddle.v2.layer.smooth_l1_cost
     :noindex:
 
+multibox_loss
+--------------
+..  autoclass:: paddle.v2.layer.multibox_loss
+    :noindex:
+
 Check Layer
 ============
 
@@ -467,4 +472,12 @@ Activation with learnable parameter
 prelu
 --------
 ..  autoclass:: paddle.v2.layer.prelu
+    :noindex:
+
+Detection output Layer
+======================
+
+detection_output
+----------------
+..  autoclass:: paddle.v2.layer.detection_output
     :noindex:
