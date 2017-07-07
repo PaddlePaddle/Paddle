@@ -191,8 +191,8 @@ func (e *EtcdClient) registerPserverEtcd(ctx context.Context) (int, error) {
 
 // PutKey put into etcd with value by key specified
 func (e *EtcdClient) PutKey(key string, value []byte, timeout int) error {
-	ctx, err := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
-	_, err = e.Put(ctx, key, value)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
+	_, err := e.etcdClient.Put(ctx, key, string(value))
 	cancel()
 	if err != nil {
 		return err
