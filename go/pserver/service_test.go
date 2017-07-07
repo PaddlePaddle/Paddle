@@ -10,6 +10,10 @@ import (
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 )
 
+const (
+	OptimizerConfig = "./client/c/test/testdata/optimizer.pb"
+)
+
 func TestServiceFull(t *testing.T) {
 	s, err := pserver.NewService(0)
 	if err != nil {
@@ -19,7 +23,7 @@ func TestServiceFull(t *testing.T) {
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
 	p.ElementType = pserver.Int32
-	config, err := ioutil.ReadFile("./cclient/test/testdata/optimizer.pb")
+	config, err := ioutil.ReadFile(OptimizerConfig)
 	if err != nil {
 		t.Fatalf("read optimizer proto failed")
 	}
@@ -149,7 +153,7 @@ func TestBlockUntilInitialized(t *testing.T) {
 	p.Name = "param_a"
 	p.Content = []byte{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}
 	p.ElementType = pserver.Int32
-	config, err := ioutil.ReadFile("./cclient/test/testdata/optimizer.pb")
+	config, err := ioutil.ReadFile(OptimizerConfig)
 	if err != nil {
 		t.Fatalf("read optimizer proto failed")
 	}

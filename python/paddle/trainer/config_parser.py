@@ -1353,7 +1353,8 @@ class LayerBase(object):
             device=None,
             active_type="",
             drop_rate=0.,
-            coeff=None):
+            coeff=None,
+            error_clipping_threshold=None):
         config_assert('@' not in name,
                       "layer name: %s contain special character @" % name)
         global g_current_submodel
@@ -1386,6 +1387,9 @@ class LayerBase(object):
             self.config.device = device
         elif g_default_device is not None:
             self.config.device = g_default_device
+
+        if error_clipping_threshold is not None:
+            self.config.error_clipping_threshold = error_clipping_threshold
 
         for input_index in xrange(len(self.inputs)):
             input = self.inputs[input_index]
@@ -1671,6 +1675,52 @@ class PriorBoxLayer(LayerBase):
         self.config.inputs[0].priorbox_conf.max_size.extend(max_size)
         self.config.inputs[0].priorbox_conf.aspect_ratio.extend(aspect_ratio)
         self.config.inputs[0].priorbox_conf.variance.extend(variance)
+        self.config.size = size
+
+
+@config_layer('multibox_loss')
+class MultiBoxLossLayer(LayerBase):
+    def __init__(self, name, inputs, input_num, num_classes, overlap_threshold,
+                 neg_pos_ratio, neg_overlap, background_id, **xargs):
+        super(MultiBoxLossLayer, self).__init__(name, 'multibox_loss', 0,
+                                                inputs)
+        config_assert(
+            len(inputs) == (input_num * 2 + 2),
+            'MultiBoxLossLayer does not have enough inputs')
+        config_assert(num_classes > background_id,
+                      'Classes number must greater than background ID')
+        self.config.inputs[0].multibox_loss_conf.num_classes = num_classes
+        self.config.inputs[
+            0].multibox_loss_conf.overlap_threshold = overlap_threshold
+        self.config.inputs[0].multibox_loss_conf.neg_pos_ratio = neg_pos_ratio
+        self.config.inputs[0].multibox_loss_conf.neg_overlap = neg_overlap
+        self.config.inputs[0].multibox_loss_conf.background_id = background_id
+        self.config.inputs[0].multibox_loss_conf.input_num = input_num
+        self.config.size = 1
+
+
+@config_layer('detection_output')
+class DetectionOutputLayer(LayerBase):
+    def __init__(self, name, inputs, size, input_num, num_classes,
+                 nms_threshold, nms_top_k, keep_top_k, confidence_threshold,
+                 background_id, **xargs):
+        super(DetectionOutputLayer, self).__init__(name, 'detection_output', 0,
+                                                   inputs)
+        config_assert(
+            len(inputs) == (input_num * 2 + 1),
+            'DetectionOutputLayer does not have enough inputs')
+        config_assert(num_classes > background_id,
+                      'Classes number must greater than background ID')
+        self.config.inputs[0].detection_output_conf.num_classes = num_classes
+        self.config.inputs[
+            0].detection_output_conf.nms_threshold = nms_threshold
+        self.config.inputs[0].detection_output_conf.nms_top_k = nms_top_k
+        self.config.inputs[0].detection_output_conf.keep_top_k = keep_top_k
+        self.config.inputs[
+            0].detection_output_conf.confidence_threshold = confidence_threshold
+        self.config.inputs[
+            0].detection_output_conf.background_id = background_id
+        self.config.inputs[0].detection_output_conf.input_num = input_num
         self.config.size = size
 
 
@@ -2420,10 +2470,14 @@ class MaxLayer(LayerBase):
                  trans_type='non-seq',
                  bias=False,
                  output_max_index=None,
+                 stride=-1,
                  **xargs):
         super(MaxLayer, self).__init__(name, 'max', 0, inputs=inputs, **xargs)
         config_assert(len(self.inputs) == 1, 'MaxLayer must have 1 input')
+        if trans_type == 'seq':
+            config_assert(stride == -1, 'subseq does not support stride window')
         self.config.trans_type = trans_type
+        self.config.seq_pool_stride = stride
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             self.set_layer_size(input_layer.size)
@@ -2685,11 +2739,15 @@ class AverageLayer(LayerBase):
                  average_strategy='average',
                  trans_type='non-seq',
                  bias=False,
+                 stride=-1,
                  **xargs):
         super(AverageLayer, self).__init__(
             name, 'average', 0, inputs=inputs, **xargs)
         self.config.average_strategy = average_strategy
+        if trans_type == 'seq':
+            config_assert(stride == -1, 'subseq does not support stride window')
         self.config.trans_type = trans_type
+        self.config.seq_pool_stride = stride
         config_assert(len(inputs) == 1, 'AverageLayer must have 1 input')
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
@@ -2728,13 +2786,7 @@ class TensorLayer(LayerBase):
 
 @config_layer('mixed')
 class MixedLayer(LayerBase):
-    def __init__(self,
-                 name,
-                 inputs,
-                 size=0,
-                 bias=True,
-                 error_clipping_threshold=None,
-                 **xargs):
+    def __init__(self, name, inputs, size=0, bias=True, **xargs):
         config_assert(inputs, 'inputs cannot be empty')
         super(MixedLayer, self).__init__(
             name, 'mixed', size, inputs=inputs, **xargs)
@@ -2815,9 +2867,6 @@ class MixedLayer(LayerBase):
         if bias:
             self.config.bias_size = psize
             self.create_bias_parameter(bias, psize)
-
-        if error_clipping_threshold is not None:
-            self.config.error_clipping_threshold = error_clipping_threshold
 
 
 # like MixedLayer, but no bias parameter

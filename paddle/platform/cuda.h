@@ -34,6 +34,16 @@ int GetDeviceCount(void) {
   return count;
 }
 
+int GetCurrentDeviceId(void) {
+  int device_id;
+  throw_on_error(cudaGetDevice(&device_id), "cudaGetDevice failed");
+  return device_id;
+}
+
+void SetDeviceId(int device_id) {
+  throw_on_error(cudaSetDevice(device_id), "cudaSetDevice failed");
+}
+
 }  // namespace platform
 }  // namespace paddle
 
