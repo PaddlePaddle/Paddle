@@ -566,14 +566,17 @@ public:
    */
   Vector* getBuf(ParameterType type);
 
-  /**
-   * get id
-   */
   size_t getID() const;
+
+  /**
+   * if parameter has hooks, the parameter will operate with the hooks before
+   * fetching the data when using the python api in
+   * paddle.v2.parameters.get(...).
+   */
+  void handleBeforeFetch();
 
   ParameterConfig* getConfig();
   void setValueUpdated();
-  void handleBeforeSave();
   bool save(const std::string& filename) const;
 
   bool load(const std::string& filename) const;

@@ -61,9 +61,7 @@ bool Parameter::save(const std::string& filename) const {
   return m->getPtr()->save(filename);
 }
 
-void Parameter::handleBeforeSave() {
-    return m->getPtr()->handleBeforeSave();   
-}
+void Parameter::handleBeforeFetch() { return m->getPtr()->handleBeforeFetch(); }
 
 bool Parameter::load(const std::string& filename) const {
   return m->getPtr()->load(filename);
