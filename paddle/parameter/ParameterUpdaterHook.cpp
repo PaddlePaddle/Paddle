@@ -22,7 +22,6 @@ limitations under the License. */
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include <iostream>
 
 #include "paddle/math/Vector.h"
 #include "paddle/parameter/Parameter.h"
@@ -35,10 +34,11 @@ class ParameterPruningHook : public IParameterUpdaterHook {
 public:
   explicit ParameterPruningHook() : initCount_(0) {}
 
-
-  virtual void update(Parameter *para) {/*do nothing*/}
-  virtual void handleBeforeSave(Parameter *para) {/*do nothing*/}
-  virtual void preprocess(Parameter *para, size_t currentPass, size_t currentBatch) {}
+  virtual void preprocess(Parameter *para,
+                          size_t currentPass,
+                          size_t currentBatch) {}
+  virtual void update(Parameter *para) {}
+  virtual void handleBeforeFetch(Parameter *para) {}
 
   virtual void generateMask(Parameter *para, size_t nonZeroNum) {
     VectorPtr maskTemp = Vector::create(para->getSize(), false);
@@ -59,10 +59,10 @@ public:
     for (size_t i = 0; i < nonZeroNum; i++) maskTempData[param[i].second] = 1.0;
 
     if (para->useGpu()) {
-      this-> maskVec_ = Vector::create(para->getSize(), para->useGpu());
-      this-> maskVec_->copyFrom(*maskTemp);
+      this->maskVec_ = Vector::create(para->getSize(), para->useGpu());
+      this->maskVec_->copyFrom(*maskTemp);
     } else {
-      this-> maskVec_ = maskTemp;
+      this->maskVec_ = maskTemp;
     }
   }
 
@@ -70,7 +70,6 @@ public:
                              const std::pair<real, size_t> &pair2) {
     return pair1.first > pair2.first;
   }
-
 
 protected:
   std::atomic<size_t> initCount_;
@@ -92,14 +91,6 @@ public:
     this->sparsityRatio_ = hookConfig.sparsity_ratio();
   }
 
-  void update(Parameter *para) override{
-    updateThreadChecker_.check();
-    auto &vec = para->getBuf(PARAMETER_GRADIENT);
-    if (vec) {
-      vec->dotMul(*maskVec_);
-    }
-  }
-
   void init(Parameter *para) override {
     size_t initCount = this->initCount_.fetch_add(1);
     CHECK_EQ(initCount, 0UL) << "Currently the StaticPruningHook must invoke "
@@ -112,6 +103,14 @@ public:
 
     auto &paraVec = para->getBuf(PARAMETER_VALUE);
     paraVec->dotMul(*this->maskVec_);
+  }
+
+  void update(Parameter *para) override {
+    updateThreadChecker_.check();
+    auto &vec = para->getBuf(PARAMETER_GRADIENT);
+    if (vec) {
+      vec->dotMul(*maskVec_);
+    }
   }
 
 private:
@@ -135,16 +134,36 @@ public:
     VLOG(3) << "Initialize Parameter " << para;
     this->maskVec_ = Vector::create(para->getSize(), para->useGpu());
     this->maskVec_->reset(1.0);
-
-    /*
-    real *data = this->maskVec_->getData();
-    for (size_t i = 0; i < para->getSize(); i++){
-        std::cout  << data[i] << " " ;
-    }
-    */
+    this->weightTemp_ = Vector::create(para->getSize(), para->useGpu());
   }
 
-  void handleBeforeSave(Parameter *para) override{
+  void preprocess(Parameter *para,
+                  size_t currentPass,
+                  size_t currentBatch) override {
+    if (currentPass % interPass_ == 0 && currentPass <= endPass_ &&
+        currentBatch == 0) {
+      real boundWeight = this->upperBound_ /
+                         std::log(this->endPass_ / (real)this->interPass_ + 2);
+      real sparsityRatio =
+          boundWeight * std::log(2 + currentPass / (real)interPass_);
+
+      size_t nonZeroNum = para->getSize() * (1 - sparsityRatio);
+      this->generateMask(para, nonZeroNum);
+      std::cout << para->getName()
+                << " Current sparsity ratio: " << sparsityRatio << std::endl;
+    }
+    auto &paraVec = para->getBuf(PARAMETER_VALUE);
+    weightTemp_->copyFrom(*paraVec);
+    paraVec->dotMul(*this->maskVec_);
+  }
+
+  void update(Parameter *para) override {
+    updateThreadChecker_.check();
+    auto &vec = para->getBuf(PARAMETER_VALUE);
+    vec->copyFrom(*this->weightTemp_);
+  }
+
+  void handleBeforeFetch(Parameter *para) override {
     updateThreadChecker_.check();
     auto &vec = para->getBuf(PARAMETER_VALUE);
     if (vec) {
@@ -152,38 +171,11 @@ public:
     }
   }
 
-  void preprocess(Parameter *para, size_t currentPass, size_t currentBatch) override {
-    if (currentPass % interPass_ == 0 && currentPass <= endPass_ && currentBatch  == 0) {
-      real boundWeight =
-          this->upperBound_ / std::log(this->endPass_ / (real)this->interPass_ + 2);
-      real sparsityRatio =
-          boundWeight * std::log(2 + currentPass / (real)interPass_);
-
-      size_t nonZeroNum = para->getSize() * (1 - sparsityRatio);
-      this->generateMask(para, nonZeroNum);
-      std::cout << para->getName() << " Current sparsity ratio: " <<
-       sparsityRatio <<" " << nonZeroNum<<std::endl;
-    }
-    //add the the temp
-    auto &paraVec = para->getBuf(PARAMETER_VALUE);
-    paraVec->dotMul(*this->maskVec_);
-    /*
-    VectorPtr paraCopyCpu = Vector::create(para->getSize(), false);
-    paraCopyCpu->copyFrom(*paraVec);
-    real *data = paraCopyCpu->getData();
-    size_t sum_non = 0;
-      for(size_t i = 0; i < para->getSize(); i++){
-          if(data[i] != 0.0)
-          sum_non += 1;
-      }
-    std::cout<<"sum_non: " <<sum_non << " " << para->getSize()<< std::endl;
-   */ 
-  }
-
 private:
   real upperBound_;
   size_t interPass_;
   size_t endPass_;
+  VectorPtr weightTemp_;
 };
 
 IParameterUpdaterHook::IParameterUpdaterHook() {}
@@ -221,7 +213,7 @@ static IParameterUpdaterHook *createImpl(
   auto &type = config.type();
   if (type == "pruning") {
     return new StaticPruningHook(config);
-  } else if (type == "dpruning") {
+  } else if (type == "dynamic_pruning") {
     return new DynamicPruningHook(config);
   }
 

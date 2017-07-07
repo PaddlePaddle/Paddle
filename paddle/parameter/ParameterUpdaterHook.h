@@ -52,8 +52,18 @@ public:
    * The init hook method. Invoke in ParameterUpdater::init
    */
   virtual void init(Parameter* para) = 0;
-  virtual void preprocess(Parameter* para, size_t currentPass, size_t currentBatch) = 0;
-  virtual void handleBeforeSave(Parameter* para) = 0;
+
+  /**
+   * The preprocess hook method. Invoke in ParameterUpdater::preprocess
+   */
+  virtual void preprocess(Parameter* para,
+                          size_t currentPass,
+                          size_t currentBatch) = 0;
+
+  /**
+   * The handleBeforeFetch hook method. Invoke in Parameter::handleBeforeFetch
+   */
+  virtual void handleBeforeFetch(Parameter* para) = 0;
 
 protected:
   /**

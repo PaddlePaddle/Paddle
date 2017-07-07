@@ -60,7 +60,9 @@ public:
     para->updateHook();
     this->updateImpl(para);
   }
-
+  // it will be called before layer forwardbackward in training process, do the
+  // preprocess for the parameters. Such as drop some parameters in dynamic
+  // pruning task.
   void preprocess(Parameter* para, size_t currentPass, size_t currentBatch) {
     SetDevice setDevice(para->getDeviceId());
     para->preProcessHook(currentPass, currentBatch);
@@ -95,7 +97,6 @@ public:
 
 protected:
   virtual void updateImpl(Parameter* para) = 0;
-
   std::vector<ParameterType> parameterTypes_;
   std::vector<ParameterPtr> parameters_;
   std::map<size_t, size_t> nonStaticParaIDMap_;
