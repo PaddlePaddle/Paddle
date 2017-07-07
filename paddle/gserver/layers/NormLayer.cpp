@@ -56,14 +56,4 @@ bool ResponseNormLayer::init(const LayerMap& layerMap,
   return true;
 }
 
-bool CrossChannelNormLayer::init(const LayerMap& layerMap,
-                                 const ParameterMap& parameterMap) {
-  Layer::init(layerMap, parameterMap);
-  CHECK(parameters_[0]);
-  const NormConfig& conf = config_.inputs(0).norm_conf();
-  channels_ = conf.channels();
-  scale_.reset(new Weight(channels_, 1, parameters_[0]));
-  return true;
-}
-
 }  // namespace paddle

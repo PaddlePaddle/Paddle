@@ -72,9 +72,8 @@ void SequencePoolLayer::forward(PassType passType) {
   if (stride_ > 0) {
     CHECK_EQ(input.hasSubseq(), 0UL)
         << "sequence stride pooling is invalid for hasSubseq now";
-    output_.poolSequenceWithStride(
-        input, stride_, &stridePositions_, reversed_);
-    newBatchSize_ = stridePositions_->getSize() - 1;
+    output_.poolSequenceWithStride(input, stride_, &startPositions_, reversed_);
+    newBatchSize_ = startPositions_->getSize() - 1;
   }
 
   resetOutput(newBatchSize_, dim);

@@ -42,6 +42,7 @@ if (WITH_TESTING)
     add_subdirectory(paddle/v2/tests)
     add_subdirectory(paddle/v2/reader/tests)
     add_subdirectory(paddle/v2/plot/tests)
+    add_subdirectory(paddle/v2/framework/tests)
   endif()
 endif()
 install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
