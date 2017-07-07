@@ -104,11 +104,22 @@ func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int
 	return C.PADDLE_MASTER_OK
 }
 
+// return value:
+//     0:ok
+//    -1:error
 //export paddle_next_record
 func paddle_next_record(client C.paddle_master_client, record **C.uchar) C.int {
 	c := get(client)
-	r := c.NextRecord()
+	r, err := c.NextRecord()
+	if err != nil {
+		// Error
+		// TODO: return the type of error?
+		*record = (*C.uchar)(nullPtr)
+		return -1
+	}
+
 	if len(r) == 0 {
+		// Empty record
 		*record = (*C.uchar)(nullPtr)
 		return 0
 	}
