@@ -194,6 +194,8 @@ class OpRegisterHelper {
   const OpRegisterHelper<__op_class, __op_maker_class>               \
       __op_class##Register::reg(#__op_type);
 
+// Demos
+
 class CosineOp : public OpBase {
  public:
   virtual std::string Run() const {
@@ -218,6 +220,34 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 };
 
 REGISTER_OP(CosineOp, CosineOpProtoAndCheckerMaker, cos_sim)
+
+class MyTestOp : public OpBase {
+ public:
+  virtual std::string Run() const {
+    std::string msg =
+        "MyTestOp runs! test_attr = " +
+        std::to_string(boost::get<int>(attr_map_.at("test_attr")));
+    return msg;
+  }
+};
+
+class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+ public:
+  MyTestOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("input", "input of cosine op");
+    AddOutput("output", "output of cosine op");
+    auto my_checker = [](int i) {
+      PADDLE_ENFORCE(i % 2 == 0, "'test_attr' must be even!");
+    };
+    AddAttr<int>("test_attr", "a simple test attribute")
+        .AddCustomChecker(my_checker);
+    AddType("my_test_op");
+    AddComment("This is my_test op");
+  }
+};
+
+REGISTER_OP(MyTestOp, MyTestOpProtoAndCheckerMaker, my_test_op)
 
 }  // namespace framework
 }  // namespace paddle
