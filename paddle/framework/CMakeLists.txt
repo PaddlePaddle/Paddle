@@ -9,7 +9,10 @@ cc_test(enforce_test SRCS enforce_test.cc)
 proto_library(attr_type SRCS attr_type.proto)
 proto_library(op_proto SRCS op_proto.proto DEPS attr_type)
 cc_test(op_proto_test SRCS op_proto_test.cc DEPS op_proto protobuf)
-
 proto_library(op_desc SRCS op_desc.proto DEPS attr_type)
 cc_test(op_desc_test SRCS op_desc_test.cc DEPS op_desc protobuf)
+py_proto_compile(framework_py_proto SRCS attr_type.proto op_proto.proto op_desc.proto)
+# Generate an empty __init__.py to make framework_py_proto as a valid python module.
+add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
+add_dependencies(framework_py_proto framework_py_proto_init)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_proto op_desc)
