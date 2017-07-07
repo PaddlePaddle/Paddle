@@ -68,8 +68,8 @@ class RecurrentGroupForwardOp {
 
     // expand lazily.
     CreateScopes(scope);
-    ApplyInLinks(scope);
-    PrepareStates(scope);
+    ScatterLinks(scope);
+    PrepareMemories(scope);
     Variable* step_scopes = scope->GetVariable(step_scopes_name_);
     PADDLE_ENFORCE(step_scopes);
 
@@ -79,19 +79,19 @@ class RecurrentGroupForwardOp {
     }
 
     // prepare outputs
-    ApplyOutLinks(scope);
+    GatherOutLinks(scope);
   }
 
  protected:
   /*
    * Prepare inputs for each stepnet.
    */
-  void ApplyInLinks(Scope* scope);
+  void ScatterInLinks(Scope* scope);
 
   /*
    * Process outputs of stepnets and merge to variables.
    */
-  void ApplyOutLinks(Scope* scope);
+  void GatherOutLinks(Scope* scope);
 
   /*
    * Build a `Net` which is shared across all steps.
@@ -108,7 +108,7 @@ class RecurrentGroupForwardOp {
   /*
    * Prepare steps' states and relations.
    */
-  void PrepareMemorys(Scope* scope);
+  void PrepareMemories(Scope* scope);
 
  protected:
   /*
@@ -129,7 +129,7 @@ class RecurrentGroupForwardOp {
     std::string boot_var;
   };
 
-  std::vector<MemoryAttr> memorys_;
+  std::vector<MemoryAttr> memories_;
   std::string name_;
 
   const std::string net_name_;
