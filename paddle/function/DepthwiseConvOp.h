@@ -18,11 +18,6 @@ limitations under the License. */
 
 namespace paddle {
 
-/*
- * imData = [input_channels, input_height, input_width]
- * colData = [input_channels, filter_height, filter_width,
- *            output_height, output_width]
- */
 template <DeviceType Device, class T>
 class DepthwiseConvFunctor {
 public:
@@ -33,6 +28,8 @@ public:
                   int outputChannels,
                   int outputHeight,
                   int outputWidth,
+                  int inputHeight,
+                  int intputWidth,
                   int filterHeight,
                   int filterWidth,
                   int strideH,

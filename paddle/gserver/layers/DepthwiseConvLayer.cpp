@@ -15,6 +15,7 @@ limitations under the License. */
 #include "DepthwiseConvLayer.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
+#include <iostream>
 
 namespace paddle {
 
@@ -79,6 +80,7 @@ void DepthwiseConvLayer::forward(PassType passType) {
   Layer::forward(passType);
 
   size_t batchSize = inputLayers_[0]->getOutputValue()->getHeight();
+  // std::cout << "outputSize" << getOutputSize() <<std::endl;
   resetOutput(batchSize, getOutputSize());
 
   // Calculate the shape of the input, output, and filter.
