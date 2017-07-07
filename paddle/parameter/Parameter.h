@@ -257,21 +257,37 @@ public:
    * It could modify gradient/momentum/etc here. Such as drop some gradient,
    * etc.
    */
-  void handleBeforeSave(){
+  void updateHook() {
     for (auto& hook : updaterHooks_) {
-      hook->handleBeforeSave(this);
+      hook->update(this);
     }
   }
 
+  /**
+   * @brief  Parameter preProcess Hook.
+   *
+   * The parameter's preProcess hook before layer Forwardbackward
+   * It could do the preprocess for parameters, such as the 'dynamic pruning'
+   * task which drops some parameters.
+   *
+   */
   void preProcessHook(size_t currentPass, size_t currentBatch) {
     for (auto& hook : updaterHooks_) {
       hook->preprocess(this, currentPass, currentBatch);
     }
   }
 
-  void updateHook() {
+  /**
+   * @brief  Parameter handleBeforeFetch Hook.
+   *
+   * The parameter's handleBeforeFetch hook
+   * If parameter has hooks, the parameters will operate with the hooks before
+   * fetching the data when using the python api in
+   * paddle.v2.parameters.get(...).
+   */
+  void handleBeforeFetch() {
     for (auto& hook : updaterHooks_) {
-      hook->update(this);
+      hook->handleBeforeFetch(this);
     }
   }
 
