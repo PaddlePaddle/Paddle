@@ -98,12 +98,16 @@ class RecurrentOp : public OperatorBase {
   void CreateScopes(Scope* scope) const;
 
   /*
-   * Prepare steps' states and link previous state's memory to current scope by
-   * a `reference`.
+   * Create memories in each step scope.
    */
-  void PrepareMemories(Scope* scope) const;
+  void CreateMemories(Scope* scope) const;
 
- protected:
+  /*
+   * Link memory in previous step scope to current scope.
+   */
+  // void LinkMemories(Scope* scope) const;
+
+ private:
   /*
    * these are defined in BaseOperator
    *
@@ -122,6 +126,8 @@ class RecurrentOp : public OperatorBase {
     std::string boot_var;
   };
 
+  std::vector<MemoryAttr> memory_attrs_;
+
   // this op's name, used as a unique key in father scope.
   // TODO repace it with OpBase's interface if supported.
   std::string name_;
@@ -129,7 +135,7 @@ class RecurrentOp : public OperatorBase {
   // and `Backward`, so we store it as a variable in father's scope, with a
   // unique key specified by `net_name_`.
   const std::string net_name_;
-  // name of steps' scopes which is store in father scope with a unique key
+  // name of steps' scopes which is stored in father scope with a unique key
   // specified by `step_scopes_name_`.
   const std::string step_scopes_name_;
 };
