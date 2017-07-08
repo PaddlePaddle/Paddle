@@ -18,10 +18,10 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/framework/attr_checker.h"
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/scope.h"
 #include "paddle/utils/Error.h"
-#include "paddle/framework/attr_checker.h"
 
 namespace paddle {
 namespace framework {
@@ -36,43 +36,49 @@ class GPUContext : public DeviceContext {};
  * device resource such as CUDA stream, cublas handle, etc. from
  * OpRunContext. User should construct it before run the Operator.
  */
-class OpRunContext {
+class OpContext {
  public:
   Scope* scope;
   DeviceContext* device_context;
 };
 
 /**
- * OperatorBase has the basic element that Net will call to do compute.
- * It have no construct function because CreateOperator(const& op_desc)
- * will parse op_desc and set the input/output/attr properly.
+ * OperatorBase has the basic element that Net will call to do computation.
+ * Only CreateOperator from OpRegistry will new Operator directly. User
+ * should always construct a proto message OpDesc and call
+ * OpRegistry::CreateOp(op_desc) to get an Operator instance.
  */
 class OperatorBase {
  public:
   virtual ~OperatorBase() {}
 
+  /// We do not use ctor but an init function to construct an Operator.
+  /// There is no need for all sub operators to have a constructor and
+  /// write this init parameters.
   void Init(const OpDesc& op_desc, AttributeMap& attrs);
 
-  std::string type() const {
-    return desc_.type();
+  inline const OpDesc op_desc() const { return desc_; }
+
+  inline const Variable* Input(Scope* scope, int index) const {
+    PADDLE_ENFORCE(scope != nullptr, "scope should not be nullptr");
+    return scope->GetVariable(inputs_[index]);
   }
 
-  Variable* Input(Scope* scope, int index) const;
-  Variable* Output(Scope* scope, int index) const;
-
-  Attribute GetAttr(std::string name);
-
-  inline const AttributeMap attrs() const {
-    return attrs_;
+  inline Variable* Output(Scope* scope, int index) const {
+    PADDLE_ENFORCE(scope != nullptr, "scope should not be nullptr");
+    return scope->GetVariable(outputs_[index]);
   }
 
-  inline const std::vector<std::string> inputs() const {
-    return inputs_;
+  template <typename T>
+  inline const T GetAttr(const std::string& name) const {
+    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
+                   name);
+    return boost::get<T>(attrs_.at(name));
   }
 
-  inline const std::vector<std::string> outputs() const {
-    return outputs_;
-  }
+  inline const std::vector<std::string> inputs() const { return inputs_; }
+
+  inline const std::vector<std::string> outputs() const { return outputs_; }
 
   std::string DebugString() const;
 
@@ -82,9 +88,9 @@ class OperatorBase {
   void InferShape(Scope* scope) const;
 
   /// when implement an Op, your should implement this function.
-  virtual void Run(OpRunContext* context) const = 0;
+  virtual void Run(OpContext* context) const = 0;
 
- protected:
+ private:
   OpDesc desc_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;

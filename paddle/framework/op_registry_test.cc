@@ -1,5 +1,6 @@
 #include "paddle/framework/op_registry.h"
 #include <gtest/gtest.h>
+#include "paddle/operators/demo_op.h"
 
 TEST(OpRegistry, CreateOp) {
   paddle::framework::OpDesc op_desc;
@@ -16,7 +17,7 @@ TEST(OpRegistry, CreateOp) {
   paddle::framework::OperatorBase* op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(nullptr);
-  float scale_get = boost::get<float>(op->GetAttr("scale"));
+  float scale_get = op->GetAttr<float>("scale");
   ASSERT_EQ(scale_get, scale);
 }
 
@@ -57,7 +58,7 @@ TEST(OpRegistry, DefaultValue) {
   paddle::framework::OperatorBase* op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(nullptr);
-  ASSERT_EQ(boost::get<float>(op->GetAttr("scale")), 1.0);
+  ASSERT_EQ(op->GetAttr<float>("scale"), 1.0);
 }
 
 TEST(OpRegistry, CustomChecker) {
@@ -109,6 +110,6 @@ TEST(OpRegistry, CustomChecker) {
   paddle::framework::OperatorBase* op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(nullptr);
-  int test_attr = boost::get<int>(op->GetAttr("test_attr"));
+  int test_attr = op->GetAttr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);
 }
