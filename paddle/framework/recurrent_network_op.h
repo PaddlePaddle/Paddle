@@ -21,7 +21,9 @@
 namespace paddle {
 namespace framework {
 
+// --------------------------------------------------------------------
 // fake interfaces that has not be implemented by other modules.
+// TODO keep updating according to other modules' designs.
 struct OpRunContext {
   Scope* scope;
 };
@@ -29,7 +31,14 @@ struct OpRunContext {
 // TODO replace this with Net's proto.
 struct NetDesc {
   std::string name;
-}
+};
+
+class PlainNet {
+ public:
+  PlainNet() {}
+  PlainNet(const NetDesc& desc) {}
+  void Run(Scope* scope) {}
+};
 
 class OperatorBase {
  public:
@@ -40,75 +49,59 @@ class OperatorBase {
  protected:
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
-}
+};
+// fake interfaces end
+// --------------------------------------------------------------------
 
-class RecurrentGroupForwardOp {
+class RecurrentOp : public OperatorBase {
  public:
-  RecurrentGroupForwardOp(NetDesc& net_desc)
+  RecurrentOp(NetDesc& net_desc)
       : name_(net_desc.name),
         net_name_(net_desc.name + "__net__"),
         step_scopes_name_(net_desc.name + "__step_scopes_") {}
 
-  virtual void InferShape(const Scope* scope) = 0;
+  virtual void InferShape(const Scope* scope) const override;
+
   /*
    * Forward run the RNN.
    *
    * NOTE the context's scope is not given until `Run` called, so step scopes'
    * father should be set/updated in this method.
    */
-  virtual void Run(OpRunContext* contex) const {
-    auto scope = contex.scope;
-
-    Variable* net = scope->GetVariable(net_name_);
-    if (net == nullptr) {
-      BuildStepNet(scope);
-      net = scope->GetVariable(net_name_);
-    }
-    PADDLE_ENFORCE(net);
-
-    // expand lazily.
-    CreateScopes(scope);
-    ScatterLinks(scope);
-    PrepareMemories(scope);
-    Variable* step_scopes = scope->GetVariable(step_scopes_name_);
-    PADDLE_ENFORCE(step_scopes);
-
-    // forward
-    for (Scope* step_scope : step_scopes->GetMutable<std::vector<Scope*>>()) {
-      net->Run(step_scope);
-    }
-
-    // prepare outputs
-    GatherOutLinks(scope);
-  }
+  virtual void Run(OpRunContext* contex) const override;
 
  protected:
   /*
    * Prepare inputs for each stepnet.
    */
-  void ScatterInLinks(Scope* scope);
+  void SegmentInputs(Scope* scope) const;
 
   /*
    * Process outputs of stepnets and merge to variables.
    */
-  void GatherOutLinks(Scope* scope);
+  void ConcateOutputs(Scope* scope) const;
 
   /*
-   * Build a `Net` which is shared across all steps.
+   * Create a `Net` which is shared across all steps.
    */
-  void BuildStepNet(Scope* scope);
+  void CreateStepNet(Scope* scope) const;
 
   /*
    * Create a scope for each step, the context's scope is shared across all
    * the step scopes as the father scope. The step scopes will be stored in
-   * the father scope as a variable.
+   * the father scope as a variable whose name is specified by
+   * `step_scopes_name_`.
+   *
+   * NOTE the scopes are reused by both the `Forward` and `Backward`, so just
+   * create once and expand its size if more steps need.
    */
-  void CreateScopes(Scope* scope);
+  void CreateScopes(Scope* scope) const;
 
   /*
-   * Prepare steps' states and relations.
+   * Prepare steps' states and link previous state's memory to current scope by
+   * a `reference`.
    */
-  void PrepareMemories(Scope* scope);
+  void PrepareMemories(Scope* scope) const;
 
  protected:
   /*
@@ -124,18 +117,24 @@ class RecurrentGroupForwardOp {
     std::string var;
     // name of previous step's state variable
     std::string pre_var;
-    // name of the variable to init a state, which is store in context's
-    // scope.
+    // name of the variables to init this memory (same role of `boot_layer` in
+    // PaddlePaddle), which is store in father's scope.
     std::string boot_var;
   };
 
-  std::vector<MemoryAttr> memories_;
+  // this op's name, used as a unique key in father scope.
+  // TODO repace it with OpBase's interface if supported.
   std::string name_;
-
+  // name of rnn op's step net, the step net will be shared by both `Forward`
+  // and `Backward`, so we store it as a variable in father's scope, with a
+  // unique key specified by `net_name_`.
   const std::string net_name_;
+  // name of steps' scopes which is store in father scope with a unique key
+  // specified by `step_scopes_name_`.
   const std::string step_scopes_name_;
 };
 
-class RecurrentGroupBackwardOp;
+class RecurrentGradientOp;
+
 }  // namespace framework
 }  // namespace paddle
