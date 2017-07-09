@@ -61,18 +61,22 @@ class OperatorBase {
 
   inline const Variable* Input(Scope* scope, int index) const {
     PADDLE_ENFORCE(scope != nullptr, "scope should not be nullptr");
+    PADDLE_ENFORCE(index >= 0, "input index should not be negative");
+    PADDLE_ENFORCE(index < (int)inputs().size(), "input index should less then %d", inputs().size());
     return scope->GetVariable(inputs_[index]);
   }
 
   inline Variable* Output(Scope* scope, int index) const {
     PADDLE_ENFORCE(scope != nullptr, "scope should not be nullptr");
+    PADDLE_ENFORCE(index >= 0, "output index should not be negative");
+    PADDLE_ENFORCE(index < (int)outputs().size(), "output index should less then %d", outputs().size());
     return scope->GetVariable(outputs_[index]);
   }
 
   template <typename T>
   inline const T GetAttr(const std::string& name) const {
-    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
-                   name);
+    PADDLE_ENFORCE(attrs_.count(name) != 0,
+                   "%s should be in AttributeMap", name);
     return boost::get<T>(attrs_.at(name));
   }
 
@@ -80,7 +84,7 @@ class OperatorBase {
 
   inline const std::vector<std::string> outputs() const { return outputs_; }
 
-  std::string DebugString() const;
+  const std::string DebugString() const;
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information

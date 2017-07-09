@@ -23,6 +23,8 @@ class OperatorTest : public OperatorBase {
  public:
   void Run(OpContext* context) const override {
     float scale = GetAttr<float>("scale");
+    PADDLE_ENFORCE(Input(context->scope, 0) == nullptr, "Input(0) should not initialized");
+    PADDLE_ENFORCE(Input(context->scope, 1) == nullptr, "Input(1) should not initialized");
     printf("get attr %s = %f\n", "scale", scale);
     printf("%s\n", DebugString().c_str());
   }

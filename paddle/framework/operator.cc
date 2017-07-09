@@ -32,7 +32,7 @@ void OperatorBase::Init(const OpDesc& op_desc, AttributeMap& attrs) {
 
 void OperatorBase::InferShape(Scope* scope) const {}
 
-std::string OperatorBase::DebugString() const {
+const std::string OperatorBase::DebugString() const {
   std::stringstream ss;
   ss << "=================\n";
   ss << "type = " << desc_.type() << "\n";
