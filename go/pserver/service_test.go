@@ -166,5 +166,5 @@ func TestBlockUntilInitialized(t *testing.T) {
 }
 
 func TestCheckpointSpeed(t *testing.T) {
-	//TODO: test speed
+	//TODO(zhihong): test speed
 }
