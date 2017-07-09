@@ -47,14 +47,19 @@ REGISTER_OP(OperatorTest, OperatorTestProtoAndCheckerMaker, test_operator)
 TEST(OperatorBase, DebugString) {
   OpDesc op_desc;
   op_desc.set_type("test_operator");
-  op_desc.add_inputs("IN1");
-  op_desc.add_inputs("IN2");
-  op_desc.add_outputs("OUT1");
-  op_desc.add_outputs("OUT2");
+  std::vector<std::string> inputs = {"IN1", "IN2"};
+  for (auto& input : inputs) {
+    op_desc.add_inputs(input);
+  }
+  std::vector<std::string> outputs = {"OUT1", "OUT2"};
+  for (auto& output : outputs) {
+    op_desc.add_outputs(output);
+  }
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
   attr->set_type(paddle::framework::AttrType::FLOAT);
-  attr->set_f(3.14);
+  float scale = 3.14;
+  attr->set_f(scale);
 
   Scope* scope = new Scope();
   DeviceContext* device_context = new DeviceContext();
@@ -63,6 +68,9 @@ TEST(OperatorBase, DebugString) {
   op_context->device_context = device_context;
 
   OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  ASSERT_EQ(op->inputs(), inputs);
+  ASSERT_EQ(op->outputs(), outputs);
+  ASSERT_EQ(op->GetAttr<float>("scale"), scale);
   op->Run(op_context);
 }
 
