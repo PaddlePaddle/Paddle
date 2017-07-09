@@ -21,7 +21,7 @@ func main() {
 	etcdTimeout := flag.Int("etcd-timeout", 5, "timeout for etcd calls")
 	numPservers := flag.Int("num-pservers", 1, "total pserver count in a training job")
 	checkpointPath := flag.String("checkpoint-path", "/checkpoints/", "save checkpoint path")
-	checkpointInterval := flag.Int("checkpoint-interval", 10, "save checkpoint per interval seconds")
+	checkpointInterval := flag.Int("checkpoint-interval", 600, "save checkpoint per interval seconds")
 	logLevel := flag.String("log-level", "info",
 		"log level, possible values: debug, info, warning, error, fatal, panic")
 	flag.Parse()
