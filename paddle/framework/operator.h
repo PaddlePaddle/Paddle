@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/framework/attr_checker.h"
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/scope.h"
@@ -76,8 +77,8 @@ class OperatorBase {
 
   /// Net will call this function to Run an op.
   void Run(std::shared_ptr<Scope> scope, DeviceContext* dev_ctx) {
-    OpContext* op_ctx = new OpContext(this, scope, dev_ctx);
-    Run(op_ctx);
+    OpContext op_ctx(this, scope, dev_ctx);
+    Run(&op_ctx);
   }
 
   /// when implement an Op, your should implement this function.
