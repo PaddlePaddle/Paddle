@@ -11,7 +11,7 @@ namespace framework {
 namespace fake {
 class FcOp : public OperatorBase {
  public:
-  FcOp(NetDesc& net_desc) : name_(net_desc.name_) {}
+  FcOp(const OpDesc& desc) {}
 
   virtual void InferShape(const Scope* scope) const override {
     LOG(INFO) << "fc InferShape";
@@ -24,23 +24,13 @@ class FcOp : public OperatorBase {
  private:
   std::string name_;
 };
-
-class SGDOptimizerOp : public OperatorBase {
- public:
-  SGDOptimizerOp(NetDesc& net_desc) : name_(net_desc.name_) {}
-
-  virtual void InferShape(const Scope* scope) const override {
-    LOG(INFO) << "optimizer InferShape";
-  }
-
-  virtual void Run(OpRunContext* contex) const override {
-    LOG(INFO) << "optimizer Run";
-  }
-
- private:
-  std::string name_;
-};
 };  // namespace fake
+
+void PlainNet::AddOp(const OpDesc& desc) {
+  if (desc.type() == "fc") {
+    ops_.emplace_back(new fake::FcOp(desc));
+  }
+}
 
 void RecurrentOp::Run(OpRunContext* contex) const {
   auto scope = contex->scope;
@@ -98,7 +88,10 @@ void RecurrentOp::CreateStepNet(Scope* scope) const {
   //   google::protobuf::TextFormat::ParseFromString(step_net,
   //   &step_net_desc_));
   // this is a fake net, it will be rewrite after the network has been merged.
-  var->Reset<PlainNet>(new PlainNet(step_net));
+  NetDesc desc;
+  desc.name_ = "rnn_step_net";
+  var->Reset<PlainNet>(new PlainNet(desc));
+  // TODO add op descs
 }
 
 void RecurrentOp::LinkMemories(Scope* scope, std::vector<Scope*>& step_scopes,

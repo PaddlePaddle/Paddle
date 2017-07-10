@@ -35,19 +35,6 @@ struct OpRunContext {
   Scope* scope;
 };
 
-// TODO replace this with Net's proto.
-struct NetDesc {
-  std::string name_;
-};
-
-class PlainNet {
- public:
-  PlainNet() {}
-  PlainNet(const NetDesc& desc) {}
-  PlainNet(const std::string desc) {}
-  void Run(Scope* scope) {}
-};
-
 class OperatorBase {
  public:
   virtual ~OperatorBase() {}
@@ -68,6 +55,35 @@ class OperatorBase {
   std::vector<std::string> outputs_;
   AttributeMap attrs_;
 };
+
+// TODO replace this with Net's proto.
+struct NetDesc {
+  std::string name_;
+  std::vector<OpDesc> op_descs;
+};
+
+class PlainNet {
+ public:
+  PlainNet() {}
+  PlainNet(const NetDesc& desc) {
+    for (const OpDesc& proto : desc.op_descs) {
+      AddOp(proto);
+    }
+  }
+  // PlainNet(const std::string desc) {}
+  void AddOp(const OpDesc& desc);
+  void Run(Scope* scope) {
+    OpRunContext ctx;
+    ctx.scope = scope;
+    for (auto& op : ops_) {
+      op->Run(&ctx);
+    }
+  }
+
+ private:
+  std::vector<std::unique_ptr<OperatorBase>> ops_;
+};
+
 // fake interfaces end
 // --------------------------------------------------------------------
 // TODO:
