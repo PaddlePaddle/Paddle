@@ -88,7 +88,7 @@
 #
 
 # including binary directory for generated headers.
-include_directories(${CMAKE_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 if(NOT APPLE)
     find_package(Threads REQUIRED)
@@ -106,7 +106,7 @@ function(merge_static_libs TARGET_NAME)
 
   if(APPLE) # Use OSX's libtool to merge archives
     # To produce a library we need at least one source file.
-    # It is created by add_custom_command below and will helps 
+    # It is created by add_custom_command below and will helps
     # also help to track dependencies.
     set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
 
@@ -144,24 +144,24 @@ function(merge_static_libs TARGET_NAME)
         DEPENDS ${lib} ${objdir}
         WORKING_DIRECTORY ${objdir})
 
-      # Empty dummy source file that goes into merged library		
-      set(mergebase ${lib}.mergebase.c)		
-      add_custom_command(OUTPUT ${mergebase}		
-        COMMAND ${CMAKE_COMMAND} -E touch ${mergebase}		
-        DEPENDS ${objlistfile})		
+      # Empty dummy source file that goes into merged library
+      set(mergebase ${lib}.mergebase.c)
+      add_custom_command(OUTPUT ${mergebase}
+        COMMAND ${CMAKE_COMMAND} -E touch ${mergebase}
+        DEPENDS ${objlistfile})
 
       list(APPEND mergebases "${mergebase}")
     endforeach()
 
     add_library(${TARGET_NAME} STATIC ${mergebases})
-    target_link_libraries(${TARGET_NAME} ${libs_deps}) 
+    target_link_libraries(${TARGET_NAME} ${libs_deps})
 
     # Get the file name of the generated library
     set(outlibfile "$<TARGET_FILE:${TARGET_NAME}>")
 
     foreach(lib ${libs})
       add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-        COMMAND ${CMAKE_AR} cr ${outlibfile} *.o  
+        COMMAND ${CMAKE_AR} cr ${outlibfile} *.o
         COMMAND ${CMAKE_RANLIB} ${outlibfile}
         WORKING_DIRECTORY ${lib}.objdir)
     endforeach()
