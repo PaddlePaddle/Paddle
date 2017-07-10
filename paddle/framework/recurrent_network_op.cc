@@ -1,3 +1,6 @@
+#include <glog/logging.h>
+#include <cstring>
+
 #include "paddle/framework/recurrent_network_op.h"
 #include "paddle/framework/tensor.h"
 
@@ -8,7 +11,7 @@ namespace framework {
 namespace fake {
 class FcOp : public OperatorBase {
  public:
-  FcOp(NetDesc& net_desc) : name_(net_desc.name) {}
+  FcOp(NetDesc& net_desc) : name_(net_desc.name_) {}
 
   virtual void InferShape(const Scope* scope) const override {
     LOG(INFO) << "fc InferShape";
@@ -24,7 +27,7 @@ class FcOp : public OperatorBase {
 
 class SGDOptimizerOp : public OperatorBase {
  public:
-  FcOp(NetDesc& net_desc) : name_(net_desc.name) {}
+  SGDOptimizerOp(NetDesc& net_desc) : name_(net_desc.name_) {}
 
   virtual void InferShape(const Scope* scope) const override {
     LOG(INFO) << "optimizer InferShape";
@@ -50,7 +53,6 @@ void RecurrentOp::Run(OpRunContext* contex) const {
 
   CreateScopes(scope);
   SegmentInputs(scope);
-  CreateMemories(scope);
 
   Variable* step_scopes = scope->GetVariable(step_scopes_name_);
   PADDLE_ENFORCE(step_scopes, "failed to get step scopes");
@@ -61,18 +63,7 @@ void RecurrentOp::Run(OpRunContext* contex) const {
   for (size_t step_id = 0; step_id < seq_len; step_id++) {
     Scope* step_scope = scopes[step_id];
     // TODO replace memorys' copy with reference
-    // copy pre-memory
-    for (const auto& attr : memory_attrs_) {
-      Variable* pre_memory_var = step_scope->CreateVariable(attr.pre_var);
-      // copy boot_var to current memory in first step
-
-      Variable* pre_state_var =
-          (step_id == 0) ? step_scope->GetVariable(attr.boot_var)
-                         : scopes[step_id - 1]->GetVariable(attr.var);
-      // copy varible of memory in previous scope to current pre-memory
-      *pre_memory_var->GetMutable<Tensor>() =
-          *pre_state_var->GetMutable<Tensor>();
-    }
+    LinkMemories(scope, scopes, step_id);
 
     net->GetMutable<PlainNet>()->Run(step_scope);
   }
@@ -110,24 +101,42 @@ void RecurrentOp::CreateStepNet(Scope* scope) const {
   var->Reset<PlainNet>(new PlainNet(step_net));
 }
 
-void RecurrentOp::CreateMemories(Scope* scope) const {
-  Variable* scopes_var = scope->CreateVariable(step_scopes_name_);
-  auto scopes = scopes_var->GetMutable<std::vector<Scope*>>();
-  PADDLE_ENFORCE(!scopes->empty(), "step scopes should be created before.");
+void RecurrentOp::LinkMemories(Scope* scope, std::vector<Scope*>& step_scopes,
+                               size_t step) const {
+  PADDLE_ENFORCE(step < step_scopes.size(),
+                 "step [%d] out of range of step scopes' size [%d]", step,
+                 step_scopes.size());
+  // copy boot memory
+  for (auto& attr : memory_attrs_) {
+    Scope* step_scope = step_scopes[step];
 
-  PADDLE_ENFORCE(!memory_attrs_.empty(),
-                 "memory attributes should be provided.");
-  for (size_t i = 0; i < scopes->size(); i++) {
-    for (const auto& attr : memory_attrs_) {
-      // check boot var exists
+    Tensor* boot_tensor{nullptr};
+    Variable* memory_var = step_scope->CreateVariable(attr.pre_var);
+    if (step == 0) {
       PADDLE_ENFORCE(scope->HasVariable(attr.boot_var),
-                     "boot var %s not in context scope", attr.boot_var);
-      // create the memory in this scope
-      scope->CreateVariable(attr.var);
-      // create pre-memory in this scope
-      scope->CreateVariable(attr.pre_var);
-      // TODO reference pre-memory to the memory in previous scope if Variance
-      // supports reference
+                     "memory [%s]'s boot variable [%s] not exists", attr.var,
+                     attr.boot_var);
+      // update memory's ddim
+      boot_tensor = scope->CreateVariable(attr.boot_var)->GetMutable<Tensor>();
+      attr.dims = boot_tensor->dims();
+    }
+
+    // copy from boot memory
+    // TODO support more device
+    float* memory_tensor_val =
+        memory_var->GetMutable<Tensor>()->mutable_data<float>(
+            attr.dims, platform::CPUPlace());
+    if (step == 0) {
+      PADDLE_ENFORCE(boot_tensor, "boot_tensor should be retrieved before");
+      // copy from boot memory
+      std::memcpy(memory_tensor_val, boot_tensor->data<float>(),
+                  product(attr.dims));
+    } else {
+      // copy from previous step scope's memory to this scope's `pre-memory`
+      Tensor* pre_step_memory =
+          step_scopes[step - 1]->GetVariable(attr.var)->GetMutable<Tensor>();
+      std::memcpy(memory_tensor_val, pre_step_memory->data<float>(),
+                  product(attr.dims));
     }
   }
 }

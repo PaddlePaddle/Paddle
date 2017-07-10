@@ -16,6 +16,7 @@
 
 #include <google/protobuf/text_format.h>
 #include "paddle/framework/attr_checker.h"
+#include "paddle/framework/ddim.h"
 #include "paddle/framework/enforce.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/variable.h"
@@ -115,22 +116,22 @@ class RecurrentOp : public OperatorBase {
   /*
    * Create memories in each step scope.
    */
-  void CreateMemories(Scope* scope) const;
+  // void CreateMemories(Scope* scope) const;
 
   /*
    * Link memory in previous step scope to current scope.
    */
-  // void LinkMemories(Scope* scope) const;
+  void LinkMemories(Scope* scope, std::vector<Scope*>& step_scopes,
+                    size_t step) const;
 
  private:
   /*
-   * these are defined in BaseOperator
+   * Memory of a RNN (same as the role of `Momory` in PaddlePaddle).
    *
-   * std::vector<std::string> inputs_;
-   * std::vector<std::string> outputs_;
+   * Memory attributes cached by this op, dims will be infered from
+   * boot memories in father scope. Other attributes are copied from Op's proto
+   * attributes.
    */
-
-  // Memory of a RNN (same as the role of `Momory` in PaddlePaddle)
   struct MemoryAttr {
     // name of current state variable
     std::string var;
@@ -139,9 +140,12 @@ class RecurrentOp : public OperatorBase {
     // name of the variables to init this memory (same role of `boot_layer` in
     // PaddlePaddle), which is store in father's scope.
     std::string boot_var;
+    // this dim will infered from boot memories's tensor in the first step.
+    DDim dims;
   };
 
-  std::vector<MemoryAttr> memory_attrs_;
+  // TODO copy from OpBase's
+  mutable std::vector<MemoryAttr> memory_attrs_;
 
   // this op's name, used as a unique key in father scope.
   // TODO repace it with OpBase's interface if supported.
