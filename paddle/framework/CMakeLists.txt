@@ -18,3 +18,6 @@ py_proto_compile(framework_py_proto SRCS attr_type.proto op_proto.proto op_desc.
 # Generate an empty __init__.py to make framework_py_proto as a valid python module.
 add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
 add_dependencies(framework_py_proto framework_py_proto_init)
+
+
+cc_test(cos_op_test SRCS cos_op_test.cc DEPS operator op_proto op_desc attr_type protobuf)
