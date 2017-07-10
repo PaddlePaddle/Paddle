@@ -30,6 +30,11 @@ class Variable {
   }
 
   template <typename T>
+  void Reset(T* p) {
+    holder_.reset(new PlaceholderImpl<T>(p));
+  }
+
+  template <typename T>
   T* GetMutable() {
     if (!IsType<T>()) {
       holder_.reset(new PlaceholderImpl<T>(new T()));

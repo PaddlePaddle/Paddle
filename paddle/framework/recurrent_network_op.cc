@@ -20,8 +20,10 @@ void RecurrentOp::Run(OpRunContext* contex) const {
   Variable* step_scopes = scope->GetVariable(step_scopes_name_);
   PADDLE_ENFORCE(step_scopes, "failed to get step scopes");
   // forward
+  auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
+  size_t seq_len = dims[1];
   auto& scopes = *step_scopes->GetMutable<std::vector<Scope*>>();
-  for (size_t step_id = 0; step_id < scopes.size(); step_id++) {
+  for (size_t step_id = 0; step_id < seq_len; step_id++) {
     Scope* step_scope = scopes[step_id];
     // TODO replace memorys' copy with reference
     // copy pre-memory
@@ -44,6 +46,35 @@ void RecurrentOp::Run(OpRunContext* contex) const {
 
   // prepare outputs
   ConcateOutputs(scope);
+}
+
+void RecurrentOp::CreateScopes(Scope* scope) const {
+  auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
+  size_t seq_len = dims[1];
+  Variable* scopes_var = scope->GetVariable(step_scopes_name_);
+  // auto step_scopes =
+  // scopes_var->GetMutable<std::vector<std::shared_ptr<Scope>>>();
+  auto step_scopes = scopes_var->GetMutable<std::vector<Scope*>>();
+  // TODO Only two scopes are needed for inference, this case will be supported
+  // later.
+  if (seq_len > step_scopes->size()) {
+    for (size_t i = step_scopes->size(); i < seq_len; ++i) {
+      // step_scopes->push_back(std::make_shared<Scope>(
+      // std::shared_ptr<Scope>(scope)));
+      step_scopes->push_back(new Scope(std::shared_ptr<Scope>(scope)));
+    }
+  }
+}
+
+void RecurrentOp::CreateStepNet(Scope* scope) const {
+  Variable* var = scope->CreateVariable(net_name_);
+  auto step_net = GetAttr<std::string>("step_net");
+  // get the step net proto from the string.
+  // PADDLE_ENFORCE(
+  //   google::protobuf::TextFormat::ParseFromString(step_net,
+  //   &step_net_desc_));
+  // this is a fake net, it will be rewrite after the network has been merged.
+  var->Reset<PlainNet>(new PlainNet(step_net));
 }
 
 void RecurrentOp::CreateMemories(Scope* scope) const {
