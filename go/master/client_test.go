@@ -68,12 +68,17 @@ func TestNextRecord(t *testing.T) {
 	for pass := 0; pass < 50; pass++ {
 		received := make(map[byte]bool)
 		for i := 0; i < total; i++ {
-			r := c.NextRecord()
-			if len(r) != 1 {
-				t.Fatal("Length should be 1.", r)
+			r, err := c.NextRecord()
+			if err != nil {
+				t.Fatal(pass, i, "Read error:", err)
 			}
+
+			if len(r) != 1 {
+				t.Fatal(pass, i, "Length should be 1.", r)
+			}
+
 			if received[r[0]] {
-				t.Fatal("Received duplicate.", received, r)
+				t.Fatal(pass, i, "Received duplicate.", received, r)
 			}
 			received[r[0]] = true
 		}

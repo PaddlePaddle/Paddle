@@ -241,7 +241,7 @@ void testBatchState(LayerPtr testLayer,
 
     std::vector<Argument> args;
     args.push_back(out);
-    EXPECT_EQ(0, Argument::sum(args)) << "testBatchState failed";
+    ASSERT_NEAR(0, Argument::sum(args), 1e-5) << "testBatchState failed";
     for (size_t seqId = 0; seqId < numSequences; ++seqId) {
       start[seqId] += seqLens[seqId];
     }

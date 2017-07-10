@@ -19,20 +19,23 @@ void AdagradOptimizer::Update(const Tensor* gradient) {
 }
 const char* AdagradOptimizer::SerializeState(int* state_len) {
   AdagradOptimizerState state;
-  // TODO(zhihong) : add lr_policy serialization
   state.set_num_sample_passed(num_sample_passed_);
+  std::string lr_str = this->lr_policy_->SerializeState(state_len);
+  state.mutable_lr_state()->ParseFromString(lr_str);
 
   TensorToProto(*parameter_, state.mutable_parameter());
   TensorToProto(*accum_gradient_, state.mutable_accum_gradient());
   auto str = state.SerializeAsString();
-  *state_len = str.size();
+  *state_len += str.size();
   return str.c_str();
 }
 
 void AdagradOptimizer::DeserializeState(const std::string& str) {
   AdagradOptimizerState state;
   state.ParseFromString(str);
-  // TODO(zhihong) : add lr_policy DeserializeState
+  auto lr_state = state.lr_state();
+  this->lr_policy_->DeserializeState(lr_state.SerializeAsString());
+
   num_sample_passed_ = state.num_sample_passed();
   ProtoToTensor(state.parameter(), parameter_);
   ProtoToTensor(state.accum_gradient(), accum_gradient_);

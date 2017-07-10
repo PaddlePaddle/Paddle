@@ -1253,9 +1253,9 @@ def pooling_layer(input,
 
     If stride > 0, this layer slides a window whose size is determined by stride,
     and return the pooling value of the window as the output. Thus, a long sequence
-    will be shorten. 
-    
-    The parameter stride specifies the intervals at which to apply the pooling 
+    will be shorten.
+
+    The parameter stride specifies the intervals at which to apply the pooling
     operation. Note that for sequence with sub-sequence, the default value
     of stride is -1.
 
@@ -4804,6 +4804,14 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
 
     So groups should be larger than 1, and the num of channels should be able
     to devided by groups.
+
+    .. math::
+       y_{si+j} = \max_k x_{gsi + sk + j}
+       g = groups
+       s = input.size / num_channels
+       0 \le i < num_channels / groups
+       0 \le j < s
+       0 \le k < groups
 
     Please refer to Paper:
       - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
