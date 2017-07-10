@@ -18,8 +18,10 @@ limitations under the License. */
 #include <type_traits>
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/enforce.h"
+#include "paddle/framework/tensor_types.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/place.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace framework {
@@ -33,6 +35,13 @@ class Tensor {
     return static_cast<const T*>(holder_->Ptr());
   }
 
+  template <typename T>
+  T* data() const {
+    PADDLE_ENFORCE(holder_ != nullptr,
+                   "Tensor::data must be called after Tensor::mutable_data.");
+    return static_cast<T*>(holder_->Ptr());
+  }
+
   template <typename T,  // must be POD types
             typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
   T* mutable_data(DDim dims, paddle::platform::Place place) {
@@ -41,14 +50,23 @@ class Tensor {
           place) /* some versions of boost::variant don't have operator!= */
         || holder_->Size() < product(dims) * sizeof(T)) {
       holder_.reset(new PlaceholderImpl<T>(place, product(dims) * sizeof(T)));
+      dims_ = dims;
     }
     return static_cast<T*>(holder_->Ptr());
   }
 
-  template <typename T,  // must be POD types
-            typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
-  T* mutable_data(DDim dims) {
-    return mutable_data<T>(dims, paddle::platform::get_place());
+  DDim dim() const { return dims_; }
+
+  template <typename T, size_t NDIMS>
+  typename TTypes<T, NDIMS>::ConstantTensor Tensor::tensor() {
+    return typename TTypes<T, NDIMS>::Tensor(
+        data<T>(), paddle::framework::ToEigenDSizes<NDIMS>(dims_));
+  }
+
+  template <typename T, size_t NDIMS>
+  typename TTypes<T, NDIMS>::Tensor Tensor::tensor() {
+    return typename TTypes<T, NDIMS>::Tensor(
+        data<T>(), paddle::framework::ToEigenDSizes<NDIMS>(dims_));
   }
 
  private:
@@ -92,6 +110,7 @@ class Tensor {
   };
 
   std::shared_ptr<Placeholder> holder_;  // holds the memory block if allocated.
+  DDim dims_;
 };
 
 }  // namespace framework
