@@ -15,6 +15,12 @@
 #include "gtest/gtest.h"
 
 namespace paddle {
-namespace framework {}  // namespace framework
+namespace framework {
+
+class RecurrentOpTest : public ::testing::Test {
+ protected:
+  virtual void SetUp() override {}
+};
+}  // namespace framework
 
 }  // namespace paddle

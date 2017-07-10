@@ -4,6 +4,41 @@
 namespace paddle {
 namespace framework {
 
+// fake op implementations
+namespace fake {
+class FcOp : public OperatorBase {
+ public:
+  FcOp(NetDesc& net_desc) : name_(net_desc.name) {}
+
+  virtual void InferShape(const Scope* scope) const override {
+    LOG(INFO) << "fc InferShape";
+  }
+
+  virtual void Run(OpRunContext* contex) const override {
+    LOG(INFO) << "fc Run";
+  }
+
+ private:
+  std::string name_;
+};
+
+class SGDOptimizerOp : public OperatorBase {
+ public:
+  FcOp(NetDesc& net_desc) : name_(net_desc.name) {}
+
+  virtual void InferShape(const Scope* scope) const override {
+    LOG(INFO) << "optimizer InferShape";
+  }
+
+  virtual void Run(OpRunContext* contex) const override {
+    LOG(INFO) << "optimizer Run";
+  }
+
+ private:
+  std::string name_;
+};
+};  // namespace fake
+
 void RecurrentOp::Run(OpRunContext* contex) const {
   auto scope = contex->scope;
 
