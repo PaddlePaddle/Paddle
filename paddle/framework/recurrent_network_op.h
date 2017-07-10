@@ -31,8 +31,9 @@ namespace framework {
 // --------------------------------------------------------------------
 // fake interfaces that has not be implemented by other modules.
 // TODO keep updating according to other modules' designs.
+typedef std::shared_ptr<Scope> ScopePtr;
 struct OpRunContext {
-  Scope* scope;
+  ScopePtr scope;
 };
 
 class OperatorBase {
@@ -40,8 +41,8 @@ class OperatorBase {
   virtual ~OperatorBase() {}
   void Init(const OpDesc& op_desc, AttributeMap& attrs) {}
   virtual void Run(OpRunContext* context) const = 0;
-  virtual void InferShape(Scope* scope) const = 0;
-  inline Variable* Input(Scope* scope, int index) const {
+  virtual void InferShape(ScopePtr scope) const = 0;
+  inline Variable* Input(ScopePtr scope, int index) const {
     return scope->GetVariable(inputs_[index]);
   };
 
@@ -72,7 +73,7 @@ class PlainNet {
   }
   // PlainNet(const std::string desc) {}
   void AddOp(const OpDesc& desc);
-  void Run(Scope* scope) {
+  void Run(ScopePtr scope) {
     OpRunContext ctx;
     ctx.scope = scope;
     for (auto& op : ops_) {
@@ -92,24 +93,13 @@ class PlainNet {
 // 3. Multi-inputs with indifinate length for RecurrentOp.
 class RecurrentOp : public OperatorBase {
  public:
-  void Init(const OpDesc& op_desc, AttributeMap& attrs) {
-    OperatorBase::Init(op_desc, attrs);
-    name_ = op_desc.name();
-    net_name_ = op_desc.name() + "_net";
-    step_scopes_name_ = op_desc.name() + "_step_scopes";
-    auto memories = GetAttr<std::vector<std::string>>("memories");
-    auto boot_memories = GetAttr<std::vector<std::string>>("boot_memories");
-    PADDLE_ENFORCE(memories.size() == boot_memories.size(),
-                   "The size of memories and boot_memories is mismatched.");
-    for (size_t i = 0; i < memories.size(); ++i) {
-      MemoryAttr mem_attr;
-      mem_attr.var = memories[i];
-      mem_attr.boot_var = boot_memories[i];
-      memory_attrs_.push_back(mem_attr);
-    }
-  }
+  /*
+   * Initialize the recurrent operator from the operator protobuf
+   * and attributes.
+   */
+  void Init(const OpDesc& op_desc, AttributeMap& attrs);
 
-  virtual void InferShape(Scope* scope) const override {}
+  virtual void InferShape(ScopePtr scope) const override {}
 
   /*
    * Forward run the RNN.
@@ -125,17 +115,17 @@ class RecurrentOp : public OperatorBase {
   /*
    * Prepare inputs for each stepnet.
    */
-  void SegmentInputs(Scope* scope) const {};
+  void SegmentInputs(ScopePtr scope) const {};
 
   /*
    * Process outputs of stepnets and merge to variables.
    */
-  void ConcateOutputs(Scope* scope) const {};
+  void ConcateOutputs(ScopePtr scope) const {};
 
   /*
    * Create a `Net` which is shared across all steps.
    */
-  void CreateStepNet(Scope* scope) const;
+  void CreateStepNet(ScopePtr scope) const;
 
   /*
    * Create a scope for each step, the context's scope is shared across all
@@ -146,17 +136,17 @@ class RecurrentOp : public OperatorBase {
    * NOTE the scopes are reused by both the `Forward` and `Backward`, so just
    * create once and expand its size if more steps need.
    */
-  void CreateScopes(Scope* scope) const;
+  void CreateScopes(ScopePtr scope) const;
 
   /*
    * Create memories in each step scope.
    */
-  // void CreateMemories(Scope* scope) const;
+  // void CreateMemories(ScopePtr scope) const;
 
   /*
    * Link memory in previous step scope to current scope.
    */
-  void LinkMemories(Scope* scope, std::vector<Scope*>& step_scopes,
+  void LinkMemories(ScopePtr scope, std::vector<ScopePtr>& step_scopes,
                     size_t step) const;
 
  private:
