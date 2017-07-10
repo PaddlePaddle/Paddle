@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <google/protobuf/text_format.h>
+#include "paddle/framework/attr_checker.h"
 #include "paddle/framework/enforce.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/variable.h"
@@ -30,13 +32,14 @@ struct OpRunContext {
 
 // TODO replace this with Net's proto.
 struct NetDesc {
-  std::string name;
+  std::string name_;
 };
 
 class PlainNet {
  public:
   PlainNet() {}
   PlainNet(const NetDesc& desc) {}
+  PlainNet(const std::string desc) {}
   void Run(Scope* scope) {}
 };
 
@@ -45,20 +48,32 @@ class OperatorBase {
   virtual ~OperatorBase() {}
   virtual void Run(OpRunContext* context) const = 0;
   virtual void InferShape(const Scope* scope) const = 0;
+  inline Variable* Input(Scope* scope, int index) const {
+    return scope->GetVariable(inputs_[index]);
+  };
+
+  template <typename T>
+  inline const T GetAttr(const std::string& name) const {
+    return boost::get<T>(attrs_.at(name));
+  }
 
  protected:
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
+  AttributeMap attrs_;
 };
 // fake interfaces end
 // --------------------------------------------------------------------
-
+// TODO:
+// 1. No-padding computing for sequences with indifinite length in one batch.
+// 2. Hierarchical RNN for sequence with sub-sequence.
+// 3. Multi-inputs with indifinate length for RecurrentOp.
 class RecurrentOp : public OperatorBase {
  public:
   RecurrentOp(NetDesc& net_desc)
-      : name_(net_desc.name),
-        net_name_(net_desc.name + "__net__"),
-        step_scopes_name_(net_desc.name + "__step_scopes_") {}
+      : name_(net_desc.name_),
+        net_name_(net_desc.name_ + "__net__"),
+        step_scopes_name_(net_desc.name_ + "__step_scopes_") {}
 
   virtual void InferShape(const Scope* scope) const override;
 
@@ -138,6 +153,8 @@ class RecurrentOp : public OperatorBase {
   // name of steps' scopes which is stored in father scope with a unique key
   // specified by `step_scopes_name_`.
   const std::string step_scopes_name_;
+
+  const NetDesc step_net_desc_;
 };
 
 class RecurrentGradientOp;

@@ -42,6 +42,7 @@ class Tensor {
         || holder_->Size() < product(dims) * sizeof(T)) {
       holder_.reset(new PlaceholderImpl<T>(place, product(dims) * sizeof(T)));
     }
+    dims_ = dims;
     return static_cast<T*>(holder_->Ptr());
   }
 
@@ -50,6 +51,8 @@ class Tensor {
   T* mutable_data(DDim dims) {
     return mutable_data<T>(dims, paddle::platform::get_place());
   }
+
+  const DDim& dims() const { return dims_; }
 
  private:
   // Placeholder hides type T, so it doesn't appear as a template
@@ -91,6 +94,7 @@ class Tensor {
     size_t size_;                    // size of the memory block.
   };
 
+  DDim dims_;
   std::shared_ptr<Placeholder> holder_;  // holds the memory block if allocated.
 };
 
