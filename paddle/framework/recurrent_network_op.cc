@@ -114,10 +114,9 @@ void RecurrentOp::LinkMemories(Scope* scope, std::vector<Scope*>& step_scopes,
                  step_scopes.size());
   // copy boot memory
   for (auto& attr : memory_attrs_) {
-    Scope* step_scope = step_scopes[step];
+    // Scope* step_scope = step_scopes[step];
 
     Tensor* boot_tensor{nullptr};
-    Variable* memory_var = step_scope->CreateVariable(attr.pre_var);
     if (step == 0) {
       PADDLE_ENFORCE(scope->HasVariable(attr.boot_var),
                      "memory [%s]'s boot variable [%s] not exists", attr.var,
@@ -126,24 +125,28 @@ void RecurrentOp::LinkMemories(Scope* scope, std::vector<Scope*>& step_scopes,
       boot_tensor = scope->CreateVariable(attr.boot_var)->GetMutable<Tensor>();
       attr.dims = boot_tensor->dims();
     }
+    // Variable* memory_var = step_scope->CreateVariable(attr.pre_var);
 
     // copy from boot memory
     // TODO support more device
-    float* memory_tensor_val =
-        memory_var->GetMutable<Tensor>()->mutable_data<float>(
-            attr.dims, platform::CPUPlace());
-    if (step == 0) {
-      PADDLE_ENFORCE(boot_tensor, "boot_tensor should be retrieved before");
-      // copy from boot memory
-      std::memcpy(memory_tensor_val, boot_tensor->data<float>(),
-                  product(attr.dims));
-    } else {
-      // copy from previous step scope's memory to this scope's `pre-memory`
-      Tensor* pre_step_memory =
-          step_scopes[step - 1]->GetVariable(attr.var)->GetMutable<Tensor>();
-      std::memcpy(memory_tensor_val, pre_step_memory->data<float>(),
-                  product(attr.dims));
-    }
+    // TODO mutable_data is currently invalid
+    //   float* memory_tensor_val =
+    //       memory_var->GetMutable<Tensor>()->mutable_data<float>(
+    //           attr.dims, platform::CPUPlace());
+    //   if (step == 0) {
+    //     PADDLE_ENFORCE(boot_tensor, "boot_tensor should be retrieved
+    //     before");
+    //     // copy from boot memory
+    //     std::memcpy(memory_tensor_val, boot_tensor->data<float>(),
+    //                 product(attr.dims));
+    //   } else {
+    //     // copy from previous step scope's memory to this scope's
+    //     `pre-memory` Tensor* pre_step_memory =
+    //         step_scopes[step -
+    //         1]->GetVariable(attr.var)->GetMutable<Tensor>();
+    //     std::memcpy(memory_tensor_val, pre_step_memory->data<float>(),
+    //                 product(attr.dims));
+    //   }
   }
 }
 
