@@ -2,7 +2,7 @@ package pserver
 
 // #cgo CFLAGS: -I ../../
 // //FIXME: ldflags contain "build" path
-// #cgo LDFLAGS: ../../build/go/pserver/client/c/libpaddle_go_optimizer.a -lstdc++
+// #cgo LDFLAGS: ${SRCDIR}/../../build/go/pserver/client/c/libpaddle_go_optimizer.a -lstdc++ -lm
 // #include "paddle/optimizer/optimizer.h"
 // #include <stdlib.h>
 // #include <string.h>
@@ -56,8 +56,8 @@ func newOptimizer(paramWithConfigs ParameterWithConfig) *optimizer {
 
 func (o *optimizer) GetWeights() []byte {
 	var buffer unsafe.Pointer
-	buffer_len := C.paddle_optimizer_get_weights(o.opt, &buffer)
-	return cArrayToSlice(buffer, int(buffer_len)*C.sizeof_float)
+	bufferLen := C.paddle_optimizer_get_weights(o.opt, &buffer)
+	return cArrayToSlice(buffer, int(bufferLen)*C.sizeof_float)
 }
 
 func (o *optimizer) UpdateParameter(g Gradient) error {

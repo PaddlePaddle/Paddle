@@ -12,13 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "dynamic_loader.h"
+#include "paddle/platform/dynload/dynamic_loader.h"
 #include <dlfcn.h>
 #include <memory>
 #include <mutex>
 #include <string>
 #include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/framework/enforce.h"
 
 DEFINE_string(cudnn_dir, "",
               "Specify path for loading libcudnn.so. For instance, "
@@ -72,13 +73,12 @@ static inline void GetDsoHandleFromDefaultPath(std::string& dso_path,
     *dso_handle = dlopen(dso_path.c_str(), dynload_flags);
     if (nullptr == *dso_handle) {
       if (dso_path == "libcudnn.dylib") {
-        LOG(FATAL)
-            << "Note: [Recommend] copy cudnn into /usr/local/cuda/ \n"  // NOLINT
-            << "For instance, sudo tar -xzf "
-               "cudnn-7.5-osx-x64-v5.0-ga.tgz -C "  // NOLINT
-            << "/usr/local \n sudo chmod a+r "
-               "/usr/local/cuda/include/cudnn.h "  // NOLINT
-            << "/usr/local/cuda/lib/libcudnn*";
+        PADDLE_ENFORCE(true,
+                       "Note: [Recommend] copy cudnn into /usr/local/cuda/ \n "
+                       "For instance, sudo tar -xzf "
+                       "cudnn-7.5-osx-x64-v5.0-ga.tgz -C /usr/local \n sudo "
+                       "chmod a+r /usr/local/cuda/include/cudnn.h "
+                       "/usr/local/cuda/lib/libcudnn*");
       }
     }
   }
@@ -106,22 +106,15 @@ static inline void GetDsoHandleFromSearchPath(const std::string& search_root,
       GetDsoHandleFromDefaultPath(dlPath, dso_handle, dynload_flags);
     }
   }
-
-  CHECK(nullptr != *dso_handle) << "Failed to find dynamic library: " << dlPath
-                                << " (" << dlerror() << ") \n"
-                                << "Please specify its path correctly using "
-                                   "following ways: \n"
-
-                                << "Method. set environment variable "
-                                   "LD_LIBRARY_PATH on Linux or "
-                                << "DYLD_LIBRARY_PATH on Mac OS. \n"
-                                << "For instance, issue command: export "
-                                   "LD_LIBRARY_PATH=... \n"
-
-                                << "Note: After Mac OS 10.11, using the "
-                                   "DYLD_LIBRARY_PATH is impossible "
-                                << "unless System Integrity Protection (SIP) "
-                                   "is disabled.";
+  PADDLE_ENFORCE(nullptr != *dso_handle,
+                 "Failed to find dynamic library: %s ( %s ) \n Please specify "
+                 "its path correctly using following ways: \n Method. set "
+                 "environment variable LD_LIBRARY_PATH on Linux or "
+                 "DYLD_LIBRARY_PATH on Mac OS. \n For instance, issue command: "
+                 "export LD_LIBRARY_PATH=... \n Note: After Mac OS 10.11, "
+                 "using the DYLD_LIBRARY_PATH is impossible unless System "
+                 "Integrity Protection (SIP) is disabled.",
+                 dlPath, dlerror());
 }
 
 void GetCublasDsoHandle(void** dso_handle) {

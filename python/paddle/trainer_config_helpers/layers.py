@@ -115,6 +115,8 @@ __all__ = [
     'print_layer',
     'priorbox_layer',
     'cross_channel_norm_layer',
+    'multibox_loss_layer',
+    'detection_output_layer',
     'spp_layer',
     'pad_layer',
     'eos_layer',
@@ -195,6 +197,8 @@ class LayerType(object):
 
     PRINT_LAYER = 'print'
     PRIORBOX_LAYER = 'priorbox'
+    MULTIBOX_LOSS_LAYER = 'multibox_loss'
+    DETECTION_OUTPUT_LAYER = 'detection_output'
 
     CTC_LAYER = 'ctc'
     WARP_CTC_LAYER = 'warp_ctc'
@@ -1041,6 +1045,158 @@ def priorbox_layer(input,
         size=size)
 
 
+@wrap_name_default("multibox_loss")
+def multibox_loss_layer(input_loc,
+                        input_conf,
+                        priorbox,
+                        label,
+                        num_classes,
+                        overlap_threshold=0.5,
+                        neg_pos_ratio=3.0,
+                        neg_overlap=0.5,
+                        background_id=0,
+                        name=None):
+    """
+    Compute the location loss and the confidence loss for ssd.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input_loc: The input predict locations.
+    :type input_loc: LayerOutput | List of LayerOutput
+    :param input_conf: The input priorbox confidence.
+    :type input_conf: LayerOutput | List of LayerOutput
+    :param priorbox: The input priorbox location and the variance.
+    :type priorbox: LayerOutput
+    :param label: The input label.
+    :type label: LayerOutput
+    :param num_classes: The number of the classification.
+    :type num_classes: int
+    :param overlap_threshold: The threshold of the overlap.
+    :type overlap_threshold: float
+    :param neg_pos_ratio: The ratio of the negative bbox to the positive bbox.
+    :type neg_pos_ratio: float
+    :param neg_overlap: The negative bbox overlap threshold.
+    :type neg_overlap: float
+    :param background_id: The background class index.
+    :type background_id: int
+    :return: LayerOutput
+    """
+    if isinstance(input_loc, LayerOutput):
+        input_loc = [input_loc]
+    assert isinstance(input_loc, collections.Sequence)  # list or tuple
+    for each in input_loc:
+        assert isinstance(each, LayerOutput)
+    input_loc_num = len(input_loc)
+
+    if isinstance(input_conf, LayerOutput):
+        input_conf = [input_conf]
+    assert isinstance(input_conf, collections.Sequence)  # list or tuple
+    for each in input_conf:
+        assert isinstance(each, LayerOutput)
+    input_conf_num = len(input_conf)
+    # Check the input layer number.
+    assert input_loc_num == input_conf_num
+
+    inputs = [priorbox.name, label.name]
+    inputs.extend([l.name for l in input_loc])
+    inputs.extend([l.name for l in input_conf])
+    parents = [priorbox, label]
+    parents.extend(input_loc)
+    parents.extend(input_conf)
+
+    Layer(
+        name=name,
+        type=LayerType.MULTIBOX_LOSS_LAYER,
+        inputs=inputs,
+        input_num=input_loc_num,
+        num_classes=num_classes,
+        overlap_threshold=overlap_threshold,
+        neg_pos_ratio=neg_pos_ratio,
+        neg_overlap=neg_overlap,
+        background_id=background_id)
+    return LayerOutput(
+        name, LayerType.MULTIBOX_LOSS_LAYER, parents=parents, size=1)
+
+
+@wrap_name_default("detection_output")
+def detection_output_layer(input_loc,
+                           input_conf,
+                           priorbox,
+                           num_classes,
+                           nms_threshold=0.45,
+                           nms_top_k=400,
+                           keep_top_k=200,
+                           confidence_threshold=0.01,
+                           background_id=0,
+                           name=None):
+    """
+    Apply the NMS to the output of network and compute the predict bounding
+    box location.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input_loc: The input predict locations.
+    :type input_loc: LayerOutput | List of LayerOutput.
+    :param input_conf: The input priorbox confidence.
+    :type input_conf: LayerOutput | List of LayerOutput.
+    :param priorbox: The input priorbox location and the variance.
+    :type priorbox: LayerOutput
+    :param num_classes: The number of the classification.
+    :type num_classes: int
+    :param nms_threshold: The Non-maximum suppression threshold.
+    :type nms_threshold: float
+    :param nms_top_k: The bbox number kept of the NMS's output
+    :type nms_top_k: int
+    :param keep_top_k: The bbox number kept of the layer's output
+    :type keep_top_k: int
+    :param confidence_threshold: The classification confidence threshold
+    :type confidence_threshold: float
+    :param background_id: The background class index.
+    :type background_id: int
+    :return: LayerOutput
+    """
+    if isinstance(input_loc, LayerOutput):
+        input_loc = [input_loc]
+    assert isinstance(input_loc, collections.Sequence)  # list or tuple
+    for each in input_loc:
+        assert isinstance(each, LayerOutput)
+    input_loc_num = len(input_loc)
+
+    if isinstance(input_conf, LayerOutput):
+        input_conf = [input_conf]
+    assert isinstance(input_conf, collections.Sequence)  # list or tuple
+    for each in input_conf:
+        assert isinstance(each, LayerOutput)
+    input_conf_num = len(input_conf)
+
+    # Check the input layer number.
+    assert input_loc_num == input_conf_num
+
+    inputs = [priorbox.name]
+    inputs.extend([l.name for l in input_loc])
+    inputs.extend([l.name for l in input_conf])
+    parents = [priorbox]
+    parents.extend(input_loc)
+    parents.extend(input_conf)
+
+    size = keep_top_k * 7
+
+    Layer(
+        name=name,
+        type=LayerType.DETECTION_OUTPUT_LAYER,
+        inputs=inputs,
+        size=size,
+        input_num=input_loc_num,
+        num_classes=num_classes,
+        nms_threshold=nms_threshold,
+        nms_top_k=nms_top_k,
+        keep_top_k=keep_top_k,
+        confidence_threshold=confidence_threshold,
+        background_id=background_id)
+    return LayerOutput(
+        name, LayerType.DETECTION_OUTPUT_LAYER, parents=parents, size=size)
+
+
 @wrap_name_default("cross_channel_norm")
 def cross_channel_norm_layer(input, name=None, param_attr=None):
     """
@@ -1090,9 +1246,18 @@ def pooling_layer(input,
                   name=None,
                   bias_attr=None,
                   agg_level=AggregateLevel.TO_NO_SEQUENCE,
+                  stride=-1,
                   layer_attr=None):
     """
     Pooling layer for sequence inputs, not used for Image.
+
+    If stride > 0, this layer slides a window whose size is determined by stride,
+    and return the pooling value of the window as the output. Thus, a long sequence
+    will be shorten.
+
+    The parameter stride specifies the intervals at which to apply the pooling
+    operation. Note that for sequence with sub-sequence, the default value
+    of stride is -1.
 
     The example usage is:
 
@@ -1112,6 +1277,8 @@ def pooling_layer(input,
     :param pooling_type: Type of pooling, MaxPooling(default), AvgPooling,
                          SumPooling, SquareRootNPooling.
     :type pooling_type: BasePoolingType|None
+    :param stride: The step size between successive pooling regions.
+    :type stride: Int
     :param bias_attr: Bias parameter attribute. False if no bias.
     :type bias_attr: ParameterAttribute|None|False
     :param layer_attr: The Extra Attributes for layer, such as dropout.
@@ -1129,12 +1296,16 @@ def pooling_layer(input,
         extra_dict['output_max_index'] = pooling_type.output_max_index
     extra_dict.update(ExtraLayerAttribute.to_kwargs(layer_attr))
 
+    if agg_level == AggregateLevel.TO_SEQUENCE:
+        assert stride == -1
+
     Layer(
         name=name,
         type=pooling_type.name,
         inputs=[Input(input.name)],
         bias=ParamAttr.to_bias(bias_attr),
         trans_type=agg_level,
+        stride=stride,
         **extra_dict)
 
     return LayerOutput(
@@ -1396,7 +1567,7 @@ def last_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
-    :param stride: window size.
+    :param stride: The step size between successive pooling regions.
     :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
@@ -1452,7 +1623,7 @@ def first_seq(input,
     :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
-    :param stride: window size.
+    :param stride: The step size between successive pooling regions.
     :type stride: Int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
@@ -4633,6 +4804,14 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
 
     So groups should be larger than 1, and the num of channels should be able
     to devided by groups.
+
+    .. math::
+       y_{si+j} = \max_k x_{gsi + sk + j}
+       g = groups
+       s = input.size / num_channels
+       0 \le i < num_channels / groups
+       0 \le j < s
+       0 \le k < groups
 
     Please refer to Paper:
       - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
