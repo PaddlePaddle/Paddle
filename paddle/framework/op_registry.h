@@ -138,15 +138,22 @@ class OpRegistry {
   static OperatorBase* CreateOp(const OpDesc& op_desc) {
     std::string op_type = op_desc.type();
     OperatorBase* op = (creators_.at(op_type))();
-    AttributeMap attrs;
+    // init attrs
     for (int i = 0; i < op_desc.attrs_size(); ++i) {
       const AttrDesc& ith_attr = op_desc.attrs(i);
       std::string name = ith_attr.name();
-      (attrs)[name] = AttrTypeHelper::GetAttrValue(ith_attr);
+      (op->attrs_)[name] = AttrTypeHelper::GetAttrValue(ith_attr);
     }
     const OpAttrChecker& op_checker = OpRegistry::op_checkers_.at(op_type);
-    op_checker.Check(attrs);
-    op->Init(op_desc, attrs);
+    // check attrs
+    op_checker.Check(op->attrs_);
+    op->desc_ = op_desc;
+    for (auto& input : op_desc.inputs()) {
+      op->inputs_.push_back(input);
+    }
+    for (auto& output : op_desc.outputs()) {
+      op->outputs_.push_back(output);
+    }
     return op;
   }
 

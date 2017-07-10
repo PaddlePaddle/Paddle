@@ -68,8 +68,8 @@ TEST(OperatorBase, DebugString) {
   auto scope = std::make_shared<Scope>();
 
   OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  ASSERT_EQ(op->inputs(), inputs);
-  ASSERT_EQ(op->outputs(), outputs);
+  ASSERT_EQ(op->inputs_, inputs);
+  ASSERT_EQ(op->outputs_, outputs);
   ASSERT_EQ(op->GetAttr<float>("scale"), scale);
   op->Run(scope, device_context);
 }

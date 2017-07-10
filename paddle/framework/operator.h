@@ -61,13 +61,6 @@ class OperatorBase {
  public:
   virtual ~OperatorBase() {}
 
-  /// We do not use ctor but an init function to construct an Operator.
-  /// There is no need for all sub operators to have a constructor and
-  /// write this init parameters.
-  void Init(const OpDesc& op_desc, AttributeMap& attrs);
-
-  inline const OpDesc desc() const { return desc_; }
-
   template <typename T>
   inline const T GetAttr(const std::string& name) const {
     PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
@@ -75,16 +68,13 @@ class OperatorBase {
     return boost::get<T>(attrs_.at(name));
   }
 
-  inline const std::vector<std::string> inputs() const { return inputs_; }
-
-  inline const std::vector<std::string> outputs() const { return outputs_; }
-
-  const std::string DebugString() const;
+  std::string DebugString() const;
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  void InferShape(Scope* scope) const;
+  virtual void InferShape(std::shared_ptr<Scope> scope) const;
 
+  /// Net will call this function to Run an op.
   void Run(std::shared_ptr<Scope> scope, DeviceContext* dev_ctx) {
     OpContext* op_ctx = new OpContext(this, scope, dev_ctx);
     Run(op_ctx);
@@ -94,7 +84,7 @@ class OperatorBase {
   /// this function should be moved to OpKernel later
   virtual void Run(OpContext* context) const = 0;
 
- private:
+ public:
   OpDesc desc_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
