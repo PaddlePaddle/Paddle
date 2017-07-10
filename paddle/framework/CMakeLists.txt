@@ -16,5 +16,5 @@ py_proto_compile(framework_py_proto SRCS attr_type.proto op_proto.proto op_desc.
 # Generate an empty __init__.py to make framework_py_proto as a valid python module.
 add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
 add_dependencies(framework_py_proto framework_py_proto_init)
-add_library(recurrent_network_op recurrent_network_op.cc)
-cc_test(recurrent_network_op_test SRCS recurrent_network_op_test.cc)
+cc_library(recurrent_network_op SRCS recurrent_network_op.cc DEPS op_desc)
+#cc_test(recurrent_network_op_test SRCS recurrent_network_op_test.cc)

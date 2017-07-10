@@ -21,6 +21,10 @@
 #include "paddle/framework/scope.h"
 #include "paddle/framework/variable.h"
 
+// Remove when including operator.h
+#include "paddle/framework/attr_checker.h"
+#include "paddle/framework/op_desc.pb.h"
+
 namespace paddle {
 namespace framework {
 
@@ -47,6 +51,7 @@ class PlainNet {
 class OperatorBase {
  public:
   virtual ~OperatorBase() {}
+  void Init(const OpDesc& op_desc, AttributeMap& attrs) {}
   virtual void Run(OpRunContext* context) const = 0;
   virtual void InferShape(const Scope* scope) const = 0;
   inline Variable* Input(Scope* scope, int index) const {
@@ -71,10 +76,22 @@ class OperatorBase {
 // 3. Multi-inputs with indifinate length for RecurrentOp.
 class RecurrentOp : public OperatorBase {
  public:
-  RecurrentOp(NetDesc& net_desc)
-      : name_(net_desc.name_),
-        net_name_(net_desc.name_ + "__net__"),
-        step_scopes_name_(net_desc.name_ + "__step_scopes_") {}
+  void Init(const OpDesc& op_desc, AttributeMap& attrs) {
+    OperatorBase::Init(op_desc, attrs);
+    name_ = op_desc.name();
+    net_name_ = op_desc.name() + "_net";
+    step_scopes_name_ = op_desc.name() + "_step_scopes";
+    auto memories = GetAttr<std::vector<std::string>>("memories");
+    auto boot_memories = GetAttr<std::vector<std::string>>("boot_memories");
+    PADDLE_ENFORCE(memories.size() == boot_memories.size(),
+                   "The size of memories and boot_memories is mismatched.");
+    for (size_t i = 0; i < memories.size(); ++i) {
+      MemoryAttr mem_attr;
+      mem_attr.var = memories[i];
+      mem_attr.boot_var = boot_memories[i];
+      memory_attrs_.push_back(mem_attr);
+    }
+  }
 
   virtual void InferShape(const Scope* scope) const override;
 
@@ -90,12 +107,12 @@ class RecurrentOp : public OperatorBase {
   /*
    * Prepare inputs for each stepnet.
    */
-  void SegmentInputs(Scope* scope) const;
+  void SegmentInputs(Scope* scope) const {};
 
   /*
    * Process outputs of stepnets and merge to variables.
    */
-  void ConcateOutputs(Scope* scope) const;
+  void ConcateOutputs(Scope* scope) const {};
 
   /*
    * Create a `Net` which is shared across all steps.
@@ -144,6 +161,22 @@ class RecurrentOp : public OperatorBase {
     DDim dims;
   };
 
+  /*
+   * The attributes in protobuf about the memory description and the booted
+   * memory description are as follows. The number of booted memories should
+   * equal to the memories number.
+   *
+   *   arg {
+   *       name: “memories”
+   *       strings: "hidden”
+   *       strings: "state”
+   *   }
+   *   arg {
+   *       name: “boot_memories”
+   *       strings: "boot_hidden”
+   *       strings: "boot_state”
+   *   }
+   */
   // TODO copy from OpBase's
   mutable std::vector<MemoryAttr> memory_attrs_;
 
@@ -153,12 +186,12 @@ class RecurrentOp : public OperatorBase {
   // name of rnn op's step net, the step net will be shared by both `Forward`
   // and `Backward`, so we store it as a variable in father's scope, with a
   // unique key specified by `net_name_`.
-  const std::string net_name_;
+  std::string net_name_;
   // name of steps' scopes which is stored in father scope with a unique key
   // specified by `step_scopes_name_`.
-  const std::string step_scopes_name_;
+  std::string step_scopes_name_;
 
-  const NetDesc step_net_desc_;
+  NetDesc step_net_desc_;
 };
 
 class RecurrentGradientOp;
