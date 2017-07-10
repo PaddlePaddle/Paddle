@@ -57,7 +57,7 @@ class OperatorBase {
   /// write this init parameters.
   void Init(const OpDesc& op_desc, AttributeMap& attrs);
 
-  inline const OpDesc op_desc() const { return desc_; }
+  inline const OpDesc desc() const { return desc_; }
 
   inline const Variable* Input(Scope* scope, int index) const {
     PADDLE_ENFORCE(scope != nullptr, "scope should not be nullptr");
@@ -87,8 +87,7 @@ class OperatorBase {
   const std::string DebugString() const;
 
   /// InferShape infer the size of Variables used by this Operator with
-  /// information
-  /// inside scope
+  /// information inside scope
   void InferShape(Scope* scope) const;
 
   /// when implement an Op, your should implement this function.

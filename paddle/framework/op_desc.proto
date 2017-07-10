@@ -51,6 +51,9 @@ message OpDesc {
     // type of this Operator, such as "add", "sub", "fc".
     required string type = 3;
 
+    // the operator name, such as "fc1", "fc_1", etc. This is optional.
+    optional string name = 4;
+
     // Attributes of this Operator. e.g., scale=3.0 in cosine op.
-    repeated AttrDesc attrs = 4;
+    repeated AttrDesc attrs = 5;
 };

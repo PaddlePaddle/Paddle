@@ -48,7 +48,9 @@ REGISTER_OP(OperatorTest, OperatorTestProtoAndCheckerMaker, test_operator)
 
 TEST(OperatorBase, DebugString) {
   OpDesc op_desc;
+  std::string op_name = "op1";
   op_desc.set_type("test_operator");
+  op_desc.set_name(op_name);
   std::vector<std::string> inputs = {"IN1", "IN2"};
   for (auto& input : inputs) {
     op_desc.add_inputs(input);
@@ -70,6 +72,7 @@ TEST(OperatorBase, DebugString) {
   op_context->device_context = device_context;
 
   OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  ASSERT_EQ(op->desc().name(), op_name);
   ASSERT_EQ(op->inputs(), inputs);
   ASSERT_EQ(op->outputs(), outputs);
   ASSERT_EQ(op->GetAttr<float>("scale"), scale);
