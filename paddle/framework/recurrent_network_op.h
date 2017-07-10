@@ -69,7 +69,10 @@ class OperatorBase {
 };
 // fake interfaces end
 // --------------------------------------------------------------------
-
+// TODO:
+// 1. No-padding computing for sequences with indifinite length in one batch.
+// 2. Hierarchical RNN for sequence with sub-sequence.
+// 3. Multi-inputs with indifinate length for RecurrentOp.
 class RecurrentOp : public OperatorBase {
  public:
   void Init(const OpDesc& op_desc, AttributeMap& attrs) {

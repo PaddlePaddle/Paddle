@@ -30,15 +30,13 @@ void RecurrentOp::Run(OpRunContext* contex) const {
     for (const auto& attr : memory_attrs_) {
       Variable* pre_memory_var = step_scope->CreateVariable(attr.pre_var);
       // copy boot_var to current memory in first step
-      if (step_id == 0) {
-        Variable* boot_var = step_scope->GetVariable(attr.boot_var);
-        *pre_memory_var->GetMutable<Tensor>() = *boot_var->GetMutable<Tensor>();
-        // copy varible of memory in previous scope to current pre-memory
-      } else {
-        Variable* pre_state_var = scopes[step_id - 1]->GetVariable(attr.var);
-        *pre_memory_var->GetMutable<Tensor>() =
-            *pre_state_var->GetMutable<Tensor>();
-      }
+
+      Variable* pre_state_var =
+          (step_id == 0) ? step_scope->GetVariable(attr.boot_var)
+                         : scopes[step_id - 1]->GetVariable(attr.var);
+      // copy varible of memory in previous scope to current pre-memory
+      *pre_memory_var->GetMutable<Tensor>() =
+          *pre_state_var->GetMutable<Tensor>();
     }
 
     net->GetMutable<PlainNet>()->Run(step_scope);
