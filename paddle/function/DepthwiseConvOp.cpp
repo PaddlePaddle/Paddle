@@ -13,16 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "DepthwiseConvOp.h"
+#include "ConvOp.h"
 #include "GemmFunctor.h"
-#include "paddle/math/MemoryHandle.h"
+//#include "paddle/math/MemoryHandle.h"
 
 namespace paddle {
 
 template <class T>
 class DepthwiseConvFunctor<DEVICE_TYPE_CPU, T> {
 public:
-  void operator()(int outputSize,
-                  const T* inputData,
+  void operator()(const T* inputData,
                   const T* filterData,
                   int batchSize,
                   int outputChannels,
@@ -44,13 +44,13 @@ public:
 template <class T>
 class DepthwiseConvGradInputFunctor<DEVICE_TYPE_CPU, T> {
 public:
-  void operator()(int inputSize,
-                  const T* outputGrad,
+  void operator()(const T* outputGrad,
                   const T* filterData,
                   int batchSize,
                   int outputChannels,
                   int outputHeight,
                   int outputWidth,
+                  int inputChannels,
                   int inputHeight,
                   int inputWidth,
                   int filterHeight,
@@ -65,14 +65,13 @@ public:
 template <class T>
 class DepthwiseConvGradFilterFunctor<DEVICE_TYPE_CPU, T> {
 public:
-  void operator()(int num_i,
-                  int colDataSize,
-                  const T* outputGrad,
+  void operator()(const T* outputGrad,
                   const T* inputData,
                   int batchSize,
                   int outputChannels,
                   int outputHeight,
                   int outputWidth,
+                  int inputChannels,
                   int inputHeight,
                   int inputWidth,
                   int filterHeight,
@@ -87,7 +86,7 @@ public:
 };
 
 /*
- * \brief Forward calculation of convolution.
+ * \brief Forward calculation of depthwise convolution.
  */
 template <DeviceType Device>
 class DepthwiseConvFunction : public ConvFunctionBase {
@@ -126,11 +125,9 @@ public:
     real* inputData = inputs[0].data<real>();
     real* filterData = inputs[1].data<real>();
     real* outputData = outputs[0].data<real>();
-    size_t outputSize = batchSize * outputChannels * outputHeight * outputWidth;
 
     DepthwiseConvFunctor<Device, real> depthwiseConv;
-    depthwiseConv(outputSize,
-                  inputData,
+    depthwiseConv(inputData,
                   filterData,
                   batchSize,
                   outputChannels,
@@ -149,7 +146,7 @@ public:
 };
 
 /*
- * \brief Backward input calculation of convolution.
+ * \brief Backward input calculation of depthwise convolution.
  */
 template <DeviceType Device>
 class DepthwiseConvGradInputFunction : public ConvFunctionBase {
@@ -191,16 +188,14 @@ public:
     real* filterData = inputs[1].data<real>();
     real* inputGrad = outputs[0].data<real>();
 
-    size_t inputSize = batchSize * inputChannels * inputHeight * inputWidth;
-
     DepthwiseConvGradInputFunctor<Device, real> depthwiseConvGradInput;
-    depthwiseConvGradInput(inputSize,
-                           outputGrad,
+    depthwiseConvGradInput(outputGrad,
                            filterData,
                            batchSize,
                            outputChannels,
                            outputHeight,
                            outputWidth,
+                           inputChannels,
                            inputHeight,
                            inputWidth,
                            filterHeight,
@@ -214,7 +209,7 @@ public:
 };
 
 /*
- * \brief Backward filter calculation of convolution.
+ * \brief Backward filter calculation of depthwise convolution.
  */
 template <DeviceType Device>
 class DepthwiseConvGradFilterFunction : public ConvFunctionBase {
@@ -255,35 +250,31 @@ public:
     real* multiplierData = inputs[2].data<real>();
     real* filterGrad = outputs[0].data<real>();
 
-    size_t size =
+    int size =
         inputChannels * filterHeight * filterWidth * outputHeight * outputWidth;
-
     resizeBuffer<Device>(size);
     real* colData = reinterpret_cast<real*>(memory_->getBuf());
 
     DepthwiseConvGradFilterFunctor<Device, real> depthwiseConvGradFilter;
 
-    for (size_t i = 0; i < batchSize; i++) {
-      depthwiseConvGradFilter(i,
-                              size,
-                              outputGrad,
-                              inputData,
-                              batchSize,
-                              outputChannels,
-                              outputHeight,
-                              outputWidth,
-                              inputHeight,
-                              inputWidth,
-                              filterHeight,
-                              filterWidth,
-                              strideH(),
-                              strideW(),
-                              paddingH(),
-                              paddingW(),
-                              colData,
-                              multiplierData,
-                              filterGrad);
-    }
+    depthwiseConvGradFilter(outputGrad,
+                            inputData,
+                            batchSize,
+                            outputChannels,
+                            outputHeight,
+                            outputWidth,
+                            inputChannels,
+                            inputHeight,
+                            inputWidth,
+                            filterHeight,
+                            filterWidth,
+                            strideH(),
+                            strideW(),
+                            paddingH(),
+                            paddingW(),
+                            colData,
+                            multiplierData,
+                            filterGrad);
   }
 };
 

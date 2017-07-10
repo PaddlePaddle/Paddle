@@ -15,14 +15,9 @@ limitations under the License. */
 #include "DepthwiseConvLayer.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
-#include <iostream>
 
 namespace paddle {
 
-/*
- * The calculation of the exconvt(convolution transpose (deconv) operation)
- * is a swap of forward and backward of the calculation of exconv.
- * */
 REGISTER_LAYER(depthwise_conv, DepthwiseConvLayer);
 
 bool DepthwiseConvLayer::init(const LayerMap &layerMap,
@@ -76,11 +71,12 @@ bool DepthwiseConvLayer::init(const LayerMap &layerMap,
 #define BACKWARD_FILTER(i, inputs, outputs) \
   backward_[2 * i + 1]->calc(inputs, outputs)
 
+// compute the depthwise convolution forward pass
 void DepthwiseConvLayer::forward(PassType passType) {
   Layer::forward(passType);
 
   size_t batchSize = inputLayers_[0]->getOutputValue()->getHeight();
-  // std::cout << "outputSize" << getOutputSize() <<std::endl;
+
   resetOutput(batchSize, getOutputSize());
 
   // Calculate the shape of the input, output, and filter.
@@ -127,6 +123,7 @@ void DepthwiseConvLayer::forward(PassType passType) {
   forwardActivation();
 }
 
+// compute the depthwise convolution backprop.
 void DepthwiseConvLayer::backward(const UpdateCallback &callback) {
   backwardActivation();
 

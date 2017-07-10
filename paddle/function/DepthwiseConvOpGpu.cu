@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "ConvOp.h"
 #include "DepthwiseConvOp.h"
 #include "GemmFunctor.h"
-#include "paddle/math/MemoryHandle.h"
 
 namespace paddle {
+// CUDA kernel to compute the depthwise convolution forward pass
 template <class T>
 __global__ 
 void ConvolutionDepthwiseForward(const int nthreads,
@@ -48,7 +47,7 @@ void ConvolutionDepthwiseForward(const int nthreads,
 		  for (int kw = 0; kw < filterWidth; ++kw) {
 			const int h_in = -paddingH + h * strideH + kh;
 			const int w_in = -paddingW + w * strideW + kw;
-			  const int offset = ((n * outputChannels + c) * inputHeight + h_in)
+			const int offset = ((n * outputChannels + c) * inputHeight + h_in)
 					* inputWidth + w_in;
 			  value += (*weight) * inputData[offset];
 			++weight;
@@ -73,6 +72,7 @@ void ConvolutionDepthwiseForward(const int nthreads,
   }
 }
 
+// CUDA kernel to compute the depthwise convolution backprop w.r.t input.
 template <class T>
 __global__
 void ConvolutionDepthwiseInputBackward(const int nthreads,
@@ -113,6 +113,7 @@ void ConvolutionDepthwiseInputBackward(const int nthreads,
   }
 }
 
+// CUDA kernel to compute the depthwise convolution backprop w.r.t filter.
 template <class T>
 __global__
 void ConvolutionDepthwiseFilterBackward(const int num_i, const int nthreads,
@@ -150,55 +151,7 @@ void ConvolutionDepthwiseFilterBackward(const int num_i, const int nthreads,
 template <class T>
 class DepthwiseConvFunctor<DEVICE_TYPE_GPU, T>{
 public:
-  void operator()(int outputSize, 
-            const T* inputData, 
-            const T* filterData,
-            int batchSize,
-            int outputChannels,
-            int outputHeight,
-            int outputWidth,
-			int inputHeight,
-			int inputWidth,
-            int filterHeight,
-            int filterWidth,
-            int strideH,
-            int strideW,
-            int paddingH,
-            int paddingW,
-            T* outputData){
-
-    size_t blocks = (outputSize + 1024 -1) / 1024;
-    size_t blockX = 512;
-    size_t blockY = (blocks+512-1)/512;
-    dim3 threads(1024, 1);
-    dim3 grid(blockX, blockY);
-    
-    ConvolutionDepthwiseForward<T>
-        <<< grid, threads, 0, STREAM_DEFAULT >>>(
-            outputSize, 
-            inputData, 
-            filterData,
-            batchSize,
-            outputChannels,
-            outputHeight,
-            outputWidth,
-			inputHeight,
-			inputWidth,
-            filterHeight,
-            filterWidth,
-            strideH,
-            strideW,
-            paddingH,
-            paddingW,
-            outputData);
-    }
-};
-
-template <class T>
-class DepthwiseConvGradInputFunctor<DEVICE_TYPE_GPU, T>{
-public:
-  void operator()(int inputSize,
-            const T* outputGrad,
+  void operator()(const T* inputData, 
             const T* filterData,
             int batchSize,
             int outputChannels,
@@ -212,13 +165,65 @@ public:
             int strideW,
             int paddingH,
             int paddingW,
-                T* inputGrad){
+            T* outputData){
+
+    int outputSize = batchSize * outputChannels * outputHeight * outputWidth;
+
+    size_t blocks = (outputSize + 1024 -1) / 1024;
+    size_t blockX = 512;
+    size_t blockY = (blocks+512-1)/512;
+    dim3 threads(1024, 1);
+    dim3 grid(blockX, blockY);
+
+    ConvolutionDepthwiseForward<T>
+        <<< grid, threads, 0, STREAM_DEFAULT >>>(
+            outputSize, 
+            inputData, 
+            filterData,
+            batchSize,
+            outputChannels,
+            outputHeight,
+            outputWidth,
+            inputHeight,
+            inputWidth,
+            filterHeight,
+            filterWidth,
+            strideH,
+            strideW,
+            paddingH,
+            paddingW,
+            outputData);
+    }
+};
+
+template <class T>
+class DepthwiseConvGradInputFunctor<DEVICE_TYPE_GPU, T>{
+public:
+  void operator()(const T* outputGrad,
+            const T* filterData,
+            int batchSize,
+            int outputChannels,
+            int outputHeight,
+            int outputWidth,
+            int inputChannels,
+            int inputHeight,
+            int inputWidth,
+            int filterHeight,
+            int filterWidth,
+            int strideH,
+            int strideW,
+            int paddingH,
+            int paddingW,
+            T* inputGrad){
+
+	int inputSize = batchSize * inputChannels * inputHeight * inputWidth;
 
     size_t blocks = (inputSize + 1024 -1) / 1024;
     size_t blockX = 512;
     size_t blockY = (blocks+512-1)/512;
     dim3 threads(1024, 1);
     dim3 grid(blockX, blockY);
+
 
     ConvolutionDepthwiseInputBackward<T>
           // NOLINT_NEXT_LINE(whitespace/operators)
@@ -245,14 +250,13 @@ public:
 template <class T>
 class DepthwiseConvGradFilterFunctor<DEVICE_TYPE_GPU, T> {
 public:
-  void operator()(int num_i,
-                int colDataSize,
-                const T* outputGrad,
+  void operator()(const T* outputGrad,
                 const T* inputData,
                 int batchSize,
                 int outputChannels,
                 int outputHeight,
                 int outputWidth,
+                int inputChannels,
                 int inputHeight,
                 int inputWidth,
                 int filterHeight,
@@ -265,60 +269,65 @@ public:
                 T* multiplierData,
                 T* filterGrad){
 
+        int colDataSize = inputChannels * filterHeight * filterWidth * outputHeight * outputWidth;
+
         size_t blocks = (colDataSize + 1024 -1) / 1024;
         size_t blockX = 512;
         size_t blockY = (blocks+512-1)/512;
         dim3 threads(1024, 1);
         dim3 grid(blockX, blockY);
 
-	    ConvolutionDepthwiseFilterBackward<T>
-            <<< grid, threads, 0, STREAM_DEFAULT >>>(
-                num_i,
-                colDataSize,
-                outputGrad,
-                inputData,
-                batchSize,
-                outputChannels,
-                outputHeight,
-                outputWidth,
-                inputHeight,
-                inputWidth,
-                filterHeight,
-                filterWidth,
-                strideH,
-                strideW,
-                paddingH,
-                paddingW,
-                colData
-            );
-        GemmFunctor<DEVICE_TYPE_GPU, real> gemm;
-        int M = colDataSize / outputHeight / outputWidth;
-        int N = 1;
-        int K = outputHeight * outputWidth;
-        gemm(CblasNoTrans,
-            CblasNoTrans,
-            M,
-            N,
-            K,
-            (T)1.0,
-            colData,
-            K,
-            multiplierData,
-            N,
-            (T)1.0,
-            filterGrad,
-            N);
+        for(int i = 0; i < batchSize; i++) {
+			ConvolutionDepthwiseFilterBackward<T>
+				<<< grid, threads, 0, STREAM_DEFAULT >>>(
+                    i,
+                    colDataSize,
+                    outputGrad,
+                    inputData,
+                    batchSize,
+                    outputChannels,
+                    outputHeight,
+                    outputWidth,
+                    inputHeight,
+                    inputWidth,
+                    filterHeight,
+                    filterWidth,
+                    strideH,
+                    strideW,
+                    paddingH,
+                    paddingW,
+                    colData
+				);
+			GemmFunctor<DEVICE_TYPE_GPU, real> gemm;
+			int M = colDataSize / outputHeight / outputWidth;
+			int N = 1;
+			int K = outputHeight * outputWidth;
+			gemm(CblasNoTrans,
+				CblasNoTrans,
+				M,
+				N,
+				K,
+				(T)1.0,
+				colData,
+				K,
+				multiplierData,
+				N,
+				(T)1.0,
+				filterGrad,
+				N);
+		}
         //gemv
     }
 };
 
 #ifdef PADDLE_TYPE_DOUBLE
-using real=double;
+template class DepthwiseConvGradInputFunctor<DEVICE_TYPE_GPU, double>;
+template class DepthwiseConvFunctor<DEVICE_TYPE_GPU, double>;
+template class DepthwiseConvGradFilterFunctor<DEVICE_TYPE_GPU, double>;
 #else 
-using real=float;
+template class DepthwiseConvGradInputFunctor<DEVICE_TYPE_GPU, float>;
+template class DepthwiseConvFunctor<DEVICE_TYPE_GPU, float>;
+template class DepthwiseConvGradFilterFunctor<DEVICE_TYPE_GPU, float>;
 #endif
-template class DepthwiseConvGradInputFunctor<DEVICE_TYPE_GPU, real>;
-template class DepthwiseConvFunctor<DEVICE_TYPE_GPU, real>;
-template class DepthwiseConvGradFilterFunctor<DEVICE_TYPE_GPU, real>;
 
 }  // namespace paddle

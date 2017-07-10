@@ -22,10 +22,8 @@ namespace paddle {
 
 /**
  * @brief A subclass of convolution layer.
- * This layer expands input and use matrix multiplication to
- * calculate convolution operation.
- *
- * The config file api is img_conv_layer.
+ * This layer do the depthwise convolution calculation in mobilenet.
+ * The config file api is img_depthwise_conv_layer.
  */
 
 class DepthwiseConvLayer : public ExpandConvBaseLayer {
