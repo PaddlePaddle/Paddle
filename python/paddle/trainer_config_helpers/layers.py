@@ -217,6 +217,7 @@ class LayerType(object):
     SMOOTH_L1 = 'smooth_l1'
 
     PRELU = 'prelu'
+    PIXEL_SOFTMAX_LAYER = 'pixel_softmax'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -5851,5 +5852,42 @@ def prelu_layer(input,
     return LayerOutput(
         name=name,
         layer_type=LayerType.PRELU,
+        parents=input,
+        size=l.config.size)
+
+
+@layer_support()
+@wrap_name_default('pixel_softmax')
+def pixel_softmax_layer(input, name=None, layer_attr=None):
+    """
+    This layer calculate softmax in image channel dimension
+
+    The example usage is:
+
+    .. code-block:: python
+
+       prelu = pixel_softmax(input=layer, name='softmax')
+
+    :param name: Name of this layer.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    if isinstance(input, LayerOutput):
+        input = [input]
+    elif isinstance(input, Projection):
+        input = [input]
+    else:
+        assert isinstance(input, collections.Sequence)
+    l = Layer(
+        inputs=[x.name for x in input],
+        name=name,
+        type=LayerType.PIXEL_SOFTMAX_LAYER,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.PIXEL_SOFTMAX_LAYER,
         parents=input,
         size=l.config.size)

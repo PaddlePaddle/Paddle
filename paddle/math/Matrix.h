@@ -1456,6 +1456,10 @@ public:
 };
 
 class CpuMatrix : public Matrix {
+private:
+  MatrixPtr sftmaxSum_;
+  MatrixPtr sftmaxDot_;
+
 public:
   CpuMatrix(size_t height, size_t width, bool trans = false);
   CpuMatrix(real* data, size_t height, size_t width, bool trans = false)
@@ -1728,6 +1732,7 @@ public:
                               Matrix& prevGrad2);
 
   void softmax(Matrix& output);
+  void softmaxBackward(Matrix& outputV);
   void sequenceSoftmax(Matrix& output, const IVector& index);
   void softmaxDerivative(Matrix& output, Matrix& sftmaxSum);
 

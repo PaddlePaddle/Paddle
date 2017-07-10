@@ -1792,6 +1792,25 @@ TEST(Layer, RowConvLayer) {
   }
 }
 
+TEST(Layer, PixelSoftmaxLayer) {
+  TestConfig config;
+  // config input_0
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1024, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ImageConfig* img = input->mutable_image_conf();
+  img->set_channels(4);
+  img->set_img_size(16);
+  img->set_img_size_y(16);
+
+  // config softmax layer
+  config.layerConfig.set_type("pixel_softmax");
+  config.layerConfig.set_name("pixelSofrmaxLayer");
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "pixel_softmax", 100, false, useGpu, true, 2);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);
