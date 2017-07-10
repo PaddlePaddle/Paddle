@@ -54,5 +54,13 @@ const std::string OperatorBase::DebugString() const {
   return ss.str();
 }
 
+const Variable* OpContext::Input(int index) const {
+  return scope->GetVariable(op.inputs()[index]);
+}
+
+Variable* OpContext::Output(int index) const {
+  return scope->GetVariable(op.outputs()[index]);
+}
+
 }  // namespace framework
 }  // namespace paddle

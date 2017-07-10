@@ -21,10 +21,11 @@ namespace framework {
 
 class OperatorTest : public OperatorBase {
  public:
-  void Run(OpContext* context) const override {
+  void Run(OpContext* ctx) const override {
     float scale = GetAttr<float>("scale");
-    PADDLE_ENFORCE(Input(context->scope, 0) == nullptr, "Input(0) should not initialized");
-    PADDLE_ENFORCE(Input(context->scope, 1) == nullptr, "Input(1) should not initialized");
+    PADDLE_ENFORCE(ctx->Input(0) == nullptr, "Input(0) should not initialized");
+    PADDLE_ENFORCE(ctx->Output(0) == nullptr,
+                   "Output(1) should not initialized");
     printf("get attr %s = %f\n", "scale", scale);
     printf("%s\n", DebugString().c_str());
   }
@@ -64,15 +65,13 @@ TEST(OperatorBase, DebugString) {
   attr->set_f(scale);
 
   DeviceContext* device_context = new DeviceContext();
-  OpContext* op_context = new OpContext();
-  op_context->scope = std::make_shared<Scope>();
-  op_context->device_context = device_context;
+  auto scope = std::make_shared<Scope>();
 
   OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(op->inputs(), inputs);
   ASSERT_EQ(op->outputs(), outputs);
   ASSERT_EQ(op->GetAttr<float>("scale"), scale);
-  op->Run(op_context);
+  op->Run(scope, device_context);
 }
 
 }  // namespace framework

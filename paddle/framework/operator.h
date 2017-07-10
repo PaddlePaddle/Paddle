@@ -21,12 +21,14 @@ limitations under the License. */
 #include "paddle/framework/attr_checker.h"
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/scope.h"
-#include "paddle/utils/Error.h"
 #include "paddle/platform/device_context.h"
+#include "paddle/utils/Error.h"
 
 namespace paddle {
 namespace framework {
+
 using paddle::platform::DeviceContext;
+class OperatorBase;
 
 /**
  * OpRunContext is the only parameter of Operator's Run function.
@@ -36,6 +38,15 @@ using paddle::platform::DeviceContext;
  */
 class OpContext {
  public:
+  OpContext(OperatorBase& op, std::shared_ptr<Scope> scope,
+            DeviceContext* device_context)
+      : op(op), scope(scope), device_context(device_context) {}
+
+  const Variable* Input(int index) const;
+  Variable* Output(int index) const;
+
+ public:
+  OperatorBase& op;
   std::shared_ptr<Scope> scope;
   DeviceContext* device_context;
 };
@@ -57,24 +68,10 @@ class OperatorBase {
 
   inline const OpDesc desc() const { return desc_; }
 
-  inline const Variable* Input(std::shared_ptr<Scope> scope, int index) const {
-    PADDLE_ENFORCE(scope != nullptr, "scope should not be nullptr");
-    PADDLE_ENFORCE(index >= 0, "input index should not be negative");
-    PADDLE_ENFORCE(index < (int)inputs().size(), "input index should less then %d", inputs().size());
-    return scope->GetVariable(inputs_[index]);
-  }
-
-  inline Variable* Output(std::shared_ptr<Scope> scope, int index) const {
-    PADDLE_ENFORCE(scope != nullptr, "scope should not be nullptr");
-    PADDLE_ENFORCE(index >= 0, "output index should not be negative");
-    PADDLE_ENFORCE(index < (int)outputs().size(), "output index should less then %d", outputs().size());
-    return scope->GetVariable(outputs_[index]);
-  }
-
   template <typename T>
   inline const T GetAttr(const std::string& name) const {
-    PADDLE_ENFORCE(attrs_.count(name) != 0,
-                   "%s should be in AttributeMap", name);
+    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
+                   name);
     return boost::get<T>(attrs_.at(name));
   }
 
@@ -88,7 +85,13 @@ class OperatorBase {
   /// information inside scope
   void InferShape(Scope* scope) const;
 
+  void Run(std::shared_ptr<Scope> scope, DeviceContext* dev_ctx) {
+    OpContext* op_ctx = new OpContext(*this, scope, dev_ctx);
+    Run(op_ctx);
+  }
+
   /// when implement an Op, your should implement this function.
+  /// this function should be moved to OpKernel later
   virtual void Run(OpContext* context) const = 0;
 
  private:
