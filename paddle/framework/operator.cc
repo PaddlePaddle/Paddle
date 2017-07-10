@@ -36,7 +36,6 @@ const std::string OperatorBase::DebugString() const {
   std::stringstream ss;
   ss << "=================\n";
   ss << "type = " << desc_.type() << "\n";
-  ss << "name = " << desc_.name() << "\n";
   ss << "inputs = [";
   for (auto& ipt : inputs_) {
     ss << ipt << ", ";

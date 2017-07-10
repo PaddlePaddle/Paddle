@@ -22,13 +22,11 @@ limitations under the License. */
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/scope.h"
 #include "paddle/utils/Error.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
-
-class DeviceContext {};
-class CPUContext : public DeviceContext {};
-class GPUContext : public DeviceContext {};
+using paddle::platform::DeviceContext;
 
 /**
  * OpRunContext is the only parameter of Operator's Run function.
@@ -38,7 +36,7 @@ class GPUContext : public DeviceContext {};
  */
 class OpContext {
  public:
-  Scope* scope;
+  std::shared_ptr<Scope> scope;
   DeviceContext* device_context;
 };
 
@@ -59,14 +57,14 @@ class OperatorBase {
 
   inline const OpDesc desc() const { return desc_; }
 
-  inline const Variable* Input(Scope* scope, int index) const {
+  inline const Variable* Input(std::shared_ptr<Scope> scope, int index) const {
     PADDLE_ENFORCE(scope != nullptr, "scope should not be nullptr");
     PADDLE_ENFORCE(index >= 0, "input index should not be negative");
     PADDLE_ENFORCE(index < (int)inputs().size(), "input index should less then %d", inputs().size());
     return scope->GetVariable(inputs_[index]);
   }
 
-  inline Variable* Output(Scope* scope, int index) const {
+  inline Variable* Output(std::shared_ptr<Scope> scope, int index) const {
     PADDLE_ENFORCE(scope != nullptr, "scope should not be nullptr");
     PADDLE_ENFORCE(index >= 0, "output index should not be negative");
     PADDLE_ENFORCE(index < (int)outputs().size(), "output index should less then %d", outputs().size());
