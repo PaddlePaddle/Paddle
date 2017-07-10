@@ -240,6 +240,7 @@ struct Argument {
   void concat(const std::vector<Argument>& args,
               const std::vector<int>& selectRows,
               const std::vector<int>& seqStartPos,
+              const std::vector<int>& copySize,
               bool useGpu,
               hl_stream_t stream,
               PassType passType);

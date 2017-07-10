@@ -1370,14 +1370,7 @@ def simple_attention(encoded_sequence,
         param_attr=softmax_param_attr,
         name="%s_softmax" % name,
         bias_attr=False)
-
-    scaled = scaling_layer(
-        weight=attention_weight,
-        input=encoded_sequence,
-        name='%s_scaling' % name)
-
-    return pooling_layer(
-        input=scaled, pooling_type=SumPooling(), name="%s_pooling" % name)
+    return attention_weight
 
 
 def inputs(layers, *args):
@@ -1395,7 +1388,7 @@ def inputs(layers, *args):
     if len(args) != 0:
         layers.extend(args)
 
-    Inputs(* [l.name for l in layers])
+    Inputs(*[l.name for l in layers])
 
 
 def outputs(layers, *args):
@@ -1438,7 +1431,7 @@ def outputs(layers, *args):
     assert len(layers) > 0
 
     if HasInputsSet():  # input already set
-        Outputs(* [l.name for l in layers])
+        Outputs(*[l.name for l in layers])
         return  # just return outputs.
 
     if len(layers) != 1:

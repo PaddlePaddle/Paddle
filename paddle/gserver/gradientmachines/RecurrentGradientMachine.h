@@ -480,7 +480,11 @@ private:
    * @param machineIdVec : select a row of output matrix in each frame
    * that the generation process expanded.
    */
-  void createDataOutlink(std::vector<int>& machineIdVec);
+  void createDataOutlink();
+  void createDataOutlinkCopySizeInfo(bool isSeq,
+                                     std::vector<Argument>& outArgs,
+                                     std::vector<int>& copySize);
+  void createDataOutlinkSelRowsInfo(bool isSeq, std::vector<Argument>& outArgs);
 
   /*
    * @brief used in beam search, connect previous frame to form recurrent link
@@ -543,6 +547,7 @@ private:
   std::vector<int> topIds_;
   std::vector<int> seqIds_;
   std::vector<int> batchMachineIdVec_;
+  std::vector<int> batchMachineStartPos_;
   std::vector<std::vector<Path>> finalPaths_;
   std::vector<real> minFinalPathLogProb_;
   BeamSearchControlCallbacks* beamSearchCtrlCallbacks_;
