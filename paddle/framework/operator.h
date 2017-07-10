@@ -38,7 +38,7 @@ class OperatorBase;
  */
 class OpContext {
  public:
-  OpContext(OperatorBase& op, std::shared_ptr<Scope> scope,
+  OpContext(const OperatorBase* op, std::shared_ptr<Scope> scope,
             DeviceContext* device_context)
       : op(op), scope(scope), device_context(device_context) {}
 
@@ -46,7 +46,7 @@ class OpContext {
   Variable* Output(int index) const;
 
  public:
-  OperatorBase& op;
+  const OperatorBase* op;
   std::shared_ptr<Scope> scope;
   DeviceContext* device_context;
 };
@@ -86,7 +86,7 @@ class OperatorBase {
   void InferShape(Scope* scope) const;
 
   void Run(std::shared_ptr<Scope> scope, DeviceContext* dev_ctx) {
-    OpContext* op_ctx = new OpContext(*this, scope, dev_ctx);
+    OpContext* op_ctx = new OpContext(this, scope, dev_ctx);
     Run(op_ctx);
   }
 
