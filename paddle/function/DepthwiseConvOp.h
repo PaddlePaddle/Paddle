@@ -148,9 +148,7 @@ public:
                   int paddingH,
                   int paddingW,
                   T* colData,
-                  T* multiplierData,
                   T* filterGrad);
-
-};  // namespace paddle
+};
 
 }  // namespace paddle

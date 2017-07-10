@@ -81,7 +81,6 @@ public:
                   int paddingH,
                   int paddingW,
                   T* colData,
-                  T* multiplierData,
                   T* filterGrad) {}
 };
 
@@ -247,7 +246,6 @@ public:
 
     real* outputGrad = inputs[0].data<real>();
     real* inputData = inputs[1].data<real>();
-    real* multiplierData = inputs[2].data<real>();
     real* filterGrad = outputs[0].data<real>();
 
     int size =
@@ -273,7 +271,6 @@ public:
                             paddingH(),
                             paddingW(),
                             colData,
-                            multiplierData,
                             filterGrad);
   }
 };

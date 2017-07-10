@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-#include "ExpandConvBaseLayer.h"
+#include "ExpandConvLayer.h"
 #include "paddle/math/Matrix.h"
 
 namespace paddle {
@@ -26,25 +26,15 @@ namespace paddle {
  * The config file api is img_depthwise_conv_layer.
  */
 
-class DepthwiseConvLayer : public ExpandConvBaseLayer {
+class DepthwiseConvLayer : public ExpandConvLayer {
 public:
   explicit DepthwiseConvLayer(const LayerConfig& config)
-      : ExpandConvBaseLayer(config) {}
+      : ExpandConvLayer(config) {}
 
   ~DepthwiseConvLayer() {}
 
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
-
-  void forward(PassType passType) override;
-  void backward(const UpdateCallback& callback) override;
-
-protected:
-  std::vector<TensorShape> inputShape_;
-  std::vector<TensorShape> filterShape_;
-  std::vector<TensorShape> outputShape_;
-  std::vector<TensorShape> multiplierShape_;
-  std::vector<MatrixPtr> weightMultiplier_;
 };
 
 }  // namespace paddle

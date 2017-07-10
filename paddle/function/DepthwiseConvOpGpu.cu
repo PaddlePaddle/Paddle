@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "DepthwiseConvOp.h"
 #include "GemmFunctor.h"
+#include "paddle/math/BaseMatrix.h"
 
 namespace paddle {
 // CUDA kernel to compute the depthwise convolution forward pass
@@ -266,7 +267,6 @@ public:
                 int paddingH,
                 int paddingW,
                 T* colData,
-                T* multiplierData,
                 T* filterGrad){
 
         int colDataSize = inputChannels * filterHeight * filterWidth * outputHeight * outputWidth;
@@ -276,6 +276,7 @@ public:
         size_t blockY = (blocks+512-1)/512;
         dim3 threads(1024, 1);
         dim3 grid(blockX, blockY);
+		BaseMatrix filterGradMatrix(inputChannels * filterHeight * filterWidth, 1, filterGrad, false, true);
 
         for(int i = 0; i < batchSize; i++) {
 			ConvolutionDepthwiseFilterBackward<T>
@@ -298,25 +299,12 @@ public:
                     paddingW,
                     colData
 				);
-			GemmFunctor<DEVICE_TYPE_GPU, real> gemm;
 			int M = colDataSize / outputHeight / outputWidth;
-			int N = 1;
 			int K = outputHeight * outputWidth;
-			gemm(CblasNoTrans,
-				CblasNoTrans,
-				M,
-				N,
-				K,
-				(T)1.0,
-				colData,
-				K,
-				multiplierData,
-				N,
-				(T)1.0,
-				filterGrad,
-				N);
+
+            BaseMatrix colMatrix(M, K, colData, false, true);
+		    filterGradMatrix.sumRows(colMatrix, (T)1.0, (T)1.0);	
 		}
-        //gemv
     }
 };
 

@@ -29,18 +29,10 @@ bool DepthwiseConvLayer::init(const LayerMap &layerMap,
   inputShape_.resize(numInputs);
   filterShape_.resize(numInputs);
   outputShape_.resize(numInputs);
-  multiplierShape_.resize(numInputs);
-  weightMultiplier_.resize(numInputs);
 
   for (int i = 0; i < config_.inputs_size(); i++) {
     std::vector<size_t> paddings = {(size_t)paddingY_[i], (size_t)padding_[i]};
     std::vector<size_t> strides = {(size_t)strideY_[i], (size_t)stride_[i]};
-    Matrix::resizeOrCreate(weightMultiplier_[i],
-                           (size_t)outputH_[i] * (size_t)outputW_[i],
-                           (size_t)1,
-                           false,
-                           useGpu_);
-    weightMultiplier_[i]->one();
     createFunction(forward_,
                    "DepthwiseConv",
                    FuncConfig()
@@ -63,102 +55,6 @@ bool DepthwiseConvLayer::init(const LayerMap &layerMap,
                        .set("groups", (size_t)groups_[i]));
   }
   return true;
-}
-
-// i is the index of input layers
-#define BACKWARD_INPUT(i, inputs, outputs) \
-  backward_[2 * i]->calc(inputs, outputs)
-#define BACKWARD_FILTER(i, inputs, outputs) \
-  backward_[2 * i + 1]->calc(inputs, outputs)
-
-// compute the depthwise convolution forward pass
-void DepthwiseConvLayer::forward(PassType passType) {
-  Layer::forward(passType);
-
-  size_t batchSize = inputLayers_[0]->getOutputValue()->getHeight();
-
-  resetOutput(batchSize, getOutputSize());
-
-  // Calculate the shape of the input, output, and filter.
-  for (size_t i = 0; i < inputLayers_.size(); ++i) {
-    inputShape_[i] = TensorShape({(size_t)batchSize,
-                                  (size_t)channels_[i],
-                                  (size_t)imgSizeH_[i],
-                                  (size_t)imgSizeW_[i]});
-    multiplierShape_[i] =
-        TensorShape({(size_t)outputH_[i] * (size_t)outputW_[i], (size_t)1});
-    filterShape_[i] = TensorShape({(size_t)groups_[i],
-                                   (size_t)numFilters_ / groups_[i],
-                                   (size_t)channels_[i] / groups_[i],
-                                   (size_t)filterSizeY_[i],
-                                   (size_t)filterSize_[i]});
-    outputShape_[i] = TensorShape({(size_t)batchSize,
-                                   (size_t)numFilters_,
-                                   (size_t)outputH_[i],
-                                   (size_t)outputW_[i]});
-  }
-
-  // Calculate the output value.
-  for (size_t i = 0; i < inputLayers_.size(); ++i) {
-    BufferArgs inputs;
-    BufferArgs outputs;
-    inputs.addArg(*getInputValue(i), inputShape_[i]);
-    inputs.addArg(*weights_[i]->getW(), filterShape_[i]);
-    outputs.addArg(
-        *getOutputValue(), outputShape_[i], i == 0 ? ASSIGN_TO : ADD_TO);
-
-    forward_[i]->calc(inputs, outputs);
-  }
-
-  /* add the bias-vector */
-  if (biases_.get()) {
-    if (sharedBiases_) {
-      addSharedBias();
-    } else {
-      addUnsharedBias();
-    }
-  }
-
-  /* activation */
-  forwardActivation();
-}
-
-// compute the depthwise convolution backprop.
-void DepthwiseConvLayer::backward(const UpdateCallback &callback) {
-  backwardActivation();
-
-  MatrixPtr outGrad = getOutputGrad();
-  if (biases_ && biases_->getWGrad()) {
-    bpropBiases(outGrad);
-    /* Increasing the number of gradient */
-    biases_->getParameterPtr()->incUpdate(callback);
-  }
-
-  // Calculate the input grad and filter grad.
-  for (size_t i = 0; i < inputLayers_.size(); ++i) {
-    if (getInputGrad(i)) {
-      BufferArgs inputs;
-      BufferArgs outputs;
-      inputs.addArg(*getOutputGrad(), outputShape_[i]);
-      inputs.addArg(*weights_[i]->getW(), filterShape_[i]);
-      outputs.addArg(*getInputGrad(i), inputShape_[i], ADD_TO);
-      BACKWARD_INPUT(i, inputs, outputs);
-    }
-
-    if (weights_[i]->getWGrad()) {
-      BufferArgs inputs;
-      BufferArgs outputs;
-      inputs.addArg(*getOutputGrad(), outputShape_[i]);
-      inputs.addArg(*getInputValue(i), inputShape_[i]);
-      inputs.addArg(*weightMultiplier_[i], multiplierShape_[i]);
-      // weight_multiplier
-      outputs.addArg(*weights_[i]->getWGrad(), filterShape_[i], ADD_TO);
-      BACKWARD_FILTER(i, inputs, outputs);
-
-      /* Increasing the number of gradient */
-      weights_[i]->getParameterPtr()->incUpdate(callback);
-    }
-  }
 }
 
 }  // namespace paddle
