@@ -42,6 +42,7 @@ class OpContext {
   OpContext(const OperatorBase* op, std::shared_ptr<Scope> scope,
             DeviceContext* device_context)
       : op(op), scope(scope), device_context(device_context) {}
+  ~OpContext() {}
 
   const Variable* Input(int index) const;
   Variable* Output(int index) const;
