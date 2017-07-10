@@ -34,6 +34,6 @@ setup(name='paddle',
           '': '${CMAKE_CURRENT_SOURCE_DIR}',
           # The paddle.v2.framework.proto will be generated while compiling.
           # So that package points to other directory.
-          'paddle.v2.framework.proto': '${CMAKE_BINARY_DIR}/paddle/framework'
+          'paddle.v2.framework.proto': '${PROJ_BINARY_ROOT}/paddle/framework'
       },
 )
