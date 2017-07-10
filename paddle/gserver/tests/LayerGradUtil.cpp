@@ -241,7 +241,7 @@ void testBatchState(LayerPtr testLayer,
 
     std::vector<Argument> args;
     args.push_back(out);
-    EXPECT_EQ(0, Argument::sum(args)) << "testBatchState failed";
+    ASSERT_NEAR(0, Argument::sum(args), 1e-5) << "testBatchState failed";
     for (size_t seqId = 0; seqId < numSequences; ++seqId) {
       start[seqId] += seqLens[seqId];
     }
@@ -465,7 +465,6 @@ void initTestLayer(TestConfig testConf,
                            ParameterConfig paraConfig) {
     paraConfig.set_name(paraName);
     paraConfig.set_size(paraSize);
-    paraConfig.set_initial_std(1);
     paraConfig.set_is_static(isStatic);
     auto para =
         std::make_shared<Parameter>(paraConfig, FLAGS_use_gpu, initialize);
@@ -499,6 +498,9 @@ void initTestLayer(TestConfig testConf,
         paraConfig.add_dims((*layerMap)[input.input_layer_name()]->getSize());
         paraConfig.add_dims(testConf.layerConfig.size());
       }
+      CHECK_GE(testConf.paramInitialStd, 0);
+      paraConfig.set_initial_mean(testConf.paramInitialMean);
+      paraConfig.set_initial_std(testConf.paramInitialStd);
       initParameter(paraName, paraSize, inputDef.isStatic, false, paraConfig);
     }
   }

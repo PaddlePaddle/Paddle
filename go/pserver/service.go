@@ -10,8 +10,10 @@ import (
 type ElementType int
 
 const (
+	// AlreadyInitialized is true if pserver is initialized
 	AlreadyInitialized = "pserver already initialized"
-	Uninitialized      = "pserver not fully initialized"
+	// Uninitialized is true if pserver not fully initialized
+	Uninitialized = "pserver not fully initialized"
 )
 
 // Supported element types
@@ -55,7 +57,7 @@ func NewService(idx int) (*Service, error) {
 	s := &Service{
 		idx: idx,
 	}
-  s.optMap = make(map[string]*optimizer)
+	s.optMap = make(map[string]*optimizer)
 	s.initialized = make(chan struct{})
 	return s, nil
 }

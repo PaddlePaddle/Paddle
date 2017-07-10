@@ -88,7 +88,7 @@
 #
 
 # including binary directory for generated headers.
-include_directories(${CMAKE_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 if(NOT APPLE)
     find_package(Threads REQUIRED)
@@ -99,25 +99,44 @@ function(merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
   list(REMOVE_DUPLICATES libs)
 
-  # First get the file names of the libraries to be merged
+  # Get all propagation dependencies from the merged libraries
   foreach(lib ${libs})
-    set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
+    list(APPEND libs_deps ${${lib}_LIB_DEPENDS})
   endforeach()
 
   if(APPLE) # Use OSX's libtool to merge archives
+    # To produce a library we need at least one source file.
+    # It is created by add_custom_command below and will helps
+    # also help to track dependencies.
     set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+
+    # Make the generated dummy source file depended on all static input
+    # libs. If input lib changes,the source file is touched
+    # which causes the desired effect (relink).
+    add_custom_command(OUTPUT ${dummyfile}
+      COMMAND ${CMAKE_COMMAND} -E touch ${dummyfile}
+      DEPENDS ${libs})
+
+    # Generate dummy staic lib
     file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
     add_library(${TARGET_NAME} STATIC ${dummyfile})
+    target_link_libraries(${TARGET_NAME} ${libs_deps})
+
+    foreach(lib ${libs})
+      # Get the file names of the libraries to be merged
+      set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
+    endforeach()
 		add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
       COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
       COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles})
-	else() # general UNIX: use "ar" to extract objects and re-add to a common lib
+  else() # general UNIX: use "ar" to extract objects and re-add to a common lib
     foreach(lib ${libs})
       set(objlistfile ${lib}.objlist) # list of objects in the input library
       set(objdir ${lib}.objdir)
 
       add_custom_command(OUTPUT ${objdir}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${objdir})
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${objdir}
+        DEPENDS ${lib})
 
       add_custom_command(OUTPUT ${objlistfile}
         COMMAND ${CMAKE_AR} -x "$<TARGET_FILE:${lib}>"
@@ -134,18 +153,18 @@ function(merge_static_libs TARGET_NAME)
       list(APPEND mergebases "${mergebase}")
     endforeach()
 
-    # We need a target for the output merged library
     add_library(${TARGET_NAME} STATIC ${mergebases})
+    target_link_libraries(${TARGET_NAME} ${libs_deps})
+
+    # Get the file name of the generated library
     set(outlibfile "$<TARGET_FILE:${TARGET_NAME}>")
 
     foreach(lib ${libs})
       add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND ${CMAKE_AR} ru ${outlibfile} @"../${lib}.objlist"
-      WORKING_DIRECTORY ${lib}.objdir)
+        COMMAND ${CMAKE_AR} cr ${outlibfile} *.o
+        COMMAND ${CMAKE_RANLIB} ${outlibfile}
+        WORKING_DIRECTORY ${lib}.objdir)
     endforeach()
-
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND ${CMAKE_RANLIB} ${outlibfile})
   endif()
 endfunction(merge_static_libs)
 
@@ -194,7 +213,7 @@ function(cc_test TARGET_NAME)
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
     target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
-    add_test(${TARGET_NAME} ${TARGET_NAME})
+    add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME} WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endif()
 endfunction(cc_test)
 
@@ -281,10 +300,11 @@ function(go_library TARGET_NAME)
 
   file(GLOB GO_SOURCE RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.go")
   string(REPLACE "${PADDLE_GO_PATH}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+  # FIXME: link path
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
     COMMAND rm "${${TARGET_NAME}_LIB_PATH}"
     # Golang build source code
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
+    COMMAND GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build ${BUILD_MODE}
     -o "${${TARGET_NAME}_LIB_PATH}"
     "./${CMAKE_CURRENT_SOURCE_REL_DIR}/${GO_SOURCE}"
     # must run under GOPATH
@@ -299,11 +319,13 @@ function(go_binary TARGET_NAME)
   cmake_parse_arguments(go_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   string(REPLACE "${PADDLE_GO_PATH}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
+  # FIXME: link path
   add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
+      COMMAND env LIBRARY_PATH=${CMAKE_BINARY_DIR}/go/pserver/client/c/:$ENV{LIBRARY_PATH}
+      GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
     -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     "./${CMAKE_CURRENT_SOURCE_REL_DIR}/${go_binary_SRCS}"
-  WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
+    WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
   # TODO: don't know what ${TARGET_NAME}_link does
   add_custom_target(${TARGET_NAME} ALL DEPENDS go_vendor ${TARGET_NAME}_timestamp ${go_binary_DEPS})
   install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME} DESTINATION bin)
@@ -331,4 +353,13 @@ function(proto_library TARGET_NAME)
   set(proto_hdrs)
   protobuf_generate_cpp(proto_srcs proto_hdrs ${proto_library_SRCS})
   cc_library(${TARGET_NAME} SRCS ${proto_srcs} DEPS ${proto_library_DEPS} protobuf)
+endfunction()
+
+function(py_proto_compile TARGET_NAME)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS)
+  cmake_parse_arguments(py_proto_compile "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  set(py_srcs)
+  protobuf_generate_python(py_srcs ${py_proto_compile_SRCS})
+  add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs})
 endfunction()
