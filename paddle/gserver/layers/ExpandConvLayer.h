@@ -40,6 +40,11 @@ public:
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
+
+protected:
+  std::vector<TensorShape> inputShape_;
+  std::vector<TensorShape> filterShape_;
+  std::vector<TensorShape> outputShape_;
 };
 
 }  // namespace paddle

@@ -20,6 +20,7 @@ limitations under the License. */
 #include "OptimizerFunctions.h"
 #include "OptimizerWithRegularizer.h"
 #include "ParameterUpdateFunctions.h"
+#include "ThreadLocalBuffer.h"
 #include "hl_gpu.h"
 #include "paddle/math/CpuSparseMatrix.h"
 #include "paddle/math/MathUtils.h"
@@ -262,15 +263,6 @@ void Parameter::setMat(ParameterType pType, int matType) {
   }
 }
 
-SparsePrefetchRowCpuMatrix* Parameter::getPrefetchMatrix() {
-  MatrixPtr mat = mats_[PARAMETER_VALUE];
-  if (mat) {
-    return dynamic_cast<SparsePrefetchRowCpuMatrix*>(mat.get());
-  }
-
-  return nullptr;
-}
-
 void Parameter::incUpdate(const UpdateCallback& callback) {
   // Static parameter is fixed, and does not need to be updated
   if (isStatic()) {
@@ -420,39 +412,6 @@ bool Parameter::load(std::istream& s) {
   setValueUpdated();
 
   return true;
-}
-
-ThreadLocal<std::vector<VectorPtr>> Parameter::tlsTempBufs_;
-
-VectorPtr* Parameter::getTlsTempBufs() {
-  std::vector<VectorPtr>& bufs = *tlsTempBufs_;
-  if (bufs.empty()) {
-    bufs.resize(NUM_PARAMETER_TYPES);
-    for (auto& vec : bufs) {
-      vec.reset(new CpuVector(0, nullptr));
-    }
-  }
-  return bufs.data();
-}
-
-void Parameter::exec(ExecFunc func) {
-  auto execFunc = [this, func](int tid, size_t numThreads) {
-    if (numThreads == 1) {  // single thread
-      func(this->getBufs());
-    } else {  // multi thread
-      VectorPtr* vecs = Parameter::getTlsTempBufs();
-      auto interval = calcSplitArrayInterval(
-          this->getSize(), (size_t)tid, numThreads, 8LU /*for avx*/);
-      for (size_t i = 0; i < (size_t)NUM_PARAMETER_TYPES; ++i) {
-        if (bufs_[i]) {
-          vecs[i]->subVecFrom(*bufs_[i], interval);
-        }
-      }
-      func(vecs);
-    }
-  };
-
-  getBuf(PARAMETER_VALUE)->exec(execFunc);
 }
 
 }  // namespace paddle

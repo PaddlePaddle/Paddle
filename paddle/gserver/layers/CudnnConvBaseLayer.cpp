@@ -70,14 +70,8 @@ void CudnnConvBaseLayer::forward(PassType passType) {
   if (biases_) {
     REGISTER_TIMER_INFO("CudnnConvBiasTimer", getName().c_str());
     int batchSize = inputLayers_[0]->getOutputValue()->getHeight();
-    int outH, outW;
-    if (isDeconv_) {
-      outH = imgSizeH_[0];
-      outW = imgSizeW_[0];
-    } else {
-      outH = outputH_[0];
-      outW = outputW_[0];
-    }
+    int outH = outputH_[0];
+    int outW = outputW_[0];
 
     hl_tensor_reshape(outputDesc_,
                       batchSize,

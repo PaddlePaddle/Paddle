@@ -33,6 +33,7 @@ ELSE(WIN32)
             SET(CMAKE_OSX_DEPLOYMENT_TARGET ${MACOS_VERSION} CACHE STRING
                 "Minimum OS X version to target for deployment (at runtime); newer APIs weak linked. Set to empty string for default value.")
         ENDIF()
+        set(CMAKE_EXE_LINKER_FLAGS "-framework CoreFoundation -framework Security")
     ELSE(APPLE)
 
         IF(EXISTS "/etc/issue")
@@ -83,24 +84,6 @@ IF(DEFINED CMAKE_SYSTEM_NAME)
         INCLUDE(cross_compiling/raspberry_pi)
     ENDIF()
 ENDIF()
-
-# prefix and suffix on different os
-IF(WIN32)
-    SET(LIBRARY_PREFIX "")
-    SET(SHARED_LIBRARY_SUFFIX ".dll")
-    SET(STATIC_LIBRARY_SUFFIX ".lib")
-    SET(EXECUTABLE_SUFFIX ".exe")
-ELSE(WIN32)
-    SET(LIBRARY_PREFIX "lib")
-    IF(APPLE)
-        SET(SHARED_LIBRARY_SUFFIX ".dylib")
-    ELSE(APPLE)
-        SET(SHARED_LIBRARY_SUFFIX ".so")
-    ENDIF(APPLE)
-
-    SET(STATIC_LIBRARY_SUFFIX ".a")
-    SET(EXECUTABLE_SUFFIX "")
-ENDIF(WIN32)
 
 # external dependencies log output
 SET(EXTERNAL_PROJECT_LOG_ARGS

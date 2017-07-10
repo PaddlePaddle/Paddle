@@ -27,7 +27,7 @@ layers {
   name: "__seqreshape_0__"
   type: "seqreshape"
   size: 5
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "data1"
   }

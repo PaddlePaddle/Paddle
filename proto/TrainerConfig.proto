@@ -128,6 +128,9 @@ message OptimizationConfig {
   // when async_lagged_grad_discard_ratio * num_gradient_servers commit passed,
   // current async gradient will be discard silently.
   optional double async_lagged_grad_discard_ratio = 37 [default = 1.5];
+
+  // global threshold for gradient clipping 
+  optional double gradient_clipping_threshold = 38 [default = 0.0];
 };
 
 message TrainerConfig {

@@ -408,7 +408,8 @@ def settings(batch_size,
 
     args = [
         'batch_size', 'learning_rate', 'learning_rate_decay_a',
-        'learning_rate_decay_b', 'learning_rate_schedule', 'learning_rate_args'
+        'learning_rate_decay_b', 'learning_rate_schedule', 'learning_rate_args',
+        'gradient_clipping_threshold'
     ]
     kwargs = dict()
     kwargs['algorithm'] = algorithm

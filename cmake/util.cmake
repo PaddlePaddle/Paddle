@@ -84,6 +84,7 @@ function(link_paddle_exe TARGET_NAME)
         paddle_parameter
         paddle_proto
         paddle_cuda
+        paddle_optimizer
         ${EXTERNAL_LIBS}
         ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_DL_LIBS}
@@ -149,8 +150,9 @@ endfunction()
 # Create a python unittest using run_python_tests.sh,
 # which takes care of making correct running environment
 function(add_python_test TEST_NAME)
-    add_test(NAME ${TEST_NAME}
-        COMMAND bash ${PROJ_ROOT}/paddle/scripts/run_python_tests.sh
+  add_test(NAME ${TEST_NAME}
+        COMMAND env PADDLE_PACKAGE_DIR=${PADDLE_PYTHON_PACKAGE_DIR}
+        bash ${PROJ_ROOT}/paddle/scripts/run_python_tests.sh
         ${USE_VIRTUALENV_FOR_TEST} ${PYTHON_EXECUTABLE} ${ARGN}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endfunction()
