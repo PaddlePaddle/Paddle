@@ -76,7 +76,7 @@ void RecurrentOp::Run(OpRunContext* contex) const {
   PADDLE_ENFORCE(step_scopes, "failed to get step scopes");
   // forward
   auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
-  size_t seq_len = dims[1];
+  size_t seq_len = dims[0];
   auto& scopes = *step_scopes->GetMutable<std::vector<ScopePtr>>();
   for (size_t step_id = 0; step_id < seq_len; step_id++) {
     ScopePtr step_scope = scopes[step_id];
@@ -109,7 +109,7 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
 
 void RecurrentOp::CreateScopes(ScopePtr scope) const {
   auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
-  size_t seq_len = dims[1];
+  size_t seq_len = dims[0];
   Variable* scopes_var = scope->GetVariable(step_scopes_name_);
   auto step_scopes = scopes_var->GetMutable<std::vector<ScopePtr>>();
   // TODO Only two scopes are needed for inference, this case will be
@@ -136,6 +136,30 @@ void RecurrentOp::CreateStepNet(ScopePtr scope) const {
   // TODO add op descs
 }
 
+void RecurrentOp::SegmentInputs(ScopePtr scope) const {
+  Variable* scopes_var = scope->CreateVariable(step_scopes_name_);
+  auto& step_scopes = *scopes_var->GetMutable<std::vector<Scope*>>();
+
+  auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
+  int seq_len = dims[0];
+  int batch_size = dims[1];
+  int dim = dims[2];
+  int length = batch_size * dim;
+  for (size_t i = 0; i < inputs_.size(); i++) {
+    const float* scope_input =
+        Input(scope, i)->GetMutable<Tensor>()->data<float>();
+    for (int j = 0; j < seq_len; j++) {
+      std::string name =
+          name_ + "@input_" + inputs_[i] + "@step_" + std::to_string(j);
+      Variable* input_var = step_scopes[j]->CreateVariable(name);
+      Tensor* step_input_tensor = input_var->GetMutable<Tensor>();
+      float* step_input = step_input_tensor->mutable_data<float>(
+          make_ddim({1, batch_size, dim}), platform::CPUPlace());
+      std::memcpy(step_input, scope_input + j * length, length);
+    }
+  }
+}
+
 void RecurrentOp::LinkMemories(ScopePtr scope,
                                std::vector<ScopePtr>& step_scopes,
                                size_t step) const {
@@ -144,8 +168,6 @@ void RecurrentOp::LinkMemories(ScopePtr scope,
                  step_scopes.size());
   // copy boot memory
   for (auto& attr : memory_attrs_) {
-    // Scope* step_scope = step_scopes[step];
-
     Tensor* boot_tensor{nullptr};
     if (step == 0) {
       PADDLE_ENFORCE(scope->HasVariable(attr.boot_var),

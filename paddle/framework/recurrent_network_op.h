@@ -87,10 +87,13 @@ class PlainNet {
 
 // fake interfaces end
 // --------------------------------------------------------------------
+// The sequence format in RecurrentOp is Tensor<seq_len, batch_size, dim> now.
 // TODO:
 // 1. No-padding computing for sequences with indifinite length in one batch.
 // 2. Hierarchical RNN for sequence with sub-sequence.
 // 3. Multi-inputs with indifinate length for RecurrentOp.
+// 4. More Complex RNN architecture, such as Gated Feedback RNN.
+//    Refer to: https://arxiv.org/pdf/1502.02367.pdf
 class RecurrentOp : public OperatorBase {
  public:
   /*
@@ -115,7 +118,7 @@ class RecurrentOp : public OperatorBase {
   /*
    * Prepare inputs for each stepnet.
    */
-  void SegmentInputs(ScopePtr scope) const {};
+  void SegmentInputs(ScopePtr scope) const;
 
   /*
    * Process outputs of stepnets and merge to variables.
