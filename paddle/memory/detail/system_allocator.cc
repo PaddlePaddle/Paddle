@@ -60,7 +60,7 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
   free(p);
 }
 
-bool CPUAllocator::UseGpu() { return false; }
+bool CPUAllocator::UseGpu() const { return false; }
 
 #ifndef PADDLE_ONLY_CPU
 
@@ -133,7 +133,7 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
   }
 }
 
-bool GPUAllocator::UseGpu() { return true; }
+bool GPUAllocator::UseGpu() const { return true; }
 
 #endif  // PADDLE_ONLY_CPU
 

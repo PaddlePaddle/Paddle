@@ -42,7 +42,7 @@ class BuddyAllocator {
   void Free(void*);
   size_t Used();
 
- private:
+ public:
   // Disable copy and assignment.
   BuddyAllocator(const BuddyAllocator&) = delete;
   BuddyAllocator& operator=(const BuddyAllocator&) = delete;
@@ -57,6 +57,7 @@ class BuddyAllocator {
 
   /*! \brief If existing chunks are not suitable, refill pool */
   PoolSet::iterator RefillPool();
+
   /**
    *  \brief Find the suitable chunk from existing pool
    *

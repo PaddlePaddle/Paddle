@@ -23,14 +23,14 @@ namespace paddle {
 namespace memory {
 namespace detail {
 
-/*! A cache for accessing memory block meta-data that may be expensive to access
-   directly.
-
-    Note: this class exists to unify the metadata format between GPU and CPU
-   allocations.
-    It should be removed when the CPU can access all GPU allocations directly
-   via UVM.
-*/
+/**
+ *  \brief A cache for accessing memory block meta-data that may be expensive
+ *         to access directly.
+ *
+ *  \note  This class exists to unify the metadata format between GPU and CPU
+ *         allocations. It should be removed when the CPU can access all GPU
+ *         allocations directly via UVM.
+ */
 class MetadataCache {
  public:
   MetadataCache(bool uses_gpu);
@@ -42,14 +42,7 @@ class MetadataCache {
   /*! \brief Store the associated metadata for the specified memory block. */
   void store(MemoryBlock*, const Metadata&);
 
- public:
-  /*! \brief Acquire any external metadata updates. */
-  void acquire(MemoryBlock*);
-
-  /*! \brief Publish any local updates externally. */
-  void release(MemoryBlock*);
-
-  /*! \brief Indicate that the specified metadata will no longer be used */
+  /*! \brief Indicate that the specified metadata will no longer be used. */
   void invalidate(MemoryBlock*);
 
  public:
