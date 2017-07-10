@@ -40,7 +40,7 @@ class OperatorBase {
   virtual ~OperatorBase() {}
   void Init(const OpDesc& op_desc, AttributeMap& attrs) {}
   virtual void Run(OpRunContext* context) const = 0;
-  virtual void InferShape(const Scope* scope) const = 0;
+  virtual void InferShape(Scope* scope) const = 0;
   inline Variable* Input(Scope* scope, int index) const {
     return scope->GetVariable(inputs_[index]);
   };
@@ -109,7 +109,7 @@ class RecurrentOp : public OperatorBase {
     }
   }
 
-  virtual void InferShape(const Scope* scope) const override;
+  virtual void InferShape(Scope* scope) const override {}
 
   /*
    * Forward run the RNN.
@@ -118,6 +118,8 @@ class RecurrentOp : public OperatorBase {
    * father should be set/updated in this method.
    */
   virtual void Run(OpRunContext* contex) const override;
+
+  virtual ~RecurrentOp() {}
 
  protected:
   /*

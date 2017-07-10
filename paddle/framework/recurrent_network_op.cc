@@ -11,20 +11,33 @@ namespace framework {
 namespace fake {
 class FcOp : public OperatorBase {
  public:
-  FcOp(const OpDesc& desc) {}
+  FcOp(const OpDesc& desc) : name_(desc.name()) {}
 
-  virtual void InferShape(const Scope* scope) const override {
-    LOG(INFO) << "fc InferShape";
+  virtual void InferShape(Scope* scope) const override {
+    for (const auto& output : outputs_) {
+      LOG(INFO) << "fc [" << name_ << "]"
+                << " create output variable [" << output << "]";
+      scope->CreateVariable(output);
+    }
   }
 
   virtual void Run(OpRunContext* contex) const override {
-    LOG(INFO) << "fc Run";
+    for (const auto& input : inputs_) {
+      PADDLE_ENFORCE(contex->scope->HasVariable(input),
+                     "no input variable [%s] exists");
+      LOG(INFO) << "fc [" << name_ << "] read input [" << input << "]";
+    }
+    for (const auto& output : outputs_) {
+      PADDLE_ENFORCE(contex->scope->HasVariable(output),
+                     "no output variable [%s] exists");
+      LOG(INFO) << "fc [" << name_ << "] write output [" << output << "]";
+    }
   }
 
  private:
   std::string name_;
 };
-};  // namespace fake
+}  // namespace fake
 
 void PlainNet::AddOp(const OpDesc& desc) {
   if (desc.type() == "fc") {
