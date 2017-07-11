@@ -19,6 +19,6 @@ func TestOptimizerCreateRelease(t *testing.T) {
 		Param:  p,
 		Config: config,
 	}
-	o := newOptimizer(param)
+	o := newOptimizer(param, nil)
 	o.Cleanup()
 }
