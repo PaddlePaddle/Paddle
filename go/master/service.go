@@ -359,7 +359,7 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 	}
 
 	*task = t.Task
-	log.WithFields(s.logFields()).Infof("Task #%v dispatched.", t.Meta)
+	log.WithFields(s.logFields()).Infof("Task #%v dispatched.", t.Task.Meta)
 
 	time.AfterFunc(s.timeoutDur, s.checkTimeoutFunc(t.Task.Meta.ID, t.Task.Meta.Epoch))
 	return nil
@@ -376,7 +376,6 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 
 	t, ok := s.taskQueues.Pending[taskID]
 	if !ok {
-		err := errors.New("pending task not found")
 		log.WithFields(s.logFields()).Warningln("Pending task #%d not found.", taskID)
 		return nil
 	}
@@ -412,8 +411,7 @@ func (s *Service) TaskFailed(meta TaskMeta, dummy *int) error {
 
 	t, ok := s.taskQueues.Pending[meta.ID]
 	if !ok {
-		err := errors.New("pending task not found")
-		log.WithFields(s.logFields()).Warningln("TaskFailed:Pending task #%v not found.", t.Meta)
+		log.WithFields(s.logFields()).Warningln("TaskFailed:Pending task #%v not found.", t.Task.Meta)
 		return nil
 	}
 

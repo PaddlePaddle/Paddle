@@ -114,7 +114,7 @@ func (c *Client) taskFinished(taskID int) error {
 
 // TaskFailed tell the master server as task is failed.
 func (c *Client) taskFailed(meta TaskMeta) error {
-	return c.conn.Call("Service.TaskFinished", meta, nil)
+	return c.conn.Call("Service.TaskFailed", meta, nil)
 }
 
 // NextRecord returns next record in the dataset.

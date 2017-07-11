@@ -99,6 +99,12 @@ func TestGetFinishTask(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error: %v, pass: %d\n", err, i)
 		}
+
+		err = c.taskFailed(tasks[0].Meta)
+		if err != nil {
+			t.Fatalf("Error: %v, pass: %d\n", err, i)
+		}
+
 		tasks = tasks[1:]
 		task, err := c.getTask()
 		if err != nil {
