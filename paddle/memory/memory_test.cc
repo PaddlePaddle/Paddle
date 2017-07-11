@@ -33,7 +33,7 @@ TEST(BuddyAllocator, CPUAllocation) {
 TEST(BuddyAllocator, CPUMultAlloc) {
   paddle::platform::CPUPlace cpu;
 
-  std::vector<void*> ps;
+  std::vector<void *> ps;
   ps.reserve(8);
 
   for (auto size : {256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304}) {
