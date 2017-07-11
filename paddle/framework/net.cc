@@ -11,10 +11,7 @@ void PlainNet::InferShape(Scope* scope) {
   }
 }
 
-void PlainNet::Run(Scope* scope, OpContext* context, OpIndex begin,
-                   OpIndex end) const {
-  // TODO Add implementation here.
-}
+void PlainNet::Run(Scope* scope) const {}
 
 }  // namespace framework
 }  // namespace paddle

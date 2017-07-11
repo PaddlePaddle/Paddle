@@ -69,8 +69,7 @@ class Net {
    * environment for ops. `begin` and `end` specify the scope of `ops_` to run,
    * If no positive indexes are provided, all operators in `ops_` will run.
    */
-  virtual void Run(Scope *scope, OpContext *context, OpIndex begin = -1,
-                   OpIndex end = -1) const = 0;
+  virtual void Run(Scope *scope) const = 0;
 
   /**
    * @brief Add an Operator according to `def`.
@@ -124,8 +123,7 @@ class PlainNet : public Net {
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  virtual void Run(Scope *scope = nullptr, OpContext *context = nullptr,
-                   OpIndex begin = -1, OpIndex end = -1) const override;
+  virtual void Run(Scope *scope) const override;
 
   /**
    * @brief Add an operator to this network.

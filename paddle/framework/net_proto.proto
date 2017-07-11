@@ -9,7 +9,7 @@ message NetDesc {
   // operator contains in network
   repeated OpProto operators = 2;
   // network type to run with. e.g "plainNet", "DAG"
-  optional string type = 3;
+  optional string net_type = 3;
   // num worker always
   optional int32 num_workers = 4;
 }
