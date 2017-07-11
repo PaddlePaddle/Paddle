@@ -3176,7 +3176,7 @@ class RecurrentLayerGroup(LayerBase):
 
 @config_layer('pixel_softmax')
 class PixelSoftmaxLayer(LayerBase):
-    def __init__(self, input, name, **xargs):
+    def __init__(self, name, inputs, **xargs):
         super(PixelSoftmaxLayer, self).__init__(
             name, 'pixel_softmax', 0, inputs=inputs, **xargs)
 

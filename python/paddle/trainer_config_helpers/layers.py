@@ -126,6 +126,7 @@ __all__ = [
     'row_conv_layer',
     'dropout_layer',
     'prelu_layer',
+    'pixel_softmax_layer',
 ]
 
 
@@ -5905,8 +5906,8 @@ def pixel_softmax_layer(input, name=None, layer_attr=None):
     else:
         assert isinstance(input, collections.Sequence)
     l = Layer(
-        inputs=[x.name for x in input],
         name=name,
+        inputs=[x.name for x in input],
         type=LayerType.PIXEL_SOFTMAX_LAYER,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
