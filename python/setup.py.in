@@ -1,5 +1,9 @@
 from setuptools import setup
+from setuptools.extension import Extension
+import os
+from Cython.Build import cythonize
 
+PADDLE_C_LOCATION = os.getenv("PADDLE_C_LOCATION")
 packages=['paddle',
           'paddle.proto',
           'paddle.trainer',
@@ -19,10 +23,21 @@ setup_requires=["requests",
                 "recordio",
                 "matplotlib",
                 "rarfile",
-                "scipy>=0.19.0"]
+                "scipy>=0.19.0",
+                "cython"]
 
 if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
     setup_requires+=["opencv-python"]
+
+
+extensions = [
+  Extension('paddle.v2.framework.c',
+    ['${CMAKE_CURRENT_SOURCE_DIR}/paddle/v2/framework/c.pyx'],
+    include_dirs = ['${PROJ_ROOT}'],
+    libraries = ['paddle_c'],
+    library_dirs = [os.path.dirname(PADDLE_C_LOCATION)]
+  ),
+]
 
 setup(name='paddle',
       version='${PADDLE_VERSION}',
@@ -36,4 +51,5 @@ setup(name='paddle',
           # So that package points to other directory.
           'paddle.v2.framework.proto': '${PROJ_BINARY_ROOT}/paddle/framework'
       },
+      ext_modules = cythonize(extensions),
 )

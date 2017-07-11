@@ -24,3 +24,7 @@ class TestFrameworkProto(unittest.TestCase):
         attr.type = attr_type_lib.FLOAT
         op_proto.type = "cos"
         self.assertTrue(op_proto.IsInitialized())
+
+
+if __name__ == '__main__':
+    unittest.main()
