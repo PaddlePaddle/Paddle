@@ -23,8 +23,8 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-std::once_flag cublas_dso_flag;
-void *cublas_dso_handle = nullptr;
+extern std::once_flag cublas_dso_flag;
+extern void *cublas_dso_handle;
 
 /**
  * The following macro definition can generate structs
@@ -34,10 +34,10 @@ void *cublas_dso_handle = nullptr;
  * note: default dynamic linked libs
  */
 #ifdef PADDLE_USE_DSO
-#define DYNAMIC_LOAD_CUBLAS_WRAP(__name)                            \
+#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)                    \
   struct DynLoad__##__name {                                        \
     template <typename... Args>                                     \
-    cublasStatus_t operator()(Args... args) {                       \
+    inline cublasStatus_t operator()(Args... args) {                \
       typedef cublasStatus_t (*cublasFunc)(Args...);                \
       std::call_once(cublas_dso_flag,                               \
                      paddle::platform::dynload::GetCublasDsoHandle, \
@@ -45,62 +45,43 @@ void *cublas_dso_handle = nullptr;
       void *p_##__name = dlsym(cublas_dso_handle, #__name);         \
       return reinterpret_cast<cublasFunc>(p_##__name)(args...);     \
     }                                                               \
-  } __name;  // struct DynLoad__##__name
+  };                                                                \
+  extern DynLoad__##__name __name
 #else
-#define DYNAMIC_LOAD_CUBLAS_WRAP(__name)      \
-  struct DynLoad__##__name {                  \
-    template <typename... Args>               \
-    cublasStatus_t operator()(Args... args) { \
-      return __name(args...);                 \
-    }                                         \
-  } __name;  // struct DynLoad__##__name
+#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name) \
+  struct DynLoad__##__name {                     \
+    inline template <typename... Args>           \
+    cublasStatus_t operator()(Args... args) {    \
+      return __name(args...);                    \
+    }                                            \
+  };                                             \
+  extern DynLoad__##__name __name
 #endif
 
-#define DYNAMIC_LOAD_CUBLAS_V2_WRAP(__name) DYNAMIC_LOAD_CUBLAS_WRAP(__name)
-
-// include all needed cublas functions in HPPL
-// clang-format off
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
-  __macro(cublasSgemv)                    \
-  __macro(cublasDgemv)                    \
-  __macro(cublasSgemm)                    \
-  __macro(cublasDgemm)                    \
-  __macro(cublasSgeam)                    \
-  __macro(cublasDgeam)                    \
+  __macro(cublasSgemv);                   \
+  __macro(cublasDgemv);                   \
+  __macro(cublasSgemm);                   \
+  __macro(cublasDgemm);                   \
+  __macro(cublasSgeam);                   \
+  __macro(cublasDgeam);                   \
+  __macro(cublasCreate);                  \
+  __macro(cublasDestroy);                 \
+  __macro(cublasSetStream);               \
+  __macro(cublasSetPointerMode);          \
+  __macro(cublasGetPointerMode);          \
+  __macro(cublasSgemmBatched);            \
+  __macro(cublasDgemmBatched);            \
+  __macro(cublasCgemmBatched);            \
+  __macro(cublasZgemmBatched);            \
+  __macro(cublasSgetrfBatched);           \
+  __macro(cublasSgetriBatched);           \
+  __macro(cublasDgetrfBatched);           \
+  __macro(cublasDgetriBatched)
 
-DYNAMIC_LOAD_CUBLAS_V2_WRAP(cublasCreate)
-DYNAMIC_LOAD_CUBLAS_V2_WRAP(cublasDestroy)
-DYNAMIC_LOAD_CUBLAS_V2_WRAP(cublasSetStream)
-DYNAMIC_LOAD_CUBLAS_V2_WRAP(cublasSetPointerMode)
-DYNAMIC_LOAD_CUBLAS_V2_WRAP(cublasGetPointerMode)
-DYNAMIC_LOAD_CUBLAS_WRAP(cublasSgemmBatched)
-DYNAMIC_LOAD_CUBLAS_WRAP(cublasDgemmBatched)
-DYNAMIC_LOAD_CUBLAS_WRAP(cublasCgemmBatched)
-DYNAMIC_LOAD_CUBLAS_WRAP(cublasZgemmBatched)
-DYNAMIC_LOAD_CUBLAS_WRAP(cublasSgetrfBatched)
-DYNAMIC_LOAD_CUBLAS_WRAP(cublasSgetriBatched)
-DYNAMIC_LOAD_CUBLAS_WRAP(cublasDgetrfBatched)
-DYNAMIC_LOAD_CUBLAS_WRAP(cublasDgetriBatched)
-CUBLAS_BLAS_ROUTINE_EACH(DYNAMIC_LOAD_CUBLAS_V2_WRAP)
+CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP);
 
-#undef DYNAMIC_LOAD_CUBLAS_WRAP
-#undef DYNAMIC_LOAD_CUBLAS_V2_WRAP
-#undef CUBLAS_BLAS_ROUTINE_EACH
-
-// clang-format on
-#ifndef PADDLE_TYPE_DOUBLE
-#define CUBLAS_GEAM paddle::platform::dynload::cublasSgeam
-#define CUBLAS_GEMV paddle::platform::dynload::cublasSgemv
-#define CUBLAS_GEMM paddle::platform::dynload::cublasSgemm
-#define CUBLAS_GETRF paddle::platform::dynload::cublasSgetrfBatched
-#define CUBLAS_GETRI paddle::platform::dynload::cublasSgetriBatched
-#else
-#define CUBLAS_GEAM paddle::platform::dynload::cublasDgeam
-#define CUBLAS_GEMV paddle::platform::dynload::cublasDgemv
-#define CUBLAS_GEMM paddle::platform::dynload::cublasDgemm
-#define CUBLAS_GETRF paddle::platform::dynload::cublasDgetrfBatched
-#define CUBLAS_GETRI paddle::platform::dynload::cublasDgetriBatched
-#endif
+#undef DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
