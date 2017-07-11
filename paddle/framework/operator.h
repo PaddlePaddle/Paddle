@@ -39,8 +39,7 @@ class DeviceContext {};
  */
 class OpRunContext {
  public:
-  OpRunContext(const OperatorBase* op,
-               const std::shared_ptr<Scope> scope,
+  OpRunContext(const OperatorBase* op, const std::shared_ptr<Scope> scope,
                const DeviceContext* device_context)
       : op_(op), scope_(scope), device_context_(device_context) {}
 
@@ -93,7 +92,8 @@ class OperatorWithKernel : public OperatorBase {
 
   virtual void InferShape(const std::shared_ptr<Scope>& scope) const {}
 
-  void Run(const std::shared_ptr<Scope>& scope, const DeviceContext* dev_ctx) const {
+  void Run(const std::shared_ptr<Scope>& scope,
+           const DeviceContext* dev_ctx) const {
     OpRunContext op_ctx(this, scope, dev_ctx);
     Run(&op_ctx);
   }
