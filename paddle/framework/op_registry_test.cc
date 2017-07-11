@@ -7,12 +7,10 @@ using namespace paddle::framework;
 
 namespace paddle {
 namespace framework {
-class CosineOp : public OpBase {
+class CosineOp : public OperatorWithKernel {
  public:
-  virtual std::string Run() const {
-    std::string msg = "CosineOp runs! scale = " +
-                      std::to_string(boost::get<float>(attr_map_.at("scale")));
-    return msg;
+  void Run(OpRunContext* context) const override {
+    printf("%s\n", DebugString().c_str());
   }
 };
 
@@ -32,13 +30,11 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 REGISTER_OP(CosineOp, CosineOpProtoAndCheckerMaker, cos_sim)
 
-class MyTestOp : public OpBase {
+class MyTestOp : public OperatorWithKernel {
  public:
-  virtual std::string Run() const {
-    std::string msg =
-        "MyTestOp runs! test_attr = " +
-        std::to_string(boost::get<int>(attr_map_.at("test_attr")));
-    return msg;
+  void Run(OpRunContext* ctx) const override {
+    printf("%s\n", DebugString().c_str());
+    printf("test_attr = %d\n", ctx->op_->GetAttr<int>("test_attr"));
   }
 };
 

@@ -22,7 +22,7 @@ namespace framework {
 class OperatorTest : public OperatorWithKernel {
  public:
   void Run(OpRunContext* ctx) const override {
-    float scale = GetAttr<float>("scale");
+    float scale = ctx->op_->GetAttr<float>("scale");
     PADDLE_ENFORCE(ctx->Input(0) == nullptr, "Input(0) should not initialized");
     PADDLE_ENFORCE(ctx->Output(0) == nullptr,
                    "Output(1) should not initialized");
