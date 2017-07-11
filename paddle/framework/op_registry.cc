@@ -32,5 +32,5 @@ template <>
 void AttrTypeHelper::SetAttrType<std::vector<std::string>>(AttrProto* attr) {
   attr->set_type(paddle::framework::AttrType::STRINGS);
 }
-}
-}
+}  // namespace framework
+}  // namespace paddle

@@ -1,14 +1,16 @@
 #include "paddle/framework/op_registry.h"
 #include <gtest/gtest.h>
+#include "paddle/framework/operator.h"
+#include "paddle/operators/demo_op.h"
+
+using namespace paddle::framework;
 
 namespace paddle {
 namespace framework {
-class CosineOp : public OpBase {
+class CosineOp : public OperatorWithKernel {
  public:
-  virtual std::string Run() const {
-    std::string msg = "CosineOp runs! scale = " +
-                      std::to_string(boost::get<float>(attr_map_.at("scale")));
-    return msg;
+  void Run(const OpRunContext* context) const override {
+    printf("%s\n", DebugString().c_str());
   }
 };
 
@@ -28,13 +30,11 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 REGISTER_OP(CosineOp, CosineOpProtoAndCheckerMaker, cos_sim)
 
-class MyTestOp : public OpBase {
+class MyTestOp : public OperatorWithKernel {
  public:
-  virtual std::string Run() const {
-    std::string msg =
-        "MyTestOp runs! test_attr = " +
-        std::to_string(boost::get<int>(attr_map_.at("test_attr")));
-    return msg;
+  void Run(const OpRunContext* ctx) const override {
+    printf("%s\n", DebugString().c_str());
+    printf("test_attr = %d\n", ctx->op_->GetAttr<int>("test_attr"));
   }
 };
 
@@ -64,19 +64,19 @@ TEST(OpRegistry, CreateOp) {
   op_desc.add_inputs("aa");
   op_desc.add_outputs("bb");
 
+  float scale = 3.3;
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
   attr->set_type(paddle::framework::AttrType::FLOAT);
-  attr->set_f(3.3);
+  attr->set_f(scale);
 
-  paddle::framework::OpBase* op =
+  paddle::framework::OperatorBase* op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
-  std::string debug_str = op->Run();
-  std::string str = "CosineOp runs! scale = " + std::to_string(3.3);
-  ASSERT_EQ(str.size(), debug_str.size());
-  for (size_t i = 0; i < debug_str.length(); ++i) {
-    ASSERT_EQ(debug_str[i], str[i]);
-  }
+  auto scope = std::make_shared<Scope>();
+  auto dev_ctx = DeviceContext();
+  op->Run(scope, &dev_ctx);
+  float scale_get = op->GetAttr<float>("scale");
+  ASSERT_EQ(scale_get, scale);
 }
 
 TEST(OpRegistry, IllegalAttr) {
@@ -92,7 +92,7 @@ TEST(OpRegistry, IllegalAttr) {
 
   bool caught = false;
   try {
-    paddle::framework::OpBase* op __attribute__((unused)) =
+    paddle::framework::OperatorBase* op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
@@ -111,15 +111,14 @@ TEST(OpRegistry, DefaultValue) {
   op_desc.add_inputs("aa");
   op_desc.add_outputs("bb");
 
-  paddle::framework::OpBase* op =
+  ASSERT_TRUE(op_desc.IsInitialized());
+
+  paddle::framework::OperatorBase* op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
-  std::string debug_str = op->Run();
-  float default_value = 1.0;
-  std::string str = "CosineOp runs! scale = " + std::to_string(default_value);
-  ASSERT_EQ(str.size(), debug_str.size());
-  for (size_t i = 0; i < debug_str.length(); ++i) {
-    ASSERT_EQ(debug_str[i], str[i]);
-  }
+  auto scope = std::make_shared<Scope>();
+  auto dev_ctx = DeviceContext();
+  op->Run(scope, &dev_ctx);
+  ASSERT_EQ(op->GetAttr<float>("scale"), 1.0);
 }
 
 TEST(OpRegistry, CustomChecker) {
@@ -131,7 +130,7 @@ TEST(OpRegistry, CustomChecker) {
   // attr 'test_attr' is not set
   bool caught = false;
   try {
-    paddle::framework::OpBase* op __attribute__((unused)) =
+    paddle::framework::OperatorBase* op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
@@ -150,7 +149,7 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_i(3);
   caught = false;
   try {
-    paddle::framework::OpBase* op __attribute__((unused)) =
+    paddle::framework::OperatorBase* op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
@@ -168,14 +167,13 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_name("test_attr");
   attr->set_type(paddle::framework::AttrType::INT);
   attr->set_i(4);
-  paddle::framework::OpBase* op =
+  paddle::framework::OperatorBase* op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
-  std::string debug_str = op->Run();
-  std::string str = "MyTestOp runs! test_attr = " + std::to_string(4);
-  ASSERT_EQ(str.size(), debug_str.size());
-  for (size_t i = 0; i < debug_str.length(); ++i) {
-    ASSERT_EQ(debug_str[i], str[i]);
-  }
+  auto dev_ctx = DeviceContext();
+  auto scope = std::make_shared<Scope>();
+  op->Run(scope, &dev_ctx);
+  int test_attr = op->GetAttr<int>("test_attr");
+  ASSERT_EQ(test_attr, 4);
 }
 
 int main(int argc, char** argv) {

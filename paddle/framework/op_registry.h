@@ -1,26 +1,13 @@
 #pragma once
 
-#include "paddle/framework/attr_checker.h"
-
-//#include "paddle/framework/op_base.h"
 #include <algorithm>
+#include "paddle/framework/attr_checker.h"
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/op_proto.pb.h"
+#include "paddle/framework/operator.h"
 
 namespace paddle {
 namespace framework {
-
-//==================For test================//
-class OpBase {
- public:
-  std::vector<std::string> inputs_;
-  std::vector<std::string> outputs_;
-  AttributeMap attr_map_;
-
-  virtual std::string Run() const = 0;
-  virtual ~OpBase() {}
-};
-//=========================================//
 
 // helper class to set attribute type
 struct AttrTypeHelper {
@@ -105,7 +92,7 @@ class OpProtoAndCheckerMaker {
 };
 
 class OpRegistry {
-  using OpCreator = std::function<OpBase*()>;
+  using OpCreator = std::function<OperatorBase*()>;
 
  public:
   template <typename OpType, typename ProtoMakerType>
@@ -118,9 +105,10 @@ class OpRegistry {
                    "Fail to initialize %s's OpProto !", op_type);
   }
 
-  static OpBase* CreateOp(const OpDesc& op_desc) {
+  static OperatorBase* CreateOp(const OpDesc& op_desc) {
     std::string op_type = op_desc.type();
-    OpBase* op = creators().at(op_type)();
+    OperatorBase* op = creators().at(op_type)();
+    op->desc_ = op_desc;
     op->inputs_.reserve((size_t)op_desc.inputs_size());
     std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),
               std::back_inserter(op->inputs_));
@@ -128,9 +116,9 @@ class OpRegistry {
     std::copy(op_desc.outputs().begin(), op_desc.outputs().end(),
               std::back_inserter(op->outputs_));
     for (auto& attr : op_desc.attrs()) {
-      op->attr_map_[attr.name()] = AttrTypeHelper::GetAttrValue(attr);
+      op->attrs_[attr.name()] = AttrTypeHelper::GetAttrValue(attr);
     }
-    op_checkers().at(op_type).Check(op->attr_map_);
+    op_checkers().at(op_type).Check(op->attrs_);
     return op;
   }
 
