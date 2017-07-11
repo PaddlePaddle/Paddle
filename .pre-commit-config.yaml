@@ -4,12 +4,12 @@
     -   id: remove-crlf
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
 -   repo: https://github.com/PaddlePaddle/mirrors-yapf.git
-    sha: v0.16.2
+    sha: 0d79c0c469bab64f7229c9aca2b1186ef47f0e37
     hooks:
     -   id: yapf
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    sha: 286962eeb7af67f321b94a22e8edbd3004b1810e
+    sha: 5bf6c09bfa1297d3692cadd621ef95f1284e33c0
     hooks:
     -   id: check-added-large-files
     -   id: check-merge-conflict
@@ -24,7 +24,7 @@
 -   repo: https://github.com/dnephin/pre-commit-golang
     sha: e4693a4c282b4fc878eda172a929f7a6508e7d16
     hooks:
-    -   id: go-fmt
-        files: (.*\.go)
-    -   id: go-lint
-        files: (.*\.go)
+      -   id: go-fmt
+          files: (.*\.go)
+      -   id: go-lint
+          files: (.*\.go)

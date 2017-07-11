@@ -27,6 +27,8 @@ const (
 	AlreadyInitialized = "pserver already initialized"
 	// Uninitialized is true if pserver not fully initialized
 	Uninitialized = "pserver not fully initialized"
+	// CheckpointUnmatched is true if the md5 of checkpoint file does matched the older
+	CheckpointUnmatched = "checkpoint file does not matched the older"
 )
 
 // Supported element types
@@ -111,7 +113,7 @@ func NewCheckpointFromFile(cpPath string, idx int, e *EtcdClient) (*Checkpoint, 
 	}
 	md5 := hex.EncodeToString(h.Sum(nil))
 	if md5 != cpMeta.MD5 {
-		return nil, errors.New("md5 does match, load checkpoint failed")
+		return nil, errors.New(CheckpointUnmatched)
 	}
 
 	dec := gob.NewDecoder(f)
