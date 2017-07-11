@@ -17,8 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void OperatorBase::InferShape(const std::shared_ptr<Scope>& scope) const {}
-
 std::string OperatorBase::DebugString() const {
   std::stringstream ss;
   ss << "=================\n";

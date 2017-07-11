@@ -1,6 +1,9 @@
 #include "paddle/framework/op_registry.h"
 #include <gtest/gtest.h>
+#include "paddle/framework/operator.h"
 #include "paddle/operators/demo_op.h"
+
+using namespace paddle::framework;
 
 TEST(OpRegistry, CreateOp) {
   paddle::framework::OpDesc op_desc;
@@ -16,7 +19,9 @@ TEST(OpRegistry, CreateOp) {
 
   paddle::framework::OperatorBase* op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
-  op->Run(nullptr);
+  auto scope = std::make_shared<Scope>();
+  auto dev_ctx = DeviceContext();
+  op->Run(scope, &dev_ctx);
   float scale_get = op->GetAttr<float>("scale");
   ASSERT_EQ(scale_get, scale);
 }
@@ -57,7 +62,9 @@ TEST(OpRegistry, DefaultValue) {
 
   paddle::framework::OperatorBase* op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
-  op->Run(nullptr);
+  auto scope = std::make_shared<Scope>();
+  auto dev_ctx = DeviceContext();
+  op->Run(scope, &dev_ctx);
   ASSERT_EQ(op->GetAttr<float>("scale"), 1.0);
 }
 
@@ -109,7 +116,9 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_i(4);
   paddle::framework::OperatorBase* op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
-  op->Run(nullptr);
+  auto dev_ctx = DeviceContext();
+  auto scope = std::make_shared<Scope>();
+  op->Run(scope, &dev_ctx);
   int test_attr = op->GetAttr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);
 }

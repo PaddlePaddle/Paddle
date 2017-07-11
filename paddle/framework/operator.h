@@ -73,9 +73,25 @@ class OperatorBase {
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  virtual void InferShape(const std::shared_ptr<Scope>& scope) const;
+  virtual void InferShape(const std::shared_ptr<Scope>& scope) const = 0;
 
   /// Net will call this function to Run an op.
+  virtual void Run(const std::shared_ptr<Scope>& scope,
+                   DeviceContext* dev_ctx) = 0;
+
+ public:
+  OpDesc desc_;
+  std::vector<std::string> inputs_;
+  std::vector<std::string> outputs_;
+  AttributeMap attrs_;
+};
+
+class OperatorWithKernel : public OperatorBase {
+ public:
+  virtual ~OperatorWithKernel() {}
+
+  virtual void InferShape(const std::shared_ptr<Scope>& scope) const {}
+
   void Run(const std::shared_ptr<Scope>& scope, DeviceContext* dev_ctx) {
     OpRunContext op_ctx(this, scope, dev_ctx);
     Run(&op_ctx);
@@ -84,12 +100,6 @@ class OperatorBase {
   /// when implement an Op, your should implement this function.
   /// this function should be moved to OpKernel later
   virtual void Run(OpRunContext* context) const = 0;
-
- public:
-  OpDesc desc_;
-  std::vector<std::string> inputs_;
-  std::vector<std::string> outputs_;
-  AttributeMap attrs_;
 };
 
 }  // namespace framework

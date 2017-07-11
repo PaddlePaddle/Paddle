@@ -7,7 +7,7 @@ using namespace paddle::framework;
 namespace paddle {
 namespace operators {
 
-class CosineOp : public OperatorBase {
+class CosineOp : public OperatorWithKernel {
  public:
   void Run(OpRunContext *context) const override {
     printf("%s\n", DebugString().c_str());
@@ -30,7 +30,7 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 REGISTER_OP(CosineOp, CosineOpProtoAndCheckerMaker, cos_sim)
 
-class MyTestOp : public OperatorBase {
+class MyTestOp : public OperatorWithKernel {
  public:
   void Run(OpRunContext *context) const override {
     printf("%s\n", DebugString().c_str());
