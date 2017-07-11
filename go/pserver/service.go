@@ -1,9 +1,21 @@
 package pserver
 
 import (
+	"bufio"
+	"bytes"
+	"crypto/md5"
+	"encoding/gob"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
 	"sync"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // ElementType is the type of elements of a Parameter.
@@ -39,26 +51,55 @@ type ParameterWithConfig struct {
 	Config []byte // parameter configuration in Proto Buffer format
 }
 
+// ParameterCheckpoint is Parameter and State checkpoint
+type ParameterCheckpoint struct {
+	ParamConfig ParameterWithConfig
+	State       []byte
+}
+
+// checkpoint signature
+type checkpointMeta struct {
+	UUID      string `json:"uuid"`
+	Md5sum    string `json:"md5sum"`
+	Timestamp string `json:"timestamp"`
+}
+
+// Checkpoint is the pserver shard persist in file
+type Checkpoint []ParameterCheckpoint
+
 // Gradient is the gradient of the parameter.
 type Gradient Parameter
 
 // Service is the RPC service for pserver.
 type Service struct {
-	initialized chan struct{}
-	idx         int
-
-	mu     sync.Mutex
-	optMap map[string]*optimizer
+	initialized        chan struct{}
+	idx                int
+	checkpointInterval time.Duration
+	checkpointPath     string
+	client             *EtcdClient
+	mu                 sync.Mutex
+	optMap             map[string]*optimizer
 }
 
 // NewService creates a new service, will bypass etcd registration if no
 // endpoints specified.
-func NewService(idx int) (*Service, error) {
+func NewService(idx int, seconds int, path string, client *EtcdClient, cp Checkpoint) (*Service, error) {
 	s := &Service{
-		idx: idx,
+		idx:                idx,
+		checkpointInterval: time.Second * time.Duration(seconds),
+		checkpointPath:     path,
+		client:             client,
 	}
 	s.optMap = make(map[string]*optimizer)
 	s.initialized = make(chan struct{})
+
+	if cp != nil {
+		for _, item := range cp {
+			p := item.ParamConfig
+			st := item.State
+			s.optMap[p.Param.Name] = newOptimizer(p, st)
+		}
+	}
 	return s, nil
 }
 
@@ -78,7 +119,7 @@ func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, dummy *int) er
 	// TODO(helin): check if paramWithConfigs.Param.Content is
 	// properly memory aligned, if not, make copy to a memory
 	// aligned region.
-	s.optMap[paramWithConfigs.Param.Name] = newOptimizer(paramWithConfigs)
+	s.optMap[paramWithConfigs.Param.Name] = newOptimizer(paramWithConfigs, nil)
 	return nil
 }
 
@@ -139,10 +180,57 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	return nil
 }
 
-// Save tells the parameter server to save parameters.
-func (s *Service) Save(path string, dummy *int) error {
+// pserver save checkpoint
+func (s *Service) doCheckpoint() error {
 	<-s.initialized
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	// TODO
+	cp := make([]ParameterCheckpoint, 0, len(s.optMap))
+	index := 0
+	for name, opt := range s.optMap {
+		var pc ParameterCheckpoint
+		pc.ParamConfig.Param.Name = name
+		pc.ParamConfig.Param.ElementType = opt.elementType
+		pc.ParamConfig.Param.Content = opt.GetWeights()
+		pc.State = opt.GetStates()
+		cp[index] = pc
+		index++
+	}
+	var buf bytes.Buffer
+	encoder := gob.NewEncoder(&buf)
+	err := encoder.Encode(cp)
+	if err != nil {
+		return err
+	}
+
+	cpMeta := checkpointMeta{}
+	cpMeta.UUID = s.checkpointPath + strconv.Itoa(s.idx)
+	cpMeta.Timestamp = time.Now().String()
+	h := md5.New()
+	cpMeta.Md5sum = hex.EncodeToString(h.Sum(buf.Bytes()))
+
+	cpMetajson, _ := json.Marshal(cpMeta)
+	err = s.client.PutKey(filepath.Join(PsCheckpoint, strconv.Itoa(s.idx)), cpMetajson, 3)
+	if err != nil {
+		return err
+	}
+	if _, err = os.Stat(cpMeta.UUID); os.IsNotExist(err) {
+		log.Info("checkpoint does not exists.")
+	} else {
+		err = os.Remove(cpMeta.UUID)
+		log.Infof("checkpoint %s already exsits, removing ", cpMeta.UUID)
+	}
+	f, err := os.Create(cpMeta.UUID)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+	writer := bufio.NewWriter(f)
+	_, err = writer.Write(buf.Bytes())
+	writer.Flush()
+	if err != nil {
+		return err
+	}
 	return nil
 }
