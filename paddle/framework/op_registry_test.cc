@@ -1,5 +1,6 @@
 #include "paddle/framework/op_registry.h"
 #include <gtest/gtest.h>
+#include "paddle/operators/demo_op.h"
 
 TEST(OpRegistry, CreateOp) {
   paddle::framework::OpDesc op_desc;
@@ -7,19 +8,17 @@ TEST(OpRegistry, CreateOp) {
   op_desc.add_inputs("aa");
   op_desc.add_outputs("bb");
 
+  float scale = 3.3;
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
   attr->set_type(paddle::framework::AttrType::FLOAT);
-  attr->set_f(3.3);
+  attr->set_f(scale);
 
-  paddle::framework::OpBase* op =
+  paddle::framework::OperatorBase* op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
-  std::string debug_str = op->Run();
-  std::string str = "CosineOp runs! scale = " + std::to_string(3.3);
-  ASSERT_EQ(str.size(), debug_str.size());
-  for (size_t i = 0; i < debug_str.length(); ++i) {
-    ASSERT_EQ(debug_str[i], str[i]);
-  }
+  op->Run(nullptr);
+  float scale_get = op->GetAttr<float>("scale");
+  ASSERT_EQ(scale_get, scale);
 }
 
 TEST(OpRegistry, IllegalAttr) {
@@ -35,7 +34,7 @@ TEST(OpRegistry, IllegalAttr) {
 
   bool caught = false;
   try {
-    paddle::framework::OpBase* op __attribute__((unused)) =
+    paddle::framework::OperatorBase* op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
@@ -54,15 +53,12 @@ TEST(OpRegistry, DefaultValue) {
   op_desc.add_inputs("aa");
   op_desc.add_outputs("bb");
 
-  paddle::framework::OpBase* op =
+  ASSERT_TRUE(op_desc.IsInitialized());
+
+  paddle::framework::OperatorBase* op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
-  std::string debug_str = op->Run();
-  float default_value = 1.0;
-  std::string str = "CosineOp runs! scale = " + std::to_string(default_value);
-  ASSERT_EQ(str.size(), debug_str.size());
-  for (size_t i = 0; i < debug_str.length(); ++i) {
-    ASSERT_EQ(debug_str[i], str[i]);
-  }
+  op->Run(nullptr);
+  ASSERT_EQ(op->GetAttr<float>("scale"), 1.0);
 }
 
 TEST(OpRegistry, CustomChecker) {
@@ -74,7 +70,7 @@ TEST(OpRegistry, CustomChecker) {
   // attr 'test_attr' is not set
   bool caught = false;
   try {
-    paddle::framework::OpBase* op __attribute__((unused)) =
+    paddle::framework::OperatorBase* op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
@@ -93,7 +89,7 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_i(3);
   caught = false;
   try {
-    paddle::framework::OpBase* op __attribute__((unused)) =
+    paddle::framework::OperatorBase* op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
@@ -111,12 +107,9 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_name("test_attr");
   attr->set_type(paddle::framework::AttrType::INT);
   attr->set_i(4);
-  paddle::framework::OpBase* op =
+  paddle::framework::OperatorBase* op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
-  std::string debug_str = op->Run();
-  std::string str = "MyTestOp runs! test_attr = " + std::to_string(4);
-  ASSERT_EQ(str.size(), debug_str.size());
-  for (size_t i = 0; i < debug_str.length(); ++i) {
-    ASSERT_EQ(debug_str[i], str[i]);
-  }
+  op->Run(nullptr);
+  int test_attr = op->GetAttr<int>("test_attr");
+  ASSERT_EQ(test_attr, 4);
 }

@@ -2,24 +2,12 @@
 
 #include "paddle/framework/attr_checker.h"
 
-//#include "paddle/framework/op_base.h"
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/op_proto.pb.h"
+#include "paddle/framework/operator.h"
 
 namespace paddle {
 namespace framework {
-
-//==================For test================//
-class OpBase {
- public:
-  std::vector<std::string> inputs_;
-  std::vector<std::string> outputs_;
-  AttributeMap attr_map_;
-
-  virtual std::string Run() const = 0;
-  virtual ~OpBase() {}
-};
-//=========================================//
 
 // helper class to set attribute type
 struct AttrTypeHelper {
@@ -134,7 +122,7 @@ class OpProtoAndCheckerMaker {
 };
 
 class OpRegistry {
-  typedef std::function<OpBase*()> OpCreator;
+  typedef std::function<OperatorBase*()> OpCreator;
 
  public:
   template <typename OpType, typename ProtoMakerType>
@@ -143,28 +131,29 @@ class OpRegistry {
     OpProto& op_proto = protos_[op_type];
     OpAttrChecker& op_checker = op_checkers_[op_type];
     ProtoMakerType(&op_proto, &op_checker);
-    PADDLE_ENFORCE(op_proto.IsInitialized() == true,
+    PADDLE_ENFORCE(op_proto.IsInitialized(),
                    "Fail to initialize %s's OpProto !", op_type);
   }
 
-  static OpBase* CreateOp(const OpDesc& op_desc) {
+  static OperatorBase* CreateOp(const OpDesc& op_desc) {
     std::string op_type = op_desc.type();
-    OpBase* op = (creators_.at(op_type))();
-    (op->inputs_).resize(op_desc.inputs_size());
-    for (int i = 0; i < op_desc.inputs_size(); ++i) {
-      (op->inputs_)[i] = op_desc.inputs(i);
-    }
-    (op->outputs_).resize(op_desc.outputs_size());
-    for (int i = 0; i < op_desc.outputs_size(); ++i) {
-      (op->outputs_)[i] = op_desc.outputs(i);
-    }
+    OperatorBase* op = (creators_.at(op_type))();
+    // init attrs
     for (int i = 0; i < op_desc.attrs_size(); ++i) {
       const AttrDesc& ith_attr = op_desc.attrs(i);
       std::string name = ith_attr.name();
-      (op->attr_map_)[name] = AttrTypeHelper::GetAttrValue(ith_attr);
+      (op->attrs_)[name] = AttrTypeHelper::GetAttrValue(ith_attr);
     }
-    const OpAttrChecker& op_checker = op_checkers_.at(op_type);
-    op_checker.Check(op->attr_map_);
+    const OpAttrChecker& op_checker = OpRegistry::op_checkers_.at(op_type);
+    // check attrs
+    op_checker.Check(op->attrs_);
+    op->desc_ = op_desc;
+    for (auto& input : op_desc.inputs()) {
+      op->inputs_.push_back(input);
+    }
+    for (auto& output : op_desc.outputs()) {
+      op->outputs_.push_back(output);
+    }
     return op;
   }
 
@@ -174,7 +163,8 @@ class OpRegistry {
   static std::unordered_map<std::string, OpAttrChecker> op_checkers_;
 };
 
-std::unordered_map<std::string, std::function<OpBase*()>> OpRegistry::creators_;
+std::unordered_map<std::string, std::function<OperatorBase*()>>
+    OpRegistry::creators_;
 std::unordered_map<std::string, OpProto> OpRegistry::protos_;
 std::unordered_map<std::string, OpAttrChecker> OpRegistry::op_checkers_;
 
@@ -193,61 +183,6 @@ class OpRegisterHelper {
   };                                                                 \
   const OpRegisterHelper<__op_class, __op_maker_class>               \
       __op_class##Register::reg(#__op_type);
-
-// Demos
-
-class CosineOp : public OpBase {
- public:
-  virtual std::string Run() const {
-    std::string msg = "CosineOp runs! scale = " +
-                      std::to_string(boost::get<float>(attr_map_.at("scale")));
-    return msg;
-  }
-};
-
-class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
- public:
-  CosineOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("input", "input of cosine op");
-    AddOutput("output", "output of cosine op");
-    AddAttr<float>("scale", "scale of cosine op")
-        .SetDefault(1.0)
-        .LargerThan(0.0);
-    AddType("cos");
-    AddComment("This is cos op");
-  }
-};
-
-REGISTER_OP(CosineOp, CosineOpProtoAndCheckerMaker, cos_sim)
-
-class MyTestOp : public OpBase {
- public:
-  virtual std::string Run() const {
-    std::string msg =
-        "MyTestOp runs! test_attr = " +
-        std::to_string(boost::get<int>(attr_map_.at("test_attr")));
-    return msg;
-  }
-};
-
-class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
- public:
-  MyTestOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("input", "input of cosine op");
-    AddOutput("output", "output of cosine op");
-    auto my_checker = [](int i) {
-      PADDLE_ENFORCE(i % 2 == 0, "'test_attr' must be even!");
-    };
-    AddAttr<int>("test_attr", "a simple test attribute")
-        .AddCustomChecker(my_checker);
-    AddType("my_test_op");
-    AddComment("This is my_test op");
-  }
-};
-
-REGISTER_OP(MyTestOp, MyTestOpProtoAndCheckerMaker, my_test_op)
 
 }  // namespace framework
 }  // namespace paddle
