@@ -123,7 +123,7 @@ class RecurrentOp : public OperatorBase {
   /*
    * Process outputs of stepnets and merge to variables.
    */
-  void ConcateOutputs(ScopePtr scope) const {};
+  void ConcatOutputs(ScopePtr scope) const;
 
   /*
    * Create a `Net` which is shared across all steps.
