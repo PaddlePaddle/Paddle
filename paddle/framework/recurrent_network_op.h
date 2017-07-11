@@ -94,6 +94,7 @@ class PlainNet {
 // 3. Multi-inputs with indifinate length for RecurrentOp.
 // 4. More Complex RNN architecture, such as Gated Feedback RNN.
 //    Refer to: https://arxiv.org/pdf/1502.02367.pdf
+
 class RecurrentOp : public OperatorBase {
  public:
   /*
@@ -131,7 +132,6 @@ class RecurrentOp : public OperatorBase {
   void CreateStepNet(ScopePtr scope) const;
 
   /*
-   * Create a scope for each step, the context's scope is shared across all
    * the step scopes as the father scope. The step scopes will be stored in
    * the father scope as a variable whose name is specified by
    * `step_scopes_name_`.

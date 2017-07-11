@@ -18,3 +18,6 @@ add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch 
 add_dependencies(framework_py_proto framework_py_proto_init)
 cc_library(recurrent_network_op SRCS recurrent_network_op.cc DEPS op_desc)
 cc_test(recurrent_network_op_test SRCS recurrent_network_op_test.cc recurrent_network_op.cc DEPS glog gtest gflags ddim system_allocator op_desc)
+
+proto_library(net_proto SRCS net_proto.proto DEPS op_proto)
+cc_library(net SRCS net.cc DEPS net_proto)

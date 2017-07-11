@@ -36,6 +36,7 @@ class DeviceContext {
 class CPUDeviceContext : public DeviceContext {};
 
 #ifndef PADDLE_ONLY_CPU
+
 class GPUPlaceGuard {
  public:
   explicit GPUPlaceGuard(GPUPlace new_place) : previous_(GetCurrentDeviceId()) {
