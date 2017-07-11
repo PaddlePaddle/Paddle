@@ -152,7 +152,7 @@ void RecurrentOp::CreateStepNet(ScopePtr scope) const {
 }
 
 void RecurrentOp::SegmentInputs(ScopePtr scope) const {
-  Variable* scopes_var = scope->CreateVariable(step_scopes_name_);
+  Variable* scopes_var = scope->GetVariable(step_scopes_name_);
   auto& step_scopes = *scopes_var->GetMutable<std::vector<Scope*>>();
 
   auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
@@ -164,12 +164,10 @@ void RecurrentOp::SegmentInputs(ScopePtr scope) const {
     const float* scope_input =
         Input(scope, i)->GetMutable<Tensor>()->data<float>();
     for (int j = 0; j < seq_len; j++) {
-      std::string name =
-          name_ + "@input_" + inputs_[i] + "@step_" + std::to_string(j);
-      Variable* input_var = step_scopes[j]->CreateVariable(name);
+      Variable* input_var = step_scopes[j]->CreateVariable(inputs_[i]);
       Tensor* step_input_tensor = input_var->GetMutable<Tensor>();
       float* step_input = step_input_tensor->mutable_data<float>(
-          make_ddim({1, batch_size, dim}), platform::CPUPlace());
+          make_ddim({batch_size, dim}), platform::CPUPlace());
       std::memcpy(step_input, scope_input + j * length, length);
     }
   }
