@@ -17,9 +17,11 @@
 #include "paddle/framework/net_proto.pb.h"
 #include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/scope.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
+using namespace paddle::platform;
 
 // operator's index stored in a network.
 typedef int OpIndex;
@@ -30,15 +32,13 @@ typedef int OpIndex;
  */
 
 struct OpDesc;
-struct OpDef;
-struct OpContext;
 struct OpAttrs {};
 
 class Operator {
  public:
   Operator(const OpDesc &def) {}
   void InferShape() {}
-  void Run() {}
+  void Run(DeviceContext *ctx) {}
 };
 
 /**
@@ -69,12 +69,12 @@ class Net {
    * environment for ops. `begin` and `end` specify the scope of `ops_` to run,
    * If no positive indexes are provided, all operators in `ops_` will run.
    */
-  virtual void Run(Scope *scope) const = 0;
+  virtual void Run(Scope *scope, DeviceContext *ctx) = 0;
 
   /**
    * @brief Add an Operator according to `def`.
    */
-  virtual OpIndex AddOp(const OpDef &def) = 0;
+  virtual OpIndex AddOp(const OpProto &def) = 0;
 
   /**
    * @brief Add optimizer operators acctording to `attrs`.
@@ -123,12 +123,12 @@ class PlainNet : public Net {
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  virtual void Run(Scope *scope) const override;
+  virtual void Run(Scope *scope, DeviceContext *ctx) override;
 
   /**
    * @brief Add an operator to this network.
    */
-  virtual OpIndex AddOp(const OpDef &def) override;
+  virtual OpIndex AddOp(const OpProto &def) override;
 
   /**
    * @brief Add all optimizer operators related into the network.

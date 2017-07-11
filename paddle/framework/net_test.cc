@@ -19,6 +19,6 @@
 
 namespace paddle {
 namespace framework {
-class FakeFC : public OpBase {}
+class FakeFC : public Operator {}
 }  // namespace framework
 }  // namespace paddle

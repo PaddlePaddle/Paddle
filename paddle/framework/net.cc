@@ -11,7 +11,10 @@ void PlainNet::InferShape(Scope* scope) {
   }
 }
 
-void PlainNet::Run(Scope* scope) const {}
-
+void PlainNet::Run(Scope* scope, DeviceContext* ctx) {
+  for (auto& op : ops_) {
+    op.Run(ctx);
+  }
+}
 }  // namespace framework
 }  // namespace paddle
