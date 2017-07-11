@@ -30,7 +30,7 @@ func TestPartionIndex(t *testing.T) {
 	cs := make([]Chunk, 100)
 	ts := partition(cs, 20)
 	for i := range ts {
-		if ts[i].Task.ID != i {
+		if ts[i].Task.Meta.ID != i {
 			t.Error(ts[i], i)
 		}
 	}

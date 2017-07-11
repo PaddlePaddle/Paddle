@@ -20,4 +20,4 @@ add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch 
 add_dependencies(framework_py_proto framework_py_proto_init)
 
 proto_library(net_proto SRCS net_proto.proto DEPS op_proto)
-cc_library(net SRCS net.cc DEPS net_proto attr_type op_proto)
+cc_library(net SRCS net.cc DEPS net_proto)
