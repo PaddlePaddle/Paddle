@@ -60,7 +60,7 @@ type checkpointMeta struct {
 }
 
 // Checkpoint is the pserver shard persist in file
-type Checkpoint []ParameterCheckpoint
+type Checkpoint []parameterCheckpoint
 
 // Gradient is the gradient of the parameter.
 type Gradient Parameter
@@ -76,8 +76,8 @@ type Service struct {
 	optMap             map[string]*optimizer
 }
 
-// ParameterCheckpoint saves parameter checkpoint
-type ParameterCheckpoint struct {
+// parameterCheckpoint saves parameter checkpoint
+type parameterCheckpoint struct {
 	ParameterWithConfig
 	State []byte
 }
@@ -229,10 +229,10 @@ func (s *Service) doCheckpoint() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	cp := make([]ParameterCheckpoint, 0, len(s.optMap))
+	cp := make([]parameterCheckpoint, 0, len(s.optMap))
 	index := 0
 	for name, opt := range s.optMap {
-		var pc ParameterCheckpoint
+		var pc parameterCheckpoint
 		pc.Param.Name = name
 		pc.Param.ElementType = opt.elementType
 		pc.Param.Content = opt.GetWeights()
