@@ -43,10 +43,11 @@ class BuddyAllocator {
   size_t Used();
 
  public:
-  // Disable copy and assignment.
+  // Disable copy and assignment
   BuddyAllocator(const BuddyAllocator&) = delete;
   BuddyAllocator& operator=(const BuddyAllocator&) = delete;
 
+ private:
   // Tuple (allocator index, memory size, memory address)
   using IndexSizeAddress = std::tuple<size_t, size_t, void*>;
   // Each element in PoolSet is a free allocation
@@ -59,15 +60,24 @@ class BuddyAllocator {
   PoolSet::iterator RefillPool();
 
   /**
-   *  \brief Find the suitable chunk from existing pool
+   *  \brief   Find the suitable chunk from existing pool and split
+   *           it to left and right buddies
    *
-   *  \param it   pool iterator which contains suitable block.
-   *  \param size the size of allocation.
+   *  \param   it     the iterator of pool list
+   *  \param   size   the size of allocation
+   *
+   *  \return  the left buddy address
    */
   void* SplitToAlloc(PoolSet::iterator it, size_t size);
 
-  /*! \brief Find the existing chunk which used to allocation  */
+  /*! \brief Find the existing chunk which used to allocation */
   PoolSet::iterator FindExistChunk(size_t size);
+
+  /*! \brief Clean idle fallback allocation */
+  void CleanIdleFallBackAlloc();
+
+  /*! \brief Clean idle normal allocation */
+  void CleanIdleNormalAlloc();
 
  private:
   size_t total_used_ = 0;  // the total size of used memory

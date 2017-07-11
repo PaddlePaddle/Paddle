@@ -7,3 +7,5 @@ cc_library(place SRCS place.cc)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 cc_library(dynamic_loader SRCS dynload/dynamic_loader.cc DEPS gflags glog)
+
+nv_test(device_context_test SRCS device_context_test.cc DEPS dynamic_loader place eigen3)

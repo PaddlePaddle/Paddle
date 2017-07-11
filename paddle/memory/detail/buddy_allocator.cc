@@ -151,7 +151,13 @@ void BuddyAllocator::Free(void* p) {
   pool_.insert(
       IndexSizeAddress(block->index(cache_), block->total_size(cache_), block));
 
-  // TODO(gangliao): Clean up if existing too much free memory
+  // Clean up if existing too much free memory
+  
+  // Prefer freeing fallback allocation first
+  CleanIdleFallBackAlloc();
+
+  // Free normal allocation
+  CleanIdleNormalAlloc();
 }
 
 size_t BuddyAllocator::Used() { return total_used_; }
@@ -248,6 +254,11 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
 
   return block;
 }
+
+void BuddyAllocator::CleanIdleFallBackAlloc() {
+  
+}
+
 
 }  // namespace detail
 }  // namespace memory

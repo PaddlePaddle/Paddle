@@ -30,6 +30,21 @@ TEST(BuddyAllocator, CPUAllocation) {
   paddle::memory::Free(cpu, p);
 }
 
+TEST(BuddyAllocator, CPUMultAlloc) {
+  paddle::platform::CPUPlace cpu;
+
+  std::vector<void*> ps;
+  ps.reserve(8);
+
+  for (auto size : {256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304}) {
+    ps.emplace_back(paddle::memory::Alloc(cpu, size));
+  }
+
+  for (auto p : ps) {
+    paddle::memory::Free(cpu, p);
+  }
+}
+
 #ifndef PADDLE_ONLY_CPU
 
 TEST(BuddyAllocator, GPUAllocation) {

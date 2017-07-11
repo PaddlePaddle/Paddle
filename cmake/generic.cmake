@@ -93,6 +93,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 if(NOT APPLE)
     find_package(Threads REQUIRED)
     link_libraries(${CMAKE_THREAD_LIBS_INIT})
+    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -ldl")
 endif(NOT APPLE)
 
 function(merge_static_libs TARGET_NAME)
@@ -103,6 +104,7 @@ function(merge_static_libs TARGET_NAME)
   foreach(lib ${libs})
     list(APPEND libs_deps ${${lib}_LIB_DEPENDS})
   endforeach()
+  list(REMOVE_DUPLICATES libs_deps)
 
   if(APPLE) # Use OSX's libtool to merge archives
     # To produce a library we need at least one source file.
