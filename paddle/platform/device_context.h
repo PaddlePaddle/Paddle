@@ -16,10 +16,11 @@ limitations under the License. */
 
 #include "paddle/framework/enforce.h"
 #ifndef PADDLE_ONLY_CPU
-#include "paddle/platform/cuda.h"
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/dynload/curand.h"
+#include "paddle/platform/error.h"
+#include "paddle/platform/gpu_info.h"
 #define EIGEN_USE_GPU
 #endif
 #include "paddle/platform/place.h"

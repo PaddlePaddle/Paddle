@@ -23,11 +23,11 @@ DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
 namespace paddle {
 namespace platform {
 
-int GpuDeviceCount() {
+int GetDeviceCount() {
   int count;
   throw_on_error(
       cudaGetDeviceCount(&count),
-      "cudaGetDeviceCount failed in paddle::platform::GpuDeviceCount");
+      "cudaGetDeviceCount failed in paddle::platform::GetDeviceCount");
   return count;
 }
 

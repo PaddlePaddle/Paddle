@@ -22,7 +22,7 @@ namespace paddle {
 namespace platform {
 
 //! Get the total number of GPU devices in system.
-int GpuDeviceCount();
+int GetDeviceCount();
 
 //! Get the current GPU device id in system.
 int GetCurrentDeviceId();

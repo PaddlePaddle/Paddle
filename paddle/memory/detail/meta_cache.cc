@@ -25,7 +25,7 @@ MetadataCache::MetadataCache(bool uses_gpu) : uses_gpu_(uses_gpu) {}
 Metadata MetadataCache::load(const MemoryBlock* block) {
   if (uses_gpu_) {
     auto existing_metadata = cache_.find(block);
-    assert(existing_metadata->second.check_guards());
+    PADDLE_ASSERT(existing_metadata->second.check_guards());
     return existing_metadata->second;
   } else {
     PADDLE_ASSERT(reinterpret_cast<const Metadata*>(block)->check_guards());

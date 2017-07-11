@@ -52,7 +52,7 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
 detail::BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   static detail::BuddyAllocator** as = NULL;
   if (as == NULL) {
-    int gpu_num = platform::GpuDeviceCount();
+    int gpu_num = platform::GetDeviceCount();
     as = new detail::BuddyAllocator*[gpu_num];
     for (int gpu = 0; gpu < gpu_num; gpu++) {
       platform::SetDeviceId(gpu);
