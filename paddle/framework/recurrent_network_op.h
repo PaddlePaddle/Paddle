@@ -32,15 +32,15 @@ namespace framework {
 // fake interfaces that has not be implemented by other modules.
 // TODO keep updating according to other modules' designs.
 typedef std::shared_ptr<Scope> ScopePtr;
-struct OpRunContext {
+struct OpContext {
   ScopePtr scope;
 };
 
 class OperatorBase {
  public:
   virtual ~OperatorBase() {}
-  void Init(const OpDesc& op_desc, AttributeMap& attrs) {}
-  virtual void Run(OpRunContext* context) const = 0;
+  void Init(const OpDesc& op_desc, AttributeMap& attrs) { attrs_ = attrs; }
+  virtual void Run(OpContext* context) const = 0;
   virtual void InferShape(ScopePtr scope) const = 0;
   inline Variable* Input(ScopePtr scope, int index) const {
     return scope->GetVariable(inputs_[index]);
@@ -74,7 +74,7 @@ class PlainNet {
   // PlainNet(const std::string desc) {}
   void AddOp(const OpDesc& desc);
   void Run(ScopePtr scope) {
-    OpRunContext ctx;
+    OpContext ctx;
     ctx.scope = scope;
     for (auto& op : ops_) {
       op->Run(&ctx);
@@ -110,7 +110,7 @@ class RecurrentOp : public OperatorBase {
    * NOTE the context's scope is not given until `Run` called, so step scopes'
    * father should be set/updated in this method.
    */
-  virtual void Run(OpRunContext* contex) const override;
+  virtual void Run(OpContext* contex) const override;
 
   virtual ~RecurrentOp() {}
 

@@ -11,6 +11,7 @@
   limitations under the License.
 */
 
+#include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include "paddle/framework/recurrent_network_op.h"
@@ -27,9 +28,11 @@ class RecurrentOpTest : public ::testing::Test {
   }
 
   void CreateGlobalVariables() {
+    LOG(INFO) << "create global variable h_boot";
     // create boot memory
     scope.CreateVariable("h_boot");
     // create input, and init content
+    LOG(INFO) << "create global variale x";
     Variable* x = scope.CreateVariable("x");
     DDim dims = make_ddim(std::vector<int>{10 /*sent size*/, 20 /*batch size*/,
                                            30 /*input dim*/});
@@ -43,7 +46,7 @@ class RecurrentOpTest : public ::testing::Test {
     op_desc.set_type("rnn_op");
     op_desc.add_inputs("x");
     // output hidden vectors
-    op_desc.add_outputs("hiddens");
+    op_desc.add_outputs("h");
 
     auto memories_attr = op_desc.mutable_attrs()->Add();
     memories_attr->set_type(paddle::framework::AttrType::STRINGS);
@@ -60,11 +63,9 @@ class RecurrentOpTest : public ::testing::Test {
     attrs["memories"] = std::vector<std::string>{"h"};
     attrs["boot_memories"] = std::vector<std::string>{"h_boot"};
 
+    LOG(INFO) << "rnn_op to init";
     rnn_op.Init(op_desc, attrs);
-  }
-
-  void RunRnnOp() {
-    // TODO
+    LOG(INFO) << "rnn_op finish init";
   }
 
   // father scope
@@ -73,6 +74,12 @@ class RecurrentOpTest : public ::testing::Test {
 };
 
 TEST_F(RecurrentOpTest, create_op) {}
+
+TEST_F(RecurrentOpTest, Run) {
+  OpContext ctx;
+  ctx.scope = std::make_shared<Scope>();
+  rnn_op.Run(&ctx);
+}
 
 }  // namespace framework
 }  // namespace paddle

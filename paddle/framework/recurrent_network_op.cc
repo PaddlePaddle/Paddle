@@ -36,7 +36,7 @@ class FcOp : public OperatorBase {
     }
   }
 
-  virtual void Run(OpRunContext* contex) const override {
+  virtual void Run(OpContext* contex) const override {
     for (const auto& input : inputs_) {
       PADDLE_ENFORCE(contex->scope->HasVariable(input),
                      "no input variable [%s] exists");
@@ -60,7 +60,7 @@ void PlainNet::AddOp(const OpDesc& desc) {
   }
 }
 
-void RecurrentOp::Run(OpRunContext* contex) const {
+void RecurrentOp::Run(OpContext* contex) const {
   auto scope = contex->scope;
 
   if (!scope->HasVariable(net_name_)) {
@@ -99,15 +99,30 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
   auto boot_memories = GetAttr<std::vector<std::string>>("boot_memories");
   PADDLE_ENFORCE(memories.size() == boot_memories.size(),
                  "The size of memories and boot_memories is mismatched.");
+  // set memories
   for (size_t i = 0; i < memories.size(); ++i) {
     MemoryAttr mem_attr;
     mem_attr.var = memories[i];
     mem_attr.boot_var = boot_memories[i];
     memory_attrs_.push_back(mem_attr);
+    LOG(INFO) << "set memorys:\t"
+              << "memory:" << mem_attr.var << "\tboot:" << mem_attr.boot_var;
+  }
+
+  // set inputs
+  for (const std::string& input : op_desc.inputs()) {
+    LOG(INFO) << "set input " << input;
+    inputs_.push_back(input);
+  }
+  // set outputs
+  for (const std::string& output : op_desc.outputs()) {
+    LOG(INFO) << "set output " << output;
+    outputs_.push_back(output);
   }
 }
 
 void RecurrentOp::CreateScopes(ScopePtr scope) const {
+  LOG(INFO) << "create scopes";
   auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
   size_t seq_len = dims[0];
   Variable* scopes_var = scope->GetVariable(step_scopes_name_);
@@ -166,6 +181,7 @@ void RecurrentOp::LinkMemories(ScopePtr scope,
   PADDLE_ENFORCE(step < step_scopes.size(),
                  "step [%d] out of range of step scopes' size [%d]", step,
                  step_scopes.size());
+  auto step_scope = step_scopes[step];
   // copy boot memory
   for (auto& attr : memory_attrs_) {
     Tensor* boot_tensor{nullptr};
@@ -177,28 +193,27 @@ void RecurrentOp::LinkMemories(ScopePtr scope,
       boot_tensor = scope->CreateVariable(attr.boot_var)->GetMutable<Tensor>();
       attr.dims = boot_tensor->dims();
     }
-    // Variable* memory_var = step_scope->CreateVariable(attr.pre_var);
+    Variable* memory_var = step_scope->CreateVariable(attr.pre_var);
 
     // copy from boot memory
     // TODO support more device
     // TODO mutable_data is currently invalid
-    //   float* memory_tensor_val =
-    //       memory_var->GetMutable<Tensor>()->mutable_data<float>(
-    //           attr.dims, platform::CPUPlace());
-    //   if (step == 0) {
-    //     PADDLE_ENFORCE(boot_tensor, "boot_tensor should be retrieved
-    //     before");
-    //     // copy from boot memory
-    //     std::memcpy(memory_tensor_val, boot_tensor->data<float>(),
-    //                 product(attr.dims));
-    //   } else {
-    //     // copy from previous step scope's memory to this scope's
-    //     `pre-memory` Tensor* pre_step_memory =
-    //         step_scopes[step -
-    //         1]->GetVariable(attr.var)->GetMutable<Tensor>();
-    //     std::memcpy(memory_tensor_val, pre_step_memory->data<float>(),
-    //                 product(attr.dims));
-    //   }
+    float* memory_tensor_val =
+        memory_var->GetMutable<Tensor>()->mutable_data<float>(
+            attr.dims, platform::CPUPlace());
+    if (step == 0) {
+      PADDLE_ENFORCE(boot_tensor, "boot_tensor should be retrieved before");
+      // copy from boot memory
+      std::memcpy(memory_tensor_val, boot_tensor->data<float>(),
+                  product(attr.dims));
+    } else {
+      // copy from previous step scope's memory to this scope's
+      // `pre - memory`
+      Tensor* pre_step_memory =
+          step_scopes[step - 1]->GetVariable(attr.var)->GetMutable<Tensor>();
+      std::memcpy(memory_tensor_val, pre_step_memory->data<float>(),
+                  product(attr.dims));
+    }
   }
 }
 
