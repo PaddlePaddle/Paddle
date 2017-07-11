@@ -152,7 +152,7 @@ void BuddyAllocator::Free(void* p) {
       IndexSizeAddress(block->index(cache_), block->total_size(cache_), block));
 
   // Clean up if existing too much free memory
-  
+
   // Prefer freeing fallback allocation first
   CleanIdleFallBackAlloc();
 
@@ -197,6 +197,12 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
 
   static_cast<MemoryBlock*>(p)->init(cache_, MemoryBlock::FREE_CHUNK, index,
                                      max_chunk_size_, nullptr, nullptr);
+
+  // gpu fallback allocation
+  if (system_allocator_->UseGpu() &&
+      static_cast<MemoryBlock*>(p)->index(cache_) == 1) {
+    fallback_alloc_count_++;
+  }
 
   total_free_ += max_chunk_size_;
 
@@ -256,9 +262,68 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
 }
 
 void BuddyAllocator::CleanIdleFallBackAlloc() {
-  
+  // If fallback allocation does not exist, return directly
+  if (!fallback_alloc_count_) return;
+
+  for (auto pool = pool_.rbegin(); pool != pool_.rend();) {
+    // If free memory block less than max_chunk_size_, return directly
+    if (std::get<1>(*pool) < max_chunk_size_) return;
+
+    MemoryBlock* block = static_cast<MemoryBlock*>(std::get<2>(*pool));
+
+    // If no GPU fallback allocator, return
+    if (!system_allocator_->UseGpu() || block->index(cache_) == 0) {
+      return;
+    }
+
+    DLOG(INFO) << "Return block " << block << " to fallback allocator.";
+
+    system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
+    cache_.invalidate(block);
+
+    pool = PoolSet::reverse_iterator(pool_.erase(std::next(pool).base()));
+
+    total_free_ -= max_chunk_size_;
+    fallback_alloc_count_--;
+
+    // If no fall allocation exists, return directly
+    if (!fallback_alloc_count_) return;
+  }
 }
 
+void BuddyAllocator::CleanIdleNormalAlloc() {
+  auto shall_free_alloc = [&]() -> bool {
+    // free all fallback allocations
+    if (fallback_alloc_count_ > 0) {
+      return true;
+    }
+    // keep 2x overhead if we haven't fallen back
+    if ((total_used_ + max_chunk_size_) * 2 < total_free_) {
+      return true;
+    }
+    return false;
+  };
+
+  if (!shall_free_alloc()) return;
+
+  for (auto pool = pool_.rbegin(); pool != pool_.rend();) {
+    // If free memory block less than max_chunk_size_, return directly
+    if (std::get<1>(*pool) < max_chunk_size_) return;
+
+    MemoryBlock* block = static_cast<MemoryBlock*>(std::get<2>(*pool));
+
+    DLOG(INFO) << "Return block " << block << " to base allocator.";
+
+    system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
+    cache_.invalidate(block);
+
+    pool = PoolSet::reverse_iterator(pool_.erase(std::next(pool).base()));
+
+    total_free_ -= max_chunk_size_;
+
+    if (!shall_free_alloc()) return;
+  }
+}
 
 }  // namespace detail
 }  // namespace memory

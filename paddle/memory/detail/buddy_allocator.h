@@ -94,6 +94,9 @@ class BuddyAllocator {
    */
   PoolSet pool_;
 
+  /*! Record fallback allocation count for auto-scaling */
+  size_t fallback_alloc_count_ = 0;
+
  private:
   /*! Unify the metadata format between GPU and CPU allocations */
   MetadataCache cache_;
