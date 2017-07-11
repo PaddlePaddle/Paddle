@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -51,16 +52,10 @@ type ParameterWithConfig struct {
 	Config []byte // parameter configuration in Proto Buffer format
 }
 
-// ParameterCheckpoint is Parameter and State checkpoint
-type ParameterCheckpoint struct {
-	ParamConfig ParameterWithConfig
-	State       []byte
-}
-
-// checkpoint signature
+// checkpointMeta saves checkpoint metadata
 type checkpointMeta struct {
 	UUID      string `json:"uuid"`
-	Md5sum    string `json:"md5sum"`
+	MD5       string `json:"md5"`
 	Timestamp string `json:"timestamp"`
 }
 
@@ -81,94 +76,58 @@ type Service struct {
 	optMap             map[string]*optimizer
 }
 
-// CheckpointMeta saves the checkpoint information
-type CheckpointMeta struct {
-	UUID      string `json:"uuid"`
-	MD5       string `json:"md5"`
-	Timestamp string `json:"timestamp"`
-}
-
 // ParameterCheckpoint saves parameter checkpoint
 type ParameterCheckpoint struct {
 	ParameterWithConfig
-	Stat []byte
+	State []byte
 }
 
-// Checkpoint saves all parameters' checkpoint
-type Checkpoint struct {
-	idx    int
-	path   string
-	client *EtcdClient
-	data   []ParameterCheckpoint
-}
-
-// NewCheckpoint creates a new checkpoint
-func NewCheckpoint(idx int, cpPath string, e *EtcdClient) *Checkpoint {
-	return &Checkpoint{
-		idx:    idx,
-		path:   cpPath,
-		client: e,
-	}
-}
-
-// LoadFromFile loads parameters and state from checkpoint file
-func (cp *Checkpoint) LoadFromFile() error {
-	v, err := cp.client.GetKey(filepath.Join(PsCheckpoint, strconv.Itoa(cp.idx)), 3)
+// NewCheckpointFromFile loads parameters and state from checkpoint file
+func NewCheckpointFromFile(cpPath string, idx int, e *EtcdClient) (*Checkpoint, error) {
+	v, err := e.GetKey(PsPath+string(idx), 3)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	var cpMeta CheckpointMeta
+	var cpMeta checkpointMeta
 	if err = json.Unmarshal(v, &cpMeta); err != nil {
-		return err
+		return nil, err
 	}
 
-	fn := filepath.Join(cp.path, cpMeta.UUID)
+	fn := filepath.Join(cpPath, cpMeta.UUID)
 	if _, err = os.Stat(fn); os.IsNotExist(err) {
-		return err
+		return nil, err
 	}
 
 	f, err := os.Open(fn)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer f.Close()
 
+	h := md5.New()
+	if _, err = io.Copy(h, f); err != nil {
+		return nil, err
+	}
+	md5 := hex.EncodeToString(h.Sum(nil))
+	if md5 != cpMeta.MD5 {
+		return nil, errors.New("md5 does match, load checkpoint failed")
+	}
+
 	dec := gob.NewDecoder(f)
-
-	if err = dec.Decode(&cp.data); err != nil {
-		return err
+	cp := &Checkpoint{}
+	if err = dec.Decode(cp); err != nil {
+		return nil, err
 	}
-	return nil
-}
-
-// NewServiceFromCheckpoint creates a new service with the specified checkpoint
-func NewServiceFromCheckpoint(idx int, cp *Checkpoint) (*Service, error) {
-	s := &Service{
-		idx: idx,
-	}
-	s.optMap = make(map[string]*optimizer)
-	s.initialized = make(chan struct{})
-
-	for _, parameterCheckpoint := range cp.data {
-		p := ParameterWithConfig{
-			Param:  parameterCheckpoint.Param,
-			Config: parameterCheckpoint.Config,
-		}
-
-		opt := newOptimizer(p)
-		opt.SetState(parameterCheckpoint.Stat)
-		s.optMap[parameterCheckpoint.Param.Name] = opt
-	}
-	return s, nil
+	return cp, nil
 }
 
 // NewService creates a new service, will bypass etcd registration if no
-// endpoints specified.
-func NewService(idx int, seconds int, path string, client *EtcdClient, cp Checkpoint) (*Service, error) {
+// endpoints specified. It will recovery from checkpoint file if a exists a specified checkpoint.
+func NewService(idx int, interval int, path string, client *EtcdClient, cp *Checkpoint) (*Service, error) {
 	s := &Service{
 		idx:                idx,
-		checkpointInterval: time.Second * time.Duration(seconds),
+		checkpointInterval: time.Second * time.Duration(interval),
 		checkpointPath:     path,
 		client:             client,
 	}
@@ -176,17 +135,19 @@ func NewService(idx int, seconds int, path string, client *EtcdClient, cp Checkp
 	s.initialized = make(chan struct{})
 
 	if cp != nil {
-		for _, item := range cp {
-			p := item.ParamConfig
-			st := item.State
-			s.optMap[p.Param.Name] = newOptimizer(p, st)
+		for _, item := range *cp {
+			p := &ParameterWithConfig{
+				Param:  item.Param,
+				Config: item.Config,
+			}
+			s.optMap[p.Param.Name] = newOptimizer(p, item.State)
 		}
 	}
 	return s, nil
 }
 
 // InitParam initializes a parameter.
-func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, dummy *int) error {
+func (s *Service) InitParam(paramWithConfigs *ParameterWithConfig, dummy *int) error {
 	select {
 	case <-s.initialized:
 		return errors.New(AlreadyInitialized)
@@ -272,9 +233,9 @@ func (s *Service) doCheckpoint() error {
 	index := 0
 	for name, opt := range s.optMap {
 		var pc ParameterCheckpoint
-		pc.ParamConfig.Param.Name = name
-		pc.ParamConfig.Param.ElementType = opt.elementType
-		pc.ParamConfig.Param.Content = opt.GetWeights()
+		pc.Param.Name = name
+		pc.Param.ElementType = opt.elementType
+		pc.Param.Content = opt.GetWeights()
 		pc.State = opt.GetStates()
 		cp[index] = pc
 		index++
@@ -290,7 +251,7 @@ func (s *Service) doCheckpoint() error {
 	cpMeta.UUID = s.checkpointPath + strconv.Itoa(s.idx)
 	cpMeta.Timestamp = time.Now().String()
 	h := md5.New()
-	cpMeta.Md5sum = hex.EncodeToString(h.Sum(buf.Bytes()))
+	cpMeta.MD5 = hex.EncodeToString(h.Sum(buf.Bytes()))
 
 	cpMetajson, _ := json.Marshal(cpMeta)
 	err = s.client.PutKey(filepath.Join(PsCheckpoint, strconv.Itoa(s.idx)), cpMetajson, 3)
@@ -301,7 +262,11 @@ func (s *Service) doCheckpoint() error {
 		log.Info("checkpoint does not exists.")
 	} else {
 		err = os.Remove(cpMeta.UUID)
-		log.Infof("checkpoint %s already exsits, removing ", cpMeta.UUID)
+		if err != nil {
+			log.Infof("Removing checkpoint %s failed", cpMeta.UUID)
+		} else {
+			log.Infof("checkpoint %s already exsits, removing ", cpMeta.UUID)
+		}
 	}
 	f, err := os.Create(cpMeta.UUID)
 	defer f.Close()

@@ -35,7 +35,7 @@ func cArrayToSlice(p unsafe.Pointer, len int) []byte {
 	return (*[1 << 30]byte)(p)[:len:len]
 }
 
-func newOptimizer(paramWithConfigs ParameterWithConfig, State []byte) *optimizer {
+func newOptimizer(paramWithConfigs *ParameterWithConfig, State []byte) *optimizer {
 	o := &optimizer{}
 	o.elementType = paramWithConfigs.Param.ElementType
 	p := paramWithConfigs.Param
@@ -68,8 +68,8 @@ func (o *optimizer) GetWeights() []byte {
 
 func (o *optimizer) GetStates() []byte {
 	var cbuffer *C.char
-	cbuffer_len := C.paddle_optimizer_get_state(o.opt, &cbuffer)
-	return cArrayToSlice(unsafe.Pointer(cbuffer), int(cbuffer_len))
+	cbufferLen := C.paddle_optimizer_get_state(o.opt, &cbuffer)
+	return cArrayToSlice(unsafe.Pointer(cbuffer), int(cbufferLen))
 }
 
 func (o *optimizer) UpdateParameter(g Gradient) error {
@@ -89,10 +89,4 @@ func (o *optimizer) Cleanup() {
 		C.paddle_release_optimizer(o.opt)
 		o.opt = (*C.struct_paddle_optimizer)(nullPtr)
 	}
-}
-
-func (o *optimizer) SetState(state []byte) {
-	var buffer *C.char = C.CString(string(state))
-	defer C.free(unsafe.Pointer(buffer))
-	C.paddle_optimizer_set_state(o.opt, &buffer)
 }

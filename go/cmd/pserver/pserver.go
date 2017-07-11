@@ -35,7 +35,7 @@ func main() {
 	var idx int
 
 	var cp *pserver.Checkpoint
-	newPserver := true
+	var e *pserver.EtcdClient
 	if *index >= 0 {
 		idx = *index
 	} else {
@@ -44,23 +44,14 @@ func main() {
 		idx, err = e.Register()
 		candy.Must(err)
 
-		cp = pserver.NewCheckpoint(idx, checkpointPath, e)
-		err := cp.LoadFromFile()
+		cp, err = pserver.NewCheckpointFromFile(*checkpointPath, idx, e)
 		if err != nil {
 			log.Infof("Fetch checkpoint failed, %s\n", err)
-		} else {
-			newPserver = false
 		}
 	}
 
-	var s *pserver.Service
-	if newPserver {
-		s, err = pserver.NewService(idx)
-		candy.Must(err)
-	} else {
-		s, err = pserver.NewServiceFromCheckpoint(idx, cp)
-		candy.Must(err)
-	}
+	s, err := pserver.NewService(idx, *checkpointInterval, *checkpointPath, e, cp)
+	candy.Must(err)
 
 	err = rpc.Register(s)
 	candy.Must(err)

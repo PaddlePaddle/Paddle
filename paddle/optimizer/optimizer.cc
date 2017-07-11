@@ -81,7 +81,3 @@ int paddle_optimizer_get_state(paddle_optimizer* o, const char** state) {
   *state = o->impl->SerializeState(&state_len);
   return state_len;
 }
-
-void paddle_optimizer_set_state(paddle_optimizer* o, const char** state) {
-  o->impl->DeserializeState(std::string(*state));
-}
