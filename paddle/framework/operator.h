@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using paddle::platform::DeviceContext;
+using namespace paddle::platform;
 class OperatorBase;
 
 /**
