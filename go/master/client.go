@@ -68,7 +68,7 @@ func (c *Client) getRecords() {
 		// We treat a task as finished whenever the last data
 		// instance of the task is read. This is not exactly
 		// correct, but a reasonable approximation.
-		c.taskFinished(t.ID)
+		c.taskFinished(t.Meta.ID)
 	}
 }
 
@@ -116,6 +116,11 @@ func (c *Client) getTask() (Task, error) {
 // TaskFinished tells the master server a task is finished.
 func (c *Client) taskFinished(taskID int) error {
 	return c.conn.Call("Service.TaskFinished", taskID, nil)
+}
+
+// TaskFailed tell the master server as task is failed.
+func (c *Client) taskFailed(meta TaskMeta) error {
+	return c.conn.Call("Service.TaskFailed", meta, nil)
 }
 
 // NextRecord returns next record in the dataset.
