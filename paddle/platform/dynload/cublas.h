@@ -58,26 +58,29 @@ extern void *cublas_dso_handle;
   extern DynLoad__##__name __name
 #endif
 
+#define DECLARE_DYNAMIC_LOAD_CUBLAS_V2_WRAP(__name) \
+  DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)
+
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
   __macro(cublasSgemv);                   \
   __macro(cublasDgemv);                   \
   __macro(cublasSgemm);                   \
   __macro(cublasDgemm);                   \
   __macro(cublasSgeam);                   \
-  __macro(cublasDgeam);                   \
-  __macro(cublasCreate);                  \
-  __macro(cublasDestroy);                 \
-  __macro(cublasSetStream);               \
-  __macro(cublasSetPointerMode);          \
-  __macro(cublasGetPointerMode);          \
-  __macro(cublasSgemmBatched);            \
-  __macro(cublasDgemmBatched);            \
-  __macro(cublasCgemmBatched);            \
-  __macro(cublasZgemmBatched);            \
-  __macro(cublasSgetrfBatched);           \
-  __macro(cublasSgetriBatched);           \
-  __macro(cublasDgetrfBatched);           \
-  __macro(cublasDgetriBatched)
+  __macro(cublasDgeam);
+
+DECLARE_DYNAMIC_LOAD_CUBLAS_V2_WRAP(cublasCreate);
+DECLARE_DYNAMIC_LOAD_CUBLAS_V2_WRAP(cublasDestroy);
+DECLARE_DYNAMIC_LOAD_CUBLAS_V2_WRAP(cublasSetStream);
+DECLARE_DYNAMIC_LOAD_CUBLAS_V2_WRAP(cublasSetPointerMode);
+DECLARE_DYNAMIC_LOAD_CUBLAS_V2_WRAP(cublasGetPointerMode);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasSgemmBatched);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasDgemmBatched);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasCgemmBatched);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasZgemmBatched);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasSgetrfBatched);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasSgetriBatched);
+DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(cublasDgetrfBatched);
 
 CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP);
 
