@@ -1,7 +1,6 @@
 #include "paddle/framework/op_registry.h"
 #include <gtest/gtest.h>
 
-// Demos
 namespace paddle {
 namespace framework {
 class CosineOp : public OpBase {
@@ -58,6 +57,7 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 REGISTER_OP(MyTestOp, MyTestOpProtoAndCheckerMaker, my_test_op)
 }  // namespace framework
 }  // namespace paddle
+
 TEST(OpRegistry, CreateOp) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
@@ -176,4 +176,9 @@ TEST(OpRegistry, CustomChecker) {
   for (size_t i = 0; i < debug_str.length(); ++i) {
     ASSERT_EQ(debug_str[i], str[i]);
   }
+}
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }

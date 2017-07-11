@@ -3,10 +3,6 @@
 namespace paddle {
 namespace framework {
 
-std::unordered_map<std::string, std::function<OpBase*()>> OpRegistry::creators_;
-std::unordered_map<std::string, OpProto> OpRegistry::protos_;
-std::unordered_map<std::string, OpAttrChecker> OpRegistry::op_checkers_;
-
 template <>
 void AttrTypeHelper::SetAttrType<int>(AttrProto* attr) {
   attr->set_type(paddle::framework::AttrType::INT);

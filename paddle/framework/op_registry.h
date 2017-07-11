@@ -110,9 +110,9 @@ class OpRegistry {
  public:
   template <typename OpType, typename ProtoMakerType>
   static void RegisterOp(const std::string& op_type) {
-    creators_[op_type] = [] { return new OpType; };
-    OpProto& op_proto = protos_[op_type];
-    OpAttrChecker& op_checker = op_checkers_[op_type];
+    creators()[op_type] = [] { return new OpType; };
+    OpProto& op_proto = protos()[op_type];
+    OpAttrChecker& op_checker = op_checkers()[op_type];
     ProtoMakerType(&op_proto, &op_checker);
     PADDLE_ENFORCE(op_proto.IsInitialized(),
                    "Fail to initialize %s's OpProto !", op_type);
@@ -120,7 +120,7 @@ class OpRegistry {
 
   static OpBase* CreateOp(const OpDesc& op_desc) {
     std::string op_type = op_desc.type();
-    OpBase* op = creators_.at(op_type)();
+    OpBase* op = creators().at(op_type)();
     op->inputs_.reserve((size_t)op_desc.inputs_size());
     std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),
               std::back_inserter(op->inputs_));
@@ -130,14 +130,25 @@ class OpRegistry {
     for (auto& attr : op_desc.attrs()) {
       op->attr_map_[attr.name()] = AttrTypeHelper::GetAttrValue(attr);
     }
-    op_checkers_.at(op_type).Check(op->attr_map_);
+    op_checkers().at(op_type).Check(op->attr_map_);
     return op;
   }
 
  private:
-  static std::unordered_map<std::string, OpCreator> creators_;
-  static std::unordered_map<std::string, OpProto> protos_;
-  static std::unordered_map<std::string, OpAttrChecker> op_checkers_;
+  static std::unordered_map<std::string, OpCreator>& creators() {
+    static std::unordered_map<std::string, OpCreator> creators_;
+    return creators_;
+  }
+
+  static std::unordered_map<std::string, OpProto>& protos() {
+    static std::unordered_map<std::string, OpProto> protos_;
+    return protos_;
+  };
+
+  static std::unordered_map<std::string, OpAttrChecker>& op_checkers() {
+    static std::unordered_map<std::string, OpAttrChecker> op_checkers_;
+    return op_checkers_;
+  };
 };
 
 template <typename OpType, typename ProtoMakerType>
