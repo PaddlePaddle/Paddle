@@ -11,7 +11,12 @@ import (
 // Client is the client of the master server.
 type Client struct {
 	conn *connection.Conn
-	ch   chan []byte
+	ch   chan record
+}
+
+type record struct {
+	r   []byte
+	err error
 }
 
 // NewClient creates a new Client.
@@ -21,7 +26,7 @@ type Client struct {
 func NewClient(addrCh <-chan string, bufSize int) *Client {
 	c := &Client{}
 	c.conn = connection.New()
-	c.ch = make(chan []byte, bufSize)
+	c.ch = make(chan record, bufSize)
 	go c.monitorMaster(addrCh)
 	go c.getRecords()
 	return c
@@ -46,10 +51,11 @@ func (c *Client) getRecords() {
 
 			s := recordio.NewRangeScanner(f, &chunk.Index, -1, -1)
 			for s.Scan() {
-				c.ch <- s.Record()
+				c.ch <- record{s.Record(), nil}
 			}
 
 			if s.Err() != nil {
+				c.ch <- record{nil, s.Err()}
 				log.Errorln(err, chunk.Path)
 			}
 
@@ -121,6 +127,7 @@ func (c *Client) taskFailed(meta TaskMeta) error {
 //
 // NextRecord will block until the next record is available. It is
 // thread-safe.
-func (c *Client) NextRecord() []byte {
-	return <-c.ch
+func (c *Client) NextRecord() ([]byte, error) {
+	r := <-c.ch
+	return r.r, r.err
 }

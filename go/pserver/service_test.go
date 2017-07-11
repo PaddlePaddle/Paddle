@@ -15,7 +15,8 @@ const (
 )
 
 func TestServiceFull(t *testing.T) {
-	s, err := pserver.NewService(0)
+	var cp pserver.Checkpoint
+	s, err := pserver.NewService(0, 1, "", nil, cp)
 	if err != nil {
 		t.Error(err)
 	}
@@ -86,7 +87,8 @@ func TestServiceFull(t *testing.T) {
 }
 
 func TestMultipleInit(t *testing.T) {
-	s, err := pserver.NewService(0)
+	var cp pserver.Checkpoint
+	s, err := pserver.NewService(0, 1, "", nil, cp)
 	if err != nil {
 		t.Error(err)
 	}
@@ -102,7 +104,8 @@ func TestMultipleInit(t *testing.T) {
 }
 
 func TestUninitialized(t *testing.T) {
-	s, err := pserver.NewService(0)
+	var cp pserver.Checkpoint
+	s, err := pserver.NewService(0, 1, "", nil, cp)
 	err = s.SendGrad(pserver.Gradient{}, nil)
 	if err.Error() != pserver.Uninitialized {
 		t.FailNow()
@@ -110,7 +113,8 @@ func TestUninitialized(t *testing.T) {
 }
 
 func TestBlockUntilInitialized(t *testing.T) {
-	s, err := pserver.NewService(0)
+	var cp pserver.Checkpoint
+	s, err := pserver.NewService(0, 1, "", nil, cp)
 	if err != nil {
 		t.Error(err)
 	}
@@ -121,16 +125,6 @@ func TestBlockUntilInitialized(t *testing.T) {
 	go func() {
 		var param pserver.Parameter
 		err := s.GetParam("param_a", &param)
-		if err != nil {
-			errCh <- err
-		}
-		wg.Done()
-		ch <- struct{}{}
-	}()
-
-	wg.Add(1)
-	go func() {
-		err := s.Save("", nil)
 		if err != nil {
 			errCh <- err
 		}
@@ -169,4 +163,8 @@ func TestBlockUntilInitialized(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestCheckpointSpeed(t *testing.T) {
+	//TODO(zhihong): test speed
 }
