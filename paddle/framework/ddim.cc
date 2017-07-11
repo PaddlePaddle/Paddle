@@ -226,7 +226,7 @@ Eigen::DSizes<Eigen::DenseIndex, NDIMS> ToEigenDSizes(DDim dims) const {
   int rank = paddle::framework::arity(dims);
   PADDLE_ENFORCE(rank == NDIMS, "DDim and NDIMS must be same")
   Eigen::DSizes<Eigen::DenseIndex, NDIMS> dsizes;
-  for (int d = 0; d < paddle::framework::arity(dims); d++) {
+  for (int d = 0; d < rank; d++) {
     dsizes[d] = dims[d];
   }
   return dsizes;
