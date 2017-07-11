@@ -57,7 +57,7 @@ class Tensor {
 
   void ShareDataFrom(const Tensor& src) {
     PADDLE_ENFORCE(src.holder_ != nullptr,
-                   "Tenosr 'src' has not been initialized.");
+                   "Can not share data from an uninitialized tensor.");
     holder_ = src.holder_;
     dims_ = src.dims_;
     offset_ = src.offset_;
