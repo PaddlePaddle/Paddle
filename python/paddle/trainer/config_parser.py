@@ -1988,16 +1988,11 @@ class PadLayer(LayerBase):
 
 @config_layer('crop')
 class CropLayer(LayerBase):
-    def __init__(self, inputs, axis, offset, shape, name, **xargs):
+    def __init__(self, name, inputs, axis, offset, shape, **xargs):
         super(CropLayer, self).__init__(name, 'crop', 0, inputs=inputs, **xargs)
-        self.conf.axis = axis
-        self.conf.axis = offset
-        self.conf.axis = shape
-
-        crop = self.inputs[0].crop
-        self.config.inputs[0].crop_conf.axis = crop.axis
-        self.config.inputs[0].crop_conf.offset.extend(crop.offset)
-        self.config.inputs[0].crop_conf.shape.extend(crop.shape)
+        self.config.axis = axis
+        self.config.offset.extend(offset)
+        self.config.shape.extend(shape)
 
         # get channel, width and height from input_0 layer
         input_layer = self.get_input_layer(0)
