@@ -1,7 +1,7 @@
 #pragma once
 
 #include "paddle/framework/attr_checker.h"
-
+#include <algorithm>
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/operator.h"
@@ -52,36 +52,6 @@ struct AttrTypeHelper {
   }
 };
 
-template <>
-void AttrTypeHelper::SetAttrType<int>(AttrProto* attr) {
-  attr->set_type(paddle::framework::AttrType::INT);
-}
-
-template <>
-void AttrTypeHelper::SetAttrType<float>(AttrProto* attr) {
-  attr->set_type(paddle::framework::AttrType::FLOAT);
-}
-
-template <>
-void AttrTypeHelper::SetAttrType<std::string>(AttrProto* attr) {
-  attr->set_type(paddle::framework::AttrType::STRING);
-}
-
-template <>
-void AttrTypeHelper::SetAttrType<std::vector<int>>(AttrProto* attr) {
-  attr->set_type(paddle::framework::AttrType::INTS);
-}
-
-template <>
-void AttrTypeHelper::SetAttrType<std::vector<float>>(AttrProto* attr) {
-  attr->set_type(paddle::framework::AttrType::FLOATS);
-}
-
-template <>
-void AttrTypeHelper::SetAttrType<std::vector<std::string>>(AttrProto* attr) {
-  attr->set_type(paddle::framework::AttrType::STRINGS);
-}
-
 // this class not only make proto but also init attribute checkers.
 class OpProtoAndCheckerMaker {
  public:
@@ -91,22 +61,22 @@ class OpProtoAndCheckerMaker {
  protected:
   void AddInput(const std::string& name, const std::string& comment) {
     auto input = proto_->mutable_inputs()->Add();
-    *(input->mutable_name()) = name;
-    *(input->mutable_comment()) = comment;
+    *input->mutable_name() = name;
+    *input->mutable_comment() = comment;
   }
 
   void AddOutput(const std::string& name, const std::string& comment) {
     auto output = proto_->mutable_outputs()->Add();
-    *(output->mutable_name()) = name;
-    *(output->mutable_comment()) = comment;
+    *output->mutable_name() = name;
+    *output->mutable_comment() = comment;
   }
 
   template <typename T>
   TypedAttrChecker<T>& AddAttr(const std::string& name,
                                const std::string& comment) {
     auto attr = proto_->mutable_attrs()->Add();
-    *(attr->mutable_name()) = name;
-    *(attr->mutable_comment()) = comment;
+    *attr->mutable_name() = name;
+    *attr->mutable_comment() = comment;
     AttrTypeHelper::SetAttrType<T>(attr);
     return op_checker_->AddAttrChecker<T>(name);
   }
@@ -122,14 +92,14 @@ class OpProtoAndCheckerMaker {
 };
 
 class OpRegistry {
-  typedef std::function<OperatorBase*()> OpCreator;
+  using OpCreator = std::function<OperatorBase*()>;
 
  public:
   template <typename OpType, typename ProtoMakerType>
   static void RegisterOp(const std::string& op_type) {
-    creators_[op_type] = []() { return new OpType; };
-    OpProto& op_proto = protos_[op_type];
-    OpAttrChecker& op_checker = op_checkers_[op_type];
+    creators()[op_type] = [] { return new OpType; };
+    OpProto& op_proto = protos()[op_type];
+    OpAttrChecker& op_checker = op_checkers()[op_type];
     ProtoMakerType(&op_proto, &op_checker);
     PADDLE_ENFORCE(op_proto.IsInitialized(),
                    "Fail to initialize %s's OpProto !", op_type);
@@ -137,36 +107,37 @@ class OpRegistry {
 
   static OperatorBase* CreateOp(const OpDesc& op_desc) {
     std::string op_type = op_desc.type();
-    OperatorBase* op = (creators_.at(op_type))();
-    // init attrs
-    for (int i = 0; i < op_desc.attrs_size(); ++i) {
-      const AttrDesc& ith_attr = op_desc.attrs(i);
-      std::string name = ith_attr.name();
-      (op->attrs_)[name] = AttrTypeHelper::GetAttrValue(ith_attr);
-    }
-    const OpAttrChecker& op_checker = OpRegistry::op_checkers_.at(op_type);
-    // check attrs
-    op_checker.Check(op->attrs_);
+    OperatorBase* op = creators().at(op_type)();
     op->desc_ = op_desc;
-    for (auto& input : op_desc.inputs()) {
-      op->inputs_.push_back(input);
+    op->inputs_.reserve((size_t)op_desc.inputs_size());
+    std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),
+              std::back_inserter(op->inputs_));
+    op->outputs_.reserve((size_t)op_desc.outputs_size());
+    std::copy(op_desc.outputs().begin(), op_desc.outputs().end(),
+              std::back_inserter(op->outputs_));
+    for (auto& attr : op_desc.attrs()) {
+      op->attrs_[attr.name()] = AttrTypeHelper::GetAttrValue(attr);
     }
-    for (auto& output : op_desc.outputs()) {
-      op->outputs_.push_back(output);
-    }
+    op_checkers().at(op_type).Check(op->attrs_);
     return op;
   }
 
  private:
-  static std::unordered_map<std::string, OpCreator> creators_;
-  static std::unordered_map<std::string, OpProto> protos_;
-  static std::unordered_map<std::string, OpAttrChecker> op_checkers_;
-};
+  static std::unordered_map<std::string, OpCreator>& creators() {
+    static std::unordered_map<std::string, OpCreator> creators_;
+    return creators_;
+  }
 
-std::unordered_map<std::string, std::function<OperatorBase*()>>
-    OpRegistry::creators_;
-std::unordered_map<std::string, OpProto> OpRegistry::protos_;
-std::unordered_map<std::string, OpAttrChecker> OpRegistry::op_checkers_;
+  static std::unordered_map<std::string, OpProto>& protos() {
+    static std::unordered_map<std::string, OpProto> protos_;
+    return protos_;
+  };
+
+  static std::unordered_map<std::string, OpAttrChecker>& op_checkers() {
+    static std::unordered_map<std::string, OpAttrChecker> op_checkers_;
+    return op_checkers_;
+  };
+};
 
 template <typename OpType, typename ProtoMakerType>
 class OpRegisterHelper {
