@@ -33,11 +33,11 @@ class RecurrentOpTest : public ::testing::Test {
     // create boot memory
     scope_.CreateVariable("h_boot");
     // create input, and init content
-    // Variable* x = scope_.CreateVariable("x");
+    Variable* x = scope_.CreateVariable("x");
     DDim dims = make_ddim(std::vector<int>{10 /*sent size*/, 20 /*batch size*/,
                                            30 /*input dim*/});
     // TODO mutable_data is not valid
-    // x->GetMutable<Tensor>()->mutable_data<float>(dims, platform::CPUPlace());
+    x->GetMutable<Tensor>()->mutable_data<float>(dims, platform::CPUPlace());
   }
 
   void CreateRNNOp() {
