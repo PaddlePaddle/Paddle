@@ -12,7 +12,7 @@ cc_test(op_proto_test SRCS op_proto_test.cc DEPS op_proto protobuf)
 proto_library(op_desc SRCS op_desc.proto DEPS attr_type)
 cc_test(op_desc_test SRCS op_desc_test.cc DEPS op_desc protobuf)
 cc_library(operator SRCS operator.cc DEPS op_desc protobuf)
-cc_test(operator_test SRCS operator_test.cc DEPS operator op_proto op_desc attr_type protobuf)
+cc_test(operator_test SRCS operator_test.cc DEPS operator op_proto)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_proto op_desc operator)
 py_proto_compile(framework_py_proto SRCS attr_type.proto op_proto.proto op_desc.proto)
 # Generate an empty __init__.py to make framework_py_proto as a valid python module.

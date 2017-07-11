@@ -22,14 +22,14 @@ limitations under the License. */
 #include "paddle/framework/attr_checker.h"
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/scope.h"
-#include "paddle/platform/device_context.h"
 #include "paddle/utils/Error.h"
 
 namespace paddle {
 namespace framework {
 
-using paddle::platform::DeviceContext;
 class OperatorBase;
+
+class DeviceContext {};
 
 /**
  * OpRunContext is the only parameter of Operator's Run function.
