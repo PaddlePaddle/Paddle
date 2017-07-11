@@ -35,22 +35,28 @@ func cArrayToSlice(p unsafe.Pointer, len int) []byte {
 	return (*[1 << 30]byte)(p)[:len:len]
 }
 
-func newOptimizer(paramWithConfigs ParameterWithConfig) *optimizer {
+func newOptimizer(paramWithConfigs ParameterWithConfig, State []byte) *optimizer {
 	o := &optimizer{}
 	o.elementType = paramWithConfigs.Param.ElementType
 	p := paramWithConfigs.Param
 	c := paramWithConfigs.Config
+	s := State
 	log.WithFields(log.Fields{
 		"ElementType": p.ElementType,
 		"ParamSize":   len(p.Content),
 		"ConfigSize":  len(c),
+		"StateSize":   len(s),
 	}).Info("New Optimizer Created with config:")
 	var cbuffer unsafe.Pointer
 	cbuffer = C.malloc(C.size_t(len(p.Content)))
 	C.memcpy(cbuffer, unsafe.Pointer(&p.Content[0]), C.size_t(len(p.Content)))
+	var cstate unsafe.Pointer
+	if len(s) != 0 {
+		cstate = unsafe.Pointer(&s[0])
+	}
+
 	o.opt = C.paddle_create_optimizer((*C.uchar)(&c[0]), C.int(len(c)),
-		C.paddle_element_type(p.ElementType), cbuffer, C.int(len(p.Content)/C.sizeof_float),
-		(*C.char)(nullPtr), 0)
+		C.paddle_element_type(p.ElementType), cbuffer, C.int(len(p.Content)/C.sizeof_float), (*C.char)(cstate), C.int(len(s)))
 	return o
 }
 
@@ -58,6 +64,12 @@ func (o *optimizer) GetWeights() []byte {
 	var buffer unsafe.Pointer
 	bufferLen := C.paddle_optimizer_get_weights(o.opt, &buffer)
 	return cArrayToSlice(buffer, int(bufferLen)*C.sizeof_float)
+}
+
+func (o *optimizer) GetStates() []byte {
+	var cbuffer *C.char
+	cbuffer_len := C.paddle_optimizer_get_state(o.opt, &cbuffer)
+	return cArrayToSlice(unsafe.Pointer(cbuffer), int(cbuffer_len))
 }
 
 func (o *optimizer) UpdateParameter(g Gradient) error {
