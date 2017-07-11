@@ -1,5 +1,5 @@
 # ddim lib
-cc_library(ddim SRCS ddim.cc)
+cc_library(ddim SRCS ddim.cc DEPS eigen3)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 cc_test(tensor_test SRCS tensor_test.cc DEPS ddim)

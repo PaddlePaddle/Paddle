@@ -222,9 +222,9 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
 }
 
 template <int NDIMS>
-Eigen::DSizes<Eigen::DenseIndex, NDIMS> ToEigenDSizes(DDim dims) const {
-  int rank = paddle::framework::arity(dims);
-  PADDLE_ENFORCE(rank == NDIMS, "DDim and NDIMS must be same")
+Eigen::DSizes<Eigen::DenseIndex, NDIMS> ToEigenDSizes(const DDim& dims) {
+  int rank = arity(dims);
+  PADDLE_ENFORCE(rank == NDIMS, "DDim and NDIMS must be same");
   Eigen::DSizes<Eigen::DenseIndex, NDIMS> dsizes;
   for (int d = 0; d < rank; d++) {
     dsizes[d] = dims[d];
