@@ -1,8 +1,8 @@
 hash: a8faea3a363468a88917ddeb3b1c9ea36886fb2c622acbad42604fa9cb4d3855
-updated: 2017-07-05T10:13:07.631299087Z
+updated: 2017-07-11T10:04:40.786745417+08:00
 imports:
 - name: github.com/coreos/etcd
-  version: 61fc123e7a8b14a0a258aa3f5c4159861b1ec2e7
+  version: cb2a496c4ddd1c87a9f280e116649b599999ec79
   subpackages:
   - auth/authpb
   - clientv3
@@ -19,18 +19,10 @@ imports:
   version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/namsral/flag
   version: 71ceffbeb0ba60fccc853971bb3ed4d7d90bfd04
-- name: github.com/PaddlePaddle/Paddle
-  version: 7f380c1be35bb22765a61480fdd43bdb63e35288
-  subpackages:
-  - go/connection
-  - go/master
-  - go/pserver
-  - go/pserver/client
-  - go/utils/networkhelper
 - name: github.com/PaddlePaddle/recordio
   version: edfb82af0739c84f241c87390ec5649c7b28c129
 - name: github.com/sirupsen/logrus
-  version: 202f25545ea4cf9b191ff7f846df5d87c9382c2b
+  version: 7f976d3a76720c4c27af2ba716b85d2e0a7e38b1
 - name: github.com/topicai/candy
   version: 1b9030d056fa9f8c4b1f9c91b52fe4b8ab4cd8cc
 - name: golang.org/x/net
@@ -44,11 +36,11 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: f7928cfef4d09d1b080aa2b6fd3ca9ba1567c733
+  version: abf9c25f54453410d0c6668e519582a9e1115027
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: 4e9ab9ee170f2a39bd66c92b3e0a47ff47a4bc77
+  version: cfdf022e86b4ecfb646e1efbd7db175dd623a8fa
   subpackages:
   - secure/bidirule
   - transform

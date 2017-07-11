@@ -204,3 +204,14 @@ func (e *EtcdClient) GetKey(key string, timeout int) ([]byte, error) {
 	v := kvs[0].Value
 	return v, nil
 }
+
+// PutKey put into etcd with value by key specified
+func (e *EtcdClient) PutKey(key string, value []byte, timeout int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
+	_, err := e.etcdClient.Put(ctx, key, string(value))
+	cancel()
+	if err != nil {
+		return err
+	}
+	return nil
+}

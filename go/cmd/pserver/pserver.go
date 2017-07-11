@@ -21,9 +21,10 @@ func main() {
 		"comma separated endpoint string for pserver to connect to etcd")
 	etcdTimeout := flag.Int("etcd-timeout", 5, "timeout for etcd calls")
 	numPservers := flag.Int("num-pservers", 1, "total pserver count in a training job")
+	checkpointPath := flag.String("checkpoint-path", "/checkpoints/", "save checkpoint path")
+	checkpointInterval := flag.Int("checkpoint-interval", 600, "save checkpoint per interval seconds")
 	logLevel := flag.String("log-level", "info",
 		"log level, possible values: debug, info, warning, error, fatal, panic")
-	checkpointPath := flag.String("checkpoint-path", "/checkpoints/", "the checkpoint files path")
 	flag.Parse()
 
 	level, err := log.ParseLevel(*logLevel)
@@ -33,13 +34,13 @@ func main() {
 
 	var idx int
 
-	var cp *Checkpoint
+	var cp *pserver.Checkpoint
 	newPserver := true
 	if *index >= 0 {
 		idx = *index
 	} else {
 		timeout := time.Second * time.Duration((*etcdTimeout))
-		e := pserver.NewEtcdClient(*etcdEndpoint, *numPservers, timeout)
+		e = pserver.NewEtcdClient(*etcdEndpoint, *numPservers, timeout)
 		idx, err = e.Register()
 		candy.Must(err)
 
