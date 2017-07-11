@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void OperatorBase::InferShape(std::shared_ptr<Scope> scope) const {}
+void OperatorBase::InferShape(const std::shared_ptr<Scope>& scope) const {}
 
 std::string OperatorBase::DebugString() const {
   std::stringstream ss;
@@ -41,12 +41,12 @@ std::string OperatorBase::DebugString() const {
   return ss.str();
 }
 
-const Variable* OpContext::Input(int index) const {
-  return scope->GetVariable(op->inputs_[index]);
+const Variable* OpRunContext::Input(int index) const {
+  return scope_->GetVariable(op_->inputs_[index]);
 }
 
-Variable* OpContext::Output(int index) const {
-  return scope->GetVariable(op->outputs_[index]);
+Variable* OpRunContext::Output(int index) const {
+  return scope_->GetVariable(op_->outputs_[index]);
 }
 
 }  // namespace framework

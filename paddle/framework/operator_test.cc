@@ -21,7 +21,7 @@ namespace framework {
 
 class OperatorTest : public OperatorBase {
  public:
-  void Run(OpContext* ctx) const override {
+  void Run(OpRunContext* ctx) const override {
     float scale = GetAttr<float>("scale");
     PADDLE_ENFORCE(ctx->Input(0) == nullptr, "Input(0) should not initialized");
     PADDLE_ENFORCE(ctx->Output(0) == nullptr,

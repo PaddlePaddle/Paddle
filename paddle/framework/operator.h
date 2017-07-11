@@ -37,19 +37,19 @@ class DeviceContext {};
  * device resource such as CUDA stream, cublas handle, etc. from
  * OpRunContext. User should construct it before run the Operator.
  */
-class OpContext {
+class OpRunContext {
  public:
-  OpContext(const OperatorBase* op, std::shared_ptr<Scope> scope,
-            DeviceContext* device_context)
-      : op(op), scope(scope), device_context(device_context) {}
+  OpRunContext(const OperatorBase* op, std::shared_ptr<Scope> scope,
+               DeviceContext* device_context)
+      : op_(op), scope_(scope), device_context_(device_context) {}
 
   const Variable* Input(int index) const;
   Variable* Output(int index) const;
 
  public:
-  const OperatorBase* op;
-  std::shared_ptr<Scope> scope;
-  DeviceContext* device_context;
+  const OperatorBase* op_;
+  std::shared_ptr<Scope> scope_;
+  DeviceContext* device_context_;
 };
 
 /**
@@ -73,17 +73,17 @@ class OperatorBase {
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  virtual void InferShape(std::shared_ptr<Scope> scope) const;
+  virtual void InferShape(const std::shared_ptr<Scope>& scope) const;
 
   /// Net will call this function to Run an op.
-  void Run(std::shared_ptr<Scope> scope, DeviceContext* dev_ctx) {
-    OpContext op_ctx(this, scope, dev_ctx);
+  void Run(const std::shared_ptr<Scope>& scope, DeviceContext* dev_ctx) {
+    OpRunContext op_ctx(this, scope, dev_ctx);
     Run(&op_ctx);
   }
 
   /// when implement an Op, your should implement this function.
   /// this function should be moved to OpKernel later
-  virtual void Run(OpContext* context) const = 0;
+  virtual void Run(OpRunContext* context) const = 0;
 
  public:
   OpDesc desc_;
