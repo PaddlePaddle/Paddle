@@ -39,8 +39,9 @@ class DeviceContext {};
  */
 class OpRunContext {
  public:
-  OpRunContext(const OperatorBase* op, std::shared_ptr<Scope> scope,
-               DeviceContext* device_context)
+  OpRunContext(const OperatorBase* op,
+               const std::shared_ptr<Scope> scope,
+               const DeviceContext* device_context)
       : op_(op), scope_(scope), device_context_(device_context) {}
 
   const Variable* Input(int index) const;
@@ -48,8 +49,8 @@ class OpRunContext {
 
  public:
   const OperatorBase* op_;
-  std::shared_ptr<Scope> scope_;
-  DeviceContext* device_context_;
+  const std::shared_ptr<Scope> scope_;
+  const DeviceContext* device_context_;
 };
 
 /**
@@ -63,7 +64,7 @@ class OperatorBase {
   virtual ~OperatorBase() {}
 
   template <typename T>
-  inline const T GetAttr(const std::string& name) const {
+  inline const T& GetAttr(const std::string& name) const {
     PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
                    name);
     return boost::get<T>(attrs_.at(name));
@@ -77,7 +78,7 @@ class OperatorBase {
 
   /// Net will call this function to Run an op.
   virtual void Run(const std::shared_ptr<Scope>& scope,
-                   DeviceContext* dev_ctx) = 0;
+                   const DeviceContext* dev_ctx) const = 0;
 
  public:
   OpDesc desc_;
@@ -92,14 +93,14 @@ class OperatorWithKernel : public OperatorBase {
 
   virtual void InferShape(const std::shared_ptr<Scope>& scope) const {}
 
-  void Run(const std::shared_ptr<Scope>& scope, DeviceContext* dev_ctx) {
+  void Run(const std::shared_ptr<Scope>& scope, const DeviceContext* dev_ctx) const {
     OpRunContext op_ctx(this, scope, dev_ctx);
     Run(&op_ctx);
   }
 
   /// when implement an Op, your should implement this function.
   /// this function should be moved to OpKernel later
-  virtual void Run(OpRunContext* context) const = 0;
+  virtual void Run(const OpRunContext* context) const = 0;
 };
 
 }  // namespace framework

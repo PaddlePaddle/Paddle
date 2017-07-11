@@ -21,11 +21,13 @@ namespace framework {
 
 class OperatorTest : public OperatorWithKernel {
  public:
-  void Run(OpRunContext* ctx) const override {
+  void Run(const OpRunContext* ctx) const override {
     float scale = ctx->op_->GetAttr<float>("scale");
     PADDLE_ENFORCE(ctx->Input(0) == nullptr, "Input(0) should not initialized");
     PADDLE_ENFORCE(ctx->Output(0) == nullptr,
                    "Output(1) should not initialized");
+    auto output1 = ctx->scope_->CreateVariable("output1");
+    PADDLE_ENFORCE(output1 != nullptr, "should create output1 from scope");
     printf("get attr %s = %f\n", "scale", scale);
     printf("%s\n", DebugString().c_str());
   }

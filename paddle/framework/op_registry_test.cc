@@ -9,7 +9,7 @@ namespace paddle {
 namespace framework {
 class CosineOp : public OperatorWithKernel {
  public:
-  void Run(OpRunContext* context) const override {
+  void Run(const OpRunContext* context) const override {
     printf("%s\n", DebugString().c_str());
   }
 };
@@ -32,7 +32,7 @@ REGISTER_OP(CosineOp, CosineOpProtoAndCheckerMaker, cos_sim)
 
 class MyTestOp : public OperatorWithKernel {
  public:
-  void Run(OpRunContext* ctx) const override {
+  void Run(const OpRunContext* ctx) const override {
     printf("%s\n", DebugString().c_str());
     printf("test_attr = %d\n", ctx->op_->GetAttr<int>("test_attr"));
   }

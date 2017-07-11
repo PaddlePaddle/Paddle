@@ -9,7 +9,7 @@ namespace operators {
 
 class CosineOp : public OperatorWithKernel {
  public:
-  void Run(OpRunContext *context) const override {
+  void Run(const OpRunContext *context) const override {
     printf("%s\n", DebugString().c_str());
   }
 };
@@ -32,7 +32,7 @@ REGISTER_OP(CosineOp, CosineOpProtoAndCheckerMaker, cos_sim)
 
 class MyTestOp : public OperatorWithKernel {
  public:
-  void Run(OpRunContext *context) const override {
+  void Run(const OpRunContext *context) const override {
     printf("%s\n", DebugString().c_str());
   }
 };
