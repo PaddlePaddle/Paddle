@@ -173,8 +173,8 @@ class RecurrentOp : public OperatorBase {
   };
 
   /*
-   * The attributes in protobuf about the memory description and the booted
-   * memory description are as follows. The number of booted memories should
+   * The attributes in protobuf about the memory description and the initial
+   * memory description are as follows. The number of initial memories should
    * equal to the memories number.
    *
    *   arg {

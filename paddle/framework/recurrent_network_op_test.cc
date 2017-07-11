@@ -11,6 +11,7 @@
   limitations under the License.
 */
 
+#include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include "paddle/framework/recurrent_network_op.h"
@@ -26,11 +27,13 @@ class RecurrentOpTest : public ::testing::Test {
     CreateRNNOp();
   }
 
+  virtual void TearDown() {}
+
   void CreateGlobalVariables() {
     // create boot memory
-    scope.CreateVariable("h_boot");
+    scope_.CreateVariable("h_boot");
     // create input, and init content
-    // Variable* x = scope.CreateVariable("x");
+    // Variable* x = scope_.CreateVariable("x");
     DDim dims = make_ddim(std::vector<int>{10 /*sent size*/, 20 /*batch size*/,
                                            30 /*input dim*/});
     // TODO mutable_data is not valid
@@ -45,22 +48,34 @@ class RecurrentOpTest : public ::testing::Test {
     // output hidden vectors
     op_desc.add_outputs("hiddens");
 
+    // add memories
     auto memories_attr = op_desc.mutable_attrs()->Add();
     memories_attr->set_type(paddle::framework::AttrType::STRINGS);
-
     *memories_attr->mutable_strings()->Add() = "h";
     memories_attr->set_name("memories");
 
+    // add initial memories
     auto boot_memories_attr = op_desc.mutable_attrs()->Add();
     boot_memories_attr->set_type(paddle::framework::AttrType::STRINGS);
     *boot_memories_attr->mutable_strings()->Add() = "h_boot";
     boot_memories_attr->set_name("boot_memories");
 
+    // add step net desc
+    auto step_net_attr = op_desc.mutable_attrs()->Add();
+    step_net_attr->set_type(paddle::framework::AttrType::STRING);
+    step_net_attr->set_s(" ");  // TODO add step net proto
+    step_net_attr->set_name("step_net");
+
+    std::ostringstream stream;
+    op_desc.SerializeToOstream(&stream);
+    std::string text = stream.str();
+    LOG(INFO) << text;
+
     AttributeMap attrs;
     attrs["memories"] = std::vector<std::string>{"h"};
     attrs["boot_memories"] = std::vector<std::string>{"h_boot"};
 
-    rnn_op.Init(op_desc, attrs);
+    rnn_op_.Init(op_desc, attrs);
   }
 
   void RunRnnOp() {
@@ -68,8 +83,8 @@ class RecurrentOpTest : public ::testing::Test {
   }
 
   // father scope
-  Scope scope;
-  RecurrentOp rnn_op;
+  Scope scope_;
+  RecurrentOp rnn_op_;
 };
 
 TEST_F(RecurrentOpTest, create_op) {}
