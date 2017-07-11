@@ -57,16 +57,59 @@ class Tensor {
 
   DDim dim() const { return dims_; }
 
+  size_t NumElements() const { return product(dims_); }
+
   template <typename T, size_t NDIMS>
-  typename TTypes<T, NDIMS>::ConstantTensor Tensor::tensor() {
-    return typename TTypes<T, NDIMS>::Tensor(
-        data<T>(), paddle::framework::ToEigenDSizes<NDIMS>(dims_));
+  typename TTypes<T, NDIMS>::Tensor Tensor::shaped(DDim new_dims) {
+    Eigen::array<Eigen::DenseIndex, NDIMS> dims =
+        paddle::framework::ToEigenDSizes(new_dims);
+    return typename TTypes<T, NDIMS>::Tensor(data<T>(), dims);
   }
 
   template <typename T, size_t NDIMS>
   typename TTypes<T, NDIMS>::Tensor Tensor::tensor() {
     return typename TTypes<T, NDIMS>::Tensor(
         data<T>(), paddle::framework::ToEigenDSizes<NDIMS>(dims_));
+  }
+
+  // flat to rank = 1
+  template <typename T>
+  typename TTypes<T>::Flat flat() {
+    return shaped<T, 1>({NumElements()});
+  }
+
+  // to TensorType Vec
+  template <typename T>
+  typename TTypes<T>::Vec vec() {
+    return tensor<T, 1>();
+  }
+
+  // to TensorType Matrix
+  template <typename T>
+  typename TTypes<T>::Matrix matrix() {
+    return tensor<T, 2>();
+  }
+
+  // const versions of all the methods above.
+  template <typename T, size_t NDIMS>
+  typename TTypes<T, NDIMS>::ConstantTensor Tensor::tensor() const {
+    return typename TTypes<T, NDIMS>::Tensor(
+        data<T>(), paddle::framework::ToEigenDSizes<NDIMS>(dims_));
+  }
+
+  template <typename T>
+  typename TTypes<T>::ConstFlat flat() const {
+    return shaped<T, 1>({NumElements()});
+  }
+
+  template <typename T>
+  typename TTypes<T>::ConstVec vec() const {
+    return tensor<T, 1>();
+  }
+
+  template <typename T>
+  typename TTypes<T>::ConstMatrix matrix() const {
+    return tensor<T, 2>();
   }
 
  private:

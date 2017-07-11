@@ -93,13 +93,7 @@ int arity(const DDim& ddim);
 std::ostream& operator<<(std::ostream&, const DDim&);
 
 template <int NDIMS>
-Eigen::DSizes<Eigen::DenseIndex, NDIMS> ToEigenDSizes(DDim dims) const {
-  Eigen::DSizes<Eigen::DenseIndex, NDIMS> dsizes;
-  for (int d = 0; d < paddle::framework::arity(dims); d++) {
-    dsizes[d] = dims[d];
-  }
-  return dsizes;
-}
+Eigen::DSizes<Eigen::DenseIndex, NDIMS> ToEigenDSizes(DDim dims) const;
 
 }  // namespace framework
 }  // namespace paddle

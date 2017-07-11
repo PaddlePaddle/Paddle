@@ -1,4 +1,5 @@
 #include "paddle/framework/ddim.h"
+#include "paddle/framework/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -218,6 +219,17 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
   DDimPrinter printer(os);
   boost::apply_visitor(printer, ddim);
   return os;
+}
+
+template <int NDIMS>
+Eigen::DSizes<Eigen::DenseIndex, NDIMS> ToEigenDSizes(DDim dims) const {
+  int rank = paddle::framework::arity(dims);
+  PADDLE_ENFORCE(rank == NDIMS, "DDim and NDIMS must be same")
+  Eigen::DSizes<Eigen::DenseIndex, NDIMS> dsizes;
+  for (int d = 0; d < paddle::framework::arity(dims); d++) {
+    dsizes[d] = dims[d];
+  }
+  return dsizes;
 }
 
 }  // namespace framework
