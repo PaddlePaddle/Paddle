@@ -57,8 +57,7 @@ Building in /paddle/build ...
    Build unit tests: ${WITH_TESTING:-OFF}
 ========================================
 EOF
-#make -j `nproc`
-make -j 1
+make -j `nproc`
 if [ ${WITH_TESTING:-OFF} == "ON" ] && [ ${RUN_TEST:-OFF} == "ON" ] ; then
     pip uninstall -y py-paddle paddle || true
     ctest --output-on-failure
