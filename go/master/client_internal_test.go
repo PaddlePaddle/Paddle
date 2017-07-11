@@ -95,7 +95,7 @@ func TestGetFinishTask(t *testing.T) {
 			t.Fatalf("Should get error, pass: %d\n", i)
 		}
 
-		err = c.taskFinished(tasks[0].ID)
+		err = c.taskFinished(tasks[0].Meta.ID)
 		if err != nil {
 			t.Fatalf("Error: %v, pass: %d\n", err, i)
 		}
@@ -107,7 +107,7 @@ func TestGetFinishTask(t *testing.T) {
 		tasks = append(tasks, task)
 
 		for _, task := range tasks {
-			err = c.taskFinished(task.ID)
+			err = c.taskFinished(task.Meta.ID)
 			if err != nil {
 				t.Fatalf("Error: %v, pass: %d\n", err, i)
 			}
