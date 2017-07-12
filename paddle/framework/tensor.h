@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <type_traits>
 #include "paddle/framework/ddim.h"
@@ -28,11 +29,18 @@ namespace framework {
 
 class Tensor {
  public:
+  Tensor() : offset_(0) {}
+
+  explicit Tensor(const DDim& dims) : dims_(dims), offset_(0) {}
+
   template <typename T>
+
   T* data() const {
-    PADDLE_ENFORCE(holder_ != nullptr,
-                   "Tensor::data must be called after Tensor::mutable_data.");
-    return static_cast<T*>(holder_->Ptr());
+    PADDLE_ENFORCE(
+        holder_ != nullptr,
+        "Tenosr has not been initialized. Call Tensor::mutable_data first.");
+    return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->Ptr()) +
+                                offset_);
   }
 
   template <typename T,  // must be POD types
@@ -41,14 +49,14 @@ class Tensor {
     if (holder_ == nullptr ||
         !(holder_->Place() ==
           place) /* some versions of boost::variant don't have operator!= */
-        || holder_->Size() < product(dims) * sizeof(T)) {
+        || holder_->Size() < product(dims) * sizeof(T) + offset_) {
       holder_.reset(new PlaceholderImpl<T>(place, product(dims) * sizeof(T)));
       dims_ = dims;
+      offset_ = 0;
     }
-    return static_cast<T*>(holder_->Ptr());
+    return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->Ptr()) +
+                                offset_);
   }
-
-  DDim dim() const { return dims_; }
 
   size_t NumElements() const { return product(dims_); }
 
@@ -105,6 +113,37 @@ class Tensor {
     return tensor<T, 2>();
   }
 
+  void ShareDataFrom(const Tensor& src) {
+    PADDLE_ENFORCE(src.holder_ != nullptr,
+                   "Can not share data from an uninitialized tensor.");
+    holder_ = src.holder_;
+    dims_ = src.dims_;
+    offset_ = src.offset_;
+  }
+
+  Tensor Slice(const int& begin_idx, const int& end_idx) const {
+    PADDLE_ENFORCE(holder_ != nullptr,
+                   "The sliced tenosr has not been initialized.");
+    PADDLE_ENFORCE(begin_idx >= 0 && end_idx <= dims_[0],
+                   "Slice index is less than zero or out of bound.");
+    PADDLE_ENFORCE(begin_idx < end_idx,
+                   "Begin index must be less than end index.");
+    PADDLE_ENFORCE(dims_[0] != 1, "Can not slice a tensor with dims_[0] = 1.");
+    std::vector<int> d = vectorize(dims_);
+    int base = 1;
+    for (size_t i = 1; i < d.size(); ++i) {
+      base *= d[i];
+    }
+    Tensor dst;
+    dst.holder_ = holder_;
+    dst.dims_ = dims_;
+    dst.dims_[0] = end_idx - begin_idx;
+    dst.offset_ = offset_ + begin_idx * base * holder_->TypeSize();
+    return dst;
+  }
+
+  DDim dims() const { return dims_; }
+
  private:
   // Placeholder hides type T, so it doesn't appear as a template
   // parameter of Variable.
@@ -113,6 +152,7 @@ class Tensor {
     virtual void* Ptr() const = 0;
     virtual paddle::platform::Place Place() const = 0;
     virtual size_t Size() const = 0;
+    virtual size_t TypeSize() const = 0;
   };
 
   template <typename T>
@@ -139,6 +179,7 @@ class Tensor {
     virtual void* Ptr() const { return static_cast<void*>(ptr_.get()); }
     virtual size_t Size() const { return size_; }
     virtual paddle::platform::Place Place() const { return place_; }
+    virtual size_t TypeSize() const { return sizeof(T); }
 
     std::unique_ptr<T, Deleter> ptr_;
     paddle::platform::Place place_;  // record the place of ptr_.
@@ -147,6 +188,7 @@ class Tensor {
 
   std::shared_ptr<Placeholder> holder_;  // holds the memory block if allocated.
   DDim dims_;
+  size_t offset_;  // marks the begin of tensor data area.
 };
 
 }  // namespace framework
