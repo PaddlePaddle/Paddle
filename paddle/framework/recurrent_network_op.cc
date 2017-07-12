@@ -67,7 +67,8 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
   }
   // prepare inlinks
   PADDLE_ENFORCE(inlinks_.empty(), "RecurrentOp duplicate inited");
-  for (auto id : GetAttr<std::vector<int>>("real_input")) {
+  LOG(INFO) << "set inlinks";
+  for (auto id : GetAttr<std::vector<int>>("real_inputs")) {
     inlinks_.push_back(inputs_[id]);
   }
 
@@ -82,6 +83,7 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
                  "The size of memories and pre_memories doesn't match: %d,%d.",
                  memories.size(), pre_memories.size());
   std::vector<std::string> boot_memories;
+  LOG(INFO) << "set boot_memories";
   for (auto id : GetAttr<std::vector<int>>("boot_memories")) {
     boot_memories.push_back(inputs_[id]);
   }

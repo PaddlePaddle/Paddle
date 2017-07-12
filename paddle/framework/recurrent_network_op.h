@@ -47,7 +47,9 @@ class OperatorBase {
   };
 
   template <typename T>
-  inline const T GetAttr(const std::string& name) const {
+  inline const T& GetAttr(const std::string& name) const {
+    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
+                   name);
     return boost::get<T>(attrs_.at(name));
   }
 
