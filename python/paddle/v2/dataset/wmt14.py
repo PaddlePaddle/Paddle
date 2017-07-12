@@ -32,9 +32,9 @@ MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
 # this is a small set of data for test. The original data is too large and will be add later.
 URL_TRAIN = 'http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz'
 MD5_TRAIN = '0791583d57d5beb693b9414c5b36798c'
-# this is the pretrained model, whose bleu = 26.92
+# BLEU of this trained model is 26.92
 URL_MODEL = 'http://paddlepaddle.bj.bcebos.com/demo/wmt_14/wmt14_model.tar.gz'
-MD5_MODEL = '4ce14a26607fb8a1cc23bcdedb1895e4'
+MD5_MODEL = '0cb4a5366189b6acba876491c8724fa3'
 
 START = "<s>"
 END = "<e>"

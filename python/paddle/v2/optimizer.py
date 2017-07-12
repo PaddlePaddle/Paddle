@@ -66,6 +66,8 @@ class Optimizer(object):
             if use_sparse_remote_updater:
                         gradient_machine.prefetch(in_args)
                         parameter_updater.getParametersRemote()
+
+        :param pserver_spec: pserver location, eg: localhost:3000
         :return: parameter_updater
         """
         if is_local:
