@@ -69,5 +69,55 @@ TEST(OperatorBase, all) {
   delete op;
 }
 
+class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+ public:
+  OpKernelTestProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("input", "input of test op");
+    AddOutput("output", "output of test op");
+    AddAttr<float>("scale", "scale of cosine op")
+        .SetDefault(1.0)
+        .LargerThan(0.0);
+    AddType("test_operator");
+    AddComment("This is test op");
+  }
+};
+
+class OpWithKernelTest : public OperatorWithKernel {
+ public:
+  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
+};
+
+class KernelTest : public OpKernel {
+ public:
+  void Compute(const KernelContext& context) const {
+    std::cout << context.op_.DebugString() << std::endl;
+  }
+};
+
+REGISTER_OP(OpWithKernelTest, OpKernelTestProtoAndCheckerMaker, op_with_kernel)
+REGISTER_OP_KERNEL(op_with_kernel, platform::CPUPlace(), KernelTest)
+
+TEST(OpKernel, all) {
+  OpDesc op_desc;
+  op_desc.set_type("op_with_kernel");
+  *op_desc.mutable_inputs()->Add() = "IN1";
+  *op_desc.mutable_outputs()->Add() = "OUT1";
+  auto attr = op_desc.mutable_attrs()->Add();
+  attr->set_name("scale");
+  attr->set_type(paddle::framework::AttrType::FLOAT);
+  float scale = 3.14;
+  attr->set_f(scale);
+
+  platform::CPUDeviceContext device_context;
+  auto scope = std::make_shared<Scope>();
+
+  OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  ASSERT_EQ(op->GetAttr<float>("scale"), scale);
+  scope->CreateVariable("OUT1");
+  op->Run(scope, device_context);
+  std::cout << op->DebugString() << std::endl;
+  delete op;
+}
 }  // namespace framework
 }  // namespace paddle
