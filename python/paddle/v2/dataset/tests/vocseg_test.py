@@ -21,7 +21,7 @@ class TestVOC(unittest.TestCase):
         sum = 0
         label = 0
         for l in reader():
-            self.assertEqual(l[0].size, l[1].size)
+            self.assertEqual(l[0].size, 3 * l[1].size)
             sum += 1
         return sum
 

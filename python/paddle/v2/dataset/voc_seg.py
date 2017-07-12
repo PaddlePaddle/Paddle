@@ -20,14 +20,16 @@ with segmentation has been increased from 7,062 to 9,993.
 """
 
 import tarfile
+import io
 import numpy as np
 from common import download
 from paddle.v2.image import *
+from PIL import Image
 
 __all__ = ['train', 'test', 'val']
 
 VOC_URL = 'http://host.robots.ox.ac.uk/pascal/VOC/voc2012/\
-            VOCtrainval_11-May-2012.tar'
+VOCtrainval_11-May-2012.tar'
 
 VOC_MD5 = '6cd6e144f989b92b3379bac3b3de84fd'
 SET_FILE = 'VOCdevkit/VOC2012/ImageSets/Segmentation/{}.txt'
@@ -51,8 +53,10 @@ def reader_creator(filename, sub_name):
             label_file = LABEL_FILE.format(line)
             data = tarobject.extractfile(name2mem[data_file]).read()
             label = tarobject.extractfile(name2mem[label_file]).read()
-            data = load_image_bytes(data)
-            label = load_image_bytes(label)
+            data = Image.open(io.BytesIO(data))
+            label = Image.open(io.BytesIO(label))
+            data = np.array(data)
+            label = np.array(label)
             yield data, label
 
     return reader
