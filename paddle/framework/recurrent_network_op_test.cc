@@ -97,7 +97,7 @@ class RecurrentOpTest : public ::testing::Test {
     CreateRNNOp();
   }
 
-  virtual void TearDown() {}
+  virtual void TearDown() override {}
 
   void CreateGlobalVariables() {
     LOG(INFO) << "create global variable h_boot";

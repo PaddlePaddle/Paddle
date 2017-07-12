@@ -94,6 +94,21 @@ class PlainNet {
 // 3. Multi-inputs with indifinate length for RecurrentOp.
 // 4. More Complex RNN architecture, such as Gated Feedback RNN.
 //    Refer to: https://arxiv.org/pdf/1502.02367.pdf
+
+/*
+ * RecurrentOp inputs stored in proto:
+ * - real inputs that need to be segmented to steps.
+ * - boot memories
+ * - step net
+ * - step scopes
+ *
+ * Attributes stored in AttributeMap:
+ * - real_inputs: vector<int>
+ * - boot_memories: vector<int>
+ * - step_net: int
+ * - step_scopes: int
+ */
+
 class RecurrentOp : public OperatorBase {
  public:
   /*
@@ -123,7 +138,7 @@ class RecurrentOp : public OperatorBase {
   /*
    * Process outputs of stepnets and merge to variables.
    */
-  void ConcateOutputs(ScopePtr scope) const {};
+  void ConcatOutputs(ScopePtr scope) const;
 
   /*
    * Create a `Net` which is shared across all steps.
@@ -131,7 +146,6 @@ class RecurrentOp : public OperatorBase {
   void CreateStepNet(ScopePtr scope) const;
 
   /*
-   * Create a scope for each step, the context's scope is shared across all
    * the step scopes as the father scope. The step scopes will be stored in
    * the father scope as a variable whose name is specified by
    * `step_scopes_name_`.
@@ -178,14 +192,14 @@ class RecurrentOp : public OperatorBase {
    * equal to the memories number.
    *
    *   arg {
-   *       name: “memories”
-   *       strings: "hidden”
-   *       strings: "state”
+   *       name: "memories"
+   *       strings: "hidden"
+   *       strings: "state"
    *   }
    *   arg {
-   *       name: “boot_memories”
-   *       strings: "boot_hidden”
-   *       strings: "boot_state”
+   *       name: “boot_memories"
+   *       strings: "boot_hidden"
+   *       strings: "boot_state"
    *   }
    */
   // TODO copy from OpBase's
@@ -201,6 +215,8 @@ class RecurrentOp : public OperatorBase {
   // name of steps' scopes which is stored in father scope with a unique key
   // specified by `step_scopes_name_`.
   std::string step_scopes_name_;
+  // real inputs that need to be segmented.
+  std::vector<std::string> inlinks_;
 
   NetDesc step_net_desc_;
 };
