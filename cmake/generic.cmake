@@ -93,7 +93,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 if(NOT APPLE AND NOT ANDROID)
     find_package(Threads REQUIRED)
     link_libraries(${CMAKE_THREAD_LIBS_INIT})
-    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -ldl")
+    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -ldl -lrt")
 endif(NOT APPLE)
 
 function(merge_static_libs TARGET_NAME)
