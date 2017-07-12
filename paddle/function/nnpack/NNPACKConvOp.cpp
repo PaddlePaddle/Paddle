@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/function/ConvOp.h"
 
 DEFINE_bool(nnpack_allocate_outside,
-            false,
+            true,
             "Allocate and free workspace memory outside the NNPACK interface.");
 DEFINE_int32(nnpack_num_threads,
              0,
