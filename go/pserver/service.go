@@ -22,14 +22,14 @@ import (
 // ElementType is the type of elements of a Parameter.
 type ElementType int
 
-// RPC error message
+// RPC error message.
 const (
 	AlreadyInitialized  = "pserver already initialized"
 	Uninitialized       = "pserver not fully initialized"
 	CheckpointMD5Failed = "checkpoint file MD5 validation failed"
 )
 
-// Supported element types
+// Supported element types.
 const (
 	Int32 ElementType = iota
 	UInt32
