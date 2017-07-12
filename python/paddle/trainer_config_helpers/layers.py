@@ -2337,6 +2337,7 @@ def img_depthwise_conv_layer(input,
         shared_biases=shared_biases,
         type=lt,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
+
     return LayerOutput(
         name,
         lt,

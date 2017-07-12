@@ -1811,9 +1811,6 @@ class DepthwiseConvLayer(LayerBase):
         use_gpu = int(g_command_config_args.get("use_gpu", 0))
         parallel_nn = int(g_command_config_args.get("parallel_nn", 0))
 
-        # Automatically select cudnn_type for GPU and exconv for CPU
-        # if set type=conv, but still reserve the way user specify
-        # exconv or cudnn_conv manually.
         self.layer_type = "depthwise_conv"
         # need to specify layer in config
         self.config.type = self.layer_type
@@ -1824,7 +1821,7 @@ class DepthwiseConvLayer(LayerBase):
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             conv_conf = self.config.inputs[input_index].conv_conf
-            #set the groups
+            #set the groups, the groups equals the input channels
             self.inputs[input_index].conv.groups = self.inputs[
                 input_index].conv.channels
             parse_conv(self.inputs[input_index].conv, input_layer.name,
