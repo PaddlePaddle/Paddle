@@ -11,4 +11,4 @@ ELSE()
 ENDIF()
 
 cc_library(device_context SRCS device_context.cc DEPS place eigen3 ${GPU_CTX_DEPS})
-nv_test(device_context_test SRCS device_context_test.cc DEPS device_context glog gflags)
+#nv_test(device_context_test SRCS device_context_test.cc DEPS device_context glog gflags)

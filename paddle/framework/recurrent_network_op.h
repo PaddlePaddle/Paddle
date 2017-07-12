@@ -22,6 +22,7 @@
 #include "paddle/framework/variable.h"
 
 // Remove when including operator.h
+#include <glog/logging.h>
 #include "paddle/framework/attr_checker.h"
 #include "paddle/framework/op_desc.pb.h"
 
@@ -145,7 +146,7 @@ class RecurrentOp : public OperatorBase {
   /*
    * Create a `Net` which is shared across all steps.
    */
-  void CreateStepNet(ScopePtr scope) const;
+  // void CreateStepNet(ScopePtr scope) const;
 
   /*
    * the step scopes as the father scope. The step scopes will be stored in
@@ -218,9 +219,7 @@ class RecurrentOp : public OperatorBase {
   // specified by `step_scopes_name_`.
   std::string step_scopes_name_;
   // real inputs that need to be segmented.
-  std::vector<std::string> inlinks_;
-
-  NetDesc step_net_desc_;
+  std::vector<int> inlinks_;
 };
 
 class RecurrentGradientOp;
