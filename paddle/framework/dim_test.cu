@@ -58,24 +58,6 @@ TEST(Dim, Equality) {
     EXPECT_EQ(paddle::framework::get<1>(c), 3);
     EXPECT_EQ(paddle::framework::get<2>(c), 12);
 
-    // contiguous_strides
-    c = paddle::framework::contiguous_strides(paddle::framework::Dim<3>(10, 1, 10));
-    EXPECT_EQ(paddle::framework::get<0>(c), 1);
-    EXPECT_EQ(paddle::framework::get<1>(c), 0);
-    EXPECT_EQ(paddle::framework::get<2>(c), 10);
-    c = paddle::framework::contiguous_strides(paddle::framework::Dim<3>(10, 10, 1));
-    EXPECT_EQ(paddle::framework::get<0>(c), 1);
-    EXPECT_EQ(paddle::framework::get<1>(c), 10);
-    EXPECT_EQ(paddle::framework::get<2>(c), 0);
-    c = paddle::framework::contiguous_strides(paddle::framework::Dim<3>(1, 10, 10));
-    EXPECT_EQ(paddle::framework::get<0>(c), 0);
-    EXPECT_EQ(paddle::framework::get<1>(c), 1);
-    EXPECT_EQ(paddle::framework::get<2>(c), 10);
-    c = paddle::framework::contiguous_strides(paddle::framework::Dim<3>(2, 3, 4));
-    EXPECT_EQ(paddle::framework::get<0>(c), 1);
-    EXPECT_EQ(paddle::framework::get<1>(c), 2);
-    EXPECT_EQ(paddle::framework::get<2>(c), 6);
-
     // generate from an index
     auto size = paddle::framework::make_dim(4, 5, 2);
     c = paddle::framework::Dim<3>(14, size);
@@ -101,16 +83,6 @@ TEST(Dim, Bool) {
     EXPECT_TRUE(a == a);
     EXPECT_FALSE(a == b);
     EXPECT_TRUE(a == c);
-
-    // contiguous check
-    int x = 4, y = 5, z = 2;
-    paddle::framework::Dim<3> sizef(x, y, z);
-    paddle::framework::Dim<3> stridea(1, x, x*y);
-    paddle::framework::Dim<3> strideb(2, 2*x, 2*x*y);
-    paddle::framework::Dim<3> stridec(1, x, 2*x*y);
-    EXPECT_TRUE(paddle::framework::contiguous(sizef, stridea));
-    EXPECT_FALSE(paddle::framework::contiguous(sizef, strideb));
-    EXPECT_FALSE(paddle::framework::contiguous(sizef, stridec));
 }
 
 TEST(Dim, Print) {
