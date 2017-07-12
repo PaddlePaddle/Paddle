@@ -91,6 +91,8 @@ class OpWithKernelTest : public OperatorWithKernel {
 class KernelTest : public OpKernel {
  public:
   void Compute(const KernelContext& context) const {
+    float scale = context.op_.GetAttr<float>("scale");
+    ASSERT_NEAR(scale, 3.14, 1e-5);
     std::cout << context.op_.DebugString() << std::endl;
   }
 };
