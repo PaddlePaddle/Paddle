@@ -22,8 +22,8 @@ limitations under the License. */
 #include "paddle/platform/dynload/curand.h"
 #define EIGEN_USE_GPU
 #endif
-#include "paddle/platform/place.h"
-#include "unsupported/Eigen/CXX11/Tensor"
+#include <paddle/platform/place.h>
+#include <unsupported/Eigen/CXX11/Tensor>
 
 namespace paddle {
 namespace platform {
@@ -31,9 +31,16 @@ namespace platform {
 class DeviceContext {
  public:
   virtual ~DeviceContext() {}
+  virtual Place GetPlace() const = 0;
 };
 
-class CPUDeviceContext : public DeviceContext {};
+class CPUDeviceContext : public DeviceContext {
+ public:
+  Place GetPlace() const override {
+    Place retv = CPUPlace();
+    return retv;
+  }
+};
 
 #ifndef PADDLE_ONLY_CPU
 
@@ -59,6 +66,11 @@ class CUDADeviceContext : public DeviceContext {
                                      "cudaStreamCreate failed");
     eigen_stream_ = new Eigen::CudaStreamDevice(&stream_);
     eigen_device_ = new Eigen::GpuDevice(eigen_stream_);
+  }
+
+  Place GetPlace() const override {
+    Place retv = GPUPlace();
+    return retv;
   }
 
   void Wait() {
