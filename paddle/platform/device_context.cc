@@ -13,12 +13,18 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
-namespace dynload {
-namespace dummy {
-// Make DeviceContext A library.
-int DUMMY_VAR_FOR_DEV_CTX = 0;
 
-}  // namespace dummy
-}  // namespace dynload
+template <>
+Eigen::DefaultDevice DeviceContext::get_eigen_device<Eigen::DefaultDevice>() {
+  return reinterpret_cast<CPUDeviceContext*>(this)->eigen_device();
+}
+
+#ifndef PADDLE_ONLY_CPU
+template <>
+Eigen::GpuDevice DeviceContext::get_eigen_device<Eigen::GpuDevice>() {
+  return reinterpret_cast<CUDADeviceContext*>(this)->eigen_device();
+}
+#endif
+
 }  // namespace platform
 }  // namespace paddle

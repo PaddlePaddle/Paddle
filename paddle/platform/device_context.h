@@ -31,7 +31,7 @@ class DeviceContext {
   virtual Place GetPlace() const = 0;
 
   template <typename DeviceType>
-  inline DeviceType get_eigen_device();
+  DeviceType get_eigen_device();
 };
 
 class CPUDeviceContext : public DeviceContext {
@@ -51,11 +51,6 @@ class CPUDeviceContext : public DeviceContext {
  private:
   Eigen::DefaultDevice* eigen_device_{nullptr};
 };
-
-template <>
-Eigen::DefaultDevice DeviceContext::get_eigen_device<Eigen::DefaultDevice>() {
-  return dynamic_cast<CPUDeviceContext*>(this)->eigen_device();
-}
 
 #ifndef PADDLE_ONLY_CPU
 
@@ -183,10 +178,6 @@ class CUDADeviceContext : public DeviceContext {
   curandGenerator_t rand_generator_{nullptr};
 };
 
-template <>
-Eigen::GpuDevice DeviceContext::get_eigen_device<Eigen::GpuDevice>() {
-  return dynamic_cast<CUDADeviceContext*>(this)->eigen_device();
-}
 #endif
 
 }  // namespace platform
