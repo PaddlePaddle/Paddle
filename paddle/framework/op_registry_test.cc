@@ -26,7 +26,7 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-REGISTER_OP(cos_sim, CosineOp, CosineOpProtoAndCheckerMaker)
+REGISTER_OP(cos_sim, CosineOp, CosineOpProtoAndCheckerMaker);
 
 class MyTestOp : public OperatorBase {
  public:
@@ -53,7 +53,7 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-REGISTER_OP(my_test_op, MyTestOp, MyTestOpProtoAndCheckerMaker)
+REGISTER_OP(my_test_op, MyTestOp, MyTestOpProtoAndCheckerMaker);
 }  // namespace framework
 }  // namespace paddle
 

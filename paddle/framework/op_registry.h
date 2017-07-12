@@ -153,7 +153,7 @@ class OpRegisterHelper {
     const static OpRegisterHelper<op_class, op_maker_class> reg;            \
   };                                                                        \
   const OpRegisterHelper<op_class, op_maker_class> op_class##Register::reg( \
-      #type);
+      #type)
 
 }  // namespace framework
 }  // namespace paddle

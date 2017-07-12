@@ -45,7 +45,7 @@ class OperatorTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-REGISTER_OP(test_operator, OperatorTest, OperatorTestProtoAndCheckerMaker)
+REGISTER_OP(test_operator, OperatorTest, OperatorTestProtoAndCheckerMaker);
 
 TEST(OperatorBase, all) {
   OpDesc op_desc;
@@ -98,8 +98,8 @@ class CPUKernelTest : public OpKernel {
   }
 };
 
-REGISTER_OP(op_with_kernel, OpWithKernelTest, OpKernelTestProtoAndCheckerMaker)
-REGISTER_OP_KERNEL(op_with_kernel, platform::CPUPlace(), CPUKernelTest)
+REGISTER_OP(op_with_kernel, OpWithKernelTest, OpKernelTestProtoAndCheckerMaker);
+REGISTER_OP_KERNEL(op_with_kernel, platform::CPUPlace, CPUKernelTest);
 
 TEST(OpKernel, all) {
   OpDesc op_desc;

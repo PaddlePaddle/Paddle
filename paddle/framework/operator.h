@@ -142,9 +142,9 @@ class OperatorWithKernel : public OperatorBase {
   struct __op_kernel_register__##type##__ {                               \
     __op_kernel_register__##type##__() {                                  \
       ::paddle::framework::OperatorWithKernel::OpKernelKey key;           \
-      key.place_ = PlaceType;                                             \
+      key.place_ = PlaceType();                                           \
       ::paddle::framework::OperatorWithKernel::AllOpKernels()[#type][key] \
           .reset(new KernelType());                                       \
     }                                                                     \
   };                                                                      \
-  static __op_kernel_register__##type##__ __reg_kernel_##type##__;
+  static __op_kernel_register__##type##__ __reg_kernel_##type##__
