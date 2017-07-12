@@ -122,11 +122,8 @@ public:
  * \param[in]   paddingH          padding size in height direction.
  * \param[in]   paddingW          padding size in width direction.
  * \param[in]   colData           Auxiliary data when calculating filterGrad.
- *                                size:
- *inputChannels*filterHeight*filterWidth*outputHeight*outputWidth \param[in]
- *multiplierData    Auxiliary data when calculating filterGrad. size:
- *outputHeight * outputWidth. \param[out]
- *filterGrad        the grad data of filter.
+ * \param[in]   multiplierData    Auxiliary data when calculating filterGrad.
+ * \param[out]  filterGrad        the grad data of filter.
  *
  */
 template <DeviceType Device, class T>

@@ -60,6 +60,7 @@ public:
                   int paddingH,
                   int paddingW,
                   T* inputGrad) {}
+  // TODO(zhaolong) : cpu implementation of depthwise convolution
 };
 
 template <class T>
@@ -82,6 +83,7 @@ public:
                   int paddingW,
                   T* colData,
                   T* filterGrad) {}
+  // TODO(zhaolong) : cpu implementation of depthwise convolution
 };
 
 /*

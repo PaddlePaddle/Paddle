@@ -22,7 +22,7 @@ namespace paddle {
 
 /**
  * @brief A subclass of convolution layer.
- * This layer do the depthwise convolution calculation in mobilenet.
+ * This layer does the depthwise convolution calculation of mobilenet.
  * The config file api is img_depthwise_conv_layer.
  */
 

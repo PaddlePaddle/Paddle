@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/math/BaseMatrix.h"
 
 namespace paddle {
+
 // CUDA kernel to compute the depthwise convolution forward pass
 template <class T>
 __global__ 
