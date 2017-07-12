@@ -60,6 +60,23 @@ class Scope {
   }
 
   /**
+   * @brief Create or Get Variable in current scope
+   *
+   * Create Variable in the current Scope. Return the exist one if Variable
+   * already
+   * been created.
+   */
+  Variable* CreateLocalVariable(const std::string& name) {
+    auto it = vars_.find(name);
+    if (it != vars_.end()) {
+      return it->second.get();
+    } else {
+      vars_[name] = std::unique_ptr<Variable>(new Variable());
+      return GetVariable(name);
+    }
+  }
+
+  /**
    * @brief Get Variable.
    *
    * Get Variable from this Scope, this function will recursive find Variable

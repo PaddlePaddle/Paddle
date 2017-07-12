@@ -55,4 +55,12 @@ TEST(Scope, Parent) {
   /// GetVariable will get Variable from parent scope if exist.
   Variable* var1 = scope->GetVariable("a");
   EXPECT_EQ(var0, var1);
+
+  /// CreateVariable will return Var in parent scope if it exist.
+  Variable* var2 = scope->CreateVariable("a");
+  EXPECT_EQ(var2, var0);
+
+  /// CreateLocalVariable will Create or Get Variable in current Scope.
+  Variable* var3 = scope->CreateLocalVariable("a");
+  EXPECT_NE(var3, var0);
 }
