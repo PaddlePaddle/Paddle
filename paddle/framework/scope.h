@@ -63,8 +63,7 @@ class Scope {
    * @brief Create or Get Variable in current scope
    *
    * Create Variable in the current Scope. Return the exist one if Variable
-   * already
-   * been created.
+   * already been created.
    */
   Variable* CreateLocalVariable(const std::string& name) {
     auto it = vars_.find(name);
