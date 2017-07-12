@@ -12,19 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/platform/device_context.h"
+#include "paddle/platform/cuda_device.h"
 #include "gtest/gtest.h"
 
-TEST(DeviceContext, Init) {
+TEST(Device, Init) {
   int count = paddle::platform::GetDeviceCount();
   for (int i = 0; i < count; i++) {
     paddle::platform::Device<DEVICE_GPU>* device =
         new paddle::platform::Device<DEVICE_GPU>(i);
-    paddle::platform::DeviceContext context;
-    context.device_context = device;
-    Eigen::GpuDevice gpu_device =
-        context.device_context<DEVICE_GPU>->eigen_device();
+    Eigen::GpuDevice gpu_device = device->eigen_device();
     ASSERT_NE(nullptr, gpu_device.stream());
+    cudnnHandle_t cudnn_handle = device->cudnn_handle();
+    ASSERT_NE(nullptr, cudnn_handle);
+    cublasHandle_t cublas_handle = device->cublas_handle();
+    ASSERT_NE(nullptr, cublas_handle);
+    curandGenerator_t curand_handle = device->curand_generator();
+    ASSERT_NE(nullptr, curand_handle);
     delete device;
   }
 }

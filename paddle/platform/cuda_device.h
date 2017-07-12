@@ -20,9 +20,11 @@ limitations under the License. */
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/dynload/curand.h"
 #define EIGEN_USE_GPU
-#include "paddle/platform/device_context.h"
+#include "paddle/platform/device.h"
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
+
+using DEVICE_GPU = Eigen::GpuDevice;
 
 namespace paddle {
 namespace platform {
@@ -41,9 +43,10 @@ class GPUPlaceGuard {
   GPUPlace previous_;
 };
 
-class CUDADeviceContext : public DeviceContext {
+template <>
+class Device<DEVICE_GPU> {
  public:
-  explicit CUDADeviceContext(const GPUPlace gpu_place) : gpu_place_(gpu_place) {
+  explicit Device(const GPUPlace gpu_place) : gpu_place_(gpu_place) {
     GPUPlaceGuard guard(gpu_place_);
     paddle::platform::throw_on_error(cudaStreamCreate(&stream_),
                                      "cudaStreamCreate failed");
@@ -58,7 +61,7 @@ class CUDADeviceContext : public DeviceContext {
 
   cudaStream_t stream() { return stream_; }
 
-  Eigen::GpuDevice eigen_device() { return *eigen_device_; }
+  DEVICE_GPU eigen_device() { return *eigen_device_; }
 
   cublasHandle_t cublas_handle() {
     if (!blas_handle_) {
@@ -136,7 +139,7 @@ class CUDADeviceContext : public DeviceContext {
   cudaStream_t stream_;
 
   Eigen::CudaStreamDevice* eigen_stream_;
-  Eigen::GpuDevice* eigen_device_;
+  DEVICE_GPU* eigen_device_;
 
   cublasHandle_t blas_handle_{nullptr};
 

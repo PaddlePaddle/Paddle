@@ -13,23 +13,28 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/enforce.h"
-#include "paddle/platform/device.h"
 #include "unsupported/Eigen/CXX11/Tensor"
-#ifndef PADDLE_ONLY_CPU
-#include "paddle/platform/cuda_device.h"
-#endif
+
+using DEVICE_CPU = Eigen::DefaultDevice;
 
 namespace paddle {
 namespace platform {
 
-struct DeviceContext {
-  void* device_context{nullptr};
+template <typename DeviceType>
+class Device;
 
-  template <typename DeviceType>
-  inline paddle::platform::Device<DeviceType>* device_context() {
-    return static_cast<paddle::platform::Device<DeviceType>*>(device_context);
+template <>
+class Device<DEVICE_CPU> {
+ public:
+  DEVICE_CPU eigen_handle() {
+    if (!eigen_handle_) {
+      eigen_handle_ = new Eigen::DefaultDevice();
+    }
+    return *eigen_handle_;
   }
+
+ private:
+  DEVICE_CPU* eigen_handle_{nullptr};
 };
 
 }  // namespace platform
