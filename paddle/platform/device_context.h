@@ -20,30 +20,23 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-class CPUDeviceContext;
-
 class DeviceContext {
  public:
   virtual ~DeviceContext() {}
 
   template <typename DeviceType>
-  DeviceType get_eigen_device();
+  inline DeviceType get_eigen_device();
 
   virtual Place GetPlace() const = 0;
 };
 
-template <>
-Eigen::DefaultDevice DeviceContext::get_eigen_device<Eigen::DefaultDevice>() {
-  return static_cast<CPUDeviceContext*>(this)->eigen_handle();
-}
-
 class CPUDeviceContext : public DeviceContext {
  public:
-  Eigen::DefaultDevice eigen_handle() {
-    if (!eigen_handle_) {
-      eigen_handle_ = new Eigen::DefaultDevice();
+  Eigen::DefaultDevice eigen_device() {
+    if (!eigen_device_) {
+      eigen_device_ = new Eigen::DefaultDevice();
     }
-    return *eigen_handle_;
+    return *eigen_device_;
   }
 
   Place GetPlace() const override {
@@ -52,7 +45,12 @@ class CPUDeviceContext : public DeviceContext {
   }
 
  private:
-  Eigen::DefaultDevice* eigen_handle_{nullptr};
+  Eigen::DefaultDevice* eigen_device_{nullptr};
 };
+
+template <>
+Eigen::DefaultDevice DeviceContext::get_eigen_device<Eigen::DefaultDevice>() {
+  return dynamic_cast<CPUDeviceContext*>(this)->eigen_device();
+}
 }  // namespace platform
 }  // namespace paddle

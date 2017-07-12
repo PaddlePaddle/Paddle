@@ -13,15 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
-#include "paddle/platform/cuda_device.h"
+#include "paddle/platform/cuda_device_context.h"
 
+using DEVICE_GPU = Eigen::GpuDevice;
 TEST(Device, Init) {
   int count = paddle::platform::GetDeviceCount();
   for (int i = 0; i < count; i++) {
     paddle::platform::DeviceContext* device_context =
         new paddle::platform::CUDADeviceContext(i);
     Eigen::GpuDevice gpu_device =
-        device_context->get_eigen_device<DEVICE_GPU>();
+        device_context->template get_eigen_device<DEVICE_GPU>();
     ASSERT_NE(nullptr, gpu_device.stream());
     delete device_context;
   }
