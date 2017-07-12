@@ -58,18 +58,10 @@ public:
     workspaceBuffer_ = nullptr;
     workspaceSize_ = 0;
 
-    threadpool_ = nullptr;
-    if (FLAGS_nnpack_num_threads) {
-      threadpool_ = pthreadpool_create(FLAGS_nnpack_num_threads);
-      VLOG(3) << "Number of threads "
-              << pthreadpool_get_threads_count(threadpool_);
-    }
+    create_nnpack_threadpool();
   }
 
   ~NNPACKConvFunction() {
-    if (threadpool_) {
-      pthreadpool_destroy(threadpool_);
-    }
     if (workspaceBuffer_) {
       free(workspaceBuffer_);
     }
@@ -225,13 +217,24 @@ public:
     }
   }
 
+  static void create_nnpack_threadpool() {
+    if (FLAGS_nnpack_num_threads && threadpool_ == nullptr) {
+      threadpool_ = pthreadpool_create(FLAGS_nnpack_num_threads);
+      VLOG(3) << "Number of threads "
+              << pthreadpool_get_threads_count(threadpool_);
+    }
+  }
+
 private:
   nnp_convolution_algorithm algorithm_;
   nnp_convolution_transform_strategy transform_strategy_;
   void* workspaceBuffer_;
   size_t workspaceSize_;
-  pthreadpool_t threadpool_;
+  static pthreadpool_t threadpool_;
 };
+
+template <DeviceType Device>
+pthreadpool_t NNPACKConvFunction<Device>::threadpool_ = nullptr;
 
 REGISTER_TYPED_FUNC(NNPACKConv, CPU, NNPACKConvFunction);
 

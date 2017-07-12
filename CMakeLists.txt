@@ -135,7 +135,8 @@ if(WITH_GPU)
 endif(WITH_GPU)
 
 if(USE_NNPACK)
-  list(APPEND EXTERNAL_LIBS ${NNPACK_LIB} ${PTHREADPOOL_LIB} "rt")
+    include(external/nnpack)
+    list(APPEND EXTERNAL_LIBS ${NNPACK_LIBS})
 endif(USE_NNPACK)
 
 add_subdirectory(proto)
