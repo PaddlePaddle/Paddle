@@ -29,7 +29,7 @@ class Tensor {
  public:
   Tensor() : offset_(0) {}
 
-  Tensor(const DDim& dims) : dims_(dims), offset_(0) {}
+  explicit Tensor(const DDim& dims) : dims_(dims), offset_(0) {}
 
   template <typename T>
   const T* data() const {
@@ -63,7 +63,7 @@ class Tensor {
     offset_ = src.offset_;
   }
 
-  Tensor Slice(const int& begin_idx, const int& end_idx) {
+  Tensor Slice(const int& begin_idx, const int& end_idx) const {
     PADDLE_ENFORCE(holder_ != nullptr,
                    "The sliced tenosr has not been initialized.");
     PADDLE_ENFORCE(begin_idx >= 0 && end_idx <= dims_[0],
