@@ -301,7 +301,7 @@ function(go_library TARGET_NAME)
 
   file(GLOB GO_SOURCE RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.go")
   string(REPLACE "${PADDLE_GO_PATH}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-  # FIXME: link path
+
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
     COMMAND rm "${${TARGET_NAME}_LIB_PATH}"
     # Golang build source code
@@ -309,7 +309,7 @@ function(go_library TARGET_NAME)
     -o "${${TARGET_NAME}_LIB_PATH}"
     "./${CMAKE_CURRENT_SOURCE_REL_DIR}/${GO_SOURCE}"
     # must run under GOPATH
-  WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
+    WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
   add_dependencies(${TARGET_NAME} go_vendor)
 endfunction(go_library)
 
@@ -322,8 +322,8 @@ function(go_binary TARGET_NAME)
 
   # FIXME: link path
   add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
-      COMMAND env LIBRARY_PATH=${CMAKE_BINARY_DIR}/go/pserver/client/c/:$ENV{LIBRARY_PATH}
-      GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
+    COMMAND env LIBRARY_PATH=${CMAKE_BINARY_DIR}/go/pserver/client/c/:$ENV{LIBRARY_PATH}
+    GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
     -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     "./${CMAKE_CURRENT_SOURCE_REL_DIR}/${go_binary_SRCS}"
     WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
@@ -335,15 +335,18 @@ endfunction(go_binary)
 function(go_test TARGET_NAME)
   set(options OPTIONAL)
   set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
+  set(multiValueArgs DEPS)
   cmake_parse_arguments(go_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
+  string(REPLACE "${PADDLE_GO_PATH}" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+  add_custom_target(${TARGET_NAME} ALL DEPENDS go_vendor ${go_test_DEPS})
+  add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} test
     -c -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
-    ${go_test_SRCS}
+    ".${CMAKE_CURRENT_SOURCE_REL_DIR}"
+    WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
+  add_test(NAME ${TARGET_NAME}
+    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_test_DEPS})
-  add_test(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
 endfunction(go_test)
 
 function(proto_library TARGET_NAME)
