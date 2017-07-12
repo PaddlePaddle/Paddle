@@ -310,8 +310,8 @@ void Argument::concat(const std::vector<Argument>& args,
 
   auto copyIds = [batchSize, stream](IVectorPtr& dst,
                                      const IVectorPtr& src,
-                                     int startRow,
-                                     int pos,
+                                     int desStartRow,
+                                     int srcStartRow,
                                      int size,
                                      bool useGpu) {
     if (!src) {
@@ -319,13 +319,14 @@ void Argument::concat(const std::vector<Argument>& args,
       return;
     }
     IVector::resizeOrCreate(dst, batchSize, useGpu);
-    dst->subVec(startRow, size)->copyFrom(*src->subVec(pos, size), stream);
+    dst->subVec(desStartRow, size)
+        ->copyFrom(*src->subVec(srcStartRow, size), stream);
   };
 
   auto copyStrs = [batchSize, stream](SVectorPtr& dst,
                                       const SVectorPtr& src,
-                                      int startRow,
-                                      int pos,
+                                      int desStartRow,
+                                      int srcStartRow,
                                       int size,
                                       bool useGpu) {
     if (!src) {
@@ -337,8 +338,9 @@ void Argument::concat(const std::vector<Argument>& args,
     } else {
       dst->resize(batchSize);
     }
-    std::copy(
-        src->begin() + pos, src->begin() + pos + size, dst->begin() + startRow);
+    std::copy(src->begin() + srcStartRow,
+              src->begin() + srcStartRow + size,
+              dst->begin() + desStartRow);
   };
 
   dataId = args[0].dataId;

@@ -477,8 +477,6 @@ private:
    * outlinks.
    * @note In beam search, only one generated sequence with the hightest log
    * probabilites are retained.
-   * @param machineIdVec : select a row of output matrix in each frame
-   * that the generation process expanded.
    */
   void createDataOutlink();
   void createDataOutlinkCopySizeInfo(bool isSeq,

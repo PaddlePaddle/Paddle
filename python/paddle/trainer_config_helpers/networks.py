@@ -1370,7 +1370,14 @@ def simple_attention(encoded_sequence,
         param_attr=softmax_param_attr,
         name="%s_softmax" % name,
         bias_attr=False)
-    return attention_weight
+
+    scaled = scaling_layer(
+        weight=attention_weight,
+        input=encoded_sequence,
+        name='%s_scaling' % name)
+    return pooling_layer(
+        input=scaled, pooling_type=SumPooling(),
+        name="%s_pooling" % name), attention_weight
 
 
 def inputs(layers, *args):

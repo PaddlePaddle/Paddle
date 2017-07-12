@@ -1395,17 +1395,23 @@ void RecurrentGradientMachine::createDataOutlinkCopySizeInfo(
   batchMachineStartPos_.resize(totalSeqNum + 1, 0);
   if (isSeq) {
     ICpuGpuVectorPtr inputSeqStartPos = outArgs[0].sequenceStartPositions;
-    CHECK_EQ(inputSeqStartPos->getSize() - 1, finalPaths_.size());
+    CHECK_EQ(static_cast<size_t>(inputSeqStartPos->getSize() - 1),
+             getBeamSize() > 1 ? finalPaths_.size() : finalPaths_[0].size());
     int* starts = inputSeqStartPos->getMutableData(false);
     int seqId = 0;
     for (int i = 0; i < finalPaths_.size(); ++i) {
       for (int j = 0; j < finalPaths_[i].size(); ++j) {
-        copySize[seqId] = starts[i + 1] - starts[i];
+        copySize[seqId] = getBeamSize() > 1 ? starts[i + 1] - starts[i]
+                                            : starts[j + 1] - starts[j];
         batchMachineStartPos_[seqId + 1] =
             batchMachineStartPos_[seqId] + finalPaths_[i][j].ids.size();
         seqId++;
       }
     }
+  } else {
+    for (size_t i = 0; i < finalPaths_[0].size(); ++i)
+      batchMachineStartPos_[i + 1] =
+          batchMachineStartPos_[i] + finalPaths_[0][i].ids.size();
   }
 }
 
