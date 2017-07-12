@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/dynload/curand.h"
 #define EIGEN_USE_GPU
-#include "paddle/platform/place.h"
 #include "paddle/platform/device_context.h"
+#include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
