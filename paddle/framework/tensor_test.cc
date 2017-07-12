@@ -178,4 +178,29 @@ TEST(Tensor, Slice) {
   }
 }
 
+TEST(Tensor, CopyFrom) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+
+  Tensor src_tensor;
+  int* src_ptr = src_tensor.mutable_data<int>(make_ddim({3, 3}), CPUPlace());
+  int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  memcpy(src_ptr, arr, 9 * sizeof(int));
+  Tensor dst_tensor;
+  dst_tensor.CopyFrom(src_tensor, CPUPlace());
+  const int* dst_ptr = dst_tensor.data<int>();
+  ASSERT_NE(src_ptr, dst_ptr);
+  for (size_t i = 0; i < 9; ++i) {
+    EXPECT_EQ(src_ptr[i], dst_ptr[i]);
+  }
+
+  Tensor slice_tensor = src_tensor.Slice(1, 2);
+  dst_tensor.CopyFrom(slice_tensor, CPUPlace());
+  const int* slice_ptr = slice_tensor.data<int>();
+  dst_ptr = dst_tensor.data<int>();
+  ASSERT_NE(dst_ptr, slice_ptr);
+  for (size_t i = 0; i < 3; ++i) {
+    EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
+  }
+}
 */
