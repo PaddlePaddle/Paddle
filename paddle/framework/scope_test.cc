@@ -63,4 +63,8 @@ TEST(Scope, Parent) {
   /// CreateLocalVariable will Create or Get Variable in current Scope.
   Variable* var3 = scope->CreateLocalVariable("a");
   EXPECT_NE(var3, var0);
+
+  /// CreateLocalVariable will Create or Get Variable in current Scope.
+  Variable* var4 = scope->CreateLocalVariable("a");
+  EXPECT_EQ(var4, var3);
 }
