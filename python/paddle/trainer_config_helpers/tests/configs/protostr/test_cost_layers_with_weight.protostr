@@ -131,6 +131,7 @@ input_layer_names: "weight"
 input_layer_names: "multi_class_label"
 output_layer_names: "__cost_0__"
 output_layer_names: "__mse_cost_0__"
+output_layer_names: "__nce_layer_0__"
 evaluators {
   name: "classification_error_evaluator"
   type: "classification_error"
@@ -154,6 +155,7 @@ sub_models {
   input_layer_names: "multi_class_label"
   output_layer_names: "__cost_0__"
   output_layer_names: "__mse_cost_0__"
+  output_layer_names: "__nce_layer_0__"
   evaluator_names: "classification_error_evaluator"
   is_recurrent_layer_group: false
 }

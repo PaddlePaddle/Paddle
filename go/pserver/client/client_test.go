@@ -42,7 +42,8 @@ func initClient() [numPserver]int {
 		ports[i] = p
 
 		go func(l net.Listener) {
-			s, err := pserver.NewService(0)
+			var cp pserver.Checkpoint
+			s, err := pserver.NewService(0, 1, "", nil, cp)
 			if err != nil {
 				panic(err)
 			}
@@ -174,7 +175,7 @@ func TestNativeClient(t *testing.T) {
 // TODO: tmperary disable etcdClient test for dependency of etcd)
 func EtcdClient(t *testing.T) {
 	initEtcdClient()
-	etcd_client := client.NewEtcd(etcdEndpoints)
-	c2 := client.NewClient(etcd_client, etcd_client.Desired(), selector(true))
+	etcdClient := client.NewEtcd(etcdEndpoints)
+	c2 := client.NewClient(etcdClient, etcdClient.Desired(), selector(true))
 	ClientTest(t, c2)
 }
