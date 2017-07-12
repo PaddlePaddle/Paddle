@@ -84,7 +84,7 @@ type parameterCheckpoint struct {
 
 // NewCheckpointFromFile loads parameters and state from checkpoint file
 func NewCheckpointFromFile(cpPath string, idx int, e *EtcdClient) (*Checkpoint, error) {
-	v, err := e.GetKey(PsPath+string(idx), time.Duration(3)*time.Second)
+	v, err := e.GetKey(PsPath+string(idx), 3*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func NewService(idx int, interval time.Duration, path string, client *EtcdClient
 
 	if cp != nil {
 		for _, item := range *cp {
-			p := &ParameterWithConfig{
+			p := ParameterWithConfig{
 				Param:  item.Param,
 				Config: item.Config,
 			}
@@ -142,7 +142,7 @@ func NewService(idx int, interval time.Duration, path string, client *EtcdClient
 }
 
 // InitParam initializes a parameter.
-func (s *Service) InitParam(paramWithConfigs *ParameterWithConfig, dummy *int) error {
+func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, dummy *int) error {
 	select {
 	case <-s.initialized:
 		return errors.New(AlreadyInitialized)
@@ -249,7 +249,7 @@ func (s *Service) doCheckpoint() error {
 	cpMeta.MD5 = hex.EncodeToString(h.Sum(buf.Bytes()))
 
 	cpMetajson, _ := json.Marshal(cpMeta)
-	err = s.client.PutKey(filepath.Join(PsCheckpoint, strconv.Itoa(s.idx)), cpMetajson, time.Duration(3)*time.Second)
+	err = s.client.PutKey(filepath.Join(PsCheckpoint, strconv.Itoa(s.idx)), cpMetajson, 3*time.Second)
 	if err != nil {
 		return err
 	}

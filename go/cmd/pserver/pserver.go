@@ -19,10 +19,10 @@ func main() {
 	index := flag.Int("index", -1, "index of this pserver, should be larger or equal than 0")
 	etcdEndpoint := flag.String("etcd-endpoint", "http://127.0.0.1:2379",
 		"comma separated endpoint string for pserver to connect to etcd")
-	etcdTimeout := flag.Int("etcd-timeout", 5, "timeout for etcd calls")
+	etcdTimeout := flag.Duration("etcd-timeout", 5*time.Second, "timeout for etcd calls")
 	numPservers := flag.Int("num-pservers", 1, "total pserver count in a training job")
 	checkpointPath := flag.String("checkpoint-path", "/checkpoints/", "save checkpoint path")
-	checkpointInterval := flag.Int("checkpoint-interval", 600, "save checkpoint per interval seconds")
+	checkpointInterval := flag.Duration("checkpoint-interval", 600*time.Second, "save checkpoint per interval seconds")
 	logLevel := flag.String("log-level", "info",
 		"log level, possible values: debug, info, warning, error, fatal, panic")
 	flag.Parse()
@@ -39,18 +39,17 @@ func main() {
 	if *index >= 0 {
 		idx = *index
 	} else {
-		timeout := time.Second * time.Duration((*etcdTimeout))
-		e = pserver.NewEtcdClient(*etcdEndpoint, *numPservers, timeout)
+		e = pserver.NewEtcdClient(*etcdEndpoint, *numPservers, *etcdTimeout)
 		idx, err = e.Register()
 		candy.Must(err)
 
 		cp, err = pserver.NewCheckpointFromFile(*checkpointPath, idx, e)
 		if err != nil {
-			log.Infof("Fetch checkpoint failed, %s\n", err)
+			log.Errorf("Fetch checkpoint failed, %s", err)
 		}
 	}
 
-	s, err := pserver.NewService(idx, time.Duration(*checkpointInterval)*time.Second, *checkpointPath, e, cp)
+	s, err := pserver.NewService(idx, *checkpointInterval, *checkpointPath, e, cp)
 	candy.Must(err)
 
 	err = rpc.Register(s)
