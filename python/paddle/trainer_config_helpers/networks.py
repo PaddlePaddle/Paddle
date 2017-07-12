@@ -1401,6 +1401,8 @@ def outputs(layers, *args):
     :return:
     """
 
+    traveled = set()
+
     def __dfs_travel__(layer,
                        predicate=lambda x: x.layer_type == LayerType.DATA):
         """
@@ -1412,6 +1414,11 @@ def outputs(layers, *args):
         :type layer: LayerOutput
         :return:
         """
+        if layer in traveled:
+            return []
+        else:
+            traveled.add(layer)
+
         assert isinstance(layer, LayerOutput), "layer is %s" % (layer)
         retv = []
         if layer.parents is not None:
