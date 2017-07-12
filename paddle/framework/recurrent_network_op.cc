@@ -31,13 +31,15 @@ void RecurrentOp::Run(OpContext* contex) const {
   Variable* net = scope->GetVariable(net_name_);
   PADDLE_ENFORCE(net, "failed to get step net");
 
+  LOG(INFO) << "create scopes";
   CreateScopes(scope);
+  LOG(INFO) << "segment input";
   SegmentInputs(scope);
 
   Variable* step_scopes = scope->GetVariable(step_scopes_name_);
   PADDLE_ENFORCE(step_scopes, "failed to get step scopes");
   // forward
-  auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
+  auto dims = Input(scope, inlinks_[0])->GetMutable<Tensor>()->dims();
   size_t seq_len = dims[0];
   auto& scopes = *step_scopes->GetMutable<std::vector<ScopePtr>>();
   for (size_t step_id = 0; step_id < seq_len; step_id++) {
@@ -69,7 +71,7 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
   PADDLE_ENFORCE(inlinks_.empty(), "RecurrentOp duplicate inited");
   LOG(INFO) << "set inlinks";
   for (auto id : GetAttr<std::vector<int>>("real_inputs")) {
-    inlinks_.push_back(inputs_[id]);
+    inlinks_.push_back(id);
   }
 
   name_ = op_desc.name();
@@ -102,8 +104,7 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
 }
 
 void RecurrentOp::CreateScopes(ScopePtr scope) const {
-  LOG(INFO) << "create scopes";
-  auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
+  auto dims = Input(scope, inlinks_[0])->GetMutable<Tensor>()->dims();
   size_t seq_len = dims[0];
   Variable* scopes_var = scope->GetVariable(step_scopes_name_);
   auto step_scopes = scopes_var->GetMutable<std::vector<ScopePtr>>();
@@ -135,18 +136,17 @@ void RecurrentOp::SegmentInputs(ScopePtr scope) const {
   PADDLE_ENFORCE(!inlinks_.empty(), "no real inputs are provided.");
   Variable* scopes_var = scope->GetVariable(step_scopes_name_);
   auto& step_scopes = *scopes_var->GetMutable<std::vector<Scope*>>();
-
-  auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
+  auto dims = Input(scope, inlinks_[0])->GetMutable<Tensor>()->dims();
   int seq_len = dims[0];
   int batch_size = dims[1];
-  for (size_t i = 0; i < inlinks_.size(); i++) {
+  for (auto i : inlinks_) {
     auto input_dims = Input(scope, i)->GetMutable<Tensor>()->dims();
     int input_dim = input_dims[2];
     int length = batch_size * input_dim;
     const float* scope_input =
         Input(scope, i)->GetMutable<Tensor>()->data<float>();
     for (int j = 0; j < seq_len; j++) {
-      Variable* input_var = step_scopes[j]->CreateVariable(inlinks_[i]);
+      Variable* input_var = step_scopes[j]->CreateVariable(inputs_[i]);
       Tensor* step_input_tensor = input_var->GetMutable<Tensor>();
       float* step_input = step_input_tensor->mutable_data<float>(
           make_ddim({batch_size, input_dim}), platform::CPUPlace());
@@ -158,8 +158,7 @@ void RecurrentOp::SegmentInputs(ScopePtr scope) const {
 void RecurrentOp::ConcatOutputs(ScopePtr scope) const {
   Variable* scopes_var = scope->GetVariable(step_scopes_name_);
   auto& step_scopes = *scopes_var->GetMutable<std::vector<Scope*>>();
-
-  auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
+  auto dims = Input(scope, inlinks_[0])->GetMutable<Tensor>()->dims();
   int seq_len = dims[0];
   int batch_size = dims[1];
   for (size_t i = 0; i < outputs_.size(); i++) {

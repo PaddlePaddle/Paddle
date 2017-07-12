@@ -218,7 +218,7 @@ class RecurrentOp : public OperatorBase {
   // specified by `step_scopes_name_`.
   std::string step_scopes_name_;
   // real inputs that need to be segmented.
-  std::vector<std::string> inlinks_;
+  std::vector<int> inlinks_;
 
   NetDesc step_net_desc_;
 };
