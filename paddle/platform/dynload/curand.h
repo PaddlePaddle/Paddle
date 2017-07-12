@@ -22,10 +22,10 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 namespace dynload {
-std::once_flag curand_dso_flag;
-void *curand_dso_handle = nullptr;
+extern std::once_flag curand_dso_flag;
+extern void *curand_dso_handle;
 #ifdef PADDLE_USE_DSO
-#define DYNAMIC_LOAD_CURAND_WRAP(__name)                            \
+#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)                    \
   struct DynLoad__##__name {                                        \
     template <typename... Args>                                     \
     curandStatus_t operator()(Args... args) {                       \
@@ -36,32 +36,29 @@ void *curand_dso_handle = nullptr;
       void *p_##__name = dlsym(curand_dso_handle, #__name);         \
       return reinterpret_cast<curandFunc>(p_##__name)(args...);     \
     }                                                               \
-  } __name; /* struct DynLoad__##__name */
+  };                                                                \
+  extern DynLoad__##__name __name
 #else
-#define DYNAMIC_LOAD_CURAND_WRAP(__name)      \
-  struct DynLoad__##__name {                  \
-    template <typename... Args>               \
-    curandStatus_t operator()(Args... args) { \
-      return __name(args...);                 \
-    }                                         \
-  } __name; /* struct DynLoad__##__name */
+#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name) \
+  struct DynLoad__##__name {                     \
+    template <typename... Args>                  \
+    curandStatus_t operator()(Args... args) {    \
+      return __name(args...);                    \
+    }                                            \
+  };                                             \
+  extern DynLoad__##__name __name
 #endif
 
-/* include all needed curand functions in HPPL */
-// clang-format off
-#define CURAND_RAND_ROUTINE_EACH(__macro)    \
-  __macro(curandCreateGenerator)             \
-  __macro(curandSetStream)                   \
-  __macro(curandSetPseudoRandomGeneratorSeed)\
-  __macro(curandGenerateUniform)             \
-  __macro(curandGenerateUniformDouble)       \
-  __macro(curandDestroyGenerator)
-// clang-format on
+#define CURAND_RAND_ROUTINE_EACH(__macro)      \
+  __macro(curandCreateGenerator);              \
+  __macro(curandSetStream);                    \
+  __macro(curandSetPseudoRandomGeneratorSeed); \
+  __macro(curandGenerateUniform);              \
+  __macro(curandGenerateUniformDouble);        \
+  __macro(curandDestroyGenerator);
 
-CURAND_RAND_ROUTINE_EACH(DYNAMIC_LOAD_CURAND_WRAP)
+CURAND_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CURAND_WRAP);
 
-#undef CURAND_RAND_ROUTINE_EACH
-#undef DYNAMIC_LOAD_CURAND_WRAP
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
