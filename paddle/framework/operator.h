@@ -14,43 +14,21 @@ limitations under the License. */
 
 #pragma once
 
+#include <paddle/framework/attr_checker.h>
+#include <paddle/framework/op_desc.pb.h>
+#include <paddle/framework/scope.h>
+#include <paddle/platform/device_context.h>
+#include <paddle/platform/place.h>
+#include <paddle/utils/Error.h>
 #include <boost/variant.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/framework/attr_checker.h"
-#include "paddle/framework/op_desc.pb.h"
-#include "paddle/framework/scope.h"
-#include "paddle/utils/Error.h"
-
 namespace paddle {
 namespace framework {
 
 class OperatorBase;
-
-class DeviceContext {};
-
-/**
- * OpRunContext is the only parameter of Operator's Run function.
- * Run will get input/output variables, state such as momentum and
- * device resource such as CUDA stream, cublas handle, etc. from
- * OpRunContext. User should construct it before run the Operator.
- */
-class OpRunContext {
- public:
-  OpRunContext(const OperatorBase* op, const std::shared_ptr<Scope> scope,
-               const DeviceContext* device_context)
-      : op_(op), scope_(scope), device_context_(device_context) {}
-
-  const Variable* Input(int index) const;
-  Variable* Output(int index) const;
-
- public:
-  const OperatorBase* op_;
-  const std::shared_ptr<Scope> scope_;
-  const DeviceContext* device_context_;
-};
 
 /**
  * OperatorBase has the basic element that Net will call to do computation.
@@ -77,7 +55,10 @@ class OperatorBase {
 
   /// Net will call this function to Run an op.
   virtual void Run(const std::shared_ptr<Scope>& scope,
-                   const DeviceContext* dev_ctx) const = 0;
+                   const platform::DeviceContext& dev_ctx) const = 0;
+
+ protected:
+  std::string Type() const { return desc_.type(); }
 
  public:
   OpDesc desc_;
@@ -86,22 +67,84 @@ class OperatorBase {
   AttributeMap attrs_;
 };
 
+class OpKernel {
+ public:
+  /**
+   * KernelContext is the only parameter of Kernel Run function.
+   * Run will get input/output variables, state such as momentum and
+   * device resource such as CUDA stream, cublas handle, etc. from
+   * KernelContext. User should construct it before run the Operator.
+   */
+  class KernelContext {
+   public:
+    KernelContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
+                  const platform::DeviceContext& device_context)
+        : op_(*op), scope_(scope), device_context_(device_context) {}
+
+    const Variable* Input(int index) const {
+      return scope_->GetVariable(op_.inputs_[index]);
+    }
+
+    Variable* Output(int index) const {
+      return scope_->GetVariable(op_.outputs_[index]);
+    }
+
+    const OperatorBase& op_;
+    const std::shared_ptr<Scope>& scope_;
+    const platform::DeviceContext& device_context_;
+  };
+
+  virtual void Compute(const KernelContext& context) const = 0;
+
+  virtual ~OpKernel() {}
+};
+
 class OperatorWithKernel : public OperatorBase {
  public:
-  virtual ~OperatorWithKernel() {}
+  struct OpKernelKey {
+    platform::Place place_;
 
-  virtual void InferShape(const std::shared_ptr<Scope>& scope) const {}
+    OpKernelKey() = default;
+    OpKernelKey(const platform::DeviceContext& dev_ctx) {
+      place_ = dev_ctx.GetPlace();
+    }
+
+    bool operator==(const OpKernelKey& o) const { return place_ == o.place_; }
+  };
+
+  struct OpKernelHash {
+    std::hash<bool> hash_;
+    size_t operator()(const OpKernelKey& key) const {
+      return hash_(platform::is_gpu_place(key.place_));
+    }
+  };
+
+  using OpKernelMap =
+      std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
   void Run(const std::shared_ptr<Scope>& scope,
-           const DeviceContext* dev_ctx) const {
-    OpRunContext op_ctx(this, scope, dev_ctx);
-    Run(&op_ctx);
+           const platform::DeviceContext& dev_ctx) const final {
+    auto& opKernel = AllOpKernels().at(Type()).at(OpKernelKey(dev_ctx));
+    opKernel->Compute(OpKernel::KernelContext(this, scope, dev_ctx));
   }
 
-  /// when implement an Op, your should implement this function.
-  /// this function should be moved to OpKernel later
-  virtual void Run(const OpRunContext* context) const = 0;
+  static std::unordered_map<std::string /* op_type */, OpKernelMap>&
+  AllOpKernels() {
+    static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
+    return g_all_op_kernels;
+  };
 };
 
 }  // namespace framework
 }  // namespace paddle
+
+#define REGISTER_OP_KERNEL(type, PlaceType, KernelType)                   \
+  struct __op_kernel_register__##type##__ {                               \
+    __op_kernel_register__##type##__() {                                  \
+      ::paddle::framework::OperatorWithKernel::OpKernelKey key;           \
+      key.place_ = PlaceType();                                           \
+      ::paddle::framework::OperatorWithKernel::AllOpKernels()[#type][key] \
+          .reset(new KernelType());                                       \
+    }                                                                     \
+  };                                                                      \
+  static __op_kernel_register__##type##__ __reg_kernel_##type##__
