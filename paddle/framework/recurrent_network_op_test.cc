@@ -100,33 +100,34 @@ class RecurrentOpTest : public ::testing::Test {
   virtual void TearDown() override {}
 
   void CreateGlobalVariables() {
+    scope_ = std::make_shared<Scope>();
     LOG(INFO) << "create global variable h_boot";
     // create boot memory
-    scope_.CreateVariable("h_boot");
+    scope_->CreateVariable("h_boot");
     // create input, and init content
     LOG(INFO) << "create global variable x";
-    Variable* x = scope_.CreateVariable("x");
+    Variable* x = scope_->CreateVariable("x");
     DDim dims = make_ddim(std::vector<int>{10 /*sent size*/, 20 /*batch size*/,
                                            30 /*input dim*/});
     // TODO mutable_data is not valid
     x->GetMutable<Tensor>()->mutable_data<float>(dims, platform::CPUPlace());
 
     LOG(INFO) << "create global variable w";
-    Variable* w = scope_.CreateVariable("w");
+    Variable* w = scope_->CreateVariable("w");
     w->GetMutable<Tensor>()->mutable_data<float>(
         make_ddim(std::vector<int>{30, 30}), platform::CPUPlace());
 
     LOG(INFO) << "create global variable h_boot";
-    Variable* h_boot = scope_.CreateVariable("h_boot");
+    Variable* h_boot = scope_->CreateVariable("h_boot");
     h_boot->GetMutable<Tensor>()->mutable_data<float>(
         make_ddim(std::vector<int>{20 /*batch size*/, 30 /*input dim*/}),
         platform::CPUPlace());
 
     LOG(INFO) << "create variable step_scopes";
-    scope_.CreateVariable("step_scopes");
+    scope_->CreateVariable("step_scopes");
 
     LOG(INFO) << "create variable h";
-    scope_.CreateVariable("h");
+    scope_->CreateVariable("h");
   }
 
   void CreateRNNOp() {
@@ -140,6 +141,12 @@ class RecurrentOpTest : public ::testing::Test {
     op_desc.add_inputs("step_scopes");  // step scopes
     // output hidden vectors
     op_desc.add_outputs("h");
+
+    // add real input
+    auto input_attr = op_desc.mutable_attrs()->Add();
+    input_attr->set_type(paddle::framework::AttrType::INTS);
+    *input_attr->mutable_ints()->Add() = 0;
+    input_attr->set_name("real_inputs");
 
     // add memories
     auto memories_attr = op_desc.mutable_attrs()->Add();
@@ -177,6 +184,7 @@ class RecurrentOpTest : public ::testing::Test {
     // LOG(INFO) << text;
 
     AttributeMap attrs;
+    attrs["real_inputs"] = std::vector<int>{0};
     attrs["memories"] = std::vector<std::string>{"h"};
     attrs["pre_memories"] = std::vector<std::string>{"h_pre"};
     attrs["boot_memories"] = std::vector<int>{1};
@@ -213,7 +221,7 @@ class RecurrentOpTest : public ::testing::Test {
 
   void CreateStepNet() {
     LOG(INFO) << "create variable step_net";
-    Variable* net_var = scope_.CreateVariable("step_net");
+    Variable* net_var = scope_->CreateVariable("step_net");
     NetDesc net_desc;
     net_desc.name_ = "simple_rnn_net";
     net_desc.op_descs.push_back(CreateFcOpDesc());
@@ -222,7 +230,7 @@ class RecurrentOpTest : public ::testing::Test {
   }
 
   // father scope
-  Scope scope_;
+  std::shared_ptr<Scope> scope_;
   RecurrentOp rnn_op_;
 };
 
@@ -230,7 +238,7 @@ TEST_F(RecurrentOpTest, create_op) {}
 
 TEST_F(RecurrentOpTest, Run) {
   OpContext ctx;
-  ctx.scope = std::make_shared<Scope>();
+  ctx.scope = scope_;
   rnn_op_.Run(&ctx);
 }
 
