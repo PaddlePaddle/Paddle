@@ -2269,7 +2269,7 @@ def img_depthwise_conv_layer(input,
                              name=None,
                              num_channels=None,
                              act=None,
-                             groups=1,
+                             groups=None,
                              stride=1,
                              padding=0,
                              bias_attr=None,
@@ -2285,6 +2285,8 @@ def img_depthwise_conv_layer(input,
     if num_channels is None:
         assert input.num_filters is not None
         num_channels = input.num_filters
+
+    groups = num_channels
 
     if filter_size_y is None:
         if isinstance(filter_size, collections.Sequence):
