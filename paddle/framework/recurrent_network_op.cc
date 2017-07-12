@@ -71,7 +71,7 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
 
   name_ = op_desc.name();
   net_name_ = inputs_.at(GetAttr<int>("step_net"));
-  step_scopes_name_ = inputs_.at(GetAttr<int>("step_scopes"));
+  step_scopes_name_ = outputs_.back();
 
   // prepare inlinks
   PADDLE_ENFORCE(inlinks_.empty(), "RecurrentOp duplicate inited");
@@ -79,6 +79,10 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
   for (auto id : GetAttr<std::vector<int>>("real_inputs")) {
     inlinks_.push_back(id);
   }
+  PADDLE_ENFORCE(
+      outputs_.size() > 1,
+      "more than 1 output should be provided and the last is `step_scopes`");
+  outlinks_ = std::vector<std::string>{outputs_.begin(), outputs_.end() - 1};
 
   // set memories
   auto memories = GetAttr<std::vector<std::string>>("memories");
@@ -164,7 +168,7 @@ void RecurrentOp::SegmentInputs(ScopePtr scope) const {
 
 void RecurrentOp::ConcatOutputs(ScopePtr scope) const {
   auto output_alias = GetAttr<std::vector<std::string>>("output_alias");
-  PADDLE_ENFORCE(outputs_.size() == output_alias.size(),
+  PADDLE_ENFORCE(outlinks_.size() == output_alias.size(),
                  "output/output_alias mismatch.");
 
   Variable* scopes_var = scope->GetVariable(step_scopes_name_);
@@ -172,7 +176,7 @@ void RecurrentOp::ConcatOutputs(ScopePtr scope) const {
   auto dims = Input(scope, inlinks_[0])->GetMutable<Tensor>()->dims();
   int seq_len = dims[0];
   int batch_size = dims[1];
-  for (size_t i = 0; i < outputs_.size(); i++) {
+  for (size_t i = 0; i < outlinks_.size(); i++) {
     auto output_dims = step_scopes[0]
                            ->GetVariable(output_alias[0])
                            ->GetMutable<Tensor>()
@@ -180,7 +184,7 @@ void RecurrentOp::ConcatOutputs(ScopePtr scope) const {
     int output_dim = output_dims[1];
     int length = batch_size * output_dim;
     Tensor* output_tensor =
-        scope->CreateVariable(outputs_[i])->GetMutable<Tensor>();
+        scope->CreateVariable(outlinks_[i])->GetMutable<Tensor>();
     float* output = output_tensor->mutable_data<float>(
         make_ddim({seq_len, batch_size, output_dim}), platform::CPUPlace());
     for (int j = 0; j < seq_len; j++) {

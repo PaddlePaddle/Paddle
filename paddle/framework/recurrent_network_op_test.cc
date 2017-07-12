@@ -141,9 +141,9 @@ class RecurrentOpTest : public ::testing::Test {
     op_desc.add_inputs("h_boot");    // initial memory
     op_desc.add_inputs("step_net");  // step net
     // TODO put the step_scopes in the outputs
-    op_desc.add_inputs("step_scopes");  // step scopes
     // output hidden vectors
     op_desc.add_outputs("h");
+    op_desc.add_outputs("step_scopes");  // step scopes
 
     // add real input
     auto input_attr = op_desc.mutable_attrs()->Add();

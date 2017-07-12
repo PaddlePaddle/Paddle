@@ -103,13 +103,15 @@ class PlainNet {
  * - real inputs that need to be segmented to steps.
  * - boot memories
  * - step net
+ *
+ * outputs:
+ * - real outputs
  * - step scopes
  *
  * Attributes stored in AttributeMap:
  * - real_inputs: vector<int>
  * - boot_memories: vector<int>
  * - step_net: int
- * - step_scopes: int
  */
 
 class RecurrentOp : public OperatorBase {
@@ -220,6 +222,7 @@ class RecurrentOp : public OperatorBase {
   std::string step_scopes_name_;
   // real inputs that need to be segmented.
   std::vector<int> inlinks_;
+  std::vector<std::string> outlinks_;
 };
 
 class RecurrentGradientOp;
