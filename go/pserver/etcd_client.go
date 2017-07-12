@@ -190,8 +190,8 @@ func (e *EtcdClient) registerPserverEtcd(ctx context.Context) (int, error) {
 }
 
 // GetKey gets the value by the specified key
-func (e *EtcdClient) GetKey(key string, timeout int) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
+func (e *EtcdClient) GetKey(key string, timeout time.Duration) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	resp, err := e.etcdClient.Get(ctx, key)
 	cancel()
 	if err != nil {
@@ -206,8 +206,8 @@ func (e *EtcdClient) GetKey(key string, timeout int) ([]byte, error) {
 }
 
 // PutKey put into etcd with value by key specified
-func (e *EtcdClient) PutKey(key string, value []byte, timeout int) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
+func (e *EtcdClient) PutKey(key string, value []byte, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	_, err := e.etcdClient.Put(ctx, key, string(value))
 	cancel()
 	if err != nil {

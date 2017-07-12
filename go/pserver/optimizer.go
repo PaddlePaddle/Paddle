@@ -41,22 +41,24 @@ func newOptimizer(paramWithConfigs *ParameterWithConfig, State []byte) *optimize
 	p := paramWithConfigs.Param
 	c := paramWithConfigs.Config
 	s := State
+	paramBufferSize := C.size_t(len(p.Content) / C.sizeof_float)
 	log.WithFields(log.Fields{
 		"ElementType": p.ElementType,
-		"ParamSize":   len(p.Content),
+		"ParamSize":   paramBufferSize,
 		"ConfigSize":  len(c),
 		"StateSize":   len(s),
 	}).Info("New Optimizer Created with config:")
 	var cbuffer unsafe.Pointer
-	cbuffer = C.malloc(C.size_t(len(p.Content)))
-	C.memcpy(cbuffer, unsafe.Pointer(&p.Content[0]), C.size_t(len(p.Content)))
+	cbuffer = C.malloc(paramBufferSize)
+
+	C.memcpy(cbuffer, unsafe.Pointer(&p.Content[0]), paramBufferSize)
 	var cstate unsafe.Pointer
 	if len(s) != 0 {
 		cstate = unsafe.Pointer(&s[0])
 	}
 
 	o.opt = C.paddle_create_optimizer((*C.uchar)(&c[0]), C.int(len(c)),
-		C.paddle_element_type(p.ElementType), cbuffer, C.int(len(p.Content)/C.sizeof_float), (*C.char)(cstate), C.int(len(s)))
+		C.paddle_element_type(p.ElementType), cbuffer, C.int(paramBufferSize), (*C.char)(cstate), C.int(len(s)))
 	return o
 }
 

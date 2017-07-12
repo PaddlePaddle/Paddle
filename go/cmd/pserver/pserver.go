@@ -50,7 +50,7 @@ func main() {
 		}
 	}
 
-	s, err := pserver.NewService(idx, *checkpointInterval, *checkpointPath, e, cp)
+	s, err := pserver.NewService(idx, time.Duration(*checkpointInterval)*time.Second, *checkpointPath, e, cp)
 	candy.Must(err)
 
 	err = rpc.Register(s)
