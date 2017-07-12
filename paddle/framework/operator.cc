@@ -39,13 +39,5 @@ std::string OperatorBase::DebugString() const {
   return ss.str();
 }
 
-const Variable* OpRunContext::Input(int index) const {
-  return scope_->GetVariable(op_->inputs_[index]);
-}
-
-Variable* OpRunContext::Output(int index) const {
-  return scope_->GetVariable(op_->outputs_[index]);
-}
-
 }  // namespace framework
 }  // namespace paddle

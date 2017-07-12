@@ -19,17 +19,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class OperatorTest : public OperatorWithKernel {
+class OperatorTest : public OperatorBase {
  public:
-  void Run(const OpRunContext* ctx) const override {
-    float scale = ctx->op_->GetAttr<float>("scale");
-    PADDLE_ENFORCE(ctx->Input(0) == nullptr, "Input(0) should not initialized");
-    PADDLE_ENFORCE(ctx->Output(0) == nullptr,
-                   "Output(1) should not initialized");
-    auto output1 = ctx->scope_->CreateVariable("output1");
-    PADDLE_ENFORCE(output1 != nullptr, "should create output1 from scope");
-    printf("get attr %s = %f\n", "scale", scale);
-    printf("%s\n", DebugString().c_str());
+  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
+  void Run(const std::shared_ptr<Scope>& scope,
+           const platform::DeviceContext& dev_ctx) const override {
+    float scale = GetAttr<float>("scale");
+    ASSERT_NEAR(scale, 3.14, 1e-5);
+    ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
+    ASSERT_NE(scope->GetVariable(outputs_[0]), nullptr);
   }
 };
 
@@ -49,31 +47,26 @@ class OperatorTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 REGISTER_OP(OperatorTest, OperatorTestProtoAndCheckerMaker, test_operator)
 
-TEST(OperatorBase, DebugString) {
+TEST(OperatorBase, all) {
   OpDesc op_desc;
   op_desc.set_type("test_operator");
-  std::vector<std::string> inputs = {"IN1", "IN2"};
-  for (auto& input : inputs) {
-    op_desc.add_inputs(input);
-  }
-  std::vector<std::string> outputs = {"OUT1", "OUT2"};
-  for (auto& output : outputs) {
-    op_desc.add_outputs(output);
-  }
+  *op_desc.mutable_inputs()->Add() = "IN1";
+  *op_desc.mutable_outputs()->Add() = "OUT1";
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
   attr->set_type(paddle::framework::AttrType::FLOAT);
   float scale = 3.14;
   attr->set_f(scale);
 
-  DeviceContext device_context;
+  platform::CPUDeviceContext device_context;
   auto scope = std::make_shared<Scope>();
 
   OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  ASSERT_EQ(op->inputs_, inputs);
-  ASSERT_EQ(op->outputs_, outputs);
   ASSERT_EQ(op->GetAttr<float>("scale"), scale);
-  op->Run(scope, &device_context);
+  scope->CreateVariable("OUT1");
+  op->Run(scope, device_context);
+  std::cout << op->DebugString() << std::endl;
+  delete op;
 }
 
 }  // namespace framework
