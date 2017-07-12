@@ -104,7 +104,8 @@ class Tensor {
      public:
       Deleter(platform::Place place) : place_(place) {}
       void operator()(T* ptr) {
-        paddle::memory::Free(place_, static_cast<void*>(ptr));
+        // paddle::memory::Free(place_, static_cast<void*>(ptr));
+        free(static_cast<void*>(ptr));
       }
 
      private:
@@ -112,9 +113,11 @@ class Tensor {
     };
 
    public:
+    // PlaceholderImpl(paddle::platform::Place place, size_t size)
+    //     : ptr_(static_cast<T*>(paddle::memory::Alloc(place, size)),
+    //            Deleter(place)),
     PlaceholderImpl(paddle::platform::Place place, size_t size)
-        : ptr_(static_cast<T*>(paddle::memory::Alloc(place, size)),
-               Deleter(place)),
+        : ptr_(static_cast<T*>(malloc(size * sizeof(T))), Deleter(place)),
           place_(place),
           size_(size) {}
 
@@ -128,7 +131,6 @@ class Tensor {
     size_t size_;                    // size of the memory block.
   };
 
-  DDim dims_;
   std::shared_ptr<Placeholder> holder_;  // holds the memory block if allocated.
   DDim dims_;
   size_t offset_;  // marks the begin of tensor data area.

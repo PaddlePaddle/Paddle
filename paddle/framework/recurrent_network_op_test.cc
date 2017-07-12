@@ -35,6 +35,7 @@ class FcOp : public OperatorBase {
   }
 
   virtual void Run(OpContext* contex) const override {
+    LOG(INFO) << "run fc op";
     for (const auto& input : inputs_) {
       PADDLE_ENFORCE(contex->scope->HasVariable(input),
                      "no input variable [%s] exists");
@@ -64,6 +65,7 @@ class AddOp : public OperatorBase {
   }
 
   virtual void Run(OpContext* contex) const override {
+    LOG(INFO) << "run add op";
     for (const auto& input : inputs_) {
       PADDLE_ENFORCE(contex->scope->HasVariable(input),
                      "no input variable [%s] exists");
@@ -113,7 +115,7 @@ class RecurrentOpTest : public ::testing::Test {
     x->GetMutable<Tensor>()->mutable_data<float>(dims, platform::CPUPlace());
 
     LOG(INFO) << "create global variable w";
-    Variable* w = scope_->CreateVariable("w");
+    Variable* w = scope_->CreateVariable("rnn/w");
     w->GetMutable<Tensor>()->mutable_data<float>(
         make_ddim(std::vector<int>{30, 30}), platform::CPUPlace());
 
@@ -134,10 +136,11 @@ class RecurrentOpTest : public ::testing::Test {
     OpDesc op_desc;
 
     op_desc.set_type("rnn_op");
-    op_desc.set_name("simple_rnn");
+    op_desc.set_name("rnn");
     op_desc.add_inputs("x");
-    op_desc.add_inputs("h_boot");       // initial memory
-    op_desc.add_inputs("step_net");     // step net
+    op_desc.add_inputs("h_boot");    // initial memory
+    op_desc.add_inputs("step_net");  // step net
+    // TODO put the step_scopes in the outputs
     op_desc.add_inputs("step_scopes");  // step scopes
     // output hidden vectors
     op_desc.add_outputs("h");
@@ -148,16 +151,28 @@ class RecurrentOpTest : public ::testing::Test {
     *input_attr->mutable_ints()->Add() = 0;
     input_attr->set_name("real_inputs");
 
+    // add input alias, this alias is used in step net.
+    auto input_alias_attr = op_desc.mutable_attrs()->Add();
+    input_alias_attr->set_type(paddle::framework::AttrType::STRINGS);
+    *input_alias_attr->mutable_strings()->Add() = "rnn/x";
+    input_alias_attr->set_name("input_alias");
+
+    // add output alias, this alias is used in step net.
+    auto output_alias_attr = op_desc.mutable_attrs()->Add();
+    output_alias_attr->set_type(paddle::framework::AttrType::STRINGS);
+    *output_alias_attr->mutable_strings()->Add() = "rnn/h";
+    output_alias_attr->set_name("output_alias");
+
     // add memories
     auto memories_attr = op_desc.mutable_attrs()->Add();
     memories_attr->set_type(paddle::framework::AttrType::STRINGS);
-    *memories_attr->mutable_strings()->Add() = "h";
+    *memories_attr->mutable_strings()->Add() = "rnn/h";
     memories_attr->set_name("memories");
 
     // add history/previous memories
     auto pre_memories_attr = op_desc.mutable_attrs()->Add();
     pre_memories_attr->set_type(paddle::framework::AttrType::STRINGS);
-    *pre_memories_attr->mutable_strings()->Add() = "h_pre";
+    *pre_memories_attr->mutable_strings()->Add() = "rnn/h_pre";
     pre_memories_attr->set_name("pre_memories");
 
     // add initial memories
@@ -185,7 +200,9 @@ class RecurrentOpTest : public ::testing::Test {
 
     AttributeMap attrs;
     attrs["real_inputs"] = std::vector<int>{0};
-    attrs["memories"] = std::vector<std::string>{"h"};
+    attrs["input_alias"] = std::vector<std::string>{"rnn/x"};
+    attrs["output_alias"] = std::vector<std::string>{"rnn/h"};
+    attrs["memories"] = std::vector<std::string>{"rnn/h"};
     attrs["pre_memories"] = std::vector<std::string>{"h_pre"};
     attrs["boot_memories"] = std::vector<int>{1};
     attrs["step_net"] = 2;
@@ -201,9 +218,9 @@ class RecurrentOpTest : public ::testing::Test {
     OpDesc op_desc;
     op_desc.set_type("fc");
     op_desc.set_name("fc");
-    op_desc.add_inputs("h_pre");
-    op_desc.add_inputs("w");
-    op_desc.add_outputs("s");
+    op_desc.add_inputs("rnn/h_pre");
+    op_desc.add_inputs("rnn/w");
+    op_desc.add_outputs("rnn/s");
     // s = h_pre * check
     return op_desc;
   }
@@ -212,9 +229,9 @@ class RecurrentOpTest : public ::testing::Test {
     OpDesc op_desc;
     op_desc.set_type("add");
     op_desc.set_name("add");
-    op_desc.add_inputs("x");
-    op_desc.add_inputs("s");
-    op_desc.add_outputs("h");
+    op_desc.add_inputs("rnn/x");
+    op_desc.add_inputs("rnn/s");
+    op_desc.add_outputs("rnn/h");
     // h = x + s
     return op_desc;
   }
@@ -223,7 +240,7 @@ class RecurrentOpTest : public ::testing::Test {
     LOG(INFO) << "create variable step_net";
     Variable* net_var = scope_->CreateVariable("step_net");
     NetDesc net_desc;
-    net_desc.name_ = "simple_rnn_net";
+    net_desc.name_ = "rnn";
     net_desc.op_descs.push_back(CreateFcOpDesc());
     net_desc.op_descs.push_back(CreateAddOpDesc());
     net_var->Reset<PlainNet>(new PlainNet(net_desc));
@@ -234,7 +251,7 @@ class RecurrentOpTest : public ::testing::Test {
   RecurrentOp rnn_op_;
 };
 
-TEST_F(RecurrentOpTest, create_op) {}
+// TEST_F(RecurrentOpTest, create_op) {}
 
 TEST_F(RecurrentOpTest, Run) {
   OpContext ctx;
