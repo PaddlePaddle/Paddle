@@ -54,15 +54,40 @@ void RecurrentOp::Run(OpContext* contex) const {
 
 void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
   OperatorBase::Init(op_desc, attrs);
+
+  // set original inputs
+  for (const std::string& input : op_desc.inputs()) {
+    LOG(INFO) << "set input " << input;
+    inputs_.push_back(input);
+  }
+  // set original outputs
+  for (const std::string& output : op_desc.outputs()) {
+    LOG(INFO) << "set output " << output;
+    outputs_.push_back(output);
+  }
+  // prepare inlinks
+  PADDLE_ENFORCE(inlinks_.empty(), "RecurrentOp duplicate inited");
+  for (auto id : GetAttr<std::vector<int>>("real_input")) {
+    inlinks_.push_back(inputs_[id]);
+  }
+
   name_ = op_desc.name();
-  net_name_ = op_desc.name() + "_net";
-  step_scopes_name_ = op_desc.name() + "_step_scopes";
+  net_name_ = inputs_.at(GetAttr<int>("step_net"));
+  step_scopes_name_ = inputs_.at(GetAttr<int>("step_scopes"));
+
+  // set memories
   auto memories = GetAttr<std::vector<std::string>>("memories");
   auto pre_memories = GetAttr<std::vector<std::string>>("pre_memories");
-  auto boot_memories = GetAttr<std::vector<std::string>>("boot_memories");
+  PADDLE_ENFORCE(memories.size() == pre_memories.size(),
+                 "The size of memories and pre_memories doesn't match: %d,%d.",
+                 memories.size(), pre_memories.size());
+  std::vector<std::string> boot_memories;
+  for (auto id : GetAttr<std::vector<int>>("boot_memories")) {
+    boot_memories.push_back(inputs_[id]);
+  }
   PADDLE_ENFORCE(memories.size() == boot_memories.size(),
-                 "The size of memories and boot_memories is mismatched.");
-  // set memories
+                 "the size of memories and boot_memories doesn't match: %d,%d",
+                 memories.size(), boot_memories.size());
   for (size_t i = 0; i < memories.size(); ++i) {
     MemoryAttr mem_attr;
     mem_attr.var = memories[i];
@@ -71,17 +96,6 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
     memory_attrs_.push_back(mem_attr);
     LOG(INFO) << "set memorys:\t"
               << "memory:" << mem_attr.var << "\tboot:" << mem_attr.boot_var;
-  }
-
-  // set inputs
-  for (const std::string& input : op_desc.inputs()) {
-    LOG(INFO) << "set input " << input;
-    inputs_.push_back(input);
-  }
-  // set outputs
-  for (const std::string& output : op_desc.outputs()) {
-    LOG(INFO) << "set output " << output;
-    outputs_.push_back(output);
   }
 }
 
@@ -116,20 +130,21 @@ void RecurrentOp::CreateStepNet(ScopePtr scope) const {
 }
 
 void RecurrentOp::SegmentInputs(ScopePtr scope) const {
+  PADDLE_ENFORCE(!inlinks_.empty(), "no real inputs are provided.");
   Variable* scopes_var = scope->GetVariable(step_scopes_name_);
   auto& step_scopes = *scopes_var->GetMutable<std::vector<Scope*>>();
 
   auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
   int seq_len = dims[0];
   int batch_size = dims[1];
-  for (size_t i = 0; i < inputs_.size(); i++) {
+  for (size_t i = 0; i < inlinks_.size(); i++) {
     auto input_dims = Input(scope, i)->GetMutable<Tensor>()->dims();
     int input_dim = input_dims[2];
     int length = batch_size * input_dim;
     const float* scope_input =
         Input(scope, i)->GetMutable<Tensor>()->data<float>();
     for (int j = 0; j < seq_len; j++) {
-      Variable* input_var = step_scopes[j]->CreateVariable(inputs_[i]);
+      Variable* input_var = step_scopes[j]->CreateVariable(inlinks_[i]);
       Tensor* step_input_tensor = input_var->GetMutable<Tensor>();
       float* step_input = step_input_tensor->mutable_data<float>(
           make_ddim({batch_size, input_dim}), platform::CPUPlace());
