@@ -23,15 +23,13 @@ limitations under the License. */
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
-using DEVICE_GPU = Eigen::GpuDevice;
-
 namespace paddle {
 namespace platform {
 
 class CUDADeviceContext;
 
 template <>
-DEVICE_GPU DeviceContext::get_eigen_device<DEVICE_GPU>() {
+Eigen::GpuDevice DeviceContext::get_eigen_device<Eigen::GpuDevice>() {
   return static_cast<CUDADeviceContext*>(this)->eigen_handle();
 }
 
@@ -57,6 +55,11 @@ class CUDADeviceContext : public DeviceContext {
                                      "cudaStreamCreate failed");
     eigen_stream_ = new Eigen::CudaStreamDevice(&stream_);
     eigen_device_ = new Eigen::GpuDevice(eigen_stream_);
+  }
+
+  Place GetPlace() const override {
+    Place retv = GPUPlace();
+    return retv;
   }
 
   void Wait() {

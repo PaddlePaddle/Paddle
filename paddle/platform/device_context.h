@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/framework/enforce.h"
+#include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
-
-using DEVICE_CPU = Eigen::DefaultDevice;
 
 namespace paddle {
 namespace platform {
@@ -28,10 +28,12 @@ class DeviceContext {
 
   template <typename DeviceType>
   DeviceType get_eigen_device();
+
+  virtual Place GetPlace() const = 0;
 };
 
 template <>
-DEVICE_CPU DeviceContext::get_eigen_device<DEVICE_CPU>() {
+Eigen::DefaultDevice DeviceContext::get_eigen_device<Eigen::DefaultDevice>() {
   return static_cast<CPUDeviceContext*>(this)->eigen_handle();
 }
 
@@ -44,9 +46,13 @@ class CPUDeviceContext : public DeviceContext {
     return *eigen_handle_;
   }
 
+  Place GetPlace() const override {
+    Place retv = CPUPlace();
+    return retv;
+  }
+
  private:
   Eigen::DefaultDevice* eigen_handle_{nullptr};
 };
-
 }  // namespace platform
 }  // namespace paddle
