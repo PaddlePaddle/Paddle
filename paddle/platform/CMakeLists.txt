@@ -1,11 +1,12 @@
 add_subdirectory(dynload)
 
-nv_test(cuda_test SRCS cuda_test.cu DEPS dyload_cuda)
+nv_test(cuda_test SRCS cuda_test.cu)
 
 cc_library(place SRCS place.cc)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
+
 IF(WITH_GPU)
-    set(GPU_CTX_DEPS dyload_cuda dynamic_loader )
+    set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
 ELSE()
     set(GPU_CTX_DEPS)
 ENDIF()
