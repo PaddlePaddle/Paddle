@@ -45,7 +45,7 @@ class OperatorTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-REGISTER_OP(OperatorTest, OperatorTestProtoAndCheckerMaker, test_operator)
+REGISTER_OP(test_operator, OperatorTest, OperatorTestProtoAndCheckerMaker)
 
 TEST(OperatorBase, all) {
   OpDesc op_desc;
@@ -98,21 +98,8 @@ class CPUKernelTest : public OpKernel {
   }
 };
 
-class GPUKernelTest : public OpKernel {
- public:
-  void Compute(const KernelContext& context) const {
-    float scale = context.op_.GetAttr<float>("scale");
-    ASSERT_NEAR(scale, 3.14, 1e-5);
-    std::cout << "this is GPU kernel" << std::endl;
-    std::cout << context.op_.DebugString() << std::endl;
-  }
-};
-
-REGISTER_OP(OpWithKernelTest, OpKernelTestProtoAndCheckerMaker, op_with_kernel)
+REGISTER_OP(op_with_kernel, OpWithKernelTest, OpKernelTestProtoAndCheckerMaker)
 REGISTER_OP_KERNEL(op_with_kernel, platform::CPUPlace(), CPUKernelTest)
-#ifndef PADDLE_ONLY_CPU
-REGISTER_OP_KERNEL(op_with_kernel, platform::GPUPlace(), GPUKernelTest)
-#endif
 
 TEST(OpKernel, all) {
   OpDesc op_desc;
@@ -130,11 +117,6 @@ TEST(OpKernel, all) {
   OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);
 
-#ifndef PADDLE_ONLY_CPU
-  paddle::platform::CUDADeviceContext* gpu_device_context =
-      new paddle::platform::CUDADeviceContext(0);
-  op->Run(scope, *gpu_device_context);
-#endif
   delete op;
 }
 }  // namespace framework
