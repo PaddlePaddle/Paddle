@@ -22,44 +22,6 @@
 namespace paddle {
 namespace framework {
 
-// fake op implementations
-namespace fake {
-class FcOp : public OperatorBase {
- public:
-  FcOp(const OpDesc& desc) : name_(desc.name()) {}
-
-  virtual void InferShape(ScopePtr scope) const override {
-    for (const auto& output : outputs_) {
-      LOG(INFO) << "fc [" << name_ << "]"
-                << " create output variable [" << output << "]";
-      scope->CreateVariable(output);
-    }
-  }
-
-  virtual void Run(OpContext* contex) const override {
-    for (const auto& input : inputs_) {
-      PADDLE_ENFORCE(contex->scope->HasVariable(input),
-                     "no input variable [%s] exists");
-      LOG(INFO) << "fc [" << name_ << "] read input [" << input << "]";
-    }
-    for (const auto& output : outputs_) {
-      PADDLE_ENFORCE(contex->scope->HasVariable(output),
-                     "no output variable [%s] exists");
-      LOG(INFO) << "fc [" << name_ << "] write output [" << output << "]";
-    }
-  }
-
- private:
-  std::string name_;
-};
-}  // namespace fake
-
-void PlainNet::AddOp(const OpDesc& desc) {
-  if (desc.type() == "fc") {
-    ops_.emplace_back(new fake::FcOp(desc));
-  }
-}
-
 void RecurrentOp::Run(OpContext* contex) const {
   auto scope = contex->scope;
 
@@ -87,7 +49,7 @@ void RecurrentOp::Run(OpContext* contex) const {
   }
 
   // prepare outputs
-  ConcateOutputs(scope);
+  ConcatOutputs(scope);
 }
 
 void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
@@ -96,6 +58,7 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
   net_name_ = op_desc.name() + "_net";
   step_scopes_name_ = op_desc.name() + "_step_scopes";
   auto memories = GetAttr<std::vector<std::string>>("memories");
+  auto pre_memories = GetAttr<std::vector<std::string>>("pre_memories");
   auto boot_memories = GetAttr<std::vector<std::string>>("boot_memories");
   PADDLE_ENFORCE(memories.size() == boot_memories.size(),
                  "The size of memories and boot_memories is mismatched.");
@@ -103,6 +66,7 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
   for (size_t i = 0; i < memories.size(); ++i) {
     MemoryAttr mem_attr;
     mem_attr.var = memories[i];
+    mem_attr.pre_var = pre_memories[i];
     mem_attr.boot_var = boot_memories[i];
     memory_attrs_.push_back(mem_attr);
     LOG(INFO) << "set memorys:\t"
@@ -158,17 +122,43 @@ void RecurrentOp::SegmentInputs(ScopePtr scope) const {
   auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
   int seq_len = dims[0];
   int batch_size = dims[1];
-  int dim = dims[2];
-  int length = batch_size * dim;
   for (size_t i = 0; i < inputs_.size(); i++) {
+    auto input_dims = Input(scope, i)->GetMutable<Tensor>()->dims();
+    int input_dim = input_dims[2];
+    int length = batch_size * input_dim;
     const float* scope_input =
         Input(scope, i)->GetMutable<Tensor>()->data<float>();
     for (int j = 0; j < seq_len; j++) {
       Variable* input_var = step_scopes[j]->CreateVariable(inputs_[i]);
       Tensor* step_input_tensor = input_var->GetMutable<Tensor>();
       float* step_input = step_input_tensor->mutable_data<float>(
-          make_ddim({batch_size, dim}), platform::CPUPlace());
+          make_ddim({batch_size, input_dim}), platform::CPUPlace());
       std::memcpy(step_input, scope_input + j * length, length);
+    }
+  }
+}
+
+void RecurrentOp::ConcatOutputs(ScopePtr scope) const {
+  Variable* scopes_var = scope->GetVariable(step_scopes_name_);
+  auto& step_scopes = *scopes_var->GetMutable<std::vector<Scope*>>();
+
+  auto dims = Input(scope, 0)->GetMutable<Tensor>()->dims();
+  int seq_len = dims[0];
+  int batch_size = dims[1];
+  for (size_t i = 0; i < outputs_.size(); i++) {
+    auto output_dims =
+        step_scopes[0]->GetVariable(outputs_[0])->GetMutable<Tensor>()->dims();
+    int output_dim = output_dims[2];
+    int length = batch_size * output_dim;
+    Tensor* output_tensor =
+        scope->CreateVariable(outputs_[i])->GetMutable<Tensor>();
+    float* output = output_tensor->mutable_data<float>(
+        make_ddim({seq_len, batch_size, output_dim}), platform::CPUPlace());
+    for (int j = 0; j < seq_len; j++) {
+      Variable* output_var = step_scopes[j]->GetVariable(outputs_[i]);
+      const float* step_output =
+          output_var->GetMutable<Tensor>()->data<float>();
+      std::memcpy(output + j * length, step_output, length);
     }
   }
 }

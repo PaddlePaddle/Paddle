@@ -124,7 +124,7 @@ class RecurrentOp : public OperatorBase {
   /*
    * Process outputs of stepnets and merge to variables.
    */
-  void ConcateOutputs(ScopePtr scope) const {};
+  void ConcatOutputs(ScopePtr scope) const;
 
   /*
    * Create a `Net` which is shared across all steps.
@@ -173,8 +173,8 @@ class RecurrentOp : public OperatorBase {
   };
 
   /*
-   * The attributes in protobuf about the memory description and the booted
-   * memory description are as follows. The number of booted memories should
+   * The attributes in protobuf about the memory description and the initial
+   * memory description are as follows. The number of initial memories should
    * equal to the memories number.
    *
    *   arg {
