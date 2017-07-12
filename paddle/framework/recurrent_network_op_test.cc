@@ -104,12 +104,29 @@ class RecurrentOpTest : public ::testing::Test {
     // create boot memory
     scope_.CreateVariable("h_boot");
     // create input, and init content
-    LOG(INFO) << "create global variale x";
+    LOG(INFO) << "create global variable x";
     Variable* x = scope_.CreateVariable("x");
     DDim dims = make_ddim(std::vector<int>{10 /*sent size*/, 20 /*batch size*/,
                                            30 /*input dim*/});
     // TODO mutable_data is not valid
     x->GetMutable<Tensor>()->mutable_data<float>(dims, platform::CPUPlace());
+
+    LOG(INFO) << "create global variable w";
+    Variable* w = scope_.CreateVariable("w");
+    w->GetMutable<Tensor>()->mutable_data<float>(
+        make_ddim(std::vector<int>{30, 30}), platform::CPUPlace());
+
+    LOG(INFO) << "create global variable h_boot";
+    Variable* h_boot = scope_.CreateVariable("h_boot");
+    h_boot->GetMutable<Tensor>()->mutable_data<float>(
+        make_ddim(std::vector<int>{20 /*batch size*/, 30 /*input dim*/}),
+        platform::CPUPlace());
+
+    LOG(INFO) << "create variable step_scopes";
+    scope_.CreateVariable("step_scopes");
+
+    LOG(INFO) << "create variable h";
+    scope_.CreateVariable("h");
   }
 
   void CreateRNNOp() {
@@ -118,7 +135,6 @@ class RecurrentOpTest : public ::testing::Test {
     op_desc.set_type("rnn_op");
     op_desc.set_name("simple_rnn");
     op_desc.add_inputs("x");
-    op_desc.add_inputs("w");
     op_desc.add_inputs("h_boot");       // initial memory
     op_desc.add_inputs("step_net");     // step net
     op_desc.add_inputs("step_scopes");  // step scopes
@@ -131,7 +147,7 @@ class RecurrentOpTest : public ::testing::Test {
     *memories_attr->mutable_strings()->Add() = "h";
     memories_attr->set_name("memories");
 
-    // add memories
+    // add history/previous memories
     auto pre_memories_attr = op_desc.mutable_attrs()->Add();
     pre_memories_attr->set_type(paddle::framework::AttrType::STRINGS);
     *pre_memories_attr->mutable_strings()->Add() = "h_pre";
@@ -139,21 +155,21 @@ class RecurrentOpTest : public ::testing::Test {
 
     // add initial memories
     auto boot_memories_attr = op_desc.mutable_attrs()->Add();
-    boot_memories_attr->set_type(paddle::framework::AttrType::STRINGS);
-    *boot_memories_attr->mutable_strings()->Add() = "h_boot";
+    boot_memories_attr->set_type(paddle::framework::AttrType::INTS);
+    *boot_memories_attr->mutable_ints()->Add() = 1;
     boot_memories_attr->set_name("boot_memories");
-
-    // add step scopes
-    auto step_scopes_attr = op_desc.mutable_attrs()->Add();
-    step_scopes_attr->set_type(paddle::framework::AttrType::STRING);
-    step_scopes_attr->set_s("step_scopes");
-    step_scopes_attr->set_name("step_scopes");
 
     // add step net desc
     auto step_net_attr = op_desc.mutable_attrs()->Add();
-    step_net_attr->set_type(paddle::framework::AttrType::STRING);
-    step_net_attr->set_s("step_net");
+    step_net_attr->set_type(paddle::framework::AttrType::INT);
+    step_net_attr->set_i(2);
     step_net_attr->set_name("step_net");
+
+    // add step scopes
+    auto step_scopes_attr = op_desc.mutable_attrs()->Add();
+    step_scopes_attr->set_type(paddle::framework::AttrType::INT);
+    step_scopes_attr->set_i(3);
+    step_scopes_attr->set_name("step_scopes");
 
     // std::ostringstream stream;
     // op_desc.SerializeToOstream(&stream);
@@ -163,9 +179,9 @@ class RecurrentOpTest : public ::testing::Test {
     AttributeMap attrs;
     attrs["memories"] = std::vector<std::string>{"h"};
     attrs["pre_memories"] = std::vector<std::string>{"h_pre"};
-    attrs["boot_memories"] = std::vector<std::string>{"h_boot"};
-    attrs["step_net"] = std::vector<std::string>{"step_net"};
-    attrs["step_scopes"] = std::vector<std::string>{"step_scopes"};
+    attrs["boot_memories"] = std::vector<int>{1};
+    attrs["step_net"] = 2;
+    attrs["step_scopes"] = 3;
 
     // TODO
     LOG(INFO) << "rnn_op to init";
@@ -180,6 +196,7 @@ class RecurrentOpTest : public ::testing::Test {
     op_desc.add_inputs("h_pre");
     op_desc.add_inputs("w");
     op_desc.add_outputs("s");
+    // s = h_pre * check
     return op_desc;
   }
 
@@ -190,11 +207,13 @@ class RecurrentOpTest : public ::testing::Test {
     op_desc.add_inputs("x");
     op_desc.add_inputs("s");
     op_desc.add_outputs("h");
+    // h = x + s
     return op_desc;
   }
 
   void CreateStepNet() {
-    Variable* net_var = scope_.CreateVariable("simple_rnn_net");
+    LOG(INFO) << "create variable step_net";
+    Variable* net_var = scope_.CreateVariable("step_net");
     NetDesc net_desc;
     net_desc.name_ = "simple_rnn_net";
     net_desc.op_descs.push_back(CreateFcOpDesc());
