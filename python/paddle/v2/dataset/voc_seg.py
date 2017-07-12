@@ -13,7 +13,10 @@
 # limitations under the License.
 """
 Image dataset for segmentation.
-The 2012 dataset contains images from 2008-2011 for which additional segmentations have been prepared. As in previous years the assignment to training/test sets has been maintained. The total number of images with segmentation has been increased from 7,062 to 9,993.
+The 2012 dataset contains images from 2008-2011 for which additional
+segmentations have been prepared. As in previous years the assignment
+to training/test sets has been maintained. The total number of images
+with segmentation has been increased from 7,062 to 9,993.
 """
 
 import tarfile
@@ -23,7 +26,9 @@ from paddle.v2.image import *
 
 __all__ = ['train', 'test', 'val']
 
-VOC_URL = 'http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar'
+VOC_URL = 'http://host.robots.ox.ac.uk/pascal/VOC/voc2012/\
+            VOCtrainval_11-May-2012.tar'
+
 VOC_MD5 = '6cd6e144f989b92b3379bac3b3de84fd'
 SET_FILE = 'VOCdevkit/VOC2012/ImageSets/Segmentation/{}.txt'
 DATA_FILE = 'VOCdevkit/VOC2012/JPEGImages/{}.jpg'
@@ -55,20 +60,20 @@ def reader_creator(filename, sub_name):
 
 def train():
     """
-    Create a train dataset reader containing 2913 images.
+    Create a train dataset reader containing 2913 images in HWC order.
     """
     return reader_creator(download(VOC_URL, 'voc_seg', VOC_MD5), 'trainval')
 
 
 def test():
     """
-    Create a test dataset reader containing 1464 images.
+    Create a test dataset reader containing 1464 images in HWC order.
     """
     return reader_creator(download(VOC_URL, 'voc_seg', VOC_MD5), 'train')
 
 
 def val():
     """
-    Create a val dataset reader containing 1449 images.
+    Create a val dataset reader containing 1449 images in HWC order.
     """
     return reader_creator(download(VOC_URL, 'voc_seg', VOC_MD5), 'val')
