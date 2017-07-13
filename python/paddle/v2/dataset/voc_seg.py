@@ -22,7 +22,7 @@ with segmentation has been increased from 7,062 to 9,993.
 import tarfile
 import io
 import numpy as np
-from common import download
+from paddle.v2.dataset.common import download
 from paddle.v2.image import *
 from PIL import Image
 
@@ -35,6 +35,8 @@ VOC_MD5 = '6cd6e144f989b92b3379bac3b3de84fd'
 SET_FILE = 'VOCdevkit/VOC2012/ImageSets/Segmentation/{}.txt'
 DATA_FILE = 'VOCdevkit/VOC2012/JPEGImages/{}.jpg'
 LABEL_FILE = 'VOCdevkit/VOC2012/SegmentationClass/{}.png'
+
+CACHE_DIR = 'voc2012'
 
 
 def reader_creator(filename, sub_name):
@@ -66,18 +68,18 @@ def train():
     """
     Create a train dataset reader containing 2913 images in HWC order.
     """
-    return reader_creator(download(VOC_URL, 'voc_seg', VOC_MD5), 'trainval')
+    return reader_creator(download(VOC_URL, CACHE_DIR, VOC_MD5), 'trainval')
 
 
 def test():
     """
     Create a test dataset reader containing 1464 images in HWC order.
     """
-    return reader_creator(download(VOC_URL, 'voc_seg', VOC_MD5), 'train')
+    return reader_creator(download(VOC_URL, CACHE_DIR, VOC_MD5), 'train')
 
 
 def val():
     """
     Create a val dataset reader containing 1449 images in HWC order.
     """
-    return reader_creator(download(VOC_URL, 'voc_seg', VOC_MD5), 'val')
+    return reader_creator(download(VOC_URL, CACHE_DIR, VOC_MD5), 'val')
