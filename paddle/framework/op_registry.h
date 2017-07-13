@@ -105,9 +105,9 @@ class OpRegistry {
                    "Fail to initialize %s's OpProto !", op_type);
   }
 
-  static OperatorBase* CreateOp(const OpDesc& op_desc) {
+  static OpPtr CreateOp(const OpDesc& op_desc) {
     std::string op_type = op_desc.type();
-    OperatorBase* op = creators().at(op_type)();
+    OpPtr op(creators().at(op_type)());
     op->desc_ = op_desc;
     op->inputs_.reserve((size_t)op_desc.inputs_size());
     std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),

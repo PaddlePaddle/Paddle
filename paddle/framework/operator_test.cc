@@ -66,12 +66,11 @@ TEST(OperatorBase, all) {
   platform::CPUDeviceContext device_context;
   auto scope = std::make_shared<Scope>();
 
-  OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  OpPtr op = paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(op->GetAttr<float>("scale"), scale);
   scope->CreateVariable("OUT1");
   op->Run(scope, device_context);
   std::cout << op->DebugString() << std::endl;
-  delete op;
 }
 
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -119,10 +118,8 @@ TEST(OpKernel, all) {
   platform::CPUDeviceContext cpu_device_context;
   auto scope = std::make_shared<Scope>();
 
-  OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  OpPtr op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);
-
-  delete op;
 }
 }  // namespace framework
 }  // namespace paddle
