@@ -125,16 +125,16 @@ class OpRegistry {
     return op;
   }
 
+  static std::unordered_map<std::string, OpProto>& protos() {
+    static std::unordered_map<std::string, OpProto> protos_;
+    return protos_;
+  };
+
  private:
   static std::unordered_map<std::string, OpCreator>& creators() {
     static std::unordered_map<std::string, OpCreator> creators_;
     return creators_;
   }
-
-  static std::unordered_map<std::string, OpProto>& protos() {
-    static std::unordered_map<std::string, OpProto> protos_;
-    return protos_;
-  };
 
   static std::unordered_map<std::string, OpAttrChecker>& op_checkers() {
     static std::unordered_map<std::string, OpAttrChecker> op_checkers_;

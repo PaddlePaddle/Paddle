@@ -13,11 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <Python.h>
+#include <paddle/framework/op_registry.h>
 #include <paddle/framework/scope.h>
 #include <pybind11/pybind11.h>
+#include <vector>
 
 namespace py = pybind11;
 namespace pd = paddle::framework;
+
+USE_OP(add_two);
 
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of Paddle Paddle");
@@ -42,6 +46,18 @@ All parameter, weight, gradient are variables in Paddle.
       .def("create_var",
            &pd::Scope::CreateVariable,
            py::return_value_policy::reference);
+
+  m.def("get_all_op_protos", []() -> std::vector<std::string> {
+    auto& protos = pd::OpRegistry::protos();
+    std::vector<std::string> ret_values;
+    ret_values.reserve(protos.size());
+    for (auto it = protos.begin(); it != protos.end(); ++it) {
+      ret_values.emplace_back();
+      PADDLE_ENFORCE(it->second.SerializeToString(&ret_values.back()),
+                     "Serialize OpProto Error. This could be a bug of Paddle.");
+    }
+    return ret_values;
+  });
 
   return m.ptr();
 }
