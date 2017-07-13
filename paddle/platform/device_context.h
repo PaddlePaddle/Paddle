@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,8 +19,9 @@ limitations under the License. */
 #include "paddle/platform/dynload/curand.h"
 #define EIGEN_USE_GPU
 #endif
-#include "paddle/platform/place.h"
-#include "unsupported/Eigen/CXX11/Tensor"
+#include <paddle/platform/place.h>
+#include <memory>
+#include <unsupported/Eigen/CXX11/Tensor>
 
 namespace paddle {
 namespace platform {
@@ -31,9 +29,29 @@ namespace platform {
 class DeviceContext {
  public:
   virtual ~DeviceContext() {}
+  virtual Place GetPlace() const = 0;
+
+  template <typename DeviceType>
+  DeviceType* get_eigen_device();
 };
 
-class CPUDeviceContext : public DeviceContext {};
+class CPUDeviceContext : public DeviceContext {
+ public:
+  Eigen::DefaultDevice* eigen_device() {
+    if (!eigen_device_) {
+      eigen_device_.reset(new Eigen::DefaultDevice());
+    }
+    return eigen_device_.get();
+  }
+
+  Place GetPlace() const override {
+    Place retv = CPUPlace();
+    return retv;
+  }
+
+ private:
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
 
 #ifndef PADDLE_ONLY_CPU
 
@@ -57,8 +75,13 @@ class CUDADeviceContext : public DeviceContext {
     GPUPlaceGuard guard(gpu_place_);
     paddle::platform::throw_on_error(cudaStreamCreate(&stream_),
                                      "cudaStreamCreate failed");
-    eigen_stream_ = new Eigen::CudaStreamDevice(&stream_);
-    eigen_device_ = new Eigen::GpuDevice(eigen_stream_);
+    eigen_stream_.reset(new Eigen::CudaStreamDevice(&stream_));
+    eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
+  }
+
+  Place GetPlace() const override {
+    Place retv = GPUPlace();
+    return retv;
   }
 
   void Wait() {
@@ -68,7 +91,7 @@ class CUDADeviceContext : public DeviceContext {
 
   cudaStream_t stream() { return stream_; }
 
-  Eigen::GpuDevice eigen_device() { return *eigen_device_; }
+  Eigen::GpuDevice* eigen_device() { return eigen_device_.get(); }
 
   cublasHandle_t cublas_handle() {
     if (!blas_handle_) {
@@ -133,10 +156,8 @@ class CUDADeviceContext : public DeviceContext {
                          rand_generator_) == CURAND_STATUS_SUCCESS,
                      "curandDestroyGenerator failed");
     }
-
-    delete eigen_stream_;
-    delete eigen_device_;
-
+    eigen_stream_.reset();
+    eigen_device_.reset();
     paddle::platform::throw_on_error(cudaStreamDestroy(stream_),
                                      "cudaStreamDestroy failed");
   }
@@ -145,8 +166,8 @@ class CUDADeviceContext : public DeviceContext {
   GPUPlace gpu_place_;
   cudaStream_t stream_;
 
-  Eigen::CudaStreamDevice* eigen_stream_;
-  Eigen::GpuDevice* eigen_device_;
+  std::unique_ptr<Eigen::CudaStreamDevice> eigen_stream_;
+  std::unique_ptr<Eigen::GpuDevice> eigen_device_;
 
   cublasHandle_t blas_handle_{nullptr};
 
@@ -155,6 +176,8 @@ class CUDADeviceContext : public DeviceContext {
   int random_seed_;
   curandGenerator_t rand_generator_{nullptr};
 };
+
 #endif
+
 }  // namespace platform
 }  // namespace paddle
