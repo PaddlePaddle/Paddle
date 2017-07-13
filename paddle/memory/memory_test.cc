@@ -13,9 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/memory/memory.h"
+#include "gtest/gtest.h"
 #include "paddle/platform/place.h"
 
-#include "gtest/gtest.h"
+template <typename T>
+inline bool is_aligned(T *p, size_t n = alignof(T)) {
+  return 0 == (reinterpret_cast<uintptr_t>(p) % n);
+}
 
 TEST(BuddyAllocator, CPUAllocation) {
   void *p = nullptr;
@@ -36,11 +40,13 @@ TEST(BuddyAllocator, CPUMultAlloc) {
   std::vector<void *> ps;
   ps.reserve(8);
 
-  for (auto size : {256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304}) {
+  for (auto size :
+       {128, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304}) {
     ps.emplace_back(paddle::memory::Alloc(cpu, size));
   }
 
   for (auto p : ps) {
+    EXPECT_EQ(is_aligned(p, 32), true);
     paddle::memory::Free(cpu, p);
   }
 }
@@ -58,6 +64,23 @@ TEST(BuddyAllocator, GPUAllocation) {
   EXPECT_NE(p, nullptr);
 
   paddle::memory::Free(gpu, p);
+}
+
+TEST(BuddyAllocator, GPUMultAlloc) {
+  paddle::platform::GPUPlace gpu;
+
+  std::vector<void *> ps;
+  ps.reserve(8);
+
+  for (auto size :
+       {128, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304}) {
+    ps.emplace_back(paddle::memory::Alloc(gpu, size));
+  }
+
+  for (auto p : ps) {
+    EXPECT_EQ(is_aligned(p, 32), true);
+    paddle::memory::Free(gpu, p);
+  }
 }
 
 #endif  // PADDLE_ONLY_CPU
