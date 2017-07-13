@@ -49,6 +49,10 @@ class OperatorBase {
 
   std::string DebugString() const;
 
+  /// Init will be called after CreateOperator, you can put some initialization
+  /// logic here.
+  virtual void Init() {}
+
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
   virtual void InferShape(const std::shared_ptr<Scope>& scope) const = 0;
