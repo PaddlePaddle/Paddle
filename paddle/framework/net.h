@@ -128,7 +128,7 @@ class PlainNet : public Net {
   /**
    * @brief Add an operator to this network.
    */
-  virtual OpIndex AddOp(const OpProto &def) override;
+  virtual OpIndex AddOp(const OpProto &def);
 
   /**
    * @brief Add all optimizer operators related into the network.
