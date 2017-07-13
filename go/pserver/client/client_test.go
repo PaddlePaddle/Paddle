@@ -100,13 +100,13 @@ func (l lister) List() []client.Server {
 	return l
 }
 
-func ClientTest(t *testing.T, c *client.Client) {
+func testClient(t *testing.T, c *client.Client) {
 	selected := c.BeginInitParams()
 	if !selected {
 		t.Fatal("should be selected.")
 	}
 
-	const numParameter = 100
+	const numParameter = 1000
 	config, err := ioutil.ReadFile("./c/test/testdata/optimizer.pb")
 	if err != nil {
 		t.Fatalf("read optimizer proto failed")
@@ -128,7 +128,7 @@ func ClientTest(t *testing.T, c *client.Client) {
 	}
 
 	var grads []pserver.Gradient
-	for i := 0; i < numParameter/2; i++ {
+	for i := 0; i < numParameter; i++ {
 		var g pserver.Gradient
 		g.Name = "p_" + strconv.Itoa(i)
 		g.ElementType = pserver.Float32
@@ -169,13 +169,14 @@ func TestNativeClient(t *testing.T) {
 		servers[i] = client.Server{Index: i, Addr: ":" + strconv.Itoa(pserverClientPorts[i])}
 	}
 	c1 := client.NewClient(lister(servers), len(servers), selector(true))
-	ClientTest(t, c1)
+	testClient(t, c1)
 }
 
-// TODO: tmperary disable etcdClient test for dependency of etcd)
+// EtcdClient is a disabled test, since we have not embedded etcd into
+// our test.
 func EtcdClient(t *testing.T) {
 	initEtcdClient()
 	etcdClient := client.NewEtcd(etcdEndpoints)
 	c2 := client.NewClient(etcdClient, etcdClient.Desired(), selector(true))
-	ClientTest(t, c2)
+	testClient(t, c2)
 }
