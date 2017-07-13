@@ -4,6 +4,7 @@ cache:
     - $HOME/.ccache
     - $HOME/.cache/pip
     - $TRAVIS_BUILD_DIR/build/third_party
+    - $HOME/android-toolchain-gcc
 sudo: required
 dist: trusty
 os:
@@ -11,6 +12,7 @@ os:
 env:
   - JOB=build_doc
   - JOB=check_style
+  - JOB=build_android
 addons:
   apt:
     packages:
@@ -33,6 +35,12 @@ addons:
       - ccache
 before_install:
   - if [[ "$JOB" == "check_style" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
+  - if [[ "JOB" == "build_android" ]]; then
+      mkdir -p $HOME/tmp/$JOB;
+      cd $HOME/tmp/$JOB; wget -q https://dl.google.com/android/repository/android-ndk-r14b-linux-x86_64.zip; unzip -q android-ndk-r14b-linux-x86_64.zip;
+      sh $HOME/tmp/$JOB/android-ndk-r14b/build/tools/make-standalone-toolchain.sh --arch=arm --platform=android-21 --install-dir=$HOME/android-toolchain-gcc;
+      cd $HOME; rm -rf $HOME/tmp/$JOB;
+    fi
   # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python
   # protobuf version.
   - pip install numpy wheel 'protobuf==3.1' sphinx==1.5.6 recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit requests==2.9.2 LinkChecker
