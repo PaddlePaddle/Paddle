@@ -1,15 +1,19 @@
 import paddle.v2 as paddle
 import paddle.v2.dataset.uci_housing as uci_housing
+import paddle.v2.master as master
 import os
 
-etcd_ip = os.getenv("PADDLE_INIT_MASTER_IP", "127.0.0.1")
+etcd_ip = os.getenv("MASTER_IP", "127.0.0.1")
+etcd_endpoint = "http://" + etcd_ip + ":2379"
 
 
 def cloud_reader():
-    etcd_endpoint = "http://" + etcd_ip + ":2379"
-    master_client = paddle.master.client.client(etcd_endpoint, 5, 64)
-    master_client.set_dataset("/pfs/public/uci_housing/*")
-    for r, e in master_client.next_record():
+    print "connecting to master, etcd endpoints: ", etcd_endpoint
+    master_client = master.client(etcd_endpoint, 5, 64)
+    master_client.set_dataset(
+        ["/pfs/dlnel/public/dataset/uci_housing/uci_housing-*-of-*"])
+    while 1:
+        r, e = master_client.next_record()
         if not r:
             break
         yield r
@@ -36,12 +40,12 @@ def main():
     optimizer = paddle.optimizer.Momentum(momentum=0)
 
     #TODO(zhihong) : replace optimizer with new OptimizerConfig
-
+    print "etcd endoint: ", etcd_endpoint
     trainer = paddle.trainer.SGD(cost=cost,
                                  parameters=parameters,
                                  update_equation=optimizer,
                                  is_local=False,
-                                 pserver_spec="localhost:2379",
+                                 pserver_spec=etcd_endpoint,
                                  use_etcd=True)
 
     # event_handler to print training and testing info

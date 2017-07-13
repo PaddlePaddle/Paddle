@@ -36,7 +36,7 @@ func main() {
 	} else {
 		timeout := time.Second * time.Duration((*etcdTimeout))
 		e := pserver.NewEtcdClient(*etcdEndpoint, *numPservers, timeout)
-		idx, err = e.Register()
+		idx, err = e.Register(*port)
 		if err != nil {
 			panic(err)
 		}
