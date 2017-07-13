@@ -22,8 +22,8 @@ namespace framework {
 class OperatorTest : public OperatorBase {
  public:
   void Init() override { x = 1; }
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
-  void Run(const std::shared_ptr<Scope>& scope,
+  void InferShape(const ScopePtr& scope) const override {}
+  void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const override {
     float scale = GetAttr<float>("scale");
     ASSERT_NEAR(scale, 3.14, 1e-5);
@@ -66,12 +66,11 @@ TEST(OperatorBase, all) {
   platform::CPUDeviceContext device_context;
   auto scope = std::make_shared<Scope>();
 
-  OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  OpPtr op = paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(op->GetAttr<float>("scale"), scale);
   scope->CreateVariable("OUT1");
   op->Run(scope, device_context);
   std::cout << op->DebugString() << std::endl;
-  delete op;
 }
 
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -90,7 +89,7 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 class OpWithKernelTest : public OperatorWithKernel {
  public:
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
+  void InferShape(const ScopePtr& scope) const override {}
 };
 
 class CPUKernelTest : public OpKernel {
@@ -119,10 +118,8 @@ TEST(OpKernel, all) {
   platform::CPUDeviceContext cpu_device_context;
   auto scope = std::make_shared<Scope>();
 
-  OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  OpPtr op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);
-
-  delete op;
 }
 }  // namespace framework
 }  // namespace paddle

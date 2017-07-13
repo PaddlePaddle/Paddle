@@ -56,10 +56,10 @@ class OperatorBase {
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  virtual void InferShape(const std::shared_ptr<Scope>& scope) const = 0;
+  virtual void InferShape(const ScopePtr& scope) const = 0;
 
   /// Net will call this function to Run an op.
-  virtual void Run(const std::shared_ptr<Scope>& scope,
+  virtual void Run(const ScopePtr& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
  protected:
@@ -82,7 +82,7 @@ class OpKernel {
    */
   class KernelContext {
    public:
-    KernelContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
+    KernelContext(const OperatorBase* op, const ScopePtr& scope,
                   const platform::DeviceContext& device_context)
         : op_(*op), scope_(scope), device_context_(device_context) {}
 
@@ -95,7 +95,7 @@ class OpKernel {
     }
 
     const OperatorBase& op_;
-    const std::shared_ptr<Scope>& scope_;
+    const ScopePtr& scope_;
     const platform::DeviceContext& device_context_;
   };
 
@@ -127,7 +127,7 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
-  void Run(const std::shared_ptr<Scope>& scope,
+  void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(Type()).at(OpKernelKey(dev_ctx));
     opKernel->Compute(OpKernel::KernelContext(this, scope, dev_ctx));

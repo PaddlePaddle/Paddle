@@ -14,8 +14,7 @@ void PlainNet::InferShape(const std::shared_ptr<Scope>& scope) const {
   }
 }
 
-void PlainNet::Run(const std::shared_ptr<Scope>& scope,
-                   const platform::DeviceContext& dev_ctx) const {
+void PlainNet::Run(ScopePtr scope, DeviceContext* ctx) {
   for (auto& op : ops_) {
     op->Run(scope, dev_ctx);
   }

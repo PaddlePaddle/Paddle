@@ -81,8 +81,7 @@ class PlainNet : public Net {
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  void Run(const std::shared_ptr<Scope>& scope,
-           const platform::DeviceContext& dev_ctx) const override;
+  virtual void Run(ScopePtr scope, DeviceContext *ctx) override;
 
   /**
    * @brief Add an operator to this network.
