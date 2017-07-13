@@ -19,17 +19,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class OperatorTest : public OperatorWithKernel {
+class OperatorTest : public OperatorBase {
  public:
-  void Run(const OpRunContext* ctx) const override {
-    float scale = ctx->op_->GetAttr<float>("scale");
-    PADDLE_ENFORCE(ctx->Input(0) == nullptr, "Input(0) should not initialized");
-    PADDLE_ENFORCE(ctx->Output(0) == nullptr,
-                   "Output(1) should not initialized");
-    auto output1 = ctx->scope_->CreateVariable("output1");
-    PADDLE_ENFORCE(output1 != nullptr, "should create output1 from scope");
-    printf("get attr %s = %f\n", "scale", scale);
-    printf("%s\n", DebugString().c_str());
+  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
+  void Run(const std::shared_ptr<Scope>& scope,
+           const platform::DeviceContext& dev_ctx) const override {
+    float scale = GetAttr<float>("scale");
+    ASSERT_NEAR(scale, 3.14, 1e-5);
+    ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
+    ASSERT_NE(scope->GetVariable(outputs_[0]), nullptr);
   }
 };
 
@@ -47,34 +45,79 @@ class OperatorTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-REGISTER_OP(OperatorTest, OperatorTestProtoAndCheckerMaker, test_operator)
+REGISTER_OP(test_operator, OperatorTest, OperatorTestProtoAndCheckerMaker);
 
-TEST(OperatorBase, DebugString) {
+TEST(OperatorBase, all) {
   OpDesc op_desc;
   op_desc.set_type("test_operator");
-  std::vector<std::string> inputs = {"IN1", "IN2"};
-  for (auto& input : inputs) {
-    op_desc.add_inputs(input);
-  }
-  std::vector<std::string> outputs = {"OUT1", "OUT2"};
-  for (auto& output : outputs) {
-    op_desc.add_outputs(output);
-  }
+  *op_desc.mutable_inputs()->Add() = "IN1";
+  *op_desc.mutable_outputs()->Add() = "OUT1";
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
   attr->set_type(paddle::framework::AttrType::FLOAT);
   float scale = 3.14;
   attr->set_f(scale);
 
-  DeviceContext device_context;
+  platform::CPUDeviceContext device_context;
   auto scope = std::make_shared<Scope>();
 
   OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  ASSERT_EQ(op->inputs_, inputs);
-  ASSERT_EQ(op->outputs_, outputs);
   ASSERT_EQ(op->GetAttr<float>("scale"), scale);
-  op->Run(scope, &device_context);
+  scope->CreateVariable("OUT1");
+  op->Run(scope, device_context);
+  std::cout << op->DebugString() << std::endl;
+  delete op;
 }
 
+class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+ public:
+  OpKernelTestProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("input", "input of test op");
+    AddOutput("output", "output of test op");
+    AddAttr<float>("scale", "scale of cosine op")
+        .SetDefault(1.0)
+        .LargerThan(0.0);
+    AddType("test_operator");
+    AddComment("This is test op");
+  }
+};
+
+class OpWithKernelTest : public OperatorWithKernel {
+ public:
+  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
+};
+
+class CPUKernelTest : public OpKernel {
+ public:
+  void Compute(const KernelContext& context) const {
+    float scale = context.op_.GetAttr<float>("scale");
+    ASSERT_NEAR(scale, 3.14, 1e-5);
+    std::cout << "this is cpu kernel" << std::endl;
+    std::cout << context.op_.DebugString() << std::endl;
+  }
+};
+
+REGISTER_OP(op_with_kernel, OpWithKernelTest, OpKernelTestProtoAndCheckerMaker);
+REGISTER_OP_KERNEL(op_with_kernel, platform::CPUPlace, CPUKernelTest);
+
+TEST(OpKernel, all) {
+  OpDesc op_desc;
+  op_desc.set_type("op_with_kernel");
+  *op_desc.mutable_inputs()->Add() = "IN1";
+  *op_desc.mutable_outputs()->Add() = "OUT1";
+  auto attr = op_desc.mutable_attrs()->Add();
+  attr->set_name("scale");
+  attr->set_type(paddle::framework::AttrType::FLOAT);
+  attr->set_f(3.14);
+
+  platform::CPUDeviceContext cpu_device_context;
+  auto scope = std::make_shared<Scope>();
+
+  OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  op->Run(scope, cpu_device_context);
+
+  delete op;
+}
 }  // namespace framework
 }  // namespace paddle
