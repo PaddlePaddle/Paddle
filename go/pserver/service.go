@@ -83,7 +83,7 @@ type parameterCheckpoint struct {
 }
 
 // NewCheckpointFromFile loads parameters and state from checkpoint file
-func NewCheckpointFromFile(cpPath string, idx int, e *EtcdClient) (*Checkpoint, error) {
+func NewCheckpointFromFile(cpPath string, idx int, e *EtcdClient) (Checkpoint, error) {
 	v, err := e.GetKey(PsPath+string(idx), 3*time.Second)
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func NewCheckpointFromFile(cpPath string, idx int, e *EtcdClient) (*Checkpoint, 
 	}
 
 	dec := gob.NewDecoder(bytes.NewReader(content))
-	cp := &Checkpoint{}
+	cp := Checkpoint{}
 	if err = dec.Decode(cp); err != nil {
 		return nil, err
 	}
