@@ -14,7 +14,7 @@ if(Boost_FOUND)
   add_subdirectory(memory)
   add_subdirectory(platform)
   add_subdirectory(framework)
-  add_subdirectory(op)  # because `operator` is a reserved word for CPP, so short to `op`
+  add_subdirectory(operators)
   add_subdirectory(pybind)
 endif()
 

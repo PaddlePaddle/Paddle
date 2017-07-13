@@ -3,7 +3,7 @@
 #include <paddle/framework/operator.h>
 
 namespace paddle {
-namespace op {
+namespace operators {
 
 template <typename Place>
 class AddKernel : public framework::OpKernel {

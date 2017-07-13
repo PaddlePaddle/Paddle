@@ -36,20 +36,6 @@ class OperatorTest : public OperatorBase {
   float x = 0;
 };
 
-class OperatorTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
- public:
-  OperatorTestProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("input", "input of test op");
-    AddOutput("output", "output of test op");
-    AddAttr<float>("scale", "scale of cosine op")
-        .SetDefault(1.0)
-        .LargerThan(0.0);
-    AddType("test_operator");
-    AddComment("This is test op");
-  }
-};
-
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   OpKernelTestProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)

@@ -82,8 +82,6 @@ class OpProtoAndCheckerMaker {
     return op_checker_->AddAttrChecker<T>(name);
   }
 
-  void AddType(const std::string& op_type) { proto_->set_type(op_type); }
-
   void AddComment(const std::string& comment) {
     *(proto_->mutable_comment()) = comment;
   }
@@ -194,13 +192,14 @@ class OpRegisterHelper {
   static int __use_op_ptr_##op_type##_without_kernel__      \
       __attribute__((unused)) = __op_register_##op_type##_handle__()
 
-#define USE_OP_KERNEL(op_type, CPU_OR_GPU)                                     \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(__use_op_kernel_##op_type##_##CPU_OR_GPU##__, \
-                                 "USE_OP_KERNEL must be in global namespace"); \
-  extern int __op_kernel_register_##op_type##_handle_##CPU_OR_GPU##__();       \
-  static int __use_op_ptr_##op_type##_##CPU_OR_GPU##_kernel__                  \
-      __attribute__((unused)) =                                                \
-          __op_kernel_register_##op_type##_handle_##CPU_OR_GPU##__()
+#define USE_OP_KERNEL(op_type, DEVICE_TYPE)                               \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
+      __use_op_kernel_##op_type##_##DEVICE_TYPE##__,                      \
+      "USE_OP_KERNEL must be in global namespace");                       \
+  extern int __op_kernel_register_##op_type##_handle_##DEVICE_TYPE##__(); \
+  static int __use_op_ptr_##op_type##_##DEVICE_TYPE##_kernel__            \
+      __attribute__((unused)) =                                           \
+          __op_kernel_register_##op_type##_handle_##DEVICE_TYPE##__()
 
 #ifdef PADDLE_ONLY_CPU
 #define USE_OP(op_type)           \

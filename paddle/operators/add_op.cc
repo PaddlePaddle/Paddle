@@ -1,9 +1,9 @@
 #include <paddle/framework/op_registry.h>
 #include <paddle/framework/tensor.h>
-#include <paddle/op/add_op.h>
+#include <paddle/operators/add_op.h>
 
 namespace paddle {
-namespace op {
+namespace operators {
 
 class AddOp : public framework::OperatorWithKernel {
 protected:
@@ -39,6 +39,6 @@ The equation is: Out = X + Y
 }  // namespace op
 }  // namespace paddle
 
-REGISTER_OP(add_two, paddle::op::AddOp, paddle::op::AddOpMaker);
-REGISTER_OP_CPU_KERNEL(add_two,
-                       ::paddle::op::AddKernel<::paddle::platform::CPUPlace>);
+REGISTER_OP(add_two, paddle::operators::AddOp, paddle::operators::AddOpMaker);
+REGISTER_OP_CPU_KERNEL(
+    add_two, ::paddle::operators::AddKernel<::paddle::platform::CPUPlace>);

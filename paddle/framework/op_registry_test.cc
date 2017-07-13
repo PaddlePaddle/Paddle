@@ -19,7 +19,6 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
         .LargerThan(0.0);
-    AddType("cos");
     AddComment("This is cos op");
   }
 };
@@ -44,7 +43,6 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     };
     AddAttr<int>("test_attr", "a simple test attribute")
         .AddCustomChecker(my_checker);
-    AddType("my_test_op");
     AddComment("This is my_test op");
   }
 };
