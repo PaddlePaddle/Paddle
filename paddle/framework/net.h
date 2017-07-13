@@ -26,7 +26,7 @@ namespace paddle {
 namespace framework {
 using namespace paddle::platform;
 
-// tmperary put here for test
+// temporary put here for test
 class PlainNetOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   PlainNetOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
