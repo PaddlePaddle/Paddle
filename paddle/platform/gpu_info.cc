@@ -65,7 +65,6 @@ size_t GpuMinChunkSize() {
 }
 
 size_t GpuMaxChunkSize() {
-  // Allow to allocate the maximum chunk size is roughly 3% of CPU memory.
   size_t total = 0;
   size_t available = 0;
 
