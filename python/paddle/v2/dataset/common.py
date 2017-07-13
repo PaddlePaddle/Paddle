@@ -201,8 +201,7 @@ def convert(output_path,
     def write_data(w, lines):
         random.shuffle(lines)
         for i, d in enumerate(lines):
-            d = pickle.dumps(d, pickle.HIGHEST_PROTOCOL)
-            w[i % num_shards].write(d)
+            w[i % num_shards].write(str(d))
 
     w = open_writers()
     lines = []
