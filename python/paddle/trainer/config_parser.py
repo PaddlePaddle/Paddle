@@ -3174,6 +3174,22 @@ class RecurrentLayerGroup(LayerBase):
             name, 'recurrent_layer_group', 0, inputs=[], device=device)
 
 
+@config_layer('pixel_softmax')
+class PixelSoftmaxLayer(LayerBase):
+    def __init__(self, name, inputs, **xargs):
+        super(PixelSoftmaxLayer, self).__init__(
+            name, 'pixel_softmax', 0, inputs=inputs, **xargs)
+
+        input_layer = self.get_input_layer(0)
+        image_conf = self.config.inputs[0].image_conf
+        image_conf.img_size = input_layer.width
+        image_conf.img_size_y = input_layer.height
+        image_conf.channels = input_layer.size / (input_layer.width *
+                                                  input_layer.height)
+        self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
+                           image_conf.channels)
+
+
 # Deprecated, use a new layer specific class instead
 @config_func
 def Layer(name, type, **xargs):
