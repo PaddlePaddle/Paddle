@@ -58,16 +58,6 @@ class Net : public OperatorBase {
    * @brief Add an Operator according to `def`.
    */
   virtual void AddOp(const OpDesc& def) = 0;
-
-  /**
-   * @brief Add optimizer operators acctording to `attrs`.
-   */
-  virtual void AddOptimizerOps() = 0;
-
-  /**
-   * @brief Add backward operators.
-   */
-  virtual void AddBackwardOps() = 0;
 };
 
 /**
@@ -99,19 +89,9 @@ class PlainNet : public Net {
    */
   void AddOp(const OpDesc& def) override;
 
-  /**
-   * @brief Add all optimizer operators related into the network.
-   */
-  void AddOptimizerOps() override {}
-
-  /**
-   * @brief Add all backward operators related into the network.
-   */
-  void AddBackwardOps() override {}
-
  private:
   // the operators owned by `Network`.
-  std::vector<std::unique_ptr<OperatorBase>> ops_;
+  std::vector<OpPtr> ops_;
 };
 
 }  // namespace framework

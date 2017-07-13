@@ -4,7 +4,7 @@ namespace paddle {
 namespace framework {
 
 void PlainNet::AddOp(const OpDesc& desc) {
-  std::unique_ptr<OperatorBase> op(OpRegistry::CreateOp(desc));
+  OpPtr op(OpRegistry::CreateOp(desc));
   ops_.push_back(std::move(op));
 }
 
