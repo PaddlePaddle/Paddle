@@ -34,7 +34,7 @@ func main() {
 
 	var idx int
 
-	var cp *pserver.Checkpoint
+	var cp pserver.Checkpoint
 	var e *pserver.EtcdClient
 	if *index >= 0 {
 		idx = *index

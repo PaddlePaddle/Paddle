@@ -119,7 +119,7 @@ func NewCheckpointFromFile(cpPath string, idx int, e *EtcdClient) (*Checkpoint, 
 
 // NewService creates a new service, will bypass etcd registration if no
 // endpoints specified. It will recovery from checkpoint file if a exists a specified checkpoint.
-func NewService(idx int, interval time.Duration, path string, client *EtcdClient, cp *Checkpoint) (*Service, error) {
+func NewService(idx int, interval time.Duration, path string, client *EtcdClient, cp Checkpoint) (*Service, error) {
 	s := &Service{
 		idx:                idx,
 		checkpointInterval: interval,
@@ -130,7 +130,7 @@ func NewService(idx int, interval time.Duration, path string, client *EtcdClient
 	s.initialized = make(chan struct{})
 
 	if cp != nil {
-		for _, item := range *cp {
+		for _, item := range cp {
 			p := ParameterWithConfig{
 				Param:  item.Param,
 				Config: item.Config,
