@@ -69,7 +69,7 @@ class Net {
    * environment for ops. `begin` and `end` specify the scope of `ops_` to run,
    * If no positive indexes are provided, all operators in `ops_` will run.
    */
-  virtual void Run(std::shared_ptr<Scope> scope, DeviceContext *ctx) = 0;
+  virtual void Run(ScopePtr scope, DeviceContext *ctx) = 0;
 
   /**
    * @brief Add an Operator according to `def`.
@@ -123,7 +123,7 @@ class PlainNet : public Net {
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  virtual void Run(std::shared_ptr<Scope> scope, DeviceContext *ctx) override;
+  virtual void Run(ScopePtr scope, DeviceContext *ctx) override;
 
   /**
    * @brief Add an operator to this network.

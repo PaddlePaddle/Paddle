@@ -11,7 +11,7 @@ void PlainNet::InferShape(Scope* scope) {
   }
 }
 
-void PlainNet::Run(std::shared_ptr<Scope> scope, DeviceContext* ctx) {
+void PlainNet::Run(ScopePtr scope, DeviceContext* ctx) {
   for (auto& op : ops_) {
     op.Run(ctx);
   }
