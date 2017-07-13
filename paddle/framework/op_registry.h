@@ -119,6 +119,7 @@ class OpRegistry {
       op->attrs_[attr.name()] = AttrTypeHelper::GetAttrValue(attr);
     }
     op_checkers().at(op_type).Check(op->attrs_);
+    op->Init();
     return op;
   }
 
@@ -147,13 +148,13 @@ class OpRegisterHelper {
   }
 };
 
-#define REGISTER_OP(__op_class, __op_maker_class, __op_type)         \
-  class __op_class##Register {                                       \
-   private:                                                          \
-    const static OpRegisterHelper<__op_class, __op_maker_class> reg; \
-  };                                                                 \
-  const OpRegisterHelper<__op_class, __op_maker_class>               \
-      __op_class##Register::reg(#__op_type);
+#define REGISTER_OP(type, op_class, op_maker_class)                         \
+  class op_class##Register {                                                \
+   private:                                                                 \
+    const static OpRegisterHelper<op_class, op_maker_class> reg;            \
+  };                                                                        \
+  const OpRegisterHelper<op_class, op_maker_class> op_class##Register::reg( \
+      #type)
 
 }  // namespace framework
 }  // namespace paddle

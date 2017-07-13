@@ -28,7 +28,9 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
-find_package(Boost QUIET)
+if(NOT ANDROID)
+    find_package(Boost QUIET)
+endif()
 
 include(simd)
 
@@ -140,6 +142,10 @@ endif(USE_NNPACK)
 
 add_subdirectory(proto)
 
+# "add_subdirectory(go)" should be placed after the following loine,
+# because it depends on paddle/optimizer.
+add_subdirectory(paddle/optimizer)
+
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
 # placed after this block, because they depends on it.
 if(WITH_GOLANG)
@@ -147,7 +153,9 @@ if(WITH_GOLANG)
 endif(WITH_GOLANG)
 
 add_subdirectory(paddle)
-add_subdirectory(python)
+if(WITH_PYTHON)
+  add_subdirectory(python)
+endif()
 if(WITH_DOC)
     add_subdirectory(doc)
 endif()
