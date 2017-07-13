@@ -8,8 +8,8 @@ namespace framework {
 class OperatorTest : public OperatorBase {
  public:
   void Init() override { x = 1; }
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
-  void Run(const std::shared_ptr<Scope>& scope,
+  void InferShape(const ScopePtr& scope) const override {}
+  void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const override {
     float scale = GetAttr<float>("scale");
     ASSERT_NEAR(scale, 3.14, 1e-5);
@@ -63,11 +63,9 @@ TEST(OpKernel, all) {
   CPUDeviceContext cpu_device_context;
   auto scope = std::make_shared<Scope>();
 
-  OperatorBase* op = paddle::framework::OpRegistry::CreateOp(net_op_desc);
-  auto net_op = static_cast<PlainNet*>(op);
+  OpPtr op = paddle::framework::OpRegistry::CreateOp(net_op_desc);
+  auto net_op = static_cast<PlainNet*>(op.get());
 
   net_op->AddOp(test_op_desc);
-  op->Run(scope, cpu_device_context);
-
-  delete op;
+  net_op->Run(scope, cpu_device_context);
 }

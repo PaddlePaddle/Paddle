@@ -4,19 +4,18 @@ namespace paddle {
 namespace framework {
 
 void PlainNet::AddOp(const OpDesc& desc) {
-  OpPtr op(OpRegistry::CreateOp(desc));
-  ops_.push_back(std::move(op));
+  ops_.push_back(OpRegistry::CreateOp(desc));
 }
 
-void PlainNet::InferShape(const std::shared_ptr<Scope>& scope) const {
+void PlainNet::InferShape(const ScopePtr& scope) const {
   for (auto& op : ops_) {
     op->InferShape(scope);
   }
 }
 
-void PlainNet::Run(ScopePtr scope, DeviceContext* ctx) {
+void PlainNet::Run(const ScopePtr& scope, const DeviceContext& ctx) const {
   for (auto& op : ops_) {
-    op->Run(scope, dev_ctx);
+    op->Run(scope, ctx);
   }
 }
 

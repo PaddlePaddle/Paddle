@@ -72,7 +72,7 @@ class PlainNet : public Net {
    * Infer all the operators' input and output varialbes' shapes, will be called
    * before every mini-batch
    */
-  void InferShape(const std::shared_ptr<Scope>& scope) const override;
+  void InferShape(const ScopePtr& scope) const override;
 
   /**
    * @brief Run the network.
@@ -81,7 +81,8 @@ class PlainNet : public Net {
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  virtual void Run(ScopePtr scope, DeviceContext *ctx) override;
+  void Run(const ScopePtr& scope,
+           const platform::DeviceContext& dev_ctx) const override;
 
   /**
    * @brief Add an operator to this network.
