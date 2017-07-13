@@ -28,19 +28,19 @@ inline void throw_on_error(cudaError_t e, const char* message) {
   }
 }
 
-int GetDeviceCount(void) {
+inline int GetDeviceCount(void) {
   int count;
   throw_on_error(cudaGetDeviceCount(&count), "cudaGetDeviceCount failed");
   return count;
 }
 
-int GetCurrentDeviceId(void) {
+inline int GetCurrentDeviceId(void) {
   int device_id;
   throw_on_error(cudaGetDevice(&device_id), "cudaGetDevice failed");
   return device_id;
 }
 
-void SetDeviceId(int device_id) {
+inline void SetDeviceId(int device_id) {
   throw_on_error(cudaSetDevice(device_id), "cudaSetDevice failed");
 }
 

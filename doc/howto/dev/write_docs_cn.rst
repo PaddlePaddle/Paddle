@@ -41,7 +41,7 @@ PaddlePaddle文档需要准备的环境相对较复杂，所以我们推荐使�
 
     python -c "import py_paddle"
 
-如果提示错误，那么用户需要在本地编译安装PaddlePaddle，请参考 `源码编译文档 <http://www.paddlepaddle.org/develop/doc/getstarted/build_and_install/build_from_source_en.html>`_ 。
+如果提示错误，那么用户需要在本地编译安装PaddlePaddle，请参考 `源码编译文档 <http://doc.paddlepaddle.org/develop/doc/getstarted/build_and_install/build_from_source_en.html>`_ 。
 注意，用户在首次编译安装PaddlePaddle时，请将WITH_DOC选项关闭。在编译安装正确之后，请再次确认py_paddle包已经安装，即可进行下一步操作。
 
 如果提示正确，可以执行以下命令编译生成文档，即
@@ -68,9 +68,9 @@ PaddlePaddle文档使用 `sphinx`_ 自动生成，用户可以参考sphinx教程
 如何更新www.paddlepaddle.org文档
 ================================
 
-开发者给PaddlePaddle代码增加的注释以PR的形式提交到github中，提交方式可参见 `贡献文档 <http://paddlepaddle.org/develop/doc_cn/howto/dev/contribute_to_paddle_cn.html>`_ 。
-目前PaddlePaddle的develop分支的文档是自动触发更新的，用户可以分别查看最新的 `中文文档 <http://www.paddlepaddle.org/develop/doc_cn/>`_ 和
-`英文文档 <http://www.paddlepaddle.org/develop/doc/>`_ 。
+开发者给PaddlePaddle代码增加的注释以PR的形式提交到github中，提交方式可参见 `贡献文档 <http://doc.paddlepaddle.org/develop/doc_cn/howto/dev/contribute_to_paddle_cn.html>`_ 。
+目前PaddlePaddle的develop分支的文档是自动触发更新的，用户可以分别查看最新的 `中文文档 <http://doc.paddlepaddle.org/develop/doc_cn/>`_ 和
+`英文文档 <http://doc.paddlepaddle.org/develop/doc/>`_ 。
 
 
 
