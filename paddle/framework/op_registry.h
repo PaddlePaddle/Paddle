@@ -119,6 +119,7 @@ class OpRegistry {
       op->attrs_[attr.name()] = AttrTypeHelper::GetAttrValue(attr);
     }
     op_checkers().at(op_type).Check(op->attrs_);
+    op->Init();
     return op;
   }
 
