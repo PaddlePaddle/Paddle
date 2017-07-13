@@ -47,12 +47,12 @@ class Optimizer(object):
         return swig_api.ParameterUpdater.createRemoteUpdater(
             self.__opt_conf__, pass_num, use_sparse_updater)
 
-    def __create_new_remote_updater__(self, pserver_spec):
+    def __create_new_remote_updater__(self, pserver_spec, use_etcd):
         return swig_api.ParameterUpdater.createNewRemoteUpdater(
-            self.__opt_conf__, pserver_spec)
+            self.__opt_conf__, pserver_spec, use_etcd)
 
     def create_updater(self, is_local, num_passes, use_sparse_updater,
-                       pserver_spec):
+                       pserver_spec, use_etcd):
         """
         create proper parameter_updater by configuration.
         :param is_local: create local or remote parameter updater
@@ -76,7 +76,7 @@ class Optimizer(object):
                     num_passes, use_sparse_updater)
             else:
                 parameter_updater = self.__create_new_remote_updater__(
-                    pserver_spec)
+                    pserver_spec, use_etcd)
         return parameter_updater
 
 

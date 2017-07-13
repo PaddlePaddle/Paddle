@@ -1,5 +1,18 @@
 import paddle.v2 as paddle
 import paddle.v2.dataset.uci_housing as uci_housing
+import os
+
+etcd_ip = os.getenv("PADDLE_INIT_MASTER_IP", "127.0.0.1")
+
+
+def cloud_reader():
+    etcd_endpoint = "http://" + etcd_ip + ":2379"
+    master_client = paddle.master.client.client(etcd_endpoint, 5, 64)
+    master_client.set_dataset("/pfs/public/uci_housing/*")
+    for r, e in master_client.next_record():
+        if not r:
+            break
+        yield r
 
 
 def main():
@@ -28,7 +41,8 @@ def main():
                                  parameters=parameters,
                                  update_equation=optimizer,
                                  is_local=False,
-                                 pserver_spec="localhost:3000")
+                                 pserver_spec="localhost:2379",
+                                 use_etcd=True)
 
     # event_handler to print training and testing info
     def event_handler(event):
@@ -47,11 +61,11 @@ def main():
                 print "Test %d, %.2f" % (event.pass_id, result.cost)
 
     # training
+    # NOTE: use uci_housing.train() as reader for non-paddlecloud training
     trainer.train(
         reader=paddle.batch(
             paddle.reader.shuffle(
-                uci_housing.train(), buf_size=500),
-            batch_size=2),
+                cloud_reader, buf_size=500), batch_size=2),
         feeding={'x': 0,
                  'y': 1},
         event_handler=event_handler,

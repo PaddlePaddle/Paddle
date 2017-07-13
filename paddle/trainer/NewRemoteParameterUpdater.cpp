@@ -27,6 +27,16 @@ NewRemoteParameterUpdater::NewRemoteParameterUpdater(
       newGradients_(nullptr),
       pserverSpec_(pserverSpec) {}
 
+NewRemoteParameterUpdater::NewRemoteParameterUpdater(
+    const OptimizationConfig &config,
+    const std::string pserverSpec,
+    const bool useEtcd)
+    : parameterClient_(-1),
+      newParameters_(nullptr),
+      newGradients_(nullptr),
+      pserverSpec_(pserverSpec),
+      useEtcd_(useEtcd) {}
+
 void NewRemoteParameterUpdater::init(
     const std::vector<ParameterPtr> &parameters) {
   ParameterUpdater::init(parameters);
@@ -37,8 +47,13 @@ void NewRemoteParameterUpdater::init(
   }
 
   // create parameter server client.
-  parameterClient_ = paddle_new_pserver_client((char *)pserverSpec_.c_str(),
-                                               FLAGS_trainer_id == 0);
+  if (useEtcd_) {
+    parameterClient_ = paddle_new_etcd_pserver_client(
+        (char *)pserverSpec_.c_str(), FLAGS_trainer_id == 0);
+  } else {
+    parameterClient_ = paddle_new_pserver_client((char *)pserverSpec_.c_str(),
+                                                 FLAGS_trainer_id == 0);
+  }
 
   // init new parameter and gradient.
   newParameters_ = initNewParameter(PARAMETER_VALUE);
@@ -83,4 +98,4 @@ void NewRemoteParameterUpdater::finishBatch(real cost) {
 void NewRemoteParameterUpdater::startPass() {}
 
 bool NewRemoteParameterUpdater::finishPass() { return true; }
-}
+}  // namespace paddle
