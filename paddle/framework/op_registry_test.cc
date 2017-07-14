@@ -36,8 +36,9 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   MyTestOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("input", "input of cosine op");
-    AddOutput("output", "output of cosine op");
+    AddInputs("input", "input of cosine op");
+    AddOutput("output", "output of cosine op",
+              /*temporary*/ true);
     auto my_checker = [](int i) {
       PADDLE_ENFORCE(i % 2 == 0, "'test_attr' must be even!");
     };
@@ -117,11 +118,20 @@ TEST(OpRegistry, DefaultValue) {
   ASSERT_EQ(op->GetAttr<float>("scale"), 1.0);
 }
 
+static void SetInputFormat(paddle::framework::OpDesc* desc) {
+  auto attr = desc->add_attrs();
+  attr->set_name("input_format");
+  attr->set_type(paddle::framework::INTS);
+  attr->mutable_ints()->Add(0);
+  attr->mutable_ints()->Add(1);
+}
+
 TEST(OpRegistry, CustomChecker) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("my_test_op");
   op_desc.add_inputs("ii");
   op_desc.add_outputs("oo");
+  SetInputFormat(&op_desc);
 
   // attr 'test_attr' is not set
   bool caught = false;
@@ -163,6 +173,7 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_name("test_attr");
   attr->set_type(paddle::framework::AttrType::INT);
   attr->set_i(4);
+  SetInputFormat(&op_desc);
   paddle::framework::OperatorBase* op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::platform::CPUDeviceContext dev_ctx;
