@@ -179,6 +179,32 @@ class IndexScanner(IScanner):
         assert isinstance(argument, swig_paddle.Arguments)
         argument.setSlotIds(self.pos, ids)
 
+class MultiIndexScanner(IScanner):
+    """
+    :type __mat__: numpy.ndarray
+    """
+
+    def __init__(self, input_type, pos):
+        IScanner.__init__(self, input_type, pos)
+        self.__mat__ = None
+        self.__height__ = 0
+
+    def pre_scan(self, dat):
+        self.__height__ += 1
+
+    def finish_pre_scan(self, argument):
+        self.__mat__ = numpy.ndarray(
+            shape=(self.__height__, self.input_type.dim), dtype=numpy.float32)
+        self.__height__ = 0
+
+    def scan(self, dat):
+        self.__mat__[self.__height__] = dat
+        self.__height__ += 1
+
+    def finish_scan(self, argument):
+        ids = swig_paddle.IVector.create(self.__ids__, self.data_in_gpu)
+        assert isinstance(argument, swig_paddle.Arguments)
+        argument.setSlotIds(self.pos, ids)
 
 class SequenceScanner(IScanner):
     def __init__(self, input_type, pos, inner_scanner, setter):
@@ -260,6 +286,8 @@ class DataProviderConverter(object):
             retv = SparseBinaryScanner(each, i)
         elif each.type == dp2.DataType.SparseValue:
             retv = SparseFloatScanner(each, i)
+        elif each.type == dp2.DataType.MultiIndex:
+            retv = MultiIndexScanner(each, i)
         assert retv is not None
 
         if each.seq_type == dp2.SequenceType.SUB_SEQUENCE:
