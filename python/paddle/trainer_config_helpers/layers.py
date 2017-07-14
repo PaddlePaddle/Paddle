@@ -5879,19 +5879,19 @@ def prelu_layer(input,
         size=l.config.size)
 
 
-@layer_support(ERROR_CLIPPING, DROPOUT)
 @wrap_name_default()
+@layer_support(ERROR_CLIPPING, DROPOUT)
 @wrap_act_default(act=LinearActivation())
 def gated_unit_layer(input,
                      size,
                      act=None,
                      name=None,
                      gate_attr=None,
-                     gate_bias_attr=True,
                      gate_param_attr=None,
+                     gate_bias_attr=True,
+                     inproj_attr=None,
                      inproj_param_attr=None,
                      inproj_bias_attr=True,
-                     inproj_layer_attr=None,
                      layer_attr=None):
     """
     The gated unit layer implements a simple gating mechanism over the input.
@@ -5923,18 +5923,18 @@ def gated_unit_layer(input,
         clipping threshold, dropout and so on. See ExtraLayerAttribute for
         more details.
     :type gate_attr: ExtraLayerAttribute|None
-    :param gate_bias_attr: Attributes to tune the learnable bias of the gate.
-    :type gate_bias_attr: ParameterAttribute|None
     :param gate_param_attr: Attributes to tune the learnable projected matrix
         parameter of the gate.
     :type gate_param_attr: ParameterAttribute|None
+    :param gate_bias_attr: Attributes to tune the learnable bias of the gate.
+    :type gate_bias_attr: ParameterAttribute|None
+    :param inproj_attr: Attributes to the tune the projected input, for
+        example, error clipping threshold, dropout and so on. See
+        ExtraLayerAttribute for more details.
+    :type inproj_attr: ExtraLayerAttribute|None
     :param inproj_param_attr: Attributes to tune the learnable parameter of
         the projection of input.
     :type inproj_param_attr: ParameterAttribute|None
-    :param inproj_layer_attr: Attributes to the tune the projected input, for
-        example, error clipping threshold, dropout and so on. See
-        ExtraLayerAttribute for more details.
-    :type inproj_layer_attr: ExtraLayerAttribute|None
     :param inproj_bias_attr: Attributes to tune the learnable bias of
         projection of the input.
     :type inproj_bias_attr: ParameterAttribute|None
@@ -5954,8 +5954,8 @@ def gated_unit_layer(input,
         name="%s_input_proj" % name,
         size=size,
         act=act,
+        layer_attr=inproj_attr,
         param_attr=inproj_param_attr,
-        layer_attr=inproj_layer_attr,
         bias_attr=inproj_bias_attr)
 
     gate = fc_layer(
@@ -5963,8 +5963,8 @@ def gated_unit_layer(input,
         name="%s_gate" % name,
         act=SigmoidActivation(),
         input=input,
-        param_attr=gate_param_attr,
         layer_attr=gate_attr,
+        param_attr=gate_param_attr,
         bias_attr=gate_bias_attr)
     return mixed_layer(
         name="%s_gated_act" % name,
