@@ -95,18 +95,6 @@ if(WITH_GOLANG)
     # able to run with multiple jobs.
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
-  # add_custom_target(go_path)
-  # add_custom_command(TARGET go_path
-  #   # Symlink Paddle directory into GOPATH
-  #   COMMAND mkdir -p ${PADDLE_IN_GOPATH}
-  #   COMMAND rm -rf ${PADDLE_IN_GOPATH}
-  #   COMMAND ln -sf ${CMAKE_SOURCE_DIR} ${PADDLE_IN_GOPATH}
-  #   # Automatically get all dependencies specified in the source code
-  #   # We can't run `go get -d ./...` for every target, because
-  #   # multiple `go get` can not run concurrently, but make need to be
-  #   # able to run with multiple jobs.
-  #   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  # )
 
   if (GLIDE_INSTALL)
     if(EXISTS $ENV{GOPATH}/bin/glide)
@@ -126,12 +114,6 @@ if(WITH_GOLANG)
       message(FATAL_ERROR "glide install error")
     endif()
 
-    # add_custom_target(go_vendor)
-    # add_custom_command(TARGET go_vendor
-    #   COMMAND env GOPATH=${GOPATH} ${GLIDE} install
-    #   WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go"
-    # )
-    # add_dependencies(go_vendor go_path)
   endif()
 
 endif(WITH_GOLANG)
