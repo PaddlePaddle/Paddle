@@ -107,9 +107,9 @@ class OpRegistry {
         op_type, op_proto.InitializationErrorString());
   }
 
-  static OpPtr CreateOp(const OpDesc& op_desc) {
+  static OperatorPtr CreateOp(const OpDesc& op_desc) {
     std::string op_type = op_desc.type();
-    OpPtr op(creators().at(op_type)());
+    OperatorPtr op(creators().at(op_type)());
     op->desc_ = op_desc;
     op->inputs_.reserve((size_t)op_desc.inputs_size());
     std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),

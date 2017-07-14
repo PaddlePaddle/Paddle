@@ -66,7 +66,7 @@ TEST(OpRegistry, CreateOp) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(scale);
 
-  paddle::framework::OpPtr op =
+  paddle::framework::OperatorPtr op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
   auto scope = std::make_shared<paddle::framework::Scope>();
   paddle::platform::CPUDeviceContext dev_ctx;
@@ -88,7 +88,7 @@ TEST(OpRegistry, IllegalAttr) {
 
   bool caught = false;
   try {
-    paddle::framework::OpPtr op __attribute__((unused)) =
+    paddle::framework::OperatorPtr op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
@@ -109,7 +109,7 @@ TEST(OpRegistry, DefaultValue) {
 
   ASSERT_TRUE(op_desc.IsInitialized());
 
-  paddle::framework::OpPtr op =
+  paddle::framework::OperatorPtr op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
   auto scope = std::make_shared<paddle::framework::Scope>();
   paddle::platform::CPUDeviceContext dev_ctx;
@@ -128,7 +128,7 @@ TEST(OpRegistry, CustomChecker) {
   // attr 'test_attr' is not set
   bool caught = false;
   try {
-    paddle::framework::OpPtr op __attribute__((unused)) =
+    paddle::framework::OperatorPtr op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
@@ -147,7 +147,7 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_i(3);
   caught = false;
   try {
-    paddle::framework::OpPtr op __attribute__((unused)) =
+    paddle::framework::OperatorPtr op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
@@ -165,7 +165,7 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_name("test_attr");
   attr->set_type(paddle::framework::AttrType::INT);
   attr->set_i(4);
-  OpPtr op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  OperatorPtr op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::platform::CPUDeviceContext dev_ctx;
   auto scope = std::make_shared<paddle::framework::Scope>();
   op->Run(scope, dev_ctx);

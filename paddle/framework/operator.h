@@ -30,7 +30,7 @@ namespace paddle {
 namespace framework {
 
 class OperatorBase;
-using OpPtr = std::shared_ptr<OperatorBase>;
+using OperatorPtr = std::shared_ptr<OperatorBase>;
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User

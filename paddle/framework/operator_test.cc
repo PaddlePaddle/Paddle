@@ -69,7 +69,7 @@ TEST(OperatorBase, all) {
   paddle::platform::CPUDeviceContext device_context;
   auto scope = std::make_shared<paddle::framework::Scope>();
 
-  paddle::framework::OpPtr op =
+  paddle::framework::OperatorPtr op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(op->GetAttr<float>("scale"), scale);
   scope->CreateVariable("OUT1");
@@ -129,7 +129,7 @@ TEST(OpKernel, all) {
   paddle::platform::CPUDeviceContext cpu_device_context;
   auto scope = std::make_shared<paddle::framework::Scope>();
 
-  paddle::framework::OpPtr op =
+  paddle::framework::OperatorPtr op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);
 }
