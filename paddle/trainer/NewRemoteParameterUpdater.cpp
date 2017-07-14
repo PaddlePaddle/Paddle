@@ -32,7 +32,8 @@ NewRemoteParameterUpdater::NewRemoteParameterUpdater(
     const OptimizationConfig &config,
     const std::string pserverSpec,
     const bool useEtcd)
-    : parameterClient_(-1),
+    : trainerConfig_(config),
+      parameterClient_(-1),
       newParameters_(nullptr),
       newGradients_(nullptr),
       pserverSpec_(pserverSpec),
