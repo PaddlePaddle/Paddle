@@ -7,7 +7,7 @@ void PlainNet::AddOp(const OpDesc& desc) {
   ops_.push_back(OpRegistry::CreateOp(desc));
 }
 
-void PlainNet::AddOp(const OpPtr& op) { ops_.push_back(op); }
+void PlainNet::AddOp(const OperatorPtr& op) { ops_.push_back(op); }
 
 void PlainNet::InferShape(const ScopePtr& scope) const {
   for (auto& op : ops_) {

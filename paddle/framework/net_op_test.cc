@@ -31,7 +31,6 @@ class OperatorTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
         .LargerThan(0.0);
-    AddType("test_operator");
     AddComment("This is test op");
   }
 };
