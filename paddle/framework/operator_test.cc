@@ -82,14 +82,14 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
         .LargerThan(0.0);
-    AddType("test_operator");
     AddComment("This is test op");
   }
 };
 
 class OpWithKernelTest : public OperatorWithKernel {
- public:
-  void InferShape(const ScopePtr& scope) const override {}
+ protected:
+  void InferShape(const std::vector<const Tensor*>& inputs,
+                  const std::vector<Tensor*>& outputs) const override {}
 };
 
 class CPUKernelTest : public OpKernel {
@@ -102,10 +102,16 @@ class CPUKernelTest : public OpKernel {
   }
 };
 
-REGISTER_OP(op_with_kernel, OpWithKernelTest, OpKernelTestProtoAndCheckerMaker);
-REGISTER_OP_KERNEL(op_with_kernel, platform::CPUPlace, CPUKernelTest);
+}  // namespace framework
+}  // namespace paddle
+
+REGISTER_OP(op_with_kernel, paddle::framework::OpWithKernelTest,
+            paddle::framework::OpKernelTestProtoAndCheckerMaker);
+REGISTER_OP_CPU_KERNEL(op_with_kernel, paddle::framework::CPUKernelTest);
 
 TEST(OpKernel, all) {
+  using namespace paddle::framework;
+
   OpDesc op_desc;
   op_desc.set_type("op_with_kernel");
   *op_desc.mutable_inputs()->Add() = "IN1";
@@ -115,11 +121,9 @@ TEST(OpKernel, all) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  platform::CPUDeviceContext cpu_device_context;
+  paddle::platform::CPUDeviceContext cpu_device_context;
   auto scope = std::make_shared<Scope>();
 
   OpPtr op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);
 }
-}  // namespace framework
-}  // namespace paddle
