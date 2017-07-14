@@ -24,7 +24,7 @@ limitations under the License. */
 #include <unordered_map>
 
 inline bool is_aligned(void const *p, const size_t n) {
-  return 0 == (reinterpret_cast<uintptr_t>(p) % n);
+  return 0 == (reinterpret_cast<uintptr_t>(p) & 0x3);
 }
 
 size_t align(size_t size, paddle::platform::CPUPlace place) {
@@ -33,8 +33,6 @@ size_t align(size_t size, paddle::platform::CPUPlace place) {
   size_t remaining = size % alignment;
   return remaining == 0 ? size : size + (alignment - remaining);
 }
-
-void update_size(size_t &total_size, const size_t size) {}
 
 TEST(BuddyAllocator, CPUAllocation) {
   void *p = nullptr;
