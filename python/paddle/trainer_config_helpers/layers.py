@@ -128,6 +128,7 @@ __all__ = [
     'dropout_layer',
     'prelu_layer',
     'pixel_softmax_layer',
+    'gated_unit_layer',
 ]
 
 
@@ -5914,7 +5915,7 @@ def prelu_layer(input,
     :rtype: LayerOutput
     """
 
-    assert isinstance(input, LayerOutput), 'prelu_layer only accepts one input'
+    assert isinstance(input, LayerOutput), 'prelu_layer accepts only one input.'
     assert isinstance(param_attr, ParameterAttribute)
 
     l = Layer(
@@ -5929,18 +5930,108 @@ def prelu_layer(input,
         parents=input,
         size=l.config.size)
 
+@wrap_name_default()
+@layer_support(ERROR_CLIPPING, DROPOUT)
+@wrap_act_default(act=LinearActivation())
+def gated_unit_layer(input,
+                     size,
+                     act=None,
+                     name=None,
+                     gate_attr=None,
+                     gate_param_attr=None,
+                     gate_bias_attr=True,
+                     inproj_attr=None,
+                     inproj_param_attr=None,
+                     inproj_bias_attr=True,
+                     layer_attr=None):
+    """
+    The gated unit layer implements a simple gating mechanism over the input.
+    The input :math:`X` is first projected into a new space :math:`X'`, and
+    it is also used to produce a gate weight :math:`\sigma`. Element-wise
+    prodict between :match:`X'` and :math:`\sigma` is finally returned.
+
+    Reference:
+        Language Modeling with Gated Convolutional Networks
+        https://arxiv.org/abs/1612.08083
+
+    .. math::
+       y=\\text{act}(X \cdot W + b)\otimes \sigma(X \cdot V + c)
+
+    The example usage is:
+
+    .. code-block:: python
+
+        gated_unit = gated_unit_layer(size=128, input=input_layer))
+
+    :param input: input for this layer.
+    :type input: LayerOutput
+    :param size: output size of the gated unit.
+    :type size: int
+    :param act: activation type of the projected input.
+    :type act: BaseActivation
+    :param name: name of this layer.
+    :type name: basestring
+    :param gate_attr: Attributes to tune the gate output, for example, error
+        clipping threshold, dropout and so on. See ExtraLayerAttribute for
+        more details.
+    :type gate_attr: ExtraLayerAttribute|None
+    :param gate_param_attr: Attributes to tune the learnable projected matrix
+        parameter of the gate.
+    :type gate_param_attr: ParameterAttribute|None
+    :param gate_bias_attr: Attributes to tune the learnable bias of the gate.
+    :type gate_bias_attr: ParameterAttribute|None
+    :param inproj_attr: Attributes to the tune the projected input, for
+        example, error clipping threshold, dropout and so on. See
+        ExtraLayerAttribute for more details.
+    :type inproj_attr: ExtraLayerAttribute|None
+    :param inproj_param_attr: Attributes to tune the learnable parameter of
+        the projection of input.
+    :type inproj_param_attr: ParameterAttribute|None
+    :param inproj_bias_attr: Attributes to tune the learnable bias of
+        projection of the input.
+    :type inproj_bias_attr: ParameterAttribute|None
+    :param layer_attr: Attributes to tune the final output of the gated unit,
+        for example, error clipping threshold, dropout and so on. See
+        ExtraLayerAttribute for more details.
+    :type layer_attr: ExtraLayerAttribute|None
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert isinstance(
+        input, LayerOutput), 'The gated linear unit accepts only one input.'
+
+    input_proj = fc_layer(
+        input=input,
+        name="%s_input_proj" % name,
+        size=size,
+        act=act,
+        layer_attr=inproj_attr,
+        param_attr=inproj_param_attr,
+        bias_attr=inproj_bias_attr)
+
+    gate = fc_layer(
+        size=size,
+        name="%s_gate" % name,
+        act=SigmoidActivation(),
+        input=input,
+        layer_attr=gate_attr,
+        param_attr=gate_param_attr,
+        bias_attr=gate_bias_attr)
+    return mixed_layer(
+        name="%s_gated_act" % name,
+        input=dotmul_operator(input_proj, gate),
+        layer_attr=layer_attr)
 
 @layer_support()
 @wrap_name_default('pixel_softmax')
 def pixel_softmax_layer(input, name=None, layer_attr=None):
     """
     This layer calculate softmax in image channel dimension
-
-    The example usage is:
+     The example usage is:
 
     .. code-block:: python
-
-       prelu = pixel_softmax(input=layer, name='softmax')
+    softmax = pixel_softmax(input=layer, name='softmax')
 
     :param name: Name of this layer.
     :type name: basestring

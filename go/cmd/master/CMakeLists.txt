@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-go_binary(master SRC master.go DEPS paddle_go_optimizer)
+go_binary(master SRC master.go)
