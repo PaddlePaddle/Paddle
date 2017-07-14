@@ -101,11 +101,11 @@ func paddle_new_pserver_client(addrs *C.char, selected int) C.paddle_pserver_cli
 }
 
 //export paddle_new_etcd_pserver_client
-func paddle_new_etcd_pserver_client(etcd_endpoints *C.char, selected int) C.paddle_pserver_client {
+func paddle_new_etcd_pserver_client(etcdEndpoints *C.char, selected int) C.paddle_pserver_client {
 	// TODO(Longfei: use etcd lock to decide which trainer to initialize the parameters)
-	addr := C.GoString(etcd_endpoints)
-	etcd_client := client.NewEtcd(addr)
-	c := client.NewClient(etcd_client, etcd_client.Desired(), selector(selected != 0))
+	addr := C.GoString(etcdEndpoints)
+	etcdClient := client.NewEtcd(addr)
+	c := client.NewClient(etcdClient, etcdClient.Desired(), selector(selected != 0))
 	return add(c)
 }
 
@@ -124,13 +124,13 @@ func paddle_begin_init_params(client C.paddle_pserver_client) C.int {
 }
 
 //export paddle_init_param
-func paddle_init_param(client C.paddle_pserver_client, param C.paddle_parameter, param_config unsafe.Pointer, config_len C.int) C.int {
+func paddle_init_param(client C.paddle_pserver_client, param C.paddle_parameter, paramConfig unsafe.Pointer, configLen C.int) C.int {
 	et := pserver.ElementType(param.element_type)
 	name := C.GoString(param.name)
 	content := cArrayToSlice(unsafe.Pointer(param.content), int(param.content_len))
 	pc := pserver.ParameterWithConfig{
 		Param:  pserver.Parameter{Name: name, ElementType: et, Content: content},
-		Config: cArrayToSlice(param_config, int(config_len)),
+		Config: cArrayToSlice(paramConfig, int(configLen)),
 	}
 	c := get(client)
 	err := c.InitParam(pc)
