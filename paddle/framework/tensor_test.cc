@@ -18,7 +18,8 @@
 TEST(Tensor, Dims) {
   using namespace paddle::framework;
   using namespace paddle::platform;
-  Tensor tt(make_ddim({2, 3, 4}));
+  Tensor tt;
+  tt.set_dims(make_ddim({2, 3, 4}));
   DDim dims = tt.dims();
   ASSERT_EQ(arity(dims), 3);
   for (int i = 0; i < 3; ++i) {
@@ -35,7 +36,7 @@ TEST(Tensor, DataAssert) {
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
     std::string msg =
-        "Tenosr has not been initialized. Call Tensor::mutable_data first.";
+        "Tenosr holds no memory. Call Tensor::mutable_data first.";
     const char* what = err.what();
     for (size_t i = 0; i < msg.length(); ++i) {
       ASSERT_EQ(what[i], msg[i]);
