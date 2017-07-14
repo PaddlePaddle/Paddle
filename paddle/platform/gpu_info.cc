@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/platform/gpu_info.h"
 #include "gflags/gflags.h"
-#include "paddle/platform/error.h"
+#include "paddle/platform/enforce.h"
 
 DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
               "Default use 95% of GPU memory for PaddlePaddle,"
@@ -25,7 +25,7 @@ namespace platform {
 
 int GetDeviceCount() {
   int count;
-  throw_on_error(
+  PADDLE_ENFORCE(
       cudaGetDeviceCount(&count),
       "cudaGetDeviceCount failed in paddle::platform::GetDeviceCount");
   return count;
@@ -33,19 +33,19 @@ int GetDeviceCount() {
 
 int GetCurrentDeviceId() {
   int device_id;
-  throw_on_error(
+  PADDLE_ENFORCE(
       cudaGetDevice(&device_id),
       "cudaGetDevice failed in paddle::platform::GetCurrentDeviceId");
   return device_id;
 }
 
 void SetDeviceId(int id) {
-  throw_on_error(cudaSetDevice(id),
+  PADDLE_ENFORCE(cudaSetDevice(id),
                  "cudaSetDevice failed in paddle::platform::SetDeviceId");
 }
 
 void GpuMemoryUsage(size_t& available, size_t& total) {
-  throw_on_error(cudaMemGetInfo(&available, &total),
+  PADDLE_ENFORCE(cudaMemGetInfo(&available, &total),
                  "cudaMemGetInfo failed in paddle::platform::GetMemoryUsage");
 }
 

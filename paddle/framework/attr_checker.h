@@ -5,7 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/framework/enforce.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

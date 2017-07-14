@@ -18,7 +18,7 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include "paddle/framework/ddim.h"
-#include "paddle/framework/enforce.h"
+#include "paddle/platform/enforce.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/place.h"
 

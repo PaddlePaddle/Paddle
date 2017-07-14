@@ -33,7 +33,7 @@ TEST(Tensor, DataAssert) {
   bool caught = false;
   try {
     src_tensor.data<double>();
-  } catch (paddle::framework::EnforceNotMet err) {
+  } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg =
         "Tenosr holds no memory. Call Tensor::mutable_data first.";

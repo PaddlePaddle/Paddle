@@ -91,7 +91,7 @@ TEST(OpRegistry, IllegalAttr) {
   try {
     paddle::framework::OperatorPtr op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
-  } catch (paddle::framework::EnforceNotMet err) {
+  } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg = "larger_than check fail";
     const char* err_msg = err.what();
@@ -138,7 +138,7 @@ TEST(OpRegistry, CustomChecker) {
   try {
     paddle::framework::OperatorPtr op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
-  } catch (paddle::framework::EnforceNotMet err) {
+  } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg = "Attribute 'test_attr' is required!";
     const char* err_msg = err.what();
@@ -157,7 +157,7 @@ TEST(OpRegistry, CustomChecker) {
   try {
     paddle::framework::OperatorPtr op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
-  } catch (paddle::framework::EnforceNotMet err) {
+  } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg = "'test_attr' must be even!";
     const char* err_msg = err.what();
