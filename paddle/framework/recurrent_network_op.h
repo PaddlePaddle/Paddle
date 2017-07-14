@@ -134,6 +134,11 @@ class RecurrentOp : public OperatorBase {
 
  protected:
   /*
+   * Get the max sequence length of the scope.
+   */
+  size_t GetMaxSeqLen(ScopePtr scope) const;
+
+  /*
    * Prepare inputs for each stepnet.
    */
   void SegmentInputs(ScopePtr scope) const;
@@ -152,6 +157,14 @@ class RecurrentOp : public OperatorBase {
    * create once and expand its size if more steps need.
    */
   void CreateScopes(ScopePtr scope) const;
+
+  /*
+   * Get the step scopes.
+   */
+  inline const std::vector<ScopePtr>& GetStepScopes(ScopePtr scope) const {
+    return *(scope->GetVariable(step_scopes_name_))
+                ->GetMutable<std::vector<ScopePtr>>();
+  }
 
   /*
    * Link memory in previous step scope to current scope.
