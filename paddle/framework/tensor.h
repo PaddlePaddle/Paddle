@@ -35,7 +35,7 @@ class Tensor {
 
   template <typename T>
 
-  T* data() const {
+  const T* data() const {
     PADDLE_ENFORCE(
         holder_ != nullptr,
         "Tenosr has not been initialized. Call Tensor::mutable_data first.");
@@ -52,6 +52,20 @@ class Tensor {
         || holder_->Size() < product(dims) * sizeof(T) + offset_) {
       holder_.reset(new PlaceholderImpl<T>(place, product(dims) * sizeof(T)));
       dims_ = dims;
+      offset_ = 0;
+    }
+    return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->Ptr()) +
+                                offset_);
+  }
+
+  template <typename T,  // must be POD types
+            typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
+  T* mutable_data(paddle::platform::Place place) {
+    if (holder_ == nullptr ||
+        !(holder_->Place() ==
+          place) /* some versions of boost::variant don't have operator!= */
+        || holder_->Size() < product(dims_) * sizeof(T) + offset_) {
+      holder_.reset(new PlaceholderImpl<T>(place, product(dims_) * sizeof(T)));
       offset_ = 0;
     }
     return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->Ptr()) +

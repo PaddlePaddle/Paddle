@@ -17,6 +17,18 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+template <>
+DeviceType* KernelContext::get_eigen_device<CPUPlace>() {
+  return device_context_.get_eigen_device<DeviceType>();
+}
+
+#ifndef PADDLE_ONLY_CPU
+template <>
+DeviceType* KernelContext::get_eigen_device<GPUPlace>() {
+  return device_context_.get_eigen_device<DeviceType>();
+}
+#endif
+
 std::string OperatorBase::DebugString() const {
   std::stringstream ss;
   ss << "=================\n";

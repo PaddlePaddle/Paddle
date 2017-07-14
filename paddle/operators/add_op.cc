@@ -1,6 +1,6 @@
-#include <paddle/framework/op_registry.h>
-#include <paddle/framework/tensor.h>
-#include <paddle/operators/add_op.h>
+#include "paddle/operators/add_op.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -36,9 +36,10 @@ The equation is: Out = X + Y
 )DOC");
   }
 };
-}  // namespace op
+}  // namespace operators
 }  // namespace paddle
 
 REGISTER_OP(add_two, paddle::operators::AddOp, paddle::operators::AddOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    add_two, ::paddle::operators::AddKernel<::paddle::platform::CPUPlace>);
+    add_two,
+    ::paddle::operators::AddKernel<::paddle::platform::CPUPlace, float>);
