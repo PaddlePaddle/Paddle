@@ -243,7 +243,8 @@ void ParameterClient2::prepareSendData(
     CHECK_GE(blockSize, 1LU) << "blockSize should > 0 " << blockSize;
     const auto paraSize = parameter->getSize();
     if (sparseUpdate) {
-      const auto prefetchMat = parameter->getPrefetchMatrix();
+      auto prefetchMat = std::dynamic_pointer_cast<SparsePrefetchRowCpuMatrix>(
+          parameter->getMat(PARAMETER_VALUE));
       CHECK(prefetchMat != nullptr) << "prefetchMat is nullptr";
       auto sendMat = dynamic_cast<SparseRowCpuMatrix*>(
           parameter->getMat(parameterType).get());

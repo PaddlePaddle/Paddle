@@ -5,6 +5,8 @@ import paddle.trainer_config_helpers.optimizers as v1_optimizers
 """
 Optimizers(update equation) for SGD method.
 
+TODO(zhihong) : create new optimizer with proto config, add new optimizer here
+
 TODO(yuyang18): Complete comments.
 """
 
@@ -45,7 +47,12 @@ class Optimizer(object):
         return swig_api.ParameterUpdater.createRemoteUpdater(
             self.__opt_conf__, pass_num, use_sparse_updater)
 
-    def create_updater(self, is_local, num_passes, use_sparse_updater):
+    def __create_new_remote_updater__(self, pserver_spec):
+        return swig_api.ParameterUpdater.createNewRemoteUpdater(
+            self.__opt_conf__, pserver_spec)
+
+    def create_updater(self, is_local, num_passes, use_sparse_updater,
+                       pserver_spec):
         """
         create proper parameter_updater by configuration.
         :param is_local: create local or remote parameter updater
@@ -59,13 +66,19 @@ class Optimizer(object):
             if use_sparse_remote_updater:
                         gradient_machine.prefetch(in_args)
                         parameter_updater.getParametersRemote()
+
+        :param pserver_spec: pserver location, eg: localhost:3000
         :return: parameter_updater
         """
         if is_local:
             parameter_updater = self.__create_local_updater__()
         else:
-            parameter_updater = self.__create_remote_updater__(
-                num_passes, use_sparse_updater)
+            if pserver_spec is None:
+                parameter_updater = self.__create_remote_updater__(
+                    num_passes, use_sparse_updater)
+            else:
+                parameter_updater = self.__create_new_remote_updater__(
+                    pserver_spec)
         return parameter_updater
 
 

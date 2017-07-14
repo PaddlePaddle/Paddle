@@ -55,8 +55,11 @@ public:
 };
 
 #else
-
+// clang-format off
+#include <cstddef>
 #include <atomic>
+// clang-format on
+
 class SpinLockPrivate {
 public:
   inline void lock() {

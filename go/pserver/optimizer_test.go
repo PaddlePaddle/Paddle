@@ -1,0 +1,24 @@
+package pserver
+
+import (
+	"io/ioutil"
+	"testing"
+)
+
+func TestOptimizerCreateRelease(t *testing.T) {
+	p := Parameter{
+		Name:        "a",
+		ElementType: Int32,
+	}
+	p.Content = []byte{1, 3}
+	config, err := ioutil.ReadFile("./client/c/test/testdata/optimizer.pb")
+	if err != nil {
+		t.Fatalf("read optimizer proto failed")
+	}
+	param := ParameterWithConfig{
+		Param:  p,
+		Config: config,
+	}
+	o := newOptimizer(param, nil)
+	o.Cleanup()
+}

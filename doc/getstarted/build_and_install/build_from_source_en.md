@@ -22,6 +22,7 @@ To compile the source code, your computer must be equipped with the following de
 - **CMake**: CMake >= 3.0 (at least CMake 3.4 on Mac OS X)
 - **BLAS**: MKL, OpenBlas or ATLAS
 - **Python**: only support Python 2.7
+- **Go**
 
 **Note:** For CUDA 7.0 and CUDA 7.5, GCC 5.0 and up are not supported!
 For CUDA 8.0, GCC versions later than 5.3 are not supported!
@@ -106,6 +107,18 @@ As a simple example, consider the following:
     sudo apt-get install -y git curl gcc g++ gfortran make build-essential automake
     sudo apt-get install -y python python-pip python-numpy libpython-dev bison
     sudo pip install 'protobuf==3.1.0.post1'
+
+    # Install Go
+    # You can follow https://golang.org/doc/install for a detailed explanation.
+    wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz && \
+    tar -C $HOME -xzf go.tgz && \
+    mkdir $HOME/gopath && \
+    rm go.tgz
+
+    # Setup environment variables
+    export GOROOT=$HOME/go
+    export GOPATH=$HOME/gopath
+    export PATH=$PATH:$GOROOT/bin
 
     # install cmake 3.4
     curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \

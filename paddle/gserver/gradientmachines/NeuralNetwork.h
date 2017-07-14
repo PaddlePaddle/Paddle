@@ -129,6 +129,8 @@ public:
   static NeuralNetwork* newNeuralNetwork(const std::string& name = "",
                                          NeuralNetwork* rootNetwork = nullptr);
 
+  const std::string& getName() const { return subModelName_; }
+
 protected:
   /**
    * The constructor of NeuralNetwork.

@@ -149,6 +149,7 @@ struct Argument {
                                      : getBatchSize();
   }
 
+  bool hasSeq() const { return sequenceStartPositions != nullptr; }
   bool hasSubseq() const { return subSequenceStartPositions != nullptr; }
 
   const int* getCpuStartPositions() const {
@@ -298,7 +299,7 @@ struct Argument {
    */
   void poolSequenceWithStride(const Argument& input,
                               size_t stride,
-                              IVectorPtr* stridePositions,
+                              ICpuGpuVectorPtr* stridePositions,
                               bool reversed = false);
   /**
    * @brief getValueString will return the argument's output in string. There

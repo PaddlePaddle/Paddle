@@ -28,11 +28,11 @@ TEST(CrossMapNormal, real) {
                     << " size=" << size;
 
             // init Test object
-            FunctionCompare test("CrossMapNormal",
-                                 FuncConfig()
-                                     .set("size", size)
-                                     .set("scale", (real)1.5)
-                                     .set("pow", (real)0.5));
+            CpuGpuFuncCompare test("CrossMapNormal",
+                                   FuncConfig()
+                                       .set("size", size)
+                                       .set("scale", (real)1.5)
+                                       .set("pow", (real)0.5));
             // prepare input arguments
             TensorShape shape{numSamples, channels, imgSizeH, imgSizeW};
             test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape));
@@ -57,11 +57,11 @@ TEST(CrossMapNormalGrad, real) {
                     << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW
                     << " size=" << size;
 
-            FunctionCompare test("CrossMapNormalGrad",
-                                 FuncConfig()
-                                     .set("size", size)
-                                     .set("scale", (real)1.5)
-                                     .set("pow", (real)0.5));
+            CpuGpuFuncCompare test("CrossMapNormalGrad",
+                                   FuncConfig()
+                                       .set("size", size)
+                                       .set("scale", (real)1.5)
+                                       .set("pow", (real)0.5));
             TensorShape shape{numSamples, channels, imgSizeH, imgSizeW};
             test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape));
             test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape));

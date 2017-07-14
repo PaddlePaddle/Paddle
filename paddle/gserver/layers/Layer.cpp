@@ -191,6 +191,11 @@ void Layer::addOutputArgument(int deviceId) {
 void Layer::copyOutputToOtherDevice() {
   for (size_t i = 0; i != outputOtherDevice_.size(); i++) {
     SetDevice device(outputOtherDevice_[i].deviceId);
+    // If outputOtherDevice_[i].value is a CpuMatrix,
+    // the copyFrom is a synchronous interface.
+    // If outputOtherDevice_[i].value is a GpuMatrix, since subsequent
+    // calculations are all on HPPL_STREAM_DEFAULT,
+    // copyFrom can be an asynchronous interface.
     outputOtherDevice_[i].value->copyFrom(*getOutputValue(),
                                           HPPL_STREAM_DEFAULT);
     outputOtherDevice_[i].sequenceStartPositions =

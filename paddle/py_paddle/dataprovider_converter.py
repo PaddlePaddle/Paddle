@@ -17,6 +17,7 @@ import collections
 import swig_paddle
 import numpy
 import itertools
+from functools import reduce
 
 __all__ = ['DataProviderConverter']
 
@@ -65,6 +66,8 @@ class IScanner(object):
 
         :param argument: Output arguments object.
         :type argument: swig_paddle.Arguments
+        :param dat: Output arguments object.
+        :type dat: The Python object, numpy.array or List.
         :return:
         """
         pass
@@ -95,17 +98,39 @@ class DenseScanner(IScanner):
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
         self.__mat__ = None
+        self.__shape__ = None
         self.__height__ = 0
+        self.__dim__ = 0
 
     def pre_scan(self, dat):
         self.__height__ += 1
+        if self.__shape__ is None:
+            self.__shape__ = numpy.array(dat).shape
+            if len(self.__shape__) > 3:
+                raise ValueError(
+                    "The dimension of input cannot be greater than 3.")
+            if len(self.__shape__) == 0:
+                raise ValueError(
+                    "The input should be a vector, please check your input data."
+                )
+            self.__dim__ = reduce(lambda x, y: x * y, self.__shape__)
+            if len(self.__shape__) == 1 and self.__dim__ != self.input_type.dim:
+                raise ValueError(
+                    "The data size must be equal to it in data layer.")
+        else:
+            if self.__shape__ != numpy.array(dat).shape:
+                raise ValueError(
+                    "The data shape must be same in one mini-batch.")
 
     def finish_pre_scan(self, argument):
         self.__mat__ = numpy.ndarray(
-            shape=(self.__height__, self.input_type.dim), dtype=numpy.float32)
+            shape=(self.__height__, self.__dim__), dtype=numpy.float32)
         self.__height__ = 0
 
     def scan(self, dat):
+        # It's better to use NumPy array for speed.
+        dat = numpy.array(dat)
+        dat = dat.flatten()
         self.__mat__[self.__height__] = dat
         self.__height__ += 1
 
@@ -116,6 +141,14 @@ class DenseScanner(IScanner):
         m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__, True,
                                                     self.data_in_gpu)
         argument.setSlotValue(self.pos, m)
+        if len(self.__shape__) > 1:
+            # The last-two dimenstions are the frame height and width.
+            # For example, the layout is CHW for 3-D feature of image.
+            # The H and W are the frame height and width.
+            h, w = self.__shape__[-2:]
+            argument.setSlotFrameHeight(self.pos, h)
+            argument.setSlotFrameWidth(self.pos, w)
+        self.__shape__ = None
 
 
 class SparseBinaryScanner(IScanner):
@@ -179,32 +212,21 @@ class IndexScanner(IScanner):
         assert isinstance(argument, swig_paddle.Arguments)
         argument.setSlotIds(self.pos, ids)
 
-class MultiIndexScanner(IScanner):
+
+class MultiIndexScanner(DenseScanner):
     """
     :type __mat__: numpy.ndarray
     """
 
     def __init__(self, input_type, pos):
-        IScanner.__init__(self, input_type, pos)
-        self.__mat__ = None
-        self.__height__ = 0
-
-    def pre_scan(self, dat):
-        self.__height__ += 1
-
-    def finish_pre_scan(self, argument):
-        self.__mat__ = numpy.ndarray(
-            shape=(self.__height__, self.input_type.dim), dtype=numpy.float32)
-        self.__height__ = 0
-
-    def scan(self, dat):
-        self.__mat__[self.__height__] = dat
-        self.__height__ += 1
+        DenseScanner.__init__(self, input_type, pos)
 
     def finish_scan(self, argument):
-        ids = swig_paddle.IVector.create(self.__ids__, self.data_in_gpu)
+        ids = swig_paddle.IVector.create(self.__mat__.flatten().tolist(),
+                                         self.data_in_gpu)
         assert isinstance(argument, swig_paddle.Arguments)
         argument.setSlotIds(self.pos, ids)
+
 
 class SequenceScanner(IScanner):
     def __init__(self, input_type, pos, inner_scanner, setter):
