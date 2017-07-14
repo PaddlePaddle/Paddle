@@ -37,8 +37,8 @@ struct OpAttrs {};
 class Operator {
  public:
   Operator(const OpDesc &def) {}
-  void InferShape() {}
-  void Run(DeviceContext *ctx) {}
+  void InferShape() const {}
+  void Run(const DeviceContext &ctx) const {}
 };
 
 /**
@@ -60,7 +60,7 @@ class Net {
   /**
    * @brief Infer shapes of all inputs and outputs of operators.
    */
-  virtual void InferShape(Scope *scope) = 0;
+  virtual void InferShape(const ScopePtr &scope) const = 0;
   /**
    * @brief Run the network.
    *
@@ -69,7 +69,7 @@ class Net {
    * environment for ops. `begin` and `end` specify the scope of `ops_` to run,
    * If no positive indexes are provided, all operators in `ops_` will run.
    */
-  virtual void Run(ScopePtr scope, DeviceContext *ctx) = 0;
+  virtual void Run(const ScopePtr &scope, const DeviceContext &ctx) const = 0;
 
   /**
    * @brief Add an Operator according to `def`.
@@ -114,7 +114,7 @@ class PlainNet : public Net {
    * Infer all the operators' input and output varialbes' shapes, will be called
    * before every mini-batch
    */
-  virtual void InferShape(Scope *scope) override;
+  virtual void InferShape(const ScopePtr &scope) const override;
 
   /**
    * @brief Run the network.
@@ -123,7 +123,8 @@ class PlainNet : public Net {
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  virtual void Run(ScopePtr scope, DeviceContext *ctx) override;
+  virtual void Run(const ScopePtr &scope,
+                   const DeviceContext &ctx) const override;
 
   /**
    * @brief Add an operator to this network.

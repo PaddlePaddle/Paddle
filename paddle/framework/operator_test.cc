@@ -45,15 +45,18 @@ class OperatorTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
         .LargerThan(0.0);
-    AddType("test_operator");
     AddComment("This is test op");
   }
 };
 
-REGISTER_OP(test_operator, OperatorTest, OperatorTestProtoAndCheckerMaker);
+}  // namespace framework
+}  // namespace paddle
+
+REGISTER_OP(test_operator, paddle::framework::OperatorTest,
+            paddle::framework::OperatorTestProtoAndCheckerMaker);
 
 TEST(OperatorBase, all) {
-  OpDesc op_desc;
+  paddle::framework::OpDesc op_desc;
   op_desc.set_type("test_operator");
   *op_desc.mutable_inputs()->Add() = "IN1";
   *op_desc.mutable_outputs()->Add() = "OUT1";
@@ -63,15 +66,19 @@ TEST(OperatorBase, all) {
   float scale = 3.14;
   attr->set_f(scale);
 
-  platform::CPUDeviceContext device_context;
-  auto scope = std::make_shared<Scope>();
+  paddle::platform::CPUDeviceContext device_context;
+  auto scope = std::make_shared<paddle::framework::Scope>();
 
-  OpPtr op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  paddle::framework::OpPtr op =
+      paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(op->GetAttr<float>("scale"), scale);
   scope->CreateVariable("OUT1");
   op->Run(scope, device_context);
   std::cout << op->DebugString() << std::endl;
 }
+
+namespace paddle {
+namespace framework {
 
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
@@ -110,9 +117,7 @@ REGISTER_OP(op_with_kernel, paddle::framework::OpWithKernelTest,
 REGISTER_OP_CPU_KERNEL(op_with_kernel, paddle::framework::CPUKernelTest);
 
 TEST(OpKernel, all) {
-  using namespace paddle::framework;
-
-  OpDesc op_desc;
+  paddle::framework::OpDesc op_desc;
   op_desc.set_type("op_with_kernel");
   *op_desc.mutable_inputs()->Add() = "IN1";
   *op_desc.mutable_outputs()->Add() = "OUT1";
@@ -122,8 +127,9 @@ TEST(OpKernel, all) {
   attr->set_f(3.14);
 
   paddle::platform::CPUDeviceContext cpu_device_context;
-  auto scope = std::make_shared<Scope>();
+  auto scope = std::make_shared<paddle::framework::Scope>();
 
-  OpPtr op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  paddle::framework::OpPtr op =
+      paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);
 }
