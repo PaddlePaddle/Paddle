@@ -52,6 +52,9 @@ TEST(DDim, Equality) {
 
   // product of a DDim
   EXPECT_EQ(paddle::framework::product(vddim), 45);
+  EXPECT_EQ(
+      paddle::framework::product(paddle::framework::make_ddim({3, 2, 5, 3})),
+      90);
 }
 
 TEST(DDim, Print) {

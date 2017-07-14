@@ -178,13 +178,16 @@ std::vector<int> vectorize(const DDim& ddim) {
   return result;
 }
 
-ssize_t product(const DDim& ddim) {
-  ssize_t result = 1;
-  std::vector<int> v = vectorize(ddim);
-  for (auto i : v) {
-    result *= i;
+struct ProductVisitor : public boost::static_visitor<ssize_t> {
+  template <int D>
+  ssize_t operator()(const Dim<D>& dim) {
+    return product(dim);
   }
-  return result;
+};
+
+ssize_t product(const DDim& ddim) {
+  ProductVisitor visitor;
+  return boost::apply_visitor(visitor, ddim);
 }
 
 ///\cond HIDDEN
