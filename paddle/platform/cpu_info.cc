@@ -54,8 +54,8 @@ size_t CpuMaxAllocSize() {
 }
 
 size_t CpuMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 256 bytes.
-  return 1 << 8;
+  // Allow to allocate the minimum chunk size is 4 KB.
+  return 1 << 12;
 }
 
 size_t CpuMaxChunkSize() {
