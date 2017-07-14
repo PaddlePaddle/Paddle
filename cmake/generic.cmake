@@ -310,7 +310,6 @@ function(go_library TARGET_NAME)
     "./${CMAKE_CURRENT_SOURCE_REL_DIR}/${GO_SOURCE}"
     # must run under GOPATH
     WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
-  add_dependencies(${TARGET_NAME} go_vendor)
 endfunction(go_library)
 
 function(go_binary TARGET_NAME)
@@ -325,7 +324,7 @@ function(go_binary TARGET_NAME)
     -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     "./${CMAKE_CURRENT_SOURCE_REL_DIR}/${go_binary_SRCS}"
     WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
-  add_custom_target(${TARGET_NAME} ALL DEPENDS go_vendor ${TARGET_NAME}_timestamp ${go_binary_DEPS})
+  add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_binary_DEPS})
   install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME} DESTINATION bin)
 endfunction(go_binary)
 
@@ -335,7 +334,7 @@ function(go_test TARGET_NAME)
   set(multiValueArgs DEPS)
   cmake_parse_arguments(go_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   string(REPLACE "${PADDLE_GO_PATH}" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-  add_custom_target(${TARGET_NAME} ALL DEPENDS go_vendor ${go_test_DEPS})
+  add_custom_target(${TARGET_NAME} ALL DEPENDS ${go_test_DEPS})
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} test
     -c -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
