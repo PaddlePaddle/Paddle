@@ -23,7 +23,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <unordered_map>
 
-inline bool is_aligned(void const *p, const size_t n) {
+inline bool is_aligned(void const *p) {
   return 0 == (reinterpret_cast<uintptr_t>(p) & 0x3);
 }
 
@@ -68,7 +68,7 @@ TEST(BuddyAllocator, CPUMultAlloc) {
   }
 
   for (auto p : ps) {
-    EXPECT_EQ(is_aligned(p.first, 32), true);
+    EXPECT_EQ(is_aligned(p.first), true);
     paddle::memory::Free(cpu, p.first);
 
     // Buddy Allocator doesn't manage too large memory chunk
@@ -123,7 +123,7 @@ TEST(BuddyAllocator, GPUMultAlloc) {
   }
 
   for (auto p : ps) {
-    EXPECT_EQ(is_aligned(p.first, 32), true);
+    EXPECT_EQ(is_aligned(p.first), true);
     paddle::memory::Free(gpu, p.first);
 
     // Buddy Allocator doesn't manage too large memory chunk
