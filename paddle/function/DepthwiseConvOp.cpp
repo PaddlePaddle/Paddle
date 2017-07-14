@@ -15,7 +15,6 @@ limitations under the License. */
 #include "DepthwiseConvOp.h"
 #include "ConvOp.h"
 #include "GemmFunctor.h"
-//#include "paddle/math/MemoryHandle.h"
 
 namespace paddle {
 
@@ -28,6 +27,7 @@ public:
                   int outputChannels,
                   int outputHeight,
                   int outputWidth,
+                  int inputChannels,
                   int inputHeight,
                   int inputWidth,
                   int filterHeight,
@@ -114,7 +114,7 @@ public:
     const TensorShape& output = outputs[0].shape();
 
     size_t batchSize = input[0];
-    // size_t inputChannels = input[1];
+    size_t inputChannels = input[1];
     size_t inputHeight = input[2];
     size_t inputWidth = input[3];
     size_t filterHeight = getFilterHeight(filter);
@@ -134,6 +134,7 @@ public:
                   outputChannels,
                   outputHeight,
                   outputWidth,
+                  inputChannels,
                   inputHeight,
                   inputWidth,
                   filterHeight,
@@ -168,8 +169,6 @@ public:
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
     check(inputs, outputs);
-    // Since the implementation of Col2ImFunctor is ADD_TO,
-    // this function only supports ADD_TO mode.
     CHECK_EQ(outputs[0].getArgType(), ADD_TO);
     const TensorShape& output = inputs[0].shape();
     const TensorShape& filter = inputs[1].shape();
@@ -228,12 +227,11 @@ public:
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    // CHECK_EQ(numInputs_, inputs.size());
-    // CHECK_EQ(numOutputs_, outputs.size());
+    CHECK_EQ(numInputs_, inputs.size());
+    CHECK_EQ(numOutputs_, outputs.size());
     check(inputs, outputs);
     const TensorShape& output = inputs[0].shape();
     const TensorShape& input = inputs[1].shape();
-    // const TensorShape& multiplier = inputs[2].shape();
     const TensorShape& filter = outputs[0].shape();
 
     size_t batchSize = input[0];

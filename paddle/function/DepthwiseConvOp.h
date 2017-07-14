@@ -29,6 +29,7 @@ namespace paddle {
  * \param[in]   outputChannels    channels of outputData.
  * \param[in]   outputHeight      height of outputData.
  * \param[in]   outputWidth       width of outputData.
+ * \param[in]   inputChannels     channels of inputData.
  * \param[in]   inputHeight       height of inputData.
  * \param[in]   inputWidth        width of inputData..
  * \param[in]   filterHeight      height of filter.
@@ -49,8 +50,9 @@ public:
                   int outputChannels,
                   int outputHeight,
                   int outputWidth,
+                  int inputChannels,
                   int inputHeight,
-                  int intputWidth,
+                  int inputWidth,
                   int filterHeight,
                   int filterWidth,
                   int strideH,
