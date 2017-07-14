@@ -41,6 +41,7 @@ class SGD(object):
     :type parameters: paddle.v2.parameters.Parameters
     :param extra_layers: Some layers in the neural network graph are not
                          in the path of cost layer.
+    :param pserver_spec: pserver location, eg: localhost:3000
     :type extra_layers: paddle.v2.config_base.Layer
     """
 

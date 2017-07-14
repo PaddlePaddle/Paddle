@@ -18,6 +18,8 @@ const (
 	PsDesired = "/ps_desired"
 	// PsPath is the base dir for pserver to store their addr
 	PsPath = "/ps/"
+	// PsCheckpoint is the etcd path for store checkpoints information
+	PsCheckpoint = "/checkpoints/"
 )
 
 // EtcdClient is the etcd client that the pserver uses for fault
@@ -186,4 +188,31 @@ func (e *EtcdClient) registerPserverEtcd(ctx context.Context, port int) (int, er
 	}
 
 	return idx, nil
+}
+
+// GetKey gets the value by the specified key
+func (e *EtcdClient) GetKey(key string, timeout time.Duration) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	resp, err := e.etcdClient.Get(ctx, key)
+	cancel()
+	if err != nil {
+		return []byte{}, err
+	}
+	kvs := resp.Kvs
+	if len(kvs) == 0 {
+		return []byte{}, nil
+	}
+	v := kvs[0].Value
+	return v, nil
+}
+
+// PutKey put into etcd with value by key specified
+func (e *EtcdClient) PutKey(key string, value []byte, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	_, err := e.etcdClient.Put(ctx, key, string(value))
+	cancel()
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -37,7 +37,7 @@ def main():
     # create parameters
     parameters = paddle.parameters.create(cost)
 
-    # create optimizer
+    # create optimizer of new remote updater to pserver
     optimizer = paddle.optimizer.Momentum(momentum=0)
 
     print "etcd endoint: ", etcd_endpoint

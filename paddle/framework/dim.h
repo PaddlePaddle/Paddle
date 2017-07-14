@@ -267,29 +267,6 @@ HOSTDEVICE inline bool contained(const Dim<1>& idx, const Dim<1>& size) {
 }
 
 /**
- * \brief Check if a size and a stride create a Fortran order contiguous
- * block of memory.
- */
-template <int i>
-HOST bool contiguous(const Dim<i>& size, const Dim<i>& stride, int mul = 1) {
-  if (product(size) == 0) return true;
-  int contiguous_stride = get<0>(size) == 1 ? 0 : mul;
-  return (get<0>(stride) == contiguous_stride &&
-          contiguous(size.tail, stride.tail, mul * get<0>(size)));
-}
-
-///\cond HIDDEN
-// Base case of contiguous, check the nth stride is the size of
-// the prefix multiply of n-1 dims.
-template <>
-inline bool contiguous(const Dim<1>& size, const Dim<1>& stride, int mul) {
-  if (get<0>(size) == 0) return true;
-  int contiguous_stride = get<0>(size) == 1 ? 0 : mul;
-  return get<0>(stride) == contiguous_stride;
-}
-///\endcond
-
-/**
  * \brief Compute exclusive prefix-multiply of a Dim.
  */
 template <int i>
@@ -304,31 +281,6 @@ template <>
 HOSTDEVICE inline Dim<1> ex_prefix_mul(const Dim<1>& src, int mul) {
   return Dim<1>(mul);
 }
-///\endcond
-
-/**
- * \brief Calculate strides of a contiguous array of the given size
- *
- * Sets the stride for any dimension with an extent of 1 to 0.
- * \param size Dim object containing the size of the array.
- * \param base The base stride to use.
- * \return Dim object the same size as \p size with the strides.
- */
-template <int i>
-HOSTDEVICE Dim<i> contiguous_strides(const Dim<i>& size, int base = 1) {
-  int stride = size.head == 1 ? 0 : base;
-  return Dim<i>(stride, contiguous_strides(size.tail, base * size.head));
-}
-
-///\cond HIDDEN
-
-// Base case of contiguous_strides
-template <>
-HOSTDEVICE inline Dim<1> contiguous_strides(const Dim<1>& size, int base) {
-  int stride = size.head == 1 ? 0 : base;
-  return Dim<1>(stride);
-}
-
 ///\endcond
 
 /**

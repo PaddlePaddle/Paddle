@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <functional>
 #include <thread>
+#include "OptimizerConfig.pb.h"
 #include "ParameterUpdater.h"
 #include "libpaddle_pserver_cclient.h"
 #include "paddle/pserver/ParameterClient2.h"
@@ -104,6 +105,7 @@ private:
   }
 
 protected:
+  const OptimizationConfig& trainerConfig_;
   /// internal parameter client object for exchanging data with pserver
   paddle_pserver_client parameterClient_;
   /// the parameters for new pserver client
