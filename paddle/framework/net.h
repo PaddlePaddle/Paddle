@@ -49,7 +49,7 @@ class PlainNetOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  * which are inputs and outputs of these operators, are created and managed by a
  * hierarchy of Scope objects.
  *
- * This is the base class of network, all the networks should implement the apis
+ * This is the base class of network, all the networks should implement the APIs
  * it defines.
  */
 class Net : public OperatorBase {
@@ -58,6 +58,8 @@ class Net : public OperatorBase {
    * @brief Add an Operator according to `def`.
    */
   virtual void AddOp(const OpDesc& def) = 0;
+
+  virtual void AddOp(const OpPtr& op) = 0;
 };
 
 /**
@@ -85,9 +87,14 @@ class PlainNet : public Net {
            const platform::DeviceContext& dev_ctx) const override;
 
   /**
-   * @brief Add an operator to this network.
+   * @brief Add an Operator by OpDesc.
    */
   void AddOp(const OpDesc& def) override;
+
+  /**
+   * @brief Add an operator by ptr
+   */
+  void AddOp(const OpPtr& def) override;
 
  private:
   // the operators owned by `Network`.

@@ -60,6 +60,8 @@ TEST(OpKernel, all) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(3.14);
 
+  auto test_op = OpRegistry::CreateOp(test_op_desc);
+
   CPUDeviceContext cpu_device_context;
   auto scope = std::make_shared<Scope>();
 
@@ -67,5 +69,6 @@ TEST(OpKernel, all) {
   auto net_op = static_cast<PlainNet*>(op.get());
 
   net_op->AddOp(test_op_desc);
+  net_op->AddOp(test_op);
   net_op->Run(scope, cpu_device_context);
 }
