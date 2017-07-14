@@ -105,19 +105,18 @@ TEST(Tensor, ShareDataFrom) {
     // Try to share data form uninitialized tensor
     bool caught = false;
     try {
-      dst_tensor.ShareDataFrom(src_tensor);
+      dst_tensor.ShareDataFrom<float>(src_tensor);
     } catch (EnforceNotMet err) {
       caught = true;
-      std::string msg = "Can not share data from an uninitialized tensor.";
-      const char* what = err.what();
-      for (size_t i = 0; i < msg.length(); ++i) {
-        ASSERT_EQ(what[i], msg[i]);
+      std::string msg = "Tenosr holds no memory. Call Tensor::mutable_data
+first."; const char* what = err.what(); for (size_t i = 0; i < msg.length();
+++i) { ASSERT_EQ(what[i], msg[i]);
       }
     }
     ASSERT_TRUE(caught);
 
     src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), CPUPlace());
-    dst_tensor.ShareDataFrom(src_tensor);
+    dst_tensor.ShareDataFrom<int>(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 
@@ -125,7 +124,7 @@ TEST(Tensor, ShareDataFrom) {
     Tensor src_tensor;
     Tensor dst_tensor;
     src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), GPUPlace());
-    dst_tensor.ShareDataFrom(src_tensor);
+    dst_tensor.ShareDataFrom<int>(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 }
@@ -136,7 +135,7 @@ TEST(Tensor, Slice) {
   {
     Tensor src_tensor;
     src_tensor.mutable_data<int>(make_ddim({5, 3, 4}), CPUPlace());
-    Tensor slice_tensor = src_tensor.Slice(1, 3);
+    Tensor slice_tensor = src_tensor.Slice<int>(1, 3);
     DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 3);
     EXPECT_EQ(slice_dims[0], 2);
@@ -159,7 +158,7 @@ TEST(Tensor, Slice) {
   {
     Tensor src_tensor;
     src_tensor.mutable_data<double>(make_ddim({6, 9}), GPUPlace());
-    Tensor slice_tensor = src_tensor.Slice(2, 6);
+    Tensor slice_tensor = src_tensor.Slice<double>(2, 6);
     DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 2);
     EXPECT_EQ(slice_dims[0], 4);
@@ -188,15 +187,15 @@ TEST(Tensor, CopyFrom) {
   int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   memcpy(src_ptr, arr, 9 * sizeof(int));
   Tensor dst_tensor;
-  dst_tensor.CopyFrom(src_tensor, CPUPlace());
+  dst_tensor.CopyFrom<int>(src_tensor, CPUPlace());
   const int* dst_ptr = dst_tensor.data<int>();
   ASSERT_NE(src_ptr, dst_ptr);
   for (size_t i = 0; i < 9; ++i) {
     EXPECT_EQ(src_ptr[i], dst_ptr[i]);
   }
 
-  Tensor slice_tensor = src_tensor.Slice(1, 2);
-  dst_tensor.CopyFrom(slice_tensor, CPUPlace());
+  Tensor slice_tensor = src_tensor.Slice<int>(1, 2);
+  dst_tensor.CopyFrom<int>(slice_tensor, CPUPlace());
   const int* slice_ptr = slice_tensor.data<int>();
   dst_ptr = dst_tensor.data<int>();
   ASSERT_NE(dst_ptr, slice_ptr);

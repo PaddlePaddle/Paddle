@@ -76,7 +76,7 @@ class Tensor {
     src.CheckDimsValidity<T>();
     size_t size = src.numel_ * sizeof(T);
     set_dims(src.dims());
-    void* src_ptr = static_cast<void*>(src.data<T>());
+    const void* src_ptr = static_cast<const void*>(src.data<T>());
     void* dst_ptr = static_cast<void*>(mutable_data<T>(dst_place));
     memcpy(dst_ptr, src_ptr, size);
   }
