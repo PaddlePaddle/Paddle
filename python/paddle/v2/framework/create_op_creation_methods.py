@@ -6,7 +6,6 @@ def get_all_op_protos():
     protostrs = core.get_all_op_protos()
     ret_values = []
     for pbstr in protostrs:
-        op_proto = op_proto_pb2.OpProto()
-        op_proto.ParseFromString(pbstr)
+        op_proto = op_proto_pb2.OpProto.FromString(str(pbstr))
         ret_values.append(op_proto)
     return ret_values

@@ -16,6 +16,8 @@ limitations under the License. */
 #include <paddle/framework/op_registry.h>
 #include <paddle/framework/scope.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <fstream>
 #include <vector>
 
 namespace py = pybind11;
@@ -47,11 +49,14 @@ All parameter, weight, gradient are variables in Paddle.
            &pd::Scope::CreateVariable,
            py::return_value_policy::reference);
 
+  //! @note: Be careful! PyBind will return std::string as an unicode, not
+  //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<std::string> {
     auto& protos = pd::OpRegistry::protos();
     std::vector<std::string> ret_values;
-    ret_values.reserve(protos.size());
     for (auto it = protos.begin(); it != protos.end(); ++it) {
+      PADDLE_ENFORCE(it->second.IsInitialized(),
+                     "OpProto must all be initialized");
       ret_values.emplace_back();
       PADDLE_ENFORCE(it->second.SerializeToString(&ret_values.back()),
                      "Serialize OpProto Error. This could be a bug of Paddle.");
