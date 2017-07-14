@@ -48,7 +48,7 @@ func newOptimizer(paramWithConfigs ParameterWithConfig, State []byte) *optimizer
 		"StateSize":   len(s),
 	}).Info("New Optimizer Created with config:")
 	var cbuffer unsafe.Pointer
-	cbuffer = C.malloc(paramBufferSize)
+	cbuffer = C.malloc(paramBufferSize * C.sizeof_float)
 
 	C.memcpy(cbuffer, unsafe.Pointer(&p.Content[0]), paramBufferSize)
 	var cstate unsafe.Pointer
