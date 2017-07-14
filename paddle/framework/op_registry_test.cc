@@ -36,8 +36,8 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   MyTestOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("input", "input of cosine op", /*multiple*/ true);
-    AddOutput("output", "output of cosine op", /*multiple*/ false,
+    AddInputs("input", "input of cosine op");
+    AddOutput("output", "output of cosine op",
               /*temporary*/ true);
     auto my_checker = [](int i) {
       PADDLE_ENFORCE(i % 2 == 0, "'test_attr' must be even!");

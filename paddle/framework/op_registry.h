@@ -75,8 +75,12 @@ class OpProtoAndCheckerMaker {
     }
   }
 
+  void AddInputs(const std::string& name, const std::string& comment) {
+    AddInput(name, comment, true);
+  }
+
   void AddOutput(const std::string& name, const std::string& comment,
-                 bool multiple = false, bool temporary = false) {
+                 bool temporary = false, bool multiple = false) {
     auto output = proto_->mutable_outputs()->Add();
     *output->mutable_name() = name;
     *output->mutable_comment() = comment;
@@ -88,6 +92,11 @@ class OpProtoAndCheckerMaker {
     if (temporary) {
       SetHasTemporaryOutput();
     }
+  }
+
+  void AddOutputs(const std::string& name, const std::string& comment,
+                  bool temporary = false) {
+    AddOutput(name, comment, temporary, true);
   }
 
   template <typename T>
@@ -122,8 +131,8 @@ e.g.
   input_format = [0, 4, 5, 6]
 
 means
-  The all input variables of this op is six, and they are segmented into three
-  inputs.
+  The number of all input variables this op is six, and they are segmented into
+  three inputs.
 
   The first input is input[0:4], second is input[4:5], third is input[5:6].
 )DOC",
