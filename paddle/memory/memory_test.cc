@@ -34,13 +34,6 @@ size_t align(size_t size, paddle::platform::CPUPlace place) {
   return remaining == 0 ? size : size + (alignment - remaining);
 }
 
-size_t align(size_t size, paddle::platform::GPUPlace place) {
-  size += sizeof(paddle::memory::detail::Metadata);
-  size_t alignment = paddle::platform::GpuMinChunkSize();
-  size_t remaining = size % alignment;
-  return remaining == 0 ? size : size + (alignment - remaining);
-}
-
 void update_size(size_t &total_size, const size_t size) {}
 
 TEST(BuddyAllocator, CPUAllocation) {
@@ -90,6 +83,13 @@ TEST(BuddyAllocator, CPUMultAlloc) {
 }
 
 #ifndef PADDLE_ONLY_CPU
+
+size_t align(size_t size, paddle::platform::GPUPlace place) {
+  size += sizeof(paddle::memory::detail::Metadata);
+  size_t alignment = paddle::platform::GpuMinChunkSize();
+  size_t remaining = size % alignment;
+  return remaining == 0 ? size : size + (alignment - remaining);
+}
 
 TEST(BuddyAllocator, GPUAllocation) {
   void *p = nullptr;
