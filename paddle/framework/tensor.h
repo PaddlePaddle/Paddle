@@ -48,7 +48,7 @@ class Tensor {
   T* mutable_data(paddle::platform::Place place) {
     PADDLE_ENFORCE(numel_ > 0,
                    "Tensor::numel_ must be larger than zero to call "
-                   "Tensor::mutable_data.");
+                   "Tensor::mutable_data. Call Tensor::set_dim first.");
     if (holder_ == nullptr ||
         !(holder_->place() ==
           place) /* some versions of boost::variant don't have operator!= */
