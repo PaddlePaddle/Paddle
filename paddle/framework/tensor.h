@@ -28,34 +28,33 @@ namespace framework {
 
 class Tensor {
  public:
-  Tensor() : offset_(0) {}
+  Tensor() : offset_(0) { numel_ = product(dims_); }
 
-  explicit Tensor(const DDim& dims) : dims_(dims), offset_(0) {}
+  Tensor& operator=(const Tensor& src) = delete;
 
   template <typename T>
   const T* data() const {
-    PADDLE_ENFORCE(
-        holder_ != nullptr,
-        "Tenosr has not been initialized. Call Tensor::mutable_data first.");
+    CheckDimsValidity();
     return reinterpret_cast<const T*>(
         reinterpret_cast<uintptr_t>(holder_->Ptr()) + offset_);
   }
 
-  template <typename T,  // must be POD types
-            typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
+  template <typename T>
   T* mutable_data(DDim dims, paddle::platform::Place place) {
-    dims_ = dims;
+    set_dims(dims);
     return mutable_data<T>(place);
   }
 
-  template <typename T,  // must be POD types
-            typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
+  template <typename T>
   T* mutable_data(paddle::platform::Place place) {
+    PADDLE_ENFORCE(numel_ > 0,
+                   "Tensor::numel_ must be larger than zero to call "
+                   "Tensor::mutable_data.");
     if (holder_ == nullptr ||
         !(holder_->Place() ==
           place) /* some versions of boost::variant don't have operator!= */
-        || holder_->Size() < product(dims_) * sizeof(T) + offset_) {
-      holder_.reset(new PlaceholderImpl<T>(place, product(dims_) * sizeof(T)));
+        || holder_->Size() < numel_ * sizeof(T) + offset_) {
+      holder_.reset(new PlaceholderImpl<T>(place, numel_ * sizeof(T)));
       offset_ = 0;
     }
     return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->Ptr()) +
@@ -63,25 +62,24 @@ class Tensor {
   }
 
   void ShareDataFrom(const Tensor& src) {
-    PADDLE_ENFORCE(src.holder_ != nullptr,
-                   "Can not share data from an uninitialized tensor.");
+    src.CheckDimsValidity();
     holder_ = src.holder_;
-    dims_ = src.dims_;
+    dims_ = src.dims();
+    numel_ = src.numel_;
     offset_ = src.offset_;
   }
 
   void CopyFrom(const Tensor& src, paddle::platform::Place dst_place) {
-    PADDLE_ENFORCE(src.holder_ != nullptr,
-                   "Can not copy from an uninitialized tensor.");
-    size_t size = product(src.dims()) * src.holder_->TypeSize();
+    src.CheckDimsValidity();
+    size_t size = src.numel_ * src.holder_->TypeSize();
     holder_.reset(src.holder_->Clone(src.offset_, size, dst_place));
     dims_ = src.dims();
+    numel_ = src.numel_;
     offset_ = 0;
   }
 
   Tensor Slice(const int& begin_idx, const int& end_idx) const {
-    PADDLE_ENFORCE(holder_ != nullptr,
-                   "The sliced tenosr has not been initialized.");
+    CheckDimsValidity();
     PADDLE_ENFORCE(begin_idx >= 0 && end_idx <= dims_[0],
                    "Slice index is less than zero or out of bound.");
     PADDLE_ENFORCE(begin_idx < end_idx,
@@ -94,10 +92,20 @@ class Tensor {
     }
     Tensor dst;
     dst.holder_ = holder_;
-    dst.dims_ = dims_;
-    dst.dims_[0] = end_idx - begin_idx;
+    DDim dst_dims = dims_;
+    dst_dims[0] = end_idx - begin_idx;
+    dst.set_dims(dst_dims);
     dst.offset_ = offset_ + begin_idx * base * holder_->TypeSize();
     return dst;
+  }
+
+  void set_dims(const DDim& dims) {
+    if (dims == dims_) {
+      return;
+    }
+    dims_ = dims;
+    numel_ = product(dims_);
+    return;
   }
 
   DDim dims() const { return dims_; }
@@ -158,8 +166,17 @@ class Tensor {
     size_t size_;                    // size of the memory block.
   };
 
+  inline void CheckDimsValidity() {
+    PADDLE_ENFORCE(holder_ != nullptr,
+                   "Tenosr holds no memory. Call Tensor::mutable_data first.");
+    PADDLE_ENFORCE(holder_->Size() > numel_ * sizeof(T) + offset_,
+                   "Tensor's dims_ is out of bound. Call Tensor::mutable_data "
+                   "first to re-allocate memory.");
+  }
+
   std::shared_ptr<Placeholder> holder_;  // holds the memory block if allocated.
   DDim dims_;
+  int numel_;      // cache of `product(dims_)`
   size_t offset_;  // marks the begin of tensor data area.
 };
 
