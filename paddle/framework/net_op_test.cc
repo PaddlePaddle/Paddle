@@ -3,43 +3,8 @@
 #include <paddle/framework/op_registry.h>
 #include <paddle/framework/operator.h>
 
-namespace paddle {
-namespace framework {
-class OperatorTest : public OperatorBase {
- public:
-  void Init() override { x = 1; }
-  void InferShape(const ScopePtr& scope) const override {}
-  void Run(const ScopePtr& scope,
-           const platform::DeviceContext& dev_ctx) const override {
-    float scale = GetAttr<float>("scale");
-    ASSERT_NEAR(scale, 3.14, 1e-5);
-    ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
-    ASSERT_EQ(x, 1);
-    std::cout << "this is test_operator" << std::endl;
-  }
-
- public:
-  float x = 0;
-};
-
-class OperatorTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
- public:
-  OperatorTestProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("input", "input of test op");
-    AddOutput("output", "output of test op");
-    AddAttr<float>("scale", "scale of cosine op")
-        .SetDefault(1.0)
-        .LargerThan(0.0);
-    AddComment("This is test op");
-  }
-};
-
-REGISTER_OP(test_operator, OperatorTest, OperatorTestProtoAndCheckerMaker);
-REGISTER_OP(plainnet_operator, PlainNet, PlainNetOpProtoAndCheckerMaker);
-
-}  // namespace framework
-}  // namespace paddle
+USE_OP_WITHOUT_KERNEL(test_operator);
+USE_OP_WITHOUT_KERNEL(plainnet_operator);
 
 TEST(OpKernel, all) {
   using namespace paddle::framework;
@@ -64,7 +29,7 @@ TEST(OpKernel, all) {
   CPUDeviceContext cpu_device_context;
   auto scope = std::make_shared<Scope>();
 
-  OpPtr op = paddle::framework::OpRegistry::CreateOp(net_op_desc);
+  OperatorPtr op = paddle::framework::OpRegistry::CreateOp(net_op_desc);
   auto net_op = static_cast<PlainNet*>(op.get());
 
   net_op->AddOp(test_op_desc);

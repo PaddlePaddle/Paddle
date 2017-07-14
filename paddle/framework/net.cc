@@ -21,6 +21,15 @@ void PlainNet::Run(const ScopePtr& scope, const DeviceContext& ctx) const {
   }
 }
 
-// REGISTER_OP(plainnet_operator, PlainNet, PlainNetOpProtoAndCheckerMaker);
+class PlainNetOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+ public:
+  PlainNetOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddComment("This is test op");
+  }
+};
 }  // namespace framework
 }  // namespace paddle
+
+REGISTER_OP(plainnet_operator, paddle::framework::PlainNet,
+            paddle::framework::PlainNetOpProtoAndCheckerMaker);

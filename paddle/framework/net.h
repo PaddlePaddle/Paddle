@@ -26,15 +26,6 @@ namespace paddle {
 namespace framework {
 using namespace paddle::platform;
 
-// temporary put here for test
-class PlainNetOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
- public:
-  PlainNetOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddComment("This is test op");
-  }
-};
-
 /**
  * @brief Network is also a type of Operator
  *
@@ -70,7 +61,7 @@ class Net : public OperatorBase {
 class PlainNet : public Net {
  public:
   /**
-   * Infer all the operators' input and output varialbes' shapes, will be called
+   * Infer all the operators' input and output variables' shapes, will be called
    * before every mini-batch
    */
   void InferShape(const ScopePtr& scope) const override;
