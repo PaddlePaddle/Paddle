@@ -33,6 +33,7 @@ enum InputType {
   INPUT_SPARSE_FLOAT_VALUE_DATA,
   INPUT_DENSE_DIM_DATA,    // using sequence length to init dense data
   INPUT_SELF_DEFINE_DATA,  // support customizing for input value
+  INPUT_MULTI_LABEL,       // support for pixel classification
 };
 
 struct ParaSparse {

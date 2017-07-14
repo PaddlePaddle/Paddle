@@ -688,4 +688,64 @@ public:
 
 REGISTER_LAYER(sum_cost, SumCostLayer);
 
+//
+// class PixelCrossEntropy
+//
+bool PixelCrossEntropy::init(const LayerMap& layerMap,
+                             const ParameterMap& parameterMap) {
+  auto img_conf = config_.inputs(0).image_conf();
+  c_ = img_conf.channels();
+  h_ = img_conf.has_img_size_y() ? img_conf.img_size_y() : img_conf.img_size();
+  w_ = img_conf.img_size();
+  createFunction(NCHW2NHWC_, "NCHW2NHWC", FuncConfig());
+  createFunction(NHWC2NCHW_, "NHWC2NCHW", FuncConfig());
+  return CostLayer::init(layerMap, parameterMap);
+}
+
+void PixelCrossEntropy::forwardImp(Matrix& output,
+                                   Argument& label,
+                                   Matrix& target) {
+  batchSize_ = getInputValue(*getOutputLayer())->getHeight();
+  size_t dimSize = getInputValue(*getOutputLayer())->getWidth();
+  Argument input = getInput(*getOutputLayer());
+  h_ = input.getFrameHeight() == 0 ? h_ : input.getFrameHeight();
+  w_ = input.getFrameWidth() == 0 ? w_ : input.getFrameWidth();
+  CHECK(h_ != 0);
+  CHECK(w_ != 0);
+  c_ = dimSize / (h_ * w_);
+  CHECK(c_ != 0);
+  // create tmpMatrix_ by (NHW, C)
+  Matrix::resizeOrCreate(tmpMatrix_, batchSize_ * h_ * w_, c_, false, useGpu_);
+  // convert output.data to NHWC order saved in tmpMatrix_
+  BufferArgs inputs;
+  BufferArgs outputs;
+  inputs.addArg(output, TensorShape({batchSize_, c_, h_, w_}));
+  outputs.addArg(*tmpMatrix_, TensorShape({batchSize_, h_, w_, c_}));
+  NCHW2NHWC_[0]->calc(inputs, outputs);
+  // resize output to (N*H*W,1)
+  resetOutput(batchSize_ * h_ * w_, 1);
+  // call matrix method
+  target.oneHotCrossEntropy(*tmpMatrix_, *label.ids);
+}
+
+void PixelCrossEntropy::backwardImp(Matrix& output,
+                                    Argument& label,
+                                    Matrix& outputG) {
+  // resize output grad
+  MatrixPtr outputGradPtr = getInputGrad(*getOutputLayer());
+  Matrix::resizeOrCreate(tmpGrad_, batchSize_ * h_ * w_, c_, false, useGpu_);
+  // call matrix method
+  tmpGrad_->oneHotCrossEntropyBp(*tmpMatrix_, *label.ids);
+  // convert outputG to NCHW order
+  BufferArgs inputs;
+  BufferArgs outputs;
+  inputs.addArg(*tmpGrad_, TensorShape({batchSize_, h_, w_, c_}));
+  outputs.addArg(outputG, TensorShape({batchSize_, c_, h_, w_}));
+  NHWC2NCHW_[0]->calc(inputs, outputs);
+  // reshape outputG to (N, HWC)
+  outputG.resize(batchSize_, h_ * w_ * c_);
+}
+
+REGISTER_LAYER(pixel_cross_entropy_cost, PixelCrossEntropy);
+
 }  // namespace paddle

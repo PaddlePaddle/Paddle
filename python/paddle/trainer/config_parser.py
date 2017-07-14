@@ -2171,6 +2171,7 @@ define_cost('SoftBinaryClassCrossEntropy', 'soft_binary_class_cross_entropy')
 define_cost('HuberTwoClass', 'huber')
 define_cost('SumCost', 'sum_cost')
 define_cost('SmoothL1Cost', 'smooth_l1')
+define_cost('PixelCrossEntropyCost', 'pixel_cross_entropy_cost')
 
 
 @config_layer('hsigmoid')

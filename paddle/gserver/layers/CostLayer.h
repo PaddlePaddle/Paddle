@@ -337,5 +337,39 @@ public:
   void backwardImpIn(Matrix& outputValue, Argument& label, Matrix& outputGrad);
 };
 
+/**
+ * The cross-entropy loss for pixel classification task.
+ * The loss function is:
+ *
+ * \f[
+ * L = - \sum_{i}{t_{k} * log(P(y=k))}
+ * \f]
+ */
+class PixelCrossEntropy : public CostLayer {
+public:
+  explicit PixelCrossEntropy(const LayerConfig& config) : CostLayer(config) {}
+
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
+  void forwardImp(Matrix& output, Argument& label, Matrix& cost) override;
+
+  void backwardImp(Matrix& outputValue,
+                   Argument& label,
+                   Matrix& outputGrad) override;
+
+private:
+  /// switch order function
+  std::vector<std::shared_ptr<FunctionBase>> NCHW2NHWC_;
+  /// switch order function
+  std::vector<std::shared_ptr<FunctionBase>> NHWC2NCHW_;
+  size_t batchSize_;
+  size_t w_;
+  size_t h_;
+  size_t c_;
+  MatrixPtr tmpMatrix_;
+  MatrixPtr tmpGrad_;
+};
+
 typedef std::shared_ptr<CostLayer> CostLayerPtr;
 }  // namespace paddle

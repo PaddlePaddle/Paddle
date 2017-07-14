@@ -103,6 +103,7 @@ __all__ = [
     'nce_layer',
     'cross_entropy_with_selfnorm',
     'cross_entropy',
+    'pixel_cross_entropy',
     'multi_binary_label_cross_entropy',
     'sum_cost',
     'rank_cost',
@@ -211,6 +212,7 @@ class LayerType(object):
     LAMBDA_COST = 'lambda_cost'
     HUBER = 'huber'
     CROSS_ENTROPY = 'multi-class-cross-entropy'
+    PIXEL_CROSS_ENTROPY = 'pixel_cross_entropy_cost'
     CROSS_ENTROPY_WITH_SELFNORM = 'multi_class_cross_entropy_with_selfnorm'
     SOFT_BIN_CLASS_CROSS_ENTROPY = 'soft_binary_class_cross_entropy'
     MULTI_BIN_LABEL_CROSS_ENTROPY = 'multi_binary_label_cross_entropy'
@@ -5450,6 +5452,54 @@ def cross_entropy(input,
         coeff=coeff,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(name, LayerType.CROSS_ENTROPY, parents=parents, size=1)
+
+
+@wrap_name_default()
+@layer_support()
+def pixel_cross_entropy(input,
+                        label,
+                        name=None,
+                        coeff=1.0,
+                        weight=None,
+                        layer_attr=None):
+    """
+    A loss layer for pixel class entropy.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       cost = pixel_cross_entropy(input=input_layer,
+                            label=label_layer)
+
+    :param input: The first input layer.
+    :type input: LayerOutput.
+    :param label: The input label.
+    :type input: LayerOutput.
+    :param name: The name of this layers. It is not necessary.
+    :type name: None|basestring.
+    :param coeff: The cost is multiplied with coeff.
+                  The coefficient affects the gradient in the backward.
+    :type coeff: float.
+    :param weight: The cost of each sample is multiplied with each weight.
+                   The weight should be a layer with size=1. Note that gradient
+                   will not be calculated for weight.
+    :type weight: LayerOutout
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput.
+    """
+
+    ipts, parents = __cost_input__(input, label, weight)
+    Layer(
+        name=name,
+        type=LayerType.PIXEL_CROSS_ENTROPY,
+        inputs=ipts,
+        coeff=coeff,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.PIXEL_CROSS_ENTROPY, parents=parents, size=1)
 
 
 @wrap_name_default()
