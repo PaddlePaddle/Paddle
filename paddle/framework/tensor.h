@@ -165,7 +165,7 @@ class Tensor {
 
   std::shared_ptr<Placeholder> holder_;  // holds the memory block if allocated.
   DDim dims_;
-  int numel_;      // cache of `product(dims_)`
+  size_t numel_;   // cache of `product(dims_)`
   size_t offset_;  // marks the begin of tensor data area.
 };
 
