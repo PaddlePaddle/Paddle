@@ -2,6 +2,7 @@ import paddle.v2 as paddle
 import paddle.v2.dataset.uci_housing as uci_housing
 import paddle.v2.master as master
 import os
+import cPickle as pickle
 
 etcd_ip = os.getenv("MASTER_IP", "127.0.0.1")
 etcd_endpoint = "http://" + etcd_ip + ":2379"
@@ -16,7 +17,7 @@ def cloud_reader():
         r, e = master_client.next_record()
         if not r:
             break
-        yield r
+        yield pickle.loads(r)
 
 
 def main():
@@ -39,7 +40,6 @@ def main():
     # create optimizer
     optimizer = paddle.optimizer.Momentum(momentum=0)
 
-    #TODO(zhihong) : replace optimizer with new OptimizerConfig
     print "etcd endoint: ", etcd_endpoint
     trainer = paddle.trainer.SGD(cost=cost,
                                  parameters=parameters,
