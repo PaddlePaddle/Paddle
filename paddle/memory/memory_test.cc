@@ -13,13 +13,35 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/memory/memory.h"
-#include "gtest/gtest.h"
+#include "paddle/memory/detail/memory_block.h"
+#include "paddle/memory/detail/meta_data.h"
+
+#include "paddle/platform/cpu_info.h"
+#include "paddle/platform/gpu_info.h"
 #include "paddle/platform/place.h"
 
-template <typename T>
-inline bool is_aligned(T *p, size_t n = alignof(T)) {
+#include <gtest/gtest.h>
+#include <unordered_map>
+
+inline bool is_aligned(void const *p, const size_t n) {
   return 0 == (reinterpret_cast<uintptr_t>(p) % n);
 }
+
+size_t align(size_t size, paddle::platform::CPUPlace place) {
+  size += sizeof(paddle::memory::detail::Metadata);
+  size_t alignment = paddle::platform::CpuMinChunkSize();
+  size_t remaining = size % alignment;
+  return remaining == 0 ? size : size + (alignment - remaining);
+}
+
+size_t align(size_t size, paddle::platform::GPUPlace place) {
+  size += sizeof(paddle::memory::detail::Metadata);
+  size_t alignment = paddle::platform::GpuMinChunkSize();
+  size_t remaining = size % alignment;
+  return remaining == 0 ? size : size + (alignment - remaining);
+}
+
+void update_size(size_t &total_size, const size_t size) {}
 
 TEST(BuddyAllocator, CPUAllocation) {
   void *p = nullptr;
@@ -37,17 +59,33 @@ TEST(BuddyAllocator, CPUAllocation) {
 TEST(BuddyAllocator, CPUMultAlloc) {
   paddle::platform::CPUPlace cpu;
 
-  std::vector<void *> ps;
-  ps.reserve(8);
+  std::unordered_map<void *, size_t> ps;
+
+  size_t total_size = paddle::memory::Used(cpu);
+  EXPECT_EQ(total_size, 0UL);
 
   for (auto size :
        {128, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304}) {
-    ps.emplace_back(paddle::memory::Alloc(cpu, size));
+    ps[paddle::memory::Alloc(cpu, size)] = size;
+
+    // Buddy Allocator doesn't manage too large memory chunk
+    if (paddle::memory::Used(cpu) == total_size) continue;
+
+    size_t aligned_size = align(size, cpu);
+    total_size += aligned_size;
+    EXPECT_EQ(total_size, paddle::memory::Used(cpu));
   }
 
   for (auto p : ps) {
-    EXPECT_EQ(is_aligned(p, 32), true);
-    paddle::memory::Free(cpu, p);
+    EXPECT_EQ(is_aligned(p.first, 32), true);
+    paddle::memory::Free(cpu, p.first);
+
+    // Buddy Allocator doesn't manage too large memory chunk
+    if (paddle::memory::Used(cpu) == total_size) continue;
+
+    size_t aligned_size = align(p.second, cpu);
+    total_size -= aligned_size;
+    EXPECT_EQ(total_size, paddle::memory::Used(cpu));
   }
 }
 
@@ -69,17 +107,33 @@ TEST(BuddyAllocator, GPUAllocation) {
 TEST(BuddyAllocator, GPUMultAlloc) {
   paddle::platform::GPUPlace gpu;
 
-  std::vector<void *> ps;
-  ps.reserve(8);
+  std::unordered_map<void *, size_t> ps;
+
+  size_t total_size = paddle::memory::Used(gpu);
+  EXPECT_EQ(total_size, 0UL);
 
   for (auto size :
        {128, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304}) {
-    ps.emplace_back(paddle::memory::Alloc(gpu, size));
+    ps[paddle::memory::Alloc(gpu, size)] = size;
+
+    // Buddy Allocator doesn't manage too large memory chunk
+    if (paddle::memory::Used(gpu) == total_size) continue;
+
+    size_t aligned_size = align(size, gpu);
+    total_size += aligned_size;
+    EXPECT_EQ(total_size, paddle::memory::Used(gpu));
   }
 
   for (auto p : ps) {
-    EXPECT_EQ(is_aligned(p, 32), true);
-    paddle::memory::Free(gpu, p);
+    EXPECT_EQ(is_aligned(p.first, 32), true);
+    paddle::memory::Free(gpu, p.first);
+
+    // Buddy Allocator doesn't manage too large memory chunk
+    if (paddle::memory::Used(gpu) == total_size) continue;
+
+    size_t aligned_size = align(p.second, gpu);
+    total_size -= aligned_size;
+    EXPECT_EQ(total_size, paddle::memory::Used(gpu));
   }
 }
 
