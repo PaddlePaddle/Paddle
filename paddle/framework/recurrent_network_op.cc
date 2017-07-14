@@ -69,7 +69,6 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
     outputs_.push_back(output);
   }
 
-  name_ = op_desc.name();
   net_name_ = inputs_.at(GetAttr<int>("step_net"));
   step_scopes_name_ = outputs_.back();
 

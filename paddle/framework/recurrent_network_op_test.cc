@@ -24,7 +24,7 @@ namespace framework {
 namespace fake {
 class FcOp : public OperatorBase {
  public:
-  FcOp(const OpDesc& desc) : name_(desc.name()) {}
+  FcOp(const OpDesc& desc) {}
 
   virtual void InferShape(ScopePtr scope) const override {
     for (const auto& output : outputs_) {
@@ -54,7 +54,7 @@ class FcOp : public OperatorBase {
 
 class AddOp : public OperatorBase {
  public:
-  AddOp(const OpDesc& desc) : name_(desc.name()) {}
+  AddOp(const OpDesc& desc) {}
 
   virtual void InferShape(ScopePtr scope) const override {
     for (const auto& output : outputs_) {
@@ -136,7 +136,6 @@ class RecurrentOpTest : public ::testing::Test {
     OpDesc op_desc;
 
     op_desc.set_type("rnn_op");
-    op_desc.set_name("rnn");
     op_desc.add_inputs("x");
     op_desc.add_inputs("h_boot");    // initial memory
     op_desc.add_inputs("step_net");  // step net
@@ -204,22 +203,20 @@ class RecurrentOpTest : public ::testing::Test {
   OpDesc CreateFcOpDesc() {
     OpDesc op_desc;
     op_desc.set_type("fc");
-    op_desc.set_name("fc");
     op_desc.add_inputs("rnn/h_pre");
     op_desc.add_inputs("rnn/w");
     op_desc.add_outputs("rnn/s");
-    // s = h_pre * check
+    // rnn/s = rnn/h_pre * rnn/w
     return op_desc;
   }
 
   OpDesc CreateAddOpDesc() {
     OpDesc op_desc;
     op_desc.set_type("add");
-    op_desc.set_name("add");
     op_desc.add_inputs("rnn/x");
     op_desc.add_inputs("rnn/s");
     op_desc.add_outputs("rnn/h");
-    // h = x + s
+    // rnn/h = rnn/x + rnn/s
     return op_desc;
   }
 

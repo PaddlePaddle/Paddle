@@ -92,7 +92,7 @@ class PlainNet {
 // TODO:
 // 1. No-padding computing for sequences with indifinite length in one batch.
 // 2. Hierarchical RNN for sequence with sub-sequence.
-// 3. Multi-inputs with indifinate length for RecurrentOp.
+// 3. External Memory.
 // 4. More Complex RNN architecture, such as Gated Feedback RNN.
 //    Refer to: https://arxiv.org/pdf/1502.02367.pdf
 
@@ -144,11 +144,6 @@ class RecurrentOp : public OperatorBase {
   void ConcatOutputs(ScopePtr scope) const;
 
   /*
-   * Create a `Net` which is shared across all steps.
-   */
-  // void CreateStepNet(ScopePtr scope) const;
-
-  /*
    * the step scopes as the father scope. The step scopes will be stored in
    * the father scope as a variable whose name is specified by
    * `step_scopes_name_`.
@@ -157,11 +152,6 @@ class RecurrentOp : public OperatorBase {
    * create once and expand its size if more steps need.
    */
   void CreateScopes(ScopePtr scope) const;
-
-  /*
-   * Create memories in each step scope.
-   */
-  // void CreateMemories(ScopePtr scope) const;
 
   /*
    * Link memory in previous step scope to current scope.
@@ -213,9 +203,6 @@ class RecurrentOp : public OperatorBase {
   // TODO copy from OpBase's
   mutable std::vector<MemoryAttr> memory_attrs_;
 
-  // this op's name, used as a unique key in father scope.
-  // TODO repace it with OpBase's interface if supported.
-  std::string name_;
   // name of rnn op's step net, the step net will be shared by both `Forward`
   // and `Backward`, so we store it as a variable in father's scope, with a
   // unique key specified by `net_name_`.
