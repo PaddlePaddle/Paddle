@@ -15,15 +15,27 @@
 #include <gtest/gtest.h>
 #include <string>
 
-TEST(Tensor, ASSERT) {
-  paddle::framework::Tensor cpu_tensor;
+TEST(Tensor, Dims) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor tt(make_ddim({2, 3, 4}));
+  DDim dims = tt.dims();
+  ASSERT_EQ(arity(dims), 3);
+  for (int i = 0; i < 3; ++i) {
+    EXPECT_EQ(i + 2, dims[i]);
+  }
+}
+
+TEST(Tensor, DataAssert) {
+  paddle::framework::Tensor src_tensor;
 
   bool caught = false;
   try {
-    const double* p __attribute__((unused)) = cpu_tensor.data<double>();
+    src_tensor.data<double>();
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
-    std::string msg = "Tensor::data must be called after Tensor::mutable_data.";
+    std::string msg =
+        "Tenosr has not been initialized. Call Tensor::mutable_data first.";
     const char* what = err.what();
     for (size_t i = 0; i < msg.length(); ++i) {
       ASSERT_EQ(what[i], msg[i]);
@@ -32,54 +44,138 @@ TEST(Tensor, ASSERT) {
   ASSERT_TRUE(caught);
 }
 
-/* mutable_data() is not tested at present
+/* following tests are not available at present
    because Memory::Alloc() and Memory::Free() have not been ready.
 
 TEST(Tensor, MutableData) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   {
-    Tensor cpu_tensor;
+    Tensor src_tensor;
     float* p1 = nullptr;
     float* p2 = nullptr;
     // initialization
-    p1 = cpu_tensor.mutable_data<float>(make_ddim({1, 2, 3}), CPUPlace());
+    p1 = src_tensor.mutable_data<float>(make_ddim({1, 2, 3}), CPUPlace());
     EXPECT_NE(p1, nullptr);
-    // set cpu_tensor a new dim with large size
+    // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
-    p2 = cpu_tensor.mutable_data<float>(make_ddim({3, 4}));
+    p2 = src_tensor.mutable_data<float>(make_ddim({3, 4}), CPUPlace());
     EXPECT_NE(p2, nullptr);
     EXPECT_NE(p1, p2);
-    // set cpu_tensor a new dim with same size
+    // set src_tensor a new dim with same size
     // momery block is supposed to be unchanged
-    p1 = cpu_tensor.mutable_data<float>(make_ddim({2, 2, 3}));
+    p1 = src_tensor.mutable_data<float>(make_ddim({2, 2, 3}), CPUPlace());
     EXPECT_EQ(p1, p2);
-    // set cpu_tensor a new dim with smaller size
+    // set src_tensor a new dim with smaller size
     // momery block is supposed to be unchanged
-    p2 = cpu_tensor.mutable_data<float>(make_ddim({2, 2}));
+    p2 = src_tensor.mutable_data<float>(make_ddim({2, 2}), CPUPlace());
     EXPECT_EQ(p1, p2);
   }
 
   {
-    Tensor gpu_tensor;
+    Tensor src_tensor;
     float* p1 = nullptr;
     float* p2 = nullptr;
     // initialization
-    p1 = gpu_tensor.mutable_data<float>(make_ddim({1, 2, 3}), GPUPlace());
+    p1 = src_tensor.mutable_data<float>(make_ddim({1, 2, 3}), GPUPlace());
     EXPECT_NE(p1, nullptr);
-    // set gpu_tensor a new dim with large size
+    // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
-    p2 = gpu_tensor.mutable_data<float>(make_ddim({3, 4}));
+    p2 = src_tensor.mutable_data<float>(make_ddim({3, 4}), GPUPlace());
     EXPECT_NE(p2, nullptr);
     EXPECT_NE(p1, p2);
-    // set gpu_tensor a new dim with same size
+    // set src_tensor a new dim with same size
     // momery block is supposed to be unchanged
-    p1 = gpu_tensor.mutable_data<float>(make_ddim({2, 2, 3}));
+    p1 = src_tensor.mutable_data<float>(make_ddim({2, 2, 3}), GPUPlace());
     EXPECT_EQ(p1, p2);
-    // set gpu_tensor a new dim with smaller size
+    // set src_tensor a new dim with smaller size
     // momery block is supposed to be unchanged
-    p2 = gpu_tensor.mutable_data<float>(make_ddim({2, 2}));
+    p2 = src_tensor.mutable_data<float>(make_ddim({2, 2}), GPUPlace());
     EXPECT_EQ(p1, p2);
   }
 }
+
+TEST(Tensor, ShareDataFrom) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  {
+    Tensor src_tensor;
+    Tensor dst_tensor;
+    // Try to share data form uninitialized tensor
+    bool caught = false;
+    try {
+      dst_tensor.ShareDataFrom(src_tensor);
+    } catch (EnforceNotMet err) {
+      caught = true;
+      std::string msg = "Can not share data from an uninitialized tensor.";
+      const char* what = err.what();
+      for (size_t i = 0; i < msg.length(); ++i) {
+        ASSERT_EQ(what[i], msg[i]);
+      }
+    }
+    ASSERT_TRUE(caught);
+
+    src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), CPUPlace());
+    dst_tensor.ShareDataFrom(src_tensor);
+    ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
+  }
+
+  {
+    Tensor src_tensor;
+    Tensor dst_tensor;
+    src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), GPUPlace());
+    dst_tensor.ShareDataFrom(src_tensor);
+    ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
+  }
+}
+
+TEST(Tensor, Slice) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  {
+    Tensor src_tensor;
+    src_tensor.mutable_data<int>(make_ddim({5, 3, 4}), CPUPlace());
+    Tensor slice_tensor = src_tensor.Slice(1, 3);
+    DDim slice_dims = slice_tensor.dims();
+    ASSERT_EQ(arity(slice_dims), 3);
+    EXPECT_EQ(slice_dims[0], 2);
+    EXPECT_EQ(slice_dims[1], 3);
+    EXPECT_EQ(slice_dims[2], 4);
+
+    uintptr_t src_data_address =
+        reinterpret_cast<uintptr_t>(src_tensor.data<int>());
+    uintptr_t src_mutable_data_address = reinterpret_cast<uintptr_t>(
+        src_tensor.mutable_data<int>(src_tensor.dims(), CPUPlace()));
+    uintptr_t slice_data_address =
+        reinterpret_cast<uintptr_t>(slice_tensor.data<int>());
+    uintptr_t slice_mutable_data_address = reinterpret_cast<uintptr_t>(
+        slice_tensor.mutable_data<int>(slice_tensor.dims(), CPUPlace()));
+    EXPECT_EQ(src_data_address, src_mutable_data_address);
+    EXPECT_EQ(slice_data_address, slice_mutable_data_address);
+    EXPECT_EQ(src_data_address + 3 * 4 * 1 * sizeof(int), slice_data_address);
+  }
+
+  {
+    Tensor src_tensor;
+    src_tensor.mutable_data<double>(make_ddim({6, 9}), GPUPlace());
+    Tensor slice_tensor = src_tensor.Slice(2, 6);
+    DDim slice_dims = slice_tensor.dims();
+    ASSERT_EQ(arity(slice_dims), 2);
+    EXPECT_EQ(slice_dims[0], 4);
+    EXPECT_EQ(slice_dims[1], 9);
+
+    uintptr_t src_data_address =
+        reinterpret_cast<uintptr_t>(src_tensor.data<double>());
+    uintptr_t src_mutable_data_address = reinterpret_cast<uintptr_t>(
+        src_tensor.mutable_data<double>(src_tensor.dims(), GPUPlace()));
+    uintptr_t slice_data_address =
+        reinterpret_cast<uintptr_t>(slice_tensor.data<double>());
+    uintptr_t slice_mutable_data_address = reinterpret_cast<uintptr_t>(
+        slice_tensor.mutable_data<double>(slice_tensor.dims(), GPUPlace()));
+    EXPECT_EQ(src_data_address, src_mutable_data_address);
+    EXPECT_EQ(slice_data_address, slice_mutable_data_address);
+    EXPECT_EQ(src_data_address + 9 * 2 * sizeof(double), slice_data_address);
+  }
+}
+
 */
