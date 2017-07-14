@@ -14,19 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/platform/place.h"
+#include <stddef.h>
 
 namespace paddle {
-namespace memory {
+namespace platform {
 
-template <class Place>
-void* Alloc(Place, size_t);
+//! Get the maximum allocation size for a machine.
+size_t CpuMaxAllocSize();
 
-template <class Place>
-void Free(Place, void*);
+//! Get the minimum chunk size for buddy allocator.
+size_t CpuMinChunkSize();
 
-template <class Place>
-size_t Used(Place);
+//! Get the maximum chunk size for buddy allocator.
+size_t CpuMaxChunkSize();
 
-}  // namespace memory
+}  // namespace platform
 }  // namespace paddle
