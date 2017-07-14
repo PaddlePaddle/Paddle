@@ -1,8 +1,6 @@
 #include "paddle/framework/op_registry.h"
 #include <gtest/gtest.h>
 
-using namespace paddle::framework;
-
 namespace paddle {
 namespace framework {
 class CosineOp : public OperatorBase {
@@ -21,12 +19,9 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
         .LargerThan(0.0);
-    AddType("cos");
     AddComment("This is cos op");
   }
 };
-
-REGISTER_OP(cos_sim, CosineOp, CosineOpProtoAndCheckerMaker);
 
 class MyTestOp : public OperatorBase {
  public:
@@ -48,17 +43,19 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     };
     AddAttr<int>("test_attr", "a simple test attribute")
         .AddCustomChecker(my_checker);
-    AddType("my_test_op");
     AddComment("This is my_test op");
   }
 };
-
-REGISTER_OP(my_test_op, MyTestOp, MyTestOpProtoAndCheckerMaker);
 }  // namespace framework
 }  // namespace paddle
 
+REGISTER_OP(cos_sim, paddle::framework::CosineOp,
+            paddle::framework::CosineOpProtoAndCheckerMaker);
+REGISTER_OP(my_test_op, paddle::framework::MyTestOp,
+            paddle::framework::MyTestOpProtoAndCheckerMaker);
+
 TEST(OpRegistry, CreateOp) {
-  OpDesc op_desc;
+  paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
   op_desc.add_inputs("aa");
   op_desc.add_outputs("bb");
@@ -69,8 +66,9 @@ TEST(OpRegistry, CreateOp) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(scale);
 
-  OpPtr op = OpRegistry::CreateOp(op_desc);
-  auto scope = std::make_shared<Scope>();
+  paddle::framework::OperatorPtr op =
+      paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto scope = std::make_shared<paddle::framework::Scope>();
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
   float scale_get = op->GetAttr<float>("scale");
@@ -78,7 +76,7 @@ TEST(OpRegistry, CreateOp) {
 }
 
 TEST(OpRegistry, IllegalAttr) {
-  OpDesc op_desc;
+  paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
   op_desc.add_inputs("aa");
   op_desc.add_outputs("bb");
@@ -90,7 +88,8 @@ TEST(OpRegistry, IllegalAttr) {
 
   bool caught = false;
   try {
-    OpPtr op __attribute__((unused)) = OpRegistry::CreateOp(op_desc);
+    paddle::framework::OperatorPtr op __attribute__((unused)) =
+        paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
     std::string msg = "larger_than check fail";
@@ -103,22 +102,25 @@ TEST(OpRegistry, IllegalAttr) {
 }
 
 TEST(OpRegistry, DefaultValue) {
-  OpDesc op_desc;
+  paddle::framework::OpDesc op_desc;
   op_desc.set_type("cos_sim");
   op_desc.add_inputs("aa");
   op_desc.add_outputs("bb");
 
   ASSERT_TRUE(op_desc.IsInitialized());
 
-  OpPtr op = OpRegistry::CreateOp(op_desc);
-  auto scope = std::make_shared<Scope>();
+  paddle::framework::OperatorPtr op =
+      paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto scope = std::make_shared<paddle::framework::Scope>();
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
   ASSERT_EQ(op->GetAttr<float>("scale"), 1.0);
 }
 
 TEST(OpRegistry, CustomChecker) {
-  OpDesc op_desc;
+  using namespace paddle::framework;
+
+  paddle::framework::OpDesc op_desc;
   op_desc.set_type("my_test_op");
   op_desc.add_inputs("ii");
   op_desc.add_outputs("oo");
@@ -126,7 +128,8 @@ TEST(OpRegistry, CustomChecker) {
   // attr 'test_attr' is not set
   bool caught = false;
   try {
-    OpPtr op __attribute__((unused)) = OpRegistry::CreateOp(op_desc);
+    paddle::framework::OperatorPtr op __attribute__((unused)) =
+        paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
     std::string msg = "Attribute 'test_attr' is required!";
@@ -144,7 +147,8 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_i(3);
   caught = false;
   try {
-    OpPtr op __attribute__((unused)) = OpRegistry::CreateOp(op_desc);
+    paddle::framework::OperatorPtr op __attribute__((unused)) =
+        paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
     std::string msg = "'test_attr' must be even!";
@@ -161,15 +165,10 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_name("test_attr");
   attr->set_type(paddle::framework::AttrType::INT);
   attr->set_i(4);
-  OpPtr op = OpRegistry::CreateOp(op_desc);
+  OperatorPtr op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::platform::CPUDeviceContext dev_ctx;
-  auto scope = std::make_shared<Scope>();
+  auto scope = std::make_shared<paddle::framework::Scope>();
   op->Run(scope, dev_ctx);
   int test_attr = op->GetAttr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

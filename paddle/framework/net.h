@@ -31,7 +31,6 @@ class PlainNetOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   PlainNetOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddType("plainnet_operator");
     AddComment("This is test op");
   }
 };
@@ -54,12 +53,12 @@ class PlainNetOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  */
 class Net : public OperatorBase {
  public:
-  /**
+  /*
    * @brief Add an Operator according to `def`.
    */
   virtual void AddOp(const OpDesc& def) = 0;
 
-  virtual void AddOp(const OpPtr& op) = 0;
+  virtual void AddOp(const OperatorPtr& op) = 0;
 };
 
 /**
@@ -94,11 +93,11 @@ class PlainNet : public Net {
   /**
    * @brief Add an operator by ptr
    */
-  void AddOp(const OpPtr& def) override;
+  void AddOp(const OperatorPtr& def) override;
 
  private:
   // the operators owned by `Network`.
-  std::vector<OpPtr> ops_;
+  std::vector<OperatorPtr> ops_;
 };
 
 }  // namespace framework
