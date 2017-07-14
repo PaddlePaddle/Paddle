@@ -352,8 +352,8 @@ void Argument::concat(const std::vector<Argument>& args,
     CHECK_GE(args.size(), static_cast<size_t>(endPos - startPos));
     for (int j = startPos; j < endPos; ++j) {
       const Argument& arg = args[j - startPos];
-      CHECK_EQ(arg.dataId, dataId) << "Arguments in concat should have the "
-                                   << "same dataId";
+      CHECK_EQ(arg.dataId, dataId) << "Arguments to concatenate should have "
+                                   << "the same dataId.";
       const int srcStartRow = selectRows[j];
       copyArg(in, arg.in, desStartRow, srcStartRow, copySize[i], useGpu);
       copyArg(value, arg.value, desStartRow, srcStartRow, copySize[i], useGpu);

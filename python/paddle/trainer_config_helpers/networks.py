@@ -1375,9 +1375,9 @@ def simple_attention(encoded_sequence,
         weight=attention_weight,
         input=encoded_sequence,
         name='%s_scaling' % name)
+
     return pooling_layer(
-        input=scaled, pooling_type=SumPooling(),
-        name="%s_pooling" % name), attention_weight
+        input=scaled, pooling_type=SumPooling(), name="%s_pooling" % name)
 
 
 def inputs(layers, *args):
