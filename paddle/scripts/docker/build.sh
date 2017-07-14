@@ -50,7 +50,6 @@ cmake .. \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
       -DWITH_TESTING=${WITH_TESTING:-OFF} \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-exit 1
 cat <<EOF
 ========================================
 Building in /paddle/build ...
