@@ -169,8 +169,7 @@ class RecurrentOp : public OperatorBase {
   /*
    * Link memory in previous step scope to current scope.
    */
-  void LinkMemories(ScopePtr scope, std::vector<ScopePtr>& step_scopes,
-                    size_t step) const;
+  void LinkMemories(std::vector<ScopePtr>& step_scopes, size_t step_id) const;
 
  private:
   /*
@@ -188,8 +187,6 @@ class RecurrentOp : public OperatorBase {
     // name of the variables to init this memory (same role of `boot_layer` in
     // PaddlePaddle), which is store in father's scope.
     std::string boot_var;
-    // this dim will infered from boot memories's tensor in the first step.
-    DDim dims;
   };
 
   /*
