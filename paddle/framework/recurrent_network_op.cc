@@ -13,11 +13,11 @@
    limitations under the License. */
 
 #include "paddle/framework/recurrent_network_op.h"
+#include "paddle/framework/tensor.h"
+// #include "paddle/framework/op_registry.h"
 
 #include <glog/logging.h>
 #include <cstring>
-
-#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -76,7 +76,7 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
   // prepare inlinks
   PADDLE_ENFORCE(inlinks_.empty(), "RecurrentOp duplicate inited");
   LOG(INFO) << "set inlinks";
-  for (auto id : GetAttr<std::vector<int>>("real_inputs")) {
+  for (auto id : GetAttr<std::vector<int>>("in_links")) {
     inlinks_.push_back(id);
   }
   PADDLE_ENFORCE(
@@ -124,26 +124,11 @@ void RecurrentOp::CreateScopes(ScopePtr scope) const {
   }
 }
 
-// void RecurrentOp::CreateStepNet(ScopePtr scope) const {
-//   Variable* var = scope->CreateVariable(net_name_);
-//   auto step_net = GetAttr<std::string>("step_net");
-//   // get the step net proto from the string.
-//   // PADDLE_ENFORCE(
-//   //   google::protobuf::TextFormat::ParseFromString(step_net,
-//   //   &step_net_desc_));
-//   // var->Reset<PlainNet>(new PlainNet(step_net_desc_));
-//   // this is a fake net, it will be rewrite after the network has been
-//   merged.
-//   NetDesc desc;
-//   desc.name_ = "rnn_step_net";
-//   var->Reset<PlainNet>(new PlainNet(desc));
-// }
-
 void RecurrentOp::SegmentInputs(ScopePtr scope) const {
-  PADDLE_ENFORCE(!inlinks_.empty(), "no real inputs are provided.");
-  auto input_alias = GetAttr<std::vector<std::string>>("input_alias");
-  PADDLE_ENFORCE(inlinks_.size() == input_alias.size(),
-                 "real_inputs/input_alias mismatch.");
+  PADDLE_ENFORCE(!inlinks_.empty(), "no in links are provided.");
+  auto inlink_alias = GetAttr<std::vector<std::string>>("in_link_alias");
+  PADDLE_ENFORCE(inlinks_.size() == inlink_alias.size(),
+                 "in_links/in_link_alias mismatch.");
 
   Variable* scopes_var = scope->GetVariable(step_scopes_name_);
   auto& step_scopes = *scopes_var->GetMutable<std::vector<ScopePtr>>();
@@ -157,7 +142,7 @@ void RecurrentOp::SegmentInputs(ScopePtr scope) const {
     const float* scope_input =
         Input(scope, inlinks_[i])->GetMutable<Tensor>()->data<float>();
     for (int j = 0; j < seq_len; j++) {
-      Variable* input_var = step_scopes[j]->CreateVariable(input_alias[i]);
+      Variable* input_var = step_scopes[j]->CreateVariable(inlink_alias[i]);
       Tensor* step_input_tensor = input_var->GetMutable<Tensor>();
       float* step_input = step_input_tensor->mutable_data<float>(
           make_ddim({batch_size, input_dim}), platform::CPUPlace());
@@ -167,9 +152,9 @@ void RecurrentOp::SegmentInputs(ScopePtr scope) const {
 }
 
 void RecurrentOp::ConcatOutputs(ScopePtr scope) const {
-  auto output_alias = GetAttr<std::vector<std::string>>("output_alias");
-  PADDLE_ENFORCE(outlinks_.size() == output_alias.size(),
-                 "output/output_alias mismatch.");
+  auto outlink_alias = GetAttr<std::vector<std::string>>("out_link_alias");
+  PADDLE_ENFORCE(outlinks_.size() == outlink_alias.size(),
+                 "out_links/out_link_alias mismatch.");
 
   Variable* scopes_var = scope->GetVariable(step_scopes_name_);
   auto& step_scopes = *scopes_var->GetMutable<std::vector<ScopePtr>>();
@@ -178,7 +163,7 @@ void RecurrentOp::ConcatOutputs(ScopePtr scope) const {
   int batch_size = dims[1];
   for (size_t i = 0; i < outlinks_.size(); i++) {
     auto output_dims = step_scopes[0]
-                           ->GetVariable(output_alias[0])
+                           ->GetVariable(outlink_alias[0])
                            ->GetMutable<Tensor>()
                            ->dims();
     int output_dim = output_dims[1];
@@ -188,7 +173,7 @@ void RecurrentOp::ConcatOutputs(ScopePtr scope) const {
     float* output = output_tensor->mutable_data<float>(
         make_ddim({seq_len, batch_size, output_dim}), platform::CPUPlace());
     for (int j = 0; j < seq_len; j++) {
-      Variable* output_var = step_scopes[j]->GetVariable(output_alias[i]);
+      Variable* output_var = step_scopes[j]->GetVariable(outlink_alias[i]);
       const float* step_output =
           output_var->GetMutable<Tensor>()->data<float>();
       std::memcpy(output + j * length, step_output, length);
@@ -243,6 +228,38 @@ void RecurrentOp::LinkMemories(ScopePtr scope,
     }
   }
 }
+
+// TODO testing when including operator.h
+
+// class RecurrentOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+//  public:
+//   RecurrentOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
+//       : OpProtoAndCheckerMaker(proto, op_checker) {
+//     // AddInput("input", "input of test op"); // need to support dynamic
+//     number
+//     // AddOutput("output", "output of test op"); // need to support dynamic
+//     number
+//     AddAttr<std::std::vector<int>>("in_links", "The input link positions in
+//     the all inputs.")
+//         .SetDefault({0});
+//     AddAttr<std::std::vector<int>>("boot_memories", "The initial memory
+//     positions in the all inputs.");
+//     AddAttr<int>("step_net", "The step net position in the all inputs.");
+//
+//     AddAttr<std::std::vector<std::string>>("in_link_alias", "The input link
+//     alias in the step network.");
+//     AddAttr<std::std::vector<std::string>>("out_link_alias", "The output link
+//     alias in the step network.");
+//     AddAttr<std::std::vector<std::string>>("memories", "The memory names.");
+//     AddAttr<std::std::vector<std::string>>("pre_memories", "The
+//     history/previous memory names.");
+//
+//     AddType("recurrent_op");
+//     AddComment("This is a recurrent group operator.");
+//   }
+// };
+//
+// REGISTER_OP(recurrent_op, RecurrentOp, RecurrentOpProtoAndCheckerMaker);
 
 }  // namespace framework
 }  // namespace paddle

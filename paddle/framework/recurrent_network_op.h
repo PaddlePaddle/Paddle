@@ -21,9 +21,7 @@
 #include "paddle/framework/scope.h"
 #include "paddle/framework/variable.h"
 
-// Remove when including operator.h
 #include <glog/logging.h>
-#include "paddle/framework/attr_checker.h"
 #include "paddle/framework/op_desc.pb.h"
 
 namespace paddle {
@@ -200,6 +198,11 @@ class RecurrentOp : public OperatorBase {
    *       name: "memories"
    *       strings: "hidden"
    *       strings: "state"
+   *   }
+   *   arg {
+   *       name: “pre_memories"
+   *       strings: "pre_hidden"
+   *       strings: "pre_state"
    *   }
    *   arg {
    *       name: “boot_memories"

@@ -149,19 +149,19 @@ class RecurrentOpTest : public ::testing::Test {
     auto input_attr = op_desc.mutable_attrs()->Add();
     input_attr->set_type(paddle::framework::AttrType::INTS);
     *input_attr->mutable_ints()->Add() = 0;
-    input_attr->set_name("real_inputs");
+    input_attr->set_name("in_links");
 
     // add input alias, this alias is used in step net.
     auto input_alias_attr = op_desc.mutable_attrs()->Add();
     input_alias_attr->set_type(paddle::framework::AttrType::STRINGS);
     *input_alias_attr->mutable_strings()->Add() = "rnn/x";
-    input_alias_attr->set_name("input_alias");
+    input_alias_attr->set_name("in_link_alias");
 
     // add output alias, this alias is used in step net.
     auto output_alias_attr = op_desc.mutable_attrs()->Add();
     output_alias_attr->set_type(paddle::framework::AttrType::STRINGS);
     *output_alias_attr->mutable_strings()->Add() = "rnn/h";
-    output_alias_attr->set_name("output_alias");
+    output_alias_attr->set_name("out_link_alias");
 
     // add memories
     auto memories_attr = op_desc.mutable_attrs()->Add();
@@ -187,28 +187,15 @@ class RecurrentOpTest : public ::testing::Test {
     step_net_attr->set_i(2);
     step_net_attr->set_name("step_net");
 
-    // add step scopes
-    auto step_scopes_attr = op_desc.mutable_attrs()->Add();
-    step_scopes_attr->set_type(paddle::framework::AttrType::INT);
-    step_scopes_attr->set_i(3);
-    step_scopes_attr->set_name("step_scopes");
-
-    // std::ostringstream stream;
-    // op_desc.SerializeToOstream(&stream);
-    // std::string text = stream.str();
-    // LOG(INFO) << text;
-
     AttributeMap attrs;
-    attrs["real_inputs"] = std::vector<int>{0};
-    attrs["input_alias"] = std::vector<std::string>{"rnn/x"};
-    attrs["output_alias"] = std::vector<std::string>{"rnn/h"};
+    attrs["in_links"] = std::vector<int>{0};
+    attrs["in_link_alias"] = std::vector<std::string>{"rnn/x"};
+    attrs["out_link_alias"] = std::vector<std::string>{"rnn/h"};
     attrs["memories"] = std::vector<std::string>{"rnn/h"};
     attrs["pre_memories"] = std::vector<std::string>{"h_pre"};
     attrs["boot_memories"] = std::vector<int>{1};
     attrs["step_net"] = 2;
-    attrs["step_scopes"] = 3;
 
-    // TODO
     LOG(INFO) << "rnn_op to init";
     rnn_op_.Init(op_desc, attrs);
     LOG(INFO) << "rnn_op finish init";
