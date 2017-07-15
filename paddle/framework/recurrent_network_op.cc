@@ -14,7 +14,6 @@
 
 #include "paddle/framework/recurrent_network_op.h"
 #include "paddle/framework/tensor.h"
-// #include "paddle/framework/op_registry.h"
 
 #include <glog/logging.h>
 #include <cstring>
@@ -40,7 +39,6 @@ void RecurrentOp::Run(OpContext* contex) const {
   auto step_scopes = GetStepScopes(scope);
   for (size_t step_id = 0; step_id < max_seq_len; step_id++) {
     LOG(INFO) << "run step " << step_id;
-    // TODO replace memorys' copy with reference
     LinkMemories(step_scopes, step_id);
 
     net->GetMutable<PlainNet>()->Run(step_scopes[step_id]);
@@ -72,12 +70,24 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
   PADDLE_ENFORCE(inlinks_.empty(), "RecurrentOp duplicate inited");
   LOG(INFO) << "set inlinks";
   for (auto id : GetAttr<std::vector<int>>("in_links")) {
-    inlinks_.push_back(id);
+    inlinks_.push_back(inputs_[id]);
   }
+  auto inlink_alias = GetAttr<std::vector<std::string>>("in_link_alias");
+  in_link_alias_ =
+      std::vector<std::string>{inlink_alias.begin(), inlink_alias.end()};
+  PADDLE_ENFORCE(inlinks_.size() == in_link_alias_.size(),
+                 "in_links/in_link_alias mismatch.");
+
   PADDLE_ENFORCE(
       outputs_.size() > 1,
       "more than 1 output should be provided and the last is `step_scopes`");
   outlinks_ = std::vector<std::string>{outputs_.begin(), outputs_.end() - 1};
+
+  auto outlink_alias = GetAttr<std::vector<std::string>>("out_link_alias");
+  out_link_alias_ =
+      std::vector<std::string>{outlink_alias.begin(), outlink_alias.end()};
+  PADDLE_ENFORCE(outlinks_.size() == outlink_alias.size(),
+                 "out_links/out_link_alias mismatch.");
 
   // set memories
   auto memories = GetAttr<std::vector<std::string>>("memories");
@@ -126,17 +136,13 @@ void RecurrentOp::CreateScopes(ScopePtr scope) const {
 
 void RecurrentOp::SegmentInputs(ScopePtr scope) const {
   PADDLE_ENFORCE(!inlinks_.empty(), "no in links are provided.");
-  auto inlink_alias = GetAttr<std::vector<std::string>>("in_link_alias");
-  PADDLE_ENFORCE(inlinks_.size() == inlink_alias.size(),
-                 "in_links/in_link_alias mismatch.");
-
   auto step_scopes = GetStepScopes(scope);
   size_t max_seq_len = GetMaxSeqLen(scope);
   for (size_t i = 0; i < inlinks_.size(); ++i) {
     Tensor* scope_input_tensor =
         Input(scope, inlinks_[i])->GetMutable<Tensor>();
     for (size_t j = 0; j < max_seq_len; j++) {
-      Variable* input_var = step_scopes[j]->CreateVariable(inlink_alias[i]);
+      Variable* input_var = step_scopes[j]->CreateVariable(in_link_alias_[i]);
       Tensor* step_input_tensor = input_var->GetMutable<Tensor>();
       *step_input_tensor = scope_input_tensor->Slice(j, j + 1);
       // TODO (luotao1): use reshape function to decrease the dims of
@@ -146,10 +152,6 @@ void RecurrentOp::SegmentInputs(ScopePtr scope) const {
 }
 
 void RecurrentOp::ConcatOutputs(ScopePtr scope) const {
-  auto outlink_alias = GetAttr<std::vector<std::string>>("out_link_alias");
-  PADDLE_ENFORCE(outlinks_.size() == outlink_alias.size(),
-                 "out_links/out_link_alias mismatch.");
-
   auto step_scopes = GetStepScopes(scope);
   size_t max_seq_len = GetMaxSeqLen(scope);
   // TODO (luotao1): update using CopyFrom function in tensor.
@@ -157,7 +159,7 @@ void RecurrentOp::ConcatOutputs(ScopePtr scope) const {
   int batch_size = dims[1];
   for (size_t i = 0; i < outlinks_.size(); i++) {
     auto output_dims = step_scopes[0]
-                           ->GetVariable(outlink_alias[0])
+                           ->GetVariable(out_link_alias_[0])
                            ->GetMutable<Tensor>()
                            ->dims();
     int output_dim = output_dims[1];
@@ -168,7 +170,7 @@ void RecurrentOp::ConcatOutputs(ScopePtr scope) const {
         make_ddim({(int)max_seq_len, batch_size, output_dim}),
         platform::CPUPlace());
     for (size_t j = 0; j < max_seq_len; j++) {
-      Variable* output_var = step_scopes[j]->GetVariable(outlink_alias[i]);
+      Variable* output_var = step_scopes[j]->GetVariable(out_link_alias_[i]);
       const float* step_output =
           output_var->GetMutable<Tensor>()->data<float>();
       std::memcpy(output + j * length, step_output, length);
@@ -203,7 +205,7 @@ void RecurrentOp::LinkMemories(std::vector<ScopePtr>& step_scopes,
       pre_memory_tensor->ShareDataFrom(*pre_step_memory);
     }
 
-    // TODO the memory of current step should be allocated in step net ?
+    // TODO the memory of current step should be allocated in step net
     Tensor* cur_memory_tensor =
         step_scopes[step_id]->CreateVariable(attr.var)->GetMutable<Tensor>();
     cur_memory_tensor->mutable_data<float>(pre_memory_tensor->dims(),

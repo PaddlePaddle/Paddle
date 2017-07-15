@@ -111,7 +111,6 @@ class RecurrentOpTest : public ::testing::Test {
     Variable* x = scope_->CreateVariable("x");
     DDim dims = make_ddim(std::vector<int>{10 /*sent size*/, 20 /*batch size*/,
                                            30 /*input dim*/});
-    // TODO mutable_data is not valid
     x->GetMutable<Tensor>()->mutable_data<float>(dims, platform::CPUPlace());
 
     LOG(INFO) << "create global variable w";
@@ -139,7 +138,6 @@ class RecurrentOpTest : public ::testing::Test {
     op_desc.add_inputs("x");
     op_desc.add_inputs("h_boot");    // initial memory
     op_desc.add_inputs("step_net");  // step net
-    // TODO put the step_scopes in the outputs
     // output hidden vectors
     op_desc.add_outputs("h");
     op_desc.add_outputs("step_scopes");  // step scopes

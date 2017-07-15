@@ -41,8 +41,8 @@ class OperatorBase {
   void Init(const OpDesc& op_desc, AttributeMap& attrs) { attrs_ = attrs; }
   virtual void Run(OpContext* context) const = 0;
   virtual void InferShape(ScopePtr scope) const = 0;
-  inline Variable* Input(ScopePtr scope, int index) const {
-    return scope->GetVariable(inputs_[index]);
+  inline Variable* Input(ScopePtr scope, std::string name) const {
+    return scope->GetVariable(name);
   };
 
   template <typename T>
@@ -58,7 +58,6 @@ class OperatorBase {
   AttributeMap attrs_;
 };
 
-// TODO replace this with Net's proto.
 struct NetDesc {
   std::string name_;
   std::vector<OpDesc> op_descs;
@@ -98,18 +97,25 @@ class PlainNet {
 
 /*
  * RecurrentOp inputs stored in proto:
- * - real inputs that need to be segmented to steps.
+ * - in_links : real inputs that need to be segmented to steps.
  * - boot memories
+ * - all weights in step net
  * - step net
  *
  * outputs:
- * - real outputs
+ * - out_links : real outputs
  * - step scopes
  *
  * Attributes stored in AttributeMap:
- * - real_inputs: vector<int>
+ * - in_links: vector<int>
  * - boot_memories: vector<int>
  * - step_net: int
+ * - in_link_alias: vector<string>  the alias of in_links in step net.
+ * - out_link_alias: vector<string> the alias of out_links in step net
+ * - memories: vector<string> the memory names
+ * - pre_memories: vector<string> the previous memory names
+ *
+ * see RecurrentOpProtoAndCheckerMaker
  */
 
 class RecurrentOp : public OperatorBase {
@@ -210,7 +216,6 @@ class RecurrentOp : public OperatorBase {
    *       strings: "boot_state"
    *   }
    */
-  // TODO copy from OpBase's
   mutable std::vector<MemoryAttr> memory_attrs_;
 
   // name of rnn op's step net, the step net will be shared by both `Forward`
@@ -221,8 +226,11 @@ class RecurrentOp : public OperatorBase {
   // specified by `step_scopes_name_`.
   std::string step_scopes_name_;
   // real inputs that need to be segmented.
-  std::vector<int> inlinks_;
+  std::vector<std::string> inlinks_;
   std::vector<std::string> outlinks_;
+
+  std::vector<std::string> in_link_alias_;
+  std::vector<std::string> out_link_alias_;
 };
 
 class RecurrentGradientOp;
