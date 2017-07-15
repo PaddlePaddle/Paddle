@@ -152,6 +152,6 @@ MemoryBlock* MemoryBlock::metadata() const {
       reinterpret_cast<const Metadata*>(this) - 1));
 }
 
-}  // detail
-}  // memory
-}  // paddle
+}  // namespace detail
+}  // namespace memory
+}  // namespace paddle
