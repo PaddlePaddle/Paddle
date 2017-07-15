@@ -24,16 +24,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-using namespace paddle::platform;
-
 /**
  * @brief Network is also a type of Operator
  *
  * It will manage the operators it has.
  *
- * Network is the container and controller of a set of operators, user can build
- * a real network from a NetDesc which is a protobuf message and use
- * Network.Run() * to run all the operators in the network.
+ * Network is the container and controller of a set of operators.
 
  * A network object knows all Operators belonging to this network. Variables,
  * which are inputs and outputs of these operators, are created and managed by a
@@ -44,13 +40,11 @@ using namespace paddle::platform;
  */
 class Net : public OperatorBase {
  public:
-  /*
-   * @brief Add an Operator according to `def`.
-   */
-  virtual void AddOp(const OpDesc& def) = 0;
-
   virtual void AddOp(const OperatorPtr& op) = 0;
+  virtual void CompleteAddOp() = 0;
 };
+
+using NetPtr = std::shared_ptr<Net>;
 
 /**
  * @brief a basic implementation of Net.
@@ -64,7 +58,11 @@ class PlainNet : public Net {
    * Infer all the operators' input and output variables' shapes, will be called
    * before every mini-batch
    */
-  void InferShape(const ScopePtr& scope) const override;
+  void InferShape(const ScopePtr& scope) const override {
+    for (auto& op : ops_) {
+      op->InferShape(scope);
+    }
+  }
 
   /**
    * @brief Run the network.
@@ -74,21 +72,31 @@ class PlainNet : public Net {
    * will be used.
    */
   void Run(const ScopePtr& scope,
-           const platform::DeviceContext& dev_ctx) const override;
-
-  /**
-   * @brief Add an Operator by OpDesc.
-   */
-  void AddOp(const OpDesc& def) override;
+           const platform::DeviceContext& dev_ctx) const override {
+    for (auto& op : ops_) {
+      op->Run(scope, dev_ctx);
+    }
+  }
 
   /**
    * @brief Add an operator by ptr
    */
-  void AddOp(const OperatorPtr& def) override;
+  void AddOp(const OperatorPtr& op) override {
+    PADDLE_ENFORCE(!add_op_done_, "Cannot AddOp when this network is sealed");
+    ops_.push_back(op);
+  }
+
+  void CompleteAddOp() override;
+
+  std::vector<OperatorPtr> ops_;
 
  private:
-  // the operators owned by `Network`.
-  std::vector<OperatorPtr> ops_;
+  bool add_op_done_{false};
+
+  template <typename T, typename KeyType>
+  static bool Contains(T container, KeyType key) {
+    return container.find(key) != container.end();
+  }
 };
 
 }  // namespace framework

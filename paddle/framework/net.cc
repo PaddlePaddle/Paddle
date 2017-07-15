@@ -3,33 +3,40 @@
 namespace paddle {
 namespace framework {
 
-void PlainNet::AddOp(const OpDesc& desc) {
-  ops_.push_back(OpRegistry::CreateOp(desc));
-}
-
-void PlainNet::AddOp(const OperatorPtr& op) { ops_.push_back(op); }
-
-void PlainNet::InferShape(const ScopePtr& scope) const {
+void PlainNet::CompleteAddOp() {
+  std::unordered_set<std::string> input_set;
+  std::unordered_set<std::string> output_set;
+  std::unordered_set<std::string> temp_output;
   for (auto& op : ops_) {
-    op->InferShape(scope);
+    for (auto& ipt : op->inputs_) {
+      if (!Contains(output_set, ipt)) {  // Not other op's output
+        input_set.insert(ipt);
+      } else {
+        temp_output.insert(ipt);
+      }
+    }
+
+    for (auto& opt : op->outputs_) {
+      output_set.insert(opt);
+    }
   }
+  inputs_.reserve(input_set.size());
+  std::copy(input_set.begin(), input_set.end(), std::back_inserter(inputs_));
+
+  outputs_.reserve(output_set.size());
+  std::vector<int> tmp_index;
+  tmp_index.reserve(temp_output.size());
+  int idx = 0;
+  for (auto& opt : output_set) {
+    if (Contains(temp_output, opt)) {
+      tmp_index.push_back(idx);
+    }
+    outputs_.push_back(opt);
+    ++idx;
+  }
+
+  attrs_["temporary_index"] = tmp_index;
 }
 
-void PlainNet::Run(const ScopePtr& scope, const DeviceContext& ctx) const {
-  for (auto& op : ops_) {
-    op->Run(scope, ctx);
-  }
-}
-
-class PlainNetOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
- public:
-  PlainNetOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddComment("This is test op");
-  }
-};
 }  // namespace framework
 }  // namespace paddle
-
-REGISTER_OP(plainnet_operator, paddle::framework::PlainNet,
-            paddle::framework::PlainNetOpProtoAndCheckerMaker);

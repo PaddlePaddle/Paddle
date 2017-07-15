@@ -62,11 +62,8 @@ class OperatorBase {
   virtual void Run(const ScopePtr& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
- protected:
-  std::string Type() const { return desc_.type(); }
-
  public:
-  OpDesc desc_;
+  std::string type_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
   AttributeMap attrs_;
@@ -142,7 +139,7 @@ class OperatorWithKernel : public OperatorBase {
 
   void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const final {
-    auto& opKernel = AllOpKernels().at(Type()).at(OpKernelKey(dev_ctx));
+    auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
     opKernel->Compute(OpKernel::KernelContext(this, scope, dev_ctx));
   }
 
