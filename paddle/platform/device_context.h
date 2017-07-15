@@ -12,15 +12,16 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/platform/enforce.h"
+#include "paddle/platform/place.h"
+
 #ifndef PADDLE_ONLY_CPU
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/dynload/curand.h"
-#include "paddle/platform/error.h"
 #include "paddle/platform/gpu_info.h"
 #define EIGEN_USE_GPU
 #endif
-#include <paddle/platform/place.h>
+
 #include <memory>
 #include <unsupported/Eigen/CXX11/Tensor>
 

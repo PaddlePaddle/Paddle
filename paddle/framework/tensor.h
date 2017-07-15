@@ -18,8 +18,8 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include "paddle/framework/ddim.h"
-#include "paddle/platform/enforce.h"
 #include "paddle/memory/memory.h"
+#include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 
 namespace paddle {
