@@ -41,7 +41,7 @@ paddle::optimizer::Tensor* FixedTensor(size_t size) {
 
 class OptimizerTest : public testing::Test {
 public:
-  virtual ~OptimizerTest();
+  virtual ~OptimizerTest() {}
   // init paddle::optimizer::Tensor shape
   const size_t kSize = 5;
 
