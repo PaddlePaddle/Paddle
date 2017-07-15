@@ -72,7 +72,7 @@ TEST(Tensor, MutableData) {
     p2 = src_tensor.mutable_data<float>(make_ddim({2, 2}), CPUPlace());
     EXPECT_EQ(p1, p2);
   }
-  /*
+    #ifdef __CUDACC__
     {
       Tensor src_tensor;
       float* p1 = nullptr;
@@ -94,7 +94,7 @@ TEST(Tensor, MutableData) {
       p2 = src_tensor.mutable_data<float>(make_ddim({2, 2}), GPUPlace());
       EXPECT_EQ(p1, p2);
     }
-    */
+    #endif
 }
 
 TEST(Tensor, ShareDataFrom) {
@@ -123,7 +123,7 @@ TEST(Tensor, ShareDataFrom) {
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 
-  /*
+  #ifdef __CUDACC__
     {
       Tensor src_tensor;
       Tensor dst_tensor;
@@ -131,7 +131,7 @@ TEST(Tensor, ShareDataFrom) {
       dst_tensor.ShareDataFrom<int>(src_tensor);
       ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
     }
-    */
+    #endif
 }
 
 TEST(Tensor, Slice) {
@@ -160,7 +160,7 @@ TEST(Tensor, Slice) {
     EXPECT_EQ(src_data_address + 3 * 4 * 1 * sizeof(int), slice_data_address);
   }
 
-  /*
+  #ifdef __CUDACC__
     {
       Tensor src_tensor;
       src_tensor.mutable_data<double>(make_ddim({6, 9}), GPUPlace());
@@ -182,7 +182,7 @@ TEST(Tensor, Slice) {
       EXPECT_EQ(slice_data_address, slice_mutable_data_address);
       EXPECT_EQ(src_data_address + 9 * 2 * sizeof(double), slice_data_address);
     }
-    */
+    #endif
 }
 
 TEST(Tensor, CopyFrom) {
