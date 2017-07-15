@@ -51,6 +51,7 @@ class Tensor {
         !(holder_->place() ==
           place) /* some versions of boost::variant don't have operator!= */
         || holder_->size() < numel_ * sizeof(T) + offset_) {
+#ifdef __CUDACC__
       switch (place.which()) {
         case 0:
           holder_.reset(new PlaceholderImpl<T, platform::GPUPlace>(
@@ -62,6 +63,10 @@ class Tensor {
               boost::get<platform::CPUPlace>(place), numel_ * sizeof(T)));
           break;
       }
+#else
+      holder_.reset(new PlaceholderImpl<T, platform::CPUPlace>(
+          boost::get<platform::CPUPlace>(place), numel_ * sizeof(T)));
+#endif
 
       offset_ = 0;
     }
