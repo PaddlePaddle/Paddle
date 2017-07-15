@@ -78,7 +78,7 @@ class EnforceNotMet : public std::exception {
 
 template <typename... Args>
 inline void throw_on_error(cudaError_t e, const Args&... args) {
-  if (UNLIKELY(!(e))) {
+  if (e) {
     std::stringstream ss;
     ss << ::paddle::string::Sprintf(args...);
     ss << ::paddle::string::Sprintf(" at [%s:%s];", __FILE__, __LINE__);
