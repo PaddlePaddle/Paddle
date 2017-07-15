@@ -139,12 +139,11 @@ void RecurrentOp::SegmentInputs(ScopePtr scope) const {
   auto step_scopes = GetStepScopes(scope);
   size_t max_seq_len = GetMaxSeqLen(scope);
   for (size_t i = 0; i < inlinks_.size(); ++i) {
-    Tensor* scope_input_tensor =
-        Input(scope, inlinks_[i])->GetMutable<Tensor>();
+    Tensor* input_tensor = Input(scope, inlinks_[i])->GetMutable<Tensor>();
     for (size_t j = 0; j < max_seq_len; j++) {
       Variable* input_var = step_scopes[j]->CreateVariable(in_link_alias_[i]);
       Tensor* step_input_tensor = input_var->GetMutable<Tensor>();
-      *step_input_tensor = scope_input_tensor->Slice(j, j + 1);
+      *step_input_tensor = input_tensor->Slice<float>(j, j + 1);
       // TODO (luotao1): use reshape function to decrease the dims of
       // step_input_tensor.
     }
@@ -196,13 +195,13 @@ void RecurrentOp::LinkMemories(std::vector<ScopePtr>& step_scopes,
           step_scope->CreateVariable(attr.boot_var)->GetMutable<Tensor>();
       PADDLE_ENFORCE(boot_tensor, "boot_tensor should be retrieved before");
       // copy from boot memory
-      pre_memory_tensor->ShareDataFrom(*boot_tensor);
+      pre_memory_tensor->ShareDataFrom<float>(*boot_tensor);
     } else {
       // copy from previous step scope's memory to this scope's
       // `pre - memory`
       Tensor* pre_step_memory =
           step_scopes[step_id - 1]->GetVariable(attr.var)->GetMutable<Tensor>();
-      pre_memory_tensor->ShareDataFrom(*pre_step_memory);
+      pre_memory_tensor->ShareDataFrom<float>(*pre_step_memory);
     }
 
     // TODO the memory of current step should be allocated in step net
