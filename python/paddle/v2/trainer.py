@@ -2,12 +2,6 @@
 Module Trainer
 """
 import collections
-import gzip
-import os
-
-import py_paddle.swig_paddle as api
-
-from data_feeder import DataFeeder
 from topology import Topology
 from . import event as v2_event
 from . import optimizer as v2_optimizer
@@ -59,6 +53,7 @@ class SGD(object):
         if not isinstance(update_equation, v2_optimizer.Optimizer):
             raise TypeError("update equation parameter must be "
                             "paddle.v2.optimizer.Optimizer")
+        import py_paddle.swig_paddle as api
         topology = Topology(cost, extra_layers=extra_layers)
         self.__optimizer__ = update_equation
         self.__topology__ = topology
@@ -124,6 +119,8 @@ class SGD(object):
         :type feeding: dict|list
         :return:
         """
+        import py_paddle.swig_paddle as api
+        from data_feeder import DataFeeder
         if event_handler is None:
             event_handler = default_event_handler
         __check_train_args__(**locals())
@@ -187,6 +184,8 @@ class SGD(object):
         :type feeding: dict
         :return:
         """
+        import py_paddle.swig_paddle as api
+        from data_feeder import DataFeeder
         feeder = DataFeeder(self.__data_types__, feeding)
         evaluator = self.__gradient_machine__.makeEvaluator()
         out_args = api.Arguments.createArguments(0)
