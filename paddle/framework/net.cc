@@ -36,6 +36,7 @@ void PlainNet::CompleteAddOp() {
   }
 
   attrs_["temporary_index"] = tmp_index;
+  add_op_done_ = true;
 }
 
 }  // namespace framework
