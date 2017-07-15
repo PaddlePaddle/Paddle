@@ -17,6 +17,25 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+inline const std::string& OperatorBase::Input(const std::string& name) const {
+  if (arg_idxs_.empty()) {
+    int idx = 0;
+    for (const auto& arg : desc_.inputs()) {
+      arg_idxs_[arg] = idx;
+    }
+    for (const auto& arg : desc_.outputs()) {
+      arg_idxs_[arg] = idx;
+    }
+  }
+  if (attrs_.count("input_format") == 0) {
+    return inputs_[arg_idxs_.at(name)];
+  } else {
+    const auto& input_format = GetAttr<std::vector<int>>("input_format");
+    int idx = input_format[arg_idxs_.at(name)];
+    return inputs_.at(idx);
+  }
+}
+
 std::string OperatorBase::DebugString() const {
   std::stringstream ss;
   ss << "=================\n";

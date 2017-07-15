@@ -62,6 +62,15 @@ class OperatorBase {
   virtual void Run(const std::shared_ptr<Scope>& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
+  // Get a input with argument's name described in `op_desc`
+  const std::string& Input(const std::string& name) const;
+  // Get a input which has multiple variables.
+  std::vector<std::string> Inputs(const std::string& name) const;
+  // Get a output with argument's name described in `op_desc`
+  const std::string& Output(const std::string& name) const;
+  // Get an output which has multiple variables.
+  std::vector<std::string> Outputs(const std::string& name) const;
+
  protected:
   std::string Type() const { return desc_.type(); }
 
@@ -70,6 +79,8 @@ class OperatorBase {
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
   AttributeMap attrs_;
+  // store the arguments' offset described in op_desc.
+  std::unordered_map<std::string, int> arg_idxs_;
 };
 
 class OpKernel {
