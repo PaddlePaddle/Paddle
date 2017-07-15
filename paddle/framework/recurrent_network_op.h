@@ -85,6 +85,27 @@ class PlainNet {
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 };
 
+namespace details {
+
+/*
+ * Memory of a RNN (same as the role of `Momory` in PaddlePaddle).
+ *
+ * Memory attributes cached by this op, dims will be infered from
+ * boot memories in father scope. Other attributes are copied from Op's proto
+ * attributes.
+ */
+struct MemoryAttr {
+  // name of current state variable
+  std::string var;
+  // name of previous step's state variable
+  std::string pre_var;
+  // name of the variables to init this memory (same role of `boot_layer` in
+  // PaddlePaddle), which is store in father's scope.
+  std::string boot_var;
+};
+
+};  // namespace details
+
 // fake interfaces end
 // --------------------------------------------------------------------
 // The sequence format in RecurrentOp is Tensor<seq_len, batch_size, dim> now.
@@ -179,23 +200,6 @@ class RecurrentOp : public OperatorBase {
 
  private:
   /*
-   * Memory of a RNN (same as the role of `Momory` in PaddlePaddle).
-   *
-   * Memory attributes cached by this op, dims will be infered from
-   * boot memories in father scope. Other attributes are copied from Op's proto
-   * attributes.
-   */
-  struct MemoryAttr {
-    // name of current state variable
-    std::string var;
-    // name of previous step's state variable
-    std::string pre_var;
-    // name of the variables to init this memory (same role of `boot_layer` in
-    // PaddlePaddle), which is store in father's scope.
-    std::string boot_var;
-  };
-
-  /*
    * The attributes in protobuf about the memory description and the initial
    * memory description are as follows. The number of initial memories should
    * equal to the memories number.
@@ -216,7 +220,7 @@ class RecurrentOp : public OperatorBase {
    *       strings: "boot_state"
    *   }
    */
-  mutable std::vector<MemoryAttr> memory_attrs_;
+  mutable std::vector<details::MemoryAttr> memory_attrs_;
 
   // name of rnn op's step net, the step net will be shared by both `Forward`
   // and `Backward`, so we store it as a variable in father's scope, with a
@@ -233,7 +237,39 @@ class RecurrentOp : public OperatorBase {
   std::vector<std::string> out_link_alias_;
 };
 
-class RecurrentGradientOp;
+/*
+ * RNN's backward alogorithm.
+ *
+ * To accelerate the development of RecurrentBackwardOp, we decouple RNN's
+ * algorithm and `RecurrentBackwardAlgorithm`, the former contains the core
+ * implementation of a RNN, and will keep stable even if the framework changes a
+ * lot, and the latter is a wrapper acts like an dapter for it to make RNN an
+ * operator.
+ */
+class RecurrentBackwardAlgorithm {
+ public:
+ private:
+  // stepnet for backward
+  // NOTE this stepnet is created by others and should insert AddOp for its
+  // weights gradient updating, RNN backward just run it.
+  std::string stepnet_name_;
+  // step scopes that shared by both the forward and backward operators.
+  std::string step_scopes_name_;
+
+  // inputs(gradients of forward operator's outputs) that need to be segmented
+  // for each step.
+  std::vector<std::string> inlinks_;
+  // outputs(gradients of forward operator's inputs) of each step that need to
+  // be concated.
+  std::vector<std::string> outlinks_;
+
+  // alias to avoid duplicate keys in scopes.
+  std::vector<std::string> inlink_alias_;
+  std::vector<std::string> outlink_alias_;
+
+  // NOTE the first step's boot memories' gradients should be outputed.
+  std::vector<details::MemoryAttr> memories_;
+};
 
 }  // namespace framework
 }  // namespace paddle
