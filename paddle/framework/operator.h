@@ -39,6 +39,13 @@ using OperatorPtr = std::shared_ptr<OperatorBase>;
  */
 class OperatorBase {
  public:
+  /// If a variable is a empty variable, that name will be used.
+  static std::string EMPTY_VAR_NAME() { return "@EMPTY@"; }
+
+  /// If a variable is a temporary variable, that name will be set in Python,
+  /// but it will be convert to a unique name in scope after OpCreator.
+  static std::string TMP_VAR_NAME() { return "@TEMP@"; }
+
   virtual ~OperatorBase() {}
 
   template <typename T>
@@ -62,7 +69,6 @@ class OperatorBase {
   virtual void Run(const ScopePtr& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
- protected:
   std::string Type() const { return desc_.type(); }
 
  public:

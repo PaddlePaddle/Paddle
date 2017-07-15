@@ -25,6 +25,8 @@ class Optimizer(object):
 
         self.__opt_conf_proto__ = config_parser_utils.parse_optimizer_config(
             __impl__)
+        if swig_api is None:
+            raise RuntimeError("paddle.v2 currently need swig_paddle")
         self.__opt_conf__ = swig_api.OptimizationConfig.createFromProto(
             self.__opt_conf_proto__)
 
