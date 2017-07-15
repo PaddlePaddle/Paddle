@@ -52,6 +52,7 @@ ExternalProject_Add(
 
 ADD_LIBRARY(glog STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET glog PROPERTY IMPORTED_LOCATION ${GLOG_LIBRARIES})
-ADD_DEPENDENCIES(glog extern_glog)
+ADD_DEPENDENCIES(glog extern_glog gflags)
+LINK_LIBRARIES(glog gflags)
 
 LIST(APPEND external_project_dependencies glog)

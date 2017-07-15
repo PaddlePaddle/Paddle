@@ -22,38 +22,64 @@ limitations under the License. */
 namespace paddle {
 namespace memory {
 
-void* Alloc(platform::Place pl, size_t size) {
-#ifndef PADDLE_ONLY_CPU
-  if (paddle::platform::is_gpu_place(pl)) {
-    size_t gpu_id = boost::get<platform::GPUPlace>(pl).device;
-    return detail::GetGPUBuddyAllocator(gpu_id)->Alloc(size);
+detail::BuddyAllocator* GetCPUBuddyAllocator() {
+  static detail::BuddyAllocator* a = nullptr;
+  if (a == nullptr) {
+    a = new detail::BuddyAllocator(new detail::CPUAllocator,
+                                   platform::CpuMinChunkSize(),
+                                   platform::CpuMaxChunkSize());
   }
-#endif  // PADDLE_ONLY_CPU
-  PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
-  return detail::GetCPUBuddyAllocator()->Alloc(size);
+  return a;
 }
 
-void Free(paddle::platform::Place pl, void* p) {
-#ifndef PADDLE_ONLY_CPU
-  if (paddle::platform::is_gpu_place(pl)) {
-    size_t gpu_id = boost::get<platform::GPUPlace>(pl).device;
-    detail::GetGPUBuddyAllocator(gpu_id)->Free(p);
-  }
-#endif  // PADDLE_ONLY_CPU
-  PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
-  detail::GetCPUBuddyAllocator()->Free(p);
+template <>
+void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
+  return GetCPUBuddyAllocator()->Alloc(size);
 }
 
-size_t Used(paddle::platform::Place pl) {
-#ifndef PADDLE_ONLY_CPU
-  if (paddle::platform::is_gpu_place(pl)) {
-    size_t gpu_id = boost::get<platform::GPUPlace>(pl).device;
-    return detail::GetGPUBuddyAllocator(gpu_id)->Used();
-  }
-#endif  // PADDLE_ONLY_CPU
-  PADDLE_ASSERT(paddle::platform::is_cpu_place(pl));
-  return detail::GetCPUBuddyAllocator()->Used();
+template <>
+void Free<platform::CPUPlace>(platform::CPUPlace place, void* p) {
+  GetCPUBuddyAllocator()->Free(p);
 }
+
+template <>
+size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
+  return GetCPUBuddyAllocator()->Used();
+}
+
+#ifndef PADDLE_ONLY_CPU
+
+detail::BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
+  static detail::BuddyAllocator** as = NULL;
+  if (as == NULL) {
+    int gpu_num = platform::GetDeviceCount();
+    as = new detail::BuddyAllocator*[gpu_num];
+    for (int gpu = 0; gpu < gpu_num; gpu++) {
+      platform::SetDeviceId(gpu);
+      as[gpu] = new detail::BuddyAllocator(new detail::GPUAllocator,
+                                           platform::GpuMinChunkSize(),
+                                           platform::GpuMaxChunkSize());
+    }
+  }
+  return as[gpu_id];
+}
+
+template <>
+void* Alloc<platform::GPUPlace>(platform::GPUPlace place, size_t size) {
+  return GetGPUBuddyAllocator(place.device)->Alloc(size);
+}
+
+template <>
+void Free<platform::GPUPlace>(platform::GPUPlace place, void* p) {
+  GetGPUBuddyAllocator(place.device)->Free(p);
+}
+
+template <>
+size_t Used<platform::GPUPlace>(platform::GPUPlace place) {
+  return GetGPUBuddyAllocator(place.device)->Used();
+}
+
+#endif  // PADDLE_ONLY_CPU
 
 }  // namespace memory
 }  // namespace paddle
