@@ -105,7 +105,7 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
                  "the size of memories and boot_memories doesn't match: %d,%d",
                  memories.size(), boot_memories.size());
   for (size_t i = 0; i < memories.size(); ++i) {
-    MemoryAttr mem_attr;
+    details::MemoryAttr mem_attr;
     mem_attr.var = memories[i];
     mem_attr.pre_var = pre_memories[i];
     mem_attr.boot_var = boot_memories[i];
