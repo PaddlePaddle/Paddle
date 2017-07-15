@@ -185,6 +185,10 @@ function(cc_library TARGET_NAME)
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     endif()
+    
+    # cpplint code style
+    add_style_check_target(${TARGET_NAME} ${cc_library_SRCS})
+
   else(cc_library_SRCS)
     if (cc_library_DEPS)
       merge_static_libs(${TARGET_NAME} ${cc_library_DEPS})
