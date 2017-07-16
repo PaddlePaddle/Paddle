@@ -139,6 +139,10 @@ struct MemoryAttr {
  * see RecurrentOpProtoAndCheckerMaker
  */
 
+class RecurrentAlgorithm {
+ public:
+};
+
 class RecurrentOp : public OperatorBase {
  public:
   /*
@@ -241,7 +245,7 @@ class RecurrentOp : public OperatorBase {
  * RNN's backward alogorithm.
  *
  * To accelerate the development of RecurrentBackwardOp, we decouple RNN's
- * algorithm and `RecurrentBackwardAlgorithm`, the former contains the core
+ * algorithm and `OperatorBase`'s implementation, the former contains the core
  * implementation of a RNN, and will keep stable even if the framework changes a
  * lot, and the latter is a wrapper acts like an dapter for it to make RNN an
  * operator.
