@@ -59,15 +59,12 @@ class EnforceNotMet : public std::exception {
 /**
  * @brief Enforce a condition, otherwise throw an EnforceNotMet
  */
-// #define PADDLE_ENFORCE(condition, ...) \
-//   do {                                 \
-//     if (UNLIKELY(!(condition))) {      \
-//       PADDLE_THROW(__VA_ARGS__);       \
-//     }                                  \
-//   } while (0)
-
 #define PADDLE_ENFORCE(condition, ...) \
-  CHECK(condition) << ::paddle::string::Sprintf(__VA_ARGS__);
+  do {                                 \
+    if (UNLIKELY(!(condition))) {      \
+      PADDLE_THROW(__VA_ARGS__);       \
+    }                                  \
+  } while (0)
 
 }  // namespace framework
 }  // namespace paddle
