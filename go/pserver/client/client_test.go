@@ -164,7 +164,7 @@ func testClient(t *testing.T, c *client.Client) {
 
 		wg.Add(1)
 		go func(gs []pserver.Gradient) {
-			err = c.SendGrads(gs)
+			err := c.SendGrads(gs)
 			if err != nil {
 				t.Fatal(err)
 			}

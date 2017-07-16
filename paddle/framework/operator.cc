@@ -20,7 +20,6 @@ namespace paddle {
 namespace framework {
 
 void OperatorBase::CreateArgumentOffsetMap(const OpProto& proto) {
-  LOG(INFO) << "init argument offset map";
   for (int i = 0; i < proto.inputs_size(); i++) {
     const auto& name = proto.inputs()[i].name();
     arg_idxs_[name] = i;

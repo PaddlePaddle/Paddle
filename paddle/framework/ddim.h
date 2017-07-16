@@ -27,7 +27,7 @@ struct DDim {
   DDim() : var(Dim<1>()) {}
 
   template <int D>
-  DDim(const Dim<D>& in) : var(in) {}
+  explicit DDim(const Dim<D>& in) : var(in) {}
 
   template <int D>
   DDim& operator=(const Dim<D>& in) {

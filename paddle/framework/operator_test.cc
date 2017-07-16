@@ -22,21 +22,63 @@ namespace framework {
 class OperatorTest : public OperatorBase {
  public:
   void Init() override { x = 1; }
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
-  void Run(const std::shared_ptr<Scope>& scope,
+  void InferShape(const ScopePtr& scope) const override {}
+  void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const override {
     float scale = GetAttr<float>("scale");
     ASSERT_NEAR(scale, 3.14, 1e-5);
     ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
     ASSERT_EQ(x, 1);
     ASSERT_NE(scope->GetVariable(outputs_[0]), nullptr);
-    ASSERT_EQ(Input("x"), "IN1");
-    ASSERT_EQ(Input("y"), "OUT1");
   }
 
  public:
   float x = 0;
 };
+
+class OperatorTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+ public:
+  OperatorTestProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("input", "input of test op");
+    AddOutput("output", "output of test op");
+    AddAttr<float>("scale", "scale of cosine op")
+        .SetDefault(1.0)
+        .LargerThan(0.0);
+    AddComment("This is test op");
+  }
+};
+
+}  // namespace framework
+}  // namespace paddle
+
+REGISTER_OP(test_operator, paddle::framework::OperatorTest,
+            paddle::framework::OperatorTestProtoAndCheckerMaker);
+
+TEST(OperatorBase, all) {
+  paddle::framework::OpDesc op_desc;
+  op_desc.set_type("test_operator");
+  *op_desc.mutable_inputs()->Add() = "IN1";
+  *op_desc.mutable_outputs()->Add() = "OUT1";
+  auto attr = op_desc.mutable_attrs()->Add();
+  attr->set_name("scale");
+  attr->set_type(paddle::framework::AttrType::FLOAT);
+  float scale = 3.14;
+  attr->set_f(scale);
+
+  paddle::platform::CPUDeviceContext device_context;
+  auto scope = std::make_shared<paddle::framework::Scope>();
+
+  paddle::framework::OperatorPtr op =
+      paddle::framework::OpRegistry::CreateOp(op_desc);
+  ASSERT_EQ(op->GetAttr<float>("scale"), scale);
+  scope->CreateVariable("OUT1");
+  op->Run(scope, device_context);
+  std::cout << op->DebugString() << std::endl;
+}
+
+namespace paddle {
+namespace framework {
 
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
@@ -133,9 +175,7 @@ REGISTER_OP_CPU_KERNEL(op_with_kernel, paddle::framework::CPUKernelTest);
 
 // test with single input
 TEST(OpKernel, all) {
-  using namespace paddle::framework;
-
-  OpDesc op_desc;
+  paddle::framework::OpDesc op_desc;
   op_desc.set_type("op_with_kernel");
   *op_desc.mutable_inputs()->Add() = "IN1";
   *op_desc.mutable_outputs()->Add() = "OUT1";
@@ -145,12 +185,11 @@ TEST(OpKernel, all) {
   attr->set_f(3.14);
 
   paddle::platform::CPUDeviceContext cpu_device_context;
-  auto scope = std::make_shared<Scope>();
+  auto scope = std::make_shared<paddle::framework::Scope>();
 
-  OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  paddle::framework::OperatorPtr op =
+      paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);
-
-  delete op;
 }
 
 REGISTER_OP(op_multi_inputs_with_kernel, paddle::framework::OpWithKernelTest,
@@ -193,8 +232,6 @@ TEST(OpKernel, multi_inputs) {
   paddle::platform::CPUDeviceContext cpu_device_context;
   auto scope = std::make_shared<Scope>();
 
-  OperatorBase* op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  OperatorPtr op(paddle::framework::OpRegistry::CreateOp(op_desc));
   op->Run(scope, cpu_device_context);
-
-  delete op;
 }
