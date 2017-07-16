@@ -62,11 +62,7 @@ TrainerConfigHelper::TrainerConfigHelper(const TrainerConfig &config)
   m->conf = config;
 }
 
-TrainerConfigHelper::~TrainerConfigHelper() {
-  if (m) {
-    delete m;
-  }
-}
+TrainerConfigHelper::~TrainerConfigHelper() { delete m; }
 
 const TrainerConfig &TrainerConfigHelper::getConfig() const { return m->conf; }
 

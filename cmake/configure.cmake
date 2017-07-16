@@ -102,12 +102,19 @@ if(WITH_GOLANG)
       message(FATAL_ERROR "no glide executeble found: $ENV{GOPATH}/bin/glide")
     endif()
 
-    add_custom_target(go_vendor)
-    add_custom_command(TARGET go_vendor
+    # this command will only run when the file it depends is missing
+    # or has changed, or the output is missing.
+    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/glide
       COMMAND env GOPATH=${GOPATH} ${GLIDE} install
+      COMMAND touch ${CMAKE_BINARY_DIR}/glide
+      DEPENDS ${PROJ_ROOT}/go/glide.lock
       WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go"
-    )
-    add_dependencies(go_vendor go_path)
+      )
+
+    # depends on the custom command which outputs
+    # ${CMAKE_BINARY_DIR}/glide, the custom command does not need to
+    # run every time this target is built.
+    add_custom_target(go_vendor DEPENDS ${CMAKE_BINARY_DIR}/glide go_path)
   endif()
 
 endif(WITH_GOLANG)

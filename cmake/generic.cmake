@@ -104,6 +104,7 @@ function(merge_static_libs TARGET_NAME)
   foreach(lib ${libs})
     list(APPEND libs_deps ${${lib}_LIB_DEPENDS})
   endforeach()
+  list(REMOVE_DUPLICATES libs_deps)
 
   if(APPLE) # Use OSX's libtool to merge archives
     # To produce a library we need at least one source file.
@@ -127,7 +128,7 @@ function(merge_static_libs TARGET_NAME)
       # Get the file names of the libraries to be merged
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
     endforeach()
-		add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
       COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
       COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles})
   else() # general UNIX: use "ar" to extract objects and re-add to a common lib
@@ -145,11 +146,11 @@ function(merge_static_libs TARGET_NAME)
         DEPENDS ${lib} ${objdir}
         WORKING_DIRECTORY ${objdir})
 
-      # Empty dummy source file that goes into merged library
-      set(mergebase ${lib}.mergebase.c)
-      add_custom_command(OUTPUT ${mergebase}
-        COMMAND ${CMAKE_COMMAND} -E touch ${mergebase}
-        DEPENDS ${objlistfile})
+      # Empty dummy source file that goes into merged library		
+      set(mergebase ${lib}.mergebase.c)		
+      add_custom_command(OUTPUT ${mergebase}		
+        COMMAND ${CMAKE_COMMAND} -E touch ${mergebase}		
+        DEPENDS ${objlistfile})		
 
       list(APPEND mergebases "${mergebase}")
     endforeach()
@@ -184,6 +185,10 @@ function(cc_library TARGET_NAME)
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     endif()
+    
+    # cpplint code style
+    add_style_check_target(${TARGET_NAME} ${cc_library_SRCS})
+
   else(cc_library_SRCS)
     if (cc_library_DEPS)
       merge_static_libs(${TARGET_NAME} ${cc_library_DEPS})
@@ -337,7 +342,7 @@ function(go_test TARGET_NAME)
   string(REPLACE "${PADDLE_GO_PATH}" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
   add_custom_target(${TARGET_NAME} ALL DEPENDS go_vendor ${go_test_DEPS})
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} test
+    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} test -race
     -c -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     ".${CMAKE_CURRENT_SOURCE_REL_DIR}"
     WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
