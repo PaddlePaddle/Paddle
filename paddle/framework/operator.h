@@ -73,11 +73,11 @@ class OperatorBase {
   // Get an output which has multiple variables.
   std::vector<std::string> Outputs(const std::string& name) const;
 
+  // init arg_idxs_ to accelerate argument's offset lookup.
   void CreateArgumentOffsetMap(const OpProto& proto);
 
  protected:
   std::string Type() const { return desc_.type(); }
-  // init arg_idxs_ to accelerate argument's offset lookup.
 
  public:
   OpDesc desc_;
@@ -85,7 +85,7 @@ class OperatorBase {
   std::vector<std::string> outputs_;
   AttributeMap attrs_;
   // store the arguments' offset described in op_desc.
-  mutable std::unordered_map<std::string, int> arg_idxs_;
+  std::unordered_map<std::string, int> arg_idxs_;
 };
 
 class KernelContext {

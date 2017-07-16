@@ -31,20 +31,21 @@ void OperatorBase::CreateArgumentOffsetMap(const OpProto& proto) {
 }
 
 const std::string& OperatorBase::Input(const std::string& name) const {
+  auto it = arg_idxs_.find(name);
+  PADDLE_ENFORCE(it != arg_idxs_.end(), "no key [%d] in arg_idxs_", name);
+
   if (attrs_.count("input_format") == 0) {
-    auto it = arg_idxs_.find(name);
-    PADDLE_ENFORCE(it != arg_idxs_.end(), "no key [%d] in arg_idxs_", name);
     return inputs_[it->second];
   } else {
     const auto& input_format = GetAttr<std::vector<int>>("input_format");
-    int idx = input_format[arg_idxs_.at(name)];
+    int idx = input_format[it->second];
     return inputs_.at(idx);
   }
 }
 
 std::vector<std::string> OperatorBase::Inputs(const std::string& name) const {
   auto input_format = GetAttr<std::vector<int>>("input_format");
-  auto offset = arg_idxs_[name];
+  auto offset = arg_idxs_.at(name);
 
   return std::vector<std::string>{
       inputs_.begin() + input_format.at(offset),
@@ -52,18 +53,21 @@ std::vector<std::string> OperatorBase::Inputs(const std::string& name) const {
 }
 
 const std::string& OperatorBase::Output(const std::string& name) const {
+  auto it = arg_idxs_.find(name);
+  PADDLE_ENFORCE(it != arg_idxs_.end(), "no key [%d] in arg_idxs_", name);
+
   if (attrs_.count("output_format") == 0) {
-    return outputs_[arg_idxs_.at(name)];
+    return outputs_[it->second];
   } else {
-    const auto& input_format = GetAttr<std::vector<int>>("input_format");
-    int idx = input_format[arg_idxs_.at(name)];
+    const auto& output_format = GetAttr<std::vector<int>>("output_format");
+    int idx = output_format[it->second];
     return outputs_.at(idx);
   }
 }
 
 std::vector<std::string> OperatorBase::Outputs(const std::string& name) const {
   auto output_format = GetAttr<std::vector<int>>("output_format");
-  auto offset = arg_idxs_[name];
+  auto offset = arg_idxs_.at(name);
 
   return std::vector<std::string>{
       outputs_.begin() + output_format.at(offset),
