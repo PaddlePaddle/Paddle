@@ -195,7 +195,7 @@ TEST(OpKernel, all) {
       paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
   op->Run(scope, cpu_device_context);
-  ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
+  ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
 }
 
 REGISTER_OP(op_multi_inputs_with_kernel, paddle::framework::OpWithKernelTest,

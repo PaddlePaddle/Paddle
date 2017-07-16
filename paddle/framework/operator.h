@@ -77,7 +77,7 @@ class OperatorBase {
   void CreateArgumentOffsetMap(const OpProto& proto);
 
  protected:
-  std::string Type() const { return desc_.type(); }
+  std::string Type() const { return type_; }
 
  public:
   std::string type_;
