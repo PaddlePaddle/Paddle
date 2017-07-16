@@ -242,7 +242,7 @@ class OpRegisterHelper {
 };
 
 /**
- * check if MACRO is called in GLOBAL NAMESPACE.
+ * check if MACRO is used in GLOBAL NAMESPACE.
  */
 #define STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                        \
   struct __test_global_namespace_##uniq_name##__ {};                          \
@@ -251,7 +251,7 @@ class OpRegisterHelper {
                 msg)
 
 /**
- * Macro to Register Operator and Kernel.
+ * Macro to Register Operator.
  */
 #define REGISTER_OP(__op_type, __op_class, __op_maker_class)                 \
   STATIC_ASSERT_GLOBAL_NAMESPACE(__reg_op__##__op_type,                      \
@@ -260,6 +260,9 @@ class OpRegisterHelper {
       __op_register_##__op_type##__(#__op_type);                             \
   int __op_register_##__op_type##_handle__() { return 0; }
 
+/**
+ * Macro to Register OperatorKernel.
+ */
 #define REGISTER_OP_KERNEL(type, DEVICE_TYPE, PlaceType, KernelType)      \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
       __reg_op_kernel_##type##_##DEVICE_TYPE##__,                         \
