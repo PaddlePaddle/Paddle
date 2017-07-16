@@ -204,6 +204,7 @@ class OpRegistry {
     const OpProto& op_proto = protos().at(op_type);
     op->desc_ = op_desc;
     // set op's inputs_ from desc.
+    op->type_ = op_desc.type();
     op->inputs_.reserve((size_t)op_desc.inputs_size());
     std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),
               std::back_inserter(op->inputs_));
