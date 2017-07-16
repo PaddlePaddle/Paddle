@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/framework/net_proto.pb.h"
+#include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/scope.h"
 #include "paddle/platform/device_context.h"
@@ -31,7 +32,6 @@ typedef int OpIndex;
  * keep updating if the concepts related are implemented.
  */
 
-struct OpDesc;
 struct OpAttrs {};
 
 class Operator {
@@ -74,7 +74,7 @@ class Net {
   /**
    * @brief Add an Operator according to `def`.
    */
-  virtual OpIndex AddOp(const OpProto &def) = 0;
+  virtual OpIndex AddOp(const OpDesc &def) = 0;
 
   /**
    * @brief Add optimizer operators acctording to `attrs`.
@@ -129,7 +129,7 @@ class PlainNet : public Net {
   /**
    * @brief Add an operator to this network.
    */
-  virtual OpIndex AddOp(const OpProto &def) override;
+  virtual OpIndex AddOp(const OpProto &def);
 
   /**
    * @brief Add all optimizer operators related into the network.

@@ -29,8 +29,6 @@ class Tensor {
  public:
   Tensor() : numel_(0), offset_(0) {}
 
-  Tensor& operator=(const Tensor& src) = delete;
-
   template <typename T>
   const T* data() const {
     CheckDims<T>();
@@ -130,7 +128,8 @@ class Tensor {
      public:
       Deleter(platform::Place place) : place_(place) {}
       void operator()(T* ptr) {
-        paddle::memory::Free(place_, static_cast<void*>(ptr));
+        // paddle::memory::Free(place_, static_cast<void*>(ptr));
+        free(static_cast<void*>(ptr));
       }
 
      private:
@@ -138,9 +137,12 @@ class Tensor {
     };
 
    public:
+    // PlaceholderImpl(paddle::platform::Place place, size_t size)
+    //     : ptr_(static_cast<T*>(paddle::memory::Alloc(place, size)),
+    //           Deleter(place)),
+
     PlaceholderImpl(paddle::platform::Place place, size_t size)
-        : ptr_(static_cast<T*>(paddle::memory::Alloc(place, size)),
-               Deleter(place)),
+        : ptr_(static_cast<T*>(malloc(size * sizeof(T))), Deleter(place)),
           place_(place),
           size_(size) {}
 
