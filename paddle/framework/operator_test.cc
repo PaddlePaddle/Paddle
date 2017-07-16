@@ -21,15 +21,16 @@ namespace framework {
 
 static int op_run_num = 0;
 
-class OperatorTest : public OperatorBase {
+class OpWithoutKernelTest : public OperatorBase {
  public:
   void Init() override { x = 1; }
   void InferShape(const ScopePtr& scope) const override {}
   void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const override {
     op_run_num++;
-    float scale = GetAttr<float>("scale");
-    ASSERT_NEAR(scale, 3.14, 1e-5);
+    ASSERT_EQ((int)inputs_.size(), 1);
+    ASSERT_EQ((int)outputs_.size(), 1);
+    ASSERT_NEAR(GetAttr<float>("scale"), 3.14, 1e-5);
     ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
     ASSERT_EQ(x, 1);
     ASSERT_NE(scope->GetVariable(outputs_[0]), nullptr);
@@ -39,15 +40,14 @@ class OperatorTest : public OperatorBase {
   float x = 0;
 };
 
-class OperatorTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+class OpeWithoutKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  OperatorTestProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
+  OpeWithoutKernelTestProtoAndCheckerMaker(OpProto* proto,
+                                           OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("input", "input of test op");
     AddOutput("output", "output of test op");
-    AddAttr<float>("scale", "scale of cosine op")
-        .SetDefault(1.0)
-        .LargerThan(0.0);
+    AddAttr<float>("scale", "scale of cosine op");
     AddComment("This is test op");
   }
 };
@@ -55,8 +55,8 @@ class OperatorTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OP(test_operator, paddle::framework::OperatorTest,
-            paddle::framework::OperatorTestProtoAndCheckerMaker);
+REGISTER_OP(test_operator, paddle::framework::OpWithoutKernelTest,
+            paddle::framework::OpeWithoutKernelTestProtoAndCheckerMaker);
 
 TEST(OperatorBase, all) {
   paddle::framework::OpDesc op_desc;
@@ -66,15 +66,13 @@ TEST(OperatorBase, all) {
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
   attr->set_type(paddle::framework::AttrType::FLOAT);
-  float scale = 3.14;
-  attr->set_f(scale);
+  attr->set_f(3.14);
 
   paddle::platform::CPUDeviceContext device_context;
   auto scope = std::make_shared<paddle::framework::Scope>();
 
   paddle::framework::OperatorPtr op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
-  ASSERT_EQ(op->GetAttr<float>("scale"), scale);
   scope->CreateVariable("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
   op->Run(scope, device_context);
@@ -90,12 +88,12 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("input", "input of test op");
     AddOutput("output", "output of test op");
-    AddAttr<float>("scale", "scale of cosine op")
-        .SetDefault(1.0)
-        .LargerThan(0.0);
+    AddAttr<float>("scale", "scale of cosine op");
     AddComment("This is test op");
   }
 };
+
+static int cpu_kernel_run_num = 0;
 
 class OpWithKernelTest : public OperatorWithKernel {
  protected:
@@ -103,14 +101,13 @@ class OpWithKernelTest : public OperatorWithKernel {
                   const std::vector<Tensor*>& outputs) const override {}
 };
 
-static int cpu_kernel_run_num = 0;
-
 class CPUKernelTest : public OpKernel {
  public:
   void Compute(const KernelContext& context) const {
-    float scale = context.op_.GetAttr<float>("scale");
-    ASSERT_NEAR(scale, 3.14, 1e-5);
     cpu_kernel_run_num++;
+    ASSERT_EQ((int)context.op_.inputs_.size(), 1);
+    ASSERT_EQ((int)context.op_.outputs_.size(), 1);
+    ASSERT_NEAR(context.op_.GetAttr<float>("scale"), 3.14, 1e-5);
   }
 };
 
