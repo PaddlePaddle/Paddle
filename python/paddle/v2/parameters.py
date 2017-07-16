@@ -163,7 +163,7 @@ class Parameters(object):
         dims = conf.dims if conf.dims else (1, conf.size)
         return tuple(map(int, dims))
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key, value, force_shape=False):
         """
         Set parameter by parameter name & value. It use Python dict syntax.
 
@@ -178,7 +178,10 @@ class Parameters(object):
         if not isinstance(value, np.ndarray):
             raise ValueError("Must return ndarray")
         value = value.astype(dtype=np.float32)
-        shape = self.get_shape(key)
+        if not force_shape:
+            shape = self.get_shape(key)
+        else:
+            shape = value.shape
         if value.shape != shape:
             raise ValueError("Value shape mismatch, expect %s, should %s" %
                              (shape, value.shape))
@@ -202,7 +205,7 @@ class Parameters(object):
         """
         return self.__getitem__(key=parameter_name)
 
-    def set(self, parameter_name, value):
+    def set(self, parameter_name, value, force_shape=False):
         """
         Set parameter by parameter name & matrix.
 
@@ -212,7 +215,8 @@ class Parameters(object):
         :type value: np.ndarray
         :return: Nothing.
         """
-        self.__setitem__(key=parameter_name, value=value)
+        self.__setitem__(
+            key=parameter_name, value=value, force_shape=force_shape)
 
     def append_gradient_machine(self, gradient_machine):
         """
@@ -283,7 +287,7 @@ class Parameters(object):
             tar.addfile(tarinfo, fileobj=buf)
 
     @staticmethod
-    def from_tar(f):
+    def from_tar(f, **skip_layers):
         """
         Create a `Parameters` object from the given file. And
         the `Parameters` only contains the parameters in this
@@ -306,7 +310,15 @@ class Parameters(object):
                 conf.ParseFromString(f.read())
                 params.__append_config__(conf)
 
+        keys = set()
+        for _, item in skip_layers.iteritems():
+            param_name = item[0]
+            value = item[1]
+            params.set(param_name, value, force_shape=True)
+            keys.add(param_name)
         for param_name in params.names():
+            if param_name in keys:
+                continue
             f = tar.extractfile(param_name)
             params.deserialize(param_name, f)
         return params
