@@ -81,6 +81,8 @@ std::vector<int> vectorize(const DDim& ddim);
 
 ssize_t product(const DDim& ddim);
 
+DDim slice_ddim(const DDim& dim, int begin, int end);
+
 /**
  * \brief What is the length of this dimension?
  *
