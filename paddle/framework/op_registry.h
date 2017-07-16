@@ -201,17 +201,23 @@ class OpRegistry {
   static OperatorBase* CreateOp(const OpDesc& op_desc) {
     std::string op_type = op_desc.type();
     OperatorBase* op = creators().at(op_type)();
+    const OpProto& op_proto = protos().at(op_type);
     op->desc_ = op_desc;
+    // set op's inputs_ from desc.
     op->inputs_.reserve((size_t)op_desc.inputs_size());
     std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),
               std::back_inserter(op->inputs_));
+    // set op's outputs_ from desc.
     op->outputs_.reserve((size_t)op_desc.outputs_size());
     std::copy(op_desc.outputs().begin(), op_desc.outputs().end(),
               std::back_inserter(op->outputs_));
+    // set op's attr;
     for (auto& attr : op_desc.attrs()) {
       op->attrs_[attr.name()] = AttrTypeHelper::GetAttrValue(attr);
     }
     op_checkers().at(op_type).Check(op->attrs_);
+    // set argument offsets stored in op.
+    op->CreateArgumentOffsetMap(op_proto);
     op->Init();
     return op;
   }

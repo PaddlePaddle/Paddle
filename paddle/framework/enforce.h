@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <glog/logging.h>
 #include <paddle/string/printf.h>
 #include <exception>
 #include <sstream>
@@ -58,12 +59,15 @@ class EnforceNotMet : public std::exception {
 /**
  * @brief Enforce a condition, otherwise throw an EnforceNotMet
  */
+// #define PADDLE_ENFORCE(condition, ...) \
+//   do {                                 \
+//     if (UNLIKELY(!(condition))) {      \
+//       PADDLE_THROW(__VA_ARGS__);       \
+//     }                                  \
+//   } while (0)
+
 #define PADDLE_ENFORCE(condition, ...) \
-  do {                                 \
-    if (UNLIKELY(!(condition))) {      \
-      PADDLE_THROW(__VA_ARGS__);       \
-    }                                  \
-  } while (0)
+  CHECK(condition) << ::paddle::string::Sprintf(__VA_ARGS__);
 
 }  // namespace framework
 }  // namespace paddle

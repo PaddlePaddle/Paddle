@@ -14,17 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/framework/attr_checker.h>
-#include <paddle/framework/op_desc.pb.h>
-#include <paddle/framework/scope.h>
-#include <paddle/framework/tensor.h>
-#include <paddle/platform/device_context.h>
-#include <paddle/platform/place.h>
-#include <paddle/utils/Error.h>
 #include <boost/variant.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "paddle/framework/attr_checker.h"
+#include "paddle/framework/op_desc.pb.h"
+#include "paddle/framework/op_proto.pb.h"
+#include "paddle/framework/scope.h"
+#include "paddle/framework/tensor.h"
+#include "paddle/platform/device_context.h"
+#include "paddle/platform/place.h"
+#include "paddle/utils/Error.h"
 
 namespace paddle {
 namespace framework {
@@ -71,8 +73,11 @@ class OperatorBase {
   // Get an output which has multiple variables.
   std::vector<std::string> Outputs(const std::string& name) const;
 
+  void CreateArgumentOffsetMap(const OpProto& proto);
+
  protected:
   std::string Type() const { return desc_.type(); }
+  // init arg_idxs_ to accelerate argument's offset lookup.
 
  public:
   OpDesc desc_;
@@ -80,7 +85,52 @@ class OperatorBase {
   std::vector<std::string> outputs_;
   AttributeMap attrs_;
   // store the arguments' offset described in op_desc.
-  std::unordered_map<std::string, int> arg_idxs_;
+  mutable std::unordered_map<std::string, int> arg_idxs_;
+};
+
+class KernelContext {
+ public:
+  KernelContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
+                const platform::DeviceContext& device_context)
+      : op_(*op), scope_(scope), device_context_(device_context) {}
+
+  const Variable* Input(int index) const {
+    return scope_->GetVariable(op_.inputs_[index]);
+  }
+
+  Variable* Output(int index) const {
+    return scope_->GetVariable(op_.outputs_[index]);
+  }
+
+  const Variable* Input(const std::string& name) const {
+    return scope_->GetVariable(op_.Input(name));
+  }
+
+  const Variable* Output(const std::string& name) const {
+    return scope_->GetVariable(op_.Output(name));
+  }
+
+  const std::vector<const Variable*> Inputs(const std::string& name) const {
+    auto names = op_.Inputs(name);
+    std::vector<const Variable*> res;
+    std::transform(
+        names.begin(), names.end(), res.begin(),
+        [this](const std::string& name) { return scope_->GetVariable(name); });
+    return res;
+  }
+
+  const std::vector<const Variable*> Outputs(const std::string& name) const {
+    auto names = op_.Outputs(name);
+    std::vector<const Variable*> res;
+    std::transform(
+        names.begin(), names.end(), res.begin(),
+        [this](const std::string& name) { return scope_->GetVariable(name); });
+    return res;
+  }
+
+  const OperatorBase& op_;
+  const std::shared_ptr<Scope>& scope_;
+  const platform::DeviceContext& device_context_;
 };
 
 class OpKernel {
@@ -91,25 +141,6 @@ class OpKernel {
    * device resource such as CUDA stream, cublas handle, etc. from
    * KernelContext. User should construct it before run the Operator.
    */
-  class KernelContext {
-   public:
-    KernelContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
-                  const platform::DeviceContext& device_context)
-        : op_(*op), scope_(scope), device_context_(device_context) {}
-
-    const Variable* Input(int index) const {
-      return scope_->GetVariable(op_.inputs_[index]);
-    }
-
-    Variable* Output(int index) const {
-      return scope_->GetVariable(op_.outputs_[index]);
-    }
-
-    const OperatorBase& op_;
-    const std::shared_ptr<Scope>& scope_;
-    const platform::DeviceContext& device_context_;
-  };
-
   virtual void Compute(const KernelContext& context) const = 0;
 
   virtual ~OpKernel() {}
@@ -154,7 +185,7 @@ class OperatorWithKernel : public OperatorBase {
   void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(Type()).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(OpKernel::KernelContext(this, scope, dev_ctx));
+    opKernel->Compute(KernelContext(this, scope, dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
@@ -162,6 +193,7 @@ class OperatorWithKernel : public OperatorBase {
     static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
     return g_all_op_kernels;
   }
+
   void InferShape(const std::shared_ptr<Scope>& scope) const final {
     std::vector<const Tensor*> ins;
     VarNamesToTensors(scope, inputs_, &ins);
