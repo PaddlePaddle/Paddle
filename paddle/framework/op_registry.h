@@ -311,7 +311,7 @@ class OpRegisterHelper {
 #define USE_OP(op_type) USE_OP_CPU(op_type)
 #else
 #define USE_OP(op_type) \
-  USE_OP_CPU(op_type)   \
+  USE_OP_CPU(op_type);  \
   USE_OP_KERNEL(op_type, GPU)
 #endif
 
