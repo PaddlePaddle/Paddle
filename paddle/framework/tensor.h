@@ -35,7 +35,7 @@ class Tensor {
 
   template <typename T>
 
-  const T* data() const {
+  T* data() const {
     PADDLE_ENFORCE(
         holder_ != nullptr,
         "Tenosr has not been initialized. Call Tensor::mutable_data first.");
@@ -90,7 +90,7 @@ class Tensor {
   // flat to rank = 1
   template <typename T>
   typename TTypes<T>::Flat flat() {
-    return shaped<T, 1>({NumElements()});
+    return shaped<T, 1>(make_ddim({static_cast<int>(NumElements())}));
   }
 
   // to TensorType Vec
@@ -114,7 +114,7 @@ class Tensor {
 
   template <typename T>
   typename TTypes<T>::ConstFlat flat() const {
-    return shaped<T, 1>({NumElements()});
+    return shaped<T, 1>(make_ddim({static_cast<int>(NumElements())}));
   }
 
   template <typename T>

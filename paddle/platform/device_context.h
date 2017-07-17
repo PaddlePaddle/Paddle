@@ -32,17 +32,14 @@ class DeviceContext {
   virtual Place GetPlace() const = 0;
 
   template <typename DeviceType>
-  DeviceType* get_eigen_device();
+  DeviceType* get_eigen_device() const;
 };
 
 class CPUDeviceContext : public DeviceContext {
  public:
-  Eigen::DefaultDevice* eigen_device() {
-    if (!eigen_device_) {
-      eigen_device_.reset(new Eigen::DefaultDevice());
-    }
-    return eigen_device_.get();
-  }
+  CPUDeviceContext() { eigen_device_.reset(new Eigen::DefaultDevice()); }
+
+  Eigen::DefaultDevice* eigen_device() const { return eigen_device_.get(); }
 
   Place GetPlace() const override {
     Place retv = CPUPlace();
@@ -91,7 +88,7 @@ class CUDADeviceContext : public DeviceContext {
 
   cudaStream_t stream() { return stream_; }
 
-  Eigen::GpuDevice* eigen_device() { return eigen_device_.get(); }
+  Eigen::GpuDevice* eigen_device() const { return eigen_device_.get(); }
 
   cublasHandle_t cublas_handle() {
     if (!blas_handle_) {

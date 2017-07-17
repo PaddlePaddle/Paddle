@@ -18,13 +18,15 @@ namespace paddle {
 namespace framework {
 
 template <>
-DeviceType* KernelContext::get_eigen_device<CPUPlace>() {
-  return device_context_.get_eigen_device<DeviceType>();
+Eigen::DefaultDevice* OpKernel::KernelContext::get_eigen_device<
+    platform::CPUPlace, Eigen::DefaultDevice>() const {
+  return device_context_.get_eigen_device<Eigen::DefaultDevice>();
 }
 
 #ifndef PADDLE_ONLY_CPU
 template <>
-DeviceType* KernelContext::get_eigen_device<GPUPlace>() {
+DeviceType* OpKernel::KernelContext::get_eigen_device<platform::GPUPlace>()
+    const {
   return device_context_.get_eigen_device<DeviceType>();
 }
 #endif

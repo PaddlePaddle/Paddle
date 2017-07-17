@@ -40,6 +40,6 @@ The equation is: Out = X + Y
 }  // namespace paddle
 
 REGISTER_OP(add_two, paddle::operators::AddOp, paddle::operators::AddOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    add_two,
-    ::paddle::operators::AddKernel<::paddle::platform::CPUPlace, float>);
+typedef paddle::operators::AddKernel<::paddle::platform::CPUPlace, float>
+    AddKernel_CPU_float;
+REGISTER_OP_CPU_KERNEL(add_two, AddKernel_CPU_float);
