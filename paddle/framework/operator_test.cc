@@ -107,6 +107,7 @@ class CPUKernelTest : public OpKernel {
   void Compute(const KernelContext& ctx) const {
     std::cout << "this is cpu kernel" << std::endl;
     std::cout << ctx.op_.DebugString() << std::endl;
+    cpu_kernel_run_num++;
     ASSERT_EQ(ctx.op_.Input("x"), "IN1");
     ASSERT_EQ(ctx.op_.Output("y"), "OUT1");
   }
@@ -190,7 +191,7 @@ TEST(OpKernel, all) {
       paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
   op->Run(scope, cpu_device_context);
-  ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
+  ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
 }
 
 REGISTER_OP(op_multi_inputs_with_kernel, paddle::framework::OpWithKernelTest,
