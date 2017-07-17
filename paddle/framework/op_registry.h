@@ -217,7 +217,7 @@ class OpRegistry {
     }
     op_checkers().at(op_type).Check(op->attrs_);
     // set argument offsets stored in op.
-    op->CreateArgumentOffsetMap(op_proto);
+    op->CreateInOutOffsetMap(op_proto);
     op->Init();
     return op;
   }

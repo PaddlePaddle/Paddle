@@ -74,7 +74,7 @@ class OperatorBase {
   std::vector<std::string> Outputs(const std::string& name) const;
 
   // init arg_idxs_ to accelerate argument's offset lookup.
-  void CreateArgumentOffsetMap(const OpProto& proto);
+  void CreateInOutOffsetMap(const OpProto& proto);
 
  protected:
   std::string Type() const { return type_; }
