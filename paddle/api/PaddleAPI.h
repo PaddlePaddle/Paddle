@@ -568,13 +568,6 @@ public:
 
   size_t getID() const;
 
-  /**
-   * if parameter has hooks, the parameter will operate with the hooks before
-   * fetching the data when using the python api in
-   * paddle.v2.parameters.get(...).
-   */
-  void handleBeforeFetch();
-
   ParameterConfig* getConfig();
   void setValueUpdated();
   bool save(const std::string& filename) const;
