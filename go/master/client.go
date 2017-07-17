@@ -37,7 +37,6 @@ func (c *Client) getRecords() {
 	for {
 		t, err := c.getTask()
 		if err != nil {
-			// TODO(helin): wait before move on with next
 			// getTask call.
 			log.Errorf("Get task failed, sleep 3 seconds and continue, %s", err)
 			time.Sleep(3 * time.Second)
