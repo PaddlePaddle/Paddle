@@ -15,6 +15,7 @@
 
 """
 # from activations import *
+import pdb
 from activations import LinearActivation, ReluActivation, SoftmaxActivation, \
     IdentityActivation, TanhActivation, SequenceSoftmaxActivation
 from attrs import ExtraAttr
@@ -614,6 +615,7 @@ def simple_lstm(input,
 
 @wrap_name_default('lstm_unit')
 def lstmemory_unit(input,
+                   out_memory=None,
                    memory_boot=None,
                    name=None,
                    size=None,
@@ -694,7 +696,11 @@ def lstmemory_unit(input,
     if size is None:
         assert input.size % 4 == 0
         size = input.size / 4
-    out_mem = memory(name=name, size=size)
+    if out_memory is None:
+        out_mem = memory(name=name, size=size)
+    else:
+        out_mem = out_memory
+
     state_mem = memory(
         name="%s_state" % name, size=size, boot_layer=memory_boot)
 
