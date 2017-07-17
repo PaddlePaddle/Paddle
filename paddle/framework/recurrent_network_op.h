@@ -104,6 +104,11 @@ struct MemoryAttr {
   std::string boot_var;
 };
 
+// void LinkMemories(std::vector<ScopePtr>& step_scopes,
+//                  std::vector<MemoryAttr>& memories,
+//                  size_t step_id, int offset);
+//}
+
 };  // namespace details
 
 // fake interfaces end
@@ -185,7 +190,13 @@ class RecurrentAlgorithm {
   /*
    * Link memory in previous step scope to current scope.
    */
-  void LinkMemories(std::vector<ScopePtr>& step_scopes, size_t step_id) const;
+  void InitMemories(ScopePtr step_scopes) const;
+
+  /*
+   * Link memory in previous step scope to current scope.
+   */
+  // void LinkMemories(std::vector<ScopePtr>& step_scopes, size_t step_id)
+  // const;
 
  private:
   friend class RecurrentOp;
@@ -210,7 +221,7 @@ class RecurrentAlgorithm {
    *       strings: "boot_state"
    *   }
    */
-  mutable std::vector<details::MemoryAttr> memory_attrs_;
+  std::vector<details::MemoryAttr> memory_attrs_;
 
   // name of rnn op's step net, the step net will be shared by both `Forward`
   // and `Backward`, so we store it as a variable in father's scope, with a
@@ -233,14 +244,17 @@ class RecurrentAlgorithm {
 /*
  * RNN's backward alogorithm.
  *
- * To accelerate the development of RecurrentBackwardOp, we decouple RNN's
+ * To accelerate the development of RecurrentGradientOp, we decouple RNN's
  * algorithm and `OperatorBase`'s implementation, the former contains the core
  * implementation of a RNN, and will keep stable even if the framework changes a
  * lot, and the latter is a wrapper acts like an dapter for it to make RNN an
  * operator.
  */
-class RecurrentBackwardAlgorithm {
+class RecurrentGradientAlgorithm {
  public:
+  void LinkBootMemoryGradients(ScopePtr step_scopes) const;
+  void Run(OpContext* contex) const;
+
  private:
   // stepnet for backward
   // NOTE this stepnet is created by others and should insert AddOp for its

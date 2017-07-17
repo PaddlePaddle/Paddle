@@ -21,6 +21,41 @@
 namespace paddle {
 namespace framework {
 
+namespace details {
+
+void SegmentInputs(std::vector<ScopePtr>& step_scopes) {}
+
+void ConcatOutputs(std::vector<ScopePtr>& step_scopes) {}
+
+void LinkMemories(std::vector<ScopePtr>& step_scopes,
+                  const std::vector<details::MemoryAttr>& memories,
+                  size_t step_id, int offset) {
+  PADDLE_ENFORCE(step_id < step_scopes.size(),
+                 "step [%d] out of range of step scopes' size [%d]", step_id,
+                 step_scopes.size());
+  PADDLE_ENFORCE((static_cast<int>(step_id) + offset) >= 0 &&
+                     (step_id + offset) < step_scopes.size(),
+                 "the step id [%d] and offset [%d] is out of range", step_id,
+                 offset);
+  ScopePtr step_scope = step_scopes[step_id];
+  ScopePtr linked_step_scope = step_scopes[step_id + offset];
+  for (auto& attr : memories) {
+    auto cur_step_pre_mem =
+        step_scope->CreateVariable(attr.pre_var)->GetMutable<Tensor>();
+    auto linked_step_mem =
+        linked_step_scope->GetVariable(attr.var)->GetMutable<Tensor>();
+    cur_step_pre_mem->ShareDataFrom<float>(*linked_step_mem);
+
+    // TODO(qingqing) the memory of current step should be allocated in step net
+    auto cur_step_mem =
+        step_scope->CreateVariable(attr.var)->GetMutable<Tensor>();
+    cur_step_mem->mutable_data<float>(cur_step_pre_mem->dims(),
+                                      platform::CPUPlace());
+  }
+}
+
+}  // namespace details
+
 void RecurrentAlgorithm::Run(OpContext* contex) const {
   auto scope = contex->scope;
 
@@ -37,10 +72,12 @@ void RecurrentAlgorithm::Run(OpContext* contex) const {
   size_t max_seq_len = GetMaxSeqLen(scope);
   LOG(INFO) << "sequence length " << max_seq_len;
   auto step_scopes = GetStepScopes(scope);
+  InitMemories(step_scopes[0]);
   for (size_t step_id = 0; step_id < max_seq_len; step_id++) {
     LOG(INFO) << "run step " << step_id;
-    LinkMemories(step_scopes, step_id);
-
+    if (step_id > 0) {
+      details::LinkMemories(step_scopes, memory_attrs_, step_id, -1);
+    }
     net->GetMutable<PlainNet>()->Run(step_scopes[step_id]);
   }
 
@@ -115,38 +152,22 @@ void RecurrentAlgorithm::ConcatOutputs(ScopePtr scope) const {
   }
 }
 
-void RecurrentAlgorithm::LinkMemories(std::vector<ScopePtr>& step_scopes,
-                                      size_t step_id) const {
-  PADDLE_ENFORCE(step_id < step_scopes.size(),
-                 "step [%d] out of range of step scopes' size [%d]", step_id,
-                 step_scopes.size());
-  ScopePtr step_scope = step_scopes[step_id];
+void RecurrentAlgorithm::InitMemories(ScopePtr step_scope) const {
   for (auto& attr : memory_attrs_) {
-    Tensor* pre_memory_tensor =
+    Tensor* pre_mem =
         step_scope->CreateVariable(attr.pre_var)->GetMutable<Tensor>();
+    PADDLE_ENFORCE(step_scope->HasVariable(attr.boot_var),
+                   "memory [%s]'s boot variable [%s] not exists", attr.var,
+                   attr.boot_var);
+    Tensor* boot_mem =
+        step_scope->CreateVariable(attr.boot_var)->GetMutable<Tensor>();
+    PADDLE_ENFORCE(boot_mem, "boot_tensor should be retrieved before");
+    pre_mem->ShareDataFrom<float>(*boot_mem);
 
-    if (step_id == 0) {
-      PADDLE_ENFORCE(step_scope->HasVariable(attr.boot_var),
-                     "memory [%s]'s boot variable [%s] not exists", attr.var,
-                     attr.boot_var);
-      Tensor* boot_tensor =
-          step_scope->CreateVariable(attr.boot_var)->GetMutable<Tensor>();
-      PADDLE_ENFORCE(boot_tensor, "boot_tensor should be retrieved before");
-      // copy from boot memory
-      pre_memory_tensor->ShareDataFrom<float>(*boot_tensor);
-    } else {
-      // copy from previous step scope's memory to this scope's
-      // `pre - memory`
-      Tensor* pre_step_memory =
-          step_scopes[step_id - 1]->GetVariable(attr.var)->GetMutable<Tensor>();
-      pre_memory_tensor->ShareDataFrom<float>(*pre_step_memory);
-    }
-
-    // TODO(xxx) the memory of current step should be allocated in step net
-    Tensor* cur_memory_tensor =
-        step_scopes[step_id]->CreateVariable(attr.var)->GetMutable<Tensor>();
-    cur_memory_tensor->mutable_data<float>(pre_memory_tensor->dims(),
-                                           platform::CPUPlace());
+    // TODO(qingqing) the memory of current step should be allocated in step net
+    auto cur_step_mem =
+        step_scope->CreateVariable(attr.var)->GetMutable<Tensor>();
+    cur_step_mem->mutable_data<float>(boot_mem->dims(), platform::CPUPlace());
   }
 }
 
@@ -252,6 +273,52 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
 //
 // REGISTER_OP(recurrent_op, RecurrentAlgorithm,
 // RecurrentAlgorithmProtoAndCheckerMaker);
+
+void RecurrentGradientAlgorithm::Run(OpContext* contex) const {
+  auto scope = contex->scope;
+  auto step_scopes = *(scope->GetVariable(step_scopes_name_))
+                          ->GetMutable<std::vector<ScopePtr>>();
+
+  LOG(INFO) << "segment input";
+  details::SegmentInputs(step_scopes);
+
+  PADDLE_ENFORCE(scope->HasVariable(stepnet_name_),
+                 "step net is not in scope.");
+  Variable* net = scope->GetVariable(stepnet_name_);
+  PADDLE_ENFORCE(net, "failed to get step net");
+
+  size_t max_seq_len =
+      scope->GetVariable(inlinks_[0])->GetMutable<Tensor>()->dims()[0];
+  LOG(INFO) << "sequence length " << max_seq_len;
+
+  for (size_t step_id = max_seq_len - 1; step_id > 0; --step_id) {
+    LOG(INFO) << "run step " << step_id;
+    if (step_id != max_seq_len - 1) {
+      details::LinkMemories(step_scopes, memories_, step_id, 1);
+    }
+    net->GetMutable<PlainNet>()->Run(step_scopes[step_id]);
+  }
+  LinkBootMemoryGradients(step_scopes[0]);
+
+  LOG(INFO) << "concat outputs";
+  // prepare outputs
+  details::ConcatOutputs(step_scopes);
+}
+
+void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
+    ScopePtr step_scope) const {
+  for (auto& attr : memories_) {
+    Tensor* mem_g = step_scope->CreateVariable(attr.var)->GetMutable<Tensor>();
+    PADDLE_ENFORCE(mem_g, "boot_tensor should be retrieved before");
+
+    PADDLE_ENFORCE(step_scope->HasVariable(attr.boot_var),
+                   "memory [%s]'s boot variable [%s] not exists", attr.var,
+                   attr.boot_var);
+    Tensor* boot_mem_g =
+        step_scope->CreateVariable(attr.boot_var)->GetMutable<Tensor>();
+    boot_mem_g->ShareDataFrom<float>(*mem_g);
+  }
+}
 
 }  // namespace framework
 }  // namespace paddle
