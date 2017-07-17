@@ -61,7 +61,14 @@ class OpProtoAndCheckerMaker {
   OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : proto_(proto), op_checker_(op_checker) {}
 
-  ~OpProtoAndCheckerMaker() { CheckNoDuplicatedAttrs(); }
+  ~OpProtoAndCheckerMaker() {
+    PADDLE_ENFORCE(validated_, "should call Validate after build");
+  }
+
+  void Validate() {
+    validated_ = true;
+    CheckNoDuplicatedInOutAttrs();
+  }
 
  protected:
   void AddInput(const std::string& name, const std::string& comment,
@@ -163,19 +170,26 @@ Add a mark to which output is temporary is helpful for future optimization.
     }
   }
 
-  void CheckNoDuplicatedAttrs() {
+  void CheckNoDuplicatedInOutAttrs() {
     std::unordered_set<std::string> names;
-    size_t cnt = 0;
+    auto checker = [&](const std::string& name) {
+      PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);
+      names.insert(name);
+    };
     for (auto& attr : proto_->attrs()) {
-      names.insert(attr.name());
-      ++cnt;
+      checker(attr.name());
     }
-    PADDLE_ENFORCE(names.size() == cnt,
-                   "Cannot register two attribute in same name!");
+    for (auto& input : proto_->inputs()) {
+      checker(input.name());
+    }
+    for (auto& output : proto_->outputs()) {
+      checker(output.name());
+    }
   }
 
   OpProto* proto_;
   OpAttrChecker* op_checker_;
+  bool validated_{false};
   bool has_multiple_input_{false};
   bool has_multiple_output_{false};
   bool has_temporary_output_{false};
@@ -190,7 +204,8 @@ class OpRegistry {
     creators()[op_type] = [] { return new OpType; };
     OpProto& op_proto = protos()[op_type];
     OpAttrChecker& op_checker = op_checkers()[op_type];
-    ProtoMakerType(&op_proto, &op_checker);
+    auto maker = ProtoMakerType(&op_proto, &op_checker);
+    maker.Validate();
     *op_proto.mutable_type() = op_type;
     PADDLE_ENFORCE(
         op_proto.IsInitialized(),
