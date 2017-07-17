@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -214,21 +215,42 @@ class OpRegistry {
   }
 
   static OperatorPtr CreateOp(const OpDesc& op_desc) {
+    //! Create a OpPtr by type.
     std::string op_type = op_desc.type();
     OperatorPtr op(creators().at(op_type)());
+    //! Fill op's data member. Not use constructor because it will be noising
+    //! for Op developer.
+    const OpProto& op_proto = protos().at(op_type);
     op->type_ = op_desc.type();
+    // set op's inputs_ from desc.
     op->inputs_.reserve((size_t)op_desc.inputs_size());
     std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),
               std::back_inserter(op->inputs_));
+    // set op's outputs_ from desc.
     op->outputs_.reserve((size_t)op_desc.outputs_size());
     std::copy(op_desc.outputs().begin(), op_desc.outputs().end(),
               std::back_inserter(op->outputs_));
+
+    //! Fill attrs, and validate attrs.
     for (auto& attr : op_desc.attrs()) {
       op->attrs_[attr.name()] = AttrTypeHelper::GetAttrValue(attr);
     }
     op_checkers().at(op_type).Check(op->attrs_);
+
+    //! Convert Temporary variable name to an unique variable name.
+    GenerateTempVariableName(op.get());
+
+    // set argument offsets stored in op.
+    CreateInOutOffsetMap(op, op_proto);
+    //! Other op's custom Init for a complex Op. For simple Op, the Init
+    //! method do nothing.
     op->Init();
     return op;
+  }
+
+  // init op.in_out_idxs_ to accelerate argument's offset lookup.
+  static void CreateInOutOffsetMap(OperatorPtr op, const OpProto& proto) {
+    op->CreateInOutOffsetMap(proto);
   }
 
   static std::unordered_map<std::string, OpProto>& protos() {
@@ -237,6 +259,17 @@ class OpRegistry {
   };
 
  private:
+  static void GenerateTempVariableName(OperatorBase* op) {
+    static std::atomic<size_t> gUniqId(0UL);
+    for (auto& outname : op->outputs_) {
+      if (outname == OperatorBase::TMP_VAR_NAME()) {
+        outname += op->type_;
+        outname += "@";
+        outname += std::to_string(gUniqId.fetch_add(1));
+      }
+    }
+  }
+
   static std::unordered_map<std::string, OpCreator>& creators() {
     static std::unordered_map<std::string, OpCreator> creators_;
     return creators_;
