@@ -104,10 +104,9 @@ struct MemoryAttr {
   std::string boot_var;
 };
 
-// void LinkMemories(std::vector<ScopePtr>& step_scopes,
-//                  std::vector<MemoryAttr>& memories,
-//                  size_t step_id, int offset);
-//}
+void LinkMemories(std::vector<ScopePtr>& step_scopes,
+                  const std::vector<MemoryAttr>& memories, size_t step_id,
+                  int offset);
 
 };  // namespace details
 
@@ -188,15 +187,9 @@ class RecurrentAlgorithm {
   }
 
   /*
-   * Link memory in previous step scope to current scope.
+   * Init memories.
    */
   void InitMemories(ScopePtr step_scopes) const;
-
-  /*
-   * Link memory in previous step scope to current scope.
-   */
-  // void LinkMemories(std::vector<ScopePtr>& step_scopes, size_t step_id)
-  // const;
 
  private:
   friend class RecurrentOp;

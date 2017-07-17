@@ -243,3 +243,62 @@ TEST_F(RecurrentOpTest, Run) {
 
 }  // namespace framework
 }  // namespace paddle
+
+TEST(RecurrentOp, LinkMemories) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+
+  // create and init step scopes
+  int len = 10;
+  std::vector<ScopePtr> step_scopes;
+  for (int i = 0; i < len; ++i) {
+    auto scope = std::make_shared<Scope>();
+    scope->CreateVariable("pre_h");
+    auto tensor = scope->CreateVariable("h")->GetMutable<Tensor>();
+    float* data = tensor->mutable_data<float>(make_ddim({15, 20}), CPUPlace());
+    for (int i = 0; i < 15 * 20; ++i) {
+      data[i] = rand() * (1. / (double)RAND_MAX);
+    }
+    step_scopes.push_back(scope);
+  }
+
+  // create MemoryAttr
+  details::MemoryAttr mem_attr;
+  mem_attr.pre_var = "pre_h";
+  mem_attr.var = "h";
+  mem_attr.boot_var = "boot_h";
+  std::vector<details::MemoryAttr> memories;
+  memories.push_back(mem_attr);
+
+  for (int i = 1; i < len; ++i) {
+    details::LinkMemories(step_scopes, memories, i, -1);
+  }
+  // check
+  for (int i = 0; i < len - 1; ++i) {
+    const float* a =
+        step_scopes[i]->GetVariable("h")->GetMutable<Tensor>()->data<float>();
+    const float* b = step_scopes[i + 1]
+                         ->GetVariable("pre_h")
+                         ->GetMutable<Tensor>()
+                         ->data<float>();
+    for (size_t i = 0; i < 15 * 20; ++i) {
+      ASSERT_FLOAT_EQ(a[i], b[i]);
+    }
+  }
+
+  for (int i = len - 2; i >= 0; --i) {
+    details::LinkMemories(step_scopes, memories, i, 1);
+  }
+  // check
+  for (int i = len - 1; i >= 0; --i) {
+    const float* a =
+        step_scopes[i]->GetVariable("h")->GetMutable<Tensor>()->data<float>();
+    const float* b = step_scopes[i + 1]
+                         ->GetVariable("pre_h")
+                         ->GetMutable<Tensor>()
+                         ->data<float>();
+    for (size_t i = 0; i < 15 * 20; ++i) {
+      ASSERT_FLOAT_EQ(a[i], b[i]);
+    }
+  }
+}

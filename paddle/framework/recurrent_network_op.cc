@@ -31,7 +31,7 @@ void LinkMemories(std::vector<ScopePtr>& step_scopes,
                   const std::vector<details::MemoryAttr>& memories,
                   size_t step_id, int offset) {
   PADDLE_ENFORCE(step_id < step_scopes.size(),
-                 "step [%d] out of range of step scopes' size [%d]", step_id,
+                 "step [%d] is out of range of step scopes' size [%d]", step_id,
                  step_scopes.size());
   PADDLE_ENFORCE((static_cast<int>(step_id) + offset) >= 0 &&
                      (step_id + offset) < step_scopes.size(),
@@ -68,7 +68,6 @@ void RecurrentAlgorithm::Run(OpContext* contex) const {
   LOG(INFO) << "segment input";
   SegmentInputs(scope);
 
-  // forward
   size_t max_seq_len = GetMaxSeqLen(scope);
   LOG(INFO) << "sequence length " << max_seq_len;
   auto step_scopes = GetStepScopes(scope);
@@ -301,7 +300,6 @@ void RecurrentGradientAlgorithm::Run(OpContext* contex) const {
   LinkBootMemoryGradients(step_scopes[0]);
 
   LOG(INFO) << "concat outputs";
-  // prepare outputs
   details::ConcatOutputs(step_scopes);
 }
 
