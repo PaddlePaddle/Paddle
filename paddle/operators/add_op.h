@@ -22,7 +22,7 @@ namespace operators {
 template <typename Place, typename T>
 class AddKernel : public framework::OpKernel {
 public:
-  void Compute(const KernelContext& context) const override {
+  void Compute(const framework::KernelContext& context) const override {
     auto input0 = context.Input(0)->Get<framework::Tensor>();
     auto input1 = context.Input(1)->Get<framework::Tensor>();
     auto* output = context.Output(0)->GetMutable<framework::Tensor>();

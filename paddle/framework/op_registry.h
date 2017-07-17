@@ -216,19 +216,30 @@ class OpRegistry {
   static OperatorPtr CreateOp(const OpDesc& op_desc) {
     std::string op_type = op_desc.type();
     OperatorPtr op(creators().at(op_type)());
+    const OpProto& op_proto = protos().at(op_type);
+    // set op's inputs_ from desc.
     op->type_ = op_desc.type();
     op->inputs_.reserve((size_t)op_desc.inputs_size());
     std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),
               std::back_inserter(op->inputs_));
+    // set op's outputs_ from desc.
     op->outputs_.reserve((size_t)op_desc.outputs_size());
     std::copy(op_desc.outputs().begin(), op_desc.outputs().end(),
               std::back_inserter(op->outputs_));
+    // set op's attr;
     for (auto& attr : op_desc.attrs()) {
       op->attrs_[attr.name()] = AttrTypeHelper::GetAttrValue(attr);
     }
     op_checkers().at(op_type).Check(op->attrs_);
+    // set argument offsets stored in op.
+    CreateInOutOffsetMap(op, op_proto);
     op->Init();
     return op;
+  }
+
+  // init op.in_out_idxs_ to accelerate argument's offset lookup.
+  static void CreateInOutOffsetMap(OperatorPtr op, const OpProto& proto) {
+    op->CreateInOutOffsetMap(proto);
   }
 
   static std::unordered_map<std::string, OpProto>& protos() {
