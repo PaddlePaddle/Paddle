@@ -4,7 +4,7 @@ function(op_library TARGET)
     # for ops.
     set(cc_srcs)
     set(cu_srcs)
-    set(op_common_deps operator op_registry glog ddim)
+    set(op_common_deps operator op_registry)
     set(options "")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
