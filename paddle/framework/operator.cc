@@ -32,7 +32,7 @@ void OperatorBase::CreateArgumentOffsetMap(const OpProto& proto) {
 
 const std::string& OperatorBase::Input(const std::string& name) const {
   auto it = arg_idxs_.find(name);
-  PADDLE_ENFORCE(it != arg_idxs_.end(), "no key [%d] in arg_idxs_", name);
+  PADDLE_ENFORCE(it != arg_idxs_.end(), "no key [%s] in arg_idxs_", name);
 
   if (attrs_.count("input_format") == 0) {
     return inputs_[it->second];
@@ -54,7 +54,7 @@ std::vector<std::string> OperatorBase::Inputs(const std::string& name) const {
 
 const std::string& OperatorBase::Output(const std::string& name) const {
   auto it = arg_idxs_.find(name);
-  PADDLE_ENFORCE(it != arg_idxs_.end(), "no key [%d] in arg_idxs_", name);
+  PADDLE_ENFORCE(it != arg_idxs_.end(), "no key [%s] in arg_idxs_", name);
 
   if (attrs_.count("output_format") == 0) {
     return outputs_[it->second];

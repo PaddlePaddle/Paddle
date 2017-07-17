@@ -30,7 +30,6 @@ class OpWithoutKernelTest : public OperatorBase {
     op_run_num++;
     ASSERT_EQ((int)inputs_.size(), 1);
     ASSERT_EQ((int)outputs_.size(), 1);
-    ASSERT_NEAR(GetAttr<float>("scale"), 3.14, 1e-5);
     ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
     ASSERT_EQ(x, 1);
     ASSERT_NE(scope->GetVariable(outputs_[0]), nullptr);
@@ -141,9 +140,9 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
   OpKernelTestMultiInputsProtoAndCheckerMaker(OpProto* proto,
                                               OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInputs("xs", "input of test op");
+    AddInputs("xs", "inputs of test op");
     AddInput("k", "input of test op");
-    AddOutputs("ys", "output of test op");
+    AddOutputs("ys", "outputs of test op");
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
         .LargerThan(0.0);
