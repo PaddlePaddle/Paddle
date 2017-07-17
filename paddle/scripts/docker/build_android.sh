@@ -21,4 +21,3 @@ cmake -DCMAKE_SYSTEM_NAME=Android \
       ..
 make -j `nproc`
 make install
-
