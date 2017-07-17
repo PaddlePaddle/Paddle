@@ -64,11 +64,11 @@ class OperatorBase {
   virtual void Run(const ScopePtr& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
-  // Get a input with argument's name described in `op_desc`
+  // Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
   // Get a input which has multiple variables.
   std::vector<std::string> Inputs(const std::string& name) const;
-  // Get a output with argument's name described in `op_desc`
+  // Get a output with argument's name described in `op_proto`
   const std::string& Output(const std::string& name) const;
   // Get an output which has multiple variables.
   std::vector<std::string> Outputs(const std::string& name) const;
