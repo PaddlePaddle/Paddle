@@ -3197,12 +3197,12 @@ def ParameterHook(type, **kwargs):
     elif type == 'dynamic_pruning':
         hook = ParameterUpdaterHookConfig()
         hook.type = type
-        upper_bound = kwargs.get('upper_bound', None)
-        if upper_bound is not None:
-            hook.upper_bound = upper_bound
-        inter_pass = kwargs.get('inter_pass', None)
-        if inter_pass is not None:
-            hook.inter_pass = inter_pass
+        sparsity_upper_bound = kwargs.get('sparsity_upper_bound', None)
+        if sparsity_upper_bound is not None:
+            hook.sparsity_upper_bound = sparsity_upper_bound
+        interval_pass = kwargs.get('interval_pass', None)
+        if interval_pass is not None:
+            hook.interval_pass = interval_pass
         end_pass = kwargs.get('end_pass', None)
         if end_pass is not None:
             hook.end_pass = end_pass
