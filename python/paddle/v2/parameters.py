@@ -1,5 +1,4 @@
 import numpy as np
-import py_paddle.swig_paddle as api
 from paddle.proto.ParameterConfig_pb2 import ParameterConfig
 import paddle.trainer.config_parser as cp
 import struct
@@ -124,6 +123,7 @@ class Parameters(object):
         :return: parameter value
         :rtype: np.ndarray
         """
+        import py_paddle.swig_paddle as api
         shape = self.get_shape(key)
 
         if len(self.__gradient_machines__) == 0:
@@ -223,7 +223,7 @@ class Parameters(object):
         :type gradient_machine: api.GradientMachine
         :return:
         """
-
+        import py_paddle.swig_paddle as api
         if not isinstance(gradient_machine, api.GradientMachine):
             raise ValueError("gradient_machine should be api.GradientMachine")
 
@@ -359,6 +359,7 @@ def __copy_parameter_to_gradient_machine__(gradient_machine, name, arr):
     :return:
     :rtype: api.Parameter
     """
+    import py_paddle.swig_paddle as api
     param = __get_parameter_in_gradient_machine__(gradient_machine, name)
     vec = param.getBuf(api.PARAMETER_VALUE)
     assert isinstance(vec, api.Vector)

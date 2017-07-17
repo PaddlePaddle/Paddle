@@ -14,9 +14,16 @@
 
 #pragma once
 
+#include "paddle/memory/detail/meta_cache.h"
+#include "paddle/memory/detail/meta_data.h"
 #include "paddle/memory/detail/system_allocator.h"
+#include "paddle/platform/assert.h"
+#include "paddle/platform/cpu_info.h"
+#include "paddle/platform/gpu_info.h"
 
 #include <mutex>
+#include <set>
+#include <unordered_map>
 #include <vector>
 
 namespace paddle {
@@ -25,61 +32,80 @@ namespace detail {
 
 class BuddyAllocator {
  public:
-  BuddyAllocator(size_t pool_size, size_t max_pools,
-                 SystemAllocator* system_allocator);
+  BuddyAllocator(SystemAllocator* system_allocator, size_t min_chunk_size,
+                 size_t max_chunk_size);
+
   ~BuddyAllocator();
 
-  void* Alloc(size_t size);
+ public:
+  void* Alloc(size_t unaligned_size);
   void Free(void*);
   size_t Used();
 
- private:
-  struct Block {
-    size_t size_;
-    Block* left_;   // left buddy
-    Block* right_;  // right buddy
-  };
-
-  // Initially, there is only one pool.  If a Alloc founds not enough
-  // memory from that pool, and there has not been max_num_pools_,
-  // create a new pool by calling system_allocator_.Alloc(pool_size_).
-  std::vector<void*> pools_;
-
-  size_t pool_size_;      // the size of each pool;
-  size_t max_num_pools_;  // the size of all pools;
-
-  SystemAllocator* system_allocator_;
-
-  std::mutex mutex_;
-
-  // Disable copy and assignment.
+ public:
+  // Disable copy and assignment
   BuddyAllocator(const BuddyAllocator&) = delete;
   BuddyAllocator& operator=(const BuddyAllocator&) = delete;
+
+ private:
+  // Tuple (allocator index, memory size, memory address)
+  using IndexSizeAddress = std::tuple<size_t, size_t, void*>;
+  // Each element in PoolSet is a free allocation
+  using PoolSet = std::set<IndexSizeAddress>;
+
+  /*! \brief Allocate fixed-size memory from system */
+  void* SystemAlloc(size_t size);
+
+  /*! \brief If existing chunks are not suitable, refill pool */
+  PoolSet::iterator RefillPool();
+
+  /**
+   *  \brief   Find the suitable chunk from existing pool and split
+   *           it to left and right buddies
+   *
+   *  \param   it     the iterator of pool list
+   *  \param   size   the size of allocation
+   *
+   *  \return  the left buddy address
+   */
+  void* SplitToAlloc(PoolSet::iterator it, size_t size);
+
+  /*! \brief Find the existing chunk which used to allocation */
+  PoolSet::iterator FindExistChunk(size_t size);
+
+  /*! \brief Clean idle fallback allocation */
+  void CleanIdleFallBackAlloc();
+
+  /*! \brief Clean idle normal allocation */
+  void CleanIdleNormalAlloc();
+
+ private:
+  size_t total_used_ = 0;  // the total size of used memory
+  size_t total_free_ = 0;  // the total size of free memory
+
+  size_t min_chunk_size_;  // the minimum size of each chunk
+  size_t max_chunk_size_;  // the maximum size of each chunk
+
+ private:
+  /**
+   * \brief A list of free allocation
+   *
+   * \note  Only store free chunk memory in pool
+   */
+  PoolSet pool_;
+
+  /*! Record fallback allocation count for auto-scaling */
+  size_t fallback_alloc_count_ = 0;
+
+ private:
+  /*! Unify the metadata format between GPU and CPU allocations */
+  MetadataCache cache_;
+
+ private:
+  /*! Allocate CPU/GPU memory from system */
+  SystemAllocator* system_allocator_;
+  std::mutex mutex_;
 };
-
-BuddyAllocator<CPUAllocator>* GetCPUBuddyAllocator() {
-  static BuddyAllocator<CPUAllocator>* a = nullptr;
-  if (a == nullptr) {
-    a = new BuddyAllocator<CPUAllocator>();
-  }
-  return a;
-}
-
-#ifndef PADDLE_ONLY_CPU  // The following code are for CUDA.
-
-BuddyAllocator<GPUAllocator>* GetGPUBuddyAllocator(int gpu_id) {
-  static BuddyAllocator<GPUAllocator>** as = NULL;
-  if (as == NULL) {
-    int gpu_num = platform::GetDeviceCount();
-    as = new BuddyAllocator<GPUAllocator>*[gpu_num];
-    for (int gpu = 0; gpu < gpu_num; gpu++) {
-      as[gpu] = new BuddyAllocator<GPUAllocator>();
-    }
-  }
-  return as[gpu_id];
-}
-
-#endif  // PADDLE_ONLY_CPU
 
 }  // namespace detail
 }  // namespace memory

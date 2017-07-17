@@ -88,12 +88,13 @@
 #
 
 # including binary directory for generated headers.
-include_directories(${CMAKE_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-if(NOT APPLE)
+if(NOT APPLE AND NOT ANDROID)
     find_package(Threads REQUIRED)
     link_libraries(${CMAKE_THREAD_LIBS_INIT})
-endif(NOT APPLE)
+    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -ldl -lrt")
+endif(NOT APPLE AND NOT ANDROID)
 
 function(merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
@@ -103,10 +104,11 @@ function(merge_static_libs TARGET_NAME)
   foreach(lib ${libs})
     list(APPEND libs_deps ${${lib}_LIB_DEPENDS})
   endforeach()
+  list(REMOVE_DUPLICATES libs_deps)
 
   if(APPLE) # Use OSX's libtool to merge archives
     # To produce a library we need at least one source file.
-    # It is created by add_custom_command below and will helps 
+    # It is created by add_custom_command below and will helps
     # also help to track dependencies.
     set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
 
@@ -126,7 +128,7 @@ function(merge_static_libs TARGET_NAME)
       # Get the file names of the libraries to be merged
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
     endforeach()
-		add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
       COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
       COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles})
   else() # general UNIX: use "ar" to extract objects and re-add to a common lib
@@ -154,14 +156,14 @@ function(merge_static_libs TARGET_NAME)
     endforeach()
 
     add_library(${TARGET_NAME} STATIC ${mergebases})
-    target_link_libraries(${TARGET_NAME} ${libs_deps}) 
+    target_link_libraries(${TARGET_NAME} ${libs_deps})
 
     # Get the file name of the generated library
     set(outlibfile "$<TARGET_FILE:${TARGET_NAME}>")
 
     foreach(lib ${libs})
       add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-        COMMAND ${CMAKE_AR} cr ${outlibfile} *.o  
+        COMMAND ${CMAKE_AR} cr ${outlibfile} *.o
         COMMAND ${CMAKE_RANLIB} ${outlibfile}
         WORKING_DIRECTORY ${lib}.objdir)
     endforeach()
@@ -183,6 +185,10 @@ function(cc_library TARGET_NAME)
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     endif()
+    
+    # cpplint code style
+    add_style_check_target(${TARGET_NAME} ${cc_library_SRCS})
+
   else(cc_library_SRCS)
     if (cc_library_DEPS)
       merge_static_libs(${TARGET_NAME} ${cc_library_DEPS})
@@ -300,7 +306,7 @@ function(go_library TARGET_NAME)
 
   file(GLOB GO_SOURCE RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.go")
   string(REPLACE "${PADDLE_GO_PATH}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-  # FIXME: link path
+
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
     COMMAND rm "${${TARGET_NAME}_LIB_PATH}"
     # Golang build source code
@@ -308,7 +314,7 @@ function(go_library TARGET_NAME)
     -o "${${TARGET_NAME}_LIB_PATH}"
     "./${CMAKE_CURRENT_SOURCE_REL_DIR}/${GO_SOURCE}"
     # must run under GOPATH
-  WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
+    WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
   add_dependencies(${TARGET_NAME} go_vendor)
 endfunction(go_library)
 
@@ -319,14 +325,11 @@ function(go_binary TARGET_NAME)
   cmake_parse_arguments(go_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   string(REPLACE "${PADDLE_GO_PATH}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
-  # FIXME: link path
   add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
-      COMMAND env LIBRARY_PATH=${CMAKE_BINARY_DIR}/go/pserver/client/c/:$ENV{LIBRARY_PATH}
-      GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
+    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
     -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     "./${CMAKE_CURRENT_SOURCE_REL_DIR}/${go_binary_SRCS}"
     WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
-  # TODO: don't know what ${TARGET_NAME}_link does
   add_custom_target(${TARGET_NAME} ALL DEPENDS go_vendor ${TARGET_NAME}_timestamp ${go_binary_DEPS})
   install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME} DESTINATION bin)
 endfunction(go_binary)
@@ -334,15 +337,18 @@ endfunction(go_binary)
 function(go_test TARGET_NAME)
   set(options OPTIONAL)
   set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
+  set(multiValueArgs DEPS)
   cmake_parse_arguments(go_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} test
+  string(REPLACE "${PADDLE_GO_PATH}" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+  add_custom_target(${TARGET_NAME} ALL DEPENDS go_vendor ${go_test_DEPS})
+  add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} test -race
     -c -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
-    ${go_test_SRCS}
+    ".${CMAKE_CURRENT_SOURCE_REL_DIR}"
+    WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
+  add_test(NAME ${TARGET_NAME}
+    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  add_custom_target(${TARGET_NAME} ALL DEPENDS ${TARGET_NAME}_timestamp ${go_test_DEPS})
-  add_test(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
 endfunction(go_test)
 
 function(proto_library TARGET_NAME)

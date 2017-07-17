@@ -25,7 +25,8 @@ DECLARE_bool(use_pinned_memory);
 void TestAllocator(paddle::memory::detail::SystemAllocator& a, size_t size) {
   bool freed = false;
   {
-    void* p = a.Alloc(size);
+    size_t index;
+    void* p = a.Alloc(index, size);
     if (size > 0) {
       EXPECT_NE(p, nullptr);
     } else {
@@ -35,7 +36,7 @@ void TestAllocator(paddle::memory::detail::SystemAllocator& a, size_t size) {
     int* i = static_cast<int*>(p);
     std::shared_ptr<int> ptr(i, [&](void* p) {
       freed = true;
-      a.Free(p, size);
+      a.Free(p, size, index);
     });
   }
   EXPECT_TRUE(freed);
@@ -56,14 +57,7 @@ TEST(CPUAllocator, LockMem) {
 }
 
 #ifndef PADDLE_ONLY_CPU
-TEST(GPUAllocator, NoStaging) {
-  FLAGS_use_pinned_memory = false;
-  paddle::memory::detail::GPUAllocator a;
-  TestAllocator(a, 2048);
-  TestAllocator(a, 0);
-}
-TEST(GPUAllocator, Staging) {
-  FLAGS_use_pinned_memory = true;
+TEST(GPUAllocator, Alloc) {
   paddle::memory::detail::GPUAllocator a;
   TestAllocator(a, 2048);
   TestAllocator(a, 0);
