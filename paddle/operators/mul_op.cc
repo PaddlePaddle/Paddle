@@ -14,44 +14,47 @@
 
 #include <paddle/framework/op_registry.h>
 #include <paddle/framework/tensor.h>
-#include <paddle/operators/add_op.h>
+#include <paddle/operators/mul_op.h>
 
 namespace paddle {
 namespace operators {
 
-class AddOp : public framework::OperatorWithKernel {
+class MulOp : public framework::OperatorWithKernel {
 protected:
   void InferShape(
       const std::vector<const framework::Tensor *> &inputs,
       const std::vector<framework::Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 2, "Input size of AddOp must be two");
-    PADDLE_ENFORCE(outputs.size() == 1, "Output size of AddOp must be one");
+    PADDLE_ENFORCE(inputs.size() == 2, "The mul op must take two inputs");
+    auto dim0 = inputs[0]->dims();
+    auto dim1 = inputs[1]->dims();
+    PADDLE_ENFORCE(dim0.size() == 2 && dim1.size() == 2,
+                   "The input of mul op must be matrix");
     PADDLE_ENFORCE(
-        inputs[0] != nullptr && inputs[1] != nullptr && outputs[0] != nullptr,
-        "Inputs/Outputs of AddOp must all be set");
-    PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
-                   "Two input of Add Op's dimension must be same.");
-    outputs[0]->set_dims(inputs[0]->dims());
+        dim0[1] == dim1[0],
+        "First matrix's width must be equal with second matrix's height.");
+    PADDLE_ENFORCE(outputs.size() == 1, "The mul op must take one output");
+    outputs[0]->set_dims({dim0[0], dim1[1]});
   }
 };
 
-class AddOpMaker : public framework::OpProtoAndCheckerMaker {
+class MulOpMaker : public framework::OpProtoAndCheckerMaker {
 public:
-  AddOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The first input of add op");
-    AddInput("Y", "The second input of add op");
-    AddOutput("Out", "The output of add op");
+    AddInput("X", "The first input of mul op");
+    AddInput("Y", "The second input of mul op");
+    AddOutput("Out", "The output of mul op");
     AddComment(R"DOC(
-Two Element Add Operator.
+Two Element Mul Operator.
 
-The equation is: Out = X + Y
+The equation is: Out = X * Y
 )DOC");
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(add_two, paddle::operators::AddOp, paddle::operators::AddOpMaker);
+REGISTER_OP(mul, paddle::operators::MulOp, paddle::operators::MulOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    add_two, ::paddle::operators::AddKernel<::paddle::platform::CPUPlace>);
+    mul, paddle::operators::MulKernel<paddle::platform::CPUPlace>);
