@@ -1,6 +1,8 @@
 #include "paddle/framework/op_registry.h"
 #include <gtest/gtest.h>
 
+namespace pd = paddle::framework;
+
 namespace paddle {
 namespace framework {
 class CosineOp : public OperatorBase {
@@ -28,8 +30,6 @@ class MyTestOp : public OperatorBase {
   void InferShape(const ScopePtr& scope) const override {}
   void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const override {}
-
- public:
 };
 
 class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -181,4 +181,36 @@ TEST(OpRegistry, CustomChecker) {
   op->Run(scope, dev_ctx);
   int test_attr = op->GetAttr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);
+}
+
+class TestAttrProtoMaker : public pd::OpProtoAndCheckerMaker {
+ public:
+  TestAttrProtoMaker(pd::OpProto* proto, pd::OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddAttr<float>("scale", "scale of test op");
+    AddAttr<float>("scale", "scale of test op");
+  }
+};
+
+TEST(ProtoMaker, DuplicatedAttr) {
+  pd::OpProto op_proto;
+  pd::OpAttrChecker op_checker;
+  auto proto_maker = TestAttrProtoMaker(&op_proto, &op_checker);
+  ASSERT_THROW(proto_maker.Validate(), paddle::framework::EnforceNotMet);
+}
+
+class TestInOutProtoMaker : public pd::OpProtoAndCheckerMaker {
+ public:
+  TestInOutProtoMaker(pd::OpProto* proto, pd::OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("input", "input of test op");
+    AddInput("input", "input of test op");
+  }
+};
+
+TEST(ProtoMaker, DuplicatedInOut) {
+  pd::OpProto op_proto;
+  pd::OpAttrChecker op_checker;
+  auto proto_maker = TestInOutProtoMaker(&op_proto, &op_checker);
+  ASSERT_THROW(proto_maker.Validate(), paddle::framework::EnforceNotMet);
 }

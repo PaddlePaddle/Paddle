@@ -82,6 +82,15 @@ std::vector<int> vectorize(const DDim& ddim);
 ssize_t product(const DDim& ddim);
 
 /**
+ * \brief Slice a ddim
+ *
+ * Slice dim with [begin, end).
+ * e.g.  DDim d = make_ddim({1,2,3,4,5});
+ *       slice_ddim(d, 1, 3); ====> {2,3}
+ */
+DDim slice_ddim(const DDim& dim, int begin, int end);
+
+/**
  * \brief What is the length of this dimension?
  *
  * \param Dynamic dimension to inspect
