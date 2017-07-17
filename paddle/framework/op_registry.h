@@ -220,7 +220,7 @@ class OpRegistry {
     op_checkers().at(op_type).Check(op->attrs_);
 
     //! Convert Temporary variable name to an unique variable name.
-    AssignTempVariable(op.get());
+    GenerateTempVariableName(op.get());
 
     //! Other op's custom Init for a complex Op. For simple Op, the Init
     //! method do nothing.
@@ -234,7 +234,7 @@ class OpRegistry {
   };
 
  private:
-  static void AssignTempVariable(OperatorBase* op) {
+  static void GenerateTempVariableName(OperatorBase* op) {
     static std::atomic<size_t> gUniqId(0UL);
     for (auto& outname : op->outputs_) {
       if (outname == OperatorBase::TMP_VAR_NAME()) {
