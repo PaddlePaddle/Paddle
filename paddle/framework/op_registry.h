@@ -172,7 +172,7 @@ Add a mark to which output is temporary is helpful for future optimization.
 
   void CheckNoDuplicatedInOutAttrs() {
     std::unordered_set<std::string> names;
-    auto checker = [&](std::string name) {
+    auto checker = [&](const std::string& name) {
       PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);
       names.insert(name);
     };
