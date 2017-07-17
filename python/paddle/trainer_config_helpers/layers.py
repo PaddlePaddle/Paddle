@@ -3171,11 +3171,11 @@ def memory(name,
 
 
 @wrap_bias_attr_default()
-@wrap_act_default(
-    param_names=['gate_act', 'state_act'], act=SigmoidActivation())
+@wrap_act_default(param_names=['gate_act'], act=SigmoidActivation())
+@wrap_act_default(param_names=['state_act'], act=TanhActivation())
 @wrap_act_default(act=TanhActivation())
 @wrap_name_default('lstm_step')
-@layer_support()
+@layer_support(ERROR_CLIPPING, DROPOUT)
 def lstm_step_layer(input,
                     state,
                     size=None,
@@ -3631,16 +3631,18 @@ def recurrent_group(step, input, reverse=False, name=None, targetInlink=None):
     if isinstance(layer_outs, LayerOutput):
         layer_outs = [layer_outs]
 
-    for ot in layer_outs:
-        assert isinstance(ot, LayerOutput)
-        ot.reverse = reverse
-        RecurrentLayerGroupSetOutLink(ot.name)
+    for layer_out in layer_outs:
+        assert isinstance(
+            layer_out, LayerOutput
+        ), "Type of step function's return value must be LayerOutput."
+        layer_out.reverse = reverse
+        RecurrentLayerGroupSetOutLink(layer_out.name)
 
     RecurrentLayerGroupEnd(name=name)
 
     for layer_out in layer_outs:
-        # Thee previous full_name is the name is the rnn group
-        # We need a full_name outside the rnn group
+        # The previous full_name is the name inside the recurrent group.
+        # We need a full_name outside the recurrent group.
         layer_out.full_name = MakeLayerNameInSubmodel(layer_out.name)
 
     if len(layer_outs) == 1:
@@ -3663,7 +3665,20 @@ class BaseGeneratedInput(object):
 
 class GeneratedInput(BaseGeneratedInput):
     def after_real_step(self, input):
-        return maxid_layer(input=input, name='__beam_search_predict__')
+        if isinstance(input, LayerOutput):
+            input = [input]
+        elif isinstance(input, collections.Sequence):
+            input = list(input)
+            if len(input) > 1:
+                logger.info(
+                    ("More than one layers inside the recurrent_group "
+                     "are returned as outputs of the entire recurrent_group "
+                     "PLEASE garantee the first output is probability of "
+                     "the predicted next word."))
+
+        return [maxid_layer(
+            input=input[0], name='__beam_search_predict__')] + (
+                input[1:] if len(input) > 1 else [])
 
     def before_real_step(self):
         predict_id = memory(
@@ -3924,7 +3939,7 @@ def beam_search(step,
 
         predict = gipt.after_real_step(step(*args))
 
-        eos_layer(input=predict, eos_id=eos_id, name=eos_name)
+        eos_layer(input=predict[0], eos_id=eos_id, name=eos_name)
         return predict
 
     return recurrent_group(
