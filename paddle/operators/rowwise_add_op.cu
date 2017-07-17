@@ -2,4 +2,5 @@
 #include <paddle/operators/rowwise_add_op.h>
 
 REGISTER_OP_GPU_KERNEL(
-    mul, paddle::operators::RowWiseAddKernel<paddle::platform ::GPUPlace>);
+    rowwise_add,
+    paddle::operators::RowWiseAddKernel<paddle::platform ::GPUPlace>);
