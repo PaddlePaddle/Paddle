@@ -77,23 +77,21 @@ std::vector<std::string> OperatorBase::Outputs(const std::string& name) const {
 
 std::string OperatorBase::DebugString() const {
   std::stringstream ss;
-  ss << "=================\n";
-  ss << "type = " << type_ << "\n";
-  ss << "inputs = [";
-  for (auto& ipt : inputs_) {
-    ss << ipt << ", ";
+  ss << "Op(" << type_ << "), inputs:(";
+  for (size_t i = 0; i < inputs_.size(); ++i) {
+    ss << inputs_[i];
+    if (i != inputs_.size() - 1) {
+      ss << ", ";
+    }
   }
-  ss << "]\n";
-  ss << "outputs = [";
-  for (auto& opt : outputs_) {
-    ss << opt << ", ";
+  ss << "), outputs:(";
+  for (size_t i = 0; i < outputs_.size(); ++i) {
+    ss << outputs_[i];
+    if (i != outputs_.size() - 1) {
+      ss << ", ";
+    }
   }
-  ss << "]\n";
-  ss << "attr_keys = [";
-  for (auto& attr : attrs_) {
-    ss << attr.first << ", ";
-  }
-  ss << "]\n";
+  ss << ").";
   return ss.str();
 }
 
