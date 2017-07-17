@@ -109,7 +109,9 @@ class OpKernel {
     template <typename PlaceType,
               typename DeviceType =
                   typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
-    DeviceType* get_eigen_device() const;
+    DeviceType* GetEigenDevice() const;
+
+    platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
     const OperatorBase& op_;
     const ScopePtr& scope_;
