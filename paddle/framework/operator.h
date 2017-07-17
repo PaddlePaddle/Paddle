@@ -76,9 +76,6 @@ class OperatorBase {
   // init arg_idxs_ to accelerate argument's offset lookup.
   void CreateInOutOffsetMap(const OpProto& proto);
 
- protected:
-  std::string Type() const { return type_; }
-
  public:
   std::string type_;
   std::vector<std::string> inputs_;
