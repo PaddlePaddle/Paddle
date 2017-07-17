@@ -215,6 +215,7 @@ func readChunks(globPaths []string) ([]Chunk, error) {
 		}
 
 		count := index.NumChunks()
+		log.Infof("readChunks: file %s has %d chunks", path, count)
 		for i := 0; i < count; i++ {
 			chunk := Chunk{
 				Path:  path,
