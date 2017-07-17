@@ -19,7 +19,7 @@ namespace framework {
 
 std::string OperatorBase::DebugString() const {
   std::stringstream ss;
-  ss << "Op(" << Type() << "), inputs:(";
+  ss << "Op(" << type_ << "), inputs:(";
   for (size_t i = 0; i < inputs_.size(); ++i) {
     ss << inputs_[i];
     if (i != inputs_.size() - 1) {

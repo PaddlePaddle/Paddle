@@ -203,10 +203,9 @@ class OpRegistry {
     //! Create a OpPtr by type.
     std::string op_type = op_desc.type();
     OperatorPtr op(creators().at(op_type)());
-
     //! Fill op's data member. Not use constructor because it will be noising
     //! for Op developer.
-    op->desc_ = op_desc;
+    op->type_ = op_desc.type();
     op->inputs_.reserve((size_t)op_desc.inputs_size());
     std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),
               std::back_inserter(op->inputs_));
@@ -239,7 +238,7 @@ class OpRegistry {
     static std::atomic<size_t> gUniqId(0UL);
     for (auto& outname : op->outputs_) {
       if (outname == OperatorBase::TMP_VAR_NAME()) {
-        outname += op->Type();
+        outname += op->type_;
         outname += "@";
         outname += std::to_string(gUniqId.fetch_add(1));
       }
@@ -265,12 +264,18 @@ class OpRegisterHelper {
   }
 };
 
+/**
+ * check if MACRO is used in GLOBAL NAMESPACE.
+ */
 #define STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                        \
   struct __test_global_namespace_##uniq_name##__ {};                          \
   static_assert(std::is_same<::__test_global_namespace_##uniq_name##__,       \
                              __test_global_namespace_##uniq_name##__>::value, \
                 msg)
 
+/**
+ * Macro to Register Operator.
+ */
 #define REGISTER_OP(__op_type, __op_class, __op_maker_class)                 \
   STATIC_ASSERT_GLOBAL_NAMESPACE(__reg_op__##__op_type,                      \
                                  "REGISTER_OP must be in global namespace"); \
@@ -278,9 +283,12 @@ class OpRegisterHelper {
       __op_register_##__op_type##__(#__op_type);                             \
   int __op_register_##__op_type##_handle__() { return 0; }
 
-#define REGISTER_OP_KERNEL(type, GPU_OR_CPU, PlaceType, KernelType)       \
+/**
+ * Macro to Register OperatorKernel.
+ */
+#define REGISTER_OP_KERNEL(type, DEVICE_TYPE, PlaceType, KernelType)      \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
-      __reg_op_kernel_##type##_##GPU_OR_CPU##__,                          \
+      __reg_op_kernel_##type##_##DEVICE_TYPE##__,                         \
       "REGISTER_OP_KERNEL must be in global namespace");                  \
   struct __op_kernel_register__##type##__ {                               \
     __op_kernel_register__##type##__() {                                  \
@@ -291,7 +299,7 @@ class OpRegisterHelper {
     }                                                                     \
   };                                                                      \
   static __op_kernel_register__##type##__ __reg_kernel_##type##__;        \
-  int __op_kernel_register_##type##_handle_##GPU_OR_CPU##__() { return 0; }
+  int __op_kernel_register_##type##_handle_##DEVICE_TYPE##__() { return 0; }
 
 #define REGISTER_OP_GPU_KERNEL(type, KernelType) \
   REGISTER_OP_KERNEL(type, GPU, ::paddle::platform::GPUPlace, KernelType)
@@ -299,6 +307,10 @@ class OpRegisterHelper {
 #define REGISTER_OP_CPU_KERNEL(type, KernelType) \
   REGISTER_OP_KERNEL(type, CPU, ::paddle::platform::CPUPlace, KernelType)
 
+/**
+ * Macro to mark what Operator and Kernel we will use and tell the compiler to
+ * link them into target.
+ */
 #define USE_OP_WITHOUT_KERNEL(op_type)                      \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                           \
       __use_op_without_kernel_##op_type,                    \
@@ -316,15 +328,16 @@ class OpRegisterHelper {
       __attribute__((unused)) =                                           \
           __op_kernel_register_##op_type##_handle_##DEVICE_TYPE##__()
 
-#ifdef PADDLE_ONLY_CPU
-#define USE_OP(op_type)           \
+// use Operator with only cpu kernel.
+#define USE_OP_CPU(op_type)       \
   USE_OP_WITHOUT_KERNEL(op_type); \
-  USE_OP_KERNEL(op_type, CPU);
+  USE_OP_KERNEL(op_type, CPU)
 
+#ifdef PADDLE_ONLY_CPU
+#define USE_OP(op_type) USE_OP_CPU(op_type)
 #else
-#define USE_OP(op_type)           \
-  USE_OP_WITHOUT_KERNEL(op_type); \
-  USE_OP_KERNEL(op_type, CPU);    \
+#define USE_OP(op_type) \
+  USE_OP_CPU(op_type);  \
   USE_OP_KERNEL(op_type, GPU)
 #endif
 
