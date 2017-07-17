@@ -67,8 +67,7 @@ class OpProtoAndCheckerMaker {
 
   void Validate() {
     validated_ = true;
-    CheckNoDuplicatedAttrs();
-    CheckNoDuplicatedInOut();
+    CheckNoDuplicatedInOutAttrs();
   }
 
  protected:
@@ -171,20 +170,13 @@ Add a mark to which output is temporary is helpful for future optimization.
     }
   }
 
-  void CheckNoDuplicatedAttrs() {
+  void CheckNoDuplicatedInOutAttrs() {
     std::unordered_set<std::string> names;
     size_t cnt = 0;
     for (auto& attr : proto_->attrs()) {
       names.insert(attr.name());
       ++cnt;
     }
-    PADDLE_ENFORCE(names.size() == cnt,
-                   "Cannot register two attribute with same name!");
-  }
-
-  void CheckNoDuplicatedInOut() {
-    std::unordered_set<std::string> names;
-    size_t cnt = 0;
     for (auto& input : proto_->inputs()) {
       names.insert(input.name());
       ++cnt;
@@ -193,8 +185,9 @@ Add a mark to which output is temporary is helpful for future optimization.
       names.insert(output.name());
       ++cnt;
     }
-    PADDLE_ENFORCE(names.size() == cnt,
-                   "Cannot register two Input or Output with same name!");
+    PADDLE_ENFORCE(
+        names.size() == cnt,
+        "Cannot register two input/output/attribute with same name!");
   }
 
   OpProto* proto_;
