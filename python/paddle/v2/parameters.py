@@ -310,14 +310,14 @@ class Parameters(object):
                 conf.ParseFromString(f.read())
                 params.__append_config__(conf)
 
-        keys = set()
+        skip_keys = set()
         for _, item in skip_layers.iteritems():
             param_name = item[0]
             value = item[1]
             params.set(param_name, value, force_shape=True)
-            keys.add(param_name)
+            skip_keys.add(param_name)
         for param_name in params.names():
-            if param_name in keys:
+            if param_name in skip_keys:
                 continue
             f = tar.extractfile(param_name)
             params.deserialize(param_name, f)
