@@ -40,7 +40,7 @@ func main() {
 		idx = *index
 	} else {
 		e = pserver.NewEtcdClient(*etcdEndpoint, *numPservers, *etcdTimeout)
-		idx, err = e.Register()
+		idx, err = e.Register(*port)
 		candy.Must(err)
 
 		cp, err = pserver.NewCheckpointFromFile(*checkpointPath, idx, e)

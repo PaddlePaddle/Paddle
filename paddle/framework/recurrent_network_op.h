@@ -138,10 +138,8 @@ struct MemoryAttr {
  *
  * see RecurrentOpProtoAndCheckerMaker
  */
-
 class RecurrentAlgorithm {
  public:
-  void Init(const OpDesc& op_desc, AttributeMap& attrs);
   /*
    * Forward run the RNN.
    *
@@ -232,81 +230,6 @@ class RecurrentAlgorithm {
   std::vector<std::string> outputs_;
 };
 
-class RecurrentOp final : public OperatorBase {
- public:
-  void Init(const OpDesc& op_desc, AttributeMap& attrs) {
-    // TODO(superjom) change these two copy to pointer
-    alg_.inputs_ = inputs_;
-    alg_.outputs_ = outputs_;
-
-    // TODO(superjom) update following codes when variable length input
-    // interfaces are added.
-    alg_.net_name_ = inputs_.at(GetAttr<int>("step_net"));
-    alg_.step_scopes_name_ = outputs_.back();
-
-    // prepare inlinks
-    PADDLE_ENFORCE(alg_.inlinks_.empty(),
-                   "RecurrentAlgorithm duplicate inited");
-    LOG(INFO) << "set inlinks";
-    for (auto id : GetAttr<std::vector<int>>("in_links")) {
-      alg_.inlinks_.push_back(inputs_[id]);
-    }
-    auto inlink_alias = GetAttr<std::vector<std::string>>("in_link_alias");
-    alg_.in_link_alias_ =
-        std::vector<std::string>{inlink_alias.begin(), inlink_alias.end()};
-    PADDLE_ENFORCE(alg_.inlinks_.size() == alg_.in_link_alias_.size(),
-                   "in_links/in_link_alias mismatch.");
-
-    PADDLE_ENFORCE(
-        outputs_.size() > 1,
-        "more than 1 output should be provided and the last is `step_scopes`");
-    alg_.outlinks_ =
-        std::vector<std::string>{outputs_.begin(), outputs_.end() - 1};
-
-    auto outlink_alias = GetAttr<std::vector<std::string>>("out_link_alias");
-    alg_.out_link_alias_ =
-        std::vector<std::string>{outlink_alias.begin(), outlink_alias.end()};
-    PADDLE_ENFORCE(alg_.outlinks_.size() == outlink_alias.size(),
-                   "out_links/out_link_alias mismatch.");
-
-    // set memories
-    auto memories = GetAttr<std::vector<std::string>>("memories");
-    auto pre_memories = GetAttr<std::vector<std::string>>("pre_memories");
-    PADDLE_ENFORCE(
-        memories.size() == pre_memories.size(),
-        "The size of memories and pre_memories doesn't match: %d,%d.",
-        memories.size(), pre_memories.size());
-
-    std::vector<std::string> boot_memories;
-    LOG(INFO) << "set boot_memories";
-    for (auto id : GetAttr<std::vector<int>>("boot_memories")) {
-      boot_memories.push_back(inputs_[id]);
-    }
-    PADDLE_ENFORCE(
-        memories.size() == boot_memories.size(),
-        "the size of memories and boot_memories doesn't match: %d,%d",
-        memories.size(), boot_memories.size());
-    for (size_t i = 0; i < memories.size(); ++i) {
-      details::MemoryAttr mem_attr;
-      mem_attr.var = memories[i];
-      mem_attr.pre_var = pre_memories[i];
-      mem_attr.boot_var = boot_memories[i];
-      alg_.memory_attrs_.push_back(mem_attr);
-      LOG(INFO) << "set memorys:\t"
-                << "memory:" << mem_attr.var << "\tboot:" << mem_attr.boot_var;
-    }
-  }
-
-  virtual void InferShape(ScopePtr scope) const override {}
-
-  virtual void Run(OpContext* ctx) const override { alg_.Run(ctx); }
-
-  virtual ~RecurrentOp() {}
-
- private:
-  RecurrentAlgorithm alg_;
-};
-
 /*
  * RNN's backward alogorithm.
  *
@@ -339,6 +262,20 @@ class RecurrentBackwardAlgorithm {
 
   // NOTE the first step's boot memories' gradients should be outputed.
   std::vector<details::MemoryAttr> memories_;
+};
+
+class RecurrentOp final : public OperatorBase {
+ public:
+  void Init(const OpDesc& op_desc, AttributeMap& attrs);
+
+  virtual void InferShape(ScopePtr scope) const override {}
+
+  virtual void Run(OpContext* ctx) const override { alg_.Run(ctx); }
+
+  virtual ~RecurrentOp() {}
+
+ private:
+  RecurrentAlgorithm alg_;
 };
 
 }  // namespace framework
