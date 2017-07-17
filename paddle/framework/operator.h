@@ -14,17 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/framework/attr_checker.h>
-#include <paddle/framework/op_desc.pb.h>
-#include <paddle/framework/scope.h>
-#include <paddle/framework/tensor.h>
-#include <paddle/platform/device_context.h>
-#include <paddle/platform/place.h>
-#include <paddle/utils/Error.h>
 #include <boost/variant.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/framework/attr_checker.h"
+#include "paddle/framework/op_desc.pb.h"
+#include "paddle/framework/scope.h"
+#include "paddle/framework/tensor.h"
+#include "paddle/platform/device_context.h"
+#include "paddle/platform/place.h"
+#include "paddle/utils/Error.h"
 
 namespace paddle {
 namespace framework {

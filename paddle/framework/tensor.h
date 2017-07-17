@@ -62,21 +62,19 @@ class Tensor {
         !(holder_->place() ==
           place) /* some versions of boost::variant don't have operator!= */
         || holder_->size() < numel_ * sizeof(T) + offset_) {
+      if (platform::is_cpu_place(place)) {
+        holder_.reset(new PlaceholderImpl<T, platform::CPUPlace>(
+            boost::get<platform::CPUPlace>(place), numel_ * sizeof(T)));
+      }
 #ifdef __CUDACC__
-      switch (place.which()) {
-        case 0:
-          holder_.reset(new PlaceholderImpl<T, platform::GPUPlace>(
-              boost::get<platform::GPUPlace>(place), numel_ * sizeof(T)));
-          break;
-
-        case 1:
-          holder_.reset(new PlaceholderImpl<T, platform::CPUPlace>(
-              boost::get<platform::CPUPlace>(place), numel_ * sizeof(T)));
-          break;
+      else if (platform::is_gpu_place(place)) {
+        holder_.reset(new PlaceholderImpl<T, platform::GPUPlace>(
+            boost::get<platform::GPUPlace>(place), numel_ * sizeof(T)));
       }
 #else
-      holder_.reset(new PlaceholderImpl<T, platform::CPUPlace>(
-          boost::get<platform::CPUPlace>(place), numel_ * sizeof(T)));
+      else if (platform::is_gpu_place(place)) {
+        PADDLE_ENFORCE(true, "GPU not support!");
+      }
 #endif
       offset_ = 0;
     }

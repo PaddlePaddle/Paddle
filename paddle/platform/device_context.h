@@ -20,9 +20,9 @@ limitations under the License. */
 #include "paddle/platform/gpu_info.h"
 #define EIGEN_USE_GPU
 #endif
-#include <paddle/platform/place.h>
 #include <memory>
-#include <unsupported/Eigen/CXX11/Tensor>
+#include "paddle/platform/place.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace platform {
