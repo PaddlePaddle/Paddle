@@ -25,9 +25,9 @@ Eigen::DefaultDevice* OpKernel::KernelContext::get_eigen_device<
 
 #ifndef PADDLE_ONLY_CPU
 template <>
-DeviceType* OpKernel::KernelContext::get_eigen_device<platform::GPUPlace>()
-    const {
-  return device_context_.get_eigen_device<DeviceType>();
+Eigen::GpuDevice* OpKernel::KernelContext::get_eigen_device<
+    platform::GPUPlace, Eigen::GpuDevice>() const {
+  return device_context_.get_eigen_device<Eigen::GpuDevice>();
 }
 #endif
 
