@@ -30,7 +30,7 @@ namespace paddle {
 
 class ParameterPruningHook : public IParameterUpdaterHook {
 public:
-  explicit ParameterPruningHook() : initCount_(0) {}
+  ParameterPruningHook() : initCount_(0) {}
 
   virtual void preprocess(Parameter *para,
                           size_t currentPass,
