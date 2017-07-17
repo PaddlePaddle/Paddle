@@ -278,20 +278,6 @@ public:
   }
 
   /**
-   * @brief  Parameter handleBeforeFetch Hook.
-   *
-   * The parameter's handleBeforeFetch hook
-   * If parameter has hooks, the parameters will operate with the hooks before
-   * fetching the data when using the python api in
-   * paddle.v2.parameters.get(...).
-   */
-  void handleBeforeFetch() {
-    for (auto& hook : updaterHooks_) {
-      hook->handleBeforeFetch(this);
-    }
-  }
-
-  /**
    * @brief  Initialize all updater hook.
    *
    * This method should be invoked in ParameterUpdater::init() only.

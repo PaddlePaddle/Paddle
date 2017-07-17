@@ -16,8 +16,6 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
-#include <fstream>
-#include <iostream>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
@@ -37,10 +35,16 @@ public:
   virtual void preprocess(Parameter *para,
                           size_t currentPass,
                           size_t currentBatch) {}
-  virtual void update(Parameter *para) {}
-  virtual void handleBeforeFetch(Parameter *para) {}
+  void update(Parameter *para) override {
+    updateThreadChecker_.check();
+    auto &vec = para->getBuf(PARAMETER_VALUE);
+    if (vec) {
+      vec->dotMul(*maskVec_);
+    }
+  }
 
-  virtual void generateMask(Parameter *para, size_t nonZeroNum) {
+  virtual void generateMask(Parameter *para, real sparsityRatio) {
+    size_t nonZeroNum = para->getSize() * (1 - sparsityRatio);
     VectorPtr maskTemp = Vector::create(para->getSize(), false);
     maskTemp->zeroMem();
     real *maskTempData = maskTemp->getData();
@@ -98,19 +102,10 @@ public:
     VLOG(3) << "Initialize Parameter " << para;
     SetDevice device(para->getDeviceId());
 
-    size_t nonZeroNum = para->getSize() * (1 - sparsityRatio_);
-    this->generateMask(para, nonZeroNum);
+    this->generateMask(para, sparsityRatio_);
 
     auto &paraVec = para->getBuf(PARAMETER_VALUE);
     paraVec->dotMul(*this->maskVec_);
-  }
-
-  void update(Parameter *para) override {
-    updateThreadChecker_.check();
-    auto &vec = para->getBuf(PARAMETER_GRADIENT);
-    if (vec) {
-      vec->dotMul(*maskVec_);
-    }
   }
 
 private:
@@ -121,8 +116,8 @@ class DynamicPruningHook : public ParameterPruningHook {
 public:
   explicit DynamicPruningHook(const ParameterUpdaterHookConfig &hookConfig)
       : ParameterPruningHook() {
-    this->upperBound_ = hookConfig.upper_bound();
-    this->interPass_ = hookConfig.inter_pass();
+    this->sparsityUpperBound_ = hookConfig.sparsity_upper_bound();
+    this->intervalPass_ = hookConfig.interval_pass();
     this->endPass_ = hookConfig.end_pass();
   }
 
@@ -134,48 +129,31 @@ public:
     VLOG(3) << "Initialize Parameter " << para;
     this->maskVec_ = Vector::create(para->getSize(), para->useGpu());
     this->maskVec_->reset(1.0);
-    this->weightTemp_ = Vector::create(para->getSize(), para->useGpu());
   }
 
   void preprocess(Parameter *para,
                   size_t currentPass,
                   size_t currentBatch) override {
-    if (currentPass % interPass_ == 0 && currentPass <= endPass_ &&
+    if (currentPass % intervalPass_ == 0 && currentPass <= endPass_ &&
         currentBatch == 0) {
-      real boundWeight = this->upperBound_ /
-                         std::log(this->endPass_ / (real)this->interPass_ + 2);
+      real boundWeight =
+          this->sparsityUpperBound_ /
+          std::log(this->endPass_ / (real) this->intervalPass_ + 2);
       real sparsityRatio =
-          boundWeight * std::log(2 + currentPass / (real)interPass_);
+          boundWeight * std::log(2 + currentPass / (real)intervalPass_);
 
-      size_t nonZeroNum = para->getSize() * (1 - sparsityRatio);
-      this->generateMask(para, nonZeroNum);
-      std::cout << para->getName()
-                << " Current sparsity ratio: " << sparsityRatio << std::endl;
-    }
-    auto &paraVec = para->getBuf(PARAMETER_VALUE);
-    weightTemp_->copyFrom(*paraVec);
-    paraVec->dotMul(*this->maskVec_);
-  }
-
-  void update(Parameter *para) override {
-    updateThreadChecker_.check();
-    auto &vec = para->getBuf(PARAMETER_VALUE);
-    vec->copyFrom(*this->weightTemp_);
-  }
-
-  void handleBeforeFetch(Parameter *para) override {
-    updateThreadChecker_.check();
-    auto &vec = para->getBuf(PARAMETER_VALUE);
-    if (vec) {
-      vec->dotMul(*maskVec_);
+      this->generateMask(para, sparsityRatio);
+      LOG(INFO) << para->getName()
+                << " Current sparsity ratio: " << sparsityRatio;
+      auto &paraVec = para->getBuf(PARAMETER_VALUE);
+      paraVec->dotMul(*this->maskVec_);
     }
   }
 
 private:
-  real upperBound_;
-  size_t interPass_;
+  real sparsityUpperBound_;
+  size_t intervalPass_;
   size_t endPass_;
-  VectorPtr weightTemp_;
 };
 
 IParameterUpdaterHook::IParameterUpdaterHook() {}

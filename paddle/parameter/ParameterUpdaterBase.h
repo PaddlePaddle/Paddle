@@ -57,8 +57,8 @@ public:
   // with its gradient in PARAMETER_GRADIENT
   void update(Parameter* para) {
     SetDevice setDevice(para->getDeviceId());
-    para->updateHook();
     this->updateImpl(para);
+    para->updateHook();
   }
   // it will be called before layer forwardbackward in training process, do the
   // preprocess for the parameters. Such as drop some parameters in dynamic

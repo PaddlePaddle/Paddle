@@ -60,11 +60,6 @@ public:
                           size_t currentPass,
                           size_t currentBatch) = 0;
 
-  /**
-   * The handleBeforeFetch hook method. Invoke in Parameter::handleBeforeFetch
-   */
-  virtual void handleBeforeFetch(Parameter* para) = 0;
-
 protected:
   /**
    * Ctor.
