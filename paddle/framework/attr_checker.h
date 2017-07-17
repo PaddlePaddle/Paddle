@@ -10,8 +10,9 @@
 namespace paddle {
 namespace framework {
 
-typedef boost::variant<boost::blank, int, float, std::string, std::vector<int>,
-                       std::vector<float>, std::vector<std::string>>
+typedef boost::variant<boost::blank, bool, int, float, std::string,
+                       std::vector<int>, std::vector<float>,
+                       std::vector<std::string>>
     Attribute;
 typedef std::unordered_map<std::string, Attribute> AttributeMap;
 
@@ -20,12 +21,24 @@ template <typename T>
 class LargerThanChecker {
  public:
   LargerThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
-  void operator()(T& value) const {
+  void operator()(const T& value) const {
     PADDLE_ENFORCE(value > lower_bound_, "larger_than check fail");
   }
 
  private:
   T lower_bound_;
+};
+
+template <typename T>
+class LessThanChecker {
+ public:
+  LessThanChecker(T upper_bound) : upper_bound_(upper_bound) {}
+  void operator()(const T& value) const {
+    PADDLE_ENFORCE(value < upper_bound_, "less_than check failed!");
+  }
+
+ private:
+  T upper_bound_;
 };
 
 // we can provide users more common Checker, like 'LessThanChecker',
@@ -52,6 +65,11 @@ class TypedAttrChecker {
 
   TypedAttrChecker& LargerThan(const T& lower_bound) {
     value_checkers_.push_back(LargerThanChecker<T>(lower_bound));
+    return *this;
+  }
+
+  TypedAttrChecker& LessThan(const T& upper_bound) {
+    value_checkers_.push_back(LessThanChecker<T>(upper_bound));
     return *this;
   }
 
