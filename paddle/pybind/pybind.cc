@@ -67,6 +67,23 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
+  m.def_submodule(
+       "var_names",
+       "The module will return special predefined variable name in Paddle")
+      .def("empty", pd::OperatorBase::EMPTY_VAR_NAME)
+      .def("temp", pd::OperatorBase::TMP_VAR_NAME);
+
+  py::class_<pd::OperatorBase, pd::OperatorPtr>(m, "Operator")
+      .def("__str__", &pd::OperatorBase::DebugString)
+      .def_static("create", [](const std::string& protobin) {
+        pd::OpDesc desc;
+        PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
+                       "Cannot parse user input to OpDesc");
+        PADDLE_ENFORCE(desc.IsInitialized(),
+                       "User OpDesc is not initialized, reason %s",
+                       desc.InitializationErrorString());
+        return pd::OpRegistry::CreateOp(desc);
+      });
 
   return m.ptr();
 }
