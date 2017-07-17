@@ -23,7 +23,7 @@ namespace operators {
 template <typename Place>
 class SigmoidKernel : public framework::OpKernel {
 public:
-  void Compute(const KernelContext &context) const override {
+  void Compute(const framework::KernelContext &context) const override {
     LOG(INFO) << "Sigmoid kernel in " << typeid(Place).name();
   }
 };

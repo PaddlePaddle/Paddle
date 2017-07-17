@@ -23,7 +23,7 @@ namespace operators {
 template <typename Place>
 class SoftmaxKernel : public framework::OpKernel {
 public:
-  void Compute(const KernelContext &context) const override {
+  void Compute(const framework::KernelContext &context) const override {
     LOG(INFO) << "Softmax kernel in " << typeid(Place).name();
   }
 };

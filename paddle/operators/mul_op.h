@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #pragma once
+
 #include <glog/logging.h>
 #include <paddle/framework/operator.h>
 
@@ -22,7 +23,7 @@ namespace operators {
 template <typename Place>
 class MulKernel : public framework::OpKernel {
 public:
-  void Compute(const KernelContext &context) const override {
+  void Compute(const framework::KernelContext &context) const override {
     LOG(INFO) << "Mul kernel in " << typeid(Place).name();
   }
 };
