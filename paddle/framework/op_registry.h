@@ -172,22 +172,19 @@ Add a mark to which output is temporary is helpful for future optimization.
 
   void CheckNoDuplicatedInOutAttrs() {
     std::unordered_set<std::string> names;
-    size_t cnt = 0;
+    auto checker = [&](std::string name) {
+      PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);
+      names.insert(name);
+    };
     for (auto& attr : proto_->attrs()) {
-      names.insert(attr.name());
-      ++cnt;
+      checker(attr.name());
     }
     for (auto& input : proto_->inputs()) {
-      names.insert(input.name());
-      ++cnt;
+      checker(input.name());
     }
     for (auto& output : proto_->outputs()) {
-      names.insert(output.name());
-      ++cnt;
+      checker(output.name());
     }
-    PADDLE_ENFORCE(
-        names.size() == cnt,
-        "Cannot register two input/output/attribute with same name!");
   }
 
   OpProto* proto_;
