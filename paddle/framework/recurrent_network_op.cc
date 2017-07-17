@@ -111,15 +111,16 @@ void RecurrentAlgorithm::SegmentInputs(ScopePtr scope) const {
   auto step_scopes = GetStepScopes(scope);
   size_t max_seq_len = GetMaxSeqLen(scope);
   for (size_t i = 0; i < inlinks_.size(); ++i) {
-    // Tensor* input_tensor = Input(scope, inlinks_[i])->GetMutable<Tensor>();
     Tensor* input_tensor =
         scope->GetVariable(inlinks_[i])->GetMutable<Tensor>();
+    DDim input_dims = input_tensor->dims();
+    DDim step_input_dims = slice_ddim(input_dims, 1, arity(input_dims));
     for (size_t j = 0; j < max_seq_len; j++) {
-      Variable* input_var = step_scopes[j]->CreateVariable(in_link_alias_[i]);
-      Tensor* step_input_tensor = input_var->GetMutable<Tensor>();
-      *step_input_tensor = input_tensor->Slice<float>(j, j + 1);
-      // TODO(luotao1): use reshape function to decrease the dims of
-      // step_input_tensor.
+      Tensor* step_input_tensor = step_scopes[j]
+                                      ->CreateVariable(in_link_alias_[i])
+                                      ->GetMutable<Tensor>();
+      *step_input_tensor = (*input_tensor).Slice<float>(j, j + 1);
+      (*step_input_tensor).set_dims(step_input_dims);
     }
   }
 }
@@ -127,27 +128,25 @@ void RecurrentAlgorithm::SegmentInputs(ScopePtr scope) const {
 void RecurrentAlgorithm::ConcatOutputs(ScopePtr scope) const {
   auto step_scopes = GetStepScopes(scope);
   size_t max_seq_len = GetMaxSeqLen(scope);
-  // TODO(luotao1): update using CopyFrom function in tensor.
-  // auto dims = Input(scope, inlinks_[0])->GetMutable<Tensor>()->dims();
-  auto dims = scope->GetVariable(inlinks_[0])->GetMutable<Tensor>()->dims();
-  int batch_size = dims[1];
   for (size_t i = 0; i < outlinks_.size(); i++) {
-    auto output_dims = step_scopes[0]
-                           ->GetVariable(out_link_alias_[0])
-                           ->GetMutable<Tensor>()
-                           ->dims();
-    int output_dim = output_dims[1];
-    int length = batch_size * output_dim;
+    DDim step_output_dims = step_scopes[0]
+                                ->GetVariable(out_link_alias_[i])
+                                ->GetMutable<Tensor>()
+                                ->dims();
+    std::vector<int> dims_vec = vectorize(step_output_dims);
+    dims_vec.insert(dims_vec.begin(), max_seq_len);
+
     Tensor* output_tensor =
         scope->CreateVariable(outlinks_[i])->GetMutable<Tensor>();
-    float* output = output_tensor->mutable_data<float>(
-        make_ddim({(int)max_seq_len, batch_size, output_dim}),
-        platform::CPUPlace());
+    (*output_tensor)
+        .mutable_data<double>(make_ddim(dims_vec), platform::Place());
+
     for (size_t j = 0; j < max_seq_len; j++) {
-      Variable* output_var = step_scopes[j]->GetVariable(out_link_alias_[i]);
-      const float* step_output =
-          output_var->GetMutable<Tensor>()->data<float>();
-      std::memcpy(output + j * length, step_output, length);
+      Tensor* step_output_tensor = step_scopes[j]
+                                       ->CreateVariable(out_link_alias_[i])
+                                       ->GetMutable<Tensor>();
+      ((*output_tensor).Slice<float>(j, j + 1))
+          .CopyFrom<float>(*step_output_tensor, platform::CPUPlace());
     }
   }
 }
