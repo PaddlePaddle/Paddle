@@ -1,6 +1,6 @@
 if(WITH_GPU)
-    nv_library(add_op SRCS add_op.cc add_op.cu DEPS operator op_registry glog ddim)
+    nv_library(add_op SRCS add_op.cc add_op.cu DEPS operator op_registry ddim glog paddle_memory)
 else()
-    cc_library(add_op SRCS add_op.cc DEPS operator op_registry glog ddim)
+    cc_library(add_op SRCS add_op.cc DEPS operator op_registry ddim glog paddle_memory)
 endif()
 cc_test(add_op_test SRCS add_op_test.cc DEPS add_op)

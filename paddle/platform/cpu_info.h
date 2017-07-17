@@ -14,22 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/tensor_types.h"
-#include "unsupported/Eigen/CXX11/Tensor"
+#include <stddef.h>
 
 namespace paddle {
-namespace operators {
-namespace functor {
+namespace platform {
 
-template <typename Device, typename T>
-struct Add {
-  void Operator()(const Device& d,
-                  typename TTypes<T>::ConstTensor input1,
-                  typename TTypes<T>::ConstTensor input2,
-                  typename TTypes<T>::Tensor output) {
-    output.device(d) = input1 + input2;
-  }
-};
-}  // namespace functor
-}  // namespace operators
+//! Get the maximum allocation size for a machine.
+size_t CpuMaxAllocSize();
+
+//! Get the minimum chunk size for buddy allocator.
+size_t CpuMinChunkSize();
+
+//! Get the maximum chunk size for buddy allocator.
+size_t CpuMaxChunkSize();
+
+}  // namespace platform
 }  // namespace paddle

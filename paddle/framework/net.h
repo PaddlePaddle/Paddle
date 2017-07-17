@@ -1,98 +1,50 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
+#include <paddle/framework/op_desc.pb.h>
+#include <paddle/framework/operator.h>
 #include "paddle/framework/net_proto.pb.h"
 #include "paddle/framework/op_proto.pb.h"
+#include "paddle/framework/op_registry.h"
 #include "paddle/framework/scope.h"
 #include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
-using namespace paddle::platform;
-
-// operator's index stored in a network.
-typedef int OpIndex;
 /**
- * NOTE following codes are some definitions of unimplemented concepts.
- * We write some basic implementation to make Net compilable. These APIs will
- * keep updating if the concepts related are implemented.
- */
-
-struct OpDesc;
-struct OpAttrs {};
-
-class Operator {
- public:
-  Operator(const OpDesc &def) {}
-  void InferShape() {}
-  void Run(DeviceContext *ctx) {}
-};
-
-/**
- * @brief Network that manage the operators it has.
+ * @brief Network is also a type of Operator
  *
- * Network is the container and controller of a set of operators, user can build
- * a real network from a NetDesc which is a protobuf message and use
- * Network.Run() * to run all the operators in the network.
+ * It will manage the operators it has.
+ *
+ * Network is the container and controller of a set of operators.
 
  * A network object knows all Operators belonging to this network. Variables,
  * which are inputs and outputs of these operators, are created and managed by a
  * hierarchy of Scope objects.
  *
- * This is the base class of network, all the networks should implement the apis
+ * This is the base class of network, all the networks should implement the APIs
  * it defines.
  */
-class Net {
+class Net : public OperatorBase {
  public:
-  /**
-   * @brief Infer shapes of all inputs and outputs of operators.
-   */
-  virtual void InferShape(Scope *scope) = 0;
-  /**
-   * @brief Run the network.
-   *
-   * Run all the operators and return success(true) or not, with all the
-   * variables are located in `scope`. `context` describes the detail execution
-   * environment for ops. `begin` and `end` specify the scope of `ops_` to run,
-   * If no positive indexes are provided, all operators in `ops_` will run.
-   */
-  virtual void Run(std::shared_ptr<Scope> scope, DeviceContext *ctx) = 0;
-
-  /**
-   * @brief Add an Operator according to `def`.
-   */
-  virtual OpIndex AddOp(const OpProto &def) = 0;
-
-  /**
-   * @brief Add optimizer operators acctording to `attrs`.
-   */
-  virtual void AddOptimizerOps(const OpAttrs &attrs) = 0;
-
-  /**
-   * @brief Add backward operators.
-   */
-  virtual void AddBackwardOps() = 0;
-
-  /**
-   * @brief Create a network.
-   */
-  static std::unique_ptr<Net> Create(const NetDesc &def = NetDesc());
-
-  virtual ~Net() {}
+  virtual void AddOp(const OperatorPtr& op) = 0;
+  virtual void CompleteAddOp() = 0;
 };
+
+using NetPtr = std::shared_ptr<Net>;
 
 /**
  * @brief a basic implementation of Net.
@@ -103,18 +55,14 @@ class Net {
 class PlainNet : public Net {
  public:
   /**
-   * @brief Initialize a PlainNet.
-   *
-   * Initialize from  a network describe by `def`. NetDesc is the definition of
-   * a network.
-   */
-  PlainNet(const NetDesc &def);
-
-  /**
-   * Infer all the operators' input and output varialbes' shapes, will be called
+   * Infer all the operators' input and output variables' shapes, will be called
    * before every mini-batch
    */
-  virtual void InferShape(Scope *scope) override;
+  void InferShape(const ScopePtr& scope) const override {
+    for (auto& op : ops_) {
+      op->InferShape(scope);
+    }
+  }
 
   /**
    * @brief Run the network.
@@ -123,48 +71,32 @@ class PlainNet : public Net {
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  virtual void Run(std::shared_ptr<Scope> scope, DeviceContext *ctx) override;
+  void Run(const ScopePtr& scope,
+           const platform::DeviceContext& dev_ctx) const override {
+    for (auto& op : ops_) {
+      op->Run(scope, dev_ctx);
+    }
+  }
 
   /**
-   * @brief Add an operator to this network.
+   * @brief Add an operator by ptr
    */
-  virtual OpIndex AddOp(const OpProto &def) override;
+  void AddOp(const OperatorPtr& op) override {
+    PADDLE_ENFORCE(!add_op_done_, "Cannot AddOp when this network is sealed");
+    ops_.push_back(op);
+  }
 
-  /**
-   * @brief Add all optimizer operators related into the network.
-   */
-  virtual void AddOptimizerOps(const OpAttrs &attrs) override;
+  void CompleteAddOp() override;
 
-  /**
-   * @brief Add all backward operators related into the network.
-   */
-  virtual void AddBackwardOps() override;
-
-  virtual ~PlainNet() override {}
-
- protected:
-  /**
-   * @brief Build the network.
-   *
-   * Create operators accordding to `def`, will be called by the constructor.
-   */
-  void BuildNet(const NetDesc &def);
-
-  /**
-   * @brief Add an operator into this network.
-   *
-   * Add a operator which is identified as `type` and has attributes described
-   * in `attrs`, the `inputs` are the keys of readonly input variables,
-   * `outputs` are keys of mutable output variables. An `OpIndex` will be
-   * returned to indicate the offset of the new operator in `ops_`.
-   */
-  OpIndex AddOp(const std::string &type, const std::vector<std::string> &inputs,
-                const std::vector<std::string> &outputs,
-                const OpAttrs &attrs = OpAttrs());
+  std::vector<OperatorPtr> ops_;
 
  private:
-  // the operators owned by `Network`.
-  std::vector<Operator> ops_;
+  bool add_op_done_{false};
+
+  template <typename T, typename KeyType>
+  static bool Contains(T container, KeyType key) {
+    return container.find(key) != container.end();
+  }
 };
 
 }  // namespace framework

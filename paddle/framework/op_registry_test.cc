@@ -5,9 +5,9 @@ namespace paddle {
 namespace framework {
 class CosineOp : public OperatorBase {
  public:
-  void Run(const std::shared_ptr<Scope>& scope,
+  void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const override {}
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
+  void InferShape(const ScopePtr& scope) const override {}
 };
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -25,8 +25,8 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 class MyTestOp : public OperatorBase {
  public:
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
-  void Run(const std::shared_ptr<Scope>& scope,
+  void InferShape(const ScopePtr& scope) const override {}
+  void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const override {}
 
  public:
@@ -36,8 +36,9 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   MyTestOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("input", "input of cosine op");
-    AddOutput("output", "output of cosine op");
+    AddInputs("input", "input of cosine op");
+    AddOutput("output", "output of cosine op",
+              /*temporary*/ true);
     auto my_checker = [](int i) {
       PADDLE_ENFORCE(i % 2 == 0, "'test_attr' must be even!");
     };
@@ -66,7 +67,7 @@ TEST(OpRegistry, CreateOp) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(scale);
 
-  paddle::framework::OperatorBase* op =
+  paddle::framework::OperatorPtr op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
   auto scope = std::make_shared<paddle::framework::Scope>();
   paddle::platform::CPUDeviceContext dev_ctx;
@@ -88,7 +89,7 @@ TEST(OpRegistry, IllegalAttr) {
 
   bool caught = false;
   try {
-    paddle::framework::OperatorBase* op __attribute__((unused)) =
+    paddle::framework::OperatorPtr op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
@@ -109,7 +110,7 @@ TEST(OpRegistry, DefaultValue) {
 
   ASSERT_TRUE(op_desc.IsInitialized());
 
-  paddle::framework::OperatorBase* op =
+  paddle::framework::OperatorPtr op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
   auto scope = std::make_shared<paddle::framework::Scope>();
   paddle::platform::CPUDeviceContext dev_ctx;
@@ -117,16 +118,25 @@ TEST(OpRegistry, DefaultValue) {
   ASSERT_EQ(op->GetAttr<float>("scale"), 1.0);
 }
 
+static void SetInputFormat(paddle::framework::OpDesc* desc) {
+  auto attr = desc->add_attrs();
+  attr->set_name("input_format");
+  attr->set_type(paddle::framework::INTS);
+  attr->mutable_ints()->Add(0);
+  attr->mutable_ints()->Add(1);
+}
+
 TEST(OpRegistry, CustomChecker) {
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("my_test_op");
   op_desc.add_inputs("ii");
   op_desc.add_outputs("oo");
+  SetInputFormat(&op_desc);
 
   // attr 'test_attr' is not set
   bool caught = false;
   try {
-    paddle::framework::OperatorBase* op __attribute__((unused)) =
+    paddle::framework::OperatorPtr op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
@@ -145,7 +155,7 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_i(3);
   caught = false;
   try {
-    paddle::framework::OperatorBase* op __attribute__((unused)) =
+    paddle::framework::OperatorPtr op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::framework::EnforceNotMet err) {
     caught = true;
@@ -163,7 +173,8 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_name("test_attr");
   attr->set_type(paddle::framework::AttrType::INT);
   attr->set_i(4);
-  paddle::framework::OperatorBase* op =
+  SetInputFormat(&op_desc);
+  paddle::framework::OperatorPtr op =
       paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::platform::CPUDeviceContext dev_ctx;
   auto scope = std::make_shared<paddle::framework::Scope>();

@@ -34,7 +34,7 @@ DeviceType* OpKernel::KernelContext::get_eigen_device<platform::GPUPlace>()
 std::string OperatorBase::DebugString() const {
   std::stringstream ss;
   ss << "=================\n";
-  ss << "type = " << desc_.type() << "\n";
+  ss << "type = " << type_ << "\n";
   ss << "inputs = [";
   for (auto& ipt : inputs_) {
     ss << ipt << ", ";

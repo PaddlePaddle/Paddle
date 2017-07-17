@@ -16,33 +16,31 @@ limitations under the License. */
 
 #ifndef PADDLE_ONLY_CPU
 
-#include <thrust/system/cuda/error.h>
-#include <thrust/system_error.h>
+#include <stddef.h>
 
 namespace paddle {
 namespace platform {
 
-inline void throw_on_error(cudaError_t e, const char* message) {
-  if (e) {
-    throw thrust::system_error(e, thrust::cuda_category(), message);
-  }
-}
+//! Get the total number of GPU devices in system.
+int GetDeviceCount();
 
-inline int GetDeviceCount(void) {
-  int count;
-  throw_on_error(cudaGetDeviceCount(&count), "cudaGetDeviceCount failed");
-  return count;
-}
+//! Get the current GPU device id in system.
+int GetCurrentDeviceId();
 
-inline int GetCurrentDeviceId(void) {
-  int device_id;
-  throw_on_error(cudaGetDevice(&device_id), "cudaGetDevice failed");
-  return device_id;
-}
+//! Set the GPU device id for next execution.
+void SetDeviceId(int device_id);
 
-inline void SetDeviceId(int device_id) {
-  throw_on_error(cudaSetDevice(device_id), "cudaSetDevice failed");
-}
+//！Get the memory usage of current GPU device.
+void GpuMemoryUsage(size_t& available, size_t& total);
+
+//! Get the maximum allocation size of current GPU device.
+size_t GpuMaxAllocSize();
+
+//! Get the minimum chunk size for GPU buddy allocator.
+size_t GpuMinChunkSize();
+
+//! Get the maximum chunk size for GPU buddy allocator.
+size_t GpuMaxChunkSize();
 
 }  // namespace platform
 }  // namespace paddle
