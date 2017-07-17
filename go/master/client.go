@@ -2,6 +2,7 @@ package master
 
 import (
 	"os"
+	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
 	"github.com/PaddlePaddle/recordio"
@@ -36,9 +37,9 @@ func (c *Client) getRecords() {
 	for {
 		t, err := c.getTask()
 		if err != nil {
-			// TODO(helin): wait before move on with next
 			// getTask call.
-			log.Errorln(err)
+			log.Errorf("Get task failed, sleep 3 seconds and continue, %s", err)
+			time.Sleep(3 * time.Second)
 			continue
 		}
 
