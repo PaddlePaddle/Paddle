@@ -1,3 +1,4 @@
+import py_paddle.swig_paddle as swig_api
 import paddle.trainer_config_helpers.config_parser_utils as config_parser_utils
 import paddle.trainer_config_helpers.optimizers as v1_optimizers
 """
@@ -16,7 +17,6 @@ __all__ = [
 
 class Optimizer(object):
     def __init__(self, **kwargs):
-        import py_paddle.swig_paddle as swig_api
         if 'batch_size' in kwargs:
             del kwargs['batch_size']  # not important for python library.
 
