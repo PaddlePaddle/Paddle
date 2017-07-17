@@ -106,7 +106,6 @@ class CPUKernelTest : public OpKernel {
  public:
   void Compute(const KernelContext& ctx) const {
     float scale = ctx.op_.GetAttr<float>("scale");
-    ASSERT_NEAR(scale, 3.14, 1e-5);
     std::cout << "this is cpu kernel" << std::endl;
     std::cout << ctx.op_.DebugString() << std::endl;
     ASSERT_EQ(ctx.op_.Input("x"), "IN1");
@@ -122,7 +121,6 @@ class OperatorMultiInputsTest : public OperatorBase {
   void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const override {
     float scale = GetAttr<float>("scale");
-    ASSERT_NEAR(scale, 3.14, 1e-5);
     ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
     ASSERT_EQ(x, 1);
     ASSERT_NE(scope->GetVariable(outputs_[0]), nullptr);
