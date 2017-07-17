@@ -211,7 +211,7 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	// learning optimization methods are stochastic in
 	// nature. This race condition is allowed deliberately
 	// to save the program from making a copy of the
-	// paramter content.
+	// parameter content.
 	parameter.Name = name
 	parameter.ElementType = opt.elementType
 	parameter.Content = opt.GetWeights()
