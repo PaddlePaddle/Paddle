@@ -20,6 +20,7 @@ namespace paddle {
 namespace framework {
 
 void OperatorBase::CreateInOutOffsetMap(const OpProto& proto) {
+  PADDLE_ENFORCE(arg_idxs_.empty(), "duplicate call CreateInOutOffsetMap");
   for (int i = 0; i < proto.inputs_size(); i++) {
     const auto& name = proto.inputs()[i].name();
     arg_idxs_[name] = i;

@@ -217,9 +217,14 @@ class OpRegistry {
     }
     op_checkers().at(op_type).Check(op->attrs_);
     // set argument offsets stored in op.
-    op->CreateInOutOffsetMap(op_proto);
+    CreateInOutOffsetMap(op, op_proto);
     op->Init();
     return op;
+  }
+
+  // init op.arg_idxs_ to accelerate argument's offset lookup.
+  static void CreateInOutOffsetMap(OperatorPtr op, const OpProto& proto) {
+    op->CreateInOutOffsetMap(proto);
   }
 
   static std::unordered_map<std::string, OpProto>& protos() {
