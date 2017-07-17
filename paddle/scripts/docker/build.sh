@@ -155,7 +155,8 @@ RUN apt-get update &&\
     paddle version
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
-
+ADD go/cmd/pserver/pserver /usr/bin/
+ADD go/cmd/master/master /usr/bin/
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]
 EOF
