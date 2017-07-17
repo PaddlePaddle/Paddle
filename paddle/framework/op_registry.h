@@ -222,7 +222,7 @@ class OpRegistry {
     return op;
   }
 
-  // init op.arg_idxs_ to accelerate argument's offset lookup.
+  // init op.in_out_idxs_ to accelerate argument's offset lookup.
   static void CreateInOutOffsetMap(OperatorPtr op, const OpProto& proto) {
     op->CreateInOutOffsetMap(proto);
   }

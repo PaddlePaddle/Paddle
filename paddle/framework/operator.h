@@ -75,7 +75,7 @@ class OperatorBase {
   // TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Outputs(const std::string& name) const;
 
-  // init arg_idxs_ to accelerate argument's offset lookup.
+  // init in_out_idxs_ to accelerate argument's offset lookup.
   void CreateInOutOffsetMap(const OpProto& proto);
 
  public:
@@ -84,7 +84,7 @@ class OperatorBase {
   std::vector<std::string> outputs_;
   AttributeMap attrs_;
   // store the arguments' offset described in op_desc.
-  std::unordered_map<std::string, int> arg_idxs_;
+  std::unordered_map<std::string, int> in_out_idxs_;
 };
 
 class KernelContext {
