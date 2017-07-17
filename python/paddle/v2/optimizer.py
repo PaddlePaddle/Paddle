@@ -1,5 +1,3 @@
-import py_paddle.swig_paddle as swig_api
-
 import paddle.trainer_config_helpers.config_parser_utils as config_parser_utils
 import paddle.trainer_config_helpers.optimizers as v1_optimizers
 """
@@ -18,6 +16,7 @@ __all__ = [
 
 class Optimizer(object):
     def __init__(self, **kwargs):
+        import py_paddle.swig_paddle as swig_api
         if 'batch_size' in kwargs:
             del kwargs['batch_size']  # not important for python library.
 
@@ -47,12 +46,12 @@ class Optimizer(object):
         return swig_api.ParameterUpdater.createRemoteUpdater(
             self.__opt_conf__, pass_num, use_sparse_updater)
 
-    def __create_new_remote_updater__(self, pserver_spec):
+    def __create_new_remote_updater__(self, pserver_spec, use_etcd):
         return swig_api.ParameterUpdater.createNewRemoteUpdater(
-            self.__opt_conf__, pserver_spec)
+            self.__opt_conf__, pserver_spec, use_etcd)
 
     def create_updater(self, is_local, num_passes, use_sparse_updater,
-                       pserver_spec):
+                       pserver_spec, use_etcd):
         """
         create proper parameter_updater by configuration.
         :param is_local: create local or remote parameter updater
@@ -78,7 +77,7 @@ class Optimizer(object):
                     num_passes, use_sparse_updater)
             else:
                 parameter_updater = self.__create_new_remote_updater__(
-                    pserver_spec)
+                    pserver_spec, use_etcd)
         return parameter_updater
 
 
@@ -268,6 +267,7 @@ ModelAverage = v1_optimizers.ModelAverage
 L2Regularization = v1_optimizers.L2Regularization
 
 if __name__ == '__main__':
+    import py_paddle.swig_paddle as swig_api
     swig_api.initPaddle('--use_gpu=false')
     for opt in [
             Momentum(), Adam(), Adamax(), AdaGrad(), DecayedAdaGrad(),

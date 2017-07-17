@@ -17,6 +17,7 @@ limitations under the License. */
 #include <paddle/framework/attr_checker.h>
 #include <paddle/framework/op_desc.pb.h>
 #include <paddle/framework/scope.h>
+#include <paddle/framework/tensor.h>
 #include <paddle/platform/device_context.h>
 #include <paddle/platform/place.h>
 #include <paddle/utils/Error.h>
@@ -29,7 +30,7 @@ namespace paddle {
 namespace framework {
 
 class OperatorBase;
-
+using OperatorPtr = std::shared_ptr<OperatorBase>;
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -49,19 +50,20 @@ class OperatorBase {
 
   std::string DebugString() const;
 
+  /// Init will be called after CreateOperator, you can put some initialization
+  /// logic here.
+  virtual void Init() {}
+
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  virtual void InferShape(const std::shared_ptr<Scope>& scope) const = 0;
+  virtual void InferShape(const ScopePtr& scope) const = 0;
 
   /// Net will call this function to Run an op.
-  virtual void Run(const std::shared_ptr<Scope>& scope,
+  virtual void Run(const ScopePtr& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
- protected:
-  std::string Type() const { return desc_.type(); }
-
  public:
-  OpDesc desc_;
+  std::string type_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
   AttributeMap attrs_;
@@ -77,7 +79,7 @@ class OpKernel {
    */
   class KernelContext {
    public:
-    KernelContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
+    KernelContext(const OperatorBase* op, const ScopePtr& scope,
                   const platform::DeviceContext& device_context)
         : op_(*op), scope_(scope), device_context_(device_context) {}
 
@@ -90,13 +92,26 @@ class OpKernel {
     }
 
     const OperatorBase& op_;
-    const std::shared_ptr<Scope>& scope_;
+    const ScopePtr& scope_;
     const platform::DeviceContext& device_context_;
   };
 
   virtual void Compute(const KernelContext& context) const = 0;
 
   virtual ~OpKernel() {}
+};
+
+template <typename T>
+struct VarToTensor {};
+
+template <>
+struct VarToTensor<Tensor*> {
+  Tensor* operator()(Variable* var) { return var->GetMutable<Tensor>(); }
+};
+
+template <>
+struct VarToTensor<const Tensor*> {
+  const Tensor* operator()(Variable* var) { return &var->Get<Tensor>(); }
 };
 
 class OperatorWithKernel : public OperatorBase {
@@ -122,9 +137,9 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
-  void Run(const std::shared_ptr<Scope>& scope,
+  void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const final {
-    auto& opKernel = AllOpKernels().at(Type()).at(OpKernelKey(dev_ctx));
+    auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
     opKernel->Compute(OpKernel::KernelContext(this, scope, dev_ctx));
   }
 
@@ -132,19 +147,36 @@ class OperatorWithKernel : public OperatorBase {
   AllOpKernels() {
     static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
     return g_all_op_kernels;
+  }
+  void InferShape(const std::shared_ptr<Scope>& scope) const final {
+    std::vector<const Tensor*> ins;
+    VarNamesToTensors(scope, inputs_, &ins);
+    std::vector<Tensor*> outs;
+    VarNamesToTensors(scope, outputs_, &outs);
+    InferShape(ins, outs);
   };
+
+ private:
+  template <typename T>
+  void VarNamesToTensors(const std::shared_ptr<Scope>& scope,
+                         const std::vector<std::string>& var_names,
+                         std::vector<T>* container) const {
+    container->reserve(var_names.size());
+    VarToTensor<T> convert;
+    for (auto& name : var_names) {
+      auto var = scope->GetVariable(name);
+      if (var != nullptr) {
+        container->push_back(convert(var));
+      } else {
+        container->push_back(nullptr);
+      }
+    }
+  }
+
+ protected:
+  virtual void InferShape(const std::vector<const Tensor*>& inputs,
+                          const std::vector<Tensor*>& outputs) const = 0;
 };
 
 }  // namespace framework
 }  // namespace paddle
-
-#define REGISTER_OP_KERNEL(type, PlaceType, KernelType)                   \
-  struct __op_kernel_register__##type##__ {                               \
-    __op_kernel_register__##type##__() {                                  \
-      ::paddle::framework::OperatorWithKernel::OpKernelKey key;           \
-      key.place_ = PlaceType();                                           \
-      ::paddle::framework::OperatorWithKernel::AllOpKernels()[#type][key] \
-          .reset(new KernelType());                                       \
-    }                                                                     \
-  };                                                                      \
-  static __op_kernel_register__##type##__ __reg_kernel_##type##__

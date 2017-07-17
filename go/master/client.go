@@ -37,6 +37,7 @@ func (c *Client) getRecords() {
 	for {
 		t, err := c.getTask()
 		if err != nil {
+			// getTask call.
 			log.Errorf("Get task failed, sleep 3 seconds and continue, %s", err)
 			time.Sleep(3 * time.Second)
 			continue

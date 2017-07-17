@@ -22,6 +22,8 @@ import importlib
 import paddle.v2.dataset
 import cPickle
 import glob
+import cPickle as pickle
+import random
 
 __all__ = [
     'DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader',
@@ -170,8 +172,6 @@ def convert(output_path,
             name_prefix,
             max_lines_to_shuffle=1000):
     import recordio
-    import cPickle as pickle
-    import random
     """
     Convert data from reader to recordio format files.
 
