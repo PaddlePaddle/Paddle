@@ -24,6 +24,12 @@ limitations under the License. */
 #include "paddle/platform/place.h"
 
 namespace paddle {
+namespace pybind {
+namespace details {  // forward declare
+template <bool less, size_t i, typename... args>
+struct CastToPyBufferImpl;
+}  // namespace details
+}  // namespace pybind
 namespace framework {
 
 class Tensor {
@@ -128,10 +134,6 @@ class Tensor {
 
   DDim dims() const { return dims_; }
 
-  platform::Place place() const { return holder_->place(); }
-
-  std::type_index type() const { return holder_->type(); }
-
  private:
   // Placeholder hides type T, so it doesn't appear as a template
   // parameter of Variable.
@@ -186,7 +188,9 @@ class Tensor {
   DDim dims_;
   size_t numel_;   // cache of `product(dims_)`
   size_t offset_;  // marks the begin of tensor data area.
-};                 // namespace framework
+  template <bool less, size_t i, typename... args>
+  friend struct paddle::pybind::details::CastToPyBufferImpl;
+};  // namespace framework
 
 }  // namespace framework
 }  // namespace paddle

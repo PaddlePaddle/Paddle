@@ -15,7 +15,7 @@ limitations under the License. */
 #include <Python.h>
 #include <paddle/framework/op_registry.h>
 #include <paddle/framework/scope.h>
-#include <paddle/pybind/tensor.h>
+#include <paddle/pybind/tensor_bind.h>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -32,8 +32,6 @@ PYBIND11_PLUGIN(core) {
 
   py::class_<pd::Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer([](pd::Tensor& self) -> py::buffer_info {
-        PADDLE_ENFORCE(paddle::platform::is_cpu_place(self.place()),
-                       "Only CPU tensor can cast to numpy array");
         return paddle::pybind::CastToPyBuffer(self);
       })
       .def("get_dims",
