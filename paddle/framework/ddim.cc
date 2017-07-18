@@ -280,8 +280,6 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
   return os;
 }
 
-ssize_t DDim::size() const { return arity(*this); }
-
 DDim::DDim(std::initializer_list<int> init_list) {
   *this = make_ddim(init_list);
 }
