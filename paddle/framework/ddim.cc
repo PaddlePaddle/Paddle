@@ -117,6 +117,8 @@ int DDim::operator[](int idx) const {
   return boost::apply_visitor(DynamicConstIndexer(idx), var);
 }
 
+ssize_t DDim::size() const { return arity(*this); }
+
 bool DDim::operator==(DDim d) const {
   if (var.which() != d.getVar().which()) {
     return false;
@@ -276,6 +278,12 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
   DDimPrinter printer(os);
   boost::apply_visitor(printer, ddim);
   return os;
+}
+
+ssize_t DDim::size() const { return arity(*this); }
+
+DDim::DDim(std::initializer_list<int> init_list) {
+  *this = make_ddim(init_list);
 }
 
 }  // namespace framework

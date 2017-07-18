@@ -29,6 +29,8 @@ struct DDim {
   template <int D>
   explicit DDim(const Dim<D>& in) : var(in) {}
 
+  /*implicit*/ DDim(std::initializer_list<int> init_list);
+
   template <int D>
   DDim& operator=(const Dim<D>& in) {
     var = in;
@@ -50,6 +52,8 @@ struct DDim {
 
   DDimVar getVar() { return var; }
 
+  ssize_t size() const;
+
   bool operator==(DDim d) const;
 
   bool operator!=(DDim d) const;
@@ -57,6 +61,8 @@ struct DDim {
   DDim operator+(DDim d) const;
 
   DDim operator*(DDim d) const;
+
+  ssize_t size() const;
 };
 
 /**
