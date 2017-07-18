@@ -19,6 +19,20 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+template <>
+Eigen::DefaultDevice* KernelContext::GetEigenDevice<
+    platform::CPUPlace, Eigen::DefaultDevice>() const {
+  return device_context_.get_eigen_device<Eigen::DefaultDevice>();
+}
+
+#ifndef PADDLE_ONLY_CPU
+template <>
+Eigen::GpuDevice*
+KernelContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
+  return device_context_.get_eigen_device<Eigen::GpuDevice>();
+}
+#endif
+
 const std::string& OperatorBase::Input(const std::string& name) const {
   auto it = in_out_idxs_->find(name);
   PADDLE_ENFORCE(it != in_out_idxs_->end(), "no key [%s] in in_out_idxs_",

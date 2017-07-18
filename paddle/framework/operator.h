@@ -31,6 +31,21 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+template <typename T>
+struct EigenDeviceConverter;
+
+template <>
+struct EigenDeviceConverter<platform::CPUPlace> {
+  using EigenDeviceType = Eigen::DefaultDevice;
+};
+
+#ifndef PADDLE_ONLY_CPU
+template <>
+struct EigenDeviceConverter<platform::GPUPlace> {
+  using EigenDeviceType = Eigen::GpuDevice;
+};
+#endif
+
 class OperatorBase;
 using OperatorPtr = std::shared_ptr<OperatorBase>;
 /**
@@ -131,6 +146,13 @@ class KernelContext {
     return res;
   }
 
+  template <typename PlaceType,
+            typename DeviceType =
+                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
+  DeviceType* GetEigenDevice() const;
+
+  platform::Place GetPlace() const { return device_context_.GetPlace(); }
+
   const OperatorBase& op_;
   const std::shared_ptr<Scope>& scope_;
   const platform::DeviceContext& device_context_;
@@ -144,6 +166,7 @@ class OpKernel {
    * device resource such as CUDA stream, cublas handle, etc. from
    * KernelContext. User should construct it before run the Operator.
    */
+
   virtual void Compute(const KernelContext& context) const = 0;
 
   virtual ~OpKernel() {}
