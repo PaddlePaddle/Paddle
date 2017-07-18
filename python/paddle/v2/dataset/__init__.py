@@ -26,7 +26,7 @@ import sentiment
 import wmt14
 import mq2007
 import flowers
-import voc_seg
+import voc2012
 
 __all__ = [
     'mnist', 'imikolov', 'imdb', 'cifar', 'movielens', 'conll05', 'sentiment'
