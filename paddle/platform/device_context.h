@@ -13,15 +13,16 @@ limitations under the License. */
 
 #include "paddle/framework/enforce.h"
 #ifndef PADDLE_ONLY_CPU
-#include "paddle/platform/cuda.h"
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/dynload/curand.h"
+#include "paddle/platform/error.h"
+#include "paddle/platform/gpu_info.h"
 #define EIGEN_USE_GPU
 #endif
-#include <paddle/platform/place.h>
 #include <memory>
-#include <unsupported/Eigen/CXX11/Tensor>
+#include "paddle/platform/place.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace platform {
@@ -32,17 +33,14 @@ class DeviceContext {
   virtual Place GetPlace() const = 0;
 
   template <typename DeviceType>
-  DeviceType* get_eigen_device();
+  DeviceType* get_eigen_device() const;
 };
 
 class CPUDeviceContext : public DeviceContext {
  public:
-  Eigen::DefaultDevice* eigen_device() {
-    if (!eigen_device_) {
-      eigen_device_.reset(new Eigen::DefaultDevice());
-    }
-    return eigen_device_.get();
-  }
+  CPUDeviceContext() { eigen_device_.reset(new Eigen::DefaultDevice()); }
+
+  Eigen::DefaultDevice* eigen_device() const { return eigen_device_.get(); }
 
   Place GetPlace() const override {
     Place retv = CPUPlace();
@@ -91,7 +89,7 @@ class CUDADeviceContext : public DeviceContext {
 
   cudaStream_t stream() { return stream_; }
 
-  Eigen::GpuDevice* eigen_device() { return eigen_device_.get(); }
+  Eigen::GpuDevice* eigen_device() const { return eigen_device_.get(); }
 
   cublasHandle_t cublas_handle() {
     if (!blas_handle_) {

@@ -211,7 +211,7 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	// learning optimization methods are stochastic in
 	// nature. This race condition is allowed deliberately
 	// to save the program from making a copy of the
-	// paramter content.
+	// parameter content.
 	parameter.Name = name
 	parameter.ElementType = opt.elementType
 	parameter.Content = opt.GetWeights()
@@ -219,7 +219,7 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 }
 
 // pserver save checkpoint
-func (s *Service) doCheckpoint() error {
+func (s *Service) doCheckpoint() (err error) {
 	<-s.initialized
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -237,9 +237,9 @@ func (s *Service) doCheckpoint() error {
 	}
 	var buf bytes.Buffer
 	encoder := gob.NewEncoder(&buf)
-	err := encoder.Encode(cp)
+	err = encoder.Encode(cp)
 	if err != nil {
-		return err
+		return
 	}
 
 	cpMeta := checkpointMeta{}
@@ -248,10 +248,14 @@ func (s *Service) doCheckpoint() error {
 	h := md5.New()
 	cpMeta.MD5 = hex.EncodeToString(h.Sum(buf.Bytes()))
 
-	cpMetajson, _ := json.Marshal(cpMeta)
+	cpMetajson, err := json.Marshal(cpMeta)
+	if err != nil {
+		return
+	}
+
 	err = s.client.PutKey(filepath.Join(PsCheckpoint, strconv.Itoa(s.idx)), cpMetajson, 3*time.Second)
 	if err != nil {
-		return err
+		return
 	}
 	if _, err = os.Stat(cpMeta.UUID); os.IsNotExist(err) {
 		log.Info("checkpoint does not exists.")
@@ -264,15 +268,32 @@ func (s *Service) doCheckpoint() error {
 		}
 	}
 	f, err := os.Create(cpMeta.UUID)
-	defer f.Close()
 	if err != nil {
-		return err
+		return
 	}
+
+	defer func() {
+		closeErr := f.Close()
+		if closeErr != nil {
+			if err != nil {
+				log.Errorln(closeErr)
+			} else {
+				// Set closeErr as return value.
+				err = closeErr
+			}
+		}
+	}()
+
 	writer := bufio.NewWriter(f)
 	_, err = writer.Write(buf.Bytes())
-	writer.Flush()
 	if err != nil {
-		return err
+		return
 	}
-	return nil
+
+	err = writer.Flush()
+	if err != nil {
+		return
+	}
+
+	return
 }

@@ -13,6 +13,11 @@ export PATH=/usr/bin:$PATH
 pre-commit install
 clang-format --version
 
+# set up go environment for running gometalinter
+mkdir -p $GOPATH/src/github.com/PaddlePaddle/
+ln -sf $TRAVIS_BUILD_DIR $GOPATH/src/github.com/PaddlePaddle/Paddle
+cd  $GOPATH/src/github.com/PaddlePaddle/Paddle/go; glide install; cd -
+
 if ! pre-commit run -a ; then
   git diff  --exit-code
 fi

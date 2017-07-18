@@ -32,6 +32,9 @@ class NewRemoteParameterUpdater : public ParameterUpdater {
 public:
   NewRemoteParameterUpdater(const OptimizationConfig& config,
                             const std::string pserverSpec);
+  NewRemoteParameterUpdater(const OptimizationConfig& config,
+                            const std::string pserverSpec,
+                            const bool useEtcd);
   ~NewRemoteParameterUpdater() {
     releaseNewParameter(newParameters_);
     releaseNewParameter(newGradients_);
@@ -111,6 +114,8 @@ protected:
   paddle_parameter** newGradients_;
   /// the specification of parameter server "host1:port,host1:port"
   std::string pserverSpec_;
+  /// true if pserverSpec_ is etcd endpoint, else pserverSpec_ is pserver addr
+  bool useEtcd_;
 };
 
 }  // namespace paddle

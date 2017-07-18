@@ -124,7 +124,7 @@ void copyElements(const IVector& srcVec,
     dest[index[i]] = src[i];
   }
 }
-}
+}  // namespace
 
 void GatherAgentLayer::forwardIds(PassType passType) {
   IVectorPtr realId = realLayers_[0]->getOutputLabel();

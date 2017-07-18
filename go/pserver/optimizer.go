@@ -14,15 +14,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var nullPtr = unsafe.Pointer(uintptr(0))
-
 type optimizer struct {
 	opt         *C.struct_paddle_optimizer
 	elementType ElementType
+	contentLen  int
 }
 
 func cArrayToSlice(p unsafe.Pointer, len int) []byte {
-	if p == nullPtr {
+	if p == nil {
 		return nil
 	}
 
@@ -37,10 +36,11 @@ func cArrayToSlice(p unsafe.Pointer, len int) []byte {
 func newOptimizer(paramWithConfigs ParameterWithConfig, State []byte) *optimizer {
 	o := &optimizer{}
 	o.elementType = paramWithConfigs.Param.ElementType
+	o.contentLen = len(paramWithConfigs.Param.Content)
 	p := paramWithConfigs.Param
 	c := paramWithConfigs.Config
 	s := State
-	paramBufferSize := C.size_t(len(p.Content) / C.sizeof_float)
+	paramBufferSize := C.size_t(len(p.Content))
 	log.WithFields(log.Fields{
 		"ElementType": p.ElementType,
 		"ParamSize":   paramBufferSize,
@@ -78,7 +78,11 @@ func (o *optimizer) UpdateParameter(g Gradient) error {
 		return fmt.Errorf("Name: %s, parameter and gradient element type not match, parameter: %v, gradient: %v", g.Name, o.elementType, g.ElementType)
 	}
 
-	r := C.paddle_update_parameter(o.opt, C.paddle_element_type(g.ElementType), unsafe.Pointer(&g.Content[0]), C.int(len(g.Content))/C.sizeof_float)
+	if o.contentLen != len(g.Content) {
+		return fmt.Errorf("Name: %s, parameter and gradient does not have same content len, parameter: %d, gradient: %d", g.Name, o.contentLen, len(g.Content))
+	}
+
+	r := C.paddle_update_parameter(o.opt, C.paddle_element_type(g.ElementType), unsafe.Pointer(&g.Content[0]), C.int(len(g.Content)))
 	if r != 0 {
 		return fmt.Errorf("optimizer update returned error code: %d", r)
 	}
@@ -86,8 +90,8 @@ func (o *optimizer) UpdateParameter(g Gradient) error {
 }
 
 func (o *optimizer) Cleanup() {
-	if unsafe.Pointer(o.opt) != nullPtr {
+	if unsafe.Pointer(o.opt) != nil {
 		C.paddle_release_optimizer(o.opt)
-		o.opt = (*C.struct_paddle_optimizer)(nullPtr)
+		o.opt = (*C.struct_paddle_optimizer)(nil)
 	}
 }

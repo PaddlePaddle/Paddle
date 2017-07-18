@@ -1,6 +1,20 @@
-#include <paddle/framework/op_registry.h>
-#include <paddle/framework/tensor.h>
-#include <paddle/operators/add_op.h>
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#include "paddle/operators/add_op.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -17,8 +31,7 @@ protected:
         "Inputs/Outputs of AddOp must all be set");
     PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
                    "Two input of Add Op's dimension must be same.");
-    // Need set dims in Tensor
-    // outputs[0]->set_dims(inputs[0]->dims())
+    outputs[0]->set_dims(inputs[0]->dims());
   }
 };
 
@@ -36,9 +49,10 @@ The equation is: Out = X + Y
 )DOC");
   }
 };
-}  // namespace op
+}  // namespace operators
 }  // namespace paddle
 
 REGISTER_OP(add_two, paddle::operators::AddOp, paddle::operators::AddOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    add_two, ::paddle::operators::AddKernel<::paddle::platform::CPUPlace>);
+typedef paddle::operators::AddKernel<::paddle::platform::CPUPlace, float>
+    AddKernel_CPU_float;
+REGISTER_OP_CPU_KERNEL(add_two, AddKernel_CPU_float);
