@@ -17,12 +17,19 @@ limitations under the License. */
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <typeindex>
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/enforce.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/place.h"
 
 namespace paddle {
+namespace pybind {
+namespace details {  // forward declare
+template <bool less, size_t i, typename... args>
+struct CastToPyBufferImpl;
+}  // namespace details
+}  // namespace pybind
 namespace framework {
 
 class Tensor {
@@ -130,6 +137,7 @@ class Tensor {
     virtual void* ptr() const = 0;
     virtual platform::Place place() const = 0;
     virtual size_t size() const = 0;
+    virtual std::type_index type() const = 0;
   };
 
   template <typename T, typename PlaceType>
@@ -154,7 +162,8 @@ class Tensor {
 
     virtual void* ptr() const { return static_cast<void*>(ptr_.get()); }
     virtual size_t size() const { return size_; }
-    virtual platform::Place place() const { return place_; }
+    virtual paddle::platform::Place place() const { return place_; }
+    virtual std::type_index type() const { return std::type_index(typeid(T)); }
 
     std::unique_ptr<T, Deleter<PlaceType>> ptr_;
     platform::Place place_;  // record the place of ptr_.
@@ -173,6 +182,8 @@ class Tensor {
   std::shared_ptr<Placeholder> holder_;  // holds the memory block if allocated.
   DDim dims_;
   size_t offset_;  // marks the begin of tensor data area.
+  template <bool less, size_t i, typename... args>
+  friend struct paddle::pybind::details::CastToPyBufferImpl;
 };
 
 }  // namespace framework
