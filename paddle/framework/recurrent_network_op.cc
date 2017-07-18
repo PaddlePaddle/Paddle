@@ -138,7 +138,7 @@ void RecurrentAlgorithm::ConcatOutputs(ScopePtr scope) const {
     Tensor* output_tensor =
         scope->CreateVariable(outlinks_[i])->GetMutable<Tensor>();
     (*output_tensor)
-        .mutable_data<double>(make_ddim(dims_vec), platform::Place());
+        .mutable_data<double>(make_ddim(dims_vec), platform::CPUPlace());
 
     for (size_t j = 0; j < max_seq_len; j++) {
       Tensor* step_output_tensor = step_scopes[j]
