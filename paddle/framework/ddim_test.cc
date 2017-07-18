@@ -49,6 +49,7 @@ TEST(DDim, Equality) {
 
   // arity of a DDim
   EXPECT_EQ(paddle::framework::arity(ddim), 3);
+  EXPECT_EQ(ddim.size(), 3);
 
   // product of a DDim
   EXPECT_EQ(paddle::framework::product(vddim), 45);

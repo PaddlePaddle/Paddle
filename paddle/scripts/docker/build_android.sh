@@ -2,9 +2,9 @@
 
 set -xe
 
-mkdir -p /paddle/build
-cd /paddle/build
-rm -f /paddle/install 2>/dev/null || true
+mkdir -p /paddle/build_android
+cd /paddle/build_android
+rm -rf /paddle/install 2>/dev/null || true
 cmake -DCMAKE_SYSTEM_NAME=Android \
       -DANDROID_STANDALONE_TOOLCHAIN=$ANDROID_STANDALONE_TOOLCHAIN \
       -DANDROID_ABI=armeabi-v7a \
@@ -21,6 +21,3 @@ cmake -DCMAKE_SYSTEM_NAME=Android \
       ..
 make -j `nproc`
 make install
-
-export PATH=/paddle/install/bin:/paddle/install/opt/paddle/bin:$PATH
-paddle version
