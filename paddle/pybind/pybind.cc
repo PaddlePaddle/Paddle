@@ -30,6 +30,7 @@ USE_OP(softmax);
 USE_OP(mul);
 USE_OP(rowwise_add);
 USE_OP(sigmoid);
+USE_OP(sgd);
 
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of Paddle Paddle");
