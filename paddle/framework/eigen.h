@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/platform/tensor.h"
+#include "paddle/framework/tensor.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
