@@ -30,6 +30,7 @@ public:
                   int inputChannels,
                   int inputHeight,
                   int inputWidth,
+                  int filterMultiplier,
                   int filterHeight,
                   int filterWidth,
                   int strideH,
@@ -53,6 +54,7 @@ public:
                   int inputChannels,
                   int inputHeight,
                   int inputWidth,
+                  int filterMultiplier,
                   int filterHeight,
                   int filterWidth,
                   int strideH,
@@ -75,6 +77,7 @@ public:
                   int inputChannels,
                   int inputHeight,
                   int inputWidth,
+                  int filterMultiplier,
                   int filterHeight,
                   int filterWidth,
                   int strideH,
@@ -122,6 +125,7 @@ public:
     size_t outputChannels = output[1];
     size_t outputHeight = output[2];
     size_t outputWidth = output[3];
+    size_t filterMultiplier = outputChannels / groups_;
 
     real* inputData = inputs[0].data<real>();
     real* filterData = inputs[1].data<real>();
@@ -137,6 +141,7 @@ public:
                   inputChannels,
                   inputHeight,
                   inputWidth,
+                  filterMultiplier,
                   filterHeight,
                   filterWidth,
                   strideH(),
@@ -183,6 +188,7 @@ public:
     size_t outputChannels = output[1];
     size_t outputHeight = output[2];
     size_t outputWidth = output[3];
+    size_t filterMultiplier = outputChannels / groups_;
 
     real* outputGrad = inputs[0].data<real>();
     real* filterData = inputs[1].data<real>();
@@ -198,6 +204,7 @@ public:
                            inputChannels,
                            inputHeight,
                            inputWidth,
+                           filterMultiplier,
                            filterHeight,
                            filterWidth,
                            strideH(),
@@ -243,13 +250,14 @@ public:
     size_t outputChannels = output[1];
     size_t outputHeight = output[2];
     size_t outputWidth = output[3];
+    size_t filterMultiplier = outputChannels / groups_;
 
     real* outputGrad = inputs[0].data<real>();
     real* inputData = inputs[1].data<real>();
     real* filterGrad = outputs[0].data<real>();
 
-    int size =
-        inputChannels * filterHeight * filterWidth * outputHeight * outputWidth;
+    int size = outputChannels * filterHeight * filterWidth * outputHeight *
+               outputWidth;
     resizeBuffer<Device>(size);
     real* colData = reinterpret_cast<real*>(memory_->getBuf());
 
@@ -264,6 +272,7 @@ public:
                             inputChannels,
                             inputHeight,
                             inputWidth,
+                            filterMultiplier,
                             filterHeight,
                             filterWidth,
                             strideH(),

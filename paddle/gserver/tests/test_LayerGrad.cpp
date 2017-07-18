@@ -355,7 +355,7 @@ void testDepthwiseConvLayer(const string& type, bool useGpu) {
   config.layerConfig.set_partial_sum(1);
   config.layerConfig.set_shared_biases(true);
 
-  config.inputDefs.push_back({INPUT_DATA, "layer_0", 2048, 96});
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 2048, 192 / 2});
   LayerInputConfig* input = config.layerConfig.add_inputs();
   ConvConfig* conv = input->mutable_conv_conf();
   conv->set_filter_size(2);

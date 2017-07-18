@@ -32,6 +32,7 @@ namespace paddle {
  * \param[in]   inputChannels     channels of inputData.
  * \param[in]   inputHeight       height of inputData.
  * \param[in]   inputWidth        width of inputData..
+ * \param[in]   filterMultiplier  equals to outputChannels/groups_.
  * \param[in]   filterHeight      height of filter.
  * \param[in]   filterWidth       widht of filter.
  * \param[in]   strideH           stride size in height direction.
@@ -53,6 +54,7 @@ public:
                   int inputChannels,
                   int inputHeight,
                   int inputWidth,
+                  int filterMultiplier,
                   int filterHeight,
                   int filterWidth,
                   int strideH,
@@ -74,7 +76,8 @@ public:
  * \param[in]   outputWidth       width of outputData.
  * \param[in]   inputChannels     channels of input data.
  * \param[in]   inputHeight       height of inputData.
- * \param[in]   inputWidth        width of inputData..
+ * \param[in]   inputWidth        width of inputData.
+ * \param[in]   filterMultiplier  equals to outputChannels/groups_.
  * \param[in]   filterHeight      height of filter.
  * \param[in]   filterWidth       widht of filter.
  * \param[in]   strideH           stride size in height direction.
@@ -96,6 +99,7 @@ public:
                   int inputChannels,
                   int inputHeight,
                   int inputWidth,
+                  int filterMultiplier,
                   int filterHeight,
                   int filterWidth,
                   int strideH,
@@ -116,7 +120,8 @@ public:
  * \param[in]   outputWidth       width of outputData.
  * \param[in]   inputChannels     channels of input data.
  * \param[in]   inputHeight       height of inputData.
- * \param[in]   inputWidth        width of inputData..
+ * \param[in]   inputWidth        width of inputData.
+ * \param[in]   filterMultiplier  equals to outputChannels/groups_.
  * \param[in]   filterHeight      height of filter.
  * \param[in]   filterWidth       widht of filter.
  * \param[in]   strideH           stride size in height direction.
@@ -140,6 +145,7 @@ public:
                   int inputChannels,
                   int inputHeight,
                   int inputWidth,
+                  int filterMultiplier,
                   int filterHeight,
                   int filterWidth,
                   int strideH,
