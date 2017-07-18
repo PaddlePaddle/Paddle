@@ -1,11 +1,26 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 #pragma once
 
 #include <boost/variant.hpp>
 #include <initializer_list>
 #include <stdexcept>
 #include <vector>
-
 #include "paddle/framework/dim.h"
+#include "paddle/framework/enforce.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace framework {
@@ -28,6 +43,8 @@ struct DDim {
 
   template <int D>
   explicit DDim(const Dim<D>& in) : var(in) {}
+
+  /*implicit*/ DDim(std::initializer_list<int> init_list);
 
   template <int D>
   DDim& operator=(const Dim<D>& in) {
@@ -57,6 +74,8 @@ struct DDim {
   DDim operator+(DDim d) const;
 
   DDim operator*(DDim d) const;
+
+  ssize_t size() const;
 };
 
 /**
@@ -82,6 +101,15 @@ std::vector<int> vectorize(const DDim& ddim);
 ssize_t product(const DDim& ddim);
 
 /**
+ * \brief Slice a ddim
+ *
+ * Slice dim with [begin, end).
+ * e.g.  DDim d = make_ddim({1,2,3,4,5});
+ *       slice_ddim(d, 1, 3); ====> {2,3}
+ */
+DDim slice_ddim(const DDim& dim, int begin, int end);
+
+/**
  * \brief What is the length of this dimension?
  *
  * \param Dynamic dimension to inspect
@@ -90,6 +118,17 @@ ssize_t product(const DDim& ddim);
 int arity(const DDim& ddim);
 
 std::ostream& operator<<(std::ostream&, const DDim&);
+
+template <int NDIMS>
+Eigen::DSizes<Eigen::DenseIndex, NDIMS> ToEigenDSizes(const DDim& dims) {
+  int rank = arity(dims);
+  PADDLE_ENFORCE(rank == NDIMS, "DDim and NDIMS must be same");
+  Eigen::DSizes<Eigen::DenseIndex, NDIMS> dsizes;
+  for (int d = 0; d < rank; d++) {
+    dsizes[d] = dims[d];
+  }
+  return dsizes;
+}
 
 }  // namespace framework
 }  // namespace paddle
