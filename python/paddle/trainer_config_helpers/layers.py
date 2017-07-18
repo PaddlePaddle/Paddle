@@ -2269,7 +2269,6 @@ def img_depthwise_conv_layer(input,
                              name=None,
                              num_channels=None,
                              act=None,
-                             groups=None,
                              stride=1,
                              padding=0,
                              bias_attr=None,
@@ -2281,11 +2280,78 @@ def img_depthwise_conv_layer(input,
                              padding_y=None,
                              trans=False,
                              layer_type=None):
+    """
+    DepthwiseConvolution layer for image. 
+
+    The details of depthwise convolution layer, please refer 
+    https://arxiv.org/abs/1704.04861
+    
+	The Depthwise Convolution layer must meet this requirement that the groups equals to the
+	inputChannels. And the groups must be divisible by outputChannels.
+	So the filter shape will be (groups, outputChannels/groups, 1, filter_size, filter_size_y)
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        conv = img_depthwise_conv_layer(input=data, filter_size=1, filter_size_y=1,
+                              num_channels=8,
+                              num_filters=16, stride=1,
+                              bias_attr=False,
+                              act=ReluActivation())
+
+    :param name: Layer name.
+    :type name: basestring
+    :param input: Layer Input.
+    :type input: LayerOutput
+    :param filter_size: The x dimension of a filter kernel. Or input a tuple for
+                        two image dimension.
+    :type filter_size: int|tuple|list
+    :param filter_size_y: The y dimension of a filter kernel. Since PaddlePaddle
+                        currently supports rectangular filters, the filter's
+                        shape will be (filter_size, filter_size_y).
+    :type filter_size_y: int|None
+    :param num_filters: Each filter group's number of filter
+    :param act: Activation type. Default is tanh
+    :type act: BaseActivation
+    :param stride: The x dimension of the stride. Or input a tuple for two image
+                   dimension.
+    :type stride: int|tuple|list
+    :param stride_y: The y dimension of the stride.
+    :type stride_y: int
+    :param padding: The x dimension of the padding. Or input a tuple for two
+                    image dimension
+    :type padding: int|tuple|list
+    :param padding_y: The y dimension of the padding.
+    :type padding_y: int
+    :param bias_attr: DepthwiseConvolution bias attribute. None means default bias.
+                      False means no bias.
+    :type bias_attr: ParameterAttribute|False
+    :param num_channels: number of input channels. If None will be set
+                        automatically from previous output.
+    :type num_channels: int
+    :param param_attr: DepthwiseConvolution param attribute. None means default attribute
+    :type param_attr: ParameterAttribute
+    :param shared_biases: Is biases will be shared between filters or not.
+    :type shared_biases: bool
+    :param layer_attr: Layer Extra Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :param trans: true if it is a convTransLayer, false if it is a convLayer
+    :type trans: bool
+    :param layer_type: specify the layer_type, default is None. If trans=True,
+                       layer_type has to be "exconvt" or "cudnn_convt",
+                       otherwise layer_type has to be either "exconv" or
+                       "cudnn_conv"
+    :type layer_type: String
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
 
     if num_channels is None:
         assert input.num_filters is not None
         num_channels = input.num_filters
 
+    # the groups in depthwise conv should be equal to input channels.
     groups = num_channels
 
     if filter_size_y is None:
