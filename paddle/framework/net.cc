@@ -55,5 +55,14 @@ void PlainNet::CompleteAddOp() {
   add_op_done_ = true;
 }
 
+std::string PlainNet::DebugString() const {
+  std::ostringstream os;
+  os << this->type_ << ":" << std::endl;
+  for (auto& op : ops_) {
+    os << "\t" << op->DebugString() << std::endl;
+  }
+  return os.str();
+}
+
 }  // namespace framework
 }  // namespace paddle
