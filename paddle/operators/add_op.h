@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "glog/logging.h"
+#include "paddle/framework/eigen.h"
 #include "paddle/framework/operator.h"
 
 namespace paddle {
@@ -29,8 +30,9 @@ public:
 
     output->mutable_data<T>(context.GetPlace());
 
-    output->flat<T>().device(*(context.GetEigenDevice<Place>())) =
-        input0.flat<T>() + input1.flat<T>();
+    framework::EigenVector<T>::From(*output).device(
+        *(context.GetEigenDevice<Place>())) =
+        framework::EigenVector<T>(*input0) + framework::EigenVector<T>(*input1);
   }
 };
 
