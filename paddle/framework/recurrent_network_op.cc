@@ -12,11 +12,12 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/framework/recurrent_network_op.h"
-#include "paddle/framework/tensor.h"
-
 #include <glog/logging.h>
 #include <cstring>
+
+#include "paddle/framework/op_registry.h"
+#include "paddle/framework/recurrent_network_op.h"
+#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -230,36 +231,26 @@ void RecurrentOp::Init() {
   }
 }
 
-// TODO(xxx) testing when including operator.h
-// class RecurrentAlgorithmProtoAndCheckerMaker : public OpProtoAndCheckerMaker
-// {
-//  public:
-//   RecurrentAlgorithmProtoAndCheckerMaker(OpProto* proto, OpAttrChecker*
-//   op_checker)
-//       : OpProtoAndCheckerMaker(proto, op_checker) {
-//     // AddInput("input", "input of test op"); // need to support dynamic
-//     number
-//     // AddOutput("output", "output of test op"); // need to support dynamic
-//     number
-//     AddAttr<std::std::vector<int>>("in_links", "The input link positions in
-//     the all inputs.")
-//         .SetDefault({0});
-//     AddAttr<std::std::vector<int>>("boot_memories", "The initial memory
-//     positions in the all inputs.");
-//     AddAttr<int>("step_net", "The step net position in the all inputs.");
-//
-//     AddAttr<std::std::vector<std::string>>("in_link_alias", "The input link
-//     alias in the step network.");
-//     AddAttr<std::std::vector<std::string>>("out_link_alias", "The output link
-//     alias in the step network.");
-//     AddAttr<std::std::vector<std::string>>("memories", "The memory names.");
-//     AddAttr<std::std::vector<std::string>>("pre_memories", "The
-//     history/previous memory names.");
-//
-//     AddType("recurrent_op");
-//     AddComment("This is a recurrent group operator.");
-//   }
-// };
+class RecurrentAlgorithmProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+ public:
+  RecurrentAlgorithmProtoAndCheckerMaker(OpProto* proto,
+                                         OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInputs("in_links", "the input that need to be segmented for each step.");
+    AddInputs("out_links", "the output that need to concated for all steps.");
+
+    AddInputs("memories", "RNN's memories.");
+    AddInputs("pre_memories", "last step/previous memory.");
+    AddInputs("boot_memories", "variables to initialize memories.");
+
+    AddInputs("inlink_alias", "alias for inlinks.");
+    AddInputs("outlink_alias", "alias for outlinks.");
+
+    AddInput("step_net", "network shared by all steps.");
+
+    AddComment("This is a recurrent group operator.");
+  }
+};
 //
 // REGISTER_OP(recurrent_op, RecurrentAlgorithm,
 // RecurrentAlgorithmProtoAndCheckerMaker);
@@ -311,3 +302,6 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
 
 }  // namespace framework
 }  // namespace paddle
+
+REGISTER_OP(recurrent_op, paddle::framework::RecurrentOp,
+            paddle::framework::RecurrentAlgorithmProtoAndCheckerMaker);
