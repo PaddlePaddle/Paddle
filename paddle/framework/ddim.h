@@ -52,8 +52,6 @@ struct DDim {
 
   DDimVar getVar() { return var; }
 
-  ssize_t size() const;
-
   bool operator==(DDim d) const;
 
   bool operator!=(DDim d) const;
