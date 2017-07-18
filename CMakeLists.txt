@@ -37,6 +37,7 @@ include(simd)
 ################################ Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
+option(WITH_MKLDNN      "Compile PaddlePaddle with mkl-dnn support."    ON)
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        ON)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
@@ -94,6 +95,7 @@ include(external/glog)      # download, build, install glog
 include(external/gtest)     # download, build, install gtest
 include(external/protobuf)  # download, build, install protobuf
 include(external/python)    # download, build, install python
+include(external/mkldnn)    # download, build, install mkldnn
 include(external/openblas)  # download, build, install openblas
 include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
@@ -135,6 +137,11 @@ if(WITH_GPU)
         list(APPEND EXTERNAL_LIB ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
     endif(NOT WITH_DSO)
 endif(WITH_GPU)
+
+if(WITH_MKLDNN)
+    message(STATUS "MKLDNN_LIBRARY: ${MKLDNN_LIBRARY}")
+    list(APPEND EXTERNAL_LIBS ${MKLDNN_LIBRARY} ${MKL_LITE_LIB_IOMP})
+endif()
 
 if(USE_NNPACK)
     include(external/nnpack)

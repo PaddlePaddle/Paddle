@@ -16,22 +16,42 @@
 set(CBLAS_FOUND OFF)
 
 ## Find MKL First.
-set(INTEL_ROOT "/opt/intel" CACHE PATH "Folder contains intel libs")
-set(MKL_ROOT ${INTEL_ROOT}/mkl CACHE PATH "Folder contains MKL")
+set(INTEL_MKL_ROOT "/opt/intel/mkl" CACHE PATH "Folder contains intel mkl libs")
+set(MKL_ROOT $ENV{MKL_ROOT} CACHE PATH "Folder contains env MKL")
+
+set(MKL_INCLUDE_SEARCH_PATHS
+  ${MKL_ROOT}/include
+  ${INTEL_MKL_ROOT}/include)
+set(MKL_LIB_SEARCH_PATHS
+  ${MKL_ROOT}/lib
+  ${MKL_ROOT}/lib/intel64
+  ${INTEL_MKL_ROOT}/lib
+  ${INTEL_MKL_ROOT}/lib/intel64)
+
+if(MKL_LITE_INC_DIR AND MKL_LITE_LIB)
+  set(CBLAS_FOUND ON)
+  set(CBLAS_PROVIDER MKL_LITE)
+  set(CBLAS_INC_DIR ${MKL_LITE_INC_DIR})
+  set(CBLAS_LIBRARIES ${MKL_LITE_LIB})
+
+  add_definitions(-DPADDLE_USE_MKL_LITE)
+  add_definitions(-DLAPACK_FOUND)
+
+  message(STATUS "Found cblas and lapack in MKL Lite "
+    "(include: ${MKL_LITE_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+  return()
+endif()
 
 find_path(MKL_INC_DIR mkl.h PATHS
-  ${MKL_ROOT}/include)
+  ${MKL_INCLUDE_SEARCH_PATHS})
 find_path(MKL_LAPACK_INC_DIR mkl_lapacke.h PATHS
-  ${MKL_ROOT}/include)
+  ${MKL_INCLUDE_SEARCH_PATHS})
 find_library(MKL_CORE_LIB NAMES mkl_core PATHS
-  ${MKL_ROOT}/lib
-  ${MKL_ROOT}/lib/intel64)
+  ${MKL_LIB_SEARCH_PATHS})
 find_library(MKL_SEQUENTIAL_LIB NAMES mkl_sequential PATHS
-  ${MKL_ROOT}/lib
-  ${MKL_ROOT}/lib/intel64)
+  ${MKL_LIB_SEARCH_PATHS})
 find_library(MKL_INTEL_LP64 NAMES mkl_intel_lp64 PATHS
-  ${MKL_ROOT}/lib
-  ${MKL_ROOT}/lib/intel64)
+  ${MKL_LIB_SEARCH_PATHS})
 
 if(MKL_LAPACK_INC_DIR AND MKL_INC_DIR AND MKL_CORE_LIB AND MKL_SEQUENTIAL_LIB AND MKL_INTEL_LP64)
   set(CBLAS_FOUND ON)

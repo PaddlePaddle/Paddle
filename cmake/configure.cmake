@@ -67,6 +67,12 @@ else()
     include_directories(${CUDA_TOOLKIT_INCLUDE})
 endif(NOT WITH_GPU)
 
+if(WITH_MKLDNN)
+    add_definitions(-DPADDLE_USE_MKLDNN)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif(WITH_MKLDNN)
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SIMD_FLAG}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SIMD_FLAG}")
 
