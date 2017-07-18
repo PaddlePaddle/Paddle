@@ -28,6 +28,7 @@ namespace pd = paddle::framework;
 
 USE_OP(add_two);
 USE_OP_WITHOUT_KERNEL(fc);
+USE_OP(sgd);
 
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of Paddle Paddle");
