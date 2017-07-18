@@ -58,6 +58,16 @@ class Tensor {
     return mutable_data<T>(place);
   }
 
+  /**
+   * Returns a non const pointer of the data.
+   */
+  template <typename T>
+  T* mutable_data() {
+    CheckDims<T>();
+    return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                offset_);
+  }
+
   template <typename T>
   T* mutable_data(platform::Place place) {
     PADDLE_ENFORCE(product(dims_) > 0,
@@ -82,8 +92,7 @@ class Tensor {
       }
       offset_ = 0;
     }
-    return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                offset_);
+    return mutable_data<T>();
   }
 
   template <typename T, size_t NDIMS>
