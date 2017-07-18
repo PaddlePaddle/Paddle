@@ -71,4 +71,4 @@ REGISTER_OP(momentum_sgd_op,
             paddle::operators::MomentumSGDOpMaker);
 REGISTER_OP_CPU_KERNEL(
     momentum_sgd_op,
-    ::paddle::operators::MomentumSGDOpKernel<::paddle::platform::CPUPlace>);
+    paddle::operators::MomentumSGDOpKernel<float, paddle::platform::CPUPlace>);
