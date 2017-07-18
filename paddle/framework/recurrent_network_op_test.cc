@@ -105,9 +105,7 @@ class RecurrentOpTest : public ::testing::Test {
 
   void CreateGlobalVariables() {
     scope_ = std::make_shared<Scope>();
-    LOG(INFO) << "create global variable h_boot";
-    // create boot memory
-    scope_->CreateVariable("h_boot");
+
     // create input, and init content
     LOG(INFO) << "create global variable x";
     Variable* x = scope_->CreateVariable("x");
@@ -249,6 +247,167 @@ class RecurrentOpTest : public ::testing::Test {
 TEST_F(RecurrentOpTest, Run) {
   platform::CPUDeviceContext ctx;
   rnn_op_.Run(scope_, ctx);
+}
+
+class RecurrentGradientAlgorithmTest : public ::testing::Test {
+ protected:
+  virtual void SetUp() override {
+    CreateGlobalVariables();
+    CreateStepScopes();
+    CreateStepNet();
+    CreateRNNGradientAlgorithm();
+
+    // segment inputs
+    SegmentInputs();
+    // link forward memories
+    LinkeMemories();
+  }
+
+  virtual void TearDown() override {}
+
+  void CreateGlobalVariables() {
+    scope_ = std::make_shared<Scope>();
+    // inputs: x
+    LOG(INFO) << "create global variable x";
+    Variable* x = scope_->CreateVariable("x");
+    DDim dims =
+        make_ddim({10 /*sent size*/, 20 /*batch size*/, 30 /*input dim*/});
+    x->GetMutable<Tensor>()->mutable_data<float>(dims, platform::CPUPlace());
+    // inputs: h_boot
+    LOG(INFO) << "create global variable h_boot";
+    Variable* h_boot = scope_->CreateVariable("h_boot");
+    h_boot->GetMutable<Tensor>()->mutable_data<float>(
+        make_ddim({20 /*batch size*/, 30 /*input dim*/}), platform::CPUPlace());
+    // inputs: w
+    LOG(INFO) << "create global variable w";
+    Variable* w = scope_->CreateVariable("rnn/w");
+    w->GetMutable<Tensor>()->mutable_data<float>(make_ddim({30, 30}),
+                                                 platform::CPUPlace());
+    // inputs: h_grad
+    LOG(INFO) << "create variable h_grad";
+    Variable* dh = scope_->CreateVariable("h_grad");
+    dh->GetMutable<Tensor>()->mutable_data<float>(make_ddim({10, 20, 30}),
+                                                  platform::CPUPlace());
+    // inputs: step_scopes
+    LOG(INFO) << "create variable step_scopes";
+    scope_->CreateVariable("step_scopes");
+    // inputs: step_net
+    LOG(INFO) << "create variable step_net";
+    scope_->CreateVariable("step_net");
+    // outputs: w_grad
+    LOG(INFO) << "create global variable w_grad";
+    scope_->CreateVariable("rnn/w_grad");
+    // outputs: x_grad
+    LOG(INFO) << "create global variable x_grad";
+    scope_->CreateVariable("x_grad");
+    // outputs: h_boot_grad
+    LOG(INFO) << "create global variable h_boot_grad";
+    scope_->CreateVariable("h_boot_grad");
+  }
+
+  void CreateStepScopes() {
+    std::vector<ScopePtr>* step_scopes =
+        scope_->GetVariable("step_scopes")->GetMutable<std::vector<ScopePtr>>();
+    for (int i = 0; i < 10; ++i) {
+      auto scope = std::make_shared<Scope>(scope_);
+      auto pre_t = scope->CreateVariable("rnn/pre_h")->GetMutable<Tensor>();
+      pre_t->mutable_data<float>(make_ddim({20, 30}), platform::CPUPlace());
+      auto tensor = scope->CreateVariable("rnn/h")->GetMutable<Tensor>();
+      tensor->mutable_data<float>(make_ddim({20, 30}), platform::CPUPlace());
+
+      // for unit test of ConcatOutputs
+      auto xg = scope->CreateVariable("rnn/x_grad")->GetMutable<Tensor>();
+      xg->mutable_data<float>(make_ddim({20, 30}), platform::CPUPlace());
+
+      step_scopes->push_back(scope);
+    }
+
+    // last time step
+    auto g = (*step_scopes)[9]
+                 ->CreateVariable("rnn/h_pre_grad")
+                 ->GetMutable<Tensor>();
+    g->mutable_data<float>(make_ddim({20, 30}), platform::CPUPlace());
+  }
+
+  void CreateRNNGradientAlgorithm() {
+    AttributeMap attrs;
+    attrs["step_net"] = "step_net";
+    attrs["step_scopes"] = "step_scopes";
+    attrs["in_links"] = std::vector<std::string>{"h_grad"};
+    attrs["in_link_alias"] = std::vector<std::string>{"rnn/h_grad"};
+    attrs["out_links"] = std::vector<std::string>{"x_grad"};
+    attrs["out_link_alias"] = std::vector<std::string>{"rnn/x_grad"};
+    attrs["memories"] = std::vector<std::string>{"rnn/h_pre_grad"};
+    attrs["pre_memories"] = std::vector<std::string>{"rnn/h_grad"};
+    attrs["boot_memories"] = std::vector<std::string>{"h_boot_grad"};
+    rnn_grad_algo_.Init(attrs);
+  }
+
+  OpDesc CreateFcGradientOpDesc() {
+    OpDesc op_desc;
+    op_desc.set_type("fc");  // use fc op for test
+    op_desc.add_inputs("rnn/s_grad");
+    op_desc.add_inputs("rnn/h_pre");
+    op_desc.add_inputs("rnn/w");
+    op_desc.add_outputs("rnn/h_pre_grad");
+    op_desc.add_outputs("rnn/w_grad");
+    // rnn/h_pre_grad = rnn/s_grad * trans(rnn/w)
+    // rnn/w_grad = trans(rnn/h_pre) * rnn/s_grad
+    return op_desc;
+  }
+
+  OpDesc CreateAddGradientOpDesc() {
+    OpDesc op_desc;
+    op_desc.set_type("add");  // use add op for test
+    op_desc.add_inputs("rnn/h_grad");
+    op_desc.add_outputs("rnn/x_grad");
+    op_desc.add_outputs("rnn/s_grad");
+    // rnn/x_grad = rnn/h_grad
+    // rnn/s_grad = rnn/h_grad
+    return op_desc;
+  }
+
+  void CreateStepNet() {
+    LOG(INFO) << "create variable step_net";
+    Variable* net_var = scope_->CreateVariable("step_net");
+    NetDesc net_desc;
+    net_desc.name_ = "rnn_gradient";
+    net_desc.op_descs.push_back(CreateFcGradientOpDesc());
+    net_desc.op_descs.push_back(CreateAddGradientOpDesc());
+    net_var->Reset<PlainNet>(new PlainNet(net_desc));
+  }
+
+  void SegmentInputs() {
+    LOG(INFO) << "segment inputs";
+    std::vector<std::string> inlinks = {"x"};
+    std::vector<std::string> inlinks_alias = {"rnn/x"};
+    std::vector<ScopePtr>* step_scopes =
+        scope_->GetVariable("step_scopes")->GetMutable<std::vector<ScopePtr>>();
+    details::SegmentInputs(*step_scopes, inlinks, inlinks_alias);
+  }
+
+  void LinkeMemories() {
+    LOG(INFO) << "link memories";
+    details::MemoryAttr mem_attr;
+    mem_attr.pre_var = "rnn/h_pre";
+    mem_attr.var = "rnn/h";
+    mem_attr.boot_var = "boot_h";
+    std::vector<details::MemoryAttr> memories;
+    memories.push_back(mem_attr);
+    std::vector<ScopePtr>* step_scopes =
+        scope_->GetVariable("step_scopes")->GetMutable<std::vector<ScopePtr>>();
+    for (int i = 1; i < 10; ++i) {
+      details::LinkMemories(*step_scopes, memories, i, -1);
+    }
+  }
+
+  std::shared_ptr<Scope> scope_;
+  RecurrentGradientAlgorithm rnn_grad_algo_;
+};
+
+TEST_F(RecurrentGradientAlgorithmTest, Run) {
+  platform::CPUDeviceContext ctx;
+  rnn_grad_algo_.Run(scope_, ctx);
 }
 
 }  // namespace framework

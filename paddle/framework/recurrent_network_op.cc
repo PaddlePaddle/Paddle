@@ -24,40 +24,46 @@ namespace framework {
 
 namespace details {
 
-void SegmentInputs(ScopePtr scope, std::vector<ScopePtr>& step_scopes,
-                   const std::vector<std::string>& inlinks) {
+void SegmentInputs(std::vector<ScopePtr>& step_scopes,
+                   const std::vector<std::string>& inlinks,
+                   const std::vector<std::string>& inlinks_alias) {
   PADDLE_ENFORCE(!inlinks.empty(), "no in links are provided.");
   for (size_t i = 0; i < inlinks.size(); ++i) {
-    Tensor* input_tensor = scope->GetVariable(inlinks[i])->GetMutable<Tensor>();
-    DDim input_dims = input_tensor->dims();
-    DDim step_input_dims = slice_ddim(input_dims, 1, input_dims.size());
+    Tensor* input =
+        step_scopes[0]->GetVariable(inlinks[i])->GetMutable<Tensor>();
+    DDim dims = input->dims();
+    DDim step_dims = slice_ddim(dims, 1, dims.size());
     for (size_t j = 0; j < step_scopes.size(); j++) {
-      Tensor* step_input_tensor =
-          step_scopes[j]->CreateVariable(inlinks[i])->GetMutable<Tensor>();
-      *step_input_tensor = (*input_tensor).Slice<float>(j, j + 1);
-      (*step_input_tensor).set_dims(step_input_dims);
+      Tensor* step_input = step_scopes[j]
+                               ->CreateVariable(inlinks_alias[i])
+                               ->GetMutable<Tensor>();
+      *step_input = input->Slice<float>(j, j + 1);
+      step_input->set_dims(step_dims);
     }
   }
 }
 
-void ConcatOutputs(ScopePtr scope, std::vector<ScopePtr>& step_scopes,
-                   const std::vector<std::string>& outlinks) {
+void ConcatOutputs(std::vector<ScopePtr>& step_scopes,
+                   const std::vector<std::string>& outlinks,
+                   const std::vector<std::string>& outlinks_alias) {
   for (size_t i = 0; i < outlinks.size(); i++) {
-    DDim step_output_dims =
-        step_scopes[0]->GetVariable(outlinks[i])->GetMutable<Tensor>()->dims();
-    std::vector<int> dims_vec = vectorize(step_output_dims);
+    DDim step_dims = step_scopes[0]
+                         ->GetVariable(outlinks_alias[i])
+                         ->GetMutable<Tensor>()
+                         ->dims();
+    std::vector<int> dims_vec = vectorize(step_dims);
     dims_vec.insert(dims_vec.begin(), step_scopes.size());
 
-    Tensor* output_tensor =
-        scope->CreateVariable(outlinks[i])->GetMutable<Tensor>();
-    (*output_tensor)
-        .mutable_data<double>(make_ddim(dims_vec), platform::CPUPlace());
+    Tensor* output =
+        step_scopes[0]->CreateVariable(outlinks[i])->GetMutable<Tensor>();
+    output->mutable_data<double>(make_ddim(dims_vec), platform::CPUPlace());
 
     for (size_t j = 0; j < step_scopes.size(); j++) {
-      Tensor* step_output_tensor =
-          step_scopes[j]->CreateVariable(outlinks[i])->GetMutable<Tensor>();
-      ((*output_tensor).Slice<float>(j, j + 1))
-          .CopyFrom<float>(*step_output_tensor, platform::CPUPlace());
+      Tensor* step_output = step_scopes[j]
+                                ->CreateVariable(outlinks_alias[i])
+                                ->GetMutable<Tensor>();
+      (output->Slice<float>(j, j + 1))
+          .CopyFrom<float>(*step_output, platform::CPUPlace());
     }
   }
 }
@@ -102,7 +108,7 @@ void RecurrentAlgorithm::Run(const ScopePtr& scope,
   auto step_scopes = GetStepScopes(scope);
 
   LOG(INFO) << "segment input";
-  details::SegmentInputs(scope, step_scopes, inlinks_);
+  details::SegmentInputs(step_scopes, inlinks_, inlink_alias_);
 
   InitMemories(step_scopes[0]);
   for (size_t step_id = 0; step_id < step_scopes.size(); step_id++) {
@@ -113,9 +119,9 @@ void RecurrentAlgorithm::Run(const ScopePtr& scope,
     net->GetMutable<PlainNet>()->Run(step_scopes[step_id], dev_ctx);
   }
 
-  LOG(INFO) << "concat outputs";
   // prepare outputs
-  details::ConcatOutputs(scope, step_scopes, out_link_alias_);
+  LOG(INFO) << "concat outputs";
+  details::ConcatOutputs(step_scopes, outlinks_, outlink_alias_);
 }
 
 void RecurrentAlgorithm::CreateScopes(ScopePtr scope) const {
@@ -172,9 +178,9 @@ void RecurrentOp::Init() {
     alg_.inlinks_.push_back(inputs_[id]);
   }
   auto inlink_alias = GetAttr<std::vector<std::string>>("in_link_alias");
-  alg_.in_link_alias_ =
+  alg_.inlink_alias_ =
       std::vector<std::string>{inlink_alias.begin(), inlink_alias.end()};
-  PADDLE_ENFORCE(alg_.inlinks_.size() == alg_.in_link_alias_.size(),
+  PADDLE_ENFORCE(alg_.inlinks_.size() == alg_.inlink_alias_.size(),
                  "in_links/in_link_alias mismatch.");
 
   PADDLE_ENFORCE(
@@ -184,7 +190,7 @@ void RecurrentOp::Init() {
       std::vector<std::string>{outputs_.begin(), outputs_.end() - 1};
 
   auto outlink_alias = GetAttr<std::vector<std::string>>("out_link_alias");
-  alg_.out_link_alias_ =
+  alg_.outlink_alias_ =
       std::vector<std::string>{outlink_alias.begin(), outlink_alias.end()};
   PADDLE_ENFORCE(alg_.outlinks_.size() == outlink_alias.size(),
                  "out_links/out_link_alias mismatch.");
@@ -216,27 +222,6 @@ void RecurrentOp::Init() {
   }
 }
 
-class RecurrentAlgorithmProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
- public:
-  RecurrentAlgorithmProtoAndCheckerMaker(OpProto* proto,
-                                         OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInputs("in_links", "the input that need to be segmented for each step.");
-    AddInputs("out_links", "the output that need to concated for all steps.");
-
-    AddInputs("memories", "RNN's memories.");
-    AddInputs("pre_memories", "last step/previous memory.");
-    AddInputs("boot_memories", "variables to initialize memories.");
-
-    AddInputs("inlink_alias", "alias for inlinks.");
-    AddInputs("outlink_alias", "alias for outlinks.");
-
-    AddInput("step_net", "network shared by all steps.");
-
-    AddComment("This is a recurrent group operator.");
-  }
-};
-//
 // REGISTER_OP(recurrent_op, RecurrentAlgorithm,
 // RecurrentAlgorithmProtoAndCheckerMaker);
 
@@ -246,7 +231,7 @@ void RecurrentGradientAlgorithm::Run(
                           ->GetMutable<std::vector<ScopePtr>>();
 
   LOG(INFO) << "segment input";
-  details::SegmentInputs(scope, step_scopes, inlink_alias_);
+  details::SegmentInputs(step_scopes, inlinks_, inlink_alias_);
 
   PADDLE_ENFORCE(scope->HasVariable(stepnet_name_),
                  "step net is not in scope.");
@@ -257,9 +242,9 @@ void RecurrentGradientAlgorithm::Run(
       scope->GetVariable(inlinks_[0])->GetMutable<Tensor>()->dims()[0];
   LOG(INFO) << "sequence length " << max_seq_len;
 
-  for (size_t step_id = max_seq_len - 1; step_id > 0; --step_id) {
+  for (int step_id = max_seq_len - 1; step_id >= 0; --step_id) {
     LOG(INFO) << "run step " << step_id;
-    if (step_id != max_seq_len - 1) {
+    if (static_cast<size_t>(step_id) != max_seq_len - 1) {
       details::LinkMemories(step_scopes, memories_, step_id, 1);
     }
     net->GetMutable<PlainNet>()->Run(step_scopes[step_id], dev_ctx);
@@ -267,7 +252,7 @@ void RecurrentGradientAlgorithm::Run(
   LinkBootMemoryGradients(step_scopes[0]);
 
   LOG(INFO) << "concat outputs";
-  details::ConcatOutputs(scope, step_scopes, outlink_alias_);
+  details::ConcatOutputs(step_scopes, outlinks_, outlink_alias_);
 }
 
 void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
@@ -285,8 +270,53 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
   }
 }
 
+void RecurrentGradientAlgorithm::Init(AttributeMap& attrs) {
+  stepnet_name_ = boost::get<std::string>(attrs.at("step_net"));
+  step_scopes_name_ = boost::get<std::string>(attrs.at("step_scopes"));
+
+  auto inlinks = boost::get<std::vector<std::string>>(attrs.at("in_links"));
+  inlinks_ = std::vector<std::string>{inlinks.begin(), inlinks.end()};
+
+  auto inlink_alias =
+      boost::get<std::vector<std::string>>(attrs.at("in_link_alias"));
+  inlink_alias_ =
+      std::vector<std::string>{inlink_alias.begin(), inlink_alias.end()};
+  PADDLE_ENFORCE(inlinks_.size() == inlink_alias_.size(),
+                 "in_links/in_link_alias mismatch.");
+
+  auto outlinks = boost::get<std::vector<std::string>>(attrs.at("out_links"));
+  outlinks_ = std::vector<std::string>{outlinks.begin(), outlinks.end()};
+
+  auto outlink_alias =
+      boost::get<std::vector<std::string>>(attrs.at("out_link_alias"));
+  outlink_alias_ =
+      std::vector<std::string>{outlink_alias.begin(), outlink_alias.end()};
+  PADDLE_ENFORCE(outlinks_.size() == outlink_alias_.size(),
+                 "out_links/out_link_alias mismatch.");
+
+  // set memories
+  auto memories = boost::get<std::vector<std::string>>(attrs.at("memories"));
+  auto pre_memories =
+      boost::get<std::vector<std::string>>(attrs.at("pre_memories"));
+  auto boot_memories =
+      boost::get<std::vector<std::string>>(attrs.at("boot_memories"));
+
+  PADDLE_ENFORCE(memories.size() == pre_memories.size(),
+                 "The size of memories and pre_memories doesn't match: %d,%d.",
+                 memories.size(), pre_memories.size());
+  PADDLE_ENFORCE(memories.size() == boot_memories.size(),
+                 "the size of memories and boot_memories doesn't match: %d,%d",
+                 memories.size(), boot_memories.size());
+  for (size_t i = 0; i < memories.size(); ++i) {
+    details::MemoryAttr mem_attr;
+    mem_attr.var = memories[i];
+    mem_attr.pre_var = pre_memories[i];
+    mem_attr.boot_var = boot_memories[i];
+    memories_.push_back(mem_attr);
+    LOG(INFO) << "set memorys:\t"
+              << "memory:" << mem_attr.var << "\tboot:" << mem_attr.boot_var;
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle
-
-REGISTER_OP(recurrent_op, paddle::framework::RecurrentOp,
-            paddle::framework::RecurrentAlgorithmProtoAndCheckerMaker);
