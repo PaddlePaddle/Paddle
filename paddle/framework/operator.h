@@ -72,7 +72,7 @@ class OperatorBase {
     return boost::get<T>(attrs_.at(name));
   }
 
-  std::string DebugString() const;
+  virtual std::string DebugString() const;
 
   /// Init will be called after CreateOperator, you can put some initialization
   /// logic here.
