@@ -26,6 +26,10 @@ namespace py = pybind11;
 namespace pd = paddle::framework;
 
 USE_OP(add_two);
+USE_OP(softmax);
+USE_OP(mul);
+USE_OP(rowwise_add);
+USE_OP(sigmoid);
 
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of Paddle Paddle");
