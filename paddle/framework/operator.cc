@@ -33,21 +33,10 @@ KernelContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
 }
 #endif
 
-void OperatorBase::CreateInOutOffsetMap(const OpProto& proto) {
-  PADDLE_ENFORCE(in_out_idxs_.empty(), "duplicate call CreateInOutOffsetMap");
-  for (int i = 0; i < proto.inputs_size(); i++) {
-    const auto& name = proto.inputs()[i].name();
-    in_out_idxs_[name] = i;
-  }
-  for (int i = 0; i < proto.outputs_size(); i++) {
-    const auto& name = proto.outputs()[i].name();
-    in_out_idxs_[name] = i;
-  }
-}
-
 const std::string& OperatorBase::Input(const std::string& name) const {
-  auto it = in_out_idxs_.find(name);
-  PADDLE_ENFORCE(it != in_out_idxs_.end(), "no key [%s] in in_out_idxs_", name);
+  auto it = in_out_idxs_->find(name);
+  PADDLE_ENFORCE(it != in_out_idxs_->end(), "no key [%s] in in_out_idxs_",
+                 name);
 
   if (attrs_.count("input_format") == 0) {
     return inputs_[it->second];
@@ -60,7 +49,7 @@ const std::string& OperatorBase::Input(const std::string& name) const {
 
 std::vector<std::string> OperatorBase::Inputs(const std::string& name) const {
   auto input_format = GetAttr<std::vector<int>>("input_format");
-  auto offset = in_out_idxs_.at(name);
+  auto offset = in_out_idxs_->at(name);
 
   return std::vector<std::string>{
       inputs_.begin() + input_format.at(offset),
@@ -68,8 +57,9 @@ std::vector<std::string> OperatorBase::Inputs(const std::string& name) const {
 }
 
 const std::string& OperatorBase::Output(const std::string& name) const {
-  auto it = in_out_idxs_.find(name);
-  PADDLE_ENFORCE(it != in_out_idxs_.end(), "no key [%s] in in_out_idxs_", name);
+  auto it = in_out_idxs_->find(name);
+  PADDLE_ENFORCE(it != in_out_idxs_->end(), "no key [%s] in in_out_idxs_",
+                 name);
 
   if (attrs_.count("output_format") == 0) {
     return outputs_[it->second];
@@ -82,7 +72,7 @@ const std::string& OperatorBase::Output(const std::string& name) const {
 
 std::vector<std::string> OperatorBase::Outputs(const std::string& name) const {
   auto output_format = GetAttr<std::vector<int>>("output_format");
-  auto offset = in_out_idxs_.at(name);
+  auto offset = in_out_idxs_->at(name);
 
   return std::vector<std::string>{
       outputs_.begin() + output_format.at(offset),
