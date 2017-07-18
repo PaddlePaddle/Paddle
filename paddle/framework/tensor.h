@@ -55,14 +55,14 @@ class Tensor {
         holder_.reset(new PlaceholderImpl<T, platform::CPUPlace>(
             boost::get<platform::CPUPlace>(place), product(dims_) * sizeof(T)));
       } else if (platform::is_gpu_place(place)) {
-#ifdef __CUDACC__
+#ifdef PADDLE_ONLY_CPU
+        PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+#else
         holder_.reset(new PlaceholderImpl<T, platform::GPUPlace>(
             boost::get<platform::GPUPlace>(place), product(dims_) * sizeof(T)));
-#else
-        PADDLE_ENFORCE(true, "'GPUPlace' is not supported in CPU only device.");
 #endif
       } else {
-        PADDLE_ENFORCE(true, "Unknown 'place'.");
+        PADDLE_THROW("Unknown 'place'.");
       }
       offset_ = 0;
     }
