@@ -177,10 +177,10 @@ func (e *EtcdClient) registerPserverEtcd(ctx context.Context, port int) (int, er
 				break
 			}
 		}
-		if registered == true {
+		if registered {
 			return nil
 		}
-		return errors.New("not registerd, may due to already have enough pservers")
+		return errors.New("not registered, may due to already have enough pservers")
 	}, concurrency.WithAbortContext(ctx), concurrency.WithIsolation(concurrency.RepeatableReads))
 
 	if err != nil {
@@ -211,8 +211,5 @@ func (e *EtcdClient) PutKey(key string, value []byte, timeout time.Duration) err
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	_, err := e.etcdClient.Put(ctx, key, string(value))
 	cancel()
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }

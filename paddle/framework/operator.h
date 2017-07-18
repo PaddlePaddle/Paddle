@@ -31,6 +31,21 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+template <typename T>
+struct EigenDeviceConverter;
+
+template <>
+struct EigenDeviceConverter<platform::CPUPlace> {
+  using EigenDeviceType = Eigen::DefaultDevice;
+};
+
+#ifndef PADDLE_ONLY_CPU
+template <>
+struct EigenDeviceConverter<platform::GPUPlace> {
+  using EigenDeviceType = Eigen::GpuDevice;
+};
+#endif
+
 class OperatorBase;
 using OperatorPtr = std::shared_ptr<OperatorBase>;
 /**
@@ -41,6 +56,13 @@ using OperatorPtr = std::shared_ptr<OperatorBase>;
  */
 class OperatorBase {
  public:
+  /// If a variable is a empty variable, that name will be used.
+  static std::string EMPTY_VAR_NAME() { return "@EMPTY@"; }
+
+  /// If a variable is a temporary variable, that name will be set in Python,
+  /// but it will be convert to a unique name in scope after OpCreator.
+  static std::string TMP_VAR_NAME() { return "@TEMP@"; }
+
   virtual ~OperatorBase() {}
 
   template <typename T>
@@ -50,7 +72,7 @@ class OperatorBase {
     return boost::get<T>(attrs_.at(name));
   }
 
-  std::string DebugString() const;
+  virtual std::string DebugString() const;
 
   /// Init will be called after CreateOperator, you can put some initialization
   /// logic here.
@@ -75,16 +97,13 @@ class OperatorBase {
   // TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Outputs(const std::string& name) const;
 
-  // init in_out_idxs_ to accelerate argument's offset lookup.
-  void CreateInOutOffsetMap(const OpProto& proto);
-
  public:
   std::string type_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
   AttributeMap attrs_;
   // store the arguments' offset described in op_desc.
-  std::unordered_map<std::string, int> in_out_idxs_;
+  std::shared_ptr<std::unordered_map<std::string, int>> in_out_idxs_;
 };
 
 class KernelContext {
@@ -127,6 +146,13 @@ class KernelContext {
     return res;
   }
 
+  template <typename PlaceType,
+            typename DeviceType =
+                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
+  DeviceType* GetEigenDevice() const;
+
+  platform::Place GetPlace() const { return device_context_.GetPlace(); }
+
   const OperatorBase& op_;
   const std::shared_ptr<Scope>& scope_;
   const platform::DeviceContext& device_context_;
@@ -140,6 +166,7 @@ class OpKernel {
    * device resource such as CUDA stream, cublas handle, etc. from
    * KernelContext. User should construct it before run the Operator.
    */
+
   virtual void Compute(const KernelContext& context) const = 0;
 
   virtual ~OpKernel() {}
