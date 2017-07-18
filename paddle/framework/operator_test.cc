@@ -102,6 +102,7 @@ class OpWithKernelTest : public OperatorWithKernel {
                   const std::vector<Tensor*>& outputs) const override {}
 };
 
+template <typename T1, typename T2>
 class CPUKernelTest : public OpKernel {
  public:
   void Compute(const KernelContext& ctx) const {
@@ -171,7 +172,8 @@ class CPUKernalMultiInputsTest : public OpKernel {
 
 REGISTER_OP(op_with_kernel, paddle::framework::OpWithKernelTest,
             paddle::framework::OpKernelTestProtoAndCheckerMaker);
-REGISTER_OP_CPU_KERNEL(op_with_kernel, paddle::framework::CPUKernelTest);
+REGISTER_OP_CPU_KERNEL(op_with_kernel,
+                       paddle::framework::CPUKernelTest<float, float>);
 
 // test with single input
 TEST(OpKernel, all) {
