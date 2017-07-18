@@ -234,7 +234,7 @@ class OpRegistry {
                               const AttributeMap& attrs) {
     auto op_create_it = creators().find(type);
     PADDLE_ENFORCE(op_create_it != creators().end(),
-                   "Operator %s cannot be found", type);
+                   "Operator %s cannot be found.", type);
 
     auto op = op_create_it->second();
     op->type_ = type;
