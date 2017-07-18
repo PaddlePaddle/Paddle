@@ -27,7 +27,7 @@ namespace framework {
 
 class Tensor {
  public:
-  Tensor() : numel_(0), offset_(0) {}
+  Tensor() : offset_(0) {}
 
   template <typename T>
   const T* data() const {
@@ -37,21 +37,33 @@ class Tensor {
   }
 
   template <typename T>
-  T* mutable_data(DDim dims, paddle::platform::Place place) {
+  T* mutable_data(DDim dims, platform::Place place) {
     set_dims(dims);
     return mutable_data<T>(place);
   }
 
   template <typename T>
-  T* mutable_data(paddle::platform::Place place) {
-    PADDLE_ENFORCE(numel_ > 0,
-                   "Tensor::numel_ must be larger than zero to call "
+  T* mutable_data(platform::Place place) {
+    PADDLE_ENFORCE(product(dims_) > 0,
+                   "Tensor's numel must be larger than zero to call "
                    "Tensor::mutable_data. Call Tensor::set_dim first.");
     if (holder_ == nullptr ||
         !(holder_->place() ==
           place) /* some versions of boost::variant don't have operator!= */
-        || holder_->size() < numel_ * sizeof(T) + offset_) {
-      holder_.reset(new PlaceholderImpl<T>(place, numel_ * sizeof(T)));
+        || holder_->size() < product(dims_) * sizeof(T) + offset_) {
+      if (platform::is_cpu_place(place)) {
+        holder_.reset(new PlaceholderImpl<T, platform::CPUPlace>(
+            boost::get<platform::CPUPlace>(place), product(dims_) * sizeof(T)));
+      } else if (platform::is_gpu_place(place)) {
+#ifdef __CUDACC__
+        holder_.reset(new PlaceholderImpl<T, platform::GPUPlace>(
+            boost::get<platform::GPUPlace>(place), product(dims_) * sizeof(T)));
+#else
+        PADDLE_ENFORCE(true, "'GPUPlace' is not supported in CPU only device.");
+#endif
+      } else {
+        PADDLE_ENFORCE(true, "Unknown 'place'.");
+      }
       offset_ = 0;
     }
     return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
@@ -67,12 +79,12 @@ class Tensor {
   }
 
   template <typename T>
-  void CopyFrom(const Tensor& src, paddle::platform::Place dst_place) {
+  void CopyFrom(const Tensor& src, platform::Place dst_place) {
     PADDLE_ENFORCE(platform::is_cpu_place(src.holder_->place()) &&
                        platform::is_cpu_place(dst_place),
                    "Tensor::CopyFrom only support CPU now.");
     src.CheckDims<T>();
-    size_t size = src.numel_ * sizeof(T);
+    size_t size = product(src.dims_) * sizeof(T);
     set_dims(src.dims());
     const void* src_ptr = static_cast<const void*>(src.data<T>());
     void* dst_ptr = static_cast<void*>(mutable_data<T>(dst_place));
@@ -106,7 +118,6 @@ class Tensor {
       return;
     }
     dims_ = dims;
-    numel_ = product(dims_);
   }
 
   DDim dims() const { return dims_; }
@@ -117,56 +128,50 @@ class Tensor {
   struct Placeholder {
     virtual ~Placeholder() {}
     virtual void* ptr() const = 0;
-    virtual paddle::platform::Place place() const = 0;
+    virtual platform::Place place() const = 0;
     virtual size_t size() const = 0;
   };
 
-  template <typename T>
+  template <typename T, typename PlaceType>
   struct PlaceholderImpl : public Placeholder {
    private:
+    template <typename PType>
     class Deleter {
      public:
-      Deleter(platform::Place place) : place_(place) {}
-      void operator()(T* ptr) {
-        // paddle::memory::Free(place_, static_cast<void*>(ptr));
-        free(static_cast<void*>(ptr));
-      }
+      Deleter(PType place) : place_(place) {}
+      void operator()(T* ptr) { memory::Free(place_, static_cast<void*>(ptr)); }
 
      private:
-      paddle::platform::Place place_;
+      PType place_;
     };
 
    public:
-    // PlaceholderImpl(paddle::platform::Place place, size_t size)
-    //     : ptr_(static_cast<T*>(paddle::memory::Alloc(place, size)),
-    //           Deleter(place)),
-
-    PlaceholderImpl(paddle::platform::Place place, size_t size)
-        : ptr_(static_cast<T*>(malloc(size * sizeof(T))), Deleter(place)),
+    PlaceholderImpl(PlaceType place, size_t size)
+        : ptr_(static_cast<T*>(memory::Alloc(place, size)),
+               Deleter<PlaceType>(place)),
           place_(place),
           size_(size) {}
 
     virtual void* ptr() const { return static_cast<void*>(ptr_.get()); }
     virtual size_t size() const { return size_; }
-    virtual paddle::platform::Place place() const { return place_; }
+    virtual platform::Place place() const { return place_; }
 
-    std::unique_ptr<T, Deleter> ptr_;
-    paddle::platform::Place place_;  // record the place of ptr_.
-    size_t size_;                    // size of the memory block.
+    std::unique_ptr<T, Deleter<PlaceType>> ptr_;
+    platform::Place place_;  // record the place of ptr_.
+    size_t size_;            // size of the memory block.
   };
 
   template <typename T>
   inline void CheckDims() const {
     PADDLE_ENFORCE(holder_ != nullptr,
                    "Tenosr holds no memory. Call Tensor::mutable_data first.");
-    PADDLE_ENFORCE(holder_->size() >= numel_ * sizeof(T) + offset_,
+    PADDLE_ENFORCE(holder_->size() >= product(dims_) * sizeof(T) + offset_,
                    "Tensor's dims_ is out of bound. Call Tensor::mutable_data "
                    "first to re-allocate memory.");
   }
 
   std::shared_ptr<Placeholder> holder_;  // holds the memory block if allocated.
   DDim dims_;
-  size_t numel_;   // cache of `product(dims_)`
   size_t offset_;  // marks the begin of tensor data area.
 };
 
