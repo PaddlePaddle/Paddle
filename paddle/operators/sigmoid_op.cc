@@ -46,4 +46,5 @@ REGISTER_OP(sigmoid,
             paddle::operators::SigmoidOp,
             paddle::operators::SigmoidOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    sigmoid, paddle::operators::SigmoidKernel<paddle::platform::CPUPlace>);
+    sigmoid,
+    paddle::operators::SigmoidKernel<paddle::platform::CPUPlace, float>);

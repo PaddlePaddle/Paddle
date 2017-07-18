@@ -19,11 +19,24 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place>
+template <typename Place, typename T>
 class RowWiseAddKernel : public framework::OpKernel {
 public:
-  void Compute(const framework::KernelContext &context) const override {
-    LOG(INFO) << "RowWiseAdd kernel in " << typeid(Place).name();
+  void Compute(const framework::KernelContext& context) const override {
+    auto in0 = context.Input(0)->Get<framework::Tensor>();
+    auto in1 = context.Input(1)->Get<framework::Tensor>();
+    auto* out = context.Output(0)->GetMutable<framework::Tensor>();
+
+    auto input = in0.matrix<T>();
+    auto bias = in1.vec<T>();
+    auto output = out->matrix<T>();
+
+    const int bias_size = bias.dimension(0);
+    const int rest_size = input.size() / bias_size;
+    Eigen::DSizes<int, 1> one_d(input.size());
+    Eigen::DSizes<int, 1> bcast(rest_size);
+    output.reshape(one_d).device(*(context.GetEigenDevice<Place>())) =
+        input.reshape(one_d) + bias.broadcast(bcast).reshape(one_d);
   }
 };
 

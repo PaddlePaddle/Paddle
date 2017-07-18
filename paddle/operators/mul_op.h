@@ -20,11 +20,22 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place>
+template <typename Place, typename T>
 class MulKernel : public framework::OpKernel {
 public:
-  void Compute(const framework::KernelContext &context) const override {
-    LOG(INFO) << "Mul kernel in " << typeid(Place).name();
+  void Compute(const framework::KernelContext& context) const override {
+    Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair;
+    dim_pair[0].first = 1;
+    dim_pair[0].second = 0;
+
+    auto input0 = context.Input(0)->Get<framework::Tensor>();
+    auto input1 = context.Input(1)->Get<framework::Tensor>();
+    auto* output = context.Output(0)->GetMutable<framework::Tensor>();
+
+    output->mutable_data<T>(context.GetPlace());
+
+    output->matrix<T>().device(*(context.GetEigenDevice<Place>())) =
+        input0.matrix<T>().contract(input1.matrix<T>(), dim_pair);
   }
 };
 }  // namespace operators

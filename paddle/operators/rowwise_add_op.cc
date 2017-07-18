@@ -58,4 +58,4 @@ REGISTER_OP(rowwise_add,
             paddle::operators::RowWiseAddOpMaker);
 REGISTER_OP_CPU_KERNEL(
     rowwise_add,
-    paddle::operators::RowWiseAddKernel<paddle::platform::CPUPlace>);
+    paddle::operators::RowWiseAddKernel<paddle::platform::CPUPlace, float>);

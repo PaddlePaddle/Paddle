@@ -57,4 +57,4 @@ The equation is: Out = X * Y
 
 REGISTER_OP(mul, paddle::operators::MulOp, paddle::operators::MulOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    mul, paddle::operators::MulKernel<paddle::platform::CPUPlace>);
+    mul, paddle::operators::MulKernel<paddle::platform::CPUPlace, float>);

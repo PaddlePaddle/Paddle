@@ -3,4 +3,4 @@
 
 REGISTER_OP_GPU_KERNEL(
     rowwise_add,
-    paddle::operators::RowWiseAddKernel<paddle::platform ::GPUPlace>);
+    paddle::operators::RowWiseAddKernel<paddle::platform ::GPUPlace, float>);

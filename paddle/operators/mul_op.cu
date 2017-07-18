@@ -17,4 +17,4 @@
 
 REGISTER_OP_GPU_KERNEL(mul,
                        paddle::operators::MulKernel<paddle::platform
-                       ::GPUPlace>);
+                       ::GPUPlace, float>);

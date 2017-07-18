@@ -20,11 +20,17 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place>
+template <typename Place, typename T>
 class SigmoidKernel : public framework::OpKernel {
 public:
-  void Compute(const framework::KernelContext &context) const override {
-    LOG(INFO) << "Sigmoid kernel in " << typeid(Place).name();
+  void Compute(const framework::KernelContext& context) const override {
+    auto input = context.Input(0)->Get<framework::Tensor>();
+    auto* output = context.Output(0)->GetMutable<framework::Tensor>();
+
+    output->mutable_data<T>(context.GetPlace());
+
+    output->flat<T>().device(*(context.GetEigenDevice<Place>())) =
+        1.0 / (1.0 + (-1.0 * input.flat<T>()).exp());
   }
 };
 }  // namespace operators
