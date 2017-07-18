@@ -71,6 +71,22 @@ TEST(Tensor, MutableData) {
     // momery block is supposed to be unchanged
     p2 = src_tensor.mutable_data<float>(make_ddim({2, 2}), CPUPlace());
     EXPECT_EQ(p1, p2);
+
+    int* p3 = nullptr;
+    p3 = src_tensor.mutable_data<int>(make_ddim({2, 2}), CPUPlace());
+    int arr1[4] = {1, 2, 3, 4};
+    memcpy(p3, arr1, 4 * sizeof(int));
+    for (int i = 0; i < 4; ++i) {
+      EXPECT_EQ(p3[i], arr1[i]);
+    }
+    p3 = src_tensor.mutable_data<int>(paddle::platform::CPUPlace());
+    for (int i = 0; i < 4; ++i) {
+      EXPECT_EQ(p3[i], arr1[i]);
+    }
+    p3 = src_tensor.mutable_data<int>();
+    for (int i = 0; i < 4; ++i) {
+      EXPECT_EQ(p3[i], arr1[i]);
+    }
   }
 #ifdef __CUDACC__
   {
