@@ -15,6 +15,7 @@ limitations under the License. */
 #include <Python.h>
 #include <paddle/framework/op_registry.h>
 #include <paddle/framework/scope.h>
+#include <paddle/pybind/tensor.h>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -26,125 +27,14 @@ namespace pd = paddle::framework;
 
 USE_OP(add_two);
 
-struct PlaceDebugString : public boost::static_visitor<std::string> {
-  std::string operator()(const paddle::platform::GPUPlace& place) const {
-    return "GPU(" + std::to_string(place.device) + ")";
-  }
-
-  std::string operator()(const paddle::platform::CPUPlace& place) const {
-    return "CPU";
-  }
-};
-
-template <typename T>
-struct TensorToPyBuffer {
-  pd::Tensor& self_;
-  explicit TensorToPyBuffer(pd::Tensor& self) : self_(self) {}
-
-  bool CanCast() const { return std::type_index(typeid(T)) == self_.type(); }
-
-  py::buffer_info Cast() const {
-    auto dim_vec = pd::vectorize(self_.dims());
-    std::vector<size_t> dims_outside;
-    std::vector<size_t> strides;
-    dims_outside.resize(dim_vec.size());
-    strides.resize(dim_vec.size());
-
-    size_t prod = 1;
-    for (size_t i = dim_vec.size(); i != 0; --i) {
-      dims_outside[i - 1] = (size_t)dim_vec[i - 1];
-      strides[i - 1] = sizeof(float) * prod;
-      prod *= dims_outside[i - 1];
-    }
-
-    return py::buffer_info(self_.mutable_data<T>(self_.place()),
-                           sizeof(T),
-                           py::format_descriptor<T>::format(),
-                           (size_t)pd::arity(self_.dims()),
-                           dims_outside,
-                           strides);
-  }
-};
-
-template <bool less, size_t I, typename... ARGS>
-struct CastToPyBufferImpl;
-
-template <size_t I, typename... ARGS>
-struct CastToPyBufferImpl<false, I, ARGS...> {
-  py::buffer_info operator()(pd::Tensor& tensor) {
-    PADDLE_THROW("This type of tensor cannot be expose to Python");
-    return py::buffer_info();
-  }
-};
-
-template <size_t I, typename... ARGS>
-struct CastToPyBufferImpl<true, I, ARGS...> {
-  using CUR_TYPE = typename std::tuple_element<I, std::tuple<ARGS...>>::type;
-  py::buffer_info operator()(pd::Tensor& tensor) {
-    TensorToPyBuffer<CUR_TYPE> cast_object(tensor);
-    if (cast_object.CanCast()) {
-      return cast_object.Cast();
-    } else {
-      constexpr bool less = I + 1 < std::tuple_size<std::tuple<ARGS...>>::value;
-      return CastToPyBufferImpl<less, I + 1, ARGS...>()(tensor);
-    }
-  }
-};
-
-template <typename T>
-std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec) {
-  for (size_t i = 0; i < vec.size(); ++i) {
-    os << vec[i];
-    if (i + 1 != vec.size()) {
-      os << ", ";
-    }
-  }
-  return os;
-}
-
-py::buffer_info CastToPyBuffer(pd::Tensor& tensor) {
-  auto buffer_info = CastToPyBufferImpl<true, 0, float, int>()(tensor);
-  return buffer_info;
-}
-
-template <typename T>
-void PyTensorSet(
-    pd::Tensor& self,
-    py::array_t<T, py::array::c_style | py::array::forcecast> array) {
-  std::vector<int> dims;
-  dims.reserve(array.ndim());
-  for (size_t i = 0; i < array.ndim(); ++i) {
-    dims.push_back((int)array.shape()[i]);
-  }
-
-  self.set_dims(pd::make_ddim(dims));
-  auto* dst = self.mutable_data<T>(paddle::platform::CPUPlace());
-  std::memcpy(dst, array.data(), sizeof(T) * array.size());
-}
-
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of Paddle Paddle");
 
-  py::class_<paddle::platform::Place>(
-      m, "Place", R"DOC(Device Place Class.)DOC")
-      .def("__str__",
-           [](const paddle::platform::Place& self) {
-             return boost::apply_visitor(PlaceDebugString(), self);
-           })
-      .def("is_gpu",
-           [](const paddle::platform::Place& self) {
-             return paddle::platform::is_gpu_place(self);
-           })
-      .def("is_cpu", [](const paddle::platform::Place& self) {
-        return paddle::platform::is_cpu_place(self);
-      });
-
   py::class_<pd::Tensor>(m, "Tensor", py::buffer_protocol())
-      .def("get_place", &pd::Tensor::place)
       .def_buffer([](pd::Tensor& self) -> py::buffer_info {
         PADDLE_ENFORCE(paddle::platform::is_cpu_place(self.place()),
                        "Only CPU tensor can cast to numpy array");
-        return CastToPyBuffer(self);
+        return paddle::pybind::CastToPyBuffer(self);
       })
       .def("get_dims",
            [](const pd::Tensor& self) { return pd::vectorize(self.dims()); })
@@ -160,8 +50,8 @@ PYBIND11_PLUGIN(core) {
            [](pd::Tensor& self) {
              self.mutable_data<int>(paddle::platform::CPUPlace());
            })
-      .def("set", PyTensorSet<float>)
-      .def("set", PyTensorSet<int>);
+      .def("set", paddle::pybind::PyTensorSetFromArray<float>)
+      .def("set", paddle::pybind::PyTensorSetFromArray<int>);
 
   py::class_<pd::Variable>(m, "Variable", R"DOC(Variable Class.
 
