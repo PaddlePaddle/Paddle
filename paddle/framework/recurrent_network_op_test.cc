@@ -26,7 +26,7 @@ class FcOp : public OperatorBase {
  public:
   FcOp(const OpDesc& desc) {}
 
-  virtual void InferShape(ScopePtr scope) const override {
+  virtual void InferShape(const ScopePtr& scope) const override {
     for (const auto& output : outputs_) {
       LOG(INFO) << "fc [" << name_ << "]"
                 << " create output variable [" << output << "]";
@@ -34,15 +34,16 @@ class FcOp : public OperatorBase {
     }
   }
 
-  virtual void Run(OpContext* contex) const override {
+  virtual void Run(const ScopePtr& scope,
+                   const platform::DeviceContext& dev_ctx) const override {
     LOG(INFO) << "run fc op";
     for (const auto& input : inputs_) {
-      PADDLE_ENFORCE(contex->scope->HasVariable(input),
+      PADDLE_ENFORCE(scope->HasVariable(input),
                      "no input variable [%s] exists");
       LOG(INFO) << "fc [" << name_ << "] read input [" << input << "]";
     }
     for (const auto& output : outputs_) {
-      PADDLE_ENFORCE(contex->scope->HasVariable(output),
+      PADDLE_ENFORCE(scope->HasVariable(output),
                      "no output variable [%s] exists");
       LOG(INFO) << "fc [" << name_ << "] write output [" << output << "]";
     }
@@ -56,7 +57,7 @@ class AddOp : public OperatorBase {
  public:
   AddOp(const OpDesc& desc) {}
 
-  virtual void InferShape(ScopePtr scope) const override {
+  virtual void InferShape(const ScopePtr& scope) const override {
     for (const auto& output : outputs_) {
       LOG(INFO) << "add [" << name_ << "]"
                 << " create output variable [" << output << "]";
@@ -64,15 +65,16 @@ class AddOp : public OperatorBase {
     }
   }
 
-  virtual void Run(OpContext* contex) const override {
+  virtual void Run(const ScopePtr& scope,
+                   const platform::DeviceContext& dev_ctx) const override {
     LOG(INFO) << "run add op";
     for (const auto& input : inputs_) {
-      PADDLE_ENFORCE(contex->scope->HasVariable(input),
+      PADDLE_ENFORCE(scope->HasVariable(input),
                      "no input variable [%s] exists");
       LOG(INFO) << "add [" << name_ << "] read input [" << input << "]";
     }
     for (const auto& output : outputs_) {
-      PADDLE_ENFORCE(contex->scope->HasVariable(output),
+      PADDLE_ENFORCE(scope->HasVariable(output),
                      "no output variable [%s] exists");
       LOG(INFO) << "add [" << name_ << "] write output [" << output << "]";
     }
@@ -194,7 +196,16 @@ class RecurrentOpTest : public ::testing::Test {
     attrs["step_net"] = 2;
 
     LOG(INFO) << "rnn_op to init";
-    rnn_op_.Init(op_desc, attrs);
+    // set inputs, outputs and attrs
+    // TODO(superjom) use CreateOp instead
+    for (const auto& item : op_desc.inputs()) {
+      rnn_op_.inputs_.emplace_back(item);
+    }
+    for (const auto& item : op_desc.outputs()) {
+      rnn_op_.outputs_.emplace_back(item);
+    }
+    rnn_op_.attrs_ = attrs;
+    rnn_op_.Init();
     LOG(INFO) << "rnn_op finish init";
   }
 
@@ -236,9 +247,8 @@ class RecurrentOpTest : public ::testing::Test {
 // TEST_F(RecurrentOpTest, create_op) {}
 
 TEST_F(RecurrentOpTest, Run) {
-  OpContext ctx;
-  ctx.scope = scope_;
-  rnn_op_.Run(&ctx);
+  platform::CPUDeviceContext ctx;
+  rnn_op_.Run(scope_, ctx);
 }
 
 }  // namespace framework

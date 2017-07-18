@@ -14,15 +14,16 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include <google/protobuf/text_format.h>
+
 #include "paddle/framework/attr_checker.h"
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/enforce.h"
+#include "paddle/framework/op_desc.pb.h"
+#include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/variable.h"
-
-#include <glog/logging.h>
-#include "paddle/framework/op_desc.pb.h"
 
 namespace paddle {
 namespace framework {
@@ -30,33 +31,6 @@ namespace framework {
 // --------------------------------------------------------------------
 // fake interfaces that has not be implemented by other modules.
 // TODO keep updating according to other modules' designs.
-typedef std::shared_ptr<Scope> ScopePtr;
-struct OpContext {
-  ScopePtr scope;
-};
-
-class OperatorBase {
- public:
-  virtual ~OperatorBase() {}
-  void Init(const OpDesc& op_desc, AttributeMap& attrs) { attrs_ = attrs; }
-  virtual void Run(OpContext* context) const = 0;
-  virtual void InferShape(ScopePtr scope) const = 0;
-  inline Variable* Input(ScopePtr scope, std::string name) const {
-    return scope->GetVariable(name);
-  };
-
-  template <typename T>
-  inline const T& GetAttr(const std::string& name) const {
-    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
-                   name);
-    return boost::get<T>(attrs_.at(name));
-  }
-
- protected:
-  std::vector<std::string> inputs_;
-  std::vector<std::string> outputs_;
-  AttributeMap attrs_;
-};
 
 struct NetDesc {
   std::string name_;
@@ -73,11 +47,9 @@ class PlainNet {
   }
   // PlainNet(const std::string desc) {}
   void AddOp(const OpDesc& desc);
-  void Run(ScopePtr scope) {
-    OpContext ctx;
-    ctx.scope = scope;
+  void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) {
     for (auto& op : ops_) {
-      op->Run(&ctx);
+      op->Run(scope, dev_ctx);
     }
   }
 
@@ -150,7 +122,7 @@ class RecurrentAlgorithm {
    * NOTE the context's scope is not given until `Run` called, so step scopes'
    * father should be set/updated in this method.
    */
-  void Run(OpContext* contex) const;
+  void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const;
 
  protected:
   /*
@@ -246,7 +218,7 @@ class RecurrentAlgorithm {
 class RecurrentGradientAlgorithm {
  public:
   void LinkBootMemoryGradients(ScopePtr step_scopes) const;
-  void Run(OpContext* contex) const;
+  void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const;
 
  private:
   // stepnet for backward
@@ -273,11 +245,14 @@ class RecurrentGradientAlgorithm {
 
 class RecurrentOp final : public OperatorBase {
  public:
-  void Init(const OpDesc& op_desc, AttributeMap& attrs);
+  void Init() override;
 
-  virtual void InferShape(ScopePtr scope) const override {}
+  virtual void InferShape(const ScopePtr& scope) const override {}
 
-  virtual void Run(OpContext* ctx) const override { alg_.Run(ctx); }
+  virtual void Run(const ScopePtr& scope,
+                   const platform::DeviceContext& dev_ctx) const override {
+    alg_.Run(scope, dev_ctx);
+  }
 
   virtual ~RecurrentOp() {}
 

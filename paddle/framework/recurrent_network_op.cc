@@ -56,9 +56,8 @@ void LinkMemories(std::vector<ScopePtr>& step_scopes,
 
 }  // namespace details
 
-void RecurrentAlgorithm::Run(OpContext* contex) const {
-  auto scope = contex->scope;
-
+void RecurrentAlgorithm::Run(const ScopePtr& scope,
+                             const platform::DeviceContext& dev_ctx) const {
   PADDLE_ENFORCE(scope->HasVariable(net_name_), "step net is not in scope.");
   Variable* net = scope->GetVariable(net_name_);
   PADDLE_ENFORCE(net, "failed to get step net");
@@ -77,7 +76,7 @@ void RecurrentAlgorithm::Run(OpContext* contex) const {
     if (step_id > 0) {
       details::LinkMemories(step_scopes, memory_attrs_, step_id, -1);
     }
-    net->GetMutable<PlainNet>()->Run(step_scopes[step_id]);
+    net->GetMutable<PlainNet>()->Run(step_scopes[step_id], dev_ctx);
   }
 
   LOG(INFO) << "concat outputs";
@@ -169,15 +168,8 @@ void RecurrentAlgorithm::InitMemories(ScopePtr step_scope) const {
   }
 }
 
-void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
-  OperatorBase::Init(op_desc, attrs);
-  // TODO(superjom) in op register will set inputs_ and outputs_
-  for (const auto& item : op_desc.inputs()) {
-    inputs_.emplace_back(item);
-  }
-  for (const auto& item : op_desc.outputs()) {
-    outputs_.emplace_back(item);
-  }
+void RecurrentOp::Init() {
+  OperatorBase::Init();
   // TODO(superjom) change these two copy to pointer
   alg_.inputs_ = inputs_;
   alg_.outputs_ = outputs_;
@@ -272,8 +264,8 @@ void RecurrentOp::Init(const OpDesc& op_desc, AttributeMap& attrs) {
 // REGISTER_OP(recurrent_op, RecurrentAlgorithm,
 // RecurrentAlgorithmProtoAndCheckerMaker);
 
-void RecurrentGradientAlgorithm::Run(OpContext* contex) const {
-  auto scope = contex->scope;
+void RecurrentGradientAlgorithm::Run(
+    const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const {
   auto step_scopes = *(scope->GetVariable(step_scopes_name_))
                           ->GetMutable<std::vector<ScopePtr>>();
 
@@ -294,7 +286,7 @@ void RecurrentGradientAlgorithm::Run(OpContext* contex) const {
     if (step_id != max_seq_len - 1) {
       details::LinkMemories(step_scopes, memories_, step_id, 1);
     }
-    net->GetMutable<PlainNet>()->Run(step_scopes[step_id]);
+    net->GetMutable<PlainNet>()->Run(step_scopes[step_id], dev_ctx);
   }
   LinkBootMemoryGradients(step_scopes[0]);
 
