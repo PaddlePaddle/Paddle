@@ -290,11 +290,13 @@ TEST(RecurrentOp, LinkMemories) {
     details::LinkMemories(step_scopes, memories, i, 1);
   }
   // check
-  for (int i = len - 1; i >= 0; --i) {
-    const float* a =
-        step_scopes[i]->GetVariable("h")->GetMutable<Tensor>()->data<float>();
-    const float* b = step_scopes[i + 1]
+  for (int i = len - 2; i >= 0; --i) {
+    const float* a = step_scopes[i]
                          ->GetVariable("pre_h")
+                         ->GetMutable<Tensor>()
+                         ->data<float>();
+    const float* b = step_scopes[i + 1]
+                         ->GetVariable("h")
                          ->GetMutable<Tensor>()
                          ->data<float>();
     for (size_t i = 0; i < 15 * 20; ++i) {
