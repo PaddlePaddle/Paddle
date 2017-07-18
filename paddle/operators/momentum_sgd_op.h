@@ -55,23 +55,20 @@ public:
     const framework::Tensor& output_param =
         ctx.Input("output_param")->Get<framework::Tensor>();
 
-    const float learning_rate = ctx.Input("lr")->Get<float>();
+    const framework::Tensor& learning_rate =
+        ctx.Input("lr")->Get<framework::Tensor>();
     float momentum = ctx.op_.GetAttr<float>("momentum");
     bool nesterov = ctx.op_.GetAttr<int>("nesterov");
 
     momentum_sgd_update(size,
                         grad.data<float>(),
                         moment.data<float>(),
-                        output_grad.mutable_data() < float > (),
-                        output_moment.data<float>(),
-                        &learning_rate,
+                        output_grad.raw_data<float>(),
+                        output_moment.raw_data<float>(),
+                        learning_rate.raw_data<float>(),
                         momentum,
                         nesterov,
-                        output_param.data<float>()
-
-                            );
-
-    //    auto param = momentum_sgd_update(ctx.Input("param")->Get<Tensor>);
+                        output_param.raw_data<float>());
   }
 };
 
