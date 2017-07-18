@@ -15,9 +15,23 @@
 */
 
 #include "paddle/framework/net.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
+
+std::shared_ptr<PlainNet> AddBackwardOp(std::shared_ptr<PlainNet> ForwardOps) {
+  // NetPtr->reset(new PlainNet);
+  // NetPtr grad_ops = new PlainNet;
+  std::shared_ptr<PlainNet> grad_ops;
+  grad_ops.reset(new PlainNet);
+  for (auto& op : ForwardOps->ops_) {
+    auto op_grad = OpRegistry::CreateGradOp(op);
+    grad_ops->AddOp(op_grad);
+  }
+  grad_ops->CompleteAddOp();
+  return grad_ops;
+}
 
 void PlainNet::CompleteAddOp() {
   std::unordered_set<std::string> input_set;

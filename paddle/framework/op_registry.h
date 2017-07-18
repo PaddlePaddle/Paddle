@@ -8,6 +8,7 @@
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/operator.h"
+#include "paddle/framework/scope.h"
 
 namespace paddle {
 namespace framework {
@@ -188,14 +189,19 @@ class OpRegistry {
   template <typename OpType, typename ProtoMakerType>
   static void RegisterOp(const std::string& op_type) {
     creators()[op_type] = [] { return new OpType; };
-    OpProto& op_proto = protos()[op_type];
     OpAttrChecker& op_checker = op_checkers()[op_type];
+    OpProto& op_proto = protos()[op_type];
     ProtoMakerType(&op_proto, &op_checker);
     *op_proto.mutable_type() = op_type;
     PADDLE_ENFORCE(
         op_proto.IsInitialized(),
         "Fail to initialize %s's OpProto, because %s is not initialized",
         op_type, op_proto.InitializationErrorString());
+  }
+
+  template <typename OpType>
+  static void RegisterGradOp(const std::string& op_type) {
+    grad_creators()[op_type] = [] { return new OpType; };
   }
 
   static OperatorPtr CreateOp(const OpDesc& op_desc) {
@@ -216,6 +222,21 @@ class OpRegistry {
     return op;
   }
 
+  static OperatorPtr CreateGradOp(std::shared_ptr<OperatorBase> op) {
+    OperatorPtr op_grad(grad_creators().at(op->type_)());
+    op_grad->type_ = op->type_;
+    op_grad->inputs_.reserve(op->inputs_.size());
+    for (auto& input : op->inputs_) {
+      op_grad->inputs_.emplace_back(input);
+      op_grad->outputs_.emplace_back(input + "@grad");
+    }
+    for (auto& output : op->outputs_) {
+      op_grad->inputs_.emplace_back(output);
+      op_grad->inputs_.emplace_back(output + "@grad");
+    }
+    return op_grad;
+  }
+
   static std::unordered_map<std::string, OpProto>& protos() {
     static std::unordered_map<std::string, OpProto> protos_;
     return protos_;
@@ -231,6 +252,11 @@ class OpRegistry {
     static std::unordered_map<std::string, OpAttrChecker> op_checkers_;
     return op_checkers_;
   };
+
+  static std::unordered_map<std::string, OpCreator>& grad_creators() {
+    static std::unordered_map<std::string, OpCreator> grad_creators_;
+    return grad_creators_;
+  }
 };
 
 template <typename OpType, typename ProtoMakerType>
@@ -238,6 +264,14 @@ class OpRegisterHelper {
  public:
   OpRegisterHelper(const char* op_type) {
     OpRegistry::RegisterOp<OpType, ProtoMakerType>(op_type);
+  }
+};
+
+template <typename OpType>
+class GradOpRegisterHelper {
+ public:
+  GradOpRegisterHelper(const char* op_type) {
+    OpRegistry::RegisterGradOp<OpType>(op_type);
   }
 };
 
@@ -258,6 +292,17 @@ class OpRegisterHelper {
                                  "REGISTER_OP must be in global namespace"); \
   static ::paddle::framework::OpRegisterHelper<__op_class, __op_maker_class> \
       __op_register_##__op_type##__(#__op_type);                             \
+  int __op_register_##__op_type##_handle__() { return 0; }
+
+/**
+ * Macro to Register Operator.
+ */
+#define REGISTER_GRADIENT_OP(__op_type, __op_class)            \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                              \
+      __reg_op__##__op_type,                                   \
+      "REGISTER_GRADIENT_OP must be in global namespace");     \
+  static ::paddle::framework::GradOpRegisterHelper<__op_class> \
+      __op_register_##__op_type##__(#__op_type);               \
   int __op_register_##__op_type##_handle__() { return 0; }
 
 /**

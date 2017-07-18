@@ -15,6 +15,8 @@ cc_test(op_desc_test SRCS op_desc_test.cc DEPS op_desc protobuf)
 cc_library(operator SRCS operator.cc DEPS op_desc device_context)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
 
+# cc_library(fc_op SRCS fully_connected_op.cc DEPS operator)
+
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto op_desc)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry operator)
 py_proto_compile(framework_py_proto SRCS attr_type.proto op_proto.proto op_desc.proto)
@@ -23,5 +25,6 @@ add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch 
 add_dependencies(framework_py_proto framework_py_proto_init)
 
 proto_library(net_proto SRCS net_proto.proto DEPS op_proto)
+# cc_library(net SRCS net.cc DEPS operator net_proto op_registry fc_op)
 cc_library(net SRCS net.cc DEPS operator net_proto op_registry)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net)
