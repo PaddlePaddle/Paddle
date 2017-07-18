@@ -31,7 +31,7 @@ func TestServiceFull(t *testing.T) {
 
 	err = s.InitParam(pserver.ParameterWithConfig{Param: p, Config: config}, nil)
 	if err != nil {
-		t.FailNow()
+		t.Fatal(err)
 	}
 
 	var p1 pserver.Parameter
@@ -40,40 +40,40 @@ func TestServiceFull(t *testing.T) {
 	p1.ElementType = pserver.Float32
 	err = s.InitParam(pserver.ParameterWithConfig{Param: p1, Config: config}, nil)
 	if err != nil {
-		t.FailNow()
+		t.Fatal(err)
 	}
 
 	err = s.FinishInitParams(0, nil)
 	if err != nil {
-		t.FailNow()
+		t.Fatal(err)
 	}
 
 	var param pserver.Parameter
 	err = s.GetParam("param_b", &param)
 	if err != nil {
-		t.FailNow()
+		t.Fatal(err)
 	}
 
 	if !reflect.DeepEqual(param, p1) {
-		t.FailNow()
+		t.Fatal("not equal:", param, p1)
 	}
 
 	g1, g2 := pserver.Gradient(p1), pserver.Gradient(p)
 
 	err = s.SendGrad(g1, nil)
 	if err != nil {
-		t.FailNow()
+		t.Fatal(err)
 	}
 	err = s.SendGrad(g2, nil)
 
 	if err != nil {
-		t.FailNow()
+		t.Fatal(err)
 	}
 
 	var param1 pserver.Parameter
 	err = s.GetParam("param_a", &param1)
 	if err != nil {
-		t.FailNow()
+		t.Fatal(err)
 	}
 
 	// don't compare content, since it's already changed by
@@ -82,7 +82,7 @@ func TestServiceFull(t *testing.T) {
 	p.Content = nil
 
 	if !reflect.DeepEqual(param1, p) {
-		t.FailNow()
+		t.Fatal("not equal:", param1, p)
 	}
 }
 
@@ -90,16 +90,16 @@ func TestMultipleInit(t *testing.T) {
 	var cp pserver.Checkpoint
 	s, err := pserver.NewService(0, 1, "", nil, cp)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	err = s.FinishInitParams(0, nil)
 	if err != nil {
-		t.FailNow()
+		t.Fatal(err)
 	}
 
 	err = s.FinishInitParams(0, nil)
 	if err.Error() != pserver.AlreadyInitialized {
-		t.FailNow()
+		t.Fatal(err)
 	}
 }
 
@@ -108,7 +108,7 @@ func TestUninitialized(t *testing.T) {
 	s, err := pserver.NewService(0, 1, "", nil, cp)
 	err = s.SendGrad(pserver.Gradient{}, nil)
 	if err.Error() != pserver.Uninitialized {
-		t.FailNow()
+		t.Fatal(err)
 	}
 }
 
@@ -154,12 +154,12 @@ func TestBlockUntilInitialized(t *testing.T) {
 	err = s.InitParam(pserver.ParameterWithConfig{Param: p, Config: config}, nil)
 
 	if err != nil {
-		t.FailNow()
+		t.Fatal(err)
 	}
 
 	err = s.FinishInitParams(0, nil)
 	if err != nil {
-		t.FailNow()
+		t.Fatal(err)
 	}
 
 	wg.Wait()

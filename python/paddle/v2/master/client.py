@@ -10,8 +10,9 @@ class client(object):
     client is a client to the master server.
     """
 
-    def __init__(self, addr, buf_size):
-        self.c = lib.paddle_new_master_client(addr, buf_size)
+    def __init__(self, etcd_endpoints, timeout, buf_size):
+        self.c = lib.paddle_new_etcd_master_client(etcd_endpoints, timeout,
+                                                   buf_size)
 
     def close(self):
         lib.paddle_release_master_client(self.c)

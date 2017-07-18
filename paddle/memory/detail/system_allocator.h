@@ -20,31 +20,36 @@ namespace paddle {
 namespace memory {
 namespace detail {
 
-// SystemAllocator is the parent class of CPUAllocator and
-// GPUAllocator.  A BuddyAllocator object uses a SystemAllocator*
-// pointing to the underlying system allocator.  An alternative to
-// this class hierarchy is to pass a system allocator class to
-// BuddyAllocator as a template parameter.  This approach makes
-// BuddyAllocator a class template, and it's very complicated
-// algorithm would make the buddy_allocator.h messy.
+/**
+ * \brief SystemAllocator is the parent class of CPUAllocator and GPUAllocator.
+ *        A BuddyAllocator object uses a SystemAllocator* pointing to the
+ *        underlying system allocator.
+ */
 class SystemAllocator {
  public:
   virtual ~SystemAllocator() {}
-  virtual void* Alloc(size_t size) = 0;
-  virtual void Free(void* p, size_t size) = 0;
+  virtual void* Alloc(size_t& index, size_t size) = 0;
+  virtual void Free(void* p, size_t size, size_t index) = 0;
+  virtual bool UseGpu() const = 0;
 };
 
 class CPUAllocator : public SystemAllocator {
  public:
-  virtual void* Alloc(size_t size);
-  virtual void Free(void* p, size_t size);
+  virtual void* Alloc(size_t& index, size_t size);
+  virtual void Free(void* p, size_t size, size_t index);
+  virtual bool UseGpu() const;
 };
 
 #ifndef PADDLE_ONLY_CPU
 class GPUAllocator : public SystemAllocator {
  public:
-  virtual void* Alloc(size_t size);
-  virtual void Free(void* p, size_t size);
+  virtual void* Alloc(size_t& index, size_t size);
+  virtual void Free(void* p, size_t size, size_t index);
+  virtual bool UseGpu() const;
+
+ private:
+  size_t gpu_alloc_size_ = 0;
+  size_t fallback_alloc_size_ = 0;
 };
 #endif  // PADDLE_ONLY_CPU
 
