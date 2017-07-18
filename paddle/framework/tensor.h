@@ -20,7 +20,6 @@ limitations under the License. */
 #include <typeindex>
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/enforce.h"
-#include "paddle/framework/tensor_types.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -35,6 +34,18 @@ struct CastToPyBufferImpl;
 namespace framework {
 
 class Tensor {
+  template <bool less, size_t i, typename... args>
+  friend struct paddle::pybind::details::CastToPyBufferImpl;
+
+  template <typename T, size_t D, typename IndexType = Eigen::DenseIndex>
+  friend struct EigenTensor;
+
+  template <typename T, typename IndexType = Eigen::DenseIndex>
+  friend struct EigenVector;
+
+  template <typename T, typename IndexType = Eigen::DenseIndex>
+  friend struct EigenMatrix;
+
  public:
   Tensor() : offset_(0) {}
 
@@ -191,8 +202,6 @@ class Tensor {
   std::shared_ptr<Placeholder> holder_;  // holds the memory block if allocated.
   DDim dims_;
   size_t offset_;  // marks the begin of tensor data area.
-  template <bool less, size_t i, typename... args>
-  friend struct paddle::pybind::details::CastToPyBufferImpl;
 };
 
 }  // namespace framework
