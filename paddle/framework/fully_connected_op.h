@@ -47,6 +47,8 @@ class FCGradientOp : public OperatorBase {
 };
 
 // class FCGradientOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {};
+REGISTER_OP(my_fc, FCOp, FCOpProtoAndCheckerMaker);
+REGISTER_GRADIENT_OP(my_fc_grad, FCGradientOp);
 
 }  // namespace framework
 }  // namespace paddle
