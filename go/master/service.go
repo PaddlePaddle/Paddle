@@ -67,6 +67,9 @@ type Service struct {
 	mu         sync.Mutex
 	initDone   bool
 	taskQueues taskQueues
+
+	numPasses int
+	currPass  int
 }
 
 func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
@@ -106,6 +109,8 @@ func NewService(store Store, chunksPerTask int, timeoutDur time.Duration, failur
 	s.taskQueues.Pending = make(map[int]taskEntry)
 	s.ready = make(chan struct{})
 	s.store = store
+	s.numPasses = 0
+	s.currPass = 0
 	recovered, err := s.recover()
 	if err != nil {
 		return nil, err
@@ -228,11 +233,19 @@ func readChunks(globPaths []string) ([]Chunk, error) {
 	return chunks, nil
 }
 
+// SetDatasetRequest is a request for setting datasets and numpaasses
+type SetDatasetRequest struct {
+	GlobPaths []string
+	NumPasses int
+}
+
 // SetDataset sets dataset to dispatch for the master server.
 //
 // SetDataset can be call multiple times. But only the first call will
 // be honored.
-func (s *Service) SetDataset(globPaths []string, dummy *int) error {
+func (s *Service) SetDataset(request SetDatasetRequest, dummy *int) error {
+	globPaths := request.GlobPaths
+	s.numPasses = request.NumPasses
 	if len(globPaths) == 0 {
 		return errors.New("no dataset specified")
 	}
@@ -316,6 +329,25 @@ func (s *Service) logFields() log.Fields {
 	}
 }
 
+// updateQueuePasses check if tasks are done, move to todo to add another pass
+// IMPORTANT: must run under lock
+func (s *Service) updateQueuePasses() error {
+	if len(s.taskQueues.Todo) == 0 && len(s.taskQueues.Pending) == 0 && len(s.taskQueues.Done) > 0 {
+		if s.currPass >= s.numPasses-1 {
+			// FIXME: stop task dispatching by return error
+			return errors.New("all task done")
+		}
+		log.WithFields(s.logFields()).Infof("adding new pass %d", s.currPass)
+		s.taskQueues.Todo = s.taskQueues.Done
+		s.taskQueues.Done = nil
+		if len(s.taskQueues.Failed) > 0 {
+			s.taskQueues.Todo = append(s.taskQueues.Todo, s.taskQueues.Failed...)
+		}
+		s.currPass++
+	}
+	return errors.New("no more available task")
+}
+
 // GetTask gets a new task from the service.
 func (s *Service) GetTask(dummy int, task *Task) error {
 	select {
@@ -324,7 +356,6 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
 	if len(s.taskQueues.Todo) == 0 {
 		if len(s.taskQueues.Done) == 0 {
 			if len(s.taskQueues.Pending) == 0 {
@@ -345,9 +376,7 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 			log.WithFields(s.logFields()).Warningln("No more available task.")
 			return err
 		}
-		s.taskQueues.Todo = s.taskQueues.Done
-		s.taskQueues.Done = nil
-		log.WithFields(s.logFields()).Infoln("No more todo task, but trainer is requesting task to do. Move all done task to todo.")
+		return s.updateQueuePasses()
 	}
 
 	t := s.taskQueues.Todo[0]
@@ -387,18 +416,18 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 	delete(s.taskQueues.Pending, taskID)
 
 	log.WithFields(s.logFields()).Infof("Task #%d finished.", taskID)
-
-	if len(s.taskQueues.Pending) == 0 && len(s.taskQueues.Todo) == 0 {
-		log.WithFields(s.logFields()).Infoln("No more todo and pending task, start a new pass.")
-		s.taskQueues.Todo = append(s.taskQueues.Todo, s.taskQueues.Done...)
-		s.taskQueues.Done = nil
-	}
+	// update queues if pass finishes
+	errPass := s.updateQueuePasses()
 
 	err := s.snapshot()
 	if err != nil {
 		log.Errorln(err)
 	}
-	return err
+	// return updateQueuePasses errors
+	if errPass.Error() == "no more available task" {
+		return nil
+	}
+	return errPass
 }
 
 // TaskFailed tells the service that a task is failed.
@@ -417,5 +446,10 @@ func (s *Service) TaskFailed(meta TaskMeta, dummy *int) error {
 	}
 
 	s.processFailedTask(t, meta.Epoch)
-	return nil
+	// update queues if pass finishes
+	errPass := s.updateQueuePasses()
+	if errPass.Error() == "no more available task" {
+		return nil
+	}
+	return errPass
 }

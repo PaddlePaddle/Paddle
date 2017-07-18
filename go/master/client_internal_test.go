@@ -40,9 +40,9 @@ func TestGetFinishTask(t *testing.T) {
 		panic(err)
 	}
 	go func(l net.Listener) {
-		s, err := NewService(&InMemStore{}, chunkPerTask, time.Second, 1)
+		s, e := NewService(&InMemStore{}, chunkPerTask, time.Second, 1)
 		if err != nil {
-			panic(err)
+			panic(e)
 		}
 
 		server := rpc.NewServer()
@@ -79,17 +79,19 @@ func TestGetFinishTask(t *testing.T) {
 	ch := make(chan string, 1)
 	ch <- addr
 	go c.monitorMaster(ch)
-	c.SetDataset([]string{path})
+	req := SetDatasetRequest{}
+	req.GlobPaths = []string{path}
+	req.NumPasses = 10
+	c.SetDataset(req)
 	checkOnePass := func(i int) {
 		var tasks []Task
 		for idx := 0; idx < totalTask; idx++ {
-			task, err := c.getTask()
-			if err != nil {
-				t.Fatalf("Error: %v, pass: %d\n", err, i)
+			task, e := c.getTask()
+			if e != nil {
+				t.Fatalf("Error: %v, pass: %d\n", e, i)
 			}
 			tasks = append(tasks, task)
 		}
-
 		_, err = c.getTask()
 		if err == nil {
 			t.Fatalf("Should get error, pass: %d\n", i)
@@ -107,7 +109,7 @@ func TestGetFinishTask(t *testing.T) {
 
 		tasks = tasks[1:]
 		task, err := c.getTask()
-		if err != nil {
+		if err.Error() != "no more available task" {
 			t.Fatal(err)
 		}
 		tasks = append(tasks, task)
@@ -120,7 +122,29 @@ func TestGetFinishTask(t *testing.T) {
 		}
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < req.NumPasses-1; i++ {
 		checkOnePass(i)
+	}
+	// last pass check all task finish of all passes
+	for idx := 0; idx < totalTask; idx++ {
+		task, e := c.getTask()
+		if e != nil {
+			t.Fatalf("Error: %v\n", e)
+		}
+		err = c.taskFinished(task.Meta.ID)
+		if idx < totalTask-1 {
+			if err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			// FIXME: use error string to identify error
+			if err.Error() != "all task done" {
+				t.Fatal(err)
+			}
+		}
+	}
+	_, e := c.getTask()
+	if e == nil || e.Error() != "all task done" {
+		t.Error(e)
 	}
 }

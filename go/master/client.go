@@ -103,8 +103,8 @@ func (c *Client) monitorMaster(addrCh <-chan string) {
 //
 // SetDataset can be call multiple times from different nodes. But
 // only the first call will be honored.
-func (c *Client) SetDataset(globPaths []string) error {
-	return c.conn.Call("Service.SetDataset", globPaths, nil)
+func (c *Client) SetDataset(request SetDatasetRequest) error {
+	return c.conn.Call("Service.SetDataset", request, nil)
 }
 
 // getTask gets a new task from the master server.

@@ -87,15 +87,16 @@ func paddle_release_master_client(client C.paddle_master_client) {
 }
 
 //export paddle_set_dataset
-func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int) C.int {
+func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int, passes C.int) C.int {
 	c := get(client)
-	var paths []string
+	var request master.SetDatasetRequest
+	request.NumPasses = int(passes)
 	for i := 0; i < int(size); i++ {
 		ptr := (**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(path)) + uintptr(i)*unsafe.Sizeof(*path)))
 		str := C.GoString(*ptr)
-		paths = append(paths, str)
+		request.GlobPaths = append(request.GlobPaths, str)
 	}
-	err := c.SetDataset(paths)
+	err := c.SetDataset(request)
 	if err != nil {
 		log.Errorln(err)
 		return C.PADDLE_MASTER_ERROR
