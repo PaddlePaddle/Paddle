@@ -117,6 +117,8 @@ int DDim::operator[](int idx) const {
   return boost::apply_visitor(DynamicConstIndexer(idx), var);
 }
 
+ssize_t DDim::size() const { return arity(*this); }
+
 bool DDim::operator==(DDim d) const {
   if (var.which() != d.getVar().which()) {
     return false;
