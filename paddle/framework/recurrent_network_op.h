@@ -76,6 +76,18 @@ struct MemoryAttr {
   std::string boot_var;
 };
 
+/*
+ * Prepare inputs for each stepnet.
+ */
+void SegmentInputs(ScopePtr scope, std::vector<ScopePtr>& step_scopes,
+                   const std::vector<std::string>& inlinks);
+
+/*
+ * Process outputs of stepnets and merge to variables.
+ */
+void ConcatOutputs(ScopePtr scope, std::vector<ScopePtr>& step_scopes,
+                   const std::vector<std::string>& outlinks);
+
 void LinkMemories(std::vector<ScopePtr>& step_scopes,
                   const std::vector<MemoryAttr>& memories, size_t step_id,
                   int offset);
@@ -125,21 +137,6 @@ class RecurrentAlgorithm {
   void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const;
 
  protected:
-  /*
-   * Get the max sequence length of the scope.
-   */
-  size_t GetMaxSeqLen(ScopePtr scope) const;
-
-  /*
-   * Prepare inputs for each stepnet.
-   */
-  void SegmentInputs(ScopePtr scope) const;
-
-  /*
-   * Process outputs of stepnets and merge to variables.
-   */
-  void ConcatOutputs(ScopePtr scope) const;
-
   /*
    * the step scopes as the father scope. The step scopes will be stored in
    * the father scope as a variable whose name is specified by
