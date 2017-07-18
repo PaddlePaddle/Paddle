@@ -17,12 +17,21 @@ limitations under the License. */
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <typeindex>
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/enforce.h"
+#include "paddle/framework/tensor_types.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/place.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
+namespace pybind {
+namespace details {  // forward declare
+template <bool less, size_t i, typename... args>
+struct CastToPyBufferImpl;
+}  // namespace details
+}  // namespace pybind
 namespace framework {
 
 class Tensor {
@@ -34,6 +43,13 @@ class Tensor {
     CheckDims<T>();
     return reinterpret_cast<const T*>(
         reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);
+  }
+
+  template <typename T>
+  T* raw_data() const {
+    CheckDims<T>();
+    return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                offset_);
   }
 
   template <typename T>
@@ -74,6 +90,66 @@ class Tensor {
     }
     return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                 offset_);
+  }
+
+  template <typename T, size_t NDIMS>
+  typename TTypes<T, NDIMS>::Tensor shaped(DDim new_dims) {
+    Eigen::array<Eigen::DenseIndex, NDIMS> dims =
+        paddle::framework::ToEigenDSizes<NDIMS>(new_dims);
+    return typename TTypes<T, NDIMS>::Tensor(raw_data<T>(), dims);
+  }
+
+  template <typename T, size_t NDIMS>
+  typename TTypes<T, NDIMS>::Tensor tensor() {
+    return typename TTypes<T, NDIMS>::Tensor(
+        raw_data<T>(), paddle::framework::ToEigenDSizes<NDIMS>(dims_));
+  }
+
+  // flat to rank = 1
+  template <typename T>
+  typename TTypes<T>::Flat flat() {
+    return shaped<T, 1>(make_ddim({static_cast<int>(product(dims_))}));
+  }
+
+  // to TensorType Vec
+  template <typename T>
+  typename TTypes<T>::Vec vec() {
+    return tensor<T, 1>();
+  }
+
+  // to TensorType Matrix
+  template <typename T>
+  typename TTypes<T>::Matrix matrix() {
+    return tensor<T, 2>();
+  }
+
+  // const versions of all the methods above.
+  template <typename T, size_t NDIMS>
+  typename TTypes<T, NDIMS>::Tensor shaped(DDim new_dims) const {
+    Eigen::array<Eigen::DenseIndex, NDIMS> dims =
+        paddle::framework::ToEigenDSizes<NDIMS>(new_dims);
+    return typename TTypes<T, NDIMS>::Tensor(data<T>(), dims);
+  }
+
+  template <typename T, size_t NDIMS>
+  typename TTypes<T, NDIMS>::ConstantTensor tensor() const {
+    return typename TTypes<T, NDIMS>::Tensor(
+        data<T>(), paddle::framework::ToEigenDSizes<NDIMS>(dims_));
+  }
+
+  template <typename T>
+  typename TTypes<T>::ConstFlat flat() const {
+    return shaped<T, 1>(make_ddim({static_cast<int>(product(dims_))}));
+  }
+
+  template <typename T>
+  typename TTypes<T>::ConstVec vec() const {
+    return tensor<T, 1>();
+  }
+
+  template <typename T>
+  typename TTypes<T>::ConstMatrix matrix() const {
+    return tensor<T, 2>();
   }
 
   template <typename T>
@@ -136,6 +212,7 @@ class Tensor {
     virtual void* ptr() const = 0;
     virtual platform::Place place() const = 0;
     virtual size_t size() const = 0;
+    virtual std::type_index type() const = 0;
   };
 
   template <typename T, typename PlaceType>
@@ -160,7 +237,8 @@ class Tensor {
 
     virtual void* ptr() const { return static_cast<void*>(ptr_.get()); }
     virtual size_t size() const { return size_; }
-    virtual platform::Place place() const { return place_; }
+    virtual paddle::platform::Place place() const { return place_; }
+    virtual std::type_index type() const { return std::type_index(typeid(T)); }
 
     std::unique_ptr<T, Deleter<PlaceType>> ptr_;
     platform::Place place_;  // record the place of ptr_.
@@ -179,6 +257,8 @@ class Tensor {
   std::shared_ptr<Placeholder> holder_;  // holds the memory block if allocated.
   DDim dims_;
   size_t offset_;  // marks the begin of tensor data area.
+  template <bool less, size_t i, typename... args>
+  friend struct paddle::pybind::details::CastToPyBufferImpl;
 };
 
 }  // namespace framework

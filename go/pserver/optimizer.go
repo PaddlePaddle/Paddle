@@ -14,8 +14,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var nullPtr = unsafe.Pointer(uintptr(0))
-
 type optimizer struct {
 	opt         *C.struct_paddle_optimizer
 	elementType ElementType
@@ -23,7 +21,7 @@ type optimizer struct {
 }
 
 func cArrayToSlice(p unsafe.Pointer, len int) []byte {
-	if p == nullPtr {
+	if p == nil {
 		return nil
 	}
 
@@ -92,8 +90,8 @@ func (o *optimizer) UpdateParameter(g Gradient) error {
 }
 
 func (o *optimizer) Cleanup() {
-	if unsafe.Pointer(o.opt) != nullPtr {
+	if unsafe.Pointer(o.opt) != nil {
 		C.paddle_release_optimizer(o.opt)
-		o.opt = (*C.struct_paddle_optimizer)(nullPtr)
+		o.opt = (*C.struct_paddle_optimizer)(nil)
 	}
 }
