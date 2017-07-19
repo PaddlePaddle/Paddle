@@ -228,6 +228,9 @@ void RecurrentOp::Init() {
   DLOG(INFO) << alg_.debug_string();
 }
 
+/*
+ * Op definition of RNNOp
+ */
 class RecurrentAlgorithmProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   RecurrentAlgorithmProtoAndCheckerMaker(OpProto* proto,
@@ -342,6 +345,9 @@ void RecurrentGradientAlgorithm::Init(AttributeMap& attrs) {
                << "memory:" << mem_attr.var << "\tboot:" << mem_attr.boot_var;
   }
 }
+
+// TODO(Superjom) implement this after op's members move to details
+void RecurrentGradientOp::Init() {}
 
 }  // namespace framework
 }  // namespace paddle

@@ -247,10 +247,14 @@ class RecurrentGradientAlgorithm {
   std::vector<details::MemoryAttr> memories_;
 };
 
+/*
+ * RNN forward's op wrapper.
+ */
 class RecurrentOp final : public OperatorBase {
  public:
   void Init() override;
 
+  // TODO(Superjom) implement this when step net's InferShape ready.
   virtual void InferShape(const ScopePtr& scope) const override {}
 
   virtual void Run(const ScopePtr& scope,
@@ -262,6 +266,27 @@ class RecurrentOp final : public OperatorBase {
 
  private:
   RecurrentAlgorithm alg_;
+};
+
+/*
+ * RNN backward's op wrapper.
+ */
+class RecurrentGradientOp final : public OperatorBase {
+ public:
+  void Init() override;
+
+  // TODO(Superjom) implement this when step net's InferShape ready.
+  virtual void InferShape(const ScopePtr& scope) const override {}
+
+  virtual void Run(const ScopePtr& scope,
+                   const platform::DeviceContext& dev_ctx) const override {
+    alg_.Run(scope, dev_ctx);
+  }
+
+  virtual ~RecurrentGradientOp() {}
+
+ private:
+  RecurrentGradientAlgorithm alg_;
 };
 
 }  // namespace framework
