@@ -79,35 +79,20 @@ class RecurrentOpTest : public ::testing::Test {
     op_desc.add_inputs("x");
     op_desc.add_inputs("x0");
     op_desc.add_inputs("x1");
-    // memories 3
-    op_desc.add_inputs("rnn/x");
-    op_desc.add_inputs("rnn/h");
-    // pre-memories 5
-    op_desc.add_inputs("rnn/x@pre");
-    op_desc.add_inputs("rnn/h@pre");
-    // boot_memories 7
+    // boot_memories 3
     op_desc.add_inputs("x_boot");
     op_desc.add_inputs("h_boot");
-    // inlink_alias 9
-    op_desc.add_inputs("x@alias");
-    op_desc.add_inputs("x0@alias");
-    op_desc.add_inputs("x1@alias");
-    // step net 12
+    // step net 5
     op_desc.add_inputs("step_net");
-    // outlinks 0
+    // outlinks 6
     op_desc.add_outputs("h");
-    // outlink_alias 1
-    op_desc.add_outputs("h@alias");
-    // step scopes 2
+    // step scopes 7
     op_desc.add_outputs("step_scopes");
 
     auto _input_format = std::vector<int>{
         0,  // in_link
         3,  // memories
-        5,  // pre-memories
-        7,  // boot_memories
-        9,  // input_alias
-        12  // step_net
+        5   // step_net
     };
     auto input_format = op_desc.add_attrs();
     input_format->set_name("input_format");
@@ -116,12 +101,46 @@ class RecurrentOpTest : public ::testing::Test {
       input_format->add_ints(i);
     }
 
-    auto _output_format = std::vector<int>{0, 1, 2};
     auto output_format = op_desc.add_attrs();
     output_format->set_name("output_format");
     output_format->set_type(paddle::framework::AttrType::INTS);
-    for (auto i : _output_format) {
+    for (auto i : std::vector<int>{0, 1, 2}) {
       output_format->add_ints(i);
+    }
+
+    auto inlink_alias = op_desc.add_attrs();
+    inlink_alias->set_name("inlink_alias");
+    inlink_alias->set_type(paddle::framework::AttrType::STRINGS);
+
+    auto outlink_alias = op_desc.add_attrs();
+    outlink_alias->set_name("outlink_alias");
+    outlink_alias->set_type(paddle::framework::AttrType::STRINGS);
+
+    auto pre_memories = op_desc.add_attrs();
+    pre_memories->set_name("pre_memories");
+    pre_memories->set_type(paddle::framework::AttrType::STRINGS);
+
+    auto memories = op_desc.add_attrs();
+    memories->set_name("memories");
+    memories->set_type(paddle::framework::AttrType::STRINGS);
+
+    // create inlink_alias
+    for (const auto& item :
+         std::vector<std::string>{"x@alias", "x0@alias", "x1@alias"}) {
+      inlink_alias->add_strings(item);
+    }
+    // pre memories
+    for (const auto& item :
+         std::vector<std::string>{"rnn/x@pre", "rnn/h@pre"}) {
+      pre_memories->add_strings(item);
+    }
+    // memories
+    for (const auto& item : std::vector<std::string>{"rnn/x", "rnn/h"}) {
+      memories->add_strings(item);
+    }
+    // output alias
+    for (const auto& item : std::vector<std::string>{"h@alias"}) {
+      outlink_alias->add_strings(item);
     }
 
     rnn_op_ = OpRegistry::CreateOp(op_desc);
