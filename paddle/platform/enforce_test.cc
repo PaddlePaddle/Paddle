@@ -12,8 +12,6 @@ limitations under the License. */
 #include "paddle/platform/enforce.h"
 #include "gtest/gtest.h"
 
-using namespace paddle;
-
 TEST(ENFORCE, OK) {
   PADDLE_ENFORCE(true, "Enforce is ok %d now %f", 123, 0.345);
   size_t val = 1;
