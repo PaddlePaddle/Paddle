@@ -1799,56 +1799,6 @@ class ParameterReluLayer(LayerBase):
         self.create_input_parameter(0, input_layer.size / partial_sum)
 
 
-@config_layer('depthwise_conv')
-class DepthwiseConvLayer(LayerBase):
-    layer_type = 'depthwise_conv'
-
-    def __init__(self,
-                 name,
-                 inputs=[],
-                 bias=True,
-                 num_filters=None,
-                 shared_biases=False,
-                 **xargs):
-        super(DepthwiseConvLayer, self).__init__(
-            name, self.layer_type, 0, inputs=inputs, **xargs)
-
-        if num_filters is not None:
-            self.config.num_filters = num_filters
-
-        use_gpu = int(g_command_config_args.get("use_gpu", 0))
-        parallel_nn = int(g_command_config_args.get("parallel_nn", 0))
-
-        self.layer_type = "depthwise_conv"
-        # need to specify layer in config
-        self.config.type = self.layer_type
-
-        if shared_biases is not None:
-            self.config.shared_biases = shared_biases
-
-        for input_index in xrange(len(self.inputs)):
-            input_layer = self.get_input_layer(input_index)
-            conv_conf = self.config.inputs[input_index].conv_conf
-            #set the groups, the groups equals the input channels
-            self.inputs[input_index].conv.groups = self.inputs[
-                input_index].conv.channels
-            parse_conv(self.inputs[input_index].conv, input_layer.name,
-                       conv_conf, num_filters)
-            psize = self.calc_parameter_size(conv_conf)
-            self.create_input_parameter(input_index, psize)
-            self.set_cnn_layer(name, conv_conf.output_y, conv_conf.output_x,
-                               self.config.num_filters)
-
-        psize = self.config.size
-        if shared_biases:
-            psize = self.config.num_filters
-        self.create_bias_parameter(bias, psize, [psize, 1])
-
-    def calc_parameter_size(self, conv_conf):
-        return self.config.num_filters * conv_conf.filter_channels \
-                    * (conv_conf.filter_size * conv_conf.filter_size_y)
-
-
 @config_layer('conv')
 class ConvLayerBase(LayerBase):
     layer_type = 'conv'

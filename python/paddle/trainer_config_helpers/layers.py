@@ -57,7 +57,6 @@ __all__ = [
     'classification_cost',
     'LayerOutput',
     'img_conv_layer',
-    'img_depthwise_conv_layer',
     'img_pool_layer',
     'batch_norm_layer',
     'img_cmrnorm_layer',
@@ -152,7 +151,6 @@ class LayerType(object):
     HSIGMOID = 'hsigmoid'
     CONV_LAYER = 'conv'
     CONVTRANS_LAYER = 'convt'
-    DEPTHWISE_CONV_LAYER = 'depthwise_conv'
     EXCONV_LAYER = 'exconv'
     EXCONVTRANS_LAYER = 'exconvt'
     CUDNNCONV_LAYER = 'cudnn_conv'
@@ -2257,163 +2255,6 @@ def hsigmoid(input,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name, LayerType.HSIGMOID, parents=parents, size=l.config.size)
-
-
-@wrap_name_default("depthwise_conv")
-@wrap_param_attr_default()
-@wrap_bias_attr_default()
-@wrap_act_default(act=ReluActivation())
-@layer_support(DROPOUT)
-def img_depthwise_conv_layer(input,
-                             filter_size,
-                             num_filters,
-                             name=None,
-                             num_channels=None,
-                             act=None,
-                             stride=1,
-                             padding=0,
-                             bias_attr=None,
-                             param_attr=None,
-                             shared_biases=True,
-                             layer_attr=None,
-                             filter_size_y=None,
-                             stride_y=None,
-                             padding_y=None,
-                             trans=False,
-                             layer_type=None):
-    """
-    DepthwiseConvolution layer for image. 
-
-    The details of depthwise convolution layer, please refer 
-    https://arxiv.org/abs/1704.04861
-    
-	The Depthwise Convolution layer must meet this requirement that the groups equals to the
-	inputChannels. And the groups must be divisible by outputChannels.
-	So the filter shape will be (groups, outputChannels/groups, 1, filter_size, filter_size_y)
-
-    The example usage is:
-
-    ..  code-block:: python
-
-        conv = img_depthwise_conv_layer(input=data, filter_size=1, filter_size_y=1,
-                              num_channels=8,
-                              num_filters=16, stride=1,
-                              bias_attr=False,
-                              act=ReluActivation())
-
-    :param name: Layer name.
-    :type name: basestring
-    :param input: Layer Input.
-    :type input: LayerOutput
-    :param filter_size: The x dimension of a filter kernel. Or input a tuple for
-                        two image dimension.
-    :type filter_size: int|tuple|list
-    :param filter_size_y: The y dimension of a filter kernel. Since PaddlePaddle
-                        currently supports rectangular filters, the filter's
-                        shape will be (filter_size, filter_size_y).
-    :type filter_size_y: int|None
-    :param num_filters: Each filter group's number of filter
-    :param act: Activation type. Default is tanh
-    :type act: BaseActivation
-    :param stride: The x dimension of the stride. Or input a tuple for two image
-                   dimension.
-    :type stride: int|tuple|list
-    :param stride_y: The y dimension of the stride.
-    :type stride_y: int
-    :param padding: The x dimension of the padding. Or input a tuple for two
-                    image dimension
-    :type padding: int|tuple|list
-    :param padding_y: The y dimension of the padding.
-    :type padding_y: int
-    :param bias_attr: DepthwiseConvolution bias attribute. None means default bias.
-                      False means no bias.
-    :type bias_attr: ParameterAttribute|False
-    :param num_channels: number of input channels. If None will be set
-                        automatically from previous output.
-    :type num_channels: int
-    :param param_attr: DepthwiseConvolution param attribute. None means default attribute
-    :type param_attr: ParameterAttribute
-    :param shared_biases: Is biases will be shared between filters or not.
-    :type shared_biases: bool
-    :param layer_attr: Layer Extra Attribute.
-    :type layer_attr: ExtraLayerAttribute
-    :param trans: true if it is a convTransLayer, false if it is a convLayer
-    :type trans: bool
-    :param layer_type: specify the layer_type, default is None. If trans=True,
-                       layer_type has to be "exconvt" or "cudnn_convt",
-                       otherwise layer_type has to be either "exconv" or
-                       "cudnn_conv"
-    :type layer_type: String
-    :return: LayerOutput object.
-    :rtype: LayerOutput
-    """
-
-    if num_channels is None:
-        assert input.num_filters is not None
-        num_channels = input.num_filters
-
-    # the groups in depthwise conv should be equal to input channels.
-    groups = num_channels
-
-    if filter_size_y is None:
-        if isinstance(filter_size, collections.Sequence):
-            assert len(filter_size) == 2
-            filter_size, filter_size_y = filter_size
-        else:
-            filter_size_y = filter_size
-
-    if stride_y is None:
-        if isinstance(stride, collections.Sequence):
-            assert len(stride) == 2
-            stride, stride_y = stride
-        else:
-            stride_y = stride
-
-    if padding_y is None:
-        if isinstance(padding, collections.Sequence):
-            assert len(padding) == 2
-            padding, padding_y = padding
-        else:
-            padding_y = padding
-
-    if param_attr.attr.get('initial_smart'):
-        # special initial for conv layers.
-        init_w = (2.0 / (filter_size**2 * num_channels))**0.5
-        param_attr.attr["initial_mean"] = 0.0
-        param_attr.attr["initial_std"] = init_w
-        param_attr.attr["initial_strategy"] = 0
-        param_attr.attr["initial_smart"] = False
-
-    lt = LayerType.DEPTHWISE_CONV_LAYER
-
-    l = Layer(
-        name=name,
-        inputs=Input(
-            input.name,
-            conv=Conv(
-                filter_size=filter_size,
-                padding=padding,
-                stride=stride,
-                channels=num_channels,
-                groups=groups,
-                filter_size_y=filter_size_y,
-                padding_y=padding_y,
-                stride_y=stride_y),
-            **param_attr.attr),
-        active_type=act.name,
-        num_filters=num_filters,
-        bias=ParamAttr.to_bias(bias_attr),
-        shared_biases=shared_biases,
-        type=lt,
-        **ExtraLayerAttribute.to_kwargs(layer_attr))
-
-    return LayerOutput(
-        name,
-        lt,
-        parents=[input],
-        activation=act,
-        num_filters=num_filters,
-        size=l.config.size)
 
 
 @wrap_name_default("conv")
