@@ -119,17 +119,6 @@ int arity(const DDim& ddim);
 
 std::ostream& operator<<(std::ostream&, const DDim&);
 
-template <int NDIMS>
-Eigen::DSizes<Eigen::DenseIndex, NDIMS> ToEigenDSizes(const DDim& dims) {
-  int rank = arity(dims);
-  PADDLE_ENFORCE(rank == NDIMS, "DDim and NDIMS must be same");
-  Eigen::DSizes<Eigen::DenseIndex, NDIMS> dsizes;
-  for (int d = 0; d < rank; d++) {
-    dsizes[d] = dims[d];
-  }
-  return dsizes;
-}
-
 }  // namespace framework
 }  // namespace paddle
 
