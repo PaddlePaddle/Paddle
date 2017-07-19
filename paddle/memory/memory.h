@@ -28,5 +28,8 @@ void Free(Place, void*);
 template <class Place>
 size_t Used(Place);
 
+template <class Place1, class Place2>
+void Copy(Place1, void* dst, Place2, void* src, size_t size);
+
 }  // namespace memory
 }  // namespace paddle

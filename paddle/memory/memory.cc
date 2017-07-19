@@ -47,6 +47,20 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
+template <>
+void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
+                                                  platform::CPUPlace, void* src,
+                                                  size_t size) {
+  memcpy(dst, src, size);
+}
+
+template <>
+void Copy<platform::CPUPlace, platform::GPUPlace>(platform::CPUPlace, void* dst,
+                                                  platform::CPUPlace, void* src,
+                                                  size_t size) {
+  memcpy(dst, src, size);
+}
+
 #ifndef PADDLE_ONLY_CPU
 
 detail::BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
