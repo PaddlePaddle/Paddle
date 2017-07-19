@@ -76,7 +76,7 @@ inline void throw_on_error(cudnnStatus_t stat, const Args&... args) {
   } else {
     // clang-format off
     throw std::runtime_error(
-        platform::dynload::cudnnGetErrorString(stat) + ", " +
+        platform::dynload::cudnnGetErrorString(stat) +
         string::Sprintf(args...) +
         string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
     // clang-format on
@@ -107,7 +107,8 @@ inline void throw_on_error(cublasStatus_t stat, const Args&... args) {
   } else if (stat == CUBLAS_STATUS_LICENSE_ERROR) {
     ss << "CUBLAS: license error";
   }
-  throw std::runtime_error(ss + ", " + string::Sprintf(args...) +
+  ss << ", ";
+  throw std::runtime_error(ss + string::Sprintf(args...) +
                            string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
 }
 
