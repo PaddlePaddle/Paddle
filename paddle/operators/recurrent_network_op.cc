@@ -102,6 +102,65 @@ void LinkMemories(std::vector<ScopePtr>& scopes,
   }
 }
 
+void InitArgument(const ArgumentName& name,
+                  Argument* arg,
+                  const OperatorBase& op) {
+  arg->step_net = op.Input("step_net");
+  arg->step_scopes = op.Output("step_scopes");
+
+  auto inlinks = op.Inputs("inlinks");
+  auto inlink_alias = op.GetAttr<std::vector<std::string>>("inlink_alias");
+  PADDLE_ENFORCE(inlinks.size() == inlink_alias.size(),
+                 "the size of inlinks and inlink_alias don't match:%d,%d",
+                 inlinks.size(),
+                 inlink_alias.size());
+  for (size_t i = 0; i < inlinks.size(); ++i) {
+    rnn::Link link;
+    link.internal = inlinks[i];
+    link.external = inlink_alias[i];
+    (arg->inlinks).push_back(link);
+  }
+
+  auto outlinks = op.Outputs("outlinks");
+  auto outlink_alias = op.GetAttr<std::vector<std::string>>("outlink_alias");
+  PADDLE_ENFORCE(outlinks.size() == outlink_alias.size(),
+                 "the size of outlinks and outlink_alias don't match:%d,%d",
+                 outlinks.size(),
+                 outlink_alias.size());
+  for (size_t i = 0; i < outlinks.size(); ++i) {
+    rnn::Link link;
+    link.internal = outlinks[i];
+    link.external = outlink_alias[i];
+    (arg->outlinks).push_back(link);
+  }
+
+  auto boot_memories = op.Inputs("boot_memories");
+
+  // attributes
+  auto memories = op.GetAttr<std::vector<std::string>>("memories");
+  auto pre_memories = op.GetAttr<std::vector<std::string>>("pre_memories");
+
+  PADDLE_ENFORCE(memories.size() == boot_memories.size(),
+                 "the size of memories, boot_memories don't match:%d,%d",
+                 memories.size(),
+                 boot_memories.size());
+  PADDLE_ENFORCE(pre_memories.size() == boot_memories.size(),
+                 "the size of pre_memories, boot_memories don't match:%d,%d",
+                 pre_memories.size(),
+                 boot_memories.size());
+  PADDLE_ENFORCE(memories.size() > 0, "more than 1 memories should be set");
+
+  for (size_t i = 0; i < memories.size(); ++i) {
+    rnn::MemoryAttr mem_attr;
+    mem_attr.var = memories[i];
+    mem_attr.pre_var = pre_memories[i];
+    mem_attr.boot_var = boot_memories[i];
+    (arg->memories).push_back(mem_attr);
+    DLOG(INFO) << "set memorys:\t"
+               << "memory:" << mem_attr.var << "\tboot:" << mem_attr.boot_var;
+  }
+}
+
 }  // namespace rnn
 
 void RecurrentAlgorithm::Run(const ScopePtr& scope,
@@ -193,68 +252,35 @@ void RecurrentAlgorithm::InitMemories(ScopePtr step_scope) const {
   }
 }
 
+const rnn::ArgumentName RecurrentOp::arg_name{"step_net",
+                                              "step_scopes",
+                                              "inlinks",
+                                              "outlinks",
+                                              "inlink_alias",
+                                              "outlink_alias",
+                                              "memories",
+                                              "pre_memories",
+                                              "boot_memories"};
+
+const rnn::ArgumentName RecurrentGradientOp::arg_name{"step_net",
+                                                      "step_scopes",
+                                                      "outlink@grad",
+                                                      "inlink@grad",
+                                                      "inlink_alias",
+                                                      "outlink_alias",
+                                                      "memories",
+                                                      "pre_memories",
+                                                      "boot_memories@grad"};
+
 void RecurrentOp::Init() {
   OperatorBase::Init();
   std::unique_ptr<rnn::Argument> arg(new rnn::Argument());
 
-  arg->step_net = Input("step_net");
-  arg->step_scopes = Output("step_scopes");
+  rnn::InitArgument(arg_name, arg.get(), *this);
 
-  auto inlinks = Inputs("inlinks");
-  auto inlink_alias = GetAttr<std::vector<std::string>>("inlink_alias");
-  PADDLE_ENFORCE(inlinks.size() == inlink_alias.size(),
-                 "the size of inlinks and inlink_alias don't match:%d,%d",
-                 inlinks.size(),
-                 inlink_alias.size());
-  for (size_t i = 0; i < inlinks.size(); ++i) {
-    rnn::Link link;
-    link.internal = inlinks[i];
-    link.external = inlink_alias[i];
-    (arg->inlinks).push_back(link);
-  }
+  alg_.Init(std::move(arg));
 
-  auto outlinks = Outputs("outlinks");
-  auto outlink_alias = GetAttr<std::vector<std::string>>("outlink_alias");
-  PADDLE_ENFORCE(outlinks.size() == outlink_alias.size(),
-                 "the size of outlinks and outlink_alias don't match:%d,%d",
-                 outlinks.size(),
-                 outlink_alias.size());
-  for (size_t i = 0; i < outlinks.size(); ++i) {
-    rnn::Link link;
-    link.internal = outlinks[i];
-    link.external = outlink_alias[i];
-    (arg->outlinks).push_back(link);
-  }
-
-  auto boot_memories = Inputs("boot_memories");
-
-  // attributes
-  auto memories = GetAttr<std::vector<std::string>>("memories");
-  auto pre_memories = GetAttr<std::vector<std::string>>("pre_memories");
-
-  PADDLE_ENFORCE(memories.size() == boot_memories.size(),
-                 "the size of memories, boot_memories don't match:%d,%d",
-                 memories.size(),
-                 boot_memories.size());
-  PADDLE_ENFORCE(pre_memories.size() == boot_memories.size(),
-                 "the size of pre_memories, boot_memories don't match:%d,%d",
-                 pre_memories.size(),
-                 boot_memories.size());
-  PADDLE_ENFORCE(memories.size() > 0, "more than 1 memories should be set");
-
-  for (size_t i = 0; i < memories.size(); ++i) {
-    rnn::MemoryAttr mem_attr;
-    mem_attr.var = memories[i];
-    mem_attr.pre_var = pre_memories[i];
-    mem_attr.boot_var = boot_memories[i];
-    (arg->memories).push_back(mem_attr);
-    DLOG(INFO) << "set memorys:\t"
-               << "memory:" << mem_attr.var << "\tboot:" << mem_attr.boot_var;
-  }
-
-  algo_.Init(std::move(arg));
-
-  DLOG(INFO) << algo_.debug_string();
+  DLOG(INFO) << alg_.debug_string();
 }
 
 /*
@@ -265,18 +291,22 @@ public:
   RecurrentAlgorithmProtoAndCheckerMaker(OpProto* proto,
                                          OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInputs("inlinks", "the input that need to be segmented for each step.");
-    AddInputs("boot_memories", "variables to initialize memories.");
+    const auto& name = RecurrentOp::arg_name;
+    AddInputs(name.inlinks,
+              "the input that need to be segmented for each step.");
+    AddInputs(name.boot_memories, "variables to initialize memories.");
 
-    AddInput("step_net", "network shared by all steps.");
+    AddInput(name.step_net, "network shared by all steps.");
 
-    AddOutputs("outlinks", "the output that need to concated for all steps.");
-    AddOutput("step_scopes", "step scopes");
+    AddOutputs(name.outlinks,
+               "the output that need to concated for all steps.");
+    AddOutput(name.step_scopes, "step scopes");
 
-    AddAttr<std::vector<std::string>>("inlink_alias", "alias of inlinks");
-    AddAttr<std::vector<std::string>>("outlink_alias", "alias of outlinks");
-    AddAttr<std::vector<std::string>>("pre_memories", "names of pre-memories");
-    AddAttr<std::vector<std::string>>("memories", "names of memories");
+    AddAttr<std::vector<std::string>>(name.inlink_alias, "alias of inlinks");
+    AddAttr<std::vector<std::string>>(name.outlink_alias, "alias of outlinks");
+    AddAttr<std::vector<std::string>>(name.pre_memories,
+                                      "names of pre-memories");
+    AddAttr<std::vector<std::string>>(name.memories, "names of memories");
 
     AddComment("This is a recurrent group operator.");
   }
@@ -330,7 +360,14 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
 }
 
 // TODO(Superjom) implement this after op's members move to rnn namespace
-void RecurrentGradientOp::Init() {}
+void RecurrentGradientOp::Init() {
+  OperatorBase::Init();
+  std::unique_ptr<rnn::Argument> arg(new rnn::Argument());
+
+  rnn::InitArgument(arg_name, arg.get(), *this);
+
+  alg_.Init(std::move(arg));
+}
 
 }  // namespace framework
 }  // namespace paddle

@@ -53,6 +53,18 @@ struct Argument {
   std::vector<rnn::MemoryAttr> memories;
 };
 
+struct ArgumentName {
+  std::string step_net;
+  std::string step_scopes;
+  std::string inlinks;
+  std::string outlinks;
+  std::string inlink_alias;
+  std::string outlink_alias;
+  std::string memories;
+  std::string pre_memories;
+  std::string boot_memories;
+};
+
 /*
  * Prepare inputs for each stepnet.
  */
@@ -69,6 +81,8 @@ void LinkMemories(std::vector<ScopePtr>& step_scopes,
                   const std::vector<MemoryAttr>& memories,
                   size_t step_id,
                   int offset);
+
+void InitArgument(const ArgumentName& name, Argument* arg);
 
 };  // namespace rnn
 
@@ -177,13 +191,15 @@ public:
 
   virtual void Run(const ScopePtr& scope,
                    const platform::DeviceContext& dev_ctx) const override {
-    algo_.Run(scope, dev_ctx);
+    alg_.Run(scope, dev_ctx);
   }
 
   virtual ~RecurrentOp() {}
 
+  static const rnn::ArgumentName arg_name;
+
 private:
-  RecurrentAlgorithm algo_;
+  RecurrentAlgorithm alg_;
 };
 
 /*
@@ -202,6 +218,8 @@ public:
   }
 
   virtual ~RecurrentGradientOp() {}
+
+  static const rnn::ArgumentName arg_name;
 
 private:
   RecurrentGradientAlgorithm alg_;
