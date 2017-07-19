@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <paddle/framework/op_desc.pb.h>
 #include <paddle/framework/operator.h>
-#include "paddle/framework/net_proto.pb.h"
 #include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/scope.h"
@@ -41,7 +40,7 @@ namespace framework {
 class Net : public OperatorBase {
  public:
   virtual void AddOp(const OperatorPtr& op) = 0;
-  virtual void CompleteAddOp() = 0;
+  virtual void CompleteAddOp(bool calc) = 0;
 };
 
 using NetPtr = std::shared_ptr<Net>;
@@ -86,7 +85,9 @@ class PlainNet : public Net {
     ops_.push_back(op);
   }
 
-  void CompleteAddOp() override;
+  void CompleteAddOp(bool calculate = true) override;
+
+  std::string DebugString() const override;
 
   std::vector<OperatorPtr> ops_;
 
