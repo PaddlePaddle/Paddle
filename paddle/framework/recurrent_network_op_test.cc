@@ -254,17 +254,27 @@ class RecurrentGradientAlgorithmTest : public ::testing::Test {
   }
 
   void CreateRNNGradientAlgorithm() {
-    AttributeMap attrs;
-    attrs["step_net"] = "step_net";
-    attrs["step_scopes"] = "step_scopes";
-    attrs["in_links"] = std::vector<std::string>{"h_grad"};
-    attrs["in_link_alias"] = std::vector<std::string>{"rnn/h_grad"};
-    attrs["out_links"] = std::vector<std::string>{"x_grad"};
-    attrs["out_link_alias"] = std::vector<std::string>{"rnn/x_grad"};
-    attrs["memories"] = std::vector<std::string>{"rnn/h_pre_grad"};
-    attrs["pre_memories"] = std::vector<std::string>{"rnn/h_grad"};
-    attrs["boot_memories"] = std::vector<std::string>{"h_boot_grad"};
-    rnn_grad_algo_.Init(attrs);
+    std::unique_ptr<details::RecurrentArgument> arg(
+        new details::RecurrentArgument());
+    arg->step_net = "step_net";
+    arg->step_scopes = "step_scopes";
+    details::Link inlink;
+    inlink.link = "h_grad";
+    inlink.alias = "rnn/h_grad";
+    arg->inlinks = std::vector<details::Link>{inlink};
+
+    details::Link outlink;
+    outlink.link = "x_grad";
+    outlink.alias = "rnn/x_grad";
+    arg->outlinks = std::vector<details::Link>{outlink};
+
+    details::MemoryAttr mem_attr;
+    mem_attr.pre_var = "rnn/h_pre_grad";
+    mem_attr.var = "rnn/h_grad";
+    mem_attr.boot_var = "h_boot_grad";
+    arg->memories = std::vector<details::MemoryAttr>{mem_attr};
+
+    rnn_grad_algo_.Init(std::move(arg));
   }
 
   void CreateStepNet() {
@@ -283,9 +293,13 @@ class RecurrentGradientAlgorithmTest : public ::testing::Test {
     LOG(INFO) << "segment inputs";
     std::vector<std::string> inlinks = {"x"};
     std::vector<std::string> inlinks_alias = {"rnn/x"};
+
+    details::Link inlink;
+    inlink.link = "x";
+    inlink.alias = "rnn/x";
     std::vector<ScopePtr>* step_scopes =
         scope_->GetVariable("step_scopes")->GetMutable<std::vector<ScopePtr>>();
-    details::SegmentInputs(*step_scopes, inlinks, inlinks_alias);
+    details::SegmentInputs(*step_scopes, std::vector<details::Link>{inlink});
   }
 
   void LinkeMemories() {

@@ -38,19 +38,32 @@ struct MemoryAttr {
   std::string boot_var;
 };
 
+struct Link {
+  // input or output links name.
+  std::string link;
+  // alias to avoid duplicate keys in scopes.
+  std::string alias;
+};
+
+struct RecurrentArgument {
+  std::string step_net;
+  std::string step_scopes;
+  std::vector<Link> inlinks;
+  std::vector<Link> outlinks;
+  std::vector<details::MemoryAttr> memories;
+};
+
 /*
  * Prepare inputs for each stepnet.
  */
 void SegmentInputs(std::vector<ScopePtr>& step_scopes,
-                   const std::vector<std::string>& inlinks,
-                   const std::vector<std::string>& inlink_alias);
+                   const std::vector<Link>& inlinks);
 
 /*
  * Process outputs of stepnets and merge to variables.
  */
 void ConcatOutputs(std::vector<ScopePtr>& step_scopes,
-                   const std::vector<std::string>& outlinks,
-                   const std::vector<std::string>& outlinks_alias);
+                   const std::vector<Link>& outlinks);
 
 void LinkMemories(std::vector<ScopePtr>& step_scopes,
                   const std::vector<MemoryAttr>& memories, size_t step_id,
@@ -100,6 +113,10 @@ class RecurrentAlgorithm {
    */
   void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const;
 
+  void Init(std::unique_ptr<details::RecurrentArgument> arg) {
+    arg_ = std::move(arg);
+  }
+
   std::string debug_string() const;
 
  protected:
@@ -117,7 +134,7 @@ class RecurrentAlgorithm {
    * Get the step scopes.
    */
   inline const std::vector<ScopePtr>& GetStepScopes(ScopePtr scope) const {
-    return *(scope->GetVariable(step_scopes_name_))
+    return *(scope->GetVariable(arg_->step_scopes))
                 ->GetMutable<std::vector<ScopePtr>>();
   }
 
@@ -127,26 +144,7 @@ class RecurrentAlgorithm {
   void InitMemories(ScopePtr step_scopes) const;
 
  private:
-  friend class RecurrentOp;
-
-  std::vector<details::MemoryAttr> memory_attrs_;
-
-  // name of rnn op's step net, the step net will be shared by both `Forward`
-  // and `Backward`, so we store it as a variable in father's scope, with a
-  // unique key specified by `net_name_`.
-  std::string net_name_;
-  // name of steps' scopes which is stored in father scope with a unique key
-  // specified by `step_scopes_name_`.
-  std::string step_scopes_name_;
-  // real inputs that need to be segmented.
-  std::vector<std::string> inlinks_;
-  std::vector<std::string> outlinks_;
-
-  std::vector<std::string> inlink_alias_;
-  std::vector<std::string> outlink_alias_;
-
-  std::vector<std::string> inputs_;
-  std::vector<std::string> outputs_;
+  std::unique_ptr<details::RecurrentArgument> arg_;
 };
 
 /*
@@ -160,33 +158,14 @@ class RecurrentAlgorithm {
  */
 class RecurrentGradientAlgorithm {
  public:
-  void LinkBootMemoryGradients(ScopePtr step_scopes) const;
+  void Init(std::unique_ptr<details::RecurrentArgument> arg) {
+    arg_ = std::move(arg);
+  }
   void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const;
-
-  // Init is used for unit test.
-  void Init(AttributeMap& attrs);
+  void LinkBootMemoryGradients(ScopePtr step_scopes) const;
 
  private:
-  // stepnet for backward
-  // NOTE this stepnet is created by others and should insert AddOp for its
-  // weights gradient updating, RNN backward just run it.
-  std::string stepnet_name_;
-  // step scopes that shared by both the forward and backward operators.
-  std::string step_scopes_name_;
-
-  // inputs(gradients of forward operator's outputs) that need to be segmented
-  // for each step.
-  std::vector<std::string> inlinks_;
-  // outputs(gradients of forward operator's inputs) of each step that need to
-  // be concated.
-  std::vector<std::string> outlinks_;
-
-  // alias to avoid duplicate keys in scopes.
-  std::vector<std::string> inlink_alias_;
-  std::vector<std::string> outlink_alias_;
-
-  // NOTE the first step's boot memories' gradients should be outputed.
-  std::vector<details::MemoryAttr> memories_;
+  std::unique_ptr<details::RecurrentArgument> arg_;
 };
 
 /*
@@ -201,13 +180,13 @@ class RecurrentOp final : public OperatorBase {
 
   virtual void Run(const ScopePtr& scope,
                    const platform::DeviceContext& dev_ctx) const override {
-    alg_.Run(scope, dev_ctx);
+    algo_.Run(scope, dev_ctx);
   }
 
   virtual ~RecurrentOp() {}
 
  private:
-  RecurrentAlgorithm alg_;
+  RecurrentAlgorithm algo_;
 };
 
 /*
