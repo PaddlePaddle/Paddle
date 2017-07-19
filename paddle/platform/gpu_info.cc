@@ -44,7 +44,7 @@ void SetDeviceId(int id) {
                  "cudaSetDevice failed in paddle::platform::SetDeviceId");
 }
 
-void GpuMemoryUsage(size_t& available, size_t& total) {
+void GpuMemoryUsage(size_t &available, size_t &total) {
   throw_on_error(cudaMemGetInfo(&available, &total),
                  "cudaMemGetInfo failed in paddle::platform::GetMemoryUsage");
 }
@@ -82,5 +82,23 @@ size_t GpuMaxChunkSize() {
   return usable;
 }
 
+void GpuMemcpyAsync(void *dst, const void *src, size_t count,
+                    enum cudaMemcpyKind kind, cudaStream_t stream) {
+  PADDLE_ENFORCE(cudaMemcpyAsync(dst, src, count, kind, stream));
+}
+
+void GpuMemcpySync(void *dst, const void *src, size_t count,
+                   enum cudaMemcpyKind kind) {
+  PADDLE_ENFORCE(cudaMemcpy(dst, src, count, kind));
+  // note: cudaMemcpy may actually be asynchronous with respect to the caller,
+  //       block on stream 0 to make sure the copy has completed
+  PADDLE_ENFORCE(cudaStreamSynchronize(0));
+}
+
+void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
+                   size_t count, cudaStream_t stream) {
+  PADDLE_ENFORCE(
+      cudaMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream));
+}
 }  // namespace platform
 }  // namespace paddle
