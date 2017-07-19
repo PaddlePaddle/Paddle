@@ -5980,12 +5980,11 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
     """
     The crop layer crops images by offset and shape. User can set crop shape by
     args 'shape' explicitly or by reference input layer.
-
+    
     The example usage is:
 
     .. code-block:: python
-
-       crop = crop_layer(input=[image_input, reference_input], axis=2, offset=[2, 3])
+    crop = crop_layer(input=[image_input, reference_input], axis=2, offset=[2, 3])
 
     :param input: The input layer.If two inputs were setted,
                     the second input will be regarded as reference input
