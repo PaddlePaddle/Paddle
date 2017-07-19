@@ -33,15 +33,72 @@ TEST(Eigen, Tensor) {
 
   EigenTensor<float, 3>::Type et = EigenTensor<float, 3>::From(t);
 
-  for (int i = 0; i < 1 * 2 * 3; i++) {
-    EXPECT_EQ(et(i), i);
+  EXPECT_EQ(1, et.dimension(0));
+  EXPECT_EQ(2, et.dimension(1));
+  EXPECT_EQ(3, et.dimension(2));
+
+  for (int i = 0; i < 1; i++) {
+    for (int j = 0; j < 2; j++) {
+      for (int k = 0; k < 3; k++) {
+        EXPECT_EQ((i * 2 + j) * 3 + k, et(i, j, k));
+      }
+    }
   }
-  // TODO: check the content of et.
+  for (int i = 0; i < 1 * 2 * 3; i++) {
+    EXPECT_EQ(i, et(i));
+  }
 }
 
-TEST(Eigen, Vector) {}
+TEST(Eigen, VectorFrom) {
+  Tensor t;
+  float* p = t.mutable_data<float>(make_ddim({6}), platform::CPUPlace());
+  for (int i = 0; i < 6; i++) {
+    p[i] = static_cast<float>(i);
+  }
 
-TEST(Eigen, Matrix) {}
+  EigenVector<float>::Type ev = EigenVector<float>::From(t);
+
+  EXPECT_EQ(6, ev.dimension(0));
+
+  for (int i = 0; i < 6; i++) {
+    EXPECT_EQ(i, ev(i));
+  }
+}
+
+TEST(Eigen, VectorFlatten) {
+  Tensor t;
+  float* p = t.mutable_data<float>(make_ddim({1, 2, 3}), platform::CPUPlace());
+  for (int i = 0; i < 1 * 2 * 3; i++) {
+    p[i] = static_cast<float>(i);
+  }
+
+  EigenVector<float>::Type ev = EigenVector<float>::Flatten(t);
+
+  EXPECT_EQ(1 * 2 * 3, ev.dimension(0));
+
+  for (int i = 0; i < 1 * 2 * 3; i++) {
+    EXPECT_EQ(i, ev(i));
+  }
+}
+
+TEST(Eigen, Matrix) {
+  Tensor t;
+  float* p = t.mutable_data<float>(make_ddim({2, 3}), platform::CPUPlace());
+  for (int i = 0; i < 2 * 3; i++) {
+    p[i] = static_cast<float>(i);
+  }
+
+  EigenMatrix<float>::Type em = EigenMatrix<float>::From(t);
+
+  EXPECT_EQ(2, em.dimension(0));
+  EXPECT_EQ(3, em.dimension(1));
+
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 3; j++) {
+      EXPECT_EQ(i * 3 + j, em(i, j));
+    }
+  }
+}
 
 }  // namespace framework
 }  // namespace paddle
