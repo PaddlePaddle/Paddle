@@ -14,6 +14,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "paddle/framework/op_registry.h"
 #include "paddle/framework/recurrent_network_op.h"
 #include "paddle/framework/tensor.h"
 
@@ -106,25 +107,31 @@ class RecurrentOpTest : public ::testing::Test {
   void CreateGlobalVariables() {
     scope_ = std::make_shared<Scope>();
     LOG(INFO) << "create global variable h_boot";
+
     // create boot memory
     scope_->CreateVariable("h_boot");
+
     // create input, and init content
     LOG(INFO) << "create global variable x";
-    Variable* x = scope_->CreateVariable("x");
-    DDim dims = make_ddim(std::vector<int>{10 /*sent size*/, 20 /*batch size*/,
-                                           30 /*input dim*/});
-    x->GetMutable<Tensor>()->mutable_data<float>(dims, platform::CPUPlace());
+    for (auto inlink : std::vector<std::string>{"x", "x0", "x1", "h"}) {
+      Variable* x = scope_->CreateVariable(inlink);
+      DDim dims = make_ddim(std::vector<int>{
+          10 /*sent size*/, 20 /*batch size*/, 30 /*input dim*/});
+      x->GetMutable<Tensor>()->mutable_data<float>(dims, platform::CPUPlace());
+    }
 
     LOG(INFO) << "create global variable w";
     Variable* w = scope_->CreateVariable("rnn/w");
     w->GetMutable<Tensor>()->mutable_data<float>(
         make_ddim(std::vector<int>{30, 30}), platform::CPUPlace());
 
-    LOG(INFO) << "create global variable h_boot";
-    Variable* h_boot = scope_->CreateVariable("h_boot");
-    h_boot->GetMutable<Tensor>()->mutable_data<float>(
-        make_ddim(std::vector<int>{20 /*batch size*/, 30 /*input dim*/}),
-        platform::CPUPlace());
+    for (auto boot : std::vector<std::string>{"x_boot", "h_boot"}) {
+      LOG(INFO) << "create global variable " << boot;
+      Variable* h_boot = scope_->CreateVariable(boot);
+      h_boot->GetMutable<Tensor>()->mutable_data<float>(
+          make_ddim(std::vector<int>{20 /*batch size*/, 30 /*input dim*/}),
+          platform::CPUPlace());
+    }
 
     LOG(INFO) << "create variable step_scopes";
     scope_->CreateVariable("step_scopes");
@@ -136,76 +143,68 @@ class RecurrentOpTest : public ::testing::Test {
   void CreateRNNOp() {
     OpDesc op_desc;
 
-    op_desc.set_type("rnn_op");
+    op_desc.set_type("recurrent_op");
+    // inlinks 0
     op_desc.add_inputs("x");
-    op_desc.add_inputs("h_boot");    // initial memory
-    op_desc.add_inputs("step_net");  // step net
-    // output hidden vectors
+    op_desc.add_inputs("x0");
+    op_desc.add_inputs("x1");
+    // memories 3
+    op_desc.add_inputs("rnn/x");
+    op_desc.add_inputs("rnn/h");
+    // pre-memories 5
+    op_desc.add_inputs("rnn/x@pre");
+    op_desc.add_inputs("rnn/h@pre");
+    // boot_memories 7
+    op_desc.add_inputs("x_boot");
+    op_desc.add_inputs("h_boot");
+    // inlink_alias 9
+    op_desc.add_inputs("x@alias");
+    op_desc.add_inputs("x0@alias");
+    op_desc.add_inputs("x1@alias");
+    // step net 12
+    op_desc.add_inputs("step_net");
+    // outlinks 0
     op_desc.add_outputs("h");
-    op_desc.add_outputs("step_scopes");  // step scopes
+    // outlink_alias 1
+    op_desc.add_outputs("h@alias");
+    // step scopes 2
+    op_desc.add_outputs("step_scopes");
 
-    // add real input
-    auto input_attr = op_desc.mutable_attrs()->Add();
-    input_attr->set_type(paddle::framework::AttrType::INTS);
-    *input_attr->mutable_ints()->Add() = 0;
-    input_attr->set_name("in_links");
+    auto _input_format = std::vector<int>{
+        0,  // in_link
+        3,  // memories
+        5,  // pre-memories
+        7,  // boot_memories
+        9,  // input_alias
+        12  // step_net
+    };
+    auto input_format = op_desc.add_attrs();
+    input_format->set_name("input_format");
+    input_format->set_type(paddle::framework::AttrType::INTS);
+    for (auto i : _input_format) {
+      input_format->add_ints(i);
+    }
 
-    // add input alias, this alias is used in step net.
-    auto input_alias_attr = op_desc.mutable_attrs()->Add();
-    input_alias_attr->set_type(paddle::framework::AttrType::STRINGS);
-    *input_alias_attr->mutable_strings()->Add() = "rnn/x";
-    input_alias_attr->set_name("in_link_alias");
-
-    // add output alias, this alias is used in step net.
-    auto output_alias_attr = op_desc.mutable_attrs()->Add();
-    output_alias_attr->set_type(paddle::framework::AttrType::STRINGS);
-    *output_alias_attr->mutable_strings()->Add() = "rnn/h";
-    output_alias_attr->set_name("out_link_alias");
-
-    // add memories
-    auto memories_attr = op_desc.mutable_attrs()->Add();
-    memories_attr->set_type(paddle::framework::AttrType::STRINGS);
-    *memories_attr->mutable_strings()->Add() = "rnn/h";
-    memories_attr->set_name("memories");
-
-    // add history/previous memories
-    auto pre_memories_attr = op_desc.mutable_attrs()->Add();
-    pre_memories_attr->set_type(paddle::framework::AttrType::STRINGS);
-    *pre_memories_attr->mutable_strings()->Add() = "rnn/h_pre";
-    pre_memories_attr->set_name("pre_memories");
-
-    // add initial memories
-    auto boot_memories_attr = op_desc.mutable_attrs()->Add();
-    boot_memories_attr->set_type(paddle::framework::AttrType::INTS);
-    *boot_memories_attr->mutable_ints()->Add() = 1;
-    boot_memories_attr->set_name("boot_memories");
-
-    // add step net desc
-    auto step_net_attr = op_desc.mutable_attrs()->Add();
-    step_net_attr->set_type(paddle::framework::AttrType::INT);
-    step_net_attr->set_i(2);
-    step_net_attr->set_name("step_net");
-
-    AttributeMap attrs;
-    attrs["in_links"] = std::vector<int>{0};
-    attrs["in_link_alias"] = std::vector<std::string>{"rnn/x"};
-    attrs["out_link_alias"] = std::vector<std::string>{"rnn/h"};
-    attrs["memories"] = std::vector<std::string>{"rnn/h"};
-    attrs["pre_memories"] = std::vector<std::string>{"h_pre"};
-    attrs["boot_memories"] = std::vector<int>{1};
-    attrs["step_net"] = 2;
+    auto _output_format = std::vector<int>{0, 1, 2};
+    auto output_format = op_desc.add_attrs();
+    output_format->set_name("output_format");
+    output_format->set_type(paddle::framework::AttrType::INTS);
+    for (auto i : _output_format) {
+      output_format->add_ints(i);
+    }
 
     LOG(INFO) << "rnn_op to init";
     // set inputs, outputs and attrs
     // TODO(superjom) use CreateOp instead
-    for (const auto& item : op_desc.inputs()) {
-      rnn_op_.inputs_.emplace_back(item);
-    }
-    for (const auto& item : op_desc.outputs()) {
-      rnn_op_.outputs_.emplace_back(item);
-    }
-    rnn_op_.attrs_ = attrs;
-    rnn_op_.Init();
+    // for (const auto& item : op_desc.inputs()) {
+    //   rnn_op_.inputs_.emplace_back(item);
+    // }
+    // for (const auto& item : op_desc.outputs()) {
+    //   rnn_op_.outputs_.emplace_back(item);
+    // }
+    rnn_op_ = OpRegistry::CreateOp(op_desc);
+
+    // rnn_op_.Init();
     LOG(INFO) << "rnn_op finish init";
   }
 
@@ -241,14 +240,14 @@ class RecurrentOpTest : public ::testing::Test {
 
   // father scope
   std::shared_ptr<Scope> scope_;
-  RecurrentOp rnn_op_;
+  OperatorPtr rnn_op_;
 };
 
 // TEST_F(RecurrentOpTest, create_op) {}
 
 TEST_F(RecurrentOpTest, Run) {
   platform::CPUDeviceContext ctx;
-  rnn_op_.Run(scope_, ctx);
+  rnn_op_->Run(scope_, ctx);
 }
 
 }  // namespace framework

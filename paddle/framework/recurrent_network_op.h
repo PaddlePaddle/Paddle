@@ -124,6 +124,8 @@ class RecurrentAlgorithm {
    */
   void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const;
 
+  std::string debug_string() const;
+
  protected:
   /*
    * Get the max sequence length of the scope.

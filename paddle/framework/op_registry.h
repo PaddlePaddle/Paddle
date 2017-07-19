@@ -218,9 +218,11 @@ class OpRegistry {
     //! Create a OpPtr by type.
     std::string op_type = op_desc.type();
     OperatorPtr op(creators().at(op_type)());
+    LOG(INFO) << "get op";
     //! Fill op's data member. Not use constructor because it will be noising
     //! for Op developer.
     const OpProto& op_proto = protos().at(op_type);
+    LOG(INFO) << "get proto";
     op->type_ = op_desc.type();
     // set op's inputs_ from desc.
     op->inputs_.reserve((size_t)op_desc.inputs_size());
@@ -231,19 +233,25 @@ class OpRegistry {
     std::copy(op_desc.outputs().begin(), op_desc.outputs().end(),
               std::back_inserter(op->outputs_));
 
+    LOG(INFO) << "set attr";
     //! Fill attrs, and validate attrs.
     for (auto& attr : op_desc.attrs()) {
+      LOG(INFO) << "set attr: " << attr.name();
       op->attrs_[attr.name()] = AttrTypeHelper::GetAttrValue(attr);
     }
+    LOG(INFO) << "check attrs";
     op_checkers().at(op_type).Check(op->attrs_);
 
+    LOG(INFO) << "generate tmp variable name";
     //! Convert Temporary variable name to an unique variable name.
     GenerateTempVariableName(op.get());
 
+    LOG(INFO) << "create in out offset map";
     // set argument offsets stored in op.
     CreateInOutOffsetMap(op, op_proto);
     //! Other op's custom Init for a complex Op. For simple Op, the Init
     //! method do nothing.
+    LOG(INFO) << "call op->Init";
     op->Init();
     return op;
   }
