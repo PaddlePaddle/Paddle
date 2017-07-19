@@ -33,7 +33,9 @@ std::shared_ptr<PlainNet> AddBackwardOp(std::shared_ptr<PlainNet> ForwardOps) {
   return grad_ops;
 }
 
-void PlainNet::CompleteAddOp() {
+void PlainNet::CompleteAddOp(bool calc) {
+  add_op_done_ = true;
+  if (!calc) return;
   std::unordered_set<std::string> input_set;
   std::unordered_set<std::string> output_set;
   std::unordered_set<std::string> temp_output;
@@ -66,7 +68,6 @@ void PlainNet::CompleteAddOp() {
   }
 
   attrs_["temporary_index"] = tmp_index;
-  add_op_done_ = true;
 }
 
 std::string PlainNet::DebugString() const {

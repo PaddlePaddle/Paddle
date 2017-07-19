@@ -4,6 +4,7 @@
 #include <functional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "paddle/framework/enforce.h"
 
@@ -41,6 +42,35 @@ class DefaultValueSetter {
   T default_value_;
 };
 
+template <typename T>
+class EnumInContainer {
+ public:
+  explicit EnumInContainer(const std::unordered_set<T>& c) : container_(c) {}
+  void operator()(T& val) const {
+    PADDLE_ENFORCE(container_.find(val) != container_.end(),
+                   "Value %s is not in enum container %s", val,
+                   ContainerDebugString());
+  }
+
+ private:
+  std::string ContainerDebugString() const {
+    std::ostringstream sout;
+    sout << "[";
+    size_t cnt = 0;
+    for (auto& v : container_) {
+      sout << v;
+      ++cnt;
+      if (cnt != container_.size()) {
+        sout << " ,";
+      }
+    }
+    sout << "]";
+    return sout.str();
+  }
+
+  std::unordered_set<T> container_;
+};
+
 // check whether a certain attribute fit its limits
 // an attribute can have more than one limits
 template <typename T>
@@ -49,6 +79,11 @@ class TypedAttrChecker {
 
  public:
   TypedAttrChecker(const std::string& attr_name) : attr_name_(attr_name) {}
+
+  TypedAttrChecker& InEnum(const std::unordered_set<T>& range) {
+    value_checkers_.push_back(EnumInContainer<T>(range));
+    return *this;
+  }
 
   TypedAttrChecker& LargerThan(const T& lower_bound) {
     value_checkers_.push_back(LargerThanChecker<T>(lower_bound));
