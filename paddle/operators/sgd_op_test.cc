@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#define private public
 #include <paddle/framework/op_registry.h>
 USE_OP(sgd);
 TEST(SGDOp, GetOpProto) {
