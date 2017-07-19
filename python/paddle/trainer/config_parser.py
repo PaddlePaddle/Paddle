@@ -2005,29 +2005,6 @@ class CropLayer(LayerBase):
         image_conf.img_size_y = input_layer.height
         image_conf.channels = input_layer.size / (input_layer.width *
                                                   input_layer.height)
-        out_ch = image_conf.channels
-        out_h = image_conf.img_size
-        out_w = image_conf.img_size_y
-        if len(self.inputs) == 2:
-            # get channels, width and height from input_1 layer
-            input_layer = self.get_input_layer(1)
-            image_conf = self.config.inputs[1].image_conf
-            image_conf.img_size = input_layer.width
-            image_conf.img_size_y = input_layer.height
-            image_conf.channels = input_layer.size / (input_layer.width *
-                                                      input_layer.height)
-            out_ch = image_conf.channels
-            out_h = image_conf.img_size_y
-            out_w = image_conf.img_size
-        else:
-            # set channels, width and heigth of current layer
-            if len(shape) > 2:
-                out_ch = shape[-3]
-            if len(shape) > 1:
-                out_h = shape[-2]
-            if len(shape) > 0:
-                out_w = shape[-1]
-        self.set_cnn_layer(name, out_h, out_w, out_ch)
 
 
 @config_layer('batch_norm')

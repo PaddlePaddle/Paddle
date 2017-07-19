@@ -37,9 +37,9 @@ template <>
 void Crop<DEVICE_TYPE_GPU>(real* outputs,
                           const real* inputs,
 						  const TensorShape inShape,
+						  const TensorShape outShape,
                           const FuncConfig& conf) {
   std::vector<uint32_t> crop_corner = conf.get<std::vector<uint32_t>>("crop_corner");
-  std::vector<uint32_t> crop_shape = conf.get<std::vector<uint32_t>>("crop_shape");
   int cropC = crop_corner[1];
   int cropH = crop_corner[2];
   int cropW = crop_corner[3];
@@ -49,14 +49,14 @@ void Crop<DEVICE_TYPE_GPU>(real* outputs,
   int inH = inShape[2];
   int inW = inShape[3];
 
-  int outC = crop_shape[1];
-  int outH = crop_shape[2];
-  int outW = crop_shape[3];
-  
+  int outC = outShape[1];
+  int outH = outShape[2];
+  int outW = outShape[3];
+
   size_t nth = num * outC * outH * outW;
   int blockSize = 1024;
   int gridSize = (nth + blockSize - 1) / blockSize;
-  
+
   KeCrop<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
     (outputs, inputs, inC, inH, inW, cropC, cropH, cropW,
      outC, outH, outW, nth);
@@ -75,7 +75,7 @@ __global__ void KeCropDiff(const real* inGrad, real* outGrad,
     const int n = idx / inW / inH / inC;
 
     const int off = ((n * outC + c + cropC) * outH + h + cropH) * outW + cropW + w;
-    
+
     outGrad[off] += inGrad[idx];
   }
 }
@@ -83,10 +83,10 @@ __global__ void KeCropDiff(const real* inGrad, real* outGrad,
 template <>
 void CropGrad<DEVICE_TYPE_GPU>(const real* inGrad,
                               real* outGrad,
+                              const TensorShape inShape,
                               const TensorShape outShape,
                               const FuncConfig& conf) {
   std::vector<uint32_t> crop_corner = conf.get<std::vector<uint32_t>>("crop_corner");
-  std::vector<uint32_t> crop_shape = conf.get<std::vector<uint32_t>>("crop_shape");
   int cropC = crop_corner[1];
   int cropH = crop_corner[2];
   int cropW = crop_corner[3];
@@ -96,10 +96,10 @@ void CropGrad<DEVICE_TYPE_GPU>(const real* inGrad,
   int outH = outShape[2];
   int outW = outShape[3];
 
-  int inC = crop_shape[1];
-  int inH = crop_shape[2];
-  int inW = crop_shape[3];
-  
+  int inC = inShape[1];
+  int inH = inShape[2];
+  int inW = inShape[3];
+
   size_t nth = num * inC * inH * inW;
   int blockSize = 1024;
   int gridSize = (nth + blockSize - 1) / blockSize;

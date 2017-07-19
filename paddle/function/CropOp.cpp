@@ -22,11 +22,10 @@ template <>
 void Crop<DEVICE_TYPE_CPU>(real* outputs,
                            const real* inputs,
                            const TensorShape inShape,
+                           const TensorShape outShape,
                            const FuncConfig& conf) {
   std::vector<uint32_t> crop_corner =
       conf.get<std::vector<uint32_t>>("crop_corner");
-  std::vector<uint32_t> crop_shape =
-      conf.get<std::vector<uint32_t>>("crop_shape");
   int cCrop = crop_corner[1];
   int hCrop = crop_corner[2];
   int wCrop = crop_corner[3];
@@ -36,9 +35,9 @@ void Crop<DEVICE_TYPE_CPU>(real* outputs,
   int inH = inShape[2];
   int inW = inShape[3];
 
-  int outC = crop_shape[1];
-  int outH = crop_shape[2];
-  int outW = crop_shape[3];
+  int outC = outShape[1];
+  int outH = outShape[2];
+  int outW = outShape[3];
 
   for (int n = 0; n < num; n++) {
     for (int c = 0; c < outC; c++) {
@@ -54,12 +53,11 @@ void Crop<DEVICE_TYPE_CPU>(real* outputs,
 template <>
 void CropGrad<DEVICE_TYPE_CPU>(const real* inGrad,
                                real* outGrad,
+                               const TensorShape inShape,
                                const TensorShape outShape,
                                const FuncConfig& conf) {
   std::vector<uint32_t> crop_corner =
       conf.get<std::vector<uint32_t>>("crop_corner");
-  std::vector<uint32_t> crop_shape =
-      conf.get<std::vector<uint32_t>>("crop_shape");
   int cCrop = crop_corner[1];
   int hCrop = crop_corner[2];
   int wCrop = crop_corner[3];
@@ -69,9 +67,9 @@ void CropGrad<DEVICE_TYPE_CPU>(const real* inGrad,
   int outH = outShape[2];
   int outW = outShape[3];
 
-  int inC = crop_shape[1];
-  int inH = crop_shape[2];
-  int inW = crop_shape[3];
+  int inC = inShape[1];
+  int inH = inShape[2];
+  int inW = inShape[3];
 
   for (int n = 0; n < num; n++) {
     for (int c = 0; c < inC; c++) {
@@ -123,9 +121,13 @@ public:
     CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
 
     TensorShape inShape = inputs[0].shape();
+    TensorShape outShape = outputs[0].shape();
 
-    Crop<Device>(
-        outputs[0].data<real>(), inputs[0].data<real>(), inShape, conf_);
+    Crop<Device>(outputs[0].data<real>(),
+                 inputs[0].data<real>(),
+                 inShape,
+                 outShape,
+                 conf_);
   }
 
 private:
@@ -152,9 +154,13 @@ public:
     CHECK_EQ(outputs[0].getArgType(), ADD_TO);
 
     TensorShape outShape = outputs[0].shape();
+    TensorShape inShape = inputs[0].shape();
 
-    CropGrad<Device>(
-        inputs[0].data<real>(), outputs[0].data<real>(), outShape, conf_);
+    CropGrad<Device>(inputs[0].data<real>(),
+                     outputs[0].data<real>(),
+                     inShape,
+                     outShape,
+                     conf_);
   }
 
 private:

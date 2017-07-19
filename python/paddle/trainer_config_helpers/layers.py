@@ -5881,9 +5881,9 @@ def prelu_layer(input,
 
 @wrap_name_default()
 @layer_support()
-def crop_layer(input, axis, offset, shape=None, name=None, layer_attr=None):
+def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
     """
-    The crop layer crop images by offset and shape. User can set crop shape by
+    The crop layer crops images by offset and shape. User can set crop shape by
     args 'shape' explicitly or by reference input layer.
 
 
@@ -5896,24 +5896,22 @@ def crop_layer(input, axis, offset, shape=None, name=None, layer_attr=None):
     :param input: The input layer.If two inputs were setted,
                     the second input will be regarded as reference input
     :type input: LayerOutput or Sequence
+    :param offset: The crop offset
+    :type offset: Sequence
     :param axis: start axis to be cropped. To image input layer:
         - 0: batch size
         - 1: channels
         - 2: height
         - 3: width
     :type partial_sum: int
-    :param offset: The crop offset
-    :type offset: Sequence
     :param shape: The shape to be cropped. Default is None.
-    :type shape: Sqquence | None
+    :type shape: Sequence | None
     :param name: Name of this layer.
     :type name: basestring
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
     if isinstance(input, LayerOutput):
-        input = [input]
-    elif isinstance(input, Projection):
         input = [input]
     else:
         assert isinstance(input, collections.Sequence)

@@ -39,13 +39,12 @@ public:
   void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
-  void setOutDims(const size_t batchSize);
-  void setTensorDim(const size_t batchSize);
+  void setOutDims();
+  void setInDims();
 
   int32_t crop_axis_;
   std::vector<uint32_t> crop_offsets_;
   std::vector<uint32_t> crop_corner_;
-  std::vector<uint32_t> crop_shape_;
   TensorShape inDims_;
   TensorShape targetDims_;
   TensorShape outDims_;

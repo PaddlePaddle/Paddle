@@ -31,6 +31,7 @@ template <DeviceType Device>
 void Crop(real* outputs,
           const real* inputs,
           const TensorShape inShape,
+          const TensorShape outShape,
           const FuncConfig& conf);
 
 /**
@@ -45,5 +46,6 @@ template <DeviceType Device>
 void CropGrad(const real* inGrad,
               real* outGrad,
               const TensorShape inShape,
+              const TensorShape outShape,
               const FuncConfig& conf);
 }  // namespace paddle

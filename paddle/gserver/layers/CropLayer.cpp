@@ -22,7 +22,8 @@ bool CropLayer::init(const LayerMap& layerMap,
                      const ParameterMap& parameterMap) {
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
-
+  CHECK_LE(static_cast<int>(inputLayers_.size()), 2);
+  CHECK_GE(static_cast<int>(inputLayers_.size()), 1);
   crop_axis_ = config_.axis();
   for (int i = 0; i < config_.offset_size(); i++) {
     crop_offsets_.push_back(config_.offset(i));
@@ -36,8 +37,14 @@ bool CropLayer::init(const LayerMap& layerMap,
                              ? input0_img_conf.img_size_y()
                              : input0_img_conf.img_size(),
                          input0_img_conf.img_size()});
-  // 2. get output shape from input_1 or crop shap conf
-  if (config_.inputs_size() == 2) {
+  // 2. get target dims from config
+  if (config_.inputs_size() == 1) {
+    targetDims_ = TensorShape({config_.shape(0),
+                               config_.shape(1),
+                               config_.shape(2),
+                               config_.shape(3)});
+  } else {
+    // 2. get input_1 shape
     auto& input1_img_conf = config_.inputs(1).image_conf();
     targetDims_ = TensorShape({0,
                                input1_img_conf.channels(),
@@ -45,24 +52,10 @@ bool CropLayer::init(const LayerMap& layerMap,
                                    ? input1_img_conf.img_size_y()
                                    : input1_img_conf.img_size(),
                                input1_img_conf.img_size()});
-  } else {
-    targetDims_ = TensorShape({config_.shape(0),
-                               config_.shape(1),
-                               config_.shape(2),
-                               config_.shape(3)});
   }
 
-  // 3. get final crop shape
+  // 3. get final crop corner
   int dimSize = 4;
-  for (int i = 0; i < dimSize; i++) {
-    if (i >= crop_axis_) {
-      crop_shape_.push_back(targetDims_[i]);
-    } else {
-      crop_shape_.push_back(inDims_[i]);
-    }
-  }
-
-  // 4. get final crop corner
   crop_corner_ = {0, 0, 0, 0};
   for (int i = 0; i < dimSize; i++) {
     if (i >= crop_axis_) {
@@ -75,43 +68,61 @@ bool CropLayer::init(const LayerMap& layerMap,
   }
 
   outDims_ = TensorShape(4);
-  setOutDims(0);
 
-  createFunction(forward_,
-                 "Crop",
-                 FuncConfig()
-                     .set("crop_corner", crop_corner_)
-                     .set("crop_shape", crop_shape_));
-  createFunction(backward_,
-                 "CropGrad",
-                 FuncConfig()
-                     .set("crop_corner", crop_corner_)
-                     .set("crop_shape", crop_shape_));
+  createFunction(
+      forward_, "Crop", FuncConfig().set("crop_corner", crop_corner_));
+  createFunction(
+      backward_, "CropGrad", FuncConfig().set("crop_corner", crop_corner_));
 
   return true;
 }
 
-void CropLayer::setOutDims(const size_t batchSize) {
-  outDims_.reshape({batchSize, crop_shape_[1], crop_shape_[2], crop_shape_[3]});
+void CropLayer::setOutDims() {
+  MatrixPtr input = inputLayers_[1]->getOutputValue();
+  size_t batchSize = input->getHeight();
+  // get target dims from input_1
+  if (config_.inputs_size() == 2) {
+    targetDims_.setDim(0, batchSize);
+    int ch = config_.inputs(0).image_conf().channels();
+    if (ch != 0) targetDims_.setDim(1, ch);
+    int h = inputLayers_[1]->getOutput().getFrameHeight();
+    if (h != 0) targetDims_.setDim(2, h);
+    int w = inputLayers_[1]->getOutput().getFrameWidth();
+    if (w != 0) targetDims_.setDim(3, w);
+  }
+  // get final crop shape from target dims and crop axis
+  std::vector<uint32_t> crop_shape;
+  int dimSize = 4;
+  for (int i = 0; i < dimSize; i++) {
+    if (i >= crop_axis_) {
+      crop_shape.push_back(targetDims_[i]);
+    } else {
+      crop_shape.push_back(inDims_[i]);
+    }
+  }
+
+  outDims_.reshape(
+      {crop_shape[0], crop_shape[1], crop_shape[2], crop_shape[3]});
+  output_.setFrameHeight(crop_shape[2]);
+  output_.setFrameWidth(crop_shape[3]);
 }
 
-void CropLayer::setTensorDim(const size_t batchSize) {
-  CHECK_EQ(static_cast<int>(inputLayers_.size()), 2);
+void CropLayer::setInDims() {
+  MatrixPtr input = inputLayers_[0]->getOutputValue();
+  size_t batchSize = input->getHeight();
   inDims_.setDim(0, batchSize);
   int h = inputLayers_[0]->getOutput().getFrameHeight();
   if (h != 0) inDims_.setDim(2, h);
   int w = inputLayers_[0]->getOutput().getFrameWidth();
   if (w != 0) inDims_.setDim(3, w);
-  setOutDims(batchSize);
 }
 
 void CropLayer::forward(PassType passType) {
   Layer::forward(passType);
-  MatrixPtr input = inputLayers_[0]->getOutputValue();
-  size_t batchSize = input->getHeight();
-  setTensorDim(batchSize);
+  setInDims();
+  setOutDims();
   int size = outDims_[1] * outDims_[2] * outDims_[3];
-  resetOutput(batchSize, size);
+  resetOutput(outDims_[0], size);
   MatrixPtr outV = getOutputValue();
   REGISTER_TIMER_INFO("CropForward", getName().c_str());
 
