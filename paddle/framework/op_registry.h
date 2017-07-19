@@ -78,7 +78,7 @@ class OpProtoAndCheckerMaker {
     auto input = proto_->mutable_inputs()->Add();
     *input->mutable_name() = name;
     *input->mutable_comment() = comment;
-    *input->set_ignore_gradient(ignore_gradient);
+    input->set_ignore_gradient(ignore_gradient);
     input->set_multiple(multiple);
     if (multiple) {
       SetHasMultipleInput();
@@ -96,7 +96,7 @@ class OpProtoAndCheckerMaker {
     auto output = proto_->mutable_outputs()->Add();
     *output->mutable_name() = name;
     *output->mutable_comment() = comment;
-    *output->set_ignore_gradient(ignore_gradient);
+    output->set_ignore_gradient(ignore_gradient);
     output->set_multiple(multiple);
     if (multiple) {
       SetHasMultipleOutput();
