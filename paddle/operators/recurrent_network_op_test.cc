@@ -258,13 +258,13 @@ protected:
     arg->step_net = "step_net";
     arg->step_scopes = "step_scopes";
     rnn::Link inlink;
-    inlink.internal = "h_grad";
-    inlink.external = "rnn/h_grad";
+    inlink.external = "h_grad";
+    inlink.internal = "rnn/h_grad";
     arg->inlinks = std::vector<rnn::Link>{inlink};
 
     rnn::Link outlink;
-    outlink.internal = "x_grad";
-    outlink.external = "rnn/x_grad";
+    outlink.external = "x_grad";
+    outlink.internal = "rnn/x_grad";
     arg->outlinks = std::vector<rnn::Link>{outlink};
 
     rnn::MemoryAttr mem_attr;
@@ -296,8 +296,8 @@ protected:
     std::vector<std::string> inlinks_alias = {"rnn/x"};
 
     rnn::Link inlink;
-    inlink.internal = "x";
-    inlink.external = "rnn/x";
+    inlink.external = "x";
+    inlink.internal = "rnn/x";
     std::vector<ScopePtr>* step_scopes =
         scope_->GetVariable("step_scopes")->GetMutable<std::vector<ScopePtr>>();
     rnn::SegmentInputs(*step_scopes, std::vector<rnn::Link>{inlink});

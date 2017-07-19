@@ -32,12 +32,12 @@ void SegmentInputs(std::vector<ScopePtr>& step_scopes,
   PADDLE_ENFORCE(!inlinks.empty(), "no in links are provided.");
   for (size_t i = 0; i < inlinks.size(); ++i) {
     Tensor* input =
-        step_scopes[0]->GetVariable(inlinks[i].internal)->GetMutable<Tensor>();
+        step_scopes[0]->GetVariable(inlinks[i].external)->GetMutable<Tensor>();
     DDim dims = input->dims();
     DDim step_dims = slice_ddim(dims, 1, dims.size());
     for (size_t j = 0; j < step_scopes.size(); j++) {
       Tensor* step_input = step_scopes[j]
-                               ->CreateVariable(inlinks[i].external)
+                               ->CreateVariable(inlinks[i].internal)
                                ->GetMutable<Tensor>();
       *step_input = input->Slice<float>(j, j + 1);
       step_input->set_dims(step_dims);
@@ -49,20 +49,20 @@ void ConcatOutputs(std::vector<ScopePtr>& step_scopes,
                    const std::vector<Link>& outlinks) {
   for (size_t i = 0; i < outlinks.size(); i++) {
     DDim step_dims = step_scopes[0]
-                         ->GetVariable(outlinks[i].external)
+                         ->GetVariable(outlinks[i].internal)
                          ->GetMutable<Tensor>()
                          ->dims();
     std::vector<int> dims_vec = vectorize(step_dims);
     dims_vec.insert(dims_vec.begin(), step_scopes.size());
 
     Tensor* output = step_scopes[0]
-                         ->CreateVariable(outlinks[i].internal)
+                         ->CreateVariable(outlinks[i].external)
                          ->GetMutable<Tensor>();
     output->mutable_data<double>(make_ddim(dims_vec), platform::CPUPlace());
 
     for (size_t j = 0; j < step_scopes.size(); j++) {
       Tensor* step_output = step_scopes[j]
-                                ->CreateVariable(outlinks[i].external)
+                                ->CreateVariable(outlinks[i].internal)
                                 ->GetMutable<Tensor>();
       (output->Slice<float>(j, j + 1))
           .CopyFrom<float>(*step_output, platform::CPUPlace());
@@ -116,8 +116,8 @@ void InitArgument(const ArgumentName& name,
                  inlink_alias.size());
   for (size_t i = 0; i < inlinks.size(); ++i) {
     rnn::Link link;
-    link.internal = inlinks[i];
-    link.external = inlink_alias[i];
+    link.external = inlinks[i];
+    link.internal = inlink_alias[i];
     (arg->inlinks).push_back(link);
   }
 
@@ -129,8 +129,8 @@ void InitArgument(const ArgumentName& name,
                  outlink_alias.size());
   for (size_t i = 0; i < outlinks.size(); ++i) {
     rnn::Link link;
-    link.internal = outlinks[i];
-    link.external = outlink_alias[i];
+    link.external = outlinks[i];
+    link.internal = outlink_alias[i];
     (arg->outlinks).push_back(link);
   }
 
@@ -198,12 +198,12 @@ std::string RecurrentAlgorithm::debug_string() const {
   ss << "step_scopes_name_:\t" << arg_->step_scopes << '\n';
 
   for (const auto& item : arg_->inlinks) {
-    ss << "inlink:\t" << item.internal << "\t inlink alias:" << item.external
+    ss << "inlink:\t" << item.external << "\t inlink alias:" << item.internal
        << '\n';
   }
 
   for (const auto& item : arg_->outlinks) {
-    ss << "outlink:\t" << item.internal << "\t outlink alias:" << item.external
+    ss << "outlink:\t" << item.external << "\t outlink alias:" << item.internal
        << '\n';
   }
   for (const auto& item : arg_->memories) {
@@ -215,7 +215,7 @@ std::string RecurrentAlgorithm::debug_string() const {
 
 void RecurrentAlgorithm::CreateScopes(ScopePtr scope) const {
   // TODO(xxx) update this function when using variable-length of sequence.
-  size_t max_seq_len = scope->GetVariable((arg_->inlinks[0]).internal)
+  size_t max_seq_len = scope->GetVariable((arg_->inlinks[0]).external)
                            ->GetMutable<Tensor>()
                            ->dims()[0];
   DLOG(INFO) << "sequence length " << max_seq_len;
@@ -325,7 +325,7 @@ void RecurrentGradientAlgorithm::Run(
   Variable* net = scope->GetVariable(arg_->step_net);
   PADDLE_ENFORCE(net, "failed to get step net");
 
-  size_t max_seq_len = scope->GetVariable((arg_->inlinks[0]).internal)
+  size_t max_seq_len = scope->GetVariable((arg_->inlinks[0]).external)
                            ->GetMutable<Tensor>()
                            ->dims()[0];
   DLOG(INFO) << "sequence length " << max_seq_len;

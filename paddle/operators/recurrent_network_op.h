@@ -92,7 +92,7 @@ void InitArgument(const ArgumentName& name, Argument* arg);
 // TODO:
 // 1. No-padding computing for sequences with indifinite length in one batch.
 // 2. Hierarchical RNN for sequence with sub-sequence.
-// 3. External Memory.
+// 3. Internal Memory.
 // 4. More Complex RNN architecture, such as Gated Feedback RNN.
 //    Refer to: https://arxiv.org/pdf/1502.02367.pdf
 
