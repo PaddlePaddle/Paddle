@@ -23,12 +23,31 @@ template <typename Place, typename T>
 class CrossEntropyOpKernel : public framework::OpKernel {
 public:
   void Compute(const framework::KernelContext& context) const override {
-    auto input0 = context.Input(0)->Get<framework::Tensor>();
-    auto input1 = context.Input(1)->Get<framework::Tensor>();
-    auto* output = context.Output(0)->GetMutable<framework::Tensor>();
+    auto X = context.Input(0)->Get<framework::Tensor>();
+    const float* X_data = X.data<float>();
+    const float* label_data =
+        context.Input(1)->Get<framework::Tensor>().data<float>();
+    float* Y_data =
+        context.Output(0)->GetMutable<framework::Tensor>()->raw_data<float>();
 
-    output->mutable_data<T>(context.GetPlace());
-    // real compute
+    int input_rank = (int)X.dims().size();
+    int batch_size, class_num;
+    if (input_rank == 1) {
+      batch_size = 1;
+      class_num = X.dims()[0];
+    } else {
+      batch_size = X.dims()[0];
+      class_num = X.dims()[1];
+    }
+
+    // Y[i] = sum_j (label[i][j] * log(X[i][j]))
+    for (int i = 0; i < batch_size; ++i) {
+      Y_data[i] = 0;
+      for (int j = 0; j < class_num; ++j) {
+        Y_data[i] +=
+            label_data[i * class_num + j] * std::log(X_data[i * class_num + j]);
+      }
+    }
   }
 };
 

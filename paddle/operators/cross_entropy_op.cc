@@ -33,7 +33,16 @@ protected:
         "Inputs/Outputs of CrossEntropyOp must all be set");
     PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
                    "Two input of CrossEntropyOp's dimension must be same.");
-    // set dim
+    int input_rank = (int)inputs[0]->dims().size();
+    PADDLE_ENFORCE(input_rank >= 1, "data rank should be larger than 0");
+    PADDLE_ENFORCE(input_rank <= 2, "data rank should be less than 3");
+    int batch_size;
+    if (input_rank == 1) {
+      batch_size = 1;
+    } else {
+      batch_size = inputs[0]->dims()[0];
+    }
+    outputs[0]->set_dims(framework::make_ddim({batch_size}));
   }
 };
 
