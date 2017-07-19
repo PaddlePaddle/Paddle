@@ -14,48 +14,10 @@
 
 #pragma once
 
-#include <glog/logging.h>
-#include <google/protobuf/text_format.h>
-
-#include "paddle/framework/attr_checker.h"
-#include "paddle/framework/ddim.h"
-#include "paddle/framework/enforce.h"
-#include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/operator.h"
-#include "paddle/framework/scope.h"
-#include "paddle/framework/variable.h"
 
 namespace paddle {
 namespace framework {
-
-// --------------------------------------------------------------------
-// fake interfaces that has not be implemented by other modules.
-// TODO keep updating according to other modules' designs.
-
-struct NetDesc {
-  std::string name_;
-  std::vector<OpDesc> op_descs;
-};
-
-class PlainNet {
- public:
-  PlainNet() {}
-  PlainNet(const NetDesc& desc) {
-    for (const OpDesc& proto : desc.op_descs) {
-      AddOp(proto);
-    }
-  }
-  // PlainNet(const std::string desc) {}
-  void AddOp(const OpDesc& desc);
-  void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) {
-    for (auto& op : ops_) {
-      op->Run(scope, dev_ctx);
-    }
-  }
-
- private:
-  std::vector<std::unique_ptr<OperatorBase>> ops_;
-};
 
 namespace details {
 
@@ -166,27 +128,7 @@ class RecurrentAlgorithm {
 
  private:
   friend class RecurrentOp;
-  /*
-   * The attributes in protobuf about the memory description and the initial
-   * memory description are as follows. The number of initial memories should
-   * equal to the memories number.
-   *
-   *   arg {
-   *       name: "memories"
-   *       strings: "hidden"
-   *       strings: "state"
-   *   }
-   *   arg {
-   *       name: “pre_memories"
-   *       strings: "pre_hidden"
-   *       strings: "pre_state"
-   *   }
-   *   arg {
-   *       name: “boot_memories"
-   *       strings: "boot_hidden"
-   *       strings: "boot_state"
-   *   }
-   */
+
   std::vector<details::MemoryAttr> memory_attrs_;
 
   // name of rnn op's step net, the step net will be shared by both `Forward`

@@ -12,14 +12,15 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include "paddle/framework/recurrent_network_op.h"
+
 #include <glog/logging.h>
 #include <cstring>
 #include <sstream>
 
-#include "paddle/framework/enforce.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/framework/recurrent_network_op.h"
-#include "paddle/framework/tensor.h"
+// #include "paddle/framework/tensor.h"
+#include "paddle/framework/net.h"
 
 namespace paddle {
 namespace framework {
@@ -70,30 +71,29 @@ void ConcatOutputs(std::vector<ScopePtr>& step_scopes,
   }
 }
 
-void LinkMemories(std::vector<ScopePtr>& step_scopes,
+void LinkMemories(std::vector<ScopePtr>& scopes,
                   const std::vector<details::MemoryAttr>& memories,
                   size_t step_id, int offset) {
-  PADDLE_ENFORCE(step_id < step_scopes.size(),
+  PADDLE_ENFORCE(step_id < scopes.size(),
                  "step [%d] is out of range of step scopes' size [%d]", step_id,
-                 step_scopes.size());
-  PADDLE_ENFORCE((static_cast<int>(step_id) + offset) >= 0 &&
-                     (step_id + offset) < step_scopes.size(),
-                 "the step id [%d] and offset [%d] is out of range", step_id,
-                 offset);
-  ScopePtr step_scope = step_scopes[step_id];
-  ScopePtr linked_step_scope = step_scopes[step_id + offset];
+                 scopes.size());
+  PADDLE_ENFORCE(static_cast<int>(step_id) + offset >= 0,
+                 "offset [%d] must be large than -[%d]", offset, step_id);
+  PADDLE_ENFORCE(step_id + offset < scopes.size(),
+                 "offset [%d] is out of range, it must be less than (%d - %d)",
+                 offset, scopes.size(), step_id);
+  ScopePtr scope = scopes[step_id];
+  ScopePtr linked_scope = scopes[step_id + offset];
   for (auto& attr : memories) {
-    auto cur_step_pre_mem =
-        step_scope->CreateVariable(attr.pre_var)->GetMutable<Tensor>();
-    auto linked_step_mem =
-        linked_step_scope->GetVariable(attr.var)->GetMutable<Tensor>();
-    cur_step_pre_mem->ShareDataFrom<float>(*linked_step_mem);
+    auto mem = scope->CreateVariable(attr.pre_var)->GetMutable<Tensor>();
+    auto linked_mem = linked_scope->GetVariable(attr.var)->GetMutable<Tensor>();
+    mem->ShareDataFrom<float>(*linked_mem);
 
-    // TODO(qingqing) the memory of current step should be allocated in step net
-    auto cur_step_mem =
-        step_scope->CreateVariable(attr.var)->GetMutable<Tensor>();
-    cur_step_mem->mutable_data<float>(cur_step_pre_mem->dims(),
-                                      platform::CPUPlace());
+    // TODO(qingqing) remove following code
+    // for unit test
+    // the memory of current step should be allocated in step net
+    auto m = scope->CreateVariable(attr.var)->GetMutable<Tensor>();
+    m->mutable_data<float>(mem->dims(), platform::CPUPlace());
   }
 }
 
