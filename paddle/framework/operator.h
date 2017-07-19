@@ -63,6 +63,11 @@ class OperatorBase {
   /// but it will be convert to a unique name in scope after OpCreator.
   static std::string TMP_VAR_NAME() { return "@TEMP@"; }
 
+  /// If a variable's name has a certain suffix, it means that the
+  /// variable is the gradient of another varibale.
+  /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
+  static std::string GRAD_VAR_SUFFIX() { return "@GRAD"; }
+
   virtual ~OperatorBase() {}
 
   template <typename T>
