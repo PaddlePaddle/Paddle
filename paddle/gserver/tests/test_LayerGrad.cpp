@@ -349,13 +349,13 @@ TEST(Layer, CosSimVecMatLayer) {
 
 void testDepthwiseConvLayer(const string& type, bool useGpu) {
   TestConfig config;
-  config.biasSize = 16;
+  config.biasSize = 32;
   config.layerConfig.set_type(type);
-  config.layerConfig.set_num_filters(16);
+  config.layerConfig.set_num_filters(32);
   config.layerConfig.set_partial_sum(1);
   config.layerConfig.set_shared_biases(true);
 
-  config.inputDefs.push_back({INPUT_DATA, "layer_0", 2048, 192 / 2});
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 2048, 192});
   LayerInputConfig* input = config.layerConfig.add_inputs();
   ConvConfig* conv = input->mutable_conv_conf();
   conv->set_filter_size(2);
@@ -388,8 +388,11 @@ void testDepthwiseConvLayer(const string& type, bool useGpu) {
 }
 
 TEST(Layer, depthwiseConvLayer) {
+  //  'depthwise_conv' is a sepecial case of 'exconv' whose
+  //  groups size equals to the input channels size.
+  testDepthwiseConvLayer("exconv", /* useGpu= */ false);
 #ifndef PADDLE_ONLY_CPU
-  testDepthwiseConvLayer("depthwise_conv", /* useGpu= */ true);
+  testDepthwiseConvLayer("exconv", /* useGpu= */ true);
 #endif
 }
 

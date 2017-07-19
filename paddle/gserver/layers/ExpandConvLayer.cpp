@@ -39,21 +39,22 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
   filterShape_.resize(numInputs);
   outputShape_.resize(numInputs);
 
-  string convType;
-  string convGradInputType;
-  string convGradFilterType;
+  std::string convType;
+  std::string convGradInputType;
+  std::string convGradFilterType;
 
   for (int i = 0; i < config_.inputs_size(); i++) {
     std::vector<size_t> paddings = {(size_t)paddingY_[i], (size_t)padding_[i]};
     std::vector<size_t> strides = {(size_t)strideY_[i], (size_t)stride_[i]};
 
     if (useGpu_ && (size_t)groups_[i] == (size_t)channels_[i] && !isDeconv_) {
-      convType = "DepthwiseConv" convGradInputType =
-          "DepthwiseConvGradInput" convGradFilterType =
-              "DepthwiseConvGradFilter"
+      convType = "DepthwiseConv";
+      convGradInputType = "DepthwiseConvGradInput";
+      convGradFilterType = "DepthwiseConvGradFilter";
     } else {
-      convType = "GemmConv" convGradInputType =
-          "GemmConvGradInput" convGradFilterType = "GemmConvGradFilter"
+      convType = "GemmConv";
+      convGradInputType = "GemmConvGradInput";
+      convGradFilterType = "GemmConvGradFilter";
     }
 
     if (FLAGS_use_nnpack) {
