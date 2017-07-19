@@ -32,6 +32,10 @@ TEST(Eigen, Tensor) {
   }
 
   EigenTensor<float, 3>::Type et = EigenTensor<float, 3>::From(t);
+
+  for (int i = 0; i < 1 * 2 * 3; i++) {
+    EXPECT_EQ(et(i), i);
+  }
   // TODO: check the content of et.
 }
 
@@ -39,5 +43,5 @@ TEST(Eigen, Vector) {}
 
 TEST(Eigen, Matrix) {}
 
-}  // namespace platform
+}  // namespace framework
 }  // namespace paddle
