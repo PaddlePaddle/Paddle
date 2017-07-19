@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <functional>
 #include <thread>
+#include "OptimizerConfig.pb.h"
 #include "ParameterUpdater.h"
 #include "libpaddle_pserver_cclient.h"
 #include "paddle/pserver/ParameterClient2.h"
@@ -31,6 +32,9 @@ class NewRemoteParameterUpdater : public ParameterUpdater {
 public:
   NewRemoteParameterUpdater(const OptimizationConfig& config,
                             const std::string pserverSpec);
+  NewRemoteParameterUpdater(const OptimizationConfig& config,
+                            const std::string pserverSpec,
+                            const bool useEtcd);
   ~NewRemoteParameterUpdater() {
     releaseNewParameter(newParameters_);
     releaseNewParameter(newGradients_);
@@ -101,6 +105,7 @@ private:
   }
 
 protected:
+  const OptimizationConfig& trainerConfig_;
   /// internal parameter client object for exchanging data with pserver
   paddle_pserver_client parameterClient_;
   /// the parameters for new pserver client
@@ -109,6 +114,8 @@ protected:
   paddle_parameter** newGradients_;
   /// the specification of parameter server "host1:port,host1:port"
   std::string pserverSpec_;
+  /// true if pserverSpec_ is etcd endpoint, else pserverSpec_ is pserver addr
+  bool useEtcd_;
 };
 
 }  // namespace paddle

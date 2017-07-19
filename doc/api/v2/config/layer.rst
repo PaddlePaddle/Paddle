@@ -474,6 +474,11 @@ prelu
 ..  autoclass:: paddle.v2.layer.prelu
     :noindex:
 
+gated_unit
+-----------
+..  autoclass:: paddle.v2.layer.gated_unit
+    :noindex:
+
 Detection output Layer
 ======================
 
