@@ -103,6 +103,7 @@ __all__ = [
     'nce_layer',
     'cross_entropy_with_selfnorm',
     'cross_entropy',
+    'pixel_cross_entropy',
     'multi_binary_label_cross_entropy',
     'sum_cost',
     'rank_cost',
@@ -126,6 +127,7 @@ __all__ = [
     'row_conv_layer',
     'dropout_layer',
     'prelu_layer',
+    'pixel_softmax_layer',
     'gated_unit_layer',
 ]
 
@@ -211,6 +213,7 @@ class LayerType(object):
     LAMBDA_COST = 'lambda_cost'
     HUBER = 'huber'
     CROSS_ENTROPY = 'multi-class-cross-entropy'
+    PIXEL_CROSS_ENTROPY = 'pixel_cross_entropy_cost'
     CROSS_ENTROPY_WITH_SELFNORM = 'multi_class_cross_entropy_with_selfnorm'
     SOFT_BIN_CLASS_CROSS_ENTROPY = 'soft_binary_class_cross_entropy'
     MULTI_BIN_LABEL_CROSS_ENTROPY = 'multi_binary_label_cross_entropy'
@@ -218,6 +221,7 @@ class LayerType(object):
     SMOOTH_L1 = 'smooth_l1'
 
     PRELU = 'prelu'
+    PIXEL_SOFTMAX_LAYER = 'pixel_softmax'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -5453,6 +5457,54 @@ def cross_entropy(input,
 
 @wrap_name_default()
 @layer_support()
+def pixel_cross_entropy(input,
+                        label,
+                        name=None,
+                        coeff=1.0,
+                        weight=None,
+                        layer_attr=None):
+    """
+    A loss layer for pixel class entropy.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       cost = pixel_cross_entropy(input=input_layer,
+                            label=label_layer)
+
+    :param input: The first input layer.
+    :type input: LayerOutput.
+    :param label: The input label.
+    :type input: LayerOutput.
+    :param name: The name of this layers. It is not necessary.
+    :type name: None|basestring.
+    :param coeff: The cost is multiplied with coeff.
+                  The coefficient affects the gradient in the backward.
+    :type coeff: float.
+    :param weight: The cost of each sample is multiplied with each weight.
+                   The weight should be a layer with size=1. Note that gradient
+                   will not be calculated for weight.
+    :type weight: LayerOutout
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput.
+    """
+
+    ipts, parents = __cost_input__(input, label, weight)
+    Layer(
+        name=name,
+        type=LayerType.PIXEL_CROSS_ENTROPY,
+        inputs=ipts,
+        coeff=coeff,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.PIXEL_CROSS_ENTROPY, parents=parents, size=1)
+
+
+@wrap_name_default()
+@layer_support()
 def cross_entropy_with_selfnorm(input,
                                 label,
                                 name=None,
@@ -5878,7 +5930,6 @@ def prelu_layer(input,
         parents=input,
         size=l.config.size)
 
-
 @wrap_name_default()
 @layer_support(ERROR_CLIPPING, DROPOUT)
 @wrap_act_default(act=LinearActivation())
@@ -5909,6 +5960,7 @@ def gated_unit_layer(input,
     The example usage is:
 
     .. code-block:: python
+
         gated_unit = gated_unit_layer(size=128, input=input_layer))
 
     :param input: input for this layer.
@@ -5970,3 +6022,37 @@ def gated_unit_layer(input,
         name="%s_gated_act" % name,
         input=dotmul_operator(input_proj, gate),
         layer_attr=layer_attr)
+
+@layer_support()
+@wrap_name_default('pixel_softmax')
+def pixel_softmax_layer(input, name=None, layer_attr=None):
+    """
+    This layer calculate softmax in image channel dimension
+     The example usage is:
+
+    .. code-block:: python
+    softmax = pixel_softmax(input=layer, name='softmax')
+
+    :param name: Name of this layer.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    if isinstance(input, LayerOutput):
+        input = [input]
+    elif isinstance(input, Projection):
+        input = [input]
+    else:
+        assert isinstance(input, collections.Sequence)
+    l = Layer(
+        name=name,
+        inputs=[x.name for x in input],
+        type=LayerType.PIXEL_SOFTMAX_LAYER,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.PIXEL_SOFTMAX_LAYER,
+        parents=input,
+        size=l.config.size)

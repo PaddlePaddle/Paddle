@@ -1802,6 +1802,63 @@ TEST(Layer, RowConvLayer) {
   }
 }
 
+TEST(Layer, PixelSoftmaxLayer) {
+  TestConfig config;
+  // config input_0
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1024, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ImageConfig* img = input->mutable_image_conf();
+  img->set_channels(4);
+  img->set_img_size(16);
+  img->set_img_size_y(16);
+
+  // config softmax layer
+  config.layerConfig.set_type("pixel_softmax");
+  config.layerConfig.set_name("pixelSofrmaxLayer");
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "pixel_softmax", 100, false, useGpu, true, 2);
+  }
+}
+
+TEST(Layer, pixel_cross_entropy) {
+  TestConfig config;
+  size_t batchSize = 100;
+  size_t channels = 3;
+  size_t height = 8;
+  size_t width = 8;
+  config.layerConfig.set_type("pixel_cross_entropy_cost");
+  // data input layer
+  config.inputDefs.push_back(
+      {INPUT_DATA, "data", channels * height * width, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ImageConfig* img_conf = input->mutable_image_conf();
+  img_conf->set_channels(channels);
+  img_conf->set_img_size(height);
+  img_conf->set_img_size_y(width);
+  // label input layer
+  InputDef labelInputDef =
+      InputDef(INPUT_MULTI_LABEL, "label", height * width, 0);
+  size_t labelsSize = height * width * batchSize;
+  std::vector<int> labels(labelsSize);
+  for (size_t i = 0; i < labelsSize; i++) {
+    labels[i] = rand() % channels;
+  }
+  labelInputDef.labelInitValue = labels;
+  config.inputDefs.push_back(labelInputDef);
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {true, false}) {
+    testLayerGrad(config,
+                  "pixel_cross_entropy_cost",
+                  100,
+                  /* trans */ false,
+                  /* useGpu */ useGpu,
+                  /* useWieight*/ false,
+                  1.0);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);

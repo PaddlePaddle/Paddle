@@ -366,6 +366,16 @@ void initDataLayer(TestConfig testConf,
           data.ids->rand(testConf.inputDefs[i].dim);
         }
         break;
+      case INPUT_MULTI_LABEL: {
+        CHECK(testConf.inputDefs[i].labelInitValue.size() != 0);
+        const std::vector<int>& labelValue =
+            testConf.inputDefs[i].labelInitValue;
+        data.ids = VectorT<int>::create(
+            testConf.inputDefs[i].labelInitValue.size(), useGpu);
+        data.ids->copyFrom(labelValue.data(),
+                           testConf.inputDefs[i].labelInitValue.size());
+        break;
+      }
       case INPUT_SPARSE_NON_VALUE_DATA:
         data.value = makeRandomSparseMatrix(
             batchSize,
