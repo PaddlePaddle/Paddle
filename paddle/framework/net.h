@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <paddle/framework/op_desc.pb.h>
 #include <paddle/framework/operator.h>
+#include "paddle/framework/net_proto.pb.h"
 #include "paddle/framework/op_proto.pb.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/scope.h"

@@ -23,14 +23,15 @@ template <typename Place, typename T>
 class AddKernel : public framework::OpKernel {
 public:
   void Compute(const framework::KernelContext& context) const override {
-    auto input0 = context.Input(0)->Get<framework::Tensor>();
-    auto input1 = context.Input(1)->Get<framework::Tensor>();
-    auto* output = context.Output(0)->GetMutable<framework::Tensor>();
+    LOG(INFO) << "Mul kernel in " << typeid(Place).name();
+    // auto input0 = context.Input(0)->Get<framework::Tensor>();
+    // auto input1 = context.Input(1)->Get<framework::Tensor>();
+    // auto* output = context.Output(0)->GetMutable<framework::Tensor>();
 
-    output->mutable_data<T>(context.GetPlace());
+    // output->mutable_data<T>(context.GetPlace());
 
-    output->flat<T>().device(*(context.GetEigenDevice<Place>())) =
-        input0.flat<T>() + input1.flat<T>();
+    // output->flat<T>().device(*(context.GetEigenDevice<Place>())) =
+    //     input0.flat<T>() + input1.flat<T>();
   }
 };
 

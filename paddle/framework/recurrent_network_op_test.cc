@@ -14,85 +14,14 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "paddle/framework/net.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/framework/operator.h"
 #include "paddle/framework/recurrent_network_op.h"
 #include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace framework {
-
-// fake op implementations
-namespace fake {
-class FcOp : public OperatorBase {
- public:
-  FcOp(const OpDesc& desc) {}
-
-  virtual void InferShape(const ScopePtr& scope) const override {
-    for (const auto& output : outputs_) {
-      LOG(INFO) << "fc [" << name_ << "]"
-                << " create output variable [" << output << "]";
-      scope->CreateVariable(output);
-    }
-  }
-
-  virtual void Run(const ScopePtr& scope,
-                   const platform::DeviceContext& dev_ctx) const override {
-    LOG(INFO) << "run fc op";
-    for (const auto& input : inputs_) {
-      PADDLE_ENFORCE(scope->HasVariable(input),
-                     "no input variable [%s] exists");
-      LOG(INFO) << "fc [" << name_ << "] read input [" << input << "]";
-    }
-    for (const auto& output : outputs_) {
-      PADDLE_ENFORCE(scope->HasVariable(output),
-                     "no output variable [%s] exists");
-      LOG(INFO) << "fc [" << name_ << "] write output [" << output << "]";
-    }
-  }
-
- private:
-  std::string name_;
-};
-
-class AddOp : public OperatorBase {
- public:
-  AddOp(const OpDesc& desc) {}
-
-  virtual void InferShape(const ScopePtr& scope) const override {
-    for (const auto& output : outputs_) {
-      LOG(INFO) << "add [" << name_ << "]"
-                << " create output variable [" << output << "]";
-      scope->CreateVariable(output);
-    }
-  }
-
-  virtual void Run(const ScopePtr& scope,
-                   const platform::DeviceContext& dev_ctx) const override {
-    LOG(INFO) << "run add op";
-    for (const auto& input : inputs_) {
-      PADDLE_ENFORCE(scope->HasVariable(input),
-                     "no input variable [%s] exists");
-      LOG(INFO) << "add [" << name_ << "] read input [" << input << "]";
-    }
-    for (const auto& output : outputs_) {
-      PADDLE_ENFORCE(scope->HasVariable(output),
-                     "no output variable [%s] exists");
-      LOG(INFO) << "add [" << name_ << "] write output [" << output << "]";
-    }
-  }
-
- private:
-  std::string name_;
-};
-}  // namespace fake
-
-void PlainNet::AddOp(const OpDesc& desc) {
-  if (desc.type() == "fc") {
-    ops_.emplace_back(new fake::FcOp(desc));
-  } else if (desc.type() == "add") {
-    ops_.emplace_back(new fake::AddOp(desc));
-  }
-}
 
 class RecurrentOpTest : public ::testing::Test {
  protected:
@@ -220,34 +149,16 @@ class RecurrentOpTest : public ::testing::Test {
     LOG(INFO) << "rnn_op finish init";
   }
 
-  OpDesc CreateFcOpDesc() {
-    OpDesc op_desc;
-    op_desc.set_type("fc");
-    op_desc.add_inputs("rnn/h_pre");
-    op_desc.add_inputs("rnn/w");
-    op_desc.add_outputs("rnn/s");
-    // rnn/s = rnn/h_pre * rnn/w
-    return op_desc;
-  }
-
-  OpDesc CreateAddOpDesc() {
-    OpDesc op_desc;
-    op_desc.set_type("add");
-    op_desc.add_inputs("rnn/x");
-    op_desc.add_inputs("rnn/s");
-    op_desc.add_outputs("rnn/h");
-    // rnn/h = rnn/x + rnn/s
-    return op_desc;
-  }
-
   void CreateStepNet() {
     LOG(INFO) << "create variable step_net";
-    Variable* net_var = scope_->CreateVariable("step_net");
-    NetDesc net_desc;
-    net_desc.name_ = "rnn";
-    net_desc.op_descs.push_back(CreateFcOpDesc());
-    net_desc.op_descs.push_back(CreateAddOpDesc());
-    net_var->Reset<PlainNet>(new PlainNet(net_desc));
+    Variable* var = scope_->CreateVariable("step_net");
+    auto net = var->GetMutable<PlainNet>();
+    net->AddOp(
+        OpRegistry::CreateOp("mul", {"rnn/h_pre", "rnn/w"}, {"rnn/s"}, {}));
+
+    net->AddOp(
+        OpRegistry::CreateOp("add_two", {"rnn/x", "rnn/s"}, {"rnn/h"}, {}));
+    net->CompleteAddOp();
   }
 
   // father scope
@@ -356,38 +267,16 @@ class RecurrentGradientAlgorithmTest : public ::testing::Test {
     rnn_grad_algo_.Init(attrs);
   }
 
-  OpDesc CreateFcGradientOpDesc() {
-    OpDesc op_desc;
-    op_desc.set_type("fc");  // use fc op for test
-    op_desc.add_inputs("rnn/s_grad");
-    op_desc.add_inputs("rnn/h_pre");
-    op_desc.add_inputs("rnn/w");
-    op_desc.add_outputs("rnn/h_pre_grad");
-    op_desc.add_outputs("rnn/w_grad");
-    // rnn/h_pre_grad = rnn/s_grad * trans(rnn/w)
-    // rnn/w_grad = trans(rnn/h_pre) * rnn/s_grad
-    return op_desc;
-  }
-
-  OpDesc CreateAddGradientOpDesc() {
-    OpDesc op_desc;
-    op_desc.set_type("add");  // use add op for test
-    op_desc.add_inputs("rnn/h_grad");
-    op_desc.add_outputs("rnn/x_grad");
-    op_desc.add_outputs("rnn/s_grad");
-    // rnn/x_grad = rnn/h_grad
-    // rnn/s_grad = rnn/h_grad
-    return op_desc;
-  }
-
   void CreateStepNet() {
     LOG(INFO) << "create variable step_net";
-    Variable* net_var = scope_->CreateVariable("step_net");
-    NetDesc net_desc;
-    net_desc.name_ = "rnn_gradient";
-    net_desc.op_descs.push_back(CreateFcGradientOpDesc());
-    net_desc.op_descs.push_back(CreateAddGradientOpDesc());
-    net_var->Reset<PlainNet>(new PlainNet(net_desc));
+    Variable* var = scope_->CreateVariable("step_net");
+    auto net = var->GetMutable<PlainNet>();
+    net->AddOp(OpRegistry::CreateOp("mul", {"rnn/h_pre", "rnn/w", "rnn/s_grad"},
+                                    {"rnn/h_pre_grad", "rnn/w_grad"}, {}));
+
+    net->AddOp(OpRegistry::CreateOp("add_two", {"rnn/h_grad"},
+                                    {"rnn/x_grad", "rnn/s_grad"}, {}));
+    net->CompleteAddOp();
   }
 
   void SegmentInputs() {
@@ -486,3 +375,6 @@ TEST(RecurrentOp, LinkMemories) {
     }
   }
 }
+
+USE_OP(add_two);
+USE_OP(mul);
