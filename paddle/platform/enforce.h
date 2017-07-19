@@ -85,30 +85,29 @@ inline void throw_on_error(cudnnStatus_t stat, const Args&... args) {
 
 template <typename... Args>
 inline void throw_on_error(cublasStatus_t stat, const Args&... args) {
-  std::stringstream ss;
+  std::string err;
   if (stat == CUBLAS_STATUS_SUCCESS) {
     return;
   } else if (stat == CUBLAS_STATUS_NOT_INITIALIZED) {
-    ss << "CUBLAS: not initialized";
+    err = "CUBLAS: not initialized, ";
   } else if (stat == CUBLAS_STATUS_ALLOC_FAILED) {
-    ss << "CUBLAS: alloc failed";
+    err = "CUBLAS: alloc failed, ";
   } else if (stat == CUBLAS_STATUS_INVALID_VALUE) {
-    ss << "CUBLAS: invalid value";
+    err = "CUBLAS: invalid value, ";
   } else if (stat == CUBLAS_STATUS_ARCH_MISMATCH) {
-    ss << "CUBLAS: arch mismatch";
+    err = "CUBLAS: arch mismatch, ";
   } else if (stat == CUBLAS_STATUS_MAPPING_ERROR) {
-    ss << "CUBLAS: mapping error";
+    err = "CUBLAS: mapping error, ";
   } else if (stat == CUBLAS_STATUS_EXECUTION_FAILED) {
-    ss << "CUBLAS: execution failed";
+    err = "CUBLAS: execution failed, ";
   } else if (stat == CUBLAS_STATUS_INTERNAL_ERROR) {
-    ss << "CUBLAS: internal error";
+    err = "CUBLAS: internal error, ";
   } else if (stat == CUBLAS_STATUS_NOT_SUPPORTED) {
-    ss << "CUBLAS: not supported";
+    err = "CUBLAS: not supported, ";
   } else if (stat == CUBLAS_STATUS_LICENSE_ERROR) {
-    ss << "CUBLAS: license error";
+    err = "CUBLAS: license error, ";
   }
-  ss << ", ";
-  throw std::runtime_error(ss + string::Sprintf(args...) +
+  throw std::runtime_error(err + string::Sprintf(args...) +
                            string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
 }
 
