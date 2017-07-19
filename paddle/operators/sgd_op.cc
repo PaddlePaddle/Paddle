@@ -26,9 +26,9 @@ protected:
       const std::vector<framework::Tensor *> &outputs) const override {
     PADDLE_ENFORCE(inputs.size() == 2, "Input size of SGDOp must be two");
     PADDLE_ENFORCE(outputs.size() == 1, "Output size of SGDOp must be one");
-    PADDLE_ENFORCE(
-        inputs[0] != nullptr && inputs[1] != nullptr && outputs[0] != nullptr,
-        "Inputs/Outputs of SGDOp must all be set");
+    PADDLE_ENFORCE(inputs[0] != nullptr, "inputs[0] mast be set");
+    PADDLE_ENFORCE(inputs[1] != nullptr, "inputs[1] mast be set");
+    PADDLE_ENFORCE(outputs[0] != nullptr, "outputs[0] mast be set");
     PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
                    "Two input of SGD Op's dimension must be same.");
     outputs[0]->set_dims(inputs[0]->dims());
@@ -42,10 +42,10 @@ public:
     AddInput("param", "input parameter");
     AddInput("grad", "input gradient");
     AddOutput("param_out", "output parameter");
-    AddAttr<float>("learning_rate", "learning rate of sgd").SetDefault(0.1);
+    AddAttr<float>("learning_rate", "learning rate of sgd");
     AddComment(R"DOC(
 
-Most simple sgd algorithm.
+Simplest sgd algorithm.
 
 param_out = param - learning_rate * grad;
 

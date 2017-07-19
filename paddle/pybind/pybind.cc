@@ -111,7 +111,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<pd::OperatorBase, pd::OperatorPtr>(m, "Operator")
       .def("__str__", &pd::OperatorBase::DebugString)
       .def_static("create",
-                  [](const std::string& protobin) {
+                  [](py::bytes protobin) {
                     pd::OpDesc desc;
                     PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
                                    "Cannot parse user input to OpDesc");
