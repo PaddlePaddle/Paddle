@@ -33,7 +33,7 @@ TEST(Tensor, DataAssert) {
   bool caught = false;
   try {
     src_tensor.data<double>();
-  } catch (paddle::platform::EnforceNotMet err) {
+  } catch (std::runtime_error& err) {
     caught = true;
     std::string msg =
         "Tenosr holds no memory. Call Tensor::mutable_data first.";
@@ -47,7 +47,7 @@ TEST(Tensor, DataAssert) {
 
 /* following tests are not available at present
    because Memory::Alloc() and Memory::Free() have not been ready.
-
+*/
 TEST(Tensor, MutableData) {
   using namespace paddle::framework;
   using namespace paddle::platform;
@@ -72,7 +72,7 @@ TEST(Tensor, MutableData) {
     p2 = src_tensor.mutable_data<float>(make_ddim({2, 2}), CPUPlace());
     EXPECT_EQ(p1, p2);
   }
-
+#ifdef __CUDACC__
   {
     Tensor src_tensor;
     float* p1 = nullptr;
@@ -94,6 +94,7 @@ TEST(Tensor, MutableData) {
     p2 = src_tensor.mutable_data<float>(make_ddim({2, 2}), GPUPlace());
     EXPECT_EQ(p1, p2);
   }
+#endif
 }
 
 TEST(Tensor, ShareDataFrom) {
@@ -106,11 +107,13 @@ TEST(Tensor, ShareDataFrom) {
     bool caught = false;
     try {
       dst_tensor.ShareDataFrom<float>(src_tensor);
-    } catch (EnforceNotMet err) {
+    } catch (std::runtime_error& err) {
       caught = true;
-      std::string msg = "Tenosr holds no memory. Call Tensor::mutable_data
-first."; const char* what = err.what(); for (size_t i = 0; i < msg.length();
-++i) { ASSERT_EQ(what[i], msg[i]);
+      std::string msg =
+          "Tenosr holds no memory. Call Tensor::mutable_data first.";
+      const char* what = err.what();
+      for (size_t i = 0; i < msg.length(); ++i) {
+        ASSERT_EQ(what[i], msg[i]);
       }
     }
     ASSERT_TRUE(caught);
@@ -120,6 +123,7 @@ first."; const char* what = err.what(); for (size_t i = 0; i < msg.length();
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 
+#ifdef __CUDACC__
   {
     Tensor src_tensor;
     Tensor dst_tensor;
@@ -127,6 +131,7 @@ first."; const char* what = err.what(); for (size_t i = 0; i < msg.length();
     dst_tensor.ShareDataFrom<int>(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
+#endif
 }
 
 TEST(Tensor, Slice) {
@@ -155,6 +160,7 @@ TEST(Tensor, Slice) {
     EXPECT_EQ(src_data_address + 3 * 4 * 1 * sizeof(int), slice_data_address);
   }
 
+#ifdef __CUDACC__
   {
     Tensor src_tensor;
     src_tensor.mutable_data<double>(make_ddim({6, 9}), GPUPlace());
@@ -176,6 +182,7 @@ TEST(Tensor, Slice) {
     EXPECT_EQ(slice_data_address, slice_mutable_data_address);
     EXPECT_EQ(src_data_address + 9 * 2 * sizeof(double), slice_data_address);
   }
+#endif
 }
 
 TEST(Tensor, CopyFrom) {
@@ -203,4 +210,3 @@ TEST(Tensor, CopyFrom) {
     EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
   }
 }
-*/

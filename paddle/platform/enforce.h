@@ -36,64 +36,36 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-/**
- * @brief Enforce exception. Inherits std::exception
- *
- * All enforce condition not met, will throw an EnforceNotMet exception.
- */
-class EnforceNotMet : public std::exception {
- public:
-  EnforceNotMet(const std::string& msg, const char* file, int fileline) {
-    std::ostringstream sout;
-    sout << msg << " at [" << file << ":" << fileline << "];";
-    all_msg_ = sout.str();
-  }
-
-  const char* what() const noexcept override { return all_msg_.c_str(); }
-
- private:
-  std::string all_msg_;
-};
-
-// From https://stackoverflow.com/questions/30130930/
-// __buildin_expect is in C++ 11 standard. Since the condition which enforced
-// should be true in most situation, it will make the compiler generate faster
-// code by adding `UNLIKELY` macro.
+// Because most enforce conditions would evaluate to true, we can use
+// __builtin_expect to instruct the C++ compiler to generate code that
+// always forces branch prediction of true.
+// This generates faster binary code. __builtin_expect is since C++11.
+// For more details, please check https://stackoverflow.com/a/43870188/724872.
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
-
-/**
- * @brief Throw a EnforceNotMet exception, automatically filled __FILE__ &
- * __LINE__
- *
- * This macro take __VA_ARGS__, user can pass any type if that type can
- * serialize to std::ostream
- */
-#define PADDLE_THROW(...)                                            \
-  do {                                                               \
-    throw ::paddle::platform::EnforceNotMet(                         \
-        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
-  } while (0)
 
 #ifndef PADDLE_ONLY_CPU
 
 template <typename... Args>
 inline void throw_on_error(cudaError_t e, const Args&... args) {
-  if (e) {
-    std::stringstream ss;
-    ss << ::paddle::string::Sprintf(args...);
-    ss << ::paddle::string::Sprintf(" at [%s:%s];", __FILE__, __LINE__);
-    throw thrust::system_error(e, thrust::cuda_category(), ss.str());
+  if (UNLIKELY(e)) {
+    // clang-format off
+    throw thrust::system_error(
+        e, thrust::cuda_category(),
+        string::Sprintf(args...) +
+        string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
+    // clang-format on
   }
 }
 
 template <typename... Args>
 inline void throw_on_error(curandStatus_t stat, const Args&... args) {
   if (stat != CURAND_STATUS_SUCCESS) {
-    std::stringstream ss;
-    ss << ::paddle::string::Sprintf(args...);
-    ss << ::paddle::string::Sprintf(" at [%s:%s];", __FILE__, __LINE__);
-    throw thrust::system_error(cudaErrorLaunchFailure, thrust::cuda_category(),
-                               ss.str());
+    // clang-format off
+    throw thrust::system_error(
+        cudaErrorLaunchFailure, thrust::cuda_category(),
+        string::Sprintf(args...) +
+        string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
+    // clang-format on
   }
 }
 
@@ -102,11 +74,12 @@ inline void throw_on_error(cudnnStatus_t stat, const Args&... args) {
   if (stat == CUDNN_STATUS_SUCCESS) {
     return;
   } else {
-    std::stringstream ss;
-    ss << ::paddle::platform::dynload::cudnnGetErrorString(stat);
-    ss << ", " << ::paddle::string::Sprintf(args...);
-    ss << ::paddle::string::Sprintf(" at [%s:%s];", __FILE__, __LINE__);
-    throw std::runtime_error(ss.str());
+    // clang-format off
+    throw std::runtime_error(
+        platform::dynload::cudnnGetErrorString(stat) + ", " +
+        string::Sprintf(args...) +
+        string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
+    // clang-format on
   }
 }
 
@@ -134,9 +107,8 @@ inline void throw_on_error(cublasStatus_t stat, const Args&... args) {
   } else if (stat == CUBLAS_STATUS_LICENSE_ERROR) {
     ss << "CUBLAS: license error";
   }
-  ss << ", " << ::paddle::string::Sprintf(args...);
-  ss << ::paddle::string::Sprintf(" at [%s:%s];", __FILE__, __LINE__);
-  throw std::runtime_error(ss.str());
+  throw std::runtime_error(ss + ", " + string::Sprintf(args...) +
+                           string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
 }
 
 #endif  // PADDLE_ONLY_CPU
@@ -144,9 +116,18 @@ inline void throw_on_error(cublasStatus_t stat, const Args&... args) {
 template <typename... Args>
 inline void throw_on_error(int stat, const Args&... args) {
   if (UNLIKELY(!(stat))) {
-    PADDLE_THROW(args...);
+    throw std::runtime_error(
+        string::Sprintf(args...) +
+        string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
   }
 }
+
+#define PADDLE_THROW(...)                                     \
+  do {                                                        \
+    throw std::runtime_error(                                 \
+        string::Sprintf(__VA_ARGS__) +                        \
+        string::Sprintf(" at [%s:%s];", __FILE__, __LINE__)); \
+  } while (0)
 
 /**
  * @brief Enforce a condition, otherwise throw an EnforceNotMet

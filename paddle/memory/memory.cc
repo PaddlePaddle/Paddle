@@ -17,8 +17,6 @@ limitations under the License. */
 #include "paddle/memory/detail/system_allocator.h"
 #include "paddle/platform/assert.h"
 
-#include <boost/variant.hpp>
-
 namespace paddle {
 namespace memory {
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -61,7 +62,14 @@ class OpProtoAndCheckerMaker {
   OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : proto_(proto), op_checker_(op_checker) {}
 
-  ~OpProtoAndCheckerMaker() { CheckNoDuplicatedAttrs(); }
+  ~OpProtoAndCheckerMaker() {
+    PADDLE_ENFORCE(validated_, "should call Validate after build");
+  }
+
+  void Validate() {
+    validated_ = true;
+    CheckNoDuplicatedInOutAttrs();
+  }
 
  protected:
   void AddInput(const std::string& name, const std::string& comment,
@@ -163,19 +171,26 @@ Add a mark to which output is temporary is helpful for future optimization.
     }
   }
 
-  void CheckNoDuplicatedAttrs() {
+  void CheckNoDuplicatedInOutAttrs() {
     std::unordered_set<std::string> names;
-    size_t cnt = 0;
+    auto checker = [&](const std::string& name) {
+      PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);
+      names.insert(name);
+    };
     for (auto& attr : proto_->attrs()) {
-      names.insert(attr.name());
-      ++cnt;
+      checker(attr.name());
     }
-    PADDLE_ENFORCE(names.size() == cnt,
-                   "Cannot register two attribute in same name!");
+    for (auto& input : proto_->inputs()) {
+      checker(input.name());
+    }
+    for (auto& output : proto_->outputs()) {
+      checker(output.name());
+    }
   }
 
   OpProto* proto_;
   OpAttrChecker* op_checker_;
+  bool validated_{false};
   bool has_multiple_input_{false};
   bool has_multiple_output_{false};
   bool has_temporary_output_{false};
@@ -183,6 +198,8 @@ Add a mark to which output is temporary is helpful for future optimization.
 
 class OpRegistry {
   using OpCreator = std::function<OperatorBase*()>;
+  using VarIndexMap = std::unordered_map<std::string, int>;
+  using VarNameList = std::vector<std::string>;
 
  public:
   template <typename OpType, typename ProtoMakerType>
@@ -190,42 +207,100 @@ class OpRegistry {
     creators()[op_type] = [] { return new OpType; };
     OpProto& op_proto = protos()[op_type];
     OpAttrChecker& op_checker = op_checkers()[op_type];
-    ProtoMakerType(&op_proto, &op_checker);
+    auto maker = ProtoMakerType(&op_proto, &op_checker);
+    maker.Validate();
     *op_proto.mutable_type() = op_type;
     PADDLE_ENFORCE(
         op_proto.IsInitialized(),
         "Fail to initialize %s's OpProto, because %s is not initialized",
         op_type, op_proto.InitializationErrorString());
+
+    VarIndexMaps()[op_type].reset(new VarIndexMap());
+    auto& varmap = *VarIndexMaps()[op_type];
+    int idx = 0;
+    for (auto& var : op_proto.inputs()) {
+      varmap[var.name()] = idx++;
+    }
+    idx = 0;
+    for (auto& var : op_proto.outputs()) {
+      varmap[var.name()] = idx++;
+    }
+  }
+
+  static OperatorPtr CreateOp(const std::string& type,
+                              const VarNameList& inputs,
+                              const VarNameList& outputs,
+                              const AttributeMap& attrs) {
+    auto op_create_it = creators().find(type);
+    PADDLE_ENFORCE(op_create_it != creators().end(),
+                   "Operator %s cannot be found", type);
+
+    auto op = op_create_it->second();
+    op->type_ = type;
+    op->inputs_ = inputs;
+    op->outputs_ = outputs;
+    op->attrs_ = attrs;
+    op_checkers().at(type).Check(op->attrs_);
+
+    GenerateTempVariableName(op);
+
+    {
+      auto var_index_it = VarIndexMaps().find(type);
+      if (var_index_it != VarIndexMaps().end()) {
+        op->in_out_idxs_ = var_index_it->second;
+      }
+    }
+
+    op->Init();
+    return OperatorPtr(op);
   }
 
   static OperatorPtr CreateOp(const OpDesc& op_desc) {
-    std::string op_type = op_desc.type();
-    OperatorPtr op(creators().at(op_type)());
-    op->desc_ = op_desc;
-    op->inputs_.reserve((size_t)op_desc.inputs_size());
+    std::vector<std::string> inputs;
+    inputs.reserve((size_t)op_desc.inputs_size());
     std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),
-              std::back_inserter(op->inputs_));
-    op->outputs_.reserve((size_t)op_desc.outputs_size());
-    std::copy(op_desc.outputs().begin(), op_desc.outputs().end(),
-              std::back_inserter(op->outputs_));
-    for (auto& attr : op_desc.attrs()) {
-      op->attrs_[attr.name()] = AttrTypeHelper::GetAttrValue(attr);
-    }
-    op_checkers().at(op_type).Check(op->attrs_);
-    op->Init();
-    return op;
-  }
+              std::back_inserter(inputs));
 
- private:
-  static std::unordered_map<std::string, OpCreator>& creators() {
-    static std::unordered_map<std::string, OpCreator> creators_;
-    return creators_;
+    std::vector<std::string> outputs;
+    outputs.reserve((size_t)op_desc.outputs_size());
+    std::copy(op_desc.outputs().begin(), op_desc.outputs().end(),
+              std::back_inserter(outputs));
+
+    AttributeMap attrs;
+    for (auto& attr : op_desc.attrs()) {
+      attrs[attr.name()] = AttrTypeHelper::GetAttrValue(attr);
+    }
+
+    return CreateOp(op_desc.type(), inputs, outputs, attrs);
   }
 
   static std::unordered_map<std::string, OpProto>& protos() {
     static std::unordered_map<std::string, OpProto> protos_;
     return protos_;
   };
+
+ private:
+  static std::unordered_map<std::string, std::shared_ptr<VarIndexMap>>&
+  VarIndexMaps() {
+    static std::unordered_map<std::string, std::shared_ptr<VarIndexMap>> maps_;
+    return maps_;
+  }
+
+  static void GenerateTempVariableName(OperatorBase* op) {
+    static std::atomic<size_t> gUniqId(0UL);
+    for (auto& outname : op->outputs_) {
+      if (outname == OperatorBase::TMP_VAR_NAME()) {
+        outname += op->type_;
+        outname += "@";
+        outname += std::to_string(gUniqId.fetch_add(1));
+      }
+    }
+  }
+
+  static std::unordered_map<std::string, OpCreator>& creators() {
+    static std::unordered_map<std::string, OpCreator> creators_;
+    return creators_;
+  }
 
   static std::unordered_map<std::string, OpAttrChecker>& op_checkers() {
     static std::unordered_map<std::string, OpAttrChecker> op_checkers_;
@@ -241,12 +316,18 @@ class OpRegisterHelper {
   }
 };
 
+/**
+ * check if MACRO is used in GLOBAL NAMESPACE.
+ */
 #define STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                        \
   struct __test_global_namespace_##uniq_name##__ {};                          \
   static_assert(std::is_same<::__test_global_namespace_##uniq_name##__,       \
                              __test_global_namespace_##uniq_name##__>::value, \
                 msg)
 
+/**
+ * Macro to Register Operator.
+ */
 #define REGISTER_OP(__op_type, __op_class, __op_maker_class)                 \
   STATIC_ASSERT_GLOBAL_NAMESPACE(__reg_op__##__op_type,                      \
                                  "REGISTER_OP must be in global namespace"); \
@@ -254,27 +335,36 @@ class OpRegisterHelper {
       __op_register_##__op_type##__(#__op_type);                             \
   int __op_register_##__op_type##_handle__() { return 0; }
 
-#define REGISTER_OP_KERNEL(type, GPU_OR_CPU, PlaceType, KernelType)       \
+/**
+ * Macro to Register OperatorKernel.
+ */
+#define REGISTER_OP_KERNEL(type, DEVICE_TYPE, PlaceType, ...)             \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
-      __reg_op_kernel_##type##_##GPU_OR_CPU##__,                          \
+      __reg_op_kernel_##type##_##DEVICE_TYPE##__,                         \
       "REGISTER_OP_KERNEL must be in global namespace");                  \
   struct __op_kernel_register__##type##__ {                               \
     __op_kernel_register__##type##__() {                                  \
       ::paddle::framework::OperatorWithKernel::OpKernelKey key;           \
       key.place_ = PlaceType();                                           \
       ::paddle::framework::OperatorWithKernel::AllOpKernels()[#type][key] \
-          .reset(new KernelType());                                       \
+          .reset(new __VA_ARGS__());                                      \
     }                                                                     \
   };                                                                      \
   static __op_kernel_register__##type##__ __reg_kernel_##type##__;        \
-  int __op_kernel_register_##type##_handle_##GPU_OR_CPU##__() { return 0; }
+  int __op_kernel_register_##type##_handle_##DEVICE_TYPE##__() { return 0; }
 
-#define REGISTER_OP_GPU_KERNEL(type, KernelType) \
-  REGISTER_OP_KERNEL(type, GPU, ::paddle::platform::GPUPlace, KernelType)
+// (type, KernelType)
+#define REGISTER_OP_GPU_KERNEL(type, ...) \
+  REGISTER_OP_KERNEL(type, GPU, ::paddle::platform::GPUPlace, __VA_ARGS__)
 
-#define REGISTER_OP_CPU_KERNEL(type, KernelType) \
-  REGISTER_OP_KERNEL(type, CPU, ::paddle::platform::CPUPlace, KernelType)
+// (type, KernelType)
+#define REGISTER_OP_CPU_KERNEL(type, ...) \
+  REGISTER_OP_KERNEL(type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
 
+/**
+ * Macro to mark what Operator and Kernel we will use and tell the compiler to
+ * link them into target.
+ */
 #define USE_OP_WITHOUT_KERNEL(op_type)                      \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                           \
       __use_op_without_kernel_##op_type,                    \
@@ -292,15 +382,16 @@ class OpRegisterHelper {
       __attribute__((unused)) =                                           \
           __op_kernel_register_##op_type##_handle_##DEVICE_TYPE##__()
 
-#ifdef PADDLE_ONLY_CPU
-#define USE_OP(op_type)           \
+// use Operator with only cpu kernel.
+#define USE_OP_CPU(op_type)       \
   USE_OP_WITHOUT_KERNEL(op_type); \
-  USE_OP_KERNEL(op_type, CPU);
+  USE_OP_KERNEL(op_type, CPU)
 
+#ifdef PADDLE_ONLY_CPU
+#define USE_OP(op_type) USE_OP_CPU(op_type)
 #else
-#define USE_OP(op_type)           \
-  USE_OP_WITHOUT_KERNEL(op_type); \
-  USE_OP_KERNEL(op_type, CPU);    \
+#define USE_OP(op_type) \
+  USE_OP_CPU(op_type);  \
   USE_OP_KERNEL(op_type, GPU)
 #endif
 

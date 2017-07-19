@@ -185,6 +185,10 @@ function(cc_library TARGET_NAME)
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     endif()
+    
+    # cpplint code style
+    add_style_check_target(${TARGET_NAME} ${cc_library_SRCS})
+
   else(cc_library_SRCS)
     if (cc_library_DEPS)
       merge_static_libs(${TARGET_NAME} ${cc_library_DEPS})
@@ -338,7 +342,7 @@ function(go_test TARGET_NAME)
   string(REPLACE "${PADDLE_GO_PATH}" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
   add_custom_target(${TARGET_NAME} ALL DEPENDS go_vendor ${go_test_DEPS})
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} test
+    COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} test -race
     -c -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
     ".${CMAKE_CURRENT_SOURCE_REL_DIR}"
     WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
