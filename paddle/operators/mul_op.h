@@ -26,9 +26,7 @@ class MulKernel : public framework::OpKernel {
 public:
   void Compute(const framework::KernelContext& context) const override {
     Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
-        Eigen::IndexPair<Eigen::DenseIndex>(1, 0)};
-    // dim_pair[0].first = 1;
-    // dim_pair[0].second = 0;
+        {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
 
     auto input0 = context.Input(0)->Get<framework::Tensor>();
     auto input1 = context.Input(1)->Get<framework::Tensor>();
