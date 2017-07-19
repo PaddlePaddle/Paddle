@@ -14,22 +14,29 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/platform/gpu_info.h"
 #include "paddle/platform/place.h"
 
 namespace paddle {
 namespace memory {
 
-template <class Place>
+template <typename Place>
 void* Alloc(Place, size_t);
 
-template <class Place>
+template <typename Place>
 void Free(Place, void*);
 
-template <class Place>
+template <typename Place>
 size_t Used(Place);
 
-template <class Place1, class Place2>
-void Copy(Place1, void* dst, Place2, void* src, size_t size);
+template <typename DstPlace, typename SrcPlace>
+void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
+
+#ifndef PADDLE_ONLY_CPU
+template <typename DstPlace, typename SrcPlace>
+void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
+          cudaStream_t stream);
+#endif  // PADDLE_ONLY_CPU
 
 }  // namespace memory
 }  // namespace paddle
