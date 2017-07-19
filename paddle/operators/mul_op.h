@@ -14,8 +14,9 @@
 
 #pragma once
 
-#include <glog/logging.h>
-#include <paddle/framework/operator.h>
+#include "glog/logging.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/operator.h"
 
 namespace paddle {
 namespace operators {
@@ -34,8 +35,10 @@ public:
 
     output->mutable_data<T>(context.GetPlace());
 
-    output->matrix<T>().device(*(context.GetEigenDevice<Place>())) =
-        input0.matrix<T>().contract(input1.matrix<T>(), dim_pair);
+    framework::EigenMatrix<T>::From(*output).device(
+        *(context.GetEigenDevice<Place>())) =
+        framework::EigenMatrix<T>::From(input0).contract(
+            framework::EigenMatrix<T>::From(input1), dim_pair);
   }
 };
 }  // namespace operators

@@ -13,8 +13,9 @@
    limitations under the License. */
 
 #pragma once
-#include <glog/logging.h>
-#include <paddle/framework/operator.h>
+#include "glog/logging.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/operator.h"
 
 namespace paddle {
 namespace operators {
@@ -27,9 +28,9 @@ public:
     auto in1 = context.Input(1)->Get<framework::Tensor>();
     auto* out = context.Output(0)->GetMutable<framework::Tensor>();
 
-    auto input = in0.matrix<T>();
-    auto bias = in1.vec<T>();
-    auto output = out->matrix<T>();
+    auto input = framework::EigenMatrix<T>::From(in0);
+    auto bias = framework::EigenVector<T>::From(in1);
+    auto output = framework::EigenMatrix<T>::From(*out);
 
     const int bias_size = bias.dimension(0);
     const int rest_size = input.size() / bias_size;

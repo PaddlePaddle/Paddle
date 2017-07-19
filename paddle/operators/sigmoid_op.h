@@ -14,8 +14,9 @@
 
 #pragma once
 
-#include <glog/logging.h>
-#include <paddle/framework/operator.h>
+#include "glog/logging.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/operator.h"
 
 namespace paddle {
 namespace operators {
@@ -29,8 +30,9 @@ public:
 
     output->mutable_data<T>(context.GetPlace());
 
-    output->flat<T>().device(*(context.GetEigenDevice<Place>())) =
-        1.0 / (1.0 + (-1.0 * input.flat<T>()).exp());
+    framework::EigenVector<T>::Flatten(*output).device(
+        *(context.GetEigenDevice<Place>())) =
+        1.0 / (1.0 + (-1.0 * framework::EigenVector<T>::Flatten(input)).exp());
   }
 };
 }  // namespace operators

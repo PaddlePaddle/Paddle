@@ -14,8 +14,9 @@
 
 #pragma once
 
-#include <glog/logging.h>
-#include <paddle/framework/operator.h>
+#include "glog/logging.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/operator.h"
 
 namespace paddle {
 namespace operators {
@@ -27,8 +28,8 @@ public:
     auto input = context.Input(0)->Get<framework::Tensor>();
     auto* output = context.Output(0)->GetMutable<framework::Tensor>();
 
-    auto logits = input.matrix<T>();
-    auto softmax = output->matrix<T>();
+    auto logits = framework::EigenMatrix<T>::From(input);
+    auto softmax = framework::EigenMatrix<T>::From(*output);
 
     const int kBatchDim = 0;
     const int kClassDim = 1;
