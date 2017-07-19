@@ -33,11 +33,9 @@ bool SwitchOrderLayer::init(const LayerMap& layerMap,
 
   auto& reshape_conf = config_.reshape_conf();
   for (size_t i = 0; i < reshape_conf.heightaxis_size(); i++) {
-    LOG(INFO) << "reshape height axis: " << reshape_conf.heightaxis(i);
     heightAxis_.push_back(reshape_conf.heightaxis(i));
   }
   for (size_t i = 0; i < reshape_conf.widthaxis_size(); i++) {
-    LOG(INFO) << "reshape width axis: " << reshape_conf.widthaxis(i);
     widthAxis_.push_back(reshape_conf.widthaxis(i));
   }
   createFunction(nchw2nhwc_, "NCHW2NHWC", FuncConfig());
@@ -60,8 +58,6 @@ void SwitchOrderLayer::setOutDims() {
     reshapeWidth_ *= outDims_[widthAxis_[i]];
   }
   output_.setFrameWidth(reshapeWidth_);
-  LOG(INFO) << "outDims: " << outDims_[0] << "; " << outDims_[1] << ";"
-            << outDims_[2] << ";" << outDims_[3];
 }
 
 void SwitchOrderLayer::setInDims() {
@@ -76,8 +72,6 @@ void SwitchOrderLayer::setInDims() {
   int totalCount = input->getElementCnt();
   int channels = totalCount / (inDims_[0] * inDims_[2] * inDims_[3]);
   if (channels != 0) inDims_.setDim(1, channels);
-  LOG(INFO) << "inDims: " << inDims_[0] << "; " << inDims_[1] << ";"
-            << inDims_[2] << ";" << inDims_[3];
 }
 
 void SwitchOrderLayer::forward(PassType passType) {
@@ -95,12 +89,12 @@ void SwitchOrderLayer::forward(PassType passType) {
   inputs.addArg(*getInputValue(0), inDims_);
   outputs.addArg(*getOutputValue(), outDims_);
   nchw2nhwc_[0]->calc(inputs, outputs);
-  // forwardActivation();
+  forwardActivation();
 }
 
 void SwitchOrderLayer::backward(const UpdateCallback& callback) {
   (void)callback;
-  // backwardActivation();
+  backwardActivation();
 
   // switch NHWC to NCHW
   BufferArgs inputs;
