@@ -21,10 +21,9 @@ namespace paddle {
 namespace framework {
 
 std::shared_ptr<PlainNet> AddBackwardOp(std::shared_ptr<PlainNet> ForwardOps) {
-  // NetPtr->reset(new PlainNet);
-  // NetPtr grad_ops = new PlainNet;
-  std::shared_ptr<PlainNet> grad_ops;
-  grad_ops.reset(new PlainNet);
+  auto grad_ops = std::make_shared<PlainNet>();
+  // std::shared_ptr<PlainNet> grad_ops;
+  // grad_ops.reset(new PlainNet);
   for (auto& op : ForwardOps->ops_) {
     auto op_grad = OpRegistry::CreateGradOp(op);
     grad_ops->AddOp(op_grad);
