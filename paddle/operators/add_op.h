@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "glog/logging.h"
-#include "paddle/framework/operator.h"
+#include "paddle/operators/predefined_op_bases.h"
 
 namespace paddle {
 namespace operators {

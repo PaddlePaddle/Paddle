@@ -12,32 +12,26 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <paddle/framework/op_registry.h>
-#include <paddle/framework/tensor.h>
-#include <paddle/operators/mul_op.h>
+#include "paddle/operators/mul_op.h"
 
 namespace paddle {
 namespace operators {
 
-class MulOp : public framework::OperatorWithKernel {
+class MulOp : public FixSizeOp<2, 1> {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 2, "The mul op must take two inputs");
+  void InferShape(const std::vector<const Tensor *> &inputs,
+                  const std::vector<Tensor *> &outputs) const override {
+    FixSizeOp<2, 1>::InferShape(inputs, outputs);
     auto dim0 = inputs[0]->dims();
     auto dim1 = inputs[1]->dims();
-    PADDLE_ENFORCE(dim0.size() == 2 && dim1.size() == 2,
-                   "The input of mul op must be matrix");
     PADDLE_ENFORCE(
         dim0[1] == dim1[0],
         "First matrix's width must be equal with second matrix's height.");
-    PADDLE_ENFORCE(outputs.size() == 1, "The mul op must take one output");
     outputs[0]->set_dims({dim0[0], dim1[1]});
   }
 };
 
-class MulOpMaker : public framework::OpProtoAndCheckerMaker {
+class MulOpMaker : public OpProtoAndCheckerMaker {
 public:
   MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
@@ -57,4 +51,4 @@ The equation is: Out = X * Y
 
 REGISTER_OP(mul, paddle::operators::MulOp, paddle::operators::MulOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    mul, paddle::operators::MulKernel<paddle::platform::CPUPlace>);
+    mul, paddle::operators::FakeKernel<paddle::platform::CPUPlace>);

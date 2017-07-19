@@ -2,4 +2,4 @@
 #include <paddle/operators/softmax_op.h>
 
 REGISTER_OP_GPU_KERNEL(
-    softmax, paddle::operators::SoftmaxKernel<paddle::platform::GPUPlace>);
+    softmax, paddle::operators::FakeKernel<paddle::platform::GPUPlace>);

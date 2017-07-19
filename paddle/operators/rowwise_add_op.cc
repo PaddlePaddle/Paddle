@@ -12,29 +12,24 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <paddle/framework/op_registry.h>
-#include <paddle/operators/rowwise_add_op.h>
+#include "paddle/operators/rowwise_add_op.h"
 namespace paddle {
 namespace operators {
 
-class RowWiseAddOp : public framework::OperatorWithKernel {
+class RowWiseAddOp : public FixSizeOp<2, 1> {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 2UL, "Two inputs is needed by rowwise add");
+  void InferShape(const std::vector<const Tensor *> &inputs,
+                  const std::vector<Tensor *> &outputs) const override {
     auto dim0 = inputs[0]->dims();
     auto dim1 = inputs[1]->dims();
-
     PADDLE_ENFORCE(dim0.size() == 2, "Input 0 must be matrix");
     PADDLE_ENFORCE(dim1.size() == 1, "The second input must be vector");
     PADDLE_ENFORCE(dim0[1] == dim1[0], "The width of two input must be same");
-    PADDLE_ENFORCE(outputs.size() == 1, "The output size must be 1");
     outputs[0]->set_dims(inputs[0]->dims());
   }
 };
 
-class RowWiseAddOpMaker : public framework::OpProtoAndCheckerMaker {
+class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
 public:
   RowWiseAddOpMaker(framework::OpProto *proto,
                     framework::OpAttrChecker *op_checker)
@@ -57,5 +52,4 @@ REGISTER_OP(rowwise_add,
             paddle::operators::RowWiseAddOp,
             paddle::operators::RowWiseAddOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    rowwise_add,
-    paddle::operators::RowWiseAddKernel<paddle::platform::CPUPlace>);
+    rowwise_add, paddle::operators::FakeKernel<paddle::platform::CPUPlace>);

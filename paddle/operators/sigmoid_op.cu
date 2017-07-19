@@ -1,5 +1,4 @@
-#include <paddle/operators/sigmoid_op.h>
-#include <paddle/framework/op_registry.h>
+#include "paddle/operators/sigmoid_op.h"
 
 REGISTER_OP_GPU_KERNEL(
-    sigmoid, paddle::operators::SigmoidKernel<paddle::platform::GPUPlace>);
+    sigmoid, paddle::operators::FakeKernel<paddle::platform::GPUPlace>);
