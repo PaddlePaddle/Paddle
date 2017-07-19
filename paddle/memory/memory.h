@@ -28,5 +28,15 @@ void Free(Place, void*);
 template <class Place>
 size_t Used(Place);
 
+template <typename T, typename PlaceType>
+class PodDeleter {
+ public:
+  PodDeleter(PlaceType place) : place_(place) {}
+  void operator()(T* ptr) { Free(place_, static_cast<void*>(ptr)); }
+
+ private:
+  PlaceType place_;
+};
+
 }  // namespace memory
 }  // namespace paddle
