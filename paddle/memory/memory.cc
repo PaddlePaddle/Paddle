@@ -88,7 +88,7 @@ void Copy<platform::CPUPlace, platform::GPUPlace>(platform::CPUPlace, void* dst,
                                                   platform::GPUPlace,
                                                   const void* src, size_t num,
                                                   cudaStream_t stream) {
-  platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
+  platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
 }
 
 template <>
@@ -96,7 +96,7 @@ void Copy<platform::GPUPlace, platform::CPUPlace>(platform::GPUPlace, void* dst,
                                                   platform::CPUPlace,
                                                   const void* src, size_t num,
                                                   cudaStream_t stream) {
-  platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
+  platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
 }
 
 template <>
