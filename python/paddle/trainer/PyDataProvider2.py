@@ -34,6 +34,7 @@ class DataType(object):
     SparseNonValue = 1
     SparseValue = 2
     Index = 3
+    MultiIndex = 4
 
 
 class CacheType(object):
@@ -134,6 +135,9 @@ dense_vector = dense_slot
 sparse_binary_vector = sparse_non_value_slot
 sparse_vector = sparse_value_slot
 integer_value = index_slot
+
+# integer_values can be used for pixel classification
+integer_values = multi_index_slot
 
 
 def dense_vector_sequence(dim):
