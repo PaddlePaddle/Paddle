@@ -19,7 +19,6 @@ limitations under the License. */
 #include <memory>
 #include <typeindex>
 #include "paddle/framework/ddim.h"
-#include "paddle/framework/tensor_types.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
