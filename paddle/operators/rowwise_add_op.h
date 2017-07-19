@@ -26,6 +26,7 @@ public:
     auto in0 = context.Input(0)->Get<framework::Tensor>();
     auto in1 = context.Input(1)->Get<framework::Tensor>();
     auto* out = context.Output(0)->GetMutable<framework::Tensor>();
+    out->mutable_data<T>(context.GetPlace());
 
     auto input = in0.matrix<T>();
     auto bias = in1.vec<T>();
