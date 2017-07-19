@@ -37,14 +37,11 @@ class Tensor {
   template <bool less, size_t i, typename... args>
   friend struct paddle::pybind::details::CastToPyBufferImpl;
 
-  template <typename T, size_t D, typename IndexType>
+  template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
 
-  template <typename T, typename IndexType>
+  template <typename T, int MajorType, typename IndexType>
   friend struct EigenVector;
-
-  template <typename T, typename IndexType>
-  friend struct EigenMatrix;
 
  public:
   Tensor() : offset_(0) {}

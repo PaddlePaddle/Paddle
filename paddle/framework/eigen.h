@@ -36,14 +36,15 @@ struct EigenDim {
 };
 
 // Interpret paddle::platform::Tensor as EigenTensor and EigenConstTensor.
-template <typename T, size_t D, typename IndexType = Eigen::DenseIndex>
+template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
 struct EigenTensor {
-  using Type = Eigen::TensorMap<Eigen::Tensor<T, D, Eigen::RowMajor, IndexType>,
-                                Eigen::Aligned>;
+  // TODO(qijun) Now, default type in unaligned, and we will make a benchmark on
+  // the speed of aligned and unaligned version in future.
+  using Type = Eigen::TensorMap<Eigen::Tensor<T, D, MajorType, IndexType>>;
 
   using ConstType =
-      Eigen::TensorMap<Eigen::Tensor<const T, D, Eigen::RowMajor, IndexType>,
-                       Eigen::Aligned>;
+      Eigen::TensorMap<Eigen::Tensor<const T, D, MajorType, IndexType>>;
 
   static Type From(Tensor& tensor, DDim dims) {
     return Type(tensor.data<T>(), EigenDim<D>::From(dims));
@@ -60,50 +61,24 @@ struct EigenTensor {
   }
 };
 
-// Interpret paddle::platform::Tensor as EigenVecotr and EigenConstVector.
-template <typename T, typename IndexType = Eigen::DenseIndex>
-struct EigenVector {
-  using Type = Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, IndexType>,
-                                Eigen::Aligned>;
-
-  using ConstType =
-      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, IndexType>,
-                       Eigen::Aligned>;
-  // From is to transfer a one dimension Tensor into a one dimension EigenVector
-  static Type From(Tensor& tensor) { return EigenTensor<T, 1>::From(tensor); }
-
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
   // Flatten is to reshape a Tensor into a one dimension EigenVector
-  static Type Flatten(Tensor& tensor) {
+  static typename EigenTensor<T, 1>::Type Flatten(Tensor& tensor) {
     return EigenTensor<T, 1>::From(
         tensor, make_ddim({static_cast<int>(product(tensor.dims_))}));
   }
 
-  static ConstType From(const Tensor& tensor) {
-    return EigenTensor<T, 1>::From(tensor);
-  }
-
-  static ConstType Flatten(const Tensor& tensor) {
+  static typename EigenTensor<T, 1>::ConstType Flatten(const Tensor& tensor) {
     return EigenTensor<T, 1>::From(
         tensor, make_ddim({static_cast<int>(product(tensor.dims_))}));
   }
 };
 
-// Interpret paddle::platform::Tensor as EigenMatrix and EigenConstMatrix.
-template <typename T, typename IndexType = Eigen::DenseIndex>
-struct EigenMatrix {
-  using Type = Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor, IndexType>,
-                                Eigen::Aligned>;
-
-  using ConstType =
-      Eigen::TensorMap<Eigen::Tensor<const T, 2, Eigen::RowMajor, IndexType>,
-                       Eigen::Aligned>;
-
-  static Type From(Tensor& tensor) { return EigenTensor<T, 2>::From(tensor); }
-
-  static ConstType From(const Tensor& tensor) {
-    return EigenTensor<T, 2>::From(tensor);
-  }
-};
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = EigenTensor<T, 2, MajorType, IndexType>;
 
 }  // namespace framework
 }  // namespace paddle
