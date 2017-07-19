@@ -14,6 +14,9 @@
 
 cmake_minimum_required(VERSION 3.0)
 
+message("system:" ${CMAKE_SYSTEM})
+message("cmake version:" ${CMAKE_VERSION})
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PROJ_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(PROJ_BINARY_ROOT ${CMAKE_CURRENT_BINARY_DIR})
