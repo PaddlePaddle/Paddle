@@ -66,7 +66,8 @@ void ConcatOutputs(std::vector<ScopePtr>& step_scopes,
                    const std::vector<Link>& outlinks);
 
 void LinkMemories(std::vector<ScopePtr>& step_scopes,
-                  const std::vector<MemoryAttr>& memories, size_t step_id,
+                  const std::vector<MemoryAttr>& memories,
+                  size_t step_id,
                   int offset);
 
 };  // namespace rnn
@@ -104,7 +105,7 @@ void LinkMemories(std::vector<ScopePtr>& step_scopes,
  * see RecurrentOpProtoAndCheckerMaker
  */
 class RecurrentAlgorithm {
- public:
+public:
   /*
    * Forward run the RNN.
    *
@@ -117,7 +118,7 @@ class RecurrentAlgorithm {
 
   std::string debug_string() const;
 
- protected:
+protected:
   /*
    * the step scopes as the father scope. The step scopes will be stored in
    * the father scope as a variable whose name is specified by
@@ -141,7 +142,7 @@ class RecurrentAlgorithm {
    */
   void InitMemories(ScopePtr step_scopes) const;
 
- private:
+private:
   std::unique_ptr<rnn::Argument> arg_;
 };
 
@@ -155,12 +156,12 @@ class RecurrentAlgorithm {
  * operator.
  */
 class RecurrentGradientAlgorithm {
- public:
+public:
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
   void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const;
   void LinkBootMemoryGradients(ScopePtr step_scopes) const;
 
- private:
+private:
   std::unique_ptr<rnn::Argument> arg_;
 };
 
@@ -168,7 +169,7 @@ class RecurrentGradientAlgorithm {
  * RNN forward's op wrapper.
  */
 class RecurrentOp final : public OperatorBase {
- public:
+public:
   void Init() override;
 
   // TODO(Superjom) implement this when step net's InferShape ready.
@@ -181,7 +182,7 @@ class RecurrentOp final : public OperatorBase {
 
   virtual ~RecurrentOp() {}
 
- private:
+private:
   RecurrentAlgorithm algo_;
 };
 
@@ -189,7 +190,7 @@ class RecurrentOp final : public OperatorBase {
  * RNN backward's op wrapper.
  */
 class RecurrentGradientOp final : public OperatorBase {
- public:
+public:
   void Init() override;
 
   // TODO(Superjom) implement this when step net's InferShape ready.
@@ -202,7 +203,7 @@ class RecurrentGradientOp final : public OperatorBase {
 
   virtual ~RecurrentGradientOp() {}
 
- private:
+private:
   RecurrentGradientAlgorithm alg_;
 };
 

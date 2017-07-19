@@ -28,8 +28,3 @@ add_dependencies(framework_py_proto framework_py_proto_init)
 proto_library(net_proto SRCS net_proto.proto DEPS op_proto)
 cc_library(net SRCS net.cc DEPS operator net_proto op_registry)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net)
-
-cc_library(recurrent_network_op SRCS recurrent_network_op.cc DEPS op_desc
-tensor op_registry operator net)
-cc_test(recurrent_network_op_test SRCS recurrent_network_op_test.cc DEPS
-recurrent_network_op gtest mul_op add_op)

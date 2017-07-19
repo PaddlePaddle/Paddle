@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/framework/recurrent_network_op.h"
+#include "paddle/operators/recurrent_network_op.h"
 
 #include <glog/logging.h>
 #include <cstring>
@@ -71,16 +71,22 @@ void ConcatOutputs(std::vector<ScopePtr>& step_scopes,
 }
 
 void LinkMemories(std::vector<ScopePtr>& scopes,
-                  const std::vector<rnn::MemoryAttr>& memories, size_t step_id,
+                  const std::vector<rnn::MemoryAttr>& memories,
+                  size_t step_id,
                   int offset) {
   PADDLE_ENFORCE(step_id < scopes.size(),
-                 "step [%d] is out of range of step scopes' size [%d]", step_id,
+                 "step [%d] is out of range of step scopes' size [%d]",
+                 step_id,
                  scopes.size());
   PADDLE_ENFORCE(static_cast<int>(step_id) + offset >= 0,
-                 "offset [%d] must be large than -[%d]", offset, step_id);
+                 "offset [%d] must be large than -[%d]",
+                 offset,
+                 step_id);
   PADDLE_ENFORCE(step_id + offset < scopes.size(),
                  "offset [%d] is out of range, it must be less than (%d - %d)",
-                 offset, scopes.size(), step_id);
+                 offset,
+                 scopes.size(),
+                 step_id);
   ScopePtr scope = scopes[step_id];
   ScopePtr linked_scope = scopes[step_id + offset];
   for (auto& attr : memories) {
@@ -101,7 +107,8 @@ void LinkMemories(std::vector<ScopePtr>& scopes,
 void RecurrentAlgorithm::Run(const ScopePtr& scope,
                              const platform::DeviceContext& dev_ctx) const {
   PADDLE_ENFORCE(scope->HasVariable(arg_->step_net),
-                 "stepnet [%s] is not in scope.", arg_->step_net);
+                 "stepnet [%s] is not in scope.",
+                 arg_->step_net);
   Variable* net = scope->GetVariable(arg_->step_net);
   PADDLE_ENFORCE(net, "failed to get step net");
 
@@ -141,8 +148,8 @@ std::string RecurrentAlgorithm::debug_string() const {
        << '\n';
   }
   for (const auto& item : arg_->memories) {
-    ss << string::Sprintf("memory: %s,%s,%s\n", item.var, item.pre_var,
-                          item.boot_var);
+    ss << string::Sprintf(
+        "memory: %s,%s,%s\n", item.var, item.pre_var, item.boot_var);
   }
   return ss.str();
 }
@@ -170,7 +177,8 @@ void RecurrentAlgorithm::InitMemories(ScopePtr step_scope) const {
     Tensor* pre_mem =
         step_scope->CreateVariable(attr.pre_var)->GetMutable<Tensor>();
     PADDLE_ENFORCE(step_scope->HasVariable(attr.boot_var),
-                   "memory [%s]'s boot variable [%s] not exists", attr.var,
+                   "memory [%s]'s boot variable [%s] not exists",
+                   attr.var,
                    attr.boot_var);
     Tensor* boot_mem =
         step_scope->CreateVariable(attr.boot_var)->GetMutable<Tensor>();
@@ -196,7 +204,8 @@ void RecurrentOp::Init() {
   auto inlink_alias = GetAttr<std::vector<std::string>>("inlink_alias");
   PADDLE_ENFORCE(inlinks.size() == inlink_alias.size(),
                  "the size of inlinks and inlink_alias don't match:%d,%d",
-                 inlinks.size(), inlink_alias.size());
+                 inlinks.size(),
+                 inlink_alias.size());
   for (size_t i = 0; i < inlinks.size(); ++i) {
     rnn::Link link;
     link.internal = inlinks[i];
@@ -208,7 +217,8 @@ void RecurrentOp::Init() {
   auto outlink_alias = GetAttr<std::vector<std::string>>("outlink_alias");
   PADDLE_ENFORCE(outlinks.size() == outlink_alias.size(),
                  "the size of outlinks and outlink_alias don't match:%d,%d",
-                 outlinks.size(), outlink_alias.size());
+                 outlinks.size(),
+                 outlink_alias.size());
   for (size_t i = 0; i < outlinks.size(); ++i) {
     rnn::Link link;
     link.internal = outlinks[i];
@@ -224,10 +234,12 @@ void RecurrentOp::Init() {
 
   PADDLE_ENFORCE(memories.size() == boot_memories.size(),
                  "the size of memories, boot_memories don't match:%d,%d",
-                 memories.size(), boot_memories.size());
+                 memories.size(),
+                 boot_memories.size());
   PADDLE_ENFORCE(pre_memories.size() == boot_memories.size(),
                  "the size of pre_memories, boot_memories don't match:%d,%d",
-                 pre_memories.size(), boot_memories.size());
+                 pre_memories.size(),
+                 boot_memories.size());
   PADDLE_ENFORCE(memories.size() > 0, "more than 1 memories should be set");
 
   for (size_t i = 0; i < memories.size(); ++i) {
@@ -249,7 +261,7 @@ void RecurrentOp::Init() {
  * Op definition of RNNOp
  */
 class RecurrentAlgorithmProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
- public:
+public:
   RecurrentAlgorithmProtoAndCheckerMaker(OpProto* proto,
                                          OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
@@ -308,7 +320,8 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
     PADDLE_ENFORCE(mem_g, "boot_tensor should be retrieved before");
 
     PADDLE_ENFORCE(step_scope->HasVariable(attr.boot_var),
-                   "memory [%s]'s boot variable [%s] not exists", attr.var,
+                   "memory [%s]'s boot variable [%s] not exists",
+                   attr.var,
                    attr.boot_var);
     Tensor* boot_mem_g =
         step_scope->CreateVariable(attr.boot_var)->GetMutable<Tensor>();
@@ -322,5 +335,6 @@ void RecurrentGradientOp::Init() {}
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OP(recurrent_op, ::paddle::framework::RecurrentOp,
+REGISTER_OP(recurrent_op,
+            ::paddle::framework::RecurrentOp,
             ::paddle::framework::RecurrentAlgorithmProtoAndCheckerMaker);

@@ -17,14 +17,14 @@
 #include "paddle/framework/net.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
-#include "paddle/framework/recurrent_network_op.h"
 #include "paddle/framework/tensor.h"
+#include "paddle/operators/recurrent_network_op.h"
 
 namespace paddle {
 namespace framework {
 
 class RecurrentOpTest : public ::testing::Test {
- protected:
+protected:
   virtual void SetUp() override {
     CreateGlobalVariables();
     CreateStepNet();
@@ -174,7 +174,7 @@ TEST_F(RecurrentOpTest, Run) {
 }
 
 class RecurrentGradientAlgorithmTest : public ::testing::Test {
- protected:
+protected:
   virtual void SetUp() override {
     CreateGlobalVariables();
     CreateStepScopes();
@@ -280,11 +280,13 @@ class RecurrentGradientAlgorithmTest : public ::testing::Test {
     LOG(INFO) << "create variable step_net";
     Variable* var = scope_->CreateVariable("step_net");
     auto net = var->GetMutable<PlainNet>();
-    net->AddOp(OpRegistry::CreateOp("mul", {"rnn/h_pre", "rnn/w", "rnn/s_grad"},
-                                    {"rnn/h_pre_grad", "rnn/w_grad"}, {}));
+    net->AddOp(OpRegistry::CreateOp("mul",
+                                    {"rnn/h_pre", "rnn/w", "rnn/s_grad"},
+                                    {"rnn/h_pre_grad", "rnn/w_grad"},
+                                    {}));
 
-    net->AddOp(OpRegistry::CreateOp("add_two", {"rnn/h_grad"},
-                                    {"rnn/x_grad", "rnn/s_grad"}, {}));
+    net->AddOp(OpRegistry::CreateOp(
+        "add_two", {"rnn/h_grad"}, {"rnn/x_grad", "rnn/s_grad"}, {}));
     net->CompleteAddOp();
   }
 
