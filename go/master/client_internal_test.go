@@ -121,9 +121,9 @@ func TestGetFinishTask(t *testing.T) {
 		}
 
 		tasks = tasks[1:]
-		task, err := c.getTask()
-		if err.Error() != "no more available task" {
-			t.Fatal(err)
+		task, e := c.getTask()
+		if e.Error() != "no more available task" {
+			t.Fatal(e)
 		}
 		tasks = append(tasks, task)
 

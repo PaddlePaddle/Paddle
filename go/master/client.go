@@ -44,9 +44,9 @@ func (c *Client) getRecords() {
 		}
 
 		for _, chunk := range t.Chunks {
-			f, err := os.Open(chunk.Path)
-			if err != nil {
-				log.Errorln(err)
+			f, e := os.Open(chunk.Path)
+			if e != nil {
+				log.Errorln(e)
 				continue
 			}
 
