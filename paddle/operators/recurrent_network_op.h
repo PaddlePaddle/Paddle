@@ -17,7 +17,9 @@
 #include "paddle/framework/operator.h"
 
 namespace paddle {
-namespace framework {
+namespace operators {
+
+using namespace paddle::framework;
 
 namespace rnn {
 
@@ -225,5 +227,5 @@ private:
   RecurrentGradientAlgorithm alg_;
 };
 
-}  // namespace framework
+}  // namespace operators
 }  // namespace paddle
