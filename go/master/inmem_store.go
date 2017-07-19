@@ -4,7 +4,7 @@ import "sync"
 
 // InMemStore is an in memory implementation of Store interface.
 //
-// It does not tolerate the fault that casues the program to crash.
+// It does not tolerate the fault that causes the program to crash.
 type InMemStore struct {
 	mu  sync.Mutex
 	buf []byte

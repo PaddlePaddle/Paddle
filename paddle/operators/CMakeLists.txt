@@ -27,7 +27,8 @@ function(op_library TARGET)
     endif()
 
     list(LENGTH cu_srcs cu_srcs_len)
-    if (${cu_srcs_len} EQUAL 0)
+    list(LENGTH op_library_DEPS dep_len)
+    if (${cu_srcs_len} EQUAL 0 AND ${dep_len} EQUAL 0)
         message(WARNING "The op library ${TARGET} not support GPU!")
     endif()
 
@@ -42,3 +43,11 @@ endfunction()
 
 op_library(add_op SRCS add_op.cc add_op.cu)
 cc_test(add_op_test SRCS add_op_test.cc DEPS add_op)
+
+op_library(mul_op SRCS mul_op.cc mul_op.cu)
+op_library(rowwise_add_op SRCS rowwise_add_op.cu rowwise_add_op.cc)
+op_library(sigmoid_op SRCS sigmoid_op.cu sigmoid_op.cc)
+op_library(softmax_op SRCS softmax_op.cc softmax_op.cu)
+
+op_library(fc_op SRCS fc_op.cc DEPS mul_op rowwise_add_op sigmoid_op
+        softmax_op net)
