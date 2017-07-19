@@ -41,7 +41,7 @@ namespace framework {
 class Net : public OperatorBase {
  public:
   virtual void AddOp(const OperatorPtr& op) = 0;
-  virtual void CompleteAddOp() = 0;
+  virtual void CompleteAddOp(bool calc) = 0;
 };
 
 using NetPtr = std::shared_ptr<Net>;
@@ -86,7 +86,7 @@ class PlainNet : public Net {
     ops_.push_back(op);
   }
 
-  void CompleteAddOp() override;
+  void CompleteAddOp(bool calculate = true) override;
 
   std::string DebugString() const override;
 

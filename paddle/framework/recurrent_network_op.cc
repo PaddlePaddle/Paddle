@@ -265,6 +265,21 @@ class RecurrentAlgorithmProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddAttr<std::vector<std::string>>("memories", "names of memories");
 
     AddComment("This is a recurrent group operator.");
+
+    AddInputs("inlinks", "the input that need to be segmented for each step.");
+    AddInputs("boot_memories", "variables to initialize memories.");
+
+    AddInput("step_net", "network shared by all steps.");
+
+    AddOutputs("outlinks", "the output that need to concated for all steps.");
+    AddOutput("step_scopes", "step scopes");
+
+    AddAttr<std::vector<std::string>>("inlink_alias", "alias of inlinks");
+    AddAttr<std::vector<std::string>>("outlink_alias", "alias of outlinks");
+    AddAttr<std::vector<std::string>>("pre_memories", "names of pre-memories");
+    AddAttr<std::vector<std::string>>("memories", "names of memories");
+
+    AddComment("This is a recurrent group operator.");
   }
 };
 
