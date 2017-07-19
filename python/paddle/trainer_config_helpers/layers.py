@@ -5976,7 +5976,11 @@ def gated_unit_layer(input,
 
 @layer_support()
 @wrap_name_default('switch_order')
-def switch_order_layer(input, name=None, reshape=None, layer_attr=None):
+def switch_order_layer(input,
+                       name=None,
+                       reshape=None,
+                       act=None,
+                       layer_attr=None):
     """
     This layer switch dimension order of image input. 
     From order "batchSize, channels, height, width"
@@ -6000,9 +6004,10 @@ def switch_order_layer(input, name=None, reshape=None, layer_attr=None):
     assert isinstance(input, LayerOutput)
     l = Layer(
         name=name,
-        inputs=input,
+        inputs=input.name,
         reshape=reshape,
         type=LayerType.SWITCH_ORDER_LAYER,
+        active_type=act.name,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name=name,
