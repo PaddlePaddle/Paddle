@@ -19,8 +19,8 @@ limitations under the License. */
 #include <memory>
 #include <typeindex>
 #include "paddle/framework/ddim.h"
-#include "paddle/framework/enforce.h"
 #include "paddle/memory/memory.h"
+#include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
