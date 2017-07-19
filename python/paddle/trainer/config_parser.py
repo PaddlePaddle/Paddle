@@ -1998,6 +1998,23 @@ class PadLayer(LayerBase):
         self.config.size = out_ch * out_h * out_w
 
 
+@config_layer('crop')
+class CropLayer(LayerBase):
+    def __init__(self, name, inputs, axis, offset, shape, **xargs):
+        super(CropLayer, self).__init__(name, 'crop', 0, inputs=inputs, **xargs)
+        self.config.axis = axis
+        self.config.offset.extend(offset)
+        self.config.shape.extend(shape)
+
+        # get channel, width and height from input_0 layer
+        input_layer = self.get_input_layer(0)
+        image_conf = self.config.inputs[0].image_conf
+        image_conf.img_size = input_layer.width
+        image_conf.img_size_y = input_layer.height
+        image_conf.channels = input_layer.size / (input_layer.width *
+                                                  input_layer.height)
+
+
 @config_layer('batch_norm')
 class BatchNormLayer(LayerBase):
     layer_type = 'batch_norm'
