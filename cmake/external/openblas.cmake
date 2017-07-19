@@ -32,7 +32,12 @@ IF(NOT ${CBLAS_FOUND})
             # arm_soft_fp_abi branch of OpenBLAS to support softfp
             #   https://github.com/xianyi/OpenBLAS/tree/arm_soft_fp_abi
             SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
-            SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0)
+            IF(ANDROID_ABI MATCHES "^armeabi(-v7a)?$")
+                SET(TARGET "ARMV7")
+            ELSEIF(ANDROID_ABI STREQUAL "arm64-v8a")
+                SET(TARGET "ARMV8")
+            ENDIF()
+            SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=${TARGET} ARM_SOFTFP_ABI=1 USE_THREAD=0)
         ELSEIF(RPI)
             # use hardfp
             SET(OPENBLAS_COMMIT "v0.2.19")

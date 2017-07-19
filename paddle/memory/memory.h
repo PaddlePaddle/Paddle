@@ -19,9 +19,14 @@ limitations under the License. */
 namespace paddle {
 namespace memory {
 
-void* Alloc(paddle::platform::Place, size_t);
-void Free(paddle::platform::Place, void*);
-size_t Used(paddle::platform::Place);
+template <class Place>
+void* Alloc(Place, size_t);
+
+template <class Place>
+void Free(Place, void*);
+
+template <class Place>
+size_t Used(Place);
 
 }  // namespace memory
 }  // namespace paddle

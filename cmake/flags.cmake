@@ -109,7 +109,9 @@ set(COMMON_FLAGS
     -Wno-unused-function
     -Wno-error=literal-suffix
     -Wno-error=sign-compare
-    -Wno-error=unused-local-typedefs)
+    -Wno-error=unused-local-typedefs
+    -Wno-error=parentheses-equality # Warnings in Pybind11
+)
 
 set(GPU_COMMON_FLAGS
     -fPIC

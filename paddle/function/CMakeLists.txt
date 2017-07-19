@@ -11,7 +11,6 @@ if(WITH_GPU)
 endif()
 
 if(USE_NNPACK)
-  include(nnpack/nnpack.cmake)
   list(APPEND cpp_files nnpack/NNPACKConvOp.cpp)
   if(WITH_TESTING)
     add_unittest(NNPACKConvOpTest nnpack/NNPACKConvOpTest.cpp)

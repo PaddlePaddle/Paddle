@@ -28,7 +28,9 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
-find_package(Boost QUIET)
+if(NOT ANDROID)
+    find_package(Boost QUIET)
+endif()
 
 include(simd)
 
@@ -97,6 +99,7 @@ include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
+include(external/pybind11)    # download pybind11
 
 include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration
@@ -134,10 +137,15 @@ if(WITH_GPU)
 endif(WITH_GPU)
 
 if(USE_NNPACK)
-  list(APPEND EXTERNAL_LIBS ${NNPACK_LIB} ${PTHREADPOOL_LIB} "rt")
+    include(external/nnpack)
+    list(APPEND EXTERNAL_LIBS ${NNPACK_LIBS})
 endif(USE_NNPACK)
 
 add_subdirectory(proto)
+
+# "add_subdirectory(go)" should be placed after the following loine,
+# because it depends on paddle/optimizer.
+add_subdirectory(paddle/optimizer)
 
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
 # placed after this block, because they depends on it.
@@ -146,7 +154,9 @@ if(WITH_GOLANG)
 endif(WITH_GOLANG)
 
 add_subdirectory(paddle)
-add_subdirectory(python)
+if(WITH_PYTHON)
+  add_subdirectory(python)
+endif()
 if(WITH_DOC)
     add_subdirectory(doc)
 endif()
