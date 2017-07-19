@@ -84,6 +84,11 @@ message VarProto {
     //   "temporary_index": [1]
     // }
     optional bool temporary = 4 [default=false];
+
+    // The gradient of operator can be ignored immediately
+    // e.g. operator AddOp, y = x1 + x2, the gradient of dy/dx1, dy/dx2
+    // can be ignored for the future optimized on graph.
+    optional bool ignore_gradient = 6;
 }
 
 // Op protocol message for 3rd-party language binding.
@@ -105,4 +110,5 @@ message OpProto {
 
     // The type of that Op.
     required string type = 5;
+
 }

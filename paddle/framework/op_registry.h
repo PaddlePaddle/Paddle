@@ -74,25 +74,29 @@ class OpProtoAndCheckerMaker {
 
  protected:
   void AddInput(const std::string& name, const std::string& comment,
-                bool multiple = false) {
+                bool multiple = false, bool ignore_gradient = false) {
     auto input = proto_->mutable_inputs()->Add();
     *input->mutable_name() = name;
     *input->mutable_comment() = comment;
+    *input->set_ignore_gradient(ignore_gradient);
     input->set_multiple(multiple);
     if (multiple) {
       SetHasMultipleInput();
     }
   }
 
-  void AddInputs(const std::string& name, const std::string& comment) {
-    AddInput(name, comment, true);
+  void AddInputs(const std::string& name, const std::string& comment,
+                 bool ignore_gradient = false) {
+    AddInput(name, comment, true, ignore_gradient);
   }
 
   void AddOutput(const std::string& name, const std::string& comment,
-                 bool temporary = false, bool multiple = false) {
+                 bool temporary = false, bool multiple = false,
+                 bool ignore_gradient = false) {
     auto output = proto_->mutable_outputs()->Add();
     *output->mutable_name() = name;
     *output->mutable_comment() = comment;
+    *output->set_ignore_gradient(ignore_gradient);
     output->set_multiple(multiple);
     if (multiple) {
       SetHasMultipleOutput();
@@ -104,8 +108,8 @@ class OpProtoAndCheckerMaker {
   }
 
   void AddOutputs(const std::string& name, const std::string& comment,
-                  bool temporary = false) {
-    AddOutput(name, comment, temporary, true);
+                  bool temporary = false, bool ignore_gradient = false) {
+    AddOutput(name, comment, temporary, true, ignore_gradient);
   }
 
   template <typename T>
