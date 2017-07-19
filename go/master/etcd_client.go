@@ -158,8 +158,8 @@ func (e *EtcdClient) Load() ([]byte, error) {
 }
 
 // GetKey gets the value by the specify key.
-func GetKey(c *clientv3.Client, key string, timeout int) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout))
+func GetKey(c *clientv3.Client, key string, timeout time.Duration) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	resp, err := c.Get(ctx, key)
 	cancel()
 	if err != nil {
@@ -173,8 +173,8 @@ func GetKey(c *clientv3.Client, key string, timeout int) (string, error) {
 	return string(v), nil
 }
 
-// WatchKey watches the specify key and send to valChan if there is some event.
-func WatchKey(c *clientv3.Client, key string, valChan chan<- string) {
+// watchKey watches the specify key and send to valChan if there is some event.
+func watchKey(c *clientv3.Client, key string, valChan chan<- string) {
 	rch := c.Watch(context.Background(), key)
 	for wresp := range rch {
 		for _, ev := range wresp.Events {

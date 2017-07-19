@@ -33,7 +33,6 @@ import (
 	"unsafe"
 
 	"github.com/PaddlePaddle/Paddle/go/master"
-	"github.com/coreos/etcd/clientv3"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -65,32 +64,32 @@ func remove(client C.paddle_master_client) *master.Client {
 }
 
 //export paddle_new_etcd_master_client
+//
+// bufSize is the record buffer size.
 func paddle_new_etcd_master_client(etcdEndpoints *C.char, timeout int, bufSize int) C.paddle_master_client {
 	p := C.GoString(etcdEndpoints)
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   strings.Split(p, ","),
-		DialTimeout: time.Second * time.Duration(timeout),
-	})
+	endpoints := strings.Split(p, ",")
+	c, err := master.NewClient(
+		master.WithEtcd(endpoints, time.Duration(timeout)*time.Second),
+		master.WithBuffer(bufSize),
+	)
 	if err != nil {
 		panic(err)
 	}
-	ch := make(chan string, 1)
-	a, err := master.GetKey(cli, master.DefaultAddrPath, timeout)
-	if err != nil {
-		panic(err)
-	}
-	ch <- a
-	go master.WatchKey(cli, master.DefaultAddrPath, ch)
-	c := master.NewClient(ch, bufSize)
+
 	return add(c)
 }
 
 //export paddle_new_master_client
+//
+// bufSize is the record buffer size.
 func paddle_new_master_client(addr *C.char, bufSize int) C.paddle_master_client {
 	a := C.GoString(addr)
-	ch := make(chan string, 1)
-	ch <- a
-	c := master.NewClient(ch, bufSize)
+	c, err := master.NewClient(master.WithAddr(a), master.WithBuffer(bufSize))
+	if err != nil {
+		panic(err)
+	}
+
 	return add(c)
 }
 
@@ -117,9 +116,10 @@ func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int
 	return C.PADDLE_MASTER_OK
 }
 
-// return value:
-//     0:ok
-//    -1:error
+// paddle_next_record gets the nexts training record.
+//
+// returns number of bytes of the records if success, -1 if failed.
+//
 //export paddle_next_record
 func paddle_next_record(client C.paddle_master_client, record **C.uchar) C.int {
 	c := get(client)
@@ -141,6 +141,29 @@ func paddle_next_record(client C.paddle_master_client, record **C.uchar) C.int {
 	*record = (*C.uchar)(C.malloc(size))
 	C.memcpy(unsafe.Pointer(*record), unsafe.Pointer(&r[0]), size)
 	return C.int(size)
+}
+
+// paddle_request_save_model requests the master server to approve the
+// caller to save the model.
+//
+// returns 1 if the save the model request is approved, 0 if does the
+// request is rejected because other trainer is saving the model, -1
+// if error happened.
+//
+//export paddle_request_save_model
+func paddle_request_save_model(client C.paddle_master_client, trainerID string, blockMS int) C.int {
+	c := get(client)
+	need, err := c.RequestSaveModel(trainerID, time.Duration(blockMS)*time.Millisecond)
+	if err != nil {
+		log.Errorln(err)
+		return -1
+	}
+
+	if need {
+		return 1
+	}
+
+	return 0
 }
 
 //export mem_free
