@@ -67,6 +67,12 @@ class Tensor {
   }
 
   template <typename T>
+  T* mutable_data() {
+    return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                offset_);
+  }
+
+  template <typename T>
   T* mutable_data(platform::Place place) {
     PADDLE_ENFORCE(product(dims_) > 0,
                    "Tensor's numel must be larger than zero to call "
