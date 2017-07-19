@@ -4,8 +4,11 @@ cc_test(enforce_test SRCS enforce_test.cc DEPS enforce)
 cc_library(ddim SRCS ddim.cc DEPS eigen3)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
+
 cc_library(tensor SRCS tensor.cc DEPS ddim place enforce paddle_memory)
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
+cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
+
 cc_test(variable_test SRCS variable_test.cc)
 cc_test(scope_test SRCS scope_test.cc)
 proto_library(attr_type SRCS attr_type.proto)
