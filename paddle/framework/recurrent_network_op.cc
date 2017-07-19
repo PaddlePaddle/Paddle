@@ -197,14 +197,15 @@ void RecurrentOp::Init() {
   alg_.step_scopes_name_ = Output("step_scopes");
 
   alg_.inlinks_ = Inputs("inlinks");
-  alg_.inlink_alias_ = Inputs("inlink_alias");
+  alg_.inlink_alias_ = GetAttr<std::vector<std::string>>("inlink_alias");
 
   alg_.outlinks_ = Outputs("outlinks");
-  alg_.outlink_alias_ = Outputs("outlink_alias");
-
-  auto memories = Inputs("memories");
-  auto pre_memories = Inputs("pre_memories");
+  alg_.outlink_alias_ = GetAttr<std::vector<std::string>>("outlink_alias");
   auto boot_memories = Inputs("boot_memories");
+
+  // attributes
+  auto memories = GetAttr<std::vector<std::string>>("memories");
+  auto pre_memories = GetAttr<std::vector<std::string>>("pre_memories");
 
   PADDLE_ENFORCE(memories.size() == boot_memories.size(),
                  "the size of memories, pre_memories don't match:%d,%d",
@@ -233,17 +234,17 @@ class RecurrentAlgorithmProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
                                          OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInputs("inlinks", "the input that need to be segmented for each step.");
-
-    AddInputs("memories", "RNN's memories.");
-    AddInputs("pre_memories", "last step/previous memory.");
     AddInputs("boot_memories", "variables to initialize memories.");
 
-    AddInputs("inlink_alias", "alias for inlinks.");
     AddInput("step_net", "network shared by all steps.");
 
     AddOutputs("outlinks", "the output that need to concated for all steps.");
-    AddOutputs("outlink_alias", "alias for outlinks.");
     AddOutput("step_scopes", "step scopes");
+
+    AddAttr<std::vector<std::string>>("inlink_alias", "alias of inlinks");
+    AddAttr<std::vector<std::string>>("outlink_alias", "alias of outlinks");
+    AddAttr<std::vector<std::string>>("pre_memories", "names of pre-memories");
+    AddAttr<std::vector<std::string>>("memories", "names of memories");
 
     AddComment("This is a recurrent group operator.");
   }
