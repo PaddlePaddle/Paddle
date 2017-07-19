@@ -359,12 +359,11 @@ void Layer::backwardActivation() {
   /* Do error clipping */
   if (config_.error_clipping_threshold() > 0.0f) {
     if (FLAGS_log_error_clipping) {
-      CpuVector outGradVec(0, nullptr);
-      outGradVec.subVecFrom(
-          output_.grad->getData(), 0, output_.grad->getElementCnt());
-      real maxAbsGrad = outGradVec.getAbsMax();
+      VectorPtr outGradVec = Vector::create(
+          output_.grad->getData(), output_.grad->getElementCnt(), useGpu_);
+      real maxAbsGrad = outGradVec->getAbsMax();
       if (maxAbsGrad > config_.error_clipping_threshold()) {
-        real avgAbsGrad = outGradVec.getAbsSum() / outGradVec.getSize();
+        real avgAbsGrad = outGradVec->getAbsSum() / outGradVec->getSize();
         LOG(INFO) << " layer=" << config_.name() << " need clipping,"
                   << " max error=" << maxAbsGrad << " avg error=" << avgAbsGrad;
       }

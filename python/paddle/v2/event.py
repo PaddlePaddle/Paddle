@@ -9,8 +9,6 @@ There are:
 * BeginPass
 * EndPass
 """
-import py_paddle.swig_paddle as api
-
 __all__ = [
     'EndIteration', 'BeginIteration', 'BeginPass', 'EndPass', 'TestResult'
 ]
@@ -18,6 +16,7 @@ __all__ = [
 
 class WithMetric(object):
     def __init__(self, evaluator):
+        import py_paddle.swig_paddle as api
         if not isinstance(evaluator, api.Evaluator):
             raise TypeError("Evaluator should be api.Evaluator type")
         self.__evaluator__ = evaluator

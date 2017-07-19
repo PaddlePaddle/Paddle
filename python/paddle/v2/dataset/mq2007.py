@@ -212,19 +212,19 @@ def gen_pair(querylist, partial_order="full"):
         for j in range(i + 1, len(querylist)):
             query_right = querylist[j]
             if query_left.relevance_score > query_right.relevance_score:
-                labels.append(1)
+                labels.append([1])
                 docpairs.append([
                     np.array(query_left.feature_vector),
                     np.array(query_right.feature_vector)
                 ])
             elif query_left.relevance_score < query_right.relevance_score:
-                labels.append(1)
+                labels.append([1])
                 docpairs.append([
                     np.array(query_right.feature_vector),
                     np.array(query_left.feature_vector)
                 ])
     for label, pair in zip(labels, docpairs):
-        yield label, pair[0], pair[1]
+        yield np.array(label), pair[0], pair[1]
 
 
 def gen_list(querylist):

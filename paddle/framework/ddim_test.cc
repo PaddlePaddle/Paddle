@@ -49,9 +49,30 @@ TEST(DDim, Equality) {
 
   // arity of a DDim
   EXPECT_EQ(paddle::framework::arity(ddim), 3);
+  EXPECT_EQ(ddim.size(), 3);
 
   // product of a DDim
   EXPECT_EQ(paddle::framework::product(vddim), 45);
+  EXPECT_EQ(
+      paddle::framework::product(paddle::framework::make_ddim({3, 2, 5, 3})),
+      90);
+
+  // slice a DDim
+  paddle::framework::DDim ddim2 =
+      paddle::framework::make_ddim({1, 2, 3, 4, 5, 6});
+  paddle::framework::DDim ss = paddle::framework::slice_ddim(ddim2, 2, 5);
+  EXPECT_EQ(arity(ss), 3);
+  EXPECT_EQ(ss[0], 3);
+  EXPECT_EQ(ss[1], 4);
+  EXPECT_EQ(ss[2], 5);
+  paddle::framework::DDim ss2 = paddle::framework::slice_ddim(ddim2, 0, 6);
+  EXPECT_EQ(arity(ss2), 6);
+  EXPECT_EQ(ss2[0], 1);
+  EXPECT_EQ(ss2[1], 2);
+  EXPECT_EQ(ss2[2], 3);
+  EXPECT_EQ(ss2[3], 4);
+  EXPECT_EQ(ss2[4], 5);
+  EXPECT_EQ(ss2[5], 6);
 }
 
 TEST(DDim, Print) {

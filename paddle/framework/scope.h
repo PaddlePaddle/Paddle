@@ -23,6 +23,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class Scope;
+using ScopePtr = std::shared_ptr<Scope>;
+
 /**
  * @brief Scope that manage all variables.
  *
@@ -41,7 +44,7 @@ class Scope {
   /**
    * @brief Initialize a Scope with parent.
    */
-  explicit Scope(const std::shared_ptr<Scope>& parent) : parent_(parent) {}
+  explicit Scope(const ScopePtr& parent) : parent_(parent) {}
 
   /**
    * @brief Create Variable
@@ -88,7 +91,7 @@ class Scope {
 
  private:
   std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
-  std::shared_ptr<Scope> parent_{nullptr};
+  ScopePtr parent_{nullptr};
 };
 
 }  // namespace framework

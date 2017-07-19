@@ -10,3 +10,4 @@ import:
   version: ^1.7.4-pre
 - package: github.com/sirupsen/logrus
   version: ^1.0.0
+- package: github.com/topicai/candy
