@@ -218,7 +218,6 @@ class OpRegistry {
     //! Create a OpPtr by type.
     std::string op_type = op_desc.type();
     OperatorPtr op(creators().at(op_type)());
-    LOG(INFO) << "get op";
     //! Fill op's data member. Not use constructor because it will be noising
     //! for Op developer.
     const OpProto& op_proto = protos().at(op_type);

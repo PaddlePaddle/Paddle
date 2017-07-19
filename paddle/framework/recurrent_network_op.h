@@ -76,6 +76,20 @@ struct MemoryAttr {
   std::string boot_var;
 };
 
+/*
+ * Prepare inputs for each stepnet.
+ */
+void SegmentInputs(std::vector<ScopePtr>& step_scopes,
+                   const std::vector<std::string>& inlinks,
+                   const std::vector<std::string>& inlink_alias);
+
+/*
+ * Process outputs of stepnets and merge to variables.
+ */
+void ConcatOutputs(std::vector<ScopePtr>& step_scopes,
+                   const std::vector<std::string>& outlinks,
+                   const std::vector<std::string>& outlinks_alias);
+
 void LinkMemories(std::vector<ScopePtr>& step_scopes,
                   const std::vector<MemoryAttr>& memories, size_t step_id,
                   int offset);
@@ -127,21 +141,6 @@ class RecurrentAlgorithm {
   std::string debug_string() const;
 
  protected:
-  /*
-   * Get the max sequence length of the scope.
-   */
-  size_t GetMaxSeqLen(ScopePtr scope) const;
-
-  /*
-   * Prepare inputs for each stepnet.
-   */
-  void SegmentInputs(ScopePtr scope) const;
-
-  /*
-   * Process outputs of stepnets and merge to variables.
-   */
-  void ConcatOutputs(ScopePtr scope) const;
-
   /*
    * the step scopes as the father scope. The step scopes will be stored in
    * the father scope as a variable whose name is specified by
@@ -201,8 +200,8 @@ class RecurrentAlgorithm {
   std::vector<std::string> inlinks_;
   std::vector<std::string> outlinks_;
 
-  std::vector<std::string> in_link_alias_;
-  std::vector<std::string> out_link_alias_;
+  std::vector<std::string> inlink_alias_;
+  std::vector<std::string> outlink_alias_;
 
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
@@ -221,6 +220,9 @@ class RecurrentGradientAlgorithm {
  public:
   void LinkBootMemoryGradients(ScopePtr step_scopes) const;
   void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const;
+
+  // Init is used for unit test.
+  void Init(AttributeMap& attrs);
 
  private:
   // stepnet for backward
