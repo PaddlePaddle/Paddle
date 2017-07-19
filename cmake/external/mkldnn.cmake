@@ -23,10 +23,6 @@ SET(MKLDNN_SOURCES_DIR ${THIRD_PARTY_PATH}/mkldnn)
 SET(MKLDNN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INCLUDE_DIR "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 
-# The following magic numbers should be updated regularly to keep latest version
-SET(MKLDNN_TAG "v0.9")
-SET(MKLDNN_MKL_VER "mklml_lnx_2018.0.20170425")
-
 IF(WIN32)
     MESSAGE(WARNING "It is not supported compiling with mkldnn in windows Paddle yet."
       "Force WITH_MKLDNN=OFF")
@@ -42,37 +38,29 @@ ENDIF(WIN32)
 
 INCLUDE_DIRECTORIES(${MKLDNN_INCLUDE_DIR})
 
-SET(MKLDNN_CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-SET(MKLDNN_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+IF(${CBLAS_PROVIDER} STREQUAL "MKL_LITE")
+    SET(MKLDNN_DEPENDS   ${MKL_LITE_PROJECT})
+    SET(MKLDNN_MKLROOT   ${MKL_LITE_ROOT})
+    SET(MKLDNN_IOMP_DIR  ${MKL_LITE_LIB_DIR})
+ENDIF()
 
 ExternalProject_Add(
     ${MKLDNN_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY    "https://github.com/01org/mkl-dnn.git"
-    GIT_TAG           "${MKLDNN_TAG}"
-    PREFIX            ${MKLDNN_SOURCES_DIR}
-    PATCH_COMMAND     cd <SOURCE_DIR>/scripts && ./prepare_mkl.sh
-    UPDATE_COMMAND    ""
-    CMAKE_ARGS        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-    CMAKE_ARGS        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-    CMAKE_ARGS        -DCMAKE_CXX_FLAGS=${MKLDNN_CMAKE_CXX_FLAGS}
-    CMAKE_ARGS        -DCMAKE_C_FLAGS=${MKLDNN_CMAKE_C_FLAGS}
-    CMAKE_ARGS        -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
-    CMAKE_ARGS        -DCMAKE_INSTALL_LIBDIR=${MKLDNN_INSTALL_DIR}/lib
-    CMAKE_ARGS        -DCMAKE_BUILD_TYPE=Release
-    CMAKE_CACHE_ARGS  -DCMAKE_INSTALL_PREFIX:PATH=${MKLDNN_INSTALL_DIR}
-                      -DCMAKE_INSTALL_LIBDIR:PATH=${MKLDNN_INSTALL_DIR}/lib
-                      -DCMAKE_BUILD_TYPE:STRING=Release
+    DEPENDS             ${MKLDNN_DEPENDS}
+    GIT_REPOSITORY      "https://github.com/01org/mkl-dnn.git"
+    GIT_TAG             "v0.9"
+    PREFIX              ${MKLDNN_SOURCES_DIR}
+    CONFIGURE_COMMAND   mkdir -p <SOURCE_DIR>/build
+    BUILD_COMMAND       cd <SOURCE_DIR>/build
+                        && cmake .. -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR} -DMKLROOT=${MKLDNN_MKLROOT}
+                        && make all -j${CPU_CORES}
+    INSTALL_COMMAND     cd <SOURCE_DIR>/build && make install
+    UPDATE_COMMAND      ""
 )
-
-SET(MKL_LITE_DIR ${MKLDNN_SOURCES_DIR}/src/${MKLDNN_PROJECT}/external/${MKLDNN_MKL_VER})
-SET(MKL_LITE_INC_DIR ${MKL_LITE_DIR}/include)
-SET(MKL_LITE_LIB ${MKL_LITE_DIR}/lib/libmklml_intel.so)
-SET(MKL_LITE_LIB_IOMP ${MKL_LITE_DIR}/lib/libiomp5.so)
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKL_LITE_DIR}/lib")
 
 ADD_LIBRARY(mkldnn STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET mkldnn PROPERTY IMPORTED_LOCATION ${MKLDNN_LIBRARY})
 ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT})
-
+MESSAGE(STATUS "Mkldnn library: ${MKLDNN_LIBRARY}")
 LIST(APPEND external_project_dependencies mkldnn)

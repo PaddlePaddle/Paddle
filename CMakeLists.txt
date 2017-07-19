@@ -37,7 +37,8 @@ include(simd)
 ################################ Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
-option(WITH_MKLDNN      "Compile PaddlePaddle with mkl-dnn support."    ON)
+option(WITH_MKLDNN      "Compile PaddlePaddle with mkl-dnn support."    ${AVX_FOUND})
+option(WITH_MKL_LITE    "Compile PaddlePaddle with mkl lite package."   ${AVX_FOUND})
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        ON)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
@@ -76,6 +77,10 @@ if(ANDROID)
         "Disable PYTHON when cross-compiling for Android" FORCE)
     set(WITH_RDMA OFF CACHE STRING
         "Disable RDMA when cross-compiling for Android" FORCE)
+    set(WITH_MKLDNN OFF CACHE STRING
+        "Disable MKLDNN when cross-compiling for Android" FORCE)
+    set(WITH_MKL_LITE OFF CACHE STRING
+        "Disable MKL lite package when cross-compiling for Android" FORCE)
 endif(ANDROID)
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
@@ -89,14 +94,15 @@ endif()
 
 ########################################################################################
 
+include(external/mkllite)   # download mkl minimal lite package
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
 include(external/gtest)     # download, build, install gtest
 include(external/protobuf)  # download, build, install protobuf
 include(external/python)    # download, build, install python
-include(external/mkldnn)    # download, build, install mkldnn
 include(external/openblas)  # download, build, install openblas
+include(external/mkldnn)    # download, build, install mkldnn
 include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
 include(external/any)       # download libn::any
@@ -139,7 +145,6 @@ if(WITH_GPU)
 endif(WITH_GPU)
 
 if(WITH_MKLDNN)
-    message(STATUS "MKLDNN_LIBRARY: ${MKLDNN_LIBRARY}")
     list(APPEND EXTERNAL_LIBS ${MKLDNN_LIBRARY} ${MKL_LITE_LIB_IOMP})
 endif()
 

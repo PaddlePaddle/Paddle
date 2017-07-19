@@ -15,7 +15,22 @@
 
 set(CBLAS_FOUND OFF)
 
-## Find MKL First.
+## Find MKL Lite First.
+if(WITH_MKL_LITE AND MKL_LITE_INC_DIR AND MKL_LITE_LIB)
+  set(CBLAS_FOUND ON)
+  set(CBLAS_PROVIDER MKL_LITE)
+  set(CBLAS_INC_DIR ${MKL_LITE_INC_DIR})
+  set(CBLAS_LIBRARIES ${MKL_LITE_LIB})
+
+  add_definitions(-DPADDLE_USE_MKL_LITE)
+  add_definitions(-DLAPACK_FOUND)
+
+  message(STATUS "Found cblas and lapack in MKL Lite "
+    "(include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+  return()
+endif()
+
+## Then find MKL.
 set(INTEL_MKL_ROOT "/opt/intel/mkl" CACHE PATH "Folder contains intel mkl libs")
 set(MKL_ROOT $ENV{MKL_ROOT} CACHE PATH "Folder contains env MKL")
 
