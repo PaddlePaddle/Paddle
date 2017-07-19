@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/operators/add_op.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/tensor.h"
+#include "paddle/operators/infer_shape_common_functions.h"
 
 namespace paddle {
 namespace operators {
@@ -26,9 +27,10 @@ protected:
       const std::vector<framework::Tensor *> &outputs) const override {
     PADDLE_ENFORCE(inputs.size() == 2, "Input size of AddOp must be two");
     PADDLE_ENFORCE(outputs.size() == 1, "Output size of AddOp must be one");
-    PADDLE_ENFORCE(
-        inputs[0] != nullptr && inputs[1] != nullptr && outputs[0] != nullptr,
-        "Inputs/Outputs of AddOp must all be set");
+    InferShapeCommonFunctions::EnforceAllNotNull(
+        inputs, "Input %d of AddOp must be set");
+    InferShapeCommonFunctions::EnforceAllNotNull(
+        outputs, "Output %d of AddOp must be set");
     PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
                    "Two input of Add Op's dimension must be same.");
     outputs[0]->set_dims(inputs[0]->dims());
