@@ -1,9 +1,9 @@
-import py_paddle.swig_paddle as swig_api
-
 import paddle.trainer_config_helpers.config_parser_utils as config_parser_utils
 import paddle.trainer_config_helpers.optimizers as v1_optimizers
 """
 Optimizers(update equation) for SGD method.
+
+TODO(zhihong) : create new optimizer with proto config, add new optimizer here
 
 TODO(yuyang18): Complete comments.
 """
@@ -16,6 +16,7 @@ __all__ = [
 
 class Optimizer(object):
     def __init__(self, **kwargs):
+        import py_paddle.swig_paddle as swig_api
         if 'batch_size' in kwargs:
             del kwargs['batch_size']  # not important for python library.
 
@@ -34,18 +35,27 @@ class Optimizer(object):
         For each optimizer(SGD, Adam), GradientMachine should enable different
         buffers.
         """
+        import py_paddle.swig_paddle as swig_api
         tmp = swig_api.ParameterOptimizer.create(self.__opt_conf__)
         assert isinstance(tmp, swig_api.ParameterOptimizer)
         return tmp.getParameterTypes()
 
     def __create_local_updater__(self):
+        import py_paddle.swig_paddle as swig_api
         return swig_api.ParameterUpdater.createLocalUpdater(self.__opt_conf__)
 
     def __create_remote_updater__(self, pass_num, use_sparse_updater):
+        import py_paddle.swig_paddle as swig_api
         return swig_api.ParameterUpdater.createRemoteUpdater(
             self.__opt_conf__, pass_num, use_sparse_updater)
 
-    def create_updater(self, is_local, num_passes, use_sparse_updater):
+    def __create_new_remote_updater__(self, pserver_spec, use_etcd):
+        import py_paddle.swig_paddle as swig_api
+        return swig_api.ParameterUpdater.createNewRemoteUpdater(
+            self.__opt_conf__, pserver_spec, use_etcd)
+
+    def create_updater(self, is_local, num_passes, use_sparse_updater,
+                       pserver_spec, use_etcd):
         """
         create proper parameter_updater by configuration.
         :param is_local: create local or remote parameter updater
@@ -59,13 +69,19 @@ class Optimizer(object):
             if use_sparse_remote_updater:
                         gradient_machine.prefetch(in_args)
                         parameter_updater.getParametersRemote()
+
+        :param pserver_spec: pserver location, eg: localhost:3000
         :return: parameter_updater
         """
         if is_local:
             parameter_updater = self.__create_local_updater__()
         else:
-            parameter_updater = self.__create_remote_updater__(
-                num_passes, use_sparse_updater)
+            if pserver_spec is None:
+                parameter_updater = self.__create_remote_updater__(
+                    num_passes, use_sparse_updater)
+            else:
+                parameter_updater = self.__create_new_remote_updater__(
+                    pserver_spec, use_etcd)
         return parameter_updater
 
 
@@ -255,6 +271,7 @@ ModelAverage = v1_optimizers.ModelAverage
 L2Regularization = v1_optimizers.L2Regularization
 
 if __name__ == '__main__':
+    import py_paddle.swig_paddle as swig_api
     swig_api.initPaddle('--use_gpu=false')
     for opt in [
             Momentum(), Adam(), Adamax(), AdaGrad(), DecayedAdaGrad(),

@@ -1,6 +1,6 @@
 import numpy as np
-import py_paddle.swig_paddle as api
 from paddle.proto.ParameterConfig_pb2 import ParameterConfig
+import paddle.trainer.config_parser as cp
 import struct
 import tarfile
 import cStringIO
@@ -18,8 +18,11 @@ def create(layers):
     """
     topology = Topology(layers)
     pool = Parameters()
+    initializers = cp.g_parameter_initializer_map
     for param in topology.proto().parameters:
         pool.__append_config__(param)
+        if param.name in initializers:
+            pool[param.name] = initializers[param.name](param.name)
     return pool
 
 
@@ -47,7 +50,7 @@ class Parameters(object):
     def __init__(self):
         self.__param_conf__ = dict()
         self.__gradient_machines__ = []
-        self.__tmp_params__ = []
+        self.__tmp_params__ = dict()
 
     def __append_config__(self, param_conf):
         """
@@ -120,17 +123,15 @@ class Parameters(object):
         :return: parameter value
         :rtype: np.ndarray
         """
+        import py_paddle.swig_paddle as api
         shape = self.get_shape(key)
 
         if len(self.__gradient_machines__) == 0:
             # create new parameter in python numpy.
-            if len(self.__tmp_params__) != 0:
-                ret_list = [
-                    mat for name, mat in self.__tmp_params__ if name == key
-                ]
-                if len(ret_list) == 1:
-                    return ret_list[0]
-            return np.ndarray(shape=shape, dtype=np.float32)
+            if key in self.__tmp_params__:
+                return self.__tmp_params__[key]
+            else:
+                return np.ndarray(shape=shape, dtype=np.float32)
         else:
             for each_gradient_machine in self.__gradient_machines__:
                 param = __get_parameter_in_gradient_machine__(
@@ -183,7 +184,7 @@ class Parameters(object):
                              (shape, value.shape))
 
         if len(self.__gradient_machines__) == 0:
-            self.__tmp_params__.append((key, value))
+            self.__tmp_params__[key] = value
         else:
             for each_gradient_machine in self.__gradient_machines__:
                 __copy_parameter_to_gradient_machine__(each_gradient_machine,
@@ -222,12 +223,12 @@ class Parameters(object):
         :type gradient_machine: api.GradientMachine
         :return:
         """
-
+        import py_paddle.swig_paddle as api
         if not isinstance(gradient_machine, api.GradientMachine):
             raise ValueError("gradient_machine should be api.GradientMachine")
 
         if len(self.__tmp_params__) != 0:
-            for name, val in self.__tmp_params__:
+            for name, val in self.__tmp_params__.iteritems():
                 try:
                     __copy_parameter_to_gradient_machine__(gradient_machine,
                                                            name, val)
@@ -283,6 +284,18 @@ class Parameters(object):
 
     @staticmethod
     def from_tar(f):
+        """
+        Create a `Parameters` object from the given file. And
+        the `Parameters` only contains the parameters in this
+        file. It is adapted the parameters are same in the
+        defined network and the given file. For example, it
+        can be used in the inference.
+
+        :param f: the initialized model file.
+        :type f: tar file
+        :return: A Parameters object.
+        :rtype: Parameters.
+        """
         params = Parameters()
         tar = tarfile.TarFile(fileobj=f, mode='r')
         for finfo in tar:
@@ -297,6 +310,21 @@ class Parameters(object):
             f = tar.extractfile(param_name)
             params.deserialize(param_name, f)
         return params
+
+    def init_from_tar(self, f):
+        """
+        Different from `from_tar`, this interface can be used to
+        init partial network parameters from another saved model.
+
+        :param f: the initialized model file.
+        :type f: tar file
+        :return: Nothing.
+        """
+
+        tar_param = Parameters.from_tar(f)
+        for pname in tar_param.names():
+            if pname in self.names():
+                self.set(pname, tar_param.get(pname))
 
 
 def __get_parameter_in_gradient_machine__(gradient_machine, name):
@@ -331,6 +359,7 @@ def __copy_parameter_to_gradient_machine__(gradient_machine, name, arr):
     :return:
     :rtype: api.Parameter
     """
+    import py_paddle.swig_paddle as api
     param = __get_parameter_in_gradient_machine__(gradient_machine, name)
     vec = param.getBuf(api.PARAMETER_VALUE)
     assert isinstance(vec, api.Vector)

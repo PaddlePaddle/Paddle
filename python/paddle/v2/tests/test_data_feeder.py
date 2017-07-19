@@ -233,6 +233,30 @@ class DataFeederTest(unittest.TestCase):
             self.assertEqual(out_sparse.getSparseRowCols(i), data[i][1])
             self.assertEqual(out_index[i], data[i][0])
 
+    def test_dense_set_shape(self):
+        # test 2-D data
+        def gen_data(batch_size, shape):
+            data = []
+            for i in xrange(batch_size):
+                each_sample = []
+                each_sample.append(np.random.random(shape))
+                data.append(each_sample)
+            return data
+
+        feeder = DataFeeder([('image', data_type.dense_array(2352))],
+                            {'image': 0})
+        arg = feeder(gen_data(32, (3, 28, 28)))
+        h = arg.getSlotFrameHeight(0)
+        w = arg.getSlotFrameWidth(0)
+        self.assertEqual(h, 28)
+        self.assertEqual(w, 28)
+
+        arg = feeder(gen_data(32, (3, 30, 32)))
+        h = arg.getSlotFrameHeight(0)
+        w = arg.getSlotFrameWidth(0)
+        self.assertEqual(h, 30)
+        self.assertEqual(w, 32)
+
 
 if __name__ == '__main__':
     api.initPaddle("--use_gpu=0")

@@ -16,7 +16,7 @@ set(API_HEADER
     Internal.h)
 
 add_library(paddle_api STATIC ${API_SOURCES})
-add_dependencies(paddle_api gen_proto_cpp)
+add_dependencies(paddle_api paddle_proto paddle_trainer_lib)
 
 INCLUDE(${SWIG_USE_FILE})
 INCLUDE_DIRECTORIES(${PROJ_ROOT}/paddle)
@@ -41,10 +41,11 @@ SET(SWIG_MODULE_swig_paddle_EXTRA_DEPS
     paddle_network
     paddle_proto
     ${external_project_dependencies}
+    ${RDMA_LIBS}
 )
 
 IF(APPLE)
-    SET(MACOS_LD_FLAGS "-undefined dynamic_lookup -Wl,-all_load")
+    SET(MACOS_LD_FLAGS "-undefined dynamic_lookup -Wl,-all_load -framework CoreFoundation -framework Security")
 ELSE(APPLE)
     SET(START_GROUP "-Xlinker -start-group")
     SET(END_GROUP "-Xlinker -end-group")
@@ -65,6 +66,7 @@ SWIG_LINK_LIBRARIES(swig_paddle
     paddle_trainer_lib
     paddle_network
     paddle_parameter
+    paddle_optimizer
     paddle_math
     paddle_utils
     paddle_proto
@@ -73,6 +75,7 @@ SWIG_LINK_LIBRARIES(swig_paddle
     ${CMAKE_DL_LIBS}
     ${EXTERNAL_LIBS}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${RDMA_LD_FLAGS}
     ${START_END}
 )
 

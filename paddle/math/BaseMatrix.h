@@ -758,7 +758,7 @@ public:
                  T p3);           // decayRate
 
   /// apply L1/L2 to *this*
-  void applyL1(T learningRate, T decayRate);
+  virtual void applyL1(T learningRate, T decayRate);
   void applyL1(BaseMatrixT& lr, T learningRate, T decayRate);
   void applyL2(T learningRate, T decayRate);
   void applyL2(BaseMatrixT& lr, T learningRate, T decayRate);

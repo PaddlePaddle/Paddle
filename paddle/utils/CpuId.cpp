@@ -21,7 +21,7 @@ limitations under the License. */
 
 #else
 
-#if !defined(__arm__)
+#if !defined(__arm__) && !defined(__aarch64__)
 #include <cpuid.h>
 /// for GCC/Clang
 #define CPUID(info, x) __cpuid_count(x, 0, info[0], info[1], info[2], info[3])
@@ -32,7 +32,7 @@ limitations under the License. */
 namespace paddle {
 
 SIMDFlags::SIMDFlags() {
-#if defined(__arm__)
+#if defined(__arm__) || defined(__aarch64__)
   simd_flags_ = SIMD_NEON;
 #else
   unsigned int cpuInfo[4];

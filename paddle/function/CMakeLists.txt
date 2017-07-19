@@ -10,12 +10,19 @@ if(WITH_GPU)
     cuda_compile(cu_objs ${cu_files})
 endif()
 
+if(USE_NNPACK)
+  list(APPEND cpp_files nnpack/NNPACKConvOp.cpp)
+  if(WITH_TESTING)
+    add_unittest(NNPACKConvOpTest nnpack/NNPACKConvOpTest.cpp)
+  endif()
+endif()
+
 add_library(paddle_function STATIC ${cpp_files} ${cu_objs})
 add_dependencies(paddle_function ${external_project_dependencies})
-add_dependencies(paddle_function gen_proto_cpp)
+add_dependencies(paddle_function paddle_proto)
 
-if(WITH_GPU)
 if(WITH_TESTING)
+if(WITH_GPU)
     # TODO:
     # file(GLOB test_files . *OpTest.cpp)
     # add_executable(${test_bin} EXCLUDE_FROM_ALL ${test_files})
@@ -28,7 +35,10 @@ if(WITH_TESTING)
     add_simple_unittest(PadOpTest)
     add_simple_unittest(MulOpTest)
     add_simple_unittest(CosSimOpTest)
+    add_simple_unittest(RowConvOpTest)
 endif()
+
+add_simple_unittest(ConvOpTest)
 endif()
 
 add_style_check_target(paddle_function ${h_files})

@@ -25,13 +25,27 @@ COPY ./paddle/scripts/docker/root/ /root/
 RUN apt-get update && \
     apt-get install -y \
     git python-pip python-dev openssh-server bison  \
-    wget unzip tar xz-utils bzip2 gzip coreutils  \
+    wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-numpy python-matplotlib gcc g++ \
     automake locales clang-format-3.8 swig doxygen cmake  \
     liblapack-dev liblapacke-dev libboost-dev \
-    clang-3.8 llvm-3.8 libclang-3.8-dev && \
+    clang-3.8 llvm-3.8 libclang-3.8-dev \
+    net-tools && \
     apt-get clean -y
+
+# Install Go and glide
+RUN wget -O go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go.tgz && \
+    mkdir /root/gopath && \
+    mkdir /root/gopath/bin && \
+    mkdir /root/gopath/src && \
+    rm go.tgz
+ENV GOROOT=/usr/local/go GOPATH=/root/gopath
+# should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
+ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
+# install glide
+RUN curl -q https://glide.sh/get | sh
 
 # git credential to skip password typing
 RUN git config --global credential.helper store
@@ -47,7 +61,8 @@ RUN pip install --upgrade pip && \
     pip install -U docopt PyYAML sphinx && \
     pip install -U sphinx-rtd-theme==0.1.9 recommonmark && \
     pip install pre-commit 'requests==2.9.2' 'ipython==5.3.0' && \
-    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0'
+    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    pip install rarfile
 
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2

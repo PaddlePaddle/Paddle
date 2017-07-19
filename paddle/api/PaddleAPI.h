@@ -841,6 +841,10 @@ public:
   static ParameterUpdater* createRemoteUpdater(OptimizationConfig* config,
                                                int passCount,
                                                bool useSparseUpdater);
+  static ParameterUpdater* createNewRemoteUpdater(
+      OptimizationConfig* config,
+      const std::string pserverSpec,
+      const bool useEtcd) throw(UnsupportError);
   ~ParameterUpdater();
 
   /**
