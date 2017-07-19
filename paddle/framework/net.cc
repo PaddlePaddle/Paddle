@@ -61,7 +61,10 @@ std::string PlainNet::DebugString() const {
   std::ostringstream os;
   os << this->type_ << ":" << std::endl;
   for (auto& op : ops_) {
-    os << "\t" << op->DebugString() << std::endl;
+    std::istringstream is(op->DebugString());
+    for (std::string line; std::getline(is, line);) {
+      os << "    " << line << std::endl;
+    }
   }
   return os.str();
 }
