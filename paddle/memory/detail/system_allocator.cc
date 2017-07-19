@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/memory/detail/system_allocator.h"
 #include "paddle/platform/assert.h"
-#include "paddle/platform/error.h"
+#include "paddle/platform/enforce.h"
 #include "paddle/platform/gpu_info.h"
 
 #include <stdlib.h>    // for malloc and free
@@ -128,8 +128,7 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
   // process is terminating, in which case we don't care if
   // cudaFree succeeds.
   if (err != cudaErrorCudartUnloading) {
-    platform::throw_on_error(err,
-                             "cudaFree{Host} failed in GPUAllocator::Free.");
+    PADDLE_ENFORCE(err, "cudaFree{Host} failed in GPUAllocator::Free.");
   }
 }
 
