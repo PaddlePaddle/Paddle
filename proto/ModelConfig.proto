@@ -266,6 +266,11 @@ message PadConfig {
   repeated uint32 pad_w = 4;
 }
 
+message ReshapeConfig {
+ repeated uint32 heightAxis = 1;
+ repeated uint32 widthAxis = 2;
+}
+
 message MultiBoxLossConfig {
   required uint32 num_classes = 1;
   required float overlap_threshold = 2;
@@ -476,6 +481,9 @@ message LayerConfig {
   // controls the scope of pooling operation. can be set > 0.
   // leave empty or set to -1 to disable this stride pooling.
   optional int32 seq_pool_stride = 53 [default = -1];
+
+  // for switch order layer 
+  optional ReshapeConfig reshape_conf = 54;
 }
 
 message EvaluatorConfig {

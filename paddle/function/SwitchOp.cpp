@@ -23,12 +23,17 @@ void NCHW2NHWC<DEVICE_TYPE_CPU>(real* outputs,
                                 const int num,
                                 const int inC,
                                 const int inH,
-                                const int inW) {
+                                const int inW,
+                                const int argType) {
   for (int n = 0; n < num; ++n) {
     for (int c = 0; c < inC; ++c) {
       for (int h = 0; h < inH; ++h) {
         for (int w = 0; w < inW; ++w) {
-          outputs[((n * inH + h) * inW + w) * inC + c] = *(inputs++);
+          if (argType == ADD_TO) {
+            outputs[((n * inH + h) * inW + w) * inC + c] += *(inputs++);
+          } else {
+            outputs[((n * inH + h) * inW + w) * inC + c] = *(inputs++);
+          }
         }
       }
     }
@@ -41,12 +46,17 @@ void NHWC2NCHW<DEVICE_TYPE_CPU>(real* outputs,
                                 const int num,
                                 const int inH,
                                 const int inW,
-                                const int inC) {
+                                const int inC,
+                                const int argType) {
   for (int n = 0; n < num; ++n) {
     for (int h = 0; h < inH; ++h) {
       for (int w = 0; w < inW; ++w) {
         for (int c = 0; c < inC; ++c) {
-          outputs[((n * inC + c) * inH + h) * inW + w] = *(inputs++);
+          if (argType == ADD_TO) {
+            outputs[((n * inC + c) * inH + h) * inW + w] += *(inputs++);
+          } else {
+            outputs[((n * inC + c) * inH + h) * inW + w] = *(inputs++);
+          }
         }
       }
     }
@@ -54,23 +64,15 @@ void NHWC2NCHW<DEVICE_TYPE_CPU>(real* outputs,
 }
 
 /**
- * \brief Padding zeros to input according to the specify dimension.
- *        The struct pad_ contains the padding size in each dimension.
- *        The input and output is a 4D tensor. In PadFunc, we only
- *        pad zeros to the 2nd to 4th dimension.
+ * \brief  Switch dimension order of image input.
+ *         The input and output is a 4D tensor. Switch order
+ *         'batch_size,channels, height, width' to
+ *         order 'batch_size, height, width, channels'.
  *
  * Argument in this Function:
- * \param pad_    A struct object contains the padding size in each dimension.
- *                It has six integers. The channelStart and channelEnd indicate
- *                how many zeros to add before and after the input in channel
- *                dimension. And the heightStart and heightEnd indicate padding
- *                in height dimension. The widthStart and widthEnd indicate the
- *                padding in width dimension.
- * \param inputs  A 4D tensor, only one input.
- * \param outputs A 4D tensor, the output value after padding.
- *
+ * \param inputs  input data with order 'batch_size,channels, height, width'.
+ * \param outputs output data with order 'batch_size, height, width, channels'.
  */
-
 template <DeviceType Device>
 class NCHW2NHWCFunc : public FunctionBase {
 public:
@@ -84,25 +86,26 @@ public:
     size_t inC = inputs[0].shape()[1];
     size_t inH = inputs[0].shape()[2];
     size_t inW = inputs[0].shape()[3];
-    typename Tensor<real, Device>::Vector vec(outputs[0].shape().getElements(),
-                                              outputs[0].data<real>());
-    vec.zero();
-
-    NCHW2NHWC<Device>(
-        outputs[0].data<real>(), inputs[0].data<real>(), num, inC, inH, inW);
+    NCHW2NHWC<Device>(outputs[0].data<real>(),
+                      inputs[0].data<real>(),
+                      num,
+                      inC,
+                      inH,
+                      inW,
+                      outputs[0].getArgType());
   }
 };
 
 /**
- * \brief The backward propagation of padding Function. Remove the elements
- *        in the padding positions of forward.
+ * \brief  Switch dimension order of image input.
+ *         The input and output is a 4D tensor. Switch order
+ *         'batch_size, height, width, channels' to
+ *         order 'batch_size, channels, height, width'.
  *
  * Argument in this Function:
- * \param pad_    The same meaning as it in PadFunc.
- * \param inputs  The gradient with respect to the output value of PadFunc.
- * \param outputs The gradient with respect to the input value of PadFunc.
+ * \param inputs  input data with order 'batch_size, height, width, channels'.
+ * \param outputs output data with order 'batch_size, channels, height, width'.
  */
-
 template <DeviceType Device>
 class NHWC2NCHWFunc : public FunctionBase {
 public:
@@ -117,8 +120,13 @@ public:
     size_t inW = inputs[0].shape()[2];
     size_t inC = inputs[0].shape()[3];
 
-    NHWC2NCHW<Device>(
-        outputs[0].data<real>(), inputs[0].data<real>(), num, inH, inW, inC);
+    NHWC2NCHW<Device>(outputs[0].data<real>(),
+                      inputs[0].data<real>(),
+                      num,
+                      inH,
+                      inW,
+                      inC,
+                      outputs[0].getArgType());
   }
 };
 

@@ -3174,20 +3174,13 @@ class RecurrentLayerGroup(LayerBase):
             name, 'recurrent_layer_group', 0, inputs=[], device=device)
 
 
-@config_layer('pixel_softmax')
-class PixelSoftmaxLayer(LayerBase):
-    def __init__(self, name, inputs, **xargs):
-        super(PixelSoftmaxLayer, self).__init__(
-            name, 'pixel_softmax', 0, inputs=inputs, **xargs)
-
-        input_layer = self.get_input_layer(0)
-        image_conf = self.config.inputs[0].image_conf
-        image_conf.img_size = input_layer.width
-        image_conf.img_size_y = input_layer.height
-        image_conf.channels = input_layer.size / (input_layer.width *
-                                                  input_layer.height)
-        self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
-                           image_conf.channels)
+@config_layer('switch_order')
+class SwitchOrderLayer(LayerBase):
+    def __init__(self, name, inputs, reshape, **xargs):
+        super(SwitchOrderLayer, self).__init__(
+            name, 'switch_order', 0, inputs=inputs, **xargs)
+        self.conf.reshape_conf.heightAxis_ = reshape['height']
+        self.conf.reshape_conf.widthAxis_ = reshape['width']
 
 
 # Deprecated, use a new layer specific class instead

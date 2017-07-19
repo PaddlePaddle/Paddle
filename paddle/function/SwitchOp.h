@@ -30,6 +30,7 @@ namespace paddle {
  * \param[in]  inC     channel number of input data.
  * \param[in]  inH     height of input data.
  * \param[in]  inH     with of input data.
+ * \param[in]  argType     type of output argument.
  */
 template <DeviceType Device>
 void NCHW2NHWC(real* outputs,
@@ -37,7 +38,8 @@ void NCHW2NHWC(real* outputs,
                const int num,
                const int inC,
                const int inH,
-               const int inW);
+               const int inW,
+               const int argtype);
 
 /**
  * \brief  This funtion switch dimension order of image input.
@@ -51,6 +53,7 @@ void NCHW2NHWC(real* outputs,
  * \param[in]  inH     height of input data.
  * \param[in]  inW     with of input data.
  * \param[in]  inC     channel number of input data.
+ * \param[in]  argType     type of output argument.
  */
 template <DeviceType Device>
 void NHWC2NCHW(real* inGrad,
@@ -58,5 +61,6 @@ void NHWC2NCHW(real* inGrad,
                const int num,
                const int inH,
                const int inW,
-               const int inC);
+               const int inC,
+               const int argType);
 }  // namespace paddle

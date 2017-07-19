@@ -126,7 +126,7 @@ __all__ = [
     'row_conv_layer',
     'dropout_layer',
     'prelu_layer',
-    'pixel_softmax_layer',
+    'switch_order_layer',
 ]
 
 
@@ -218,7 +218,7 @@ class LayerType(object):
     SMOOTH_L1 = 'smooth_l1'
 
     PRELU = 'prelu'
-    PIXEL_SOFTMAX_LAYER = 'pixel_softmax'
+    SWITCH_ORDER_LAYER = 'switch_order'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -5881,37 +5881,37 @@ def prelu_layer(input,
 
 
 @layer_support()
-@wrap_name_default('pixel_softmax')
-def pixel_softmax_layer(input, name=None, layer_attr=None):
+@wrap_name_default('switch_order')
+def switch_order_layer(input, name=None, reshape=None, layer_attr=None):
     """
-    This layer calculate softmax in image channel dimension
+    This layer switch dimension order of image input. 
+    From order "batchSize, channels, height, width"
+    to order "batchSize, height, width, channels".
 
     The example usage is:
 
     .. code-block:: python
+       reshape = {'height':[ 0, 1, 2], 'width':[3]}
+       switch = switch_order(input=layer, name='switch', reshape=reshape)
 
-       prelu = pixel_softmax(input=layer, name='softmax')
-
-    :param name: Name of this layer.
-    :type name: basestring
     :param input: The input layer.
     :type input: LayerOutput
+    :param name: Name of this layer.
+    :type name: basestring
+    :param reshape: reshape matrix by axises.
+    :type reshape: Dict
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
-    if isinstance(input, LayerOutput):
-        input = [input]
-    elif isinstance(input, Projection):
-        input = [input]
-    else:
-        assert isinstance(input, collections.Sequence)
+    assert isinstance(input, LayerOutput)
     l = Layer(
         name=name,
-        inputs=[x.name for x in input],
-        type=LayerType.PIXEL_SOFTMAX_LAYER,
+        inputs=input,
+        reshape=reshape,
+        type=LayerType.SWITCH_ORDER_LAYER,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name=name,
-        layer_type=LayerType.PIXEL_SOFTMAX_LAYER,
+        layer_type=LayerType.SWITCH_ORDER_LAYER,
         parents=input,
         size=l.config.size)

@@ -1802,7 +1802,7 @@ TEST(Layer, RowConvLayer) {
   }
 }
 
-TEST(Layer, PixelSoftmaxLayer) {
+TEST(Layer, SwitchOrderLayer) {
   TestConfig config;
   // config input_0
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 1024, 0});
@@ -1812,12 +1812,18 @@ TEST(Layer, PixelSoftmaxLayer) {
   img->set_img_size(16);
   img->set_img_size_y(16);
 
+  ReshapeConfig* reshape = config.layerConfig.mutable_reshape_conf();
+  reshape->add_heightaxis(0);
+  reshape->add_heightaxis(1);
+  reshape->add_heightaxis(2);
+  reshape->add_widthaxis(3);
+
   // config softmax layer
-  config.layerConfig.set_type("pixel_softmax");
-  config.layerConfig.set_name("pixelSofrmaxLayer");
+  config.layerConfig.set_type("switch_order");
+  config.layerConfig.set_name("switchOrderLayer");
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "pixel_softmax", 100, false, useGpu, true, 2);
+    testLayerGrad(config, "switch_order", 100, false, useGpu, true);
   }
 }
 

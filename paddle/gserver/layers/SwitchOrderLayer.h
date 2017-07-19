@@ -21,24 +21,27 @@ namespace paddle {
 /**
  * \brief  This layer calculate softmax in image channel dimension.
  */
-class PixelSoftmaxLayer : public Layer {
+class SwitchOrderLayer : public Layer {
 public:
-  explicit PixelSoftmaxLayer(const LayerConfig& config) : Layer(config) {}
+  explicit SwitchOrderLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~PixelSoftmaxLayer() {}
+  ~SwitchOrderLayer() {}
 
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
+  void setInDims();
+  void setOutDims();
 
 protected:
-  uint32_t inC_;
-  uint32_t inH_;
-  uint32_t inW_;
+  std::vector<std::shared_ptr<FunctionBase>> nchw2nhwc_;
+  std::vector<std::shared_ptr<FunctionBase>> nhwc2nchw_;
   TensorShape inDims_;
   TensorShape outDims_;
-  MatrixPtr tmpInput_;
-  MatrixPtr tmpOutput_;
+  std::vector<int> heightAxis_;
+  std::vector<int> widthAxis_;
+  size_t reshapeHeight_;
+  size_t reshapeWidth_;
 };
 }  // namespace paddle

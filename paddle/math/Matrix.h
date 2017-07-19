@@ -1732,7 +1732,6 @@ public:
                               Matrix& prevGrad2);
 
   void softmax(Matrix& output);
-  void softmaxBackward(Matrix& outputV);
   void sequenceSoftmax(Matrix& output, const IVector& index);
   void softmaxDerivative(Matrix& output, Matrix& sftmaxSum);
 

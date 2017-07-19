@@ -3385,27 +3385,6 @@ void CpuMatrix::oneHotCrossEntropyWithSelfNormBp(Matrix& output,
   real* out = output.getData();             \
   for (size_t i = 0; i < numSamples; ++i, grad += dim, out += dim)
 
-void CpuMatrix::softmaxBackward(Matrix& outputV) {
-  CHECK(!outputV.useGpu()) << "Matrix type are not equal";
-  size_t height = getHeight();
-  size_t width = getWidth();
-  CHECK(height == outputV.getHeight() && width == outputV.getWidth())
-      << "Matrix dimensions are not equal";
-  Matrix::resizeOrCreate(sftmaxDot_,
-                         height_,
-                         width_,
-                         /* trans */ false,
-                         useGpu_);
-  Matrix::resizeOrCreate(sftmaxSum_,
-                         height_,
-                         1,
-                         /* trans */ false,
-                         useGpu_);
-  sftmaxDot_->dotMul(*this, outputV);
-  sftmaxSum_->colMerge(*sftmaxDot_);
-  softmaxDerivative(outputV, *sftmaxSum_);
-}
-
 void CpuMatrix::softmax(Matrix& output) {
   CHECK(!output.useGpu());
 
