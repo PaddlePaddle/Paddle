@@ -37,13 +37,13 @@ class Tensor {
   template <bool less, size_t i, typename... args>
   friend struct paddle::pybind::details::CastToPyBufferImpl;
 
-  template <typename T, size_t D, typename IndexType = Eigen::DenseIndex>
+  template <typename T, size_t D, typename IndexType>
   friend struct EigenTensor;
 
-  template <typename T, typename IndexType = Eigen::DenseIndex>
+  template <typename T, typename IndexType>
   friend struct EigenVector;
 
-  template <typename T, typename IndexType = Eigen::DenseIndex>
+  template <typename T, typename IndexType>
   friend struct EigenMatrix;
 
  public:
@@ -57,7 +57,7 @@ class Tensor {
   }
 
   template <typename T>
-  T* raw_data() const {
+  T* data() {
     CheckDims<T>();
     return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                 offset_);

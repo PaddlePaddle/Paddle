@@ -12,26 +12,32 @@
 */
 
 #include "paddle/framework/eigen.h"
-
 #include <gtest/gtest.h>
 
-#include "paddle/framework/tensor.h"
+namespace paddle {
+namespace framework {
+
+TEST(EigenDim, From) {
+  EigenDim<3>::Type ed = EigenDim<3>::From(make_ddim({1, 2, 3}));
+  EXPECT_EQ(1, ed[0]);
+  EXPECT_EQ(2, ed[1]);
+  EXPECT_EQ(3, ed[2]);
+}
 
 TEST(Eigen, Tensor) {
-  using paddle::platform::Tensor;
-  using paddle::platform::EigenTensor;
-  using paddle::platform::make_ddim;
-
   Tensor t;
-  float* p = t.mutable_data<float>(make_ddim({1, 2, 3}), CPUPlace());
+  float* p = t.mutable_data<float>(make_ddim({1, 2, 3}), platform::CPUPlace());
   for (int i = 0; i < 1 * 2 * 3; i++) {
     p[i] = static_cast<float>(i);
   }
 
-  EigenTensor::Type et = EigenTensor::From(t);
+  EigenTensor<float, 3>::Type et = EigenTensor<float, 3>::From(t);
   // TODO: check the content of et.
 }
 
 TEST(Eigen, Vector) {}
 
 TEST(Eigen, Matrix) {}
+
+}  // namespace platform
+}  // namespace paddle

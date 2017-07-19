@@ -28,7 +28,7 @@ struct EigenDim {
   static Type From(const DDim& dims) {
     PADDLE_ENFORCE(arity(dims) == D, "D must match arity(DDim)");
     Type ret;
-    for (int d = 0; d < rank; d++) {
+    for (int d = 0; d < arity(dims); d++) {
       ret[d] = dims[d];
     }
     return ret;
@@ -43,8 +43,7 @@ struct EigenTensor {
 
   using ConstType =
       Eigen::TensorMap<Eigen::Tensor<const T, D, Eigen::RowMajor, IndexType>,
-                       Eigen::Aligned>
-          ConstTensor;
+                       Eigen::Aligned>;
 
   static Type From(Tensor& tensor, DDim dims) {
     return Type(tensor.data<T>(), EigenDim<D>::From(dims));
@@ -64,11 +63,10 @@ struct EigenTensor {
 // Interpret paddle::platform::Tensor as EigenVecotr and EigenConstVector.
 template <typename T, typename IndexType = Eigen::DenseIndex>
 struct EigenVector {
-  using EigenVector =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, IndexType>,
-                       Eigen::Aligned>;
+  using Type = Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, IndexType>,
+                                Eigen::Aligned>;
 
-  using EigenConstVector =
+  using ConstType =
       Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, IndexType>,
                        Eigen::Aligned>;
 
@@ -82,13 +80,10 @@ struct EigenVector {
 // Interpret paddle::platform::Tensor as EigenMatrix and EigenConstMatrix.
 template <typename T, typename IndexType = Eigen::DenseIndex>
 struct EigenMatrix {
-  template <typename T, typename IndexType = Eigen::DenseIndex>
-  using EigenMatrix =
-      Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor, IndexType>,
-                       Eigen::Aligned>;
+  using Type = Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor, IndexType>,
+                                Eigen::Aligned>;
 
-  template <typename T, typename IndexType = Eigen::DenseIndex>
-  using EigenConstMatrix =
+  using ConstType =
       Eigen::TensorMap<Eigen::Tensor<const T, 2, Eigen::RowMajor, IndexType>,
                        Eigen::Aligned>;
 
