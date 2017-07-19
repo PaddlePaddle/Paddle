@@ -254,25 +254,24 @@ class RecurrentGradientAlgorithmTest : public ::testing::Test {
   }
 
   void CreateRNNGradientAlgorithm() {
-    std::unique_ptr<details::RecurrentArgument> arg(
-        new details::RecurrentArgument());
+    std::unique_ptr<rnn::Argument> arg(new rnn::Argument());
     arg->step_net = "step_net";
     arg->step_scopes = "step_scopes";
-    details::Link inlink;
-    inlink.link = "h_grad";
-    inlink.alias = "rnn/h_grad";
-    arg->inlinks = std::vector<details::Link>{inlink};
+    rnn::Link inlink;
+    inlink.internal = "h_grad";
+    inlink.external = "rnn/h_grad";
+    arg->inlinks = std::vector<rnn::Link>{inlink};
 
-    details::Link outlink;
-    outlink.link = "x_grad";
-    outlink.alias = "rnn/x_grad";
-    arg->outlinks = std::vector<details::Link>{outlink};
+    rnn::Link outlink;
+    outlink.internal = "x_grad";
+    outlink.external = "rnn/x_grad";
+    arg->outlinks = std::vector<rnn::Link>{outlink};
 
-    details::MemoryAttr mem_attr;
+    rnn::MemoryAttr mem_attr;
     mem_attr.pre_var = "rnn/h_pre_grad";
     mem_attr.var = "rnn/h_grad";
     mem_attr.boot_var = "h_boot_grad";
-    arg->memories = std::vector<details::MemoryAttr>{mem_attr};
+    arg->memories = std::vector<rnn::MemoryAttr>{mem_attr};
 
     rnn_grad_algo_.Init(std::move(arg));
   }
@@ -294,26 +293,26 @@ class RecurrentGradientAlgorithmTest : public ::testing::Test {
     std::vector<std::string> inlinks = {"x"};
     std::vector<std::string> inlinks_alias = {"rnn/x"};
 
-    details::Link inlink;
-    inlink.link = "x";
-    inlink.alias = "rnn/x";
+    rnn::Link inlink;
+    inlink.internal = "x";
+    inlink.external = "rnn/x";
     std::vector<ScopePtr>* step_scopes =
         scope_->GetVariable("step_scopes")->GetMutable<std::vector<ScopePtr>>();
-    details::SegmentInputs(*step_scopes, std::vector<details::Link>{inlink});
+    rnn::SegmentInputs(*step_scopes, std::vector<rnn::Link>{inlink});
   }
 
   void LinkeMemories() {
     LOG(INFO) << "link memories";
-    details::MemoryAttr mem_attr;
+    rnn::MemoryAttr mem_attr;
     mem_attr.pre_var = "rnn/h_pre";
     mem_attr.var = "rnn/h";
     mem_attr.boot_var = "boot_h";
-    std::vector<details::MemoryAttr> memories;
+    std::vector<rnn::MemoryAttr> memories;
     memories.push_back(mem_attr);
     std::vector<ScopePtr>* step_scopes =
         scope_->GetVariable("step_scopes")->GetMutable<std::vector<ScopePtr>>();
     for (int i = 1; i < 10; ++i) {
-      details::LinkMemories(*step_scopes, memories, i, -1);
+      rnn::LinkMemories(*step_scopes, memories, i, -1);
     }
   }
 
@@ -348,15 +347,15 @@ TEST(RecurrentOp, LinkMemories) {
   }
 
   // create MemoryAttr
-  details::MemoryAttr mem_attr;
+  rnn::MemoryAttr mem_attr;
   mem_attr.pre_var = "pre_h";
   mem_attr.var = "h";
   mem_attr.boot_var = "boot_h";
-  std::vector<details::MemoryAttr> memories;
+  std::vector<rnn::MemoryAttr> memories;
   memories.push_back(mem_attr);
 
   for (int i = 1; i < len; ++i) {
-    details::LinkMemories(step_scopes, memories, i, -1);
+    rnn::LinkMemories(step_scopes, memories, i, -1);
   }
   // check
   for (int i = 0; i < len - 1; ++i) {
@@ -372,7 +371,7 @@ TEST(RecurrentOp, LinkMemories) {
   }
 
   for (int i = len - 2; i >= 0; --i) {
-    details::LinkMemories(step_scopes, memories, i, 1);
+    rnn::LinkMemories(step_scopes, memories, i, 1);
   }
   // check
   for (int i = len - 2; i >= 0; --i) {

@@ -19,7 +19,7 @@
 namespace paddle {
 namespace framework {
 
-namespace details {
+namespace rnn {
 
 /*
  * Memory of a RNN (same as the role of `Momory` in PaddlePaddle).
@@ -40,17 +40,17 @@ struct MemoryAttr {
 
 struct Link {
   // input or output links name.
-  std::string link;
+  std::string internal;
   // alias to avoid duplicate keys in scopes.
-  std::string alias;
+  std::string external;
 };
 
-struct RecurrentArgument {
+struct Argument {
   std::string step_net;
   std::string step_scopes;
   std::vector<Link> inlinks;
   std::vector<Link> outlinks;
-  std::vector<details::MemoryAttr> memories;
+  std::vector<rnn::MemoryAttr> memories;
 };
 
 /*
@@ -69,7 +69,7 @@ void LinkMemories(std::vector<ScopePtr>& step_scopes,
                   const std::vector<MemoryAttr>& memories, size_t step_id,
                   int offset);
 
-};  // namespace details
+};  // namespace rnn
 
 // fake interfaces end
 // --------------------------------------------------------------------
@@ -113,9 +113,7 @@ class RecurrentAlgorithm {
    */
   void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const;
 
-  void Init(std::unique_ptr<details::RecurrentArgument> arg) {
-    arg_ = std::move(arg);
-  }
+  void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
 
   std::string debug_string() const;
 
@@ -144,7 +142,7 @@ class RecurrentAlgorithm {
   void InitMemories(ScopePtr step_scopes) const;
 
  private:
-  std::unique_ptr<details::RecurrentArgument> arg_;
+  std::unique_ptr<rnn::Argument> arg_;
 };
 
 /*
@@ -158,14 +156,12 @@ class RecurrentAlgorithm {
  */
 class RecurrentGradientAlgorithm {
  public:
-  void Init(std::unique_ptr<details::RecurrentArgument> arg) {
-    arg_ = std::move(arg);
-  }
+  void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
   void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const;
   void LinkBootMemoryGradients(ScopePtr step_scopes) const;
 
  private:
-  std::unique_ptr<details::RecurrentArgument> arg_;
+  std::unique_ptr<rnn::Argument> arg_;
 };
 
 /*
