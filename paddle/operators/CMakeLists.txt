@@ -52,4 +52,4 @@ op_library(softmax_op SRCS softmax_op.cc softmax_op.cu)
 op_library(fc_op SRCS fc_op.cc DEPS mul_op rowwise_add_op sigmoid_op
         softmax_op net)
 
-op_library(sgd_op SRCS sgd_op.cc)
+op_library(sgd_op SRCS sgd_op.cc sgd_op.cu)
