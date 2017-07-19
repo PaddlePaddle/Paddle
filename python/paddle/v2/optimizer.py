@@ -35,18 +35,22 @@ class Optimizer(object):
         For each optimizer(SGD, Adam), GradientMachine should enable different
         buffers.
         """
+        import py_paddle.swig_paddle as swig_api
         tmp = swig_api.ParameterOptimizer.create(self.__opt_conf__)
         assert isinstance(tmp, swig_api.ParameterOptimizer)
         return tmp.getParameterTypes()
 
     def __create_local_updater__(self):
+        import py_paddle.swig_paddle as swig_api
         return swig_api.ParameterUpdater.createLocalUpdater(self.__opt_conf__)
 
     def __create_remote_updater__(self, pass_num, use_sparse_updater):
+        import py_paddle.swig_paddle as swig_api
         return swig_api.ParameterUpdater.createRemoteUpdater(
             self.__opt_conf__, pass_num, use_sparse_updater)
 
     def __create_new_remote_updater__(self, pserver_spec, use_etcd):
+        import py_paddle.swig_paddle as swig_api
         return swig_api.ParameterUpdater.createNewRemoteUpdater(
             self.__opt_conf__, pserver_spec, use_etcd)
 

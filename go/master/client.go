@@ -69,7 +69,10 @@ func (c *Client) getRecords() {
 		// We treat a task as finished whenever the last data
 		// instance of the task is read. This is not exactly
 		// correct, but a reasonable approximation.
-		c.taskFinished(t.Meta.ID)
+		err = c.taskFinished(t.Meta.ID)
+		if err != nil {
+			log.Errorln(err)
+		}
 	}
 }
 

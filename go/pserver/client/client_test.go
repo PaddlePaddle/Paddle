@@ -79,15 +79,33 @@ func initEtcdClient() {
 		log.Errorf("err %v", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	client.Delete(ctx, pserver.PsDesired)
-	client.Delete(ctx, pserver.PsPath)
-	client.Put(ctx, pserver.PsDesired, strconv.Itoa(numPserver))
+	_, err = client.Delete(ctx, pserver.PsDesired)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = client.Delete(ctx, pserver.PsPath)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = client.Put(ctx, pserver.PsDesired, strconv.Itoa(numPserver))
+	if err != nil {
+		panic(err)
+	}
+
 	ports := initClient()
 	for i := 0; i < numPserver; i++ {
-		client.Put(ctx, pserver.PsPath+strconv.Itoa(i), ":"+strconv.Itoa(ports[i]))
+		_, err = client.Put(ctx, pserver.PsPath+strconv.Itoa(i), ":"+strconv.Itoa(ports[i]))
+		if err != nil {
+			panic(err)
+		}
 	}
 	cancel()
-	client.Close()
+	err = client.Close()
+	if err != nil {
+		panic(err)
+	}
 }
 
 type selector bool

@@ -185,6 +185,8 @@ def convert(output_path, reader, line_count, name_prefix):
         filename = "%s/%s-%05d" % (output_path, name_prefix, indx_f)
         writer = recordio.writer(filename)
         for l in lines:
+            # FIXME(Yancey1989):
+            # dumps with protocol: pickle.HIGHEST_PROTOCOL
             writer.write(cPickle.dumps(l))
         writer.close()
 

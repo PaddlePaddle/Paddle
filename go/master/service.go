@@ -165,7 +165,7 @@ func (s *Service) recover() (bool, error) {
 
 // snapshot *must* be called with s.mu being held.
 func (s *Service) snapshot() error {
-	// TOOD(helin): etcd request has a size limit, so the snapshot
+	// TODO(helin): etcd request has a size limit, so the snapshot
 	// size is limited by the max request size. We should either
 	// divide the snapshot into smaller chunks and save under
 	// different keys, or configure the request size to be big
@@ -302,7 +302,6 @@ func (s *Service) processFailedTask(t taskEntry, epoch int) {
 
 	log.Warningf("Task %v failed %d times, discard.", t.Task, t.NumFailure)
 	s.taskQueues.Todo = append(s.taskQueues.Todo, t)
-	return
 }
 
 func (s *Service) checkTimeoutFunc(taskID int, epoch int) func() {

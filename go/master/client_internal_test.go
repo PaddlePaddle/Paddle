@@ -66,11 +66,21 @@ func TestGetFinishTask(t *testing.T) {
 
 	for i := 0; i < totalTask*chunkPerTask; i++ {
 		w := recordio.NewWriter(f, -1, -1)
-		w.Write(nil)
+		_, err = w.Write(nil)
+		if err != nil {
+			panic(err)
+		}
+
 		// call Close to force RecordIO writing a chunk.
-		w.Close()
+		err = w.Close()
+		if err != nil {
+			panic(err)
+		}
 	}
-	f.Close()
+	err = f.Close()
+	if err != nil {
+		panic(err)
+	}
 
 	// Manually intialize client to avoid calling c.getRecords()
 	c := &Client{}
@@ -82,7 +92,10 @@ func TestGetFinishTask(t *testing.T) {
 	req := SetDatasetRequest{}
 	req.GlobPaths = []string{path}
 	req.NumPasses = 10
-	c.SetDataset(req)
+	err = c.SetDataset(req)
+	if err != nil {
+		t.Fatal(err)
+	}
 	checkOnePass := func(i int) {
 		var tasks []Task
 		for idx := 0; idx < totalTask; idx++ {

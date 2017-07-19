@@ -57,17 +57,32 @@ func TestNextRecord(t *testing.T) {
 
 	w := recordio.NewWriter(f, -1, -1)
 	for i := 0; i < total; i++ {
-		w.Write([]byte{byte(i)})
+		_, err = w.Write([]byte{byte(i)})
+		if err != nil {
+			panic(err)
+		}
 	}
-	w.Close()
-	f.Close()
+
+	err = w.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	err = f.Close()
+	if err != nil {
+		panic(err)
+	}
+
 	curAddr := make(chan string, 1)
 	curAddr <- fmt.Sprintf(":%d", p)
 	c := master.NewClient(curAddr, 10)
 	req := master.SetDatasetRequest{}
 	req.GlobPaths = []string{path}
 	req.NumPasses = 50
-	c.SetDataset(req)
+	err = c.SetDataset(req)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for pass := 0; pass < req.NumPasses; pass++ {
 
 		r, err := c.NextRecord()

@@ -14,20 +14,37 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/framework/attr_checker.h>
-#include <paddle/framework/op_desc.pb.h>
-#include <paddle/framework/scope.h>
-#include <paddle/framework/tensor.h>
-#include <paddle/platform/device_context.h>
-#include <paddle/platform/place.h>
-#include <paddle/utils/Error.h>
 #include <boost/variant.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/framework/attr_checker.h"
+#include "paddle/framework/op_desc.pb.h"
+#include "paddle/framework/op_proto.pb.h"
+#include "paddle/framework/scope.h"
+#include "paddle/framework/tensor.h"
+#include "paddle/platform/device_context.h"
+#include "paddle/platform/place.h"
+#include "paddle/utils/Error.h"
+
 namespace paddle {
 namespace framework {
+
+template <typename T>
+struct EigenDeviceConverter;
+
+template <>
+struct EigenDeviceConverter<platform::CPUPlace> {
+  using EigenDeviceType = Eigen::DefaultDevice;
+};
+
+#ifndef PADDLE_ONLY_CPU
+template <>
+struct EigenDeviceConverter<platform::GPUPlace> {
+  using EigenDeviceType = Eigen::GpuDevice;
+};
+#endif
 
 class OperatorBase;
 using OperatorPtr = std::shared_ptr<OperatorBase>;
@@ -39,6 +56,13 @@ using OperatorPtr = std::shared_ptr<OperatorBase>;
  */
 class OperatorBase {
  public:
+  /// If a variable is a empty variable, that name will be used.
+  static std::string EMPTY_VAR_NAME() { return "@EMPTY@"; }
+
+  /// If a variable is a temporary variable, that name will be set in Python,
+  /// but it will be convert to a unique name in scope after OpCreator.
+  static std::string TMP_VAR_NAME() { return "@TEMP@"; }
+
   virtual ~OperatorBase() {}
 
   template <typename T>
@@ -48,7 +72,7 @@ class OperatorBase {
     return boost::get<T>(attrs_.at(name));
   }
 
-  std::string DebugString() const;
+  virtual std::string DebugString() const;
 
   /// Init will be called after CreateOperator, you can put some initialization
   /// logic here.
@@ -62,11 +86,76 @@ class OperatorBase {
   virtual void Run(const ScopePtr& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
+  // Get a input with argument's name described in `op_proto`
+  const std::string& Input(const std::string& name) const;
+  // Get a input which has multiple variables.
+  // TODO add a vector_view to prevent memory copy.
+  std::vector<std::string> Inputs(const std::string& name) const;
+  // Get a output with argument's name described in `op_proto`
+  const std::string& Output(const std::string& name) const;
+  // Get an output which has multiple variables.
+  // TODO add a vector_view to prevent memory copy.
+  std::vector<std::string> Outputs(const std::string& name) const;
+
  public:
   std::string type_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
   AttributeMap attrs_;
+  // store the arguments' offset described in op_desc.
+  std::shared_ptr<std::unordered_map<std::string, int>> in_out_idxs_;
+};
+
+class KernelContext {
+ public:
+  KernelContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
+                const platform::DeviceContext& device_context)
+      : op_(*op), scope_(scope), device_context_(device_context) {}
+
+  const Variable* Input(int index) const {
+    return scope_->GetVariable(op_.inputs_[index]);
+  }
+
+  Variable* Output(int index) const {
+    return scope_->GetVariable(op_.outputs_[index]);
+  }
+
+  const Variable* Input(const std::string& name) const {
+    return scope_->GetVariable(op_.Input(name));
+  }
+
+  const Variable* Output(const std::string& name) const {
+    return scope_->GetVariable(op_.Output(name));
+  }
+
+  const std::vector<const Variable*> Inputs(const std::string& name) const {
+    auto names = op_.Inputs(name);
+    std::vector<const Variable*> res;
+    std::transform(
+        names.begin(), names.end(), res.begin(),
+        [this](const std::string& name) { return scope_->GetVariable(name); });
+    return res;
+  }
+
+  const std::vector<const Variable*> Outputs(const std::string& name) const {
+    auto names = op_.Outputs(name);
+    std::vector<const Variable*> res;
+    std::transform(
+        names.begin(), names.end(), res.begin(),
+        [this](const std::string& name) { return scope_->GetVariable(name); });
+    return res;
+  }
+
+  template <typename PlaceType,
+            typename DeviceType =
+                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
+  DeviceType* GetEigenDevice() const;
+
+  platform::Place GetPlace() const { return device_context_.GetPlace(); }
+
+  const OperatorBase& op_;
+  const std::shared_ptr<Scope>& scope_;
+  const platform::DeviceContext& device_context_;
 };
 
 class OpKernel {
@@ -77,24 +166,6 @@ class OpKernel {
    * device resource such as CUDA stream, cublas handle, etc. from
    * KernelContext. User should construct it before run the Operator.
    */
-  class KernelContext {
-   public:
-    KernelContext(const OperatorBase* op, const ScopePtr& scope,
-                  const platform::DeviceContext& device_context)
-        : op_(*op), scope_(scope), device_context_(device_context) {}
-
-    const Variable* Input(int index) const {
-      return scope_->GetVariable(op_.inputs_[index]);
-    }
-
-    Variable* Output(int index) const {
-      return scope_->GetVariable(op_.outputs_[index]);
-    }
-
-    const OperatorBase& op_;
-    const ScopePtr& scope_;
-    const platform::DeviceContext& device_context_;
-  };
 
   virtual void Compute(const KernelContext& context) const = 0;
 
@@ -140,7 +211,7 @@ class OperatorWithKernel : public OperatorBase {
   void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(OpKernel::KernelContext(this, scope, dev_ctx));
+    opKernel->Compute(KernelContext(this, scope, dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
@@ -148,6 +219,7 @@ class OperatorWithKernel : public OperatorBase {
     static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
     return g_all_op_kernels;
   }
+
   void InferShape(const std::shared_ptr<Scope>& scope) const final {
     std::vector<const Tensor*> ins;
     VarNamesToTensors(scope, inputs_, &ins);

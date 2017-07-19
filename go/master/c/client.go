@@ -23,7 +23,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var nullPtr = unsafe.Pointer(uintptr(0))
 var mu sync.Mutex
 var handleMap = make(map[C.paddle_master_client]*master.Client)
 var curHandle C.paddle_master_client
@@ -115,13 +114,13 @@ func paddle_next_record(client C.paddle_master_client, record **C.uchar) C.int {
 	if err != nil {
 		// Error
 		// TODO: return the type of error?
-		*record = (*C.uchar)(nullPtr)
+		*record = (*C.uchar)(nil)
 		return -1
 	}
 
 	if len(r) == 0 {
 		// Empty record
-		*record = (*C.uchar)(nullPtr)
+		*record = (*C.uchar)(nil)
 		return 0
 	}
 
