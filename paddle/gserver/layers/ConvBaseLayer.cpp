@@ -21,8 +21,7 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
-  isDeconv_ = (config_.type() == "exconv" || config_.type() == "cudnn_conv" ||
-               config_.type() == "depthwise_conv")
+  isDeconv_ = (config_.type() == "exconv" || config_.type() == "cudnn_conv")
                   ? false
                   : true;
 
