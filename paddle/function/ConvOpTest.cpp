@@ -37,7 +37,7 @@ public:
       for (size_t inputSize : {7, 14, 54}) {
         for (size_t filterSize : {1, 3, 5}) {
           for (size_t inputChannels : {3, 64}) {
-            for (size_t outputChannels : {3, 64, 128}) {
+            for (size_t outputChannels : {3, 64}) {
               for (size_t groups : {1, 3, 64}) {
                 if (inputChannels > outputChannels) break;
                 if (groups != 1 &&
@@ -135,11 +135,10 @@ public:
           for (size_t filterHeight : {1, 5}) {
             for (size_t filterWidth : {3, 7}) {
               for (size_t inputChannels : {7}) {
-                for (size_t outputChannels : {7, 32}) {
+                for (size_t outputChannels : {7}) {
                   for (size_t groups : {1, 7}) {
-                    if (!useGroups && groups != 1 &&
-                        (inputChannels != groups ||
-                         outputChannels % groups != 0))
+                    if (groups != 1 && (inputChannels != groups ||
+                                        outputChannels % groups != 0))
                       continue;
                     if (!useGroups) groups = 1;
 
