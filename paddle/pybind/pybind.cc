@@ -15,6 +15,8 @@ limitations under the License. */
 #include <Python.h>
 #include <paddle/framework/op_registry.h>
 #include <paddle/framework/scope.h>
+#include <paddle/pybind/tensor_bind.h>
+#include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <fstream>
@@ -24,9 +26,34 @@ namespace py = pybind11;
 namespace pd = paddle::framework;
 
 USE_OP(add_two);
+USE_OP(softmax);
+USE_OP(mul);
+USE_OP(rowwise_add);
+USE_OP(sigmoid);
 
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of Paddle Paddle");
+
+  py::class_<pd::Tensor>(m, "Tensor", py::buffer_protocol())
+      .def_buffer([](pd::Tensor& self) -> py::buffer_info {
+        return paddle::pybind::CastToPyBuffer(self);
+      })
+      .def("get_dims",
+           [](const pd::Tensor& self) { return pd::vectorize(self.dims()); })
+      .def("set_dims",
+           [](pd::Tensor& self, const std::vector<int>& dim) {
+             self.set_dims(pd::make_ddim(dim));
+           })
+      .def("alloc_float",
+           [](pd::Tensor& self) {
+             self.mutable_data<float>(paddle::platform::CPUPlace());
+           })
+      .def("alloc_int",
+           [](pd::Tensor& self) {
+             self.mutable_data<int>(paddle::platform::CPUPlace());
+           })
+      .def("set", paddle::pybind::PyTensorSetFromArray<float>)
+      .def("set", paddle::pybind::PyTensorSetFromArray<int>);
 
   py::class_<pd::Variable>(m, "Variable", R"DOC(Variable Class.
 
@@ -38,7 +65,12 @@ All parameter, weight, gradient are variables in Paddle.
              *var.GetMutable<int>() = val;
            })
       .def("get_int",
-           [](const pd::Variable& var) -> int { return var.Get<int>(); });
+           [](const pd::Variable& var) -> int { return var.Get<int>(); })
+      .def("get_tensor",
+           [](pd::Variable& self) -> pd::Tensor* {
+             return self.GetMutable<pd::Tensor>();
+           },
+           py::return_value_policy::reference);
 
   py::class_<pd::Scope, std::shared_ptr<pd::Scope>>(m, "Scope")
       .def(py::init<const std::shared_ptr<pd::Scope>&>())

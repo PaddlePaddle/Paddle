@@ -89,6 +89,8 @@ class PlainNet : public Net {
 
   void CompleteAddOp() override;
 
+  std::string DebugString() const override;
+
   std::vector<OperatorPtr> ops_;
 
  private:

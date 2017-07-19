@@ -34,7 +34,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var nullPtr = unsafe.Pointer(uintptr(0))
 var mu sync.Mutex
 var handleMap = make(map[C.paddle_pserver_client]*client.Client)
 var curHandle C.paddle_pserver_client
@@ -63,7 +62,7 @@ func remove(client C.paddle_pserver_client) *client.Client {
 }
 
 func cArrayToSlice(p unsafe.Pointer, len int) []byte {
-	if p == nullPtr {
+	if p == nil {
 		return nil
 	}
 
@@ -101,11 +100,11 @@ func paddle_new_pserver_client(addrs *C.char, selected int) C.paddle_pserver_cli
 }
 
 //export paddle_new_etcd_pserver_client
-func paddle_new_etcd_pserver_client(etcd_endpoints *C.char, selected int) C.paddle_pserver_client {
+func paddle_new_etcd_pserver_client(etcdEndpoints *C.char, selected int) C.paddle_pserver_client {
 	// TODO(Longfei: use etcd lock to decide which trainer to initialize the parameters)
-	addr := C.GoString(etcd_endpoints)
-	etcd_client := client.NewEtcd(addr)
-	c := client.NewClient(etcd_client, etcd_client.Desired(), selector(selected != 0))
+	addr := C.GoString(etcdEndpoints)
+	etcdClient := client.NewEtcd(addr)
+	c := client.NewClient(etcdClient, etcdClient.Desired(), selector(selected != 0))
 	return add(c)
 }
 
@@ -124,20 +123,20 @@ func paddle_begin_init_params(client C.paddle_pserver_client) C.int {
 }
 
 //export paddle_init_param
-func paddle_init_param(client C.paddle_pserver_client, param C.paddle_parameter, param_config unsafe.Pointer, config_len C.int) C.int {
+func paddle_init_param(client C.paddle_pserver_client, param C.paddle_parameter, paramConfig unsafe.Pointer, configLen C.int) C.int {
 	et := pserver.ElementType(param.element_type)
 	name := C.GoString(param.name)
 	content := cArrayToSlice(unsafe.Pointer(param.content), int(param.content_len))
 	pc := pserver.ParameterWithConfig{
 		Param:  pserver.Parameter{Name: name, ElementType: et, Content: content},
-		Config: cArrayToSlice(param_config, int(config_len)),
+		Config: cArrayToSlice(paramConfig, int(configLen)),
 	}
 	c := get(client)
 	err := c.InitParam(pc)
 
 	if err != nil {
 		if err.Error() == pserver.AlreadyInitialized {
-			log.Warningf("parameter %s already initialized, treat paddle_init_param as sucessful.", name)
+			log.Warningf("parameter %s already initialized, treat paddle_init_param as successful.", name)
 			return C.PSERVER_OK
 		}
 		log.Errorln(err)
@@ -153,7 +152,7 @@ func paddle_finish_init_params(client C.paddle_pserver_client) C.int {
 	err := c.FinishInitParams()
 	if err != nil {
 		if err.Error() == pserver.AlreadyInitialized {
-			log.Warningln("parameters already initialized, treat paddle_finish_init_params as sucessful.")
+			log.Warningln("parameters already initialized, treat paddle_finish_init_params as successful.")
 			return C.PSERVER_OK
 		}
 
@@ -223,12 +222,12 @@ func paddle_get_params(client C.paddle_pserver_client, dst **C.paddle_parameter,
 		p := ps[i]
 		param := *(**C.paddle_parameter)(unsafe.Pointer((uintptr(unsafe.Pointer(dst)) + uintptr(i)*unsafe.Sizeof(*dst))))
 
-		if unsafe.Pointer(param) == nullPtr {
+		if unsafe.Pointer(param) == nil {
 			log.Errorln("must pre-allocate parameter.")
 			return C.PSERVER_ERROR
 		}
 
-		if unsafe.Pointer(param.content) != nullPtr {
+		if unsafe.Pointer(param.content) != nil {
 			if int(param.content_len) != len(p.Content) {
 				log.Errorf("the pre-allocated content len does not match parameter content len. Pre-allocated len: %d, returned len: %d", param.content_len, len(p.Content))
 				return C.PSERVER_ERROR

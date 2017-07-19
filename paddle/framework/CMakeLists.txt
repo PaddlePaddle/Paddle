@@ -1,6 +1,7 @@
+# ddim lib
 cc_library(enforce SRCS enforce.cc DEPS glog)
 cc_test(enforce_test SRCS enforce_test.cc DEPS enforce)
-cc_library(ddim SRCS ddim.cc)
+cc_library(ddim SRCS ddim.cc DEPS eigen3)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 cc_library(tensor SRCS tensor.cc DEPS ddim place enforce paddle_memory)
@@ -23,9 +24,12 @@ py_proto_compile(framework_py_proto SRCS attr_type.proto op_proto.proto op_desc.
 # Generate an empty __init__.py to make framework_py_proto as a valid python module.
 add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
 add_dependencies(framework_py_proto framework_py_proto_init)
-cc_library(recurrent_network_op SRCS recurrent_network_op.cc DEPS op_desc tensor op_registry operator)
-cc_test(recurrent_network_op_test SRCS recurrent_network_op_test.cc DEPS recurrent_network_op glog gtest gflags ddim op_desc)
 
 proto_library(net_proto SRCS net_proto.proto DEPS op_proto)
 cc_library(net SRCS net.cc DEPS operator net_proto op_registry)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net)
+
+cc_library(recurrent_network_op SRCS recurrent_network_op.cc DEPS op_desc
+tensor op_registry operator net)
+cc_test(recurrent_network_op_test SRCS recurrent_network_op_test.cc DEPS
+recurrent_network_op gtest mul_op add_op)
