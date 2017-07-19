@@ -105,11 +105,11 @@ void LinkMemories(std::vector<ScopePtr>& scopes,
 void InitArgument(const ArgumentName& name,
                   Argument* arg,
                   const OperatorBase& op) {
-  arg->step_net = op.Input("step_net");
-  arg->step_scopes = op.Output("step_scopes");
+  arg->step_net = op.Input(name.step_net);
+  arg->step_scopes = op.Output(name.step_scopes);
 
-  auto inlinks = op.Inputs("inlinks");
-  auto inlink_alias = op.GetAttr<std::vector<std::string>>("inlink_alias");
+  auto inlinks = op.Inputs(name.inlinks);
+  auto inlink_alias = op.GetAttr<std::vector<std::string>>(name.inlink_alias);
   PADDLE_ENFORCE(inlinks.size() == inlink_alias.size(),
                  "the size of inlinks and inlink_alias don't match:%d,%d",
                  inlinks.size(),
@@ -121,8 +121,8 @@ void InitArgument(const ArgumentName& name,
     (arg->inlinks).push_back(link);
   }
 
-  auto outlinks = op.Outputs("outlinks");
-  auto outlink_alias = op.GetAttr<std::vector<std::string>>("outlink_alias");
+  auto outlinks = op.Outputs(name.outlinks);
+  auto outlink_alias = op.GetAttr<std::vector<std::string>>(name.outlink_alias);
   PADDLE_ENFORCE(outlinks.size() == outlink_alias.size(),
                  "the size of outlinks and outlink_alias don't match:%d,%d",
                  outlinks.size(),
@@ -134,11 +134,11 @@ void InitArgument(const ArgumentName& name,
     (arg->outlinks).push_back(link);
   }
 
-  auto boot_memories = op.Inputs("boot_memories");
+  auto boot_memories = op.Inputs(name.boot_memories);
 
   // attributes
-  auto memories = op.GetAttr<std::vector<std::string>>("memories");
-  auto pre_memories = op.GetAttr<std::vector<std::string>>("pre_memories");
+  auto memories = op.GetAttr<std::vector<std::string>>(name.memories);
+  auto pre_memories = op.GetAttr<std::vector<std::string>>(name.pre_memories);
 
   PADDLE_ENFORCE(memories.size() == boot_memories.size(),
                  "the size of memories, boot_memories don't match:%d,%d",
