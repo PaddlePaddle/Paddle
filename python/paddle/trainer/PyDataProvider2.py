@@ -138,6 +138,19 @@ def index_slot(value_range, seq_type=SequenceType.NO_SEQUENCE):
     return InputType(value_range, seq_type, DataType.Index)
 
 
+def multi_index_slot(value_range, seq_type=SequenceType.NO_SEQUENCE):
+    """
+    Data type of integers.
+    :param seq_type: sequence type of this input.
+    :type seq_type: int
+    :param value_range: range of this integer.
+    :type value_range: int
+    :return: An input type object
+    :rtype: InputType
+    """
+    return InputType(value_range, seq_type, DataType.MultiIndex)
+
+
 dense_vector = dense_slot
 sparse_binary_vector = sparse_non_value_slot
 sparse_vector = sparse_value_slot
