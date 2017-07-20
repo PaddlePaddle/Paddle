@@ -24,8 +24,7 @@
 #include "paddle/framework/net.h"
 
 namespace paddle {
-namespace framework {
-using platform::throw_on_error;
+namespace operators {
 
 namespace rnn {
 
@@ -372,9 +371,9 @@ void RecurrentGradientOp::Init() {
   alg_.Init(std::move(arg));
 }
 
-}  // namespace framework
+}  // namespace operators
 }  // namespace paddle
 
 REGISTER_OP(recurrent_op,
-            ::paddle::framework::RecurrentOp,
-            ::paddle::framework::RecurrentAlgorithmProtoAndCheckerMaker);
+            ::paddle::operators::RecurrentOp,
+            ::paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker);

@@ -21,7 +21,7 @@
 #include "paddle/operators/recurrent_network_op.h"
 
 namespace paddle {
-namespace framework {
+namespace operators {
 
 class RecurrentOpTest : public ::testing::Test {
 protected:
@@ -145,7 +145,6 @@ protected:
 
     rnn_op_ = OpRegistry::CreateOp(op_desc);
 
-    // rnn_op_.Init();
     LOG(INFO) << "rnn_op finish init";
   }
 
@@ -327,12 +326,13 @@ TEST_F(RecurrentGradientAlgorithmTest, Run) {
   rnn_grad_algo_.Run(scope_, ctx);
 }
 
-}  // namespace framework
+}  // namespace operators
 }  // namespace paddle
 
 TEST(RecurrentOp, LinkMemories) {
   using namespace paddle::framework;
   using namespace paddle::platform;
+  using namespace paddle::operators;
 
   // create and init step scopes
   int len = 10;
