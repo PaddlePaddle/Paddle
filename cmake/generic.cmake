@@ -290,8 +290,22 @@ function(go_library TARGET_NAME)
     set(${TARGET_NAME}_LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "output library name for target ${TARGET_NAME}")
   endif()
 
-  # Add dummy code to support `make target_name` under Terminal Command
   set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+
+  # This custom command will always run since it depends on a not
+  # existing file.
+  add_custom_command(
+    OUTPUT dummy_rebulid_${TARGET_NAME}
+    COMMAND cmake -E touch ${dummyfile}
+    )
+  # Create a custom target that depends on the custom command output
+  # file, so the custom command can be referenced as a dependency by
+  # `add_dependencies`.
+  add_custom_target(rebuild_${TARGET_NAME}
+    DEPENDS dummy_rebulid_${TARGET_NAME}
+    )
+
+  # Add dummy code to support `make target_name` under Terminal Command
   file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
   if (go_library_SHARED OR go_library_shared)
     add_library(${TARGET_NAME} SHARED ${dummyfile})
@@ -301,6 +315,12 @@ function(go_library TARGET_NAME)
   if(go_library_DEPS)
     add_dependencies(${TARGET_NAME} ${go_library_DEPS})
   endif(go_library_DEPS)
+
+  # The "source file" of the library is `${dummyfile}` which never
+  # change, so the target will never rebuild. Make the target depends
+  # on the custom command that touches the library "source file", so
+  # rebuild will always happen.
+  add_dependencies(${TARGET_NAME} rebuild_${TARGET_NAME})
 
   set(${TARGET_NAME}_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/${${TARGET_NAME}_LIB_NAME}" CACHE STRING "output library path for target ${TARGET_NAME}")
 

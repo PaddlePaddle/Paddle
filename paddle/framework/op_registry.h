@@ -286,7 +286,13 @@ class OpRegistry {
   }
 
   static OperatorPtr CreateGradOp(OperatorPtr op) {
-    OperatorPtr grad_op(grad_creators().at(op->type_)());
+    auto it = grad_creators().find(op->type_);
+    if (it == grad_creators().end()) {
+      LOG(INFO) << op->type_ << "does not has gradient op";
+      return nullptr;
+    }
+    // OperatorPtr grad_op(grad_creators().at(op->type_)());
+    OperatorPtr grad_op(it->second());
     grad_op->type_ = op->type_;
 
     AssembleGradInOut(op, grad_op);
@@ -470,11 +476,11 @@ class GradOpRegisterHelper {
  */
 #define REGISTER_GRADIENT_OP(__op_type, __op_class)            \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                              \
-      __reg_gradient_op_##__reg_op__##__op_type,               \
+      __reg_gradient_op__##__op_type,                          \
       "REGISTER_GRADIENT_OP must be in global namespace");     \
   static ::paddle::framework::GradOpRegisterHelper<__op_class> \
-      __op_register_##__op_type##__(#__op_type);               \
-  int __op_register_##__op_type##_handle__() { return 0; }
+      __op_gradient_register_##__op_type##__(#__op_type);      \
+  int __op_gradient_register_##__op_type##_handle__() { return 0; }
 
 /**
  * Macro to Register OperatorKernel.
