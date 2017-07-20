@@ -34,6 +34,7 @@ protected:
         "First matrix's width must be equal with second matrix's height.");
     PADDLE_ENFORCE(outputs.size() == 1, "The mul op must take one output");
     outputs[0]->set_dims({dim0[0], dim1[1]});
+    DLOG(INFO) << "output shape:" << dim0[0] << " " << dim1[1];
   }
 };
 

@@ -152,8 +152,11 @@ protected:
     LOG(INFO) << "create variable step_net";
     Variable* var = scope_->CreateVariable("step_net");
     auto net = var->GetMutable<PlainNet>();
+    // rnn/s is net's input or output?
+    net->inputs_ = {"rnn/h@pre", "rnn/w", "rnn/x"};
+    net->inputs_ = {"rnn/s", "rnn/h"};
     net->AddOp(
-        OpRegistry::CreateOp("mul", {"rnn/h_pre", "rnn/w"}, {"rnn/s"}, {}));
+        OpRegistry::CreateOp("mul", {"rnn/h@pre", "rnn/w"}, {"rnn/s"}, {}));
 
     net->AddOp(
         OpRegistry::CreateOp("add_two", {"rnn/x", "rnn/s"}, {"rnn/h"}, {}));
@@ -165,10 +168,9 @@ protected:
   OperatorPtr rnn_op_;
 };
 
-// TEST_F(RecurrentOpTest, create_op) {}
-
 TEST_F(RecurrentOpTest, Run) {
   platform::CPUDeviceContext ctx;
+  rnn_op_->InferShape(scope_);
   rnn_op_->Run(scope_, ctx);
 }
 
@@ -299,7 +301,7 @@ protected:
     inlink.internal = "rnn/x";
     std::vector<ScopePtr>* step_scopes =
         scope_->GetVariable("step_scopes")->GetMutable<std::vector<ScopePtr>>();
-    rnn::SegmentInputs(*step_scopes, std::vector<rnn::Link>{inlink});
+    rnn::SegmentInputs(*step_scopes, std::vector<rnn::Link>{inlink}, 10);
   }
 
   void LinkeMemories() {

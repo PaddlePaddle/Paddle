@@ -71,13 +71,15 @@ struct ArgumentName {
  * Prepare inputs for each stepnet.
  */
 void SegmentInputs(std::vector<ScopePtr>& step_scopes,
-                   const std::vector<Link>& inlinks);
+                   const std::vector<Link>& inlinks,
+                   const size_t seq_len);
 
 /*
  * Process outputs of stepnets and merge to variables.
  */
 void ConcatOutputs(std::vector<ScopePtr>& step_scopes,
-                   const std::vector<Link>& outlinks);
+                   const std::vector<Link>& outlinks,
+                   const size_t seq_len);
 
 void LinkMemories(std::vector<ScopePtr>& step_scopes,
                   const std::vector<MemoryAttr>& memories,
@@ -85,6 +87,8 @@ void LinkMemories(std::vector<ScopePtr>& step_scopes,
                   int offset);
 
 void InitArgument(const ArgumentName& name, Argument* arg);
+
+void InferShape(const ScopePtr& scope);
 
 };  // namespace rnn
 
@@ -132,6 +136,8 @@ public:
 
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
 
+  void InferShape(const ScopePtr& scope) const;
+
   std::string debug_string() const;
 
 protected:
@@ -160,6 +166,7 @@ protected:
 
 private:
   std::unique_ptr<rnn::Argument> arg_;
+  mutable size_t seq_len_;
 };
 
 /*
@@ -188,8 +195,7 @@ class RecurrentOp final : public OperatorBase {
 public:
   void Init() override;
 
-  // TODO(Superjom) implement this when step net's InferShape ready.
-  virtual void InferShape(const ScopePtr& scope) const override {}
+  virtual void InferShape(const ScopePtr& scope) const override;
 
   virtual void Run(const ScopePtr& scope,
                    const platform::DeviceContext& dev_ctx) const override {
