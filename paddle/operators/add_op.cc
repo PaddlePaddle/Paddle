@@ -49,10 +49,25 @@ The equation is: Out = X + Y
 )DOC");
   }
 };
+
+class AddOpGrad : public framework::OperatorWithKernel {
+protected:
+  void InferShape(
+      const std::vector<const framework::Tensor *> &inputs,
+      const std::vector<framework::Tensor *> &outputs) const override {}
+  std::string DebugString() const override {
+    LOG(INFO) << "AddOpGrad";
+    return "";
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_OP(add_two, paddle::operators::AddOp, paddle::operators::AddOpMaker);
+REGISTER_GRADIENT_OP(add_two, paddle::operators::AddOpGrad);
+
 typedef paddle::operators::AddKernel<::paddle::platform::CPUPlace, float>
     AddKernel_CPU_float;
 REGISTER_OP_CPU_KERNEL(add_two, AddKernel_CPU_float);
+// REGISTER_OP_CPU_KERNEL(add_two, AddKernel_CPU_float);

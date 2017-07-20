@@ -2,7 +2,10 @@
 #include <paddle/framework/net.h>
 #include <paddle/framework/op_registry.h>
 #include <paddle/framework/operator.h>
-#include "paddle/framework/fully_connected_op.h"
+
+USE_OP(add_two);
+USE_OP(mul);
+USE_OP(sigmoid);
 
 namespace paddle {
 namespace framework {
@@ -65,14 +68,18 @@ TEST(OpKernel, all) {
 
   ASSERT_THROW(net->AddOp(op2), EnforceNotMet);
 }
-
 TEST(AddBackwardOp, TestGradOp) {
   auto net = std::make_shared<PlainNet>();
   ASSERT_NE(net, nullptr);
-  auto op1 = std::make_shared<FCOp>();
-  op1->inputs_ = {"x", "w1", "b1"};
-  op1->outputs_ = {"y"};
-  net->AddOp(op1);
+  net->AddOp(framework::OpRegistry::CreateOp("mul", {"X", "Y"}, {"Out"}, {}));
+  net->AddOp(
+      framework::OpRegistry::CreateOp("add_two", {"X", "Y"}, {"Out"}, {}));
+  net->AddOp(framework::OpRegistry::CreateOp("add_two", {"X", "Y"}, {""}, {}));
+  // net->AddOp(framework::OpRegistry::CreateOp("fc"), {
+  //     Input("X"), Input("W"), Input("b")},
+  //   {Output("Y")},
+  //   {}
+  //   );
   auto grad_ops = AddBackwardOp(net);
   for (auto& op : grad_ops->ops_) {
     op->DebugString();
