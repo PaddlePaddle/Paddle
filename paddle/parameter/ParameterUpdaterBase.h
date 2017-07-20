@@ -63,9 +63,7 @@ public:
   // it will be called before layer forwardbackward in training process, do the
   // preprocess for the parameters. Such as drop some parameters in dynamic
   // pruning task.
-  void preprocess(Parameter* para,
-                  size_t currentPass,
-                  size_t currentBatch) {
+  void preprocess(Parameter* para, size_t currentPass, size_t currentBatch) {
     SetDevice setDevice(para->getDeviceId());
     para->preProcessHook(currentPass, currentBatch);
   }
