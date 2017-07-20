@@ -19,7 +19,8 @@ cc_test(op_desc_test SRCS op_desc_test.cc DEPS op_desc protobuf)
 cc_library(operator SRCS operator.cc DEPS op_desc device_context tensor)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
 
-cc_library(op_registry SRCS op_registry.cc DEPS op_proto op_desc)
+cc_library(grad_op_creator SRCS grad_op_creator.cc)
+cc_library(op_registry SRCS op_registry.cc DEPS op_proto op_desc grad_op_creator)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry operator)
 
 py_proto_compile(framework_py_proto SRCS attr_type.proto op_proto.proto op_desc.proto)
