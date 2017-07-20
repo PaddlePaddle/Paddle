@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "paddle/framework/attr_checker.h"
-#include "paddle/framework/grad_op_creater.h"
+#include "paddle/framework/grad_op_creator.h"
 #include "paddle/framework/op_desc.pb.h"
 #include "paddle/framework/scope.h"
 
