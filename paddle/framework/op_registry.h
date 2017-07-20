@@ -286,7 +286,13 @@ class OpRegistry {
   }
 
   static OperatorPtr CreateGradOp(OperatorPtr op) {
-    OperatorPtr grad_op(grad_creators().at(op->type_)());
+    auto it = grad_creators().find(op->type_);
+    if (it == grad_creators().end()) {
+      LOG(INFO) << op->type_ << "does not has gradient op";
+      return nullptr;
+    }
+    // OperatorPtr grad_op(grad_creators().at(op->type_)());
+    OperatorPtr grad_op(it->second());
     grad_op->type_ = op->type_;
 
     AssembleGradInOut(op, grad_op);
