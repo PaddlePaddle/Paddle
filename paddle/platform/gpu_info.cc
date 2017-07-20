@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/platform/gpu_info.h"
 #include "gflags/gflags.h"
-#include "paddle/platform/error.h"
+#include "paddle/platform/enforce.h"
 
 DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
               "Default use 95% of GPU memory for PaddlePaddle,"
@@ -25,7 +25,7 @@ namespace platform {
 
 int GetDeviceCount() {
   int count;
-  throw_on_error(
+  PADDLE_ENFORCE(
       cudaGetDeviceCount(&count),
       "cudaGetDeviceCount failed in paddle::platform::GetDeviceCount");
   return count;
@@ -33,19 +33,19 @@ int GetDeviceCount() {
 
 int GetCurrentDeviceId() {
   int device_id;
-  throw_on_error(
+  PADDLE_ENFORCE(
       cudaGetDevice(&device_id),
       "cudaGetDevice failed in paddle::platform::GetCurrentDeviceId");
   return device_id;
 }
 
 void SetDeviceId(int id) {
-  throw_on_error(cudaSetDevice(id),
+  PADDLE_ENFORCE(cudaSetDevice(id),
                  "cudaSetDevice failed in paddle::platform::SetDeviceId");
 }
 
 void GpuMemoryUsage(size_t &available, size_t &total) {
-  throw_on_error(cudaMemGetInfo(&available, &total),
+  PADDLE_ENFORCE(cudaMemGetInfo(&available, &total),
                  "cudaMemGetInfo failed in paddle::platform::GetMemoryUsage");
 }
 
@@ -84,21 +84,26 @@ size_t GpuMaxChunkSize() {
 
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                     enum cudaMemcpyKind kind, cudaStream_t stream) {
-  PADDLE_ENFORCE(cudaMemcpyAsync(dst, src, count, kind, stream));
+  PADDLE_ENFORCE(cudaMemcpyAsync(dst, src, count, kind, stream),
+                 "cudaMemcpyAsync failed in paddle::platform::GpuMemcpyAsync");
 }
 
 void GpuMemcpySync(void *dst, const void *src, size_t count,
                    enum cudaMemcpyKind kind) {
-  PADDLE_ENFORCE(cudaMemcpy(dst, src, count, kind));
+  PADDLE_ENFORCE(cudaMemcpy(dst, src, count, kind),
+                 "cudaMemcpy failed in paddle::platform::GpuMemcpySync");
   // note: cudaMemcpy may actually be asynchronous with respect to the caller,
   //       block on stream 0 to make sure the copy has completed
-  PADDLE_ENFORCE(cudaStreamSynchronize(0));
+  PADDLE_ENFORCE(
+      cudaStreamSynchronize(0),
+      "cudaStreamSynchronize failed in paddle::platform::GpuMemcpySync");
 }
 
 void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
                    size_t count, cudaStream_t stream) {
   PADDLE_ENFORCE(
-      cudaMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream));
+      cudaMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream),
+      "cudaMemcpyPeerAsync failed in paddle::platform::GpuMemcpyPeer");
 }
 }  // namespace platform
 }  // namespace paddle

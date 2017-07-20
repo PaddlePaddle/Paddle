@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	DefaultEtcdTimeout time.Duration = 5 * time.Second
+	defaultEtcdTimeout time.Duration = 5 * time.Second
 )
 
 // EtcdClient is used by pserver client that is a part of trainer process.
@@ -47,7 +47,7 @@ func (p *EtcdClient) Desired() int {
 
 		psDesired, err = strconv.Atoi(string(resp.Kvs[0].Value))
 		if err != nil {
-			log.Errorf("psDesired %s invalid %v", psDesired, err)
+			log.Errorf("psDesired %d invalid %v", psDesired, err)
 			time.Sleep(p.timeout)
 			continue
 		}
@@ -106,11 +106,11 @@ func NewEtcd(endpoints string) *EtcdClient {
 	for {
 		cli, err = clientv3.New(clientv3.Config{
 			Endpoints:   ep,
-			DialTimeout: DefaultEtcdTimeout,
+			DialTimeout: defaultEtcdTimeout,
 		})
 		if err != nil {
 			log.Errorf("Init etcd connection failed: %v", err)
-			time.Sleep(DefaultEtcdTimeout)
+			time.Sleep(defaultEtcdTimeout)
 			continue
 		}
 		break
@@ -118,7 +118,7 @@ func NewEtcd(endpoints string) *EtcdClient {
 	log.Infof("Connected to etcd: %s\n", endpoints)
 	client := &EtcdClient{
 		client:    cli,
-		timeout:   DefaultEtcdTimeout,
+		timeout:   defaultEtcdTimeout,
 		endpoints: ep,
 	}
 	return client

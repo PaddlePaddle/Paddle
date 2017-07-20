@@ -13,7 +13,6 @@
 # limitations under the License
 
 cmake_minimum_required(VERSION 3.0)
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PROJ_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(PROJ_BINARY_ROOT ${CMAKE_CURRENT_BINARY_DIR})
@@ -137,7 +136,8 @@ if(WITH_GPU)
 endif(WITH_GPU)
 
 if(USE_NNPACK)
-  list(APPEND EXTERNAL_LIBS ${NNPACK_LIB} ${PTHREADPOOL_LIB} "rt")
+    include(external/nnpack)
+    list(APPEND EXTERNAL_LIBS ${NNPACK_LIBS})
 endif(USE_NNPACK)
 
 add_subdirectory(proto)

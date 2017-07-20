@@ -22,7 +22,6 @@ limitations under the License. */
 #endif
 
 #include "gflags/gflags.h"
-#include "paddle/platform/error.h"
 
 DEFINE_double(fraction_of_cpu_memory_to_use, 1,
               "Default use 100% of CPU memory for PaddlePaddle,"
@@ -41,8 +40,8 @@ inline size_t CpuTotalPhysicalMemory() {
   if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) return (size_t)size;
   return 0L;
 #else
-  long pages = sysconf(_SC_PHYS_PAGES);
-  long page_size = sysconf(_SC_PAGE_SIZE);
+  int64_t pages = sysconf(_SC_PHYS_PAGES);
+  int64_t page_size = sysconf(_SC_PAGE_SIZE);
   return pages * page_size;
 #endif
 }
