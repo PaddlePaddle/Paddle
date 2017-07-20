@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/memory/detail/buddy_allocator.h"
 #include "paddle/memory/detail/system_allocator.h"
 
-#include <stdlib.h>  // for memcpy
+#include <cstring>  // for memcpy
 
 namespace paddle {
 namespace memory {
@@ -50,7 +50,7 @@ template <>
 void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
                                                   platform::CPUPlace,
                                                   const void* src, size_t num) {
-  memcpy(dst, src, num);
+  std::memcpy(dst, src, num);
 }
 
 #ifndef PADDLE_ONLY_CPU
