@@ -21,9 +21,10 @@ INCLUDE(ExternalProject)
 SET(MKLML_PROJECT       "extern_mklml")
 SET(MKLML_VER           "mklml_lnx_2018.0.20170425")
 SET(MKLML_URL           "https://github.com/01org/mkl-dnn/releases/download/v0.9/${MKLML_VER}.tgz")
-SET(MKLML_DOWNLOAD_DIR  "${CMAKE_INSTALL_PREFIX}/opt/paddle/third_party/mklml")
+SET(MKLML_DOWNLOAD_DIR  "${THIRD_PARTY_PATH}/mklml")
+SET(MKLML_INSTALL_DIR   "${CMAKE_INSTALL_PREFIX}/opt/paddle/third_party/mklml")
 
-SET(MKLML_ROOT          ${MKLML_DOWNLOAD_DIR}/${MKLML_VER})
+SET(MKLML_ROOT          ${MKLML_INSTALL_DIR}/${MKLML_VER})
 SET(MKLML_INC_DIR       ${MKLML_ROOT}/include)
 SET(MKLML_LIB_DIR       ${MKLML_ROOT}/lib)
 SET(MKLML_LIB           ${MKLML_LIB_DIR}/libmklml_intel.so)
@@ -38,7 +39,8 @@ ExternalProject_Add(
     PREFIX                ${MKLML_DOWNLOAD_DIR}
     DOWNLOAD_DIR          ${MKLML_DOWNLOAD_DIR}
     DOWNLOAD_COMMAND      wget --no-check-certificate -O ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}.tgz ${MKLML_URL}
-                          && tar -xzf ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}.tgz
+                          && mkdir -p ${MKLML_INSTALL_DIR}
+                          && tar -xzf ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}.tgz -C ${MKLML_INSTALL_DIR}
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     PATCH_COMMAND         ""
