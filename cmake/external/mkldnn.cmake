@@ -54,8 +54,8 @@ ExternalProject_Add(
     CONFIGURE_COMMAND   mkdir -p <SOURCE_DIR>/build
     BUILD_COMMAND       cd <SOURCE_DIR>/build
                         && cmake .. -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR} -DMKLROOT=${MKLDNN_MKLROOT}
-                        && make all -j${CPU_CORES}
-    INSTALL_COMMAND     cd <SOURCE_DIR>/build && make install
+                        && $(MAKE)
+    INSTALL_COMMAND     cd <SOURCE_DIR>/build && $(MAKE) install
     UPDATE_COMMAND      ""
 )
 
