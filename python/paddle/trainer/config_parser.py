@@ -1732,6 +1732,32 @@ class DetectionOutputLayer(LayerBase):
         self.config.size = size
 
 
+@config_layer('proposal_target')
+class ProposalTargetLayer(LayerBase):
+    def __init__(self,
+                 name,
+                 inputs,
+                 pos_overlap_threshold,
+                 neg_overlap_threshold,
+                 box_batch_size,
+                 box_fg_ratio,
+                 num_classes,
+                 background_id=0):
+        super(ProposalTargetLayer, self).__init__(name, 'proposal_target', 0,
+                                                  inputs)
+        config_assert(
+            len(inputs) == 2, 'ProposaTargetlLayer must have 2 inputs')
+        self.config.inputs[
+            0].proposal_target_conf.pos_overlap_threshold = pos_overlap_threshold
+        self.config.inputs[
+            0].proposal_target_conf.neg_overlap_threshold = neg_overlap_threshold
+        self.config.inputs[
+            0].proposal_target_conf.box_batch_size = box_batch_size
+        self.config.inputs[0].proposal_target_conf.box_fg_ratio = box_fg_ratio
+        self.config.inputs[0].proposal_target_conf.num_classes = num_classes
+        self.config.inputs[0].proposal_target_conf.background_id = background_id
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self, name, size, height=None, width=None, device=None):

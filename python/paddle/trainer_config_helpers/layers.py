@@ -117,6 +117,7 @@ __all__ = [
     'cross_channel_norm_layer',
     'multibox_loss_layer',
     'detection_output_layer',
+    'proposal_target_layer',
     'spp_layer',
     'pad_layer',
     'eos_layer',
@@ -201,6 +202,7 @@ class LayerType(object):
     PRIORBOX_LAYER = 'priorbox'
     MULTIBOX_LOSS_LAYER = 'multibox_loss'
     DETECTION_OUTPUT_LAYER = 'detection_output'
+    PROPOSAL_TARGET_LAYER = 'proposal_target'
 
     CTC_LAYER = 'ctc'
     WARP_CTC_LAYER = 'warp_ctc'
@@ -1198,6 +1200,55 @@ def detection_output_layer(input_loc,
         background_id=background_id)
     return LayerOutput(
         name, LayerType.DETECTION_OUTPUT_LAYER, parents=parents, size=size)
+
+
+@wrap_name_default("proposal_target")
+def proposal_target_layer(proposals,
+                          label_boxes,
+                          pos_overlap_threshold,
+                          neg_overlap_threshold,
+                          box_batch_size,
+                          box_fg_ratio,
+                          num_classes,
+                          background_id=0,
+                          name=None):
+    """
+    Generate the ROIs' data, including locations, labels and targets, 
+    from the proposals.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param proposals: The input proposals.
+    :type proposals: LayerOutput.
+    :param label_boxes: The input ground-truth bounding-boxes.
+    :type label_boxes: LayerOutput.
+    :param pos_overlap_threshold: The threshold of the overlap for foreground.
+    :type pos_overlap_threshold: float
+    :param neg_overlap_threshold: The threshold of the overlap for background.
+    :type neg_overlap_threshold: float
+    :param box_batch_size: The size of bbox batch for training.
+    :type box_batch_size: int
+    :param box_fg_ratio: The ratio of the positive bbox in bbox batch.
+    :type box_fg_ratio: float
+    :param num_classes: The number of the classification.
+    :type num_classes: int
+    :param background_id: The background class index.
+    :type background_id: int
+    :return: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.PROPOSAL_TARGET_LAYER,
+        inputs=[proposals.name, label_boxes.name],
+        pos_overlap_threshold=pos_overlap_threshold,
+        neg_overlap_threshold=neg_overlap_threshold,
+        box_batch_size=box_batch_size,
+        box_fg_ratio=box_fg_ratio,
+        num_classes=num_classes,
+        background_id=background_id)
+    return LayerOutput(
+        name, LayerType.PROPOSAL_TARGET_LAYER,
+        parents=[proposals, label_boxes])
 
 
 @wrap_name_default("cross_channel_norm")
