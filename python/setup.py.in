@@ -1,9 +1,10 @@
 from setuptools import setup
+import subprocess
 
 def git_commit():
     try:
         cmd = ["git", "rev-parse", "HEAD"]
-        git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE, env=env).communicate()[0].strip()
+        git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
     except:
         git_commit = "Unknown"
     return git_commit
@@ -12,8 +13,8 @@ def write_version_py(filename="paddle/version.py"):
     cnt = """
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
-version = %(version)s
-git_revision = %(git_commit)
+version = "%(version)s"
+git_commit = "%(git_commit)s"
 """
     commit_id = git_commit()
     with open(filename, "w") as f:
@@ -21,7 +22,7 @@ git_revision = %(git_commit)
             "version" : "${PADDLE_VERSION}",
             "git_commit": commit_id})
 
-write_version_py()
+write_version_py(filename="${PROJ_ROOT}/python/paddle/version.py")
 
 packages=['paddle',
           'paddle.proto',
