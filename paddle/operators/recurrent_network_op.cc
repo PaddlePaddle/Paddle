@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/operators/recurrent_network_op.h"
+#include "paddle/platform/enforce.h"
 
 #include <glog/logging.h>
 #include <cstring>
@@ -24,6 +25,7 @@
 
 namespace paddle {
 namespace framework {
+using platform::throw_on_error;
 
 namespace rnn {
 
@@ -169,7 +171,7 @@ void RecurrentAlgorithm::Run(const ScopePtr& scope,
                  "stepnet [%s] is not in scope.",
                  arg_->step_net);
   Variable* net = scope->GetVariable(arg_->step_net);
-  PADDLE_ENFORCE(net, "failed to get step net");
+  PADDLE_ENFORCE(net != nullptr, "failed to get step net");
 
   DLOG(INFO) << "create scopes";
   CreateScopes(scope);
@@ -241,7 +243,8 @@ void RecurrentAlgorithm::InitMemories(ScopePtr step_scope) const {
                    attr.boot_var);
     Tensor* boot_mem =
         step_scope->CreateVariable(attr.boot_var)->GetMutable<Tensor>();
-    PADDLE_ENFORCE(boot_mem, "boot_tensor should be retrieved before");
+    PADDLE_ENFORCE(boot_mem != nullptr,
+                   "boot_tensor should be retrieved before");
     pre_mem->ShareDataFrom<float>(*boot_mem);
 
     // TODO(qingqing) the memory of current step should be allocated in step
@@ -323,7 +326,7 @@ void RecurrentGradientAlgorithm::Run(
   PADDLE_ENFORCE(scope->HasVariable(arg_->step_net),
                  "step net is not in scope.");
   Variable* net = scope->GetVariable(arg_->step_net);
-  PADDLE_ENFORCE(net, "failed to get step net");
+  PADDLE_ENFORCE(net != nullptr, "failed to get step net");
 
   size_t max_seq_len = scope->GetVariable((arg_->inlinks[0]).external)
                            ->GetMutable<Tensor>()
@@ -347,7 +350,7 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
     ScopePtr step_scope) const {
   for (auto& attr : arg_->memories) {
     Tensor* mem_g = step_scope->CreateVariable(attr.var)->GetMutable<Tensor>();
-    PADDLE_ENFORCE(mem_g, "boot_tensor should be retrieved before");
+    PADDLE_ENFORCE(mem_g != nullptr, "boot_tensor should be retrieved before");
 
     PADDLE_ENFORCE(step_scope->HasVariable(attr.boot_var),
                    "memory [%s]'s boot variable [%s] not exists",

@@ -56,3 +56,5 @@ op_library(recurrent_network_op SRCS recurrent_network_op.cc DEPS op_desc
 tensor op_registry operator net)
 cc_test(recurrent_network_op_test SRCS recurrent_network_op_test.cc DEPS
 recurrent_network_op gtest mul_op add_op)
+
+op_library(sgd_op SRCS sgd_op.cc sgd_op.cu)
