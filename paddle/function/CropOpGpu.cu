@@ -36,10 +36,11 @@ __global__ void KeCrop(real* outputs, const real* inputs,
 template <>
 void Crop<DEVICE_TYPE_GPU>(real* outputs,
                           const real* inputs,
-						  const TensorShape inShape,
-						  const TensorShape outShape,
+                          const TensorShape inShape,
+                          const TensorShape outShape,
                           const FuncConfig& conf) {
-  std::vector<uint32_t> crop_corner = conf.get<std::vector<uint32_t>>("crop_corner");
+  std::vector<uint32_t> crop_corner =
+        conf.get<std::vector<uint32_t>>("crop_corner");
   int cropC = crop_corner[1];
   int cropH = crop_corner[2];
   int cropW = crop_corner[3];
@@ -74,7 +75,8 @@ __global__ void KeCropDiff(const real* inGrad, real* outGrad,
     const int c = (idx / inW / inH) % inC;
     const int n = idx / inW / inH / inC;
 
-    const int off = ((n * outC + c + cropC) * outH + h + cropH) * outW + cropW + w;
+    const int off =
+        ((n * outC + c + cropC) * outH + h + cropH) * outW + cropW + w;
 
     outGrad[off] += inGrad[idx];
   }
@@ -86,7 +88,8 @@ void CropGrad<DEVICE_TYPE_GPU>(const real* inGrad,
                               const TensorShape inShape,
                               const TensorShape outShape,
                               const FuncConfig& conf) {
-  std::vector<uint32_t> crop_corner = conf.get<std::vector<uint32_t>>("crop_corner");
+  std::vector<uint32_t> crop_corner =
+        conf.get<std::vector<uint32_t>>("crop_corner");
   int cropC = crop_corner[1];
   int cropH = crop_corner[2];
   int cropW = crop_corner[3];
