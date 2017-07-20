@@ -289,6 +289,14 @@ message DetectionOutputConfig {
   optional uint32 width = 9 [default = 1];
 }
 
+message ROIPoolConfig {
+  required uint32 pooled_width = 1;
+  required uint32 pooled_height = 2;
+  required float spatial_scale = 3;
+  optional uint32 height = 4 [default = 1];
+  optional uint32 width = 5 [default = 1];
+}
+
 message LayerInputConfig {
   required string input_layer_name = 1;
   optional string input_parameter_name = 2;
@@ -309,6 +317,7 @@ message LayerInputConfig {
   optional RowConvConfig row_conv_conf = 15;
   optional MultiBoxLossConfig multibox_loss_conf = 16;
   optional DetectionOutputConfig detection_output_conf = 17;
+  optional ROIPoolConfig roi_pool_conf = 18;
 }
 
 message LayerConfig {

@@ -1732,6 +1732,17 @@ class DetectionOutputLayer(LayerBase):
         self.config.size = size
 
 
+@config_layer('roi_pool')
+class ROIPoolLayer(LayerBase):
+    def __init__(self, name, inputs, pooled_width, pooled_height,
+                 spatial_scale):
+        super(ROIPoolLayer, self).__init__(name, 'roi_pool', 0, inputs)
+        config_assert(len(inputs) == 2, 'ROIPoolLayer must have 2 inputs')
+        self.config.inputs[0].roi_pool_conf.pooled_width = pooled_width
+        self.config.inputs[0].roi_pool_conf.pooled_height = pooled_height
+        self.config.inputs[0].roi_pool_conf.spatial_scale = spatial_scale
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self, name, size, height=None, width=None, device=None):

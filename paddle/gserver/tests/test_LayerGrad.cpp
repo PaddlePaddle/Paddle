@@ -1830,6 +1830,40 @@ TEST(Layer, CropLayer) {
   }
 }
 
+TEST(Layer, roi_pool) {
+  TestConfig config;
+  config.layerConfig.set_type("roi_pool");
+  config.biasSize = 0;
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ROIPoolConfig* roiPoolConf = input->mutable_roi_pool_conf();
+  roiPoolConf->set_pooled_width(7);
+  roiPoolConf->set_pooled_height(7);
+  roiPoolConf->set_spatial_scale(1. / 16);
+  roiPoolConf->set_width(14);
+  roiPoolConf->set_height(14);
+
+  MatrixPtr roiValue = Matrix::create(10, 10, false, false);
+  roiValue->zeroMem();
+  real* roiData = roiValue->getData();
+  for (size_t i = 0; i < roiValue->getElementCnt() / 5; ++i) {
+    *roiData++ = std::rand() % 2;
+    *roiData++ = std::rand() % 224;
+    *roiData++ = std::rand() % 224;
+    size_t xMin = static_cast<size_t>(*(roiData - 2));
+    size_t yMin = static_cast<size_t>(*(roiData - 1));
+    *roiData++ = xMin + std::rand() % (224 - xMin);
+    *roiData++ = yMin + std::rand() % (224 - yMin);
+  }
+
+  config.inputDefs.push_back({INPUT_DATA, "input", 3 * 14 * 14, {}});
+  config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA, "rois", roiValue, {}});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "roi_pool", 5, false, useGpu, false);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);
