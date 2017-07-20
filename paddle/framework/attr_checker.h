@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "paddle/framework/enforce.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

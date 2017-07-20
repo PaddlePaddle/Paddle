@@ -21,20 +21,20 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class AddKernel : public framework::OpKernel {
+class SGDOpKernel : public framework::OpKernel {
 public:
-  void Compute(const framework::KernelContext& context) const override {
-    LOG(INFO) << "Add kernel in " << typeid(Place).name();
-    // auto input0 = context.Input(0)->Get<framework::Tensor>();
-    // auto input1 = context.Input(1)->Get<framework::Tensor>();
-    // auto* output = context.Output(0)->GetMutable<framework::Tensor>();
+  void Compute(const framework::KernelContext& ctx) const override {
+    auto param = ctx.Input("param")->Get<framework::Tensor>();
+    auto grad = ctx.Input("grad")->Get<framework::Tensor>();
+    auto* param_out = ctx.Output(0)->GetMutable<framework::Tensor>();
+    float lr = ctx.op_.GetAttr<float>("learning_rate");
 
-    // output->mutable_data<T>(context.GetPlace());
+    param_out->mutable_data<T>(ctx.GetPlace());
 
-    // framework::EigenVector<T>::Flatten(*output).device(
-    //     *(context.GetEigenDevice<Place>())) =
-    //     framework::EigenVector<T>::Flatten(input0) +
-    //     framework::EigenVector<T>::Flatten(input1);
+    framework::EigenVector<T>::Flatten(*param_out)
+        .device(*(ctx.GetEigenDevice<Place>())) =
+        framework::EigenVector<T>::Flatten(param) -
+        lr * framework::EigenVector<T>::Flatten(grad);
   }
 };
 
