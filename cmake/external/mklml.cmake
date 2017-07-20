@@ -48,14 +48,7 @@ ExternalProject_Add(
     TEST_COMMAND          ""
 )
 
-IF (${CMAKE_VERSION} VERSION_LESS "3.3.0")
-    SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/mklml_dummy.c)
-    FILE(WRITE ${dummyfile} "const char * dummy_mklml = \"${dummyfile}\";")
-    ADD_LIBRARY(mklml STATIC ${dummyfile})
-ELSE()
-    ADD_LIBRARY(mklml INTERFACE)
-ENDIF()
-
+ADD_LIBRARY(mklml SHARED IMPORTED GLOBAL)
+SET_PROPERTY(TARGET mklml PROPERTY IMPORTED_LOCATION ${MKLML_LIB})
 ADD_DEPENDENCIES(mklml ${MKLML_PROJECT})
-
 LIST(APPEND external_project_dependencies mklml)
