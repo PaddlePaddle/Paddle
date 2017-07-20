@@ -38,7 +38,7 @@ include(simd)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_MKLDNN      "Compile PaddlePaddle with mkl-dnn support."    ${AVX_FOUND})
-option(WITH_MKL_LITE    "Compile PaddlePaddle with mkl lite package."   ${AVX_FOUND})
+option(WITH_MKLML       "Compile PaddlePaddle with mklml package."      ${AVX_FOUND})
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        ON)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
@@ -79,8 +79,8 @@ if(ANDROID)
         "Disable RDMA when cross-compiling for Android" FORCE)
     set(WITH_MKLDNN OFF CACHE STRING
         "Disable MKLDNN when cross-compiling for Android" FORCE)
-    set(WITH_MKL_LITE OFF CACHE STRING
-        "Disable MKL lite package when cross-compiling for Android" FORCE)
+    set(WITH_MKLML OFF CACHE STRING
+        "Disable MKLML package when cross-compiling for Android" FORCE)
 endif(ANDROID)
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
@@ -94,7 +94,7 @@ endif()
 
 ########################################################################################
 
-include(external/mkllite)   # download mkl minimal lite package
+include(external/mklml)   # download mklml package
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
@@ -145,7 +145,7 @@ if(WITH_GPU)
 endif(WITH_GPU)
 
 if(WITH_MKLDNN)
-    list(APPEND EXTERNAL_LIBS ${MKLDNN_LIBRARY} ${MKL_LITE_LIB_IOMP})
+    list(APPEND EXTERNAL_LIBS ${MKLDNN_LIBRARY} ${MKLML_LIB_IOMP})
 endif()
 
 if(USE_NNPACK)

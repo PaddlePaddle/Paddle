@@ -202,7 +202,7 @@ double dotProduct<double>(const int n, const double* x, const double* y) {
   return cblas_ddot(n, x, 1, y, 1);
 }
 
-#if defined(PADDLE_USE_MKL) || defined(PADDLE_USE_MKL_LITE)
+#if defined(PADDLE_USE_MKL) || defined(PADDLE_USE_MKLML)
 
 template <>
 void vExp<float>(const int n, const float* a, float* r) {

@@ -34,9 +34,9 @@ IF(WITH_TESTING)
             "${GTEST_INSTALL_DIR}/lib/libgtest_main.a" CACHE FILEPATH "gtest main libraries." FORCE)
     ENDIF(WIN32)
 
-    IF(WITH_MKL_LITE)
-        # wait for mkl downloading completed
-        SET(GTEST_DEPENDS   ${MKL_LITE_PROJECT})
+    IF(WITH_MKLML)
+        # wait for mklml downloading completed
+        SET(GTEST_DEPENDS   ${MKLML_PROJECT})
     ENDIF()
 
     ExternalProject_Add(

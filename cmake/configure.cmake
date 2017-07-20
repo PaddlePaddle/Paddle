@@ -69,7 +69,7 @@ endif(NOT WITH_GPU)
 
 if(WITH_MKLDNN)
     add_definitions(-DPADDLE_USE_MKLDNN)
-    if (WITH_MKL_LITE AND MKLDNN_IOMP_DIR)
+    if (WITH_MKLML AND MKLDNN_IOMP_DIR)
         message(STATUS "Enable Intel OpenMP at ${MKLDNN_IOMP_DIR}")
         set(OPENMP_FLAGS "-fopenmp")
         set(CMAKE_C_CREATE_SHARED_LIBRARY_FORBIDDEN_FLAGS ${OPENMP_FLAGS})

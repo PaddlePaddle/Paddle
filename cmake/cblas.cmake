@@ -15,17 +15,17 @@
 
 set(CBLAS_FOUND OFF)
 
-## Find MKL Lite First.
-if(WITH_MKL_LITE AND MKL_LITE_INC_DIR AND MKL_LITE_LIB)
+## Find MKLML First.
+if(WITH_MKLML AND MKLML_INC_DIR AND MKLML_LIB)
   set(CBLAS_FOUND ON)
-  set(CBLAS_PROVIDER MKL_LITE)
-  set(CBLAS_INC_DIR ${MKL_LITE_INC_DIR})
-  set(CBLAS_LIBRARIES ${MKL_LITE_LIB})
+  set(CBLAS_PROVIDER MKLML)
+  set(CBLAS_INC_DIR ${MKLML_INC_DIR})
+  set(CBLAS_LIBRARIES ${MKLML_LIB})
 
-  add_definitions(-DPADDLE_USE_MKL_LITE)
+  add_definitions(-DPADDLE_USE_MKLML)
   add_definitions(-DLAPACK_FOUND)
 
-  message(STATUS "Found cblas and lapack in MKL Lite "
+  message(STATUS "Found cblas and lapack in MKLML "
     "(include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
   return()
 endif()
@@ -42,20 +42,6 @@ set(MKL_LIB_SEARCH_PATHS
   ${MKL_ROOT}/lib/intel64
   ${INTEL_MKL_ROOT}/lib
   ${INTEL_MKL_ROOT}/lib/intel64)
-
-if(MKL_LITE_INC_DIR AND MKL_LITE_LIB)
-  set(CBLAS_FOUND ON)
-  set(CBLAS_PROVIDER MKL_LITE)
-  set(CBLAS_INC_DIR ${MKL_LITE_INC_DIR})
-  set(CBLAS_LIBRARIES ${MKL_LITE_LIB})
-
-  add_definitions(-DPADDLE_USE_MKL_LITE)
-  add_definitions(-DLAPACK_FOUND)
-
-  message(STATUS "Found cblas and lapack in MKL Lite "
-    "(include: ${MKL_LITE_INC_DIR}, library: ${CBLAS_LIBRARIES})")
-  return()
-endif()
 
 find_path(MKL_INC_DIR mkl.h PATHS
   ${MKL_INCLUDE_SEARCH_PATHS})
