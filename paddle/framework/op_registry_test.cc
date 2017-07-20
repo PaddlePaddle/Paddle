@@ -91,7 +91,7 @@ TEST(OpRegistry, IllegalAttr) {
   try {
     paddle::framework::OperatorPtr op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
-  } catch (paddle::framework::EnforceNotMet err) {
+  } catch (std::runtime_error& err) {
     caught = true;
     std::string msg = "larger_than check fail";
     const char* err_msg = err.what();
@@ -138,7 +138,7 @@ TEST(OpRegistry, CustomChecker) {
   try {
     paddle::framework::OperatorPtr op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
-  } catch (paddle::framework::EnforceNotMet err) {
+  } catch (std::runtime_error& err) {
     caught = true;
     std::string msg = "Attribute 'test_attr' is required!";
     const char* err_msg = err.what();
@@ -157,7 +157,7 @@ TEST(OpRegistry, CustomChecker) {
   try {
     paddle::framework::OperatorPtr op __attribute__((unused)) =
         paddle::framework::OpRegistry::CreateOp(op_desc);
-  } catch (paddle::framework::EnforceNotMet err) {
+  } catch (std::runtime_error& err) {
     caught = true;
     std::string msg = "'test_attr' must be even!";
     const char* err_msg = err.what();
@@ -196,7 +196,7 @@ TEST(ProtoMaker, DuplicatedAttr) {
   pd::OpProto op_proto;
   pd::OpAttrChecker op_checker;
   auto proto_maker = TestAttrProtoMaker(&op_proto, &op_checker);
-  ASSERT_THROW(proto_maker.Validate(), paddle::framework::EnforceNotMet);
+  ASSERT_THROW(proto_maker.Validate(), std::runtime_error);
 }
 
 class TestInOutProtoMaker : public pd::OpProtoAndCheckerMaker {
@@ -212,5 +212,5 @@ TEST(ProtoMaker, DuplicatedInOut) {
   pd::OpProto op_proto;
   pd::OpAttrChecker op_checker;
   auto proto_maker = TestInOutProtoMaker(&op_proto, &op_checker);
-  ASSERT_THROW(proto_maker.Validate(), paddle::framework::EnforceNotMet);
+  ASSERT_THROW(proto_maker.Validate(), std::runtime_error);
 }

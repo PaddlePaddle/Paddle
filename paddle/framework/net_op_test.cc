@@ -63,5 +63,5 @@ TEST(OpKernel, all) {
   ASSERT_EQ(2, infer_shape_cnt);
   ASSERT_EQ(2, run_cnt);
 
-  ASSERT_THROW(net->AddOp(op2), paddle::framework::EnforceNotMet);
+  ASSERT_THROW(net->AddOp(op2), std::runtime_error);
 }
