@@ -19,57 +19,38 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class CrossEntropyOp : public framework::OperatorWithKernel {
+class OnehotCrossEntropyOp : public framework::OperatorWithKernel {
 protected:
   void InferShape(
       const std::vector<const framework::Tensor *> &inputs,
       const std::vector<framework::Tensor *> &outputs) const override {
     PADDLE_ENFORCE(inputs.size() == 2,
-                   "Input size of CrossEntropyOp must be two");
+                   "Input size of OnehotCrossEntropyOp must be two");
     PADDLE_ENFORCE(outputs.size() == 1,
-                   "Output size of CrossEntropyOp must be one");
-    PADDLE_ENFORCE(
-        inputs[0] != nullptr && inputs[1] != nullptr && outputs[0] != nullptr,
-        "Inputs/Outputs of CrossEntropyOp must all be set");
-    PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
-                   "Two input of CrossEntropyOp's dimension must be same.");
-    int input_rank = (int)inputs[0]->dims().size();
-    PADDLE_ENFORCE(input_rank >= 1, "data rank should be larger than 0");
-    PADDLE_ENFORCE(input_rank <= 2, "data rank should be less than 3");
-    int batch_size;
-    if (input_rank == 1) {
-      batch_size = 1;
-    } else {
-      batch_size = inputs[0]->dims()[0];
-    }
-    outputs[0]->set_dims(framework::make_ddim({batch_size}));
+                   "Output size of OnehotCrossEntropyOp must be one");
+    PADDLE_ENFORCE(inputs[0] != nullptr && inputs[1] != nullptr,
+                   "Inputs of OnehotCrossEntropyOp must all be set");
+    PADDLE_ENFORCE(outputs[0] != nullptr,
+                   "Outputs of OnehotCrossEntropyOp must all be set");
+    PADDLE_ENFORCE(inputs[0]->dims().size() == 2, "X's dimension must be 2.");
+    PADDLE_ENFORCE(outputs[0]->dims().size() == 1,
+                   "label's dimension must be 1.");
+    outputs[0]->set_dims(framework::make_ddim({inputs[0]->dims()[0]}));
   }
 };
 
-class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
+class OnehotCrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
 public:
-  CrossEntropyOpMaker(framework::OpProto *proto,
-                      framework::OpAttrChecker *op_checker)
+  OnehotCrossEntropyOpMaker(framework::OpProto *proto,
+                            framework::OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The first input of CrossEntropyOp");
-    AddInput("label", "The second input of CrossEntropyOp");
-    AddOutput("Y", "The output of CrossEntropyOp");
+    AddInput("X", "The first input of OnehotCrossEntropyOp");
+    AddInput("label", "The second input of OnehotCrossEntropyOp");
+    AddOutput("Y", "The output of OnehotCrossEntropyOp");
     AddComment(R"DOC(
-Two Element CrossEntropy Operator.
+OnehotCrossEntropy Operator.
 
-Operator computes the cross entropy between the input and the label set. In
- practice, it is most commonly used at the end of models, after the SoftMax
- operator and before the AveragedLoss operator. Note that CrossEntropy
- assumes that the soft labels provided is a 2D array of size N x D
- (batch size x number of classes). Each entry in the 2D label corresponds to
- the soft label for the input, where each element represents the correct
- probability of the class being selected. As such, each element must be between
- 0 and 1, and all elements in an entry must sum to 1. The formula used is:
-
-                Y[i] = sum_j (label[i][j] * log(X[i][j]))
-
- where (i, j) is the classifier's prediction of the jth class (the correct one),
- and i is the batch size. Each log has a lower limit for numerical stability.
+                Y[i] = -log(X[i][j])
 
 )DOC");
   }
@@ -77,10 +58,10 @@ Operator computes the cross entropy between the input and the label set. In
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(cross_entropy,
-            paddle::operators::CrossEntropyOp,
-            paddle::operators::CrossEntropyOpMaker);
-typedef paddle::operators::CrossEntropyOpKernel<::paddle::platform::CPUPlace,
-                                                float>
-    CrossEntropyOpKernel_CPU_float;
-REGISTER_OP_CPU_KERNEL(cross_entropy, CrossEntropyOpKernel_CPU_float);
+REGISTER_OP(onehot_cross_entropy,
+            paddle::operators::OnehotCrossEntropyOp,
+            paddle::operators::OnehotCrossEntropyOpMaker);
+REGISTER_OP_CPU_KERNEL(
+    onehot_cross_entropy,
+    paddle::operators::OnehotCrossEntropyOpKernel<::paddle::platform::CPUPlace,
+                                                  float>);

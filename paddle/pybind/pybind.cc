@@ -27,7 +27,7 @@ namespace py = pybind11;
 namespace pd = paddle::framework;
 
 USE_OP(add_two);
-USE_OP(cross_entropy);
+USE_OP(onehot_cross_entropy);
 USE_OP_WITHOUT_KERNEL(fc);
 USE_OP(sgd);
 

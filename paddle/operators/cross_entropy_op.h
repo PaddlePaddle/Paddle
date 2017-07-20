@@ -20,33 +20,28 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class CrossEntropyOpKernel : public framework::OpKernel {
+class OnehotCrossEntropyOpKernel : public framework::OpKernel {
 public:
+  constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
+
   void Compute(const framework::KernelContext& context) const override {
     auto X = context.Input(0)->Get<framework::Tensor>();
-    const float* X_data = X.data<float>();
-    const float* label_data =
-        context.Input(1)->Get<framework::Tensor>().data<float>();
-    float* Y_data =
-        context.Output(0)->GetMutable<framework::Tensor>()->raw_data<float>();
+    const T* X_data = X.data<T>();
+    const int* label_data =
+        context.Input(1)->Get<framework::Tensor>().data<int>();
+    auto* Y = context.Output(0)->GetMutable<framework::Tensor>();
 
-    int input_rank = (int)X.dims().size();
-    int batch_size, class_num;
-    if (input_rank == 1) {
-      batch_size = 1;
-      class_num = X.dims()[0];
-    } else {
-      batch_size = X.dims()[0];
-      class_num = X.dims()[1];
-    }
+    Y->mutable_data<T>(context.GetPlace());
 
-    // Y[i] = sum_j (label[i][j] * log(X[i][j]))
+    T* Y_data = Y->data<T>();
+
+    int batch_size = X.dims()[0];
+    int class_num = X.dims()[1];
+
+    // Y[i] = -log(X[i][j])
     for (int i = 0; i < batch_size; ++i) {
-      Y_data[i] = 0;
-      for (int j = 0; j < class_num; ++j) {
-        Y_data[i] +=
-            label_data[i * class_num + j] * std::log(X_data[i * class_num + j]);
-      }
+      Y_data[i] = -std::log(
+          std::max(X_data[i * class_num + label_data[i]], LOG_THRESHOLD()));
     }
   }
 };
