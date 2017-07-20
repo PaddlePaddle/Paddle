@@ -1802,6 +1802,34 @@ TEST(Layer, RowConvLayer) {
   }
 }
 
+TEST(Layer, CropLayer) {
+  TestConfig config;
+  // config input_0
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1024, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ImageConfig* img = input->mutable_image_conf();
+  img->set_channels(4);
+  img->set_img_size(16);
+  config.layerConfig.set_axis(2);
+  config.layerConfig.add_offset(0);
+  config.layerConfig.add_offset(0);
+
+  // config input_1
+  config.inputDefs.push_back({INPUT_DATA, "layer_1", 128, 0});
+  input = config.layerConfig.add_inputs();
+  img = input->mutable_image_conf();
+  img->set_channels(2);
+  img->set_img_size(8);
+
+  // config crop layer
+  config.layerConfig.set_type("crop");
+  config.layerConfig.set_name("cropLayer");
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "crop", 100, false, useGpu, false);
+  }
+}
+
 TEST(Layer, SwitchOrderLayer) {
   TestConfig config;
   // config input_0
