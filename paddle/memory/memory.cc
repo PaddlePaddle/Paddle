@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/memory/detail/buddy_allocator.h"
 #include "paddle/memory/detail/system_allocator.h"
 
+#include <stdlib.h>  // for memcpy
+
 namespace paddle {
 namespace memory {
 
