@@ -20,7 +20,7 @@ INCLUDE(ExternalProject)
 
 SET(MKLDNN_PROJECT "extern_mkldnn")
 SET(MKLDNN_SOURCES_DIR ${THIRD_PARTY_PATH}/mkldnn)
-SET(MKLDNN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/mkldnn)
+SET(MKLDNN_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/opt/paddle/third_party/mkldnn")
 SET(MKLDNN_INCLUDE_DIR "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 
 IF(WIN32)
