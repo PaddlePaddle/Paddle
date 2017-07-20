@@ -65,13 +65,15 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
   // Flatten is to reshape a Tensor into a one dimension EigenVector
-  static typename EigenTensor<T, 1>::Type Flatten(Tensor& tensor) {
-    return EigenTensor<T, 1>::From(
+  static typename EigenTensor<T, 1, MajorType, IndexType>::Type Flatten(
+      Tensor& tensor) {
+    return EigenTensor<T, 1, MajorType, IndexType>::From(
         tensor, make_ddim({static_cast<int>(product(tensor.dims_))}));
   }
 
-  static typename EigenTensor<T, 1>::ConstType Flatten(const Tensor& tensor) {
-    return EigenTensor<T, 1>::From(
+  static typename EigenTensor<T, 1, MajorType, IndexType>::ConstType Flatten(
+      const Tensor& tensor) {
+    return EigenTensor<T, 1, MajorType, IndexType>::From(
         tensor, make_ddim({static_cast<int>(product(tensor.dims_))}));
   }
 };
