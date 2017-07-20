@@ -64,10 +64,10 @@ void ROIPoolLayer::forward(PassType passType) {
 
   for (size_t n = 0; n < numROIs; ++n) {
     size_t roiBatchIdx = bottomROIs[0];
-    size_t roiStartW = std::round(bottomROIs[1] * spatialScale_);
-    size_t roiStartH = std::round(bottomROIs[2] * spatialScale_);
-    size_t roiEndW = std::round(bottomROIs[3] * spatialScale_);
-    size_t roiEndH = std::round(bottomROIs[4] * spatialScale_);
+    size_t roiStartW = round(bottomROIs[1] * spatialScale_);
+    size_t roiStartH = round(bottomROIs[2] * spatialScale_);
+    size_t roiEndW = round(bottomROIs[3] * spatialScale_);
+    size_t roiEndH = round(bottomROIs[4] * spatialScale_);
     CHECK_GE(roiBatchIdx, 0);
     CHECK_LT(roiBatchIdx, batchSize);
     size_t roiHeight = std::max(roiEndH - roiStartH + 1, uOne);
