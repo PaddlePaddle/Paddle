@@ -32,16 +32,23 @@ struct CastToPyBufferImpl;
 }  // namespace details
 }  // namespace pybind
 namespace framework {
+namespace math {  // forward declare
+template <typename T, size_t D, int MajorType, typename IndexType>
+struct Tensor;
+
+template <typename T, int MajorType, typename IndexType>
+struct Vector;
+}  // namespace math
 
 class Tensor {
   template <bool less, size_t i, typename... args>
   friend struct paddle::pybind::details::CastToPyBufferImpl;
 
   template <typename T, size_t D, int MajorType, typename IndexType>
-  friend struct EigenTensor;
+  friend struct paddle::framework::math::Tensor;
 
   template <typename T, int MajorType, typename IndexType>
-  friend struct EigenVector;
+  friend struct paddle::framework::math::Vector;
 
  public:
   Tensor() : offset_(0) {}

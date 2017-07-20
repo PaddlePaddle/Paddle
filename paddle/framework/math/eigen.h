@@ -19,6 +19,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+namespace math {
 
 // EigenDim converts paddle::platform::DDim into Eigen::DSizes.
 template <int D>
@@ -38,7 +39,7 @@ struct EigenDim {
 // Interpret paddle::platform::Tensor as EigenTensor and EigenConstTensor.
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-struct EigenTensor {
+struct Tensor {
   // TODO(qijun) Now, default type in unaligned, and we will make a benchmark on
   // the speed of aligned and unaligned version in future.
   using Type = Eigen::TensorMap<Eigen::Tensor<T, D, MajorType, IndexType>>;
@@ -46,39 +47,43 @@ struct EigenTensor {
   using ConstType =
       Eigen::TensorMap<Eigen::Tensor<const T, D, MajorType, IndexType>>;
 
-  static Type From(Tensor& tensor, DDim dims) {
+  static Type From(framework::Tensor& tensor, DDim dims) {
     return Type(tensor.data<T>(), EigenDim<D>::From(dims));
   }
 
-  static Type From(Tensor& tensor) { return From(tensor, tensor.dims_); }
+  static Type From(framework::Tensor& tensor) {
+    return From(tensor, tensor.dims_);
+  }
 
-  static ConstType From(const Tensor& tensor, DDim dims) {
+  static ConstType From(const framework::Tensor& tensor, DDim dims) {
     return ConstType(tensor.data<T>(), EigenDim<D>::From(dims));
   }
 
-  static ConstType From(const Tensor& tensor) {
+  static ConstType From(const framework::Tensor& tensor) {
     return From(tensor, tensor.dims_);
   }
 };
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
+struct Vector : public Tensor<T, 1, MajorType, IndexType> {
   // Flatten is to reshape a Tensor into a one dimension EigenVector
-  static typename EigenTensor<T, 1>::Type Flatten(Tensor& tensor) {
-    return EigenTensor<T, 1>::From(
+  static typename Tensor<T, 1>::Type Flatten(framework::Tensor& tensor) {
+    return Tensor<T, 1>::From(
         tensor, make_ddim({static_cast<int>(product(tensor.dims_))}));
   }
 
-  static typename EigenTensor<T, 1>::ConstType Flatten(const Tensor& tensor) {
-    return EigenTensor<T, 1>::From(
+  static typename Tensor<T, 1>::ConstType Flatten(
+      const framework::Tensor& tensor) {
+    return Tensor<T, 1>::From(
         tensor, make_ddim({static_cast<int>(product(tensor.dims_))}));
   }
 };
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = EigenTensor<T, 2, MajorType, IndexType>;
+using Matrix = Tensor<T, 2, MajorType, IndexType>;
 
+}  // namespace math
 }  // namespace framework
 }  // namespace paddle

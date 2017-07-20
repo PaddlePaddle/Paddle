@@ -11,11 +11,12 @@
   limitations under the License.
 */
 
-#include "paddle/framework/eigen.h"
+#include "paddle/framework/math/eigen.h"
 #include <gtest/gtest.h>
 
 namespace paddle {
 namespace framework {
+namespace math {
 
 TEST(EigenDim, From) {
   EigenDim<3>::Type ed = EigenDim<3>::From(make_ddim({1, 2, 3}));
@@ -25,13 +26,13 @@ TEST(EigenDim, From) {
 }
 
 TEST(Eigen, Tensor) {
-  Tensor t;
+  framework::Tensor t;
   float* p = t.mutable_data<float>(make_ddim({1, 2, 3}), platform::CPUPlace());
   for (int i = 0; i < 1 * 2 * 3; i++) {
     p[i] = static_cast<float>(i);
   }
 
-  EigenTensor<float, 3>::Type et = EigenTensor<float, 3>::From(t);
+  Tensor<float, 3>::Type et = Tensor<float, 3>::From(t);
 
   ASSERT_EQ(1, et.dimension(0));
   ASSERT_EQ(2, et.dimension(1));
@@ -47,13 +48,13 @@ TEST(Eigen, Tensor) {
 }
 
 TEST(Eigen, VectorFrom) {
-  Tensor t;
+  framework::Tensor t;
   float* p = t.mutable_data<float>(make_ddim({6}), platform::CPUPlace());
   for (int i = 0; i < 6; i++) {
     p[i] = static_cast<float>(i);
   }
 
-  EigenVector<float>::Type ev = EigenVector<float>::From(t);
+  Vector<float>::Type ev = Vector<float>::From(t);
 
   ASSERT_EQ(6, ev.dimension(0));
 
@@ -63,13 +64,13 @@ TEST(Eigen, VectorFrom) {
 }
 
 TEST(Eigen, VectorFlatten) {
-  Tensor t;
+  framework::Tensor t;
   float* p = t.mutable_data<float>(make_ddim({1, 2, 3}), platform::CPUPlace());
   for (int i = 0; i < 1 * 2 * 3; i++) {
     p[i] = static_cast<float>(i);
   }
 
-  EigenVector<float>::Type ev = EigenVector<float>::Flatten(t);
+  Vector<float>::Type ev = Vector<float>::Flatten(t);
 
   ASSERT_EQ(1 * 2 * 3, ev.dimension(0));
 
@@ -79,13 +80,13 @@ TEST(Eigen, VectorFlatten) {
 }
 
 TEST(Eigen, Matrix) {
-  Tensor t;
+  framework::Tensor t;
   float* p = t.mutable_data<float>(make_ddim({2, 3}), platform::CPUPlace());
   for (int i = 0; i < 2 * 3; i++) {
     p[i] = static_cast<float>(i);
   }
 
-  EigenMatrix<float>::Type em = EigenMatrix<float>::From(t);
+  Matrix<float>::Type em = Matrix<float>::From(t);
 
   ASSERT_EQ(2, em.dimension(0));
   ASSERT_EQ(3, em.dimension(1));
@@ -97,5 +98,6 @@ TEST(Eigen, Matrix) {
   }
 }
 
+}  // namespace math
 }  // namespace framework
 }  // namespace paddle
