@@ -21,33 +21,37 @@ INCLUDE(ExternalProject)
 SET(MKLML_PROJECT       "extern_mklml")
 SET(MKLML_VER           "mklml_lnx_2018.0.20170425")
 SET(MKLML_URL           "https://github.com/01org/mkl-dnn/releases/download/v0.9/${MKLML_VER}.tgz")
-SET(MKLML_DOWNLOAD_DIR  "${THIRD_PARTY_PATH}/mklml")
-SET(MKLML_INSTALL_DIR   "${CMAKE_INSTALL_PREFIX}/opt/paddle/third_party/mklml")
+SET(MKLML_SOURCE_DIR    "${THIRD_PARTY_PATH}/mklml")
+SET(MKLML_DOWNLOAD_DIR  "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
+SET(MKLML_DST_DIR       "opt/paddle/third_party/mklml")
+SET(MKLML_INSTALL_DIR   "${CMAKE_INSTALL_PREFIX}/${MKLML_DST_DIR}")
 
 SET(MKLML_ROOT          ${MKLML_INSTALL_DIR}/${MKLML_VER})
 SET(MKLML_INC_DIR       ${MKLML_ROOT}/include)
 SET(MKLML_LIB_DIR       ${MKLML_ROOT}/lib)
 SET(MKLML_LIB           ${MKLML_LIB_DIR}/libmklml_intel.so)
 SET(MKLML_IOMP_LIB      ${MKLML_LIB_DIR}/libiomp5.so)
-SET(CMAKE_INSTALL_RPATH    "${CMAKE_INSTALL_RPATH}" "${MKLML_ROOT}/lib")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLML_ROOT}/lib")
 
 INCLUDE_DIRECTORIES(${MKLML_INC_DIR})
+
+SET(mklml_cmakefile ${MKLML_DOWNLOAD_DIR}/CMakeLists.txt)
+FILE(WRITE ${mklml_cmakefile} "PROJECT(MKLML)\n"
+                              "cmake_minimum_required(VERSION 3.0)\n"
+                              "install(DIRECTORY ${MKLML_VER}\n"
+                              "        DESTINATION ${MKLML_DST_DIR})\n")
 
 ExternalProject_Add(
     ${MKLML_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    PREFIX                ${MKLML_DOWNLOAD_DIR}
+    PREFIX                ${MKLML_SOURCE_DIR}
     DOWNLOAD_DIR          ${MKLML_DOWNLOAD_DIR}
     DOWNLOAD_COMMAND      wget --no-check-certificate -O ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}.tgz ${MKLML_URL}
-                          && mkdir -p ${MKLML_INSTALL_DIR}
-                          && tar -xzf ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}.tgz -C ${MKLML_INSTALL_DIR}
+                          && tar -xzf ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}.tgz
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
-    PATCH_COMMAND         ""
-    CONFIGURE_COMMAND     ""
-    BUILD_COMMAND         ""
-    INSTALL_COMMAND       ""
-    TEST_COMMAND          ""
+    CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} 
+    CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_INSTALL_PREFIX}
 )
 
 ADD_LIBRARY(mklml SHARED IMPORTED GLOBAL)
