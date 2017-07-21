@@ -65,3 +65,6 @@ void Copy<platform::GPUPlace, platform::GPUPlace>(platform::GPUPlace dst_place,
 }
 
 #endif  // PADDLE_ONLY_CPU
+
+}  // namespace memory
+}  // namespace paddle
