@@ -19,9 +19,8 @@ limitations under the License. */
 #include <memory>
 #include <typeindex>
 #include "paddle/framework/ddim.h"
-#include "paddle/framework/enforce.h"
-#include "paddle/framework/tensor_types.h"
 #include "paddle/memory/memory.h"
+#include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -35,6 +34,15 @@ struct CastToPyBufferImpl;
 namespace framework {
 
 class Tensor {
+  template <bool less, size_t i, typename... args>
+  friend struct paddle::pybind::details::CastToPyBufferImpl;
+
+  template <typename T, size_t D, int MajorType, typename IndexType>
+  friend struct EigenTensor;
+
+  template <typename T, int MajorType, typename IndexType>
+  friend struct EigenVector;
+
  public:
   Tensor() : offset_(0) {}
 
@@ -46,7 +54,7 @@ class Tensor {
   }
 
   template <typename T>
-  T* raw_data() const {
+  T* data() {
     EnforceSufficientMemory<T>();
     return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                 offset_);
@@ -84,66 +92,6 @@ class Tensor {
     }
     return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                 offset_);
-  }
-
-  template <typename T, size_t NDIMS>
-  typename TTypes<T, NDIMS>::Tensor shaped(DDim new_dims) {
-    Eigen::array<Eigen::DenseIndex, NDIMS> dims =
-        paddle::framework::ToEigenDSizes<NDIMS>(new_dims);
-    return typename TTypes<T, NDIMS>::Tensor(raw_data<T>(), dims);
-  }
-
-  template <typename T, size_t NDIMS>
-  typename TTypes<T, NDIMS>::Tensor tensor() {
-    return typename TTypes<T, NDIMS>::Tensor(
-        raw_data<T>(), paddle::framework::ToEigenDSizes<NDIMS>(dims_));
-  }
-
-  // flat to rank = 1
-  template <typename T>
-  typename TTypes<T>::Flat flat() {
-    return shaped<T, 1>(make_ddim({static_cast<int>(product(dims_))}));
-  }
-
-  // to TensorType Vec
-  template <typename T>
-  typename TTypes<T>::Vec vec() {
-    return tensor<T, 1>();
-  }
-
-  // to TensorType Matrix
-  template <typename T>
-  typename TTypes<T>::Matrix matrix() {
-    return tensor<T, 2>();
-  }
-
-  // const versions of all the methods above.
-  template <typename T, size_t NDIMS>
-  typename TTypes<T, NDIMS>::Tensor shaped(DDim new_dims) const {
-    Eigen::array<Eigen::DenseIndex, NDIMS> dims =
-        paddle::framework::ToEigenDSizes<NDIMS>(new_dims);
-    return typename TTypes<T, NDIMS>::Tensor(data<T>(), dims);
-  }
-
-  template <typename T, size_t NDIMS>
-  typename TTypes<T, NDIMS>::ConstantTensor tensor() const {
-    return typename TTypes<T, NDIMS>::Tensor(
-        data<T>(), paddle::framework::ToEigenDSizes<NDIMS>(dims_));
-  }
-
-  template <typename T>
-  typename TTypes<T>::ConstFlat flat() const {
-    return shaped<T, 1>(make_ddim({static_cast<int>(product(dims_))}));
-  }
-
-  template <typename T>
-  typename TTypes<T>::ConstVec vec() const {
-    return tensor<T, 1>();
-  }
-
-  template <typename T>
-  typename TTypes<T>::ConstMatrix matrix() const {
-    return tensor<T, 2>();
   }
 
   template <typename T>
@@ -232,8 +180,6 @@ class Tensor {
   // byte offset between PlaceHolder::ptr_ and where tensor's data really
   // begins.
   size_t offset_;
-  template <bool less, size_t i, typename... args>
-  friend struct paddle::pybind::details::CastToPyBufferImpl;
 };
 
 }  // namespace framework

@@ -9,8 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gtest/gtest.h>
-#include <paddle/framework/enforce.h>
+#include "paddle/platform/enforce.h"
+#include "gtest/gtest.h"
 
 TEST(ENFORCE, OK) {
   PADDLE_ENFORCE(true, "Enforce is ok %d now %f", 123, 0.345);
@@ -23,10 +23,11 @@ TEST(ENFORCE, FAILED) {
   bool in_catch = false;
   try {
     PADDLE_ENFORCE(false, "Enforce is not ok %d at all", 123);
-  } catch (paddle::framework::EnforceNotMet err) {
+  } catch (const std::runtime_error& error) {
+    // your error handling code here
     in_catch = true;
     std::string msg = "Enforce is not ok 123 at all";
-    const char* what = err.what();
+    const char* what = error.what();
     for (size_t i = 0; i < msg.length(); ++i) {
       ASSERT_EQ(what[i], msg[i]);
     }
