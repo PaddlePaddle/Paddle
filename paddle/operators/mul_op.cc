@@ -12,9 +12,9 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <paddle/framework/op_registry.h>
-#include <paddle/framework/tensor.h>
-#include <paddle/operators/mul_op.h>
+#include "paddle/operators/mul_op.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -57,4 +57,4 @@ The equation is: Out = X * Y
 
 REGISTER_OP(mul, paddle::operators::MulOp, paddle::operators::MulOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    mul, paddle::operators::MulKernel<paddle::platform::CPUPlace>);
+    mul, paddle::operators::MulKernel<paddle::platform::CPUPlace, float>);

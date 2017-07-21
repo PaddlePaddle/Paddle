@@ -12,8 +12,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <paddle/framework/op_registry.h>
-#include <paddle/operators/sigmoid_op.h>
+#include "paddle/operators/sigmoid_op.h"
+#include "paddle/framework/op_registry.h"
 namespace paddle {
 namespace operators {
 
@@ -34,7 +34,7 @@ public:
                  framework::OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "sigmoid input");
-    AddInput("Y", "sigmoid output");
+    AddOutput("Y", "sigmoid output");
     AddComment("Sigmoid function");
   }
 };
@@ -46,4 +46,5 @@ REGISTER_OP(sigmoid,
             paddle::operators::SigmoidOp,
             paddle::operators::SigmoidOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    sigmoid, paddle::operators::SigmoidKernel<paddle::platform::CPUPlace>);
+    sigmoid,
+    paddle::operators::SigmoidKernel<paddle::platform::CPUPlace, float>);
