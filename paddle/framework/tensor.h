@@ -60,13 +60,15 @@ class Tensor {
                                 offset_);
   }
 
-  template <typename T>
+  template <typename T,  // must be POD types
+            typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
   T* mutable_data(DDim dims, platform::Place place) {
     Resize(dims);
     return mutable_data<T>(place);
   }
 
-  template <typename T>
+  template <typename T,  // must be POD types
+            typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
   T* mutable_data(platform::Place place) {
     PADDLE_ENFORCE(product(dims_) > 0,
                    "Tensor's numel must be larger than zero to call "
@@ -150,7 +152,7 @@ class Tensor {
   struct PlaceholderImpl : public Placeholder {
     PlaceholderImpl(PlaceType place, size_t size)
         : ptr_(static_cast<T*>(memory::Alloc(place, size)),
-               memory::PodDeleter<T, PlaceType>(place)),
+               memory::PODDeleter<T, PlaceType>(place)),
           place_(place),
           size_(size) {}
 
@@ -159,7 +161,7 @@ class Tensor {
     virtual paddle::platform::Place place() const { return place_; }
     virtual std::type_index type() const { return std::type_index(typeid(T)); }
 
-    std::unique_ptr<T, memory::PodDeleter<T, PlaceType>> ptr_;
+    std::unique_ptr<T, memory::PODDeleter<T, PlaceType>> ptr_;
     platform::Place place_;  // record the place of ptr_.
     size_t size_;            // size of the memory block.
   };
