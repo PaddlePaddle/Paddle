@@ -80,10 +80,10 @@ func (p *EtcdClient) List() []Server {
 	for {
 		for i := 0; i < psDesired; i++ {
 			ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
-			cancel()
 			psKey := pserver.PsPath + strconv.Itoa(i)
 			log.Debugf("checking %s", psKey)
 			resp, err := p.client.Get(ctx, psKey)
+			cancel()
 			if err != nil {
 				log.Infof("Get psKey= %s error, %v", psKey, err)
 				time.Sleep(p.timeout)
