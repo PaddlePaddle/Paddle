@@ -340,7 +340,8 @@ def img_conv_group(input,
                    conv_with_batchnorm=False,
                    conv_batchnorm_drop_rate=0,
                    pool_stride=1,
-                   pool_type=None):
+                   pool_type=None,
+                   param_attr=None):
     """
     Image Convolution Group, Used for vgg net.
 
@@ -357,6 +358,7 @@ def img_conv_group(input,
     :param conv_with_batchnorm:
     :param pool_stride:
     :param pool_type:
+    :param param_attr:
     :return:
     """
     tmp = input
@@ -397,6 +399,7 @@ def img_conv_group(input,
             padding=conv_padding[i],
             filter_size=conv_filter_size[i],
             num_filters=conv_num_filter[i],
+            param_attr = param_attr,
             **extra_kwargs)
 
         # logger.debug("tmp.num_filters = %d" % tmp.num_filters)
