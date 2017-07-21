@@ -39,19 +39,22 @@ void PlainNet::CompleteAddOp(bool calc) {
       output_set.insert(opt);
     }
   }
+
   inputs_.reserve(input_set.size());
   std::copy(input_set.begin(), input_set.end(), std::back_inserter(inputs_));
+  std::sort(inputs_.begin(), inputs_.end());
 
   outputs_.reserve(output_set.size());
+  std::copy(output_set.begin(), output_set.end(), std::back_inserter(outputs_));
+  std::sort(outputs_.begin(), outputs_.end());
+
   std::vector<int> tmp_index;
   tmp_index.reserve(temp_output.size());
-  int idx = 0;
-  for (auto& opt : output_set) {
-    if (Contains(temp_output, opt)) {
-      tmp_index.push_back(idx);
+  int output_len = (int)outputs_.size();
+  for (int i = 0; i < output_len; ++i) {
+    if (Contains(temp_output, outputs_[i])) {
+      tmp_index.push_back(i);
     }
-    outputs_.push_back(opt);
-    ++idx;
   }
 
   attrs_["temporary_index"] = tmp_index;
