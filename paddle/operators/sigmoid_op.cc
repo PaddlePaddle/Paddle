@@ -34,7 +34,7 @@ public:
                  framework::OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "sigmoid input");
-    AddInput("Y", "sigmoid output");
+    AddOutput("Y", "sigmoid output");
     AddComment("Sigmoid function");
   }
 };
