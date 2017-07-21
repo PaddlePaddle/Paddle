@@ -389,41 +389,45 @@ parameters {
   name: "___mixed_0__.w0"
   size: 40000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 400
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___mixed_1__.w0"
   size: 30000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 300
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_rnn_forward@__recurrent_group_0__.w0"
   size: 20000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 200
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_rnn_forward@__recurrent_group_0__.w1"
   size: 40000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 200
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_rnn_forward@__recurrent_group_0__.wbias"
@@ -434,26 +438,29 @@ parameters {
   dims: 200
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_rnn_back@__recurrent_group_1__.w0"
   size: 20000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 200
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_rnn_back@__recurrent_group_1__.w1"
   size: 40000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 200
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_rnn_back@__recurrent_group_1__.wbias"
@@ -464,26 +471,29 @@ parameters {
   dims: 200
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_rnn_subseq_forward@__recurrent_group_2__.w0"
   size: 20000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 200
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_rnn_subseq_forward@__recurrent_group_2__.w1"
   size: 40000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 200
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_rnn_subseq_forward@__recurrent_group_2__.wbias"
@@ -494,16 +504,18 @@ parameters {
   dims: 200
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___lstm_group_0___input_recurrent@__lstm_group_0___recurrent_group.w1"
   size: 40000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 400
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___lstm_group_0__@__lstm_group_0___recurrent_group.wbias"
@@ -514,16 +526,18 @@ parameters {
   dims: 300
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___gru_group_0__@__gru_group_0___recurrent_group.w0"
   size: 30000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 300
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___gru_group_0__@__gru_group_0___recurrent_group.wbias"
@@ -534,26 +548,29 @@ parameters {
   dims: 300
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___fc_layer_0__@__recurrent_group_3__.w0"
   size: 20000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 200
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___fc_layer_0__@__recurrent_group_3__.w1"
   size: 40000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 200
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___fc_layer_0__@__recurrent_group_3__.wbias"
@@ -564,6 +581,7 @@ parameters {
   dims: 200
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 input_layer_names: "seq_input"
 input_layer_names: "sub_seq_input"

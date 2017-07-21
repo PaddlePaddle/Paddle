@@ -22,11 +22,12 @@ parameters {
   name: "___row_conv_layer_0__.w0"
   size: 48640
   initial_mean: 0.0
-  initial_std: 0.229415733871
+  initial_std: 0.01
   dims: 19
   dims: 2560
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 input_layer_names: "data"
 output_layer_names: "__row_conv_layer_0__"

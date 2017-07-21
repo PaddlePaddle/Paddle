@@ -207,11 +207,12 @@ parameters {
   name: "___fc_layer_0__.w0"
   size: 40000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 200
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___fc_layer_0__.wbias"
@@ -222,16 +223,18 @@ parameters {
   dims: 200
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___recurrent_layer_0__.w0"
   size: 40000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 200
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___recurrent_layer_0__.wbias"
@@ -242,16 +245,18 @@ parameters {
   dims: 200
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___recurrent_layer_1__.w0"
   size: 40000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 200
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___recurrent_layer_1__.wbias"
@@ -262,27 +267,30 @@ parameters {
   dims: 200
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___fc_layer_1__.w0"
   size: 160000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 800
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___lstmemory_0__.w0"
   size: 160000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 200
   dims: 4
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___lstmemory_0__.wbias"
@@ -293,27 +301,30 @@ parameters {
   dims: 1400
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___fc_layer_2__.w0"
   size: 160000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 800
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___lstmemory_1__.w0"
   size: 160000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 200
   dims: 4
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___lstmemory_1__.wbias"
@@ -324,26 +335,29 @@ parameters {
   dims: 1400
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___fc_layer_3__.w0"
   size: 120000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 600
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___gru_0__.w0"
   size: 120000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 600
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___gru_0__.wbias"
@@ -354,26 +368,29 @@ parameters {
   dims: 600
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___fc_layer_4__.w0"
   size: 120000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 600
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___gru_1__.w0"
   size: 120000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 600
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___gru_1__.wbias"
@@ -384,6 +401,7 @@ parameters {
   dims: 600
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 input_layer_names: "data"
 output_layer_names: "__last_seq_0__"

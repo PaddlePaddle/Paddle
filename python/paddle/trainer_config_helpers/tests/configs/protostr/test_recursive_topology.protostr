@@ -415,11 +415,12 @@ parameters {
   name: "___fc_layer_0__.w0"
   size: 3200
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 32
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___fc_layer_0__.wbias"
@@ -430,16 +431,18 @@ parameters {
   dims: 32
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___fc_layer_1__.w0"
   size: 320
   initial_mean: 0.0
-  initial_std: 0.176776695297
+  initial_std: 0.01
   dims: 32
   dims: 10
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___fc_layer_1__.wbias"
@@ -450,6 +453,7 @@ parameters {
   dims: 10
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 input_layer_names: "data"
 output_layer_names: "__fc_layer_1__"

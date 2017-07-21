@@ -75,6 +75,7 @@ parameters {
   dims: 200
   initial_strategy: 1
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "bias_param"
@@ -85,6 +86,7 @@ parameters {
   dims: 200
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "softmax_param"
@@ -95,6 +97,7 @@ parameters {
   dims: 10
   initial_strategy: 1
   initial_smart: false
+  is_static: false
 }
 input_layer_names: "feature_a"
 input_layer_names: "feature_b"

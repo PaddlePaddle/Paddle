@@ -260,21 +260,23 @@ parameters {
   name: "mixed_param"
   size: 40000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 400
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "lstm_param"
   size: 40000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 400
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "lstm_bias"
@@ -285,16 +287,18 @@ parameters {
   dims: 300
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "softmax_param"
   size: 1000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 10
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 input_layer_names: "data_a"
 input_layer_names: "data_b"

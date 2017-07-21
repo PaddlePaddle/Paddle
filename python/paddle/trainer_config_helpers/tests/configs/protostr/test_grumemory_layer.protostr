@@ -22,11 +22,12 @@ parameters {
   name: "___gru_0__.w0"
   size: 4800
   initial_mean: 0.0
-  initial_std: 0.158113883008
+  initial_std: 0.01
   dims: 40
   dims: 120
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___gru_0__.wbias"
@@ -37,6 +38,7 @@ parameters {
   dims: 120
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 input_layer_names: "data"
 output_layer_names: "__gru_0__"

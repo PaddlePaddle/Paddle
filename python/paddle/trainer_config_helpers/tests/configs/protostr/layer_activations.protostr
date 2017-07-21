@@ -141,11 +141,12 @@ parameters {
   name: "_layer_0.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_0.wbias"
@@ -156,16 +157,18 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_1.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_1.wbias"
@@ -176,16 +179,18 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_2.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_2.wbias"
@@ -196,16 +201,18 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_3.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_3.wbias"
@@ -216,16 +223,18 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_4.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_4.wbias"
@@ -236,16 +245,18 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_5.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_5.wbias"
@@ -256,16 +267,18 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_6.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_6.wbias"
@@ -276,16 +289,18 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_7.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_7.wbias"
@@ -296,16 +311,18 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_8.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_8.wbias"
@@ -316,16 +333,18 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_9.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_9.wbias"
@@ -336,16 +355,18 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_10.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_10.wbias"
@@ -356,16 +377,18 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_11.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "_layer_11.wbias"
@@ -376,6 +399,7 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 input_layer_names: "input"
 output_layer_names: "layer_0"

@@ -30,11 +30,12 @@ parameters {
   name: "___hsigmoid_0__.w0"
   size: 900
   initial_mean: 0.0
-  initial_std: 0.333333333333
+  initial_std: 0.01
   dims: 9
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___hsigmoid_0__.wbias"
@@ -45,6 +46,7 @@ parameters {
   dims: 9
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 input_layer_names: "data"
 input_layer_names: "label"

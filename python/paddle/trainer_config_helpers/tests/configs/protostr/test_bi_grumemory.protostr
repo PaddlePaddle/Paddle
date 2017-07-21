@@ -79,21 +79,23 @@ parameters {
   name: "___bidirectional_gru_0___fw_transform.w0"
   size: 14400
   initial_mean: 0.0
-  initial_std: 0.0912870929175
+  initial_std: 0.01
   dims: 120
   dims: 120
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___bidirectional_gru_0___fw.w0"
   size: 4800
   initial_mean: 0.0
-  initial_std: 0.158113883008
+  initial_std: 0.01
   dims: 40
   dims: 120
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___bidirectional_gru_0___fw.wbias"
@@ -104,26 +106,29 @@ parameters {
   dims: 120
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___bidirectional_gru_0___bw_transform.w0"
   size: 14400
   initial_mean: 0.0
-  initial_std: 0.0912870929175
+  initial_std: 0.01
   dims: 120
   dims: 120
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___bidirectional_gru_0___bw.w0"
   size: 4800
   initial_mean: 0.0
-  initial_std: 0.158113883008
+  initial_std: 0.01
   dims: 40
   dims: 120
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___bidirectional_gru_0___bw.wbias"
@@ -134,6 +139,7 @@ parameters {
   dims: 120
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 input_layer_names: "data"
 output_layer_names: "__bidirectional_gru_0__"

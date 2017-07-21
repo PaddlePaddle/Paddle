@@ -60,6 +60,7 @@ parameters {
   dims: 512
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___gated_unit_layer_0___input_proj.wbias"
@@ -70,6 +71,7 @@ parameters {
   dims: 512
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___gated_unit_layer_0___gate.w0"
@@ -80,6 +82,7 @@ parameters {
   dims: 512
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___gated_unit_layer_0___gate.wbias"
@@ -90,6 +93,7 @@ parameters {
   dims: 512
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 input_layer_names: "input"
 output_layer_names: "__gated_unit_layer_0___gated_act"

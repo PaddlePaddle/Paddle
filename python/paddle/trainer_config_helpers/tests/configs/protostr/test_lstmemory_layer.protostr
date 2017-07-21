@@ -23,12 +23,13 @@ parameters {
   name: "___lstmemory_0__.w0"
   size: 4096
   initial_mean: 0.0
-  initial_std: 0.176776695297
+  initial_std: 0.01
   dims: 32
   dims: 32
   dims: 4
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___lstmemory_0__.wbias"
@@ -39,6 +40,7 @@ parameters {
   dims: 224
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 input_layer_names: "data"
 output_layer_names: "__lstmemory_0__"

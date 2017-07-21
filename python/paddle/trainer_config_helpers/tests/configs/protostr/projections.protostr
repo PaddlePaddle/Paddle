@@ -326,41 +326,45 @@ parameters {
   name: "___embedding_0__.w0"
   size: 25600
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 256
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___mixed_0__.w0"
   size: 25600
   initial_mean: 0.0
-  initial_std: 0.0625
+  initial_std: 0.01
   dims: 256
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___mixed_1__.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___mixed_3__.w0"
   size: 100
   initial_mean: 0.0
-  initial_std: 1.0
+  initial_std: 0.01
   dims: 1
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___mixed_4__.w0"
@@ -371,72 +375,80 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___mixed_5__.w1"
   size: 1
   initial_mean: 0.0
-  initial_std: 1.0
+  initial_std: 0.01
   dims: 1
   dims: 1
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___mixed_6__.w1"
   size: 576
   initial_mean: 0.0
-  initial_std: 0.471404520791
+  initial_std: 0.01
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___mixed_7__.w1"
   size: 576
   initial_mean: 0.0
-  initial_std: 0.471404520791
+  initial_std: 0.01
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___mixed_8__.w0"
   size: 30000
   initial_mean: 0.0
-  initial_std: 0.057735026919
+  initial_std: 0.01
   dims: 300
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___mixed_8__.w1"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___mixed_8__.w2"
   size: 5760000
   initial_mean: 0.0
-  initial_std: 0.00416666666667
+  initial_std: 0.01
   dims: 57600
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___mixed_8__.w3"
   size: 25401600
   initial_mean: 0.0
-  initial_std: 0.00198412698413
+  initial_std: 0.01
   dims: 254016
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 input_layer_names: "test"
 input_layer_names: "img"

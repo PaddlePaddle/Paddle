@@ -19,9 +19,10 @@ parameters {
   name: "___prelu_layer_0__.w0"
   size: 300
   initial_mean: 0.0
-  initial_std: 0.057735026919
+  initial_std: 0.01
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 input_layer_names: "input"
 output_layer_names: "__prelu_layer_0__"

@@ -178,21 +178,23 @@ parameters {
   name: "mixed_param"
   size: 60000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 600
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "gru_param"
   size: 120000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 600
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "gru_bias"
@@ -203,16 +205,18 @@ parameters {
   dims: 600
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "softmax_param"
   size: 2000
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 10
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 input_layer_names: "data_a"
 input_layer_names: "data_b"

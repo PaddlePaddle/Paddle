@@ -235,11 +235,12 @@ parameters {
   name: "___fc_layer_0__.w0"
   size: 800
   initial_mean: 0.0
-  initial_std: 0.0707106781187
+  initial_std: 0.01
   dims: 200
   dims: 4
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___fc_layer_0__.wbias"
@@ -250,26 +251,29 @@ parameters {
   dims: 4
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___crf_layer_0__.w0"
   size: 24
   initial_mean: 0.0
-  initial_std: 0.408248290464
+  initial_std: 0.01
   dims: 6
   dims: 4
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___nce_layer_0__.w0"
   size: 20000
   initial_mean: 0.0
-  initial_std: 0.0141421356237
+  initial_std: 0.01
   dims: 5000
   dims: 4
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___nce_layer_0__.wbias"
@@ -280,6 +284,7 @@ parameters {
   dims: 5000
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 input_layer_names: "input"
 input_layer_names: "labels"

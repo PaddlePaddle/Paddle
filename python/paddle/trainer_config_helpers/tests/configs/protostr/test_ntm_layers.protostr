@@ -156,12 +156,13 @@ parameters {
   name: "___tensor_layer_0__.w0"
   size: 10000000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   dims: 1000
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___tensor_layer_0__.wbias"
@@ -172,6 +173,7 @@ parameters {
   dims: 1000
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 input_layer_names: "w"
 input_layer_names: "a"

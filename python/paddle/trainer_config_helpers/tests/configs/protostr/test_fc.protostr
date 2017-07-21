@@ -51,22 +51,24 @@ parameters {
   name: "___fc_layer_0__.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
+  is_static: false
 }
 parameters {
   name: "___selective_fc_layer_0__.w0"
   size: 10000
   initial_mean: 0.0
-  initial_std: 0.1
+  initial_std: 0.01
   dims: 100
   dims: 100
   initial_strategy: 0
-  initial_smart: true
+  initial_smart: false
   is_sparse: false
+  is_static: false
 }
 parameters {
   name: "___selective_fc_layer_0__.wbias"
@@ -77,6 +79,7 @@ parameters {
   dims: 100
   initial_strategy: 0
   initial_smart: false
+  is_static: false
 }
 input_layer_names: "data"
 input_layer_names: "mask"
