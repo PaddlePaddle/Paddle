@@ -12,8 +12,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <paddle/framework/op_registry.h>
-#include <paddle/operators/rowwise_add_op.h>
+#include "paddle/operators/rowwise_add_op.h"
+#include "paddle/framework/op_registry.h"
 namespace paddle {
 namespace operators {
 
@@ -58,4 +58,4 @@ REGISTER_OP(rowwise_add,
             paddle::operators::RowWiseAddOpMaker);
 REGISTER_OP_CPU_KERNEL(
     rowwise_add,
-    paddle::operators::RowWiseAddKernel<paddle::platform::CPUPlace>);
+    paddle::operators::RowWiseAddKernel<paddle::platform::CPUPlace, float>);
