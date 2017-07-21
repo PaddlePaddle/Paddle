@@ -15,6 +15,7 @@ limitations under the License. */
 #include <Python.h>
 #include <fstream>
 #include <vector>
+
 #include "paddle/framework/net.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
