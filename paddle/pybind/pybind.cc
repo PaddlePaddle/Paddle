@@ -140,22 +140,23 @@ All parameter, weight, gradient are variables in Paddle.
   ExposeOperator(operator_base);
 
   using PlainNetPtr = std::shared_ptr<pd::PlainNet>;
-  py::class_<pd::PlainNet, PlainNetPtr> net(m, "PlainNet");
+  py::class_<pd::PlainNet, PlainNetPtr> plain_net(m, "PlainNet");
 
-  net.def_static("create",
-                 []() -> std::shared_ptr<pd::PlainNet> {
-                   auto retv = std::make_shared<pd::PlainNet>();
-                   retv->type_ = "plain_net";
-                   return retv;
-                 })
+  plain_net
+      .def_static("create",
+                  []() -> std::shared_ptr<pd::PlainNet> {
+                    auto retv = std::make_shared<pd::PlainNet>();
+                    retv->type_ = "plain_net";
+                    return retv;
+                  })
       .def("add_op", &pd::PlainNet::AddOp)
       .def("add_op",
-           [](PlainNetPtr& self, const PlainNetPtr& net) -> void {
-             self->AddOp(std::static_pointer_cast<pd::OperatorBase>(net));
+           [](PlainNetPtr& self, const PlainNetPtr& plain_net) -> void {
+             self->AddOp(std::static_pointer_cast<pd::OperatorBase>(plain_net));
            })
       .def("complete_add_op", &pd::PlainNet::CompleteAddOp)
       .def("complete_add_op", [](PlainNetPtr& self) { self->CompleteAddOp(); });
-  ExposeOperator(net);
+  ExposeOperator(plain_net);
 
   return m.ptr();
 }
