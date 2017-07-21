@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/gob"
 	"errors"
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -65,14 +66,17 @@ type taskQueues struct {
 
 // Service is the master server service.
 type Service struct {
-	chunksPerTask int
-	timeoutDur    time.Duration
-	failureMax    int
-	ready         *sync.Cond
-	store         Store
-	mu            sync.Mutex
-	initDone      bool
-	taskQueues    taskQueues
+	chunksPerTask      int
+	timeoutDur         time.Duration
+	failureMax         int
+	ready              *sync.Cond
+	store              Store
+	mu                 sync.Mutex
+	initDone           bool
+	taskQueues         taskQueues
+	clientCount        int
+	clientPassFinished int
+	passEndCond        *sync.Cond
 }
 
 func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
@@ -118,6 +122,7 @@ func NewService(store Store, chunksPerTask int, timeoutDur time.Duration, failur
 	s.taskQueues.Pending = make(map[int]taskEntry)
 	// s.ready = make(chan struct{})
 	s.ready = sync.NewCond(&sync.Mutex{})
+	s.passEndCond = sync.NewCond(&sync.Mutex{})
 	s.store = store
 	recovered, err := s.recover()
 	if err != nil {
@@ -128,7 +133,6 @@ func NewService(store Store, chunksPerTask int, timeoutDur time.Duration, failur
 		// Recovered. Now the state is already initialized,
 		// and the master is ready.
 		s.initDone = true
-		// close(s.ready)
 		s.ready.Broadcast()
 		log.Info("Master recovered from saved state.")
 	}
@@ -273,6 +277,7 @@ func (s *Service) SetDataset(globPaths []string, dummy *int) error {
 		log.Errorln(err)
 		return err
 	}
+	fmt.Println("initDone refresh")
 	s.initDone = true
 	s.ready.Broadcast()
 	return nil
@@ -284,8 +289,8 @@ func (s *Service) SetDataset(globPaths []string, dummy *int) error {
 func (s *Service) checkAllTaskDone() bool {
 	if len(s.taskQueues.Todo) == 0 && len(s.taskQueues.Pending) == 0 {
 		log.WithFields(s.logFields()).Warningln("all task done/failed, able to start next pass.")
-		s.initDone = false
-		s.ready.Broadcast()
+		// s.initDone = false
+		// s.ready.Broadcast()
 		return true
 	}
 	return false
@@ -355,13 +360,12 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
 	if len(s.taskQueues.Todo) == 0 {
 		if len(s.taskQueues.Done) == 0 {
 			if len(s.taskQueues.Pending) == 0 {
 				log.WithFields(s.logFields()).Warningln("All tasks failed, may start next pass")
-				s.initDone = false
-				s.ready.Broadcast()
+				// s.initDone = false
+				// s.ready.Broadcast()
 				return AllTaskFinishError
 			}
 		}
@@ -450,3 +454,46 @@ func (s *Service) TaskFailed(meta TaskMeta, dummy *int) error {
 
 	return nil
 }
+
+// ========================== Client Pass Sync Calls ==========================
+
+// AddClient need to be called when a new master client connected.
+// We need to keep a internal client count to sync all clients when pass ends.
+func (s *Service) AddClient(dummyIn int, dummyOut *int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.clientCount++
+	return nil
+}
+
+// PassStart reset pass counter.
+func (s *Service) PassStart(dummyIn int, dummyOut *int) error {
+	s.passEndCond.L.Lock()
+	defer s.passEndCond.L.Unlock()
+	s.ready.L.Lock()
+	defer s.ready.L.Unlock()
+	if s.clientPassFinished == s.clientCount {
+		// FIXME: only reinit when synced pass start
+		s.initDone = false
+		s.clientPassFinished = 0
+	}
+	return nil
+}
+
+// PassFinish tell server that the current pass is finished.
+func (s *Service) PassFinish(dummyIn int, dummyOut *int) error {
+	s.passEndCond.L.Lock()
+	defer s.passEndCond.L.Unlock()
+	s.clientPassFinished++
+	if s.clientPassFinished == s.clientCount {
+		// wakeup all pass end waiting clients
+		s.passEndCond.Broadcast()
+	} else {
+		for s.clientPassFinished != s.clientCount {
+			s.passEndCond.Wait()
+		}
+	}
+	return nil
+}
+
+// ========================== Client Pass Sync Calls ==========================

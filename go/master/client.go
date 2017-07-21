@@ -1,7 +1,12 @@
 package master
 
 import (
+	"fmt"
 	"os"
+	"runtime"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
 	"github.com/PaddlePaddle/recordio"
@@ -28,7 +33,12 @@ func NewClient(addrCh <-chan string, bufSize int) *Client {
 	c.conn = connection.New()
 	c.ch = make(chan record, bufSize)
 	go c.monitorMaster(addrCh)
-	// go c.getRecords()
+	// FIXME: async connection creation
+	time.Sleep(time.Second)
+	err := c.addClient()
+	if err != nil {
+		log.Errorln("init client(addClient) error:", err)
+	}
 	return c
 }
 
@@ -144,11 +154,44 @@ func (c *Client) taskFailed(meta TaskMeta) error {
 	return c.conn.Call("Service.TaskFailed", meta, nil)
 }
 
+// tool function for testing output goroutine ids
+func goid() int {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
+	id, err := strconv.Atoi(idField)
+	if err != nil {
+		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
+	}
+	return id
+}
+
 // NextRecord returns next record in the dataset.
 //
 // NextRecord will block until the next record is available. It is
 // thread-safe.
 func (c *Client) NextRecord() ([]byte, error) {
 	r := <-c.ch
+	if r.err != nil && (r.err.Error() == AllTaskFinishError.Error() || r.err.Error() == NoMoreAvailableError.Error()) {
+		err := c.PassFinish()
+		if err != nil {
+			return nil, err
+		}
+	}
 	return r.r, r.err
+}
+
+func (c *Client) addClient() error {
+	return c.conn.Call("Service.AddClient", 0, nil)
+}
+
+// PassFinish set current pass to finish
+func (c *Client) PassFinish() error {
+	err := c.conn.Call("Service.PassFinish", 0, nil)
+	return err
+}
+
+// PassStart reset pass counter.
+func (c *Client) PassStart() error {
+	return c.conn.Call("Service.PassStart", 0, nil)
 }

@@ -2,6 +2,7 @@ package master_test
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -91,19 +92,24 @@ func TestNextRecord(t *testing.T) {
 
 	// start several client to test task fetching
 	var wg sync.WaitGroup
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 4; i++ {
 		wg.Add(1)
 		// test for multiple concurrent clients
 		go func() {
+			// each go-routine needs a single client connection instance
 			curAddr := make(chan string, 1)
 			curAddr <- fmt.Sprintf(":%d", p)
 			c := master.NewClient(curAddr, 1)
 			defer wg.Done()
 
-			// test for 50 passes
+			// test for n passes
 			for pass := 0; pass < 5; pass++ {
-				// init for a new pass
-				e := c.SetDataset([]string{path})
+				// wait for last pass end and init for a new pass
+				e := c.PassStart()
+				if e != nil {
+					t.Fatal(e)
+				}
+				e = c.SetDataset([]string{path})
 				if e != nil {
 					panic(e)
 				}
@@ -126,6 +132,63 @@ func TestNextRecord(t *testing.T) {
 					}
 					taskid++
 					received[r[0]] = true
+				}
+			}
+		}()
+	}
+	wg.Wait()
+}
+
+func TestClientPassSync(t *testing.T) {
+	log.SetLevel(log.WarnLevel)
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		panic(err)
+	}
+
+	ss := strings.Split(l.Addr().String(), ":")
+	p, err := strconv.Atoi(ss[len(ss)-1])
+	if err != nil {
+		panic(err)
+	}
+	go func(l net.Listener) {
+		s, err := master.NewService(&master.InMemStore{}, 1, time.Second, 1)
+		if err != nil {
+			panic(err)
+		}
+
+		server := rpc.NewServer()
+		err = server.Register(s)
+		if err != nil {
+			panic(err)
+		}
+
+		mux := http.NewServeMux()
+		mux.Handle(rpc.DefaultRPCPath, server)
+		err = http.Serve(l, mux)
+		if err != nil {
+			panic(err)
+		}
+	}(l)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			curAddr := make(chan string, 1)
+			curAddr <- fmt.Sprintf(":%d", p)
+			c := master.NewClient(curAddr, 1)
+			for pass := 0; pass < 10; pass++ {
+				e := c.PassStart()
+				if e != nil {
+					t.Fatal(e)
+				}
+				// simulate run pass
+				time.Sleep(time.Duration(rand.Intn(3)) * time.Second)
+				e = c.PassFinish()
+				if e != nil {
+					t.Fatal(e)
 				}
 			}
 		}()
