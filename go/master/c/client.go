@@ -1,3 +1,17 @@
+// Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 /*
@@ -13,14 +27,16 @@ typedef int paddle_master_client;
 import "C"
 
 import (
+	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/PaddlePaddle/Paddle/go/master"
+	"github.com/coreos/etcd/clientv3"
 	log "github.com/sirupsen/logrus"
 )
 
-var nullPtr = unsafe.Pointer(uintptr(0))
 var mu sync.Mutex
 var handleMap = make(map[C.paddle_master_client]*master.Client)
 var curHandle C.paddle_master_client
@@ -48,16 +64,33 @@ func remove(client C.paddle_master_client) *master.Client {
 	return h
 }
 
-type addresser string
-
-func (a addresser) Address() string {
-	return string(a)
+//export paddle_new_etcd_master_client
+func paddle_new_etcd_master_client(etcdEndpoints *C.char, timeout int, bufSize int) C.paddle_master_client {
+	p := C.GoString(etcdEndpoints)
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   strings.Split(p, ","),
+		DialTimeout: time.Second * time.Duration(timeout),
+	})
+	if err != nil {
+		panic(err)
+	}
+	ch := make(chan string, 1)
+	a, err := master.GetKey(cli, master.DefaultAddrPath, timeout)
+	if err != nil {
+		panic(err)
+	}
+	ch <- a
+	go master.WatchKey(cli, master.DefaultAddrPath, ch)
+	c := master.NewClient(ch, bufSize)
+	return add(c)
 }
 
 //export paddle_new_master_client
 func paddle_new_master_client(addr *C.char, bufSize int) C.paddle_master_client {
 	a := C.GoString(addr)
-	c := master.NewClient(addresser(a), bufSize)
+	ch := make(chan string, 1)
+	ch <- a
+	c := master.NewClient(ch, bufSize)
 	return add(c)
 }
 
@@ -84,12 +117,23 @@ func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int
 	return C.PADDLE_MASTER_OK
 }
 
+// return value:
+//     0:ok
+//    -1:error
 //export paddle_next_record
 func paddle_next_record(client C.paddle_master_client, record **C.uchar) C.int {
 	c := get(client)
-	r := c.NextRecord()
+	r, err := c.NextRecord()
+	if err != nil {
+		// Error
+		// TODO: return the type of error?
+		*record = (*C.uchar)(nil)
+		return -1
+	}
+
 	if len(r) == 0 {
-		*record = (*C.uchar)(nullPtr)
+		// Empty record
+		*record = (*C.uchar)(nil)
 		return 0
 	}
 

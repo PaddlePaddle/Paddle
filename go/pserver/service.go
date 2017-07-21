@@ -1,29 +1,49 @@
+// Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package pserver
 
 import (
-	"context"
+	"bufio"
+	"bytes"
+	"crypto/md5"
+	"encoding/gob"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/PaddlePaddle/Paddle/go/utils/networkhelper"
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
 	log "github.com/sirupsen/logrus"
 )
 
 // ElementType is the type of elements of a Parameter.
 type ElementType int
 
+// RPC error message.
 const (
-	AlreadyInitialized = "pserver already initialized"
-	Uninitialized      = "pserver not fully initialized"
+	AlreadyInitialized  = "pserver already initialized"
+	Uninitialized       = "pserver not fully initialized"
+	CheckpointMD5Failed = "checkpoint file MD5 validation failed"
 )
 
-// Supported element types
+// Supported element types.
 const (
 	Int32 ElementType = iota
 	UInt32
@@ -32,9 +52,6 @@ const (
 	Float32
 	Float64
 )
-
-// PsDesired is etcd path for store desired pserver count
-const PsDesired = "/ps_desired"
 
 // Parameter is a piece of data to sync with the parameter server.
 type Parameter struct {
@@ -49,138 +66,93 @@ type ParameterWithConfig struct {
 	Config []byte // parameter configuration in Proto Buffer format
 }
 
+// checkpointMeta saves checkpoint metadata
+type checkpointMeta struct {
+	UUID      string `json:"uuid"`
+	MD5       string `json:"md5"`
+	Timestamp int64  `json:"timestamp"`
+}
+
+// Checkpoint is the pserver shard persist in file
+type Checkpoint []parameterCheckpoint
+
 // Gradient is the gradient of the parameter.
 type Gradient Parameter
 
 // Service is the RPC service for pserver.
 type Service struct {
-	initialized chan struct{}
-
-	mu       sync.Mutex
-	opt      *optimizer
-	paramMap map[string]Parameter
-
-	etcdEndpoints string
-	etcdClient    *clientv3.Client
-	// etcdTimeout is also used as retry intervals.
-	etcdTimeout time.Duration
-	// desired number of pservers in the job.
-	// assume desired will not change during one training job.
-	desired int
-	// FIXME: ensure GetExternalIP gets the correct ip for trainers to connect.
-	externalIP string
+	initialized        chan struct{}
+	idx                int
+	checkpointInterval time.Duration
+	checkpointPath     string
+	client             *EtcdClient
+	mu                 sync.Mutex
+	optMap             map[string]*optimizer
 }
 
-// NewService creates a new service, will bypass etcd registration if no
-// endpoints specified.
-func NewService(endpoints string, timeout time.Duration) (*Service, error) {
-	s := &Service{opt: newOptimizer(sgd, 0.005)}
-	s.paramMap = make(map[string]Parameter)
-	s.initialized = make(chan struct{})
-	s.etcdEndpoints = endpoints
-	s.etcdTimeout = timeout
+// parameterCheckpoint saves parameter checkpoint
+type parameterCheckpoint struct {
+	ParameterWithConfig
+	State []byte
+}
 
-	var err error
-	s.externalIP, err = networkhelper.GetExternalIP()
+// NewCheckpointFromFile loads parameters and state from checkpoint file
+func NewCheckpointFromFile(cpPath string, idx int, e *EtcdClient) (Checkpoint, error) {
+	v, err := e.GetKey(PsPath+string(idx), 3*time.Second)
 	if err != nil {
 		return nil, err
 	}
 
-	if endpoints != "" {
-		// initialize connection to etcd, try
-		ep := strings.Split(s.etcdEndpoints, ",")
-		for {
-			cli, err := clientv3.New(clientv3.Config{
-				Endpoints:   ep,
-				DialTimeout: s.etcdTimeout,
-			})
-			if err != nil {
-				log.Errorf("connect to etcd error: %v", err)
-				time.Sleep(s.etcdTimeout)
-				continue
-			}
-			s.etcdClient = cli
-			log.Debugf("inited client to %s", s.etcdEndpoints)
-			break
-		}
-		// wait and set s.desired init value
-		for {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			resp, err := s.etcdClient.Get(ctx, PsDesired)
-			cancel()
-			if err != nil {
-				log.Errorf("getting %s error: %v", PsDesired, err)
-				time.Sleep(s.etcdTimeout)
-				continue
-			}
-			if len(resp.Kvs) != 0 {
-				s.desired, err = strconv.Atoi(string(resp.Kvs[0].Value))
-				if err != nil {
-					log.Errorf("value of %s invalid %v\n", PsDesired, err)
-					time.Sleep(s.etcdTimeout)
-					// NOTE: wait util ps_desired value change
-					continue
-				}
-				break
-			}
-		}
-		// try register pserver node on etcd
-		for {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			_, err := s.registerPserverEtcd(ctx)
-			cancel()
-			if err != nil {
-				log.Warn(err)
-				time.Sleep(s.etcdTimeout)
-				continue
-			}
-			break
-		}
-	} // if endpoints != ""
-	// Bypass etcd registration if no endpoints specified
-	return s, nil
+	var cpMeta checkpointMeta
+	if err = json.Unmarshal(v, &cpMeta); err != nil {
+		return nil, err
+	}
+
+	fn := filepath.Join(cpPath, cpMeta.UUID)
+	if _, err = os.Stat(fn); os.IsNotExist(err) {
+		return nil, err
+	}
+	content, err := ioutil.ReadFile(fn)
+	if err != nil {
+		return nil, err
+	}
+
+	h := md5.New()
+	md5 := hex.EncodeToString(h.Sum(content))
+	if md5 != cpMeta.MD5 {
+		return nil, errors.New(CheckpointMD5Failed)
+	}
+
+	dec := gob.NewDecoder(bytes.NewReader(content))
+	cp := Checkpoint{}
+	if err = dec.Decode(cp); err != nil {
+		return nil, err
+	}
+	return cp, nil
 }
 
-// registerPserverEtcd registers pserver node on etcd using transaction.
-func (s *Service) registerPserverEtcd(ctx context.Context) (*clientv3.TxnResponse, error) {
-	return concurrency.NewSTM(s.etcdClient, func(c concurrency.STM) error {
-		registered := false
-		for i := 0; i < s.desired; i++ {
-			psKey := "/ps/" + strconv.Itoa(i)
-			log.Debugf("checking %s", psKey)
-			ps := c.Get(psKey)
-			log.Debugf("got value (%s) for key: %s", ps, psKey)
+// NewService creates a new service, will bypass etcd registration if no
+// endpoints specified. It will recovery from checkpoint file if a exists a specified checkpoint.
+func NewService(idx int, interval time.Duration, path string, client *EtcdClient, cp Checkpoint) (*Service, error) {
+	s := &Service{
+		idx:                idx,
+		checkpointInterval: interval,
+		checkpointPath:     path,
+		client:             client,
+	}
+	s.optMap = make(map[string]*optimizer)
+	s.initialized = make(chan struct{})
 
-			if ps == "" {
-				resp, err := s.etcdClient.Grant(context.TODO(), 5)
-				if err != nil {
-					log.Fatal(err)
-				}
-				// find the first id and write info
-				c.Put(psKey, s.externalIP, clientv3.WithLease(resp.ID))
-				log.Debugf("set pserver node %s with value %s", psKey, s.externalIP)
-				ch, kaerr := s.etcdClient.KeepAlive(context.TODO(), resp.ID)
-				if kaerr != nil {
-					log.Errorf("keepalive etcd node error: %v", kaerr)
-					return kaerr
-				}
-
-				// Eat the keep alive message so etcd
-				// will not expire the lease.
-				go func(ch <-chan *clientv3.LeaseKeepAliveResponse) {
-					ka := <-ch
-					log.Debugf("keepalive: %d\n", ka.TTL)
-				}(ch)
-				log.Debug("register finished")
-				registered = true
-				break
+	if cp != nil {
+		for _, item := range cp {
+			p := ParameterWithConfig{
+				Param:  item.Param,
+				Config: item.Config,
 			}
+			s.optMap[p.Param.Name] = newOptimizer(p, item.State)
 		}
-		if registered == true {
-			return nil
-		}
-		return errors.New("not registerd, may due to already have enough pservers")
-	}, concurrency.WithAbortContext(ctx), concurrency.WithIsolation(concurrency.RepeatableReads))
+	}
+	return s, nil
 }
 
 // InitParam initializes a parameter.
@@ -199,7 +171,7 @@ func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, dummy *int) er
 	// TODO(helin): check if paramWithConfigs.Param.Content is
 	// properly memory aligned, if not, make copy to a memory
 	// aligned region.
-	s.paramMap[paramWithConfigs.Param.Name] = paramWithConfigs.Param
+	s.optMap[paramWithConfigs.Param.Name] = newOptimizer(paramWithConfigs, nil)
 	return nil
 }
 
@@ -228,12 +200,12 @@ func (s *Service) SendGrad(g Gradient, dummy *int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	p, ok := s.paramMap[g.Name]
+	o, ok := s.optMap[g.Name]
 	if !ok {
 		return fmt.Errorf("parameter: %s does not exist", g.Name)
 	}
 
-	return s.opt.UpdateParameter(p, g)
+	return o.UpdateParameter(g)
 }
 
 // GetParam gets parameters from the parameter server.
@@ -242,7 +214,7 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	p, ok := s.paramMap[name]
+	opt, ok := s.optMap[name]
 	if !ok {
 		return fmt.Errorf("parameter: %s does not exist", name)
 	}
@@ -253,15 +225,89 @@ func (s *Service) GetParam(name string, parameter *Parameter) error {
 	// learning optimization methods are stochastic in
 	// nature. This race condition is allowed deliberately
 	// to save the program from making a copy of the
-	// paramter content.
-	*parameter = p
+	// parameter content.
+	parameter.Name = name
+	parameter.ElementType = opt.elementType
+	parameter.Content = opt.GetWeights()
 	return nil
 }
 
-// Save tells the parameter server to save parameters.
-func (s *Service) Save(path string, dummy *int) error {
+// pserver save checkpoint
+func (s *Service) doCheckpoint() (err error) {
 	<-s.initialized
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	// TODO
-	return nil
+	cp := make([]parameterCheckpoint, len(s.optMap))
+	index := 0
+	for name, opt := range s.optMap {
+		var pc parameterCheckpoint
+		pc.Param.Name = name
+		pc.Param.ElementType = opt.elementType
+		pc.Param.Content = opt.GetWeights()
+		pc.State = opt.GetStates()
+		cp[index] = pc
+		index++
+	}
+	var buf bytes.Buffer
+	encoder := gob.NewEncoder(&buf)
+	err = encoder.Encode(cp)
+	if err != nil {
+		return
+	}
+
+	cpMeta := checkpointMeta{}
+	cpMeta.UUID = s.checkpointPath + strconv.Itoa(s.idx)
+	cpMeta.Timestamp = time.Now().UnixNano()
+	h := md5.New()
+	cpMeta.MD5 = hex.EncodeToString(h.Sum(buf.Bytes()))
+
+	cpMetajson, err := json.Marshal(cpMeta)
+	if err != nil {
+		return
+	}
+
+	err = s.client.PutKey(filepath.Join(PsCheckpoint, strconv.Itoa(s.idx)), cpMetajson, 3*time.Second)
+	if err != nil {
+		return
+	}
+	if _, err = os.Stat(cpMeta.UUID); os.IsNotExist(err) {
+		log.Info("checkpoint does not exists.")
+	} else {
+		err = os.Remove(cpMeta.UUID)
+		if err != nil {
+			log.Infof("Removing checkpoint %s failed", cpMeta.UUID)
+		} else {
+			log.Infof("checkpoint %s already exsits, removing ", cpMeta.UUID)
+		}
+	}
+	f, err := os.Create(cpMeta.UUID)
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		closeErr := f.Close()
+		if closeErr != nil {
+			if err != nil {
+				log.Errorln(closeErr)
+			} else {
+				// Set closeErr as return value.
+				err = closeErr
+			}
+		}
+	}()
+
+	writer := bufio.NewWriter(f)
+	_, err = writer.Write(buf.Bytes())
+	if err != nil {
+		return
+	}
+
+	err = writer.Flush()
+	if err != nil {
+		return
+	}
+
+	return
 }

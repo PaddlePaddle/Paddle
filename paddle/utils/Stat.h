@@ -23,7 +23,6 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "BarrierStat.h"
 #include "Locks.h"
 #include "Logging.h"
 #include "ThreadLocal.h"
@@ -60,12 +59,6 @@ public:
 
 class Stat;
 typedef std::shared_ptr<Stat> StatPtr;
-typedef std::shared_ptr<BarrierStatBase> BarrierStatPtr;
-
-enum BarrierStatType {
-  BARRIER_END = 0,
-  BARRIER_DELTA = 1,
-};
 
 class StatSet {
 public:
@@ -74,10 +67,7 @@ public:
 
   // print to LOG(INFO)
   void printSegTimerStatus();
-  void printBarrierTimerStatus();
   void printAllStatus();
-
-  void printStatus(const std::string& name);
 
   StatPtr getStat(const std::string& name) {
     {
@@ -92,12 +82,6 @@ public:
     auto ret = statSet_.insert(std::make_pair(name, stat));
     return ret.first->second;
   }
-
-  BarrierStatPtr getStat(uint16_t numConnThreads,
-                         const std::string& name,
-                         BarrierStatType bType);
-
-  void deleteStat(const std::string& name);
 
   // true for showing stats for each thread
   // false for showing stats aggragated over threads
@@ -120,7 +104,6 @@ public:
 
 private:
   std::unordered_map<std::string, StatPtr> statSet_;
-  std::unordered_map<std::string, BarrierStatPtr> barrierStatSet_;
   const std::string name_;
   RWLock lock_;
 };

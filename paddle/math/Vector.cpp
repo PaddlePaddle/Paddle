@@ -657,6 +657,8 @@ void CpuVectorT<T>::copyFrom(const VectorT<T>& src, hl_stream_t stream) {
                     (void*)src.getData(),
                     sizeof(T) * this->getSize(),
                     stream);
+    // There is a need to add synchronization to ensure that the data is copied.
+    hl_stream_synchronize(stream);
   } else {
     src.copyTo(this);
   }

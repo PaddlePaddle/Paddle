@@ -617,21 +617,21 @@ def simple_lstm(input,
 
 @wrap_name_default('lstm_unit')
 def lstmemory_unit(input,
+                   out_memory=None,
                    name=None,
                    size=None,
                    param_attr=None,
                    act=None,
                    gate_act=None,
                    state_act=None,
-                   mixed_bias_attr=None,
+                   input_proj_bias_attr=None,
+                   input_proj_layer_attr=None,
                    lstm_bias_attr=None,
-                   mixed_layer_attr=None,
-                   lstm_layer_attr=None,
-                   get_output_layer_attr=None):
+                   lstm_layer_attr=None):
     """
-    Define calculations that a LSTM unit performs in a single time step.
-    This function itself is not a recurrent layer, so that it can not be
-    directly applied to sequence input. This function is always used in
+    Define calculations that a LSTM unit performs during a single time step.
+    This function itself is not a recurrent layer, so it can not be
+    directly used to process sequence inputs. This function is always used in
     recurrent_group (see layers.py for more details) to implement attention
     mechanism.
 
@@ -641,13 +641,13 @@ def lstmemory_unit(input,
 
     ..  math::
 
-        i_t & = \\sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)
+        i_t & = \\sigma(W_{x_i}x_{t} + W_{h_i}h_{t-1} + W_{c_i}c_{t-1} + b_i)
 
-        f_t & = \\sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)
+        f_t & = \\sigma(W_{x_f}x_{t} + W_{h_f}h_{t-1} + W_{c_f}c_{t-1} + b_f)
 
-        c_t & = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)
+        c_t & = f_tc_{t-1} + i_t tanh (W_{x_c}x_t+W_{h_c}h_{t-1} + b_c)
 
-        o_t & = \\sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)
+        o_t & = \\sigma(W_{x_o}x_{t} + W_{h_o}h_{t-1} + W_{c_o}c_t + b_o)
 
         h_t & = o_t tanh(c_t)
 
@@ -664,6 +664,8 @@ def lstmemory_unit(input,
 
     :param input: input layer name.
     :type input: LayerOutput
+    :param out_memory: output of previous time step
+    :type out_memory: LayerOutput | None
     :param name: lstmemory unit name.
     :type name: basestring
     :param size: lstmemory unit size.
@@ -676,32 +678,35 @@ def lstmemory_unit(input,
     :type gate_act: BaseActivation
     :param state_act: lstm state activiation type.
     :type state_act: BaseActivation
-    :param mixed_bias_attr: bias parameter attribute of mixed layer.
-                            False means no bias, None means default bias.
-    :type mixed_bias_attr: ParameterAttribute|False
+    :param input_proj_bias_attr: bias attribute for input-to-hidden projection.
+                False means no bias, None means default bias.
+    :type input_proj_bias_attr: ParameterAttribute|False|None
+    :param input_proj_layer_attr: extra layer attribute for input to hidden
+                projection of the LSTM unit, such as dropout, error clipping.
+    :type input_proj_layer_attr: ExtraLayerAttribute
     :param lstm_bias_attr: bias parameter attribute of lstm layer.
-                           False means no bias, None means default bias.
+                False means no bias, None means default bias.
     :type lstm_bias_attr: ParameterAttribute|False
-    :param mixed_layer_attr: mixed layer's extra attribute.
-    :type mixed_layer_attr: ExtraLayerAttribute
     :param lstm_layer_attr: lstm layer's extra attribute.
     :type lstm_layer_attr: ExtraLayerAttribute
-    :param get_output_layer_attr: get output layer's extra attribute.
-    :type get_output_layer_attr: ExtraLayerAttribute
     :return: lstmemory unit name.
     :rtype: LayerOutput
     """
     if size is None:
         assert input.size % 4 == 0
         size = input.size / 4
-    out_mem = memory(name=name, size=size)
+    if out_memory is None:
+        out_mem = memory(name=name, size=size)
+    else:
+        out_mem = out_memory
+
     state_mem = memory(name="%s_state" % name, size=size)
 
     with mixed_layer(
             name="%s_input_recurrent" % name,
             size=size * 4,
-            bias_attr=mixed_bias_attr,
-            layer_attr=mixed_layer_attr,
+            bias_attr=input_proj_bias_attr,
+            layer_attr=input_proj_layer_attr,
             act=IdentityActivation()) as m:
         m += identity_projection(input=input)
         m += full_matrix_projection(input=out_mem, param_attr=param_attr)
@@ -716,11 +721,7 @@ def lstmemory_unit(input,
         gate_act=gate_act,
         state_act=state_act,
         layer_attr=lstm_layer_attr)
-    get_output_layer(
-        name='%s_state' % name,
-        input=lstm_out,
-        arg_name='state',
-        layer_attr=get_output_layer_attr)
+    get_output_layer(name='%s_state' % name, input=lstm_out, arg_name='state')
 
     return lstm_out
 
@@ -729,18 +730,18 @@ def lstmemory_unit(input,
 def lstmemory_group(input,
                     size=None,
                     name=None,
+                    out_memory=None,
                     reverse=False,
                     param_attr=None,
                     act=None,
                     gate_act=None,
                     state_act=None,
-                    mixed_bias_attr=None,
+                    input_proj_bias_attr=None,
+                    input_proj_layer_attr=None,
                     lstm_bias_attr=None,
-                    mixed_layer_attr=None,
-                    lstm_layer_attr=None,
-                    get_output_layer_attr=None):
+                    lstm_layer_attr=None):
     """
-    lstm_group is a recurrent layer group version of Long Short Term Memory. It
+    lstm_group is a recurrent_group version of Long Short Term Memory. It
     does exactly the same calculation as the lstmemory layer (see lstmemory in
     layers.py for the maths) does. A promising benefit is that LSTM memory
     cell states, or hidden states in every time step are accessible to the
@@ -751,8 +752,8 @@ def lstmemory_group(input,
 
     NOTE: In PaddlePaddle's implementation, the following input-to-hidden
     multiplications:
-    :math:`W_{xi}x_{t}` , :math:`W_{xf}x_{t}`,
-    :math:`W_{xc}x_t`, :math:`W_{xo}x_{t}` are not done in lstmemory_unit to
+    :math:`W_{x_i}x_{t}` , :math:`W_{x_f}x_{t}`,
+    :math:`W_{x_c}x_t`, :math:`W_{x_o}x_{t}` are not done in lstmemory_unit to
     speed up the calculations. Consequently, an additional mixed_layer with
     full_matrix_projection must be included before lstmemory_unit is called.
 
@@ -768,10 +769,12 @@ def lstmemory_group(input,
 
     :param input: input layer name.
     :type input: LayerOutput
-    :param name: lstmemory group name.
-    :type name: basestring
     :param size: lstmemory group size.
     :type size: int
+    :param name: name of the lstmemory group.
+    :type name: basestring
+    :param out_memory: output of previous time step
+    :type out_memory: LayerOutput | None
     :param reverse: is lstm reversed
     :type reverse: bool
     :param param_attr: Parameter config, None if use default.
@@ -782,18 +785,17 @@ def lstmemory_group(input,
     :type gate_act: BaseActivation
     :param state_act: lstm state activiation type.
     :type state_act: BaseActivation
-    :param mixed_bias_attr: bias parameter attribute of mixed layer.
-                            False means no bias, None means default bias.
-    :type mixed_bias_attr: ParameterAttribute|False
     :param lstm_bias_attr: bias parameter attribute of lstm layer.
                            False means no bias, None means default bias.
     :type lstm_bias_attr: ParameterAttribute|False
-    :param mixed_layer_attr: mixed layer's extra attribute.
-    :type mixed_layer_attr: ExtraLayerAttribute
+    :param input_proj_bias_attr: bias attribute for input-to-hidden projection.
+                False means no bias, None means default bias.
+    :type input_proj_bias_attr: ParameterAttribute|False|None
+    :param input_proj_layer_attr: extra layer attribute for input to hidden
+                projection of the LSTM unit, such as dropout, error clipping.
+    :type input_proj_layer_attr: ExtraLayerAttribute
     :param lstm_layer_attr: lstm layer's extra attribute.
     :type lstm_layer_attr: ExtraLayerAttribute
-    :param get_output_layer_attr: get output layer's extra attribute.
-    :type get_output_layer_attr: ExtraLayerAttribute
     :return: the lstmemory group.
     :rtype: LayerOutput
     """
@@ -803,15 +805,15 @@ def lstmemory_group(input,
             input=ipt,
             name=name,
             size=size,
-            mixed_bias_attr=mixed_bias_attr,
-            mixed_layer_attr=mixed_layer_attr,
-            param_attr=param_attr,
-            lstm_bias_attr=lstm_bias_attr,
             act=act,
             gate_act=gate_act,
             state_act=state_act,
+            out_memory=out_memory,
+            input_proj_bias_attr=input_proj_bias_attr,
+            input_proj_layer_attr=input_proj_layer_attr,
+            param_attr=param_attr,
             lstm_layer_attr=lstm_layer_attr,
-            get_output_layer_attr=get_output_layer_attr)
+            lstm_bias_attr=lstm_bias_attr)
 
     return recurrent_group(
         name='%s_recurrent_group' % name,
@@ -822,6 +824,7 @@ def lstmemory_group(input,
 
 @wrap_name_default('gru_unit')
 def gru_unit(input,
+             memory_boot=None,
              size=None,
              name=None,
              gru_bias_attr=None,
@@ -832,8 +835,8 @@ def gru_unit(input,
              naive=False):
     """
     Define calculations that a gated recurrent unit performs in a single time
-    step. This function itself is not a recurrent layer, so that it can not be
-    directly applied to sequence input. This function is almost always used in
+    step. This function itself is not a recurrent layer, so it can not be
+    directly used to process sequence inputs. This function is always used in
     the recurrent_group (see layers.py for more details) to implement attention
     mechanism.
 
@@ -841,6 +844,8 @@ def gru_unit(input,
 
     :param input: input layer name.
     :type input: LayerOutput
+    :param memory_boot: the initialization state of the LSTM cell.
+    :type memory_boot: LayerOutput | None
     :param name: name of the gru group.
     :type name: basestring
     :param size: hidden size of the gru.
@@ -859,7 +864,7 @@ def gru_unit(input,
     if size is None:
         size = input.size / 3
 
-    out_mem = memory(name=name, size=size)
+    out_mem = memory(name=name, size=size, boot_layer=memory_boot)
 
     if naive:
         __step__ = gru_step_naive_layer
@@ -881,6 +886,7 @@ def gru_unit(input,
 
 @wrap_name_default('gru_group')
 def gru_group(input,
+              memory_boot=None,
               size=None,
               name=None,
               reverse=False,
@@ -891,7 +897,7 @@ def gru_group(input,
               gru_layer_attr=None,
               naive=False):
     """
-    gru_group is a recurrent layer group version of Gated Recurrent Unit. It
+    gru_group is a recurrent_group version of Gated Recurrent Unit. It
     does exactly the same calculation as the grumemory layer does. A promising
     benefit is that gru hidden states are accessible to the user. This is
     especially useful in attention model. If you do not need to access
@@ -911,6 +917,8 @@ def gru_group(input,
 
     :param input: input layer name.
     :type input: LayerOutput
+    :param memory_boot: the initialization state of the LSTM cell.
+    :type memory_boot: LayerOutput | None
     :param name: name of the gru group.
     :type name: basestring
     :param size: hidden size of the gru.
@@ -932,6 +940,7 @@ def gru_group(input,
     def __gru_step__(ipt):
         return gru_unit(
             input=ipt,
+            memory_boot=memory_boot,
             name=name,
             size=size,
             gru_bias_attr=gru_bias_attr,
@@ -1086,7 +1095,6 @@ def simple_gru2(input,
 
     return grumemory(
         name=name,
-        size=size,
         input=m,
         reverse=reverse,
         bias_attr=gru_bias_attr,
@@ -1397,6 +1405,8 @@ def outputs(layers, *args):
     :return:
     """
 
+    traveled = set()
+
     def __dfs_travel__(layer,
                        predicate=lambda x: x.layer_type == LayerType.DATA):
         """
@@ -1408,6 +1418,11 @@ def outputs(layers, *args):
         :type layer: LayerOutput
         :return:
         """
+        if layer in traveled:
+            return []
+        else:
+            traveled.add(layer)
+
         assert isinstance(layer, LayerOutput), "layer is %s" % (layer)
         retv = []
         if layer.parents is not None:

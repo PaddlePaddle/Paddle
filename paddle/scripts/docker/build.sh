@@ -3,7 +3,7 @@
 set -xe
 
 # Set BASE_IMAGE according to env variables
-if [ ${WITH_GPU} == "ON" ]; then
+if [[ ${WITH_GPU} == "ON" ]]; then
   BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu16.04"
 else
   BASE_IMAGE="ubuntu:16.04"
@@ -31,6 +31,7 @@ Configuring cmake in /paddle/build ...
       -DWITH_DOC=OFF
       -DWITH_GPU=${WITH_GPU:-OFF}
       -DWITH_AVX=${WITH_AVX:-OFF}
+      -DWITH_GOLANG=${WITH_GOLANG:-OFF}
       -DWITH_SWIG_PY=ON
       -DCUDNN_ROOT=/usr/
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
@@ -43,6 +44,7 @@ cmake .. \
       -DWITH_DOC=OFF \
       -DWITH_GPU=${WITH_GPU:-OFF} \
       -DWITH_AVX=${WITH_AVX:-OFF} \
+      -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
       -DWITH_SWIG_PY=ON \
       -DCUDNN_ROOT=/usr/ \
       -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF} \
@@ -76,7 +78,7 @@ paddle version
 # PaddlePaddle.  This awkwardness is due to
 # https://github.com/PaddlePaddle/Paddle/issues/1854.  It also
 # describes a solution.
-if [ ${WITH_DOC} == "ON" ]; then
+if [[ ${WITH_DOC} == "ON" ]]; then
     cat <<EOF
 ========================================
 Building documentation ...
@@ -153,7 +155,8 @@ RUN apt-get update &&\
     paddle version
 ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
-
+ADD go/cmd/pserver/pserver /usr/bin/
+ADD go/cmd/master/master /usr/bin/
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]
 EOF

@@ -20,7 +20,6 @@ import trainer
 import event
 import data_type
 import topology
-import data_feeder
 import networks
 import evaluator
 from . import dataset
@@ -31,7 +30,6 @@ import op
 import pooling
 import inference
 import networks
-import py_paddle.swig_paddle as api
 import minibatch
 import plot
 import image
@@ -47,7 +45,6 @@ __all__ = [
     'data_type',
     'attr',
     'pooling',
-    'data_feeder',
     'dataset',
     'reader',
     'topology',
@@ -56,10 +53,12 @@ __all__ = [
     'plot',
     'evaluator',
     'image',
+    'master',
 ]
 
 
 def init(**kwargs):
+    import py_paddle.swig_paddle as api
     args = []
     args_dict = {}
     # NOTE: append arguments if they are in ENV

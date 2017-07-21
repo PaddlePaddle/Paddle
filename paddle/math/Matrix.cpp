@@ -1565,6 +1565,8 @@ void CpuMatrix::copyFrom(const Matrix& src, hl_stream_t stream) {
                     const_cast<real*>(src.getData()),
                     sizeof(real) * elementCnt_,
                     stream);
+    // There is a need to add synchronization to ensure that the data is copied.
+    hl_stream_synchronize(stream);
   } else if (typeid(src) == typeid(CpuMatrix)) {
     memcpy(data_, src.getData(), sizeof(real) * elementCnt_);
   } else {

@@ -5,12 +5,14 @@ set -e
 mkdir -p $TRAVIS_BUILD_DIR/build
 cd $TRAVIS_BUILD_DIR/build
 
-# Compile Documentation only.
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=OFF -DWITH_STYLE_CHECK=OFF
+# Compile paddle binaries first
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=OFF -DWITH_GOLANG=ON -DWITH_STYLE_CHECK=OFF
+
 mkdir output
 make -j `nproc`
 find .. -name '*whl' | xargs pip install  # install all wheels.
 rm -rf *
+# Compile Documentation only.
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=ON
 make -j `nproc` paddle_docs paddle_docs_cn
 
@@ -24,7 +26,7 @@ SSH_REPO=${REPO/https:\/\/github.com\//git@github.com:}
 SHA=`git rev-parse --verify HEAD`
 
 # Documentation branch name
-# gh-pages branch is used for PaddlePaddle.org. The English version of 
+# gh-pages branch is used for PaddlePaddle.org. The English version of
 # documentation in `doc` directory, and the chinese version in `doc_cn`
 # directory.
 TARGET_BRANCH="gh-pages"
@@ -50,7 +52,7 @@ function deploy_docs() {
 
   # checkout github page branch
   git checkout $TARGET_BRANCH || git checkout --orphan $TARGET_BRANCH
-  
+
   mkdir -p ${DIR}
   # remove old docs. mv new docs.
   set +e
@@ -61,7 +63,7 @@ function deploy_docs() {
   git add .
 }
 
-deploy_docs "master" "." 
+deploy_docs "master" "."
 deploy_docs "develop" "./develop/"
 
 # Check is there anything changed.

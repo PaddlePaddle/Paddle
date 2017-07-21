@@ -168,11 +168,11 @@ public:
   virtual void copyFrom(const VectorT<T>& src) = 0;
 
   /**
-   * If use_gpu, this function will push the copy-task to the specifed-stream
-   * and return immediately.
+   * If GpuVector, this function is an asynchronous interface,
+   * will push the copy-task to the specifed-stream and return immediately.
    *
-   * If not use GPU, this function is same as
-   * the copyFrom(const VectorT<T>& src), which use stream HPPL_STREAM_DEFAULT.
+   * If CpuVector, this function is an synchronous interface,
+   * same as the copyFrom(const VectorT<T>& src).
    */
   virtual void copyFrom(const VectorT<T>& src, hl_stream_t stream) = 0;
 

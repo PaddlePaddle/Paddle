@@ -25,8 +25,10 @@ set(STYLE_FILTER "${STYLE_FILTER}-readability/casting")
 set(IGNORE_PATTERN
     .*ImportanceSampler.*
     .*cblas\\.h.*
+    .*\\.pb\\.txt
     .*LtrDataProvider.*
-    .*MultiDataProvider.*)
+    .*MultiDataProvider.*
+    .*pb.*)
 
 # add_style_check_target
 #
@@ -51,14 +53,13 @@ macro(add_style_check_target TARGET_NAME)
                 endif()
             endforeach()
             if(LINT MATCHES ON)
+                # cpplint code style
                 get_filename_component(base_filename ${filename} NAME)
                 set(CUR_GEN ${CMAKE_CURRENT_BINARY_DIR}/${base_filename}.cpplint)
-                add_custom_command(OUTPUT ${CUR_GEN}
-                    PRE_BUILD
-                    COMMAND env ${py_env} "${PYTHON_EXECUTABLE}" "${PROJ_ROOT}/paddle/scripts/cpplint.py"
-                                "--filter=${STYLE_FILTER}"
-                                "--write-success=${CUR_GEN}" ${filename}
-                    DEPENDS ${filename}
+                add_custom_command(TARGET ${TARGET_NAME} PRE_BUILD
+                    COMMAND "${PYTHON_EXECUTABLE}" "${PROJ_ROOT}/paddle/scripts/cpplint.py"
+                            "--filter=${STYLE_FILTER}"
+                            "--write-success=${CUR_GEN}" ${filename}
                     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
             endif()
         endforeach()
