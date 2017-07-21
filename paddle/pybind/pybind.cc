@@ -42,7 +42,7 @@ void ExposeOperator(ClassType& m) {
 }
 
 PYBIND11_PLUGIN(core) {
-  py::module m("core", "C++ core of Paddle Paddle");
+  py::module m("core", "C++ core of PaddlePaddle");
 
   py::class_<pd::Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer([](pd::Tensor& self) -> py::buffer_info {
@@ -133,12 +133,12 @@ All parameter, weight, gradient are variables in Paddle.
   ExposeOperator(operator_base);
 
   using PlainNetPtr = std::shared_ptr<pd::PlainNet>;
-  py::class_<pd::PlainNet, PlainNetPtr> net(m, "Net");
+  py::class_<pd::PlainNet, PlainNetPtr> net(m, "PlainNet");
 
   net.def_static("create",
                  []() -> std::shared_ptr<pd::PlainNet> {
                    auto retv = std::make_shared<pd::PlainNet>();
-                   retv->type_ = "naive_net";
+                   retv->type_ = "plain_net";
                    return retv;
                  })
       .def("add_op", &pd::PlainNet::AddOp)
