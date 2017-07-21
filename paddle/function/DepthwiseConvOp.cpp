@@ -125,6 +125,7 @@ public:
     size_t outputHeight = output[2];
     size_t outputWidth = output[3];
     size_t filterMultiplier = outputChannels / groups_;
+    CHECK_EQ(inputChannels, groups_);
 
     real* inputData = inputs[0].data<real>();
     real* filterData = inputs[1].data<real>();
@@ -187,6 +188,7 @@ public:
     size_t outputHeight = output[2];
     size_t outputWidth = output[3];
     size_t filterMultiplier = outputChannels / groups_;
+    CHECK_EQ(inputChannels, groups_);
 
     real* outputGrad = inputs[0].data<real>();
     real* filterData = inputs[1].data<real>();
@@ -248,6 +250,7 @@ public:
     size_t outputHeight = output[2];
     size_t outputWidth = output[3];
     size_t filterMultiplier = outputChannels / groups_;
+    CHECK_EQ(inputChannels, groups_);
 
     real* outputGrad = inputs[0].data<real>();
     real* inputData = inputs[1].data<real>();
