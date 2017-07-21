@@ -172,6 +172,7 @@ public:
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
+    CHECK_EQ(outputs[0].getArgType(), ADD_TO);
     check(inputs, outputs);
     CHECK_EQ(outputs[0].getArgType(), ADD_TO);
     const TensorShape& output = inputs[0].shape();
@@ -235,6 +236,7 @@ public:
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
+    CHECK_EQ(outputs[0].getArgType(), ADD_TO);
     check(inputs, outputs);
     const TensorShape& output = inputs[0].shape();
     const TensorShape& input = inputs[1].shape();
