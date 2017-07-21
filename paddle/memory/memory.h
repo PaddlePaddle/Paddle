@@ -28,7 +28,7 @@ void Free(Place, void*);
 template <class Place>
 size_t Used(Place);
 
-template <typename T,
+template <typename T, /* must be POD types */
           typename Place /* platform::GPUPlace or platform::CPUPlace */,
           typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
 class PODDeleter {
