@@ -58,23 +58,31 @@ def is_compatible_with(x, Type):
 
 class HookAttribute(object):
     """
-    Hook Attribute object. As a member of ParameterAttribute class, the hook is an auxiliary operation that occurs 
-    during training process of a layer with parameters, such as img_conv layer, fc layer.
+    Hook Attribute object. As a member of ParameterAttribute class,
+    the hook is an auxiliary operation that occurs during training process of
+    a layer with parameters, such as img_conv layer, fc layer.
 
-    :param  type: Hook type, currently supported types: 
-                        'pruning' :  user specify a sparsity_ratio before training started, and the
-                            network will prune the parameters based on the sparsity_ratio. 
-                            eg: The definition of Hook object can be hk = HookAttribute('pruning', 0.6)
-                            The specific usage can be paddle.layer.img_conv(input=img, filter_size=3,
-                                                                       num_channels=3, num_filters=64,
-                                                                       param_attr=ParameterAttribute(update_hooks=hk) )
-                            The pruning details can be found https://arxiv.org/pdf/1506.02626.pdf
+    Reference:
+        Learning both Weights and Connections for Efficient Neural Networks
+        https://arxiv.org/pdf/1506.02626.pdf
+
+    The example usage is:
+
+    .. code-block:: python
+        paddle.layer.img_conv(input=img, filter_size=3,
+                              num_channels=3, num_filters=64,
+                              param_attr=ParameterAttribute(update_hooks=hk) )
+
+
+    :param  type: Hook type, currently supported types:
+        'pruning' :  user specify a sparsity_ratio before training started, and the
+        network will prune the parameters based on the sparsity_ratio.
+        eg: The definition of Hook object can be hk = HookAttribute('pruning', 0.6)
     :type type: string
-
-    :param sparsity_ratio: Must be specified if hook type is 'pruning', 
-                        it represents the ratio of the zero elements to be set by the Parameter.
+    :param sparsity_ratio: Must be specified if hook type is 'pruning',
+        it represents the ratio of the zero elements to be set by the Parameter.
     :type sparsity_ratio: float or None
-	
+
     """
 
     def __init__(self, type, sparsity_ratio=None):
@@ -84,7 +92,8 @@ class HookAttribute(object):
             assert is_compatible_with(
                 self.sparsity_ratio,
                 float), 'sparisity_ratio must be float type'
-            assert self.sparsity_ratio <= 1 and self.sparsity_ratio >= 0, 'sparsity_ratio must be a float between [0, 1] '
+            assert self.sparsity_ratio <= 1 and self.sparsity_ratio >= 0, \
+                'sparsity_ratio must be a float between [0, 1] '
 
     def __call__(self):
         return ParameterHook(self.type, sparsity_ratio=self.sparsity_ratio)
@@ -139,6 +148,7 @@ class ParameterAttribute(object):
     def __init__(self,
                  name=None,
                  is_static=False,
+                 initial_smart=None,
                  initial_std=None,
                  initial_mean=None,
                  initial_max=None,
@@ -152,32 +162,35 @@ class ParameterAttribute(object):
                  update_hooks=None,
                  initializer=None):
         self.attr = {}
+        self.attr['is_static'] = is_static
 
-        if is_static:
-            self.attr['is_static'] = True
+        if initial_smart is not None:
+            self.attr['initial_smart'] = initial_smart
 
-        if initial_std is None and initial_mean is None and initial_max \
-                is None and initial_min is None:
-            self.attr['initial_smart'] = True
-        elif is_compatible_with(initial_std, float) or \
-             is_compatible_with(initial_mean, float):
-            if initial_std is not None:
-                self.attr['initial_std'] = initial_std
-            if initial_mean is not None:
+        if initial_std is not None or initial_mean is not None or \
+                initial_max is not None or initial_min is not None:
+            # smart initalization will be ignored, because user customizes
+            # parameters related to initialization distribution
+            self.attr['initial_smart'] = False
+            if is_compatible_with(initial_std, float) or \
+                 is_compatible_with(initial_mean, float):
+                if initial_std is not None:
+                    self.attr['initial_std'] = initial_std
+                if initial_mean is not None:
+                    self.attr['initial_mean'] = initial_mean
+                self.attr['initial_strategy'] = 0  # Gauss Random
+            elif is_compatible_with(initial_max, float) and \
+                 is_compatible_with(initial_min, float):
+                initial_max = initial_max
+                initial_min = initial_min
+                assert initial_min < initial_max
+                initial_mean = (initial_max + initial_min) / 2
+                initial_std = initial_mean - initial_min
                 self.attr['initial_mean'] = initial_mean
-            self.attr['initial_strategy'] = 0  # Gauss Random
-        elif is_compatible_with(initial_max, float) and \
-             is_compatible_with(initial_min, float):
-            initial_max = initial_max
-            initial_min = initial_min
-            assert initial_min < initial_max
-            initial_mean = (initial_max + initial_min) / 2
-            initial_std = initial_mean - initial_min
-            self.attr['initial_mean'] = initial_mean
-            self.attr['initial_std'] = initial_std
-            self.attr['initial_strategy'] = 1  # Uniform Random
-        else:
-            raise RuntimeError("Unexpected branch.")
+                self.attr['initial_std'] = initial_std
+                self.attr['initial_strategy'] = 1  # Uniform Random
+            else:
+                raise RuntimeError("Unexpected branch.")
 
         if not is_static and is_compatible_with(l1_rate, float):
             self.attr['decay_rate_l1'] = l1_rate
