@@ -84,8 +84,8 @@ class MomentumOptimizer(BaseSGDOptimizer):
         u_t &= u_{t-1} - \\alpha_t \\gamma_t g_t \\\\
         v_t &= v_{t-1} + \\tau_{t-1} \\alpha_t \\gamma_t g_t \\\\
         \\tau_t &= \\tau_{t-1} + \\beta_t / \\alpha_t
-    
-    where :math:`k` is momentum, :math:`\\lambda` is decay rate, 
+
+    where :math:`k` is momentum, :math:`\\lambda` is decay rate,
     :math:`\\gamma_t` is learning rate at the t'th step.
 
     :param sparse: with sparse support or not.

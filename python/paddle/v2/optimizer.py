@@ -1,5 +1,8 @@
 import paddle.trainer_config_helpers.config_parser_utils as config_parser_utils
 import paddle.trainer_config_helpers.optimizers as v1_optimizers
+from paddle.trainer.config_parser import default_initial_smart, \
+        default_initial_mean, default_initial_std, default_initial_strategy, \
+        default_device
 """
 Optimizers(update equation) for SGD method.
 
@@ -19,6 +22,30 @@ class Optimizer(object):
         import py_paddle.swig_paddle as swig_api
         if 'batch_size' in kwargs:
             del kwargs['batch_size']  # not important for python library.
+        if 'default_initial_strategy' in kwargs:
+            assert isinstance(kwargs['default_initial_strategy'], int), (
+                "Wrong parameter setting for default_initial_strategy. "
+                "0 : initalize parameters from Gaussian distribution. "
+                "1 : initalize parameters from uniform distribution.")
+            default_initial_strategy(kwargs['default_initial_strategy'])
+            del kwargs['default_initial_strategy']
+        if 'default_initial_std' in kwargs:
+            assert isinstance(kwargs['default_initial_std'], float)
+            default_initial_std(kwargs['default_initial_std'])
+            del kwargs['default_initial_std']
+        if 'default_initial_mean' in kwargs:
+            assert isinstance(kwargs['default_initial_mean'], float)
+            default_initial_mean(kwargs['default_initial_mean'])
+            del kwargs['default_initial_mean']
+        if 'default_device' in kwargs:
+            assert isinstance(kwargs['default_device'], int), (
+                "Wrong parameter settings for default_device ."
+                "-1 for CPU, integer value for index of your GPU card.")
+            default_device(kwargs['default_device'])
+            del kwargs['default_device']
+        if 'initial_smart' in kwargs:
+            default_initial_smart(kwargs['initial_smart'])
+            del kwargs['initial_smart']
 
         def __impl__():
             v1_optimizers.settings(batch_size=1, **kwargs)
