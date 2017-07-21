@@ -40,22 +40,22 @@ func TestGetFinishTask(t *testing.T) {
 		panic(err)
 	}
 	go func(l net.Listener) {
-		s, e := NewService(&InMemStore{}, chunkPerTask, time.Second, 1)
-		if err != nil {
-			panic(e)
+		s, sErr := NewService(&InMemStore{}, chunkPerTask, time.Second, 1)
+		if sErr != nil {
+			panic(sErr)
 		}
 
 		server := rpc.NewServer()
-		err = server.Register(s)
-		if err != nil {
-			panic(err)
+		sErr = server.Register(s)
+		if sErr != nil {
+			panic(sErr)
 		}
 
 		mux := http.NewServeMux()
 		mux.Handle(rpc.DefaultRPCPath, server)
-		err = http.Serve(l, mux)
-		if err != nil {
-			panic(err)
+		sErr = http.Serve(l, mux)
+		if sErr != nil {
+			panic(sErr)
 		}
 	}(l)
 
@@ -89,75 +89,54 @@ func TestGetFinishTask(t *testing.T) {
 	ch := make(chan string, 1)
 	ch <- addr
 	go c.monitorMaster(ch)
-	req := SetDatasetRequest{}
-	req.GlobPaths = []string{path}
-	req.NumPasses = 10
-	err = c.SetDataset(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+
 	checkOnePass := func(i int) {
 		var tasks []Task
 		for idx := 0; idx < totalTask; idx++ {
-			task, e := c.getTask()
-			if e != nil {
-				t.Fatalf("Error: %v, pass: %d\n", e, i)
+			task, cErr := c.getTask()
+			if cErr != nil && cErr.Error() != NoMoreAvailableError.Error() {
+				t.Fatalf("error: %v, pass: %d\n", cErr, i)
 			}
 			tasks = append(tasks, task)
 		}
-		_, err = c.getTask()
-		if err == nil {
+
+		// getting task before task finishes should return error
+		_, cErr := c.getTask()
+		if cErr == nil {
 			t.Fatalf("Should get error, pass: %d\n", i)
 		}
 
-		err = c.taskFinished(tasks[0].Meta.ID)
-		if err != nil {
-			t.Fatalf("Error: %v, pass: %d\n", err, i)
+		cErr = c.taskFinished(tasks[0].Meta.ID)
+		if cErr != nil {
+			t.Fatalf("Error: %v, pass: %d\n", cErr, i)
 		}
-
-		err = c.taskFailed(tasks[0].Meta)
-		if err != nil {
-			t.Fatalf("Error: %v, pass: %d\n", err, i)
+		// call taskFailed once won't put the task to failed queue, just ensure
+		// the call
+		cErr = c.taskFailed(tasks[0].Meta)
+		if cErr != nil {
+			t.Fatalf("Error: %v, pass: %d\n", cErr, i)
 		}
 
 		tasks = tasks[1:]
-		task, e := c.getTask()
-		if e.Error() != "no more available task" {
-			t.Fatal(e)
+		_, cErr = c.getTask()
+		if cErr != nil && cErr.Error() != NoMoreAvailableError.Error() && cErr.Error() != AllTaskFinishError.Error() {
+			t.Fatalf("Should be NoMoreAvailableError or AllTaskFinishError: %s", cErr)
 		}
-		tasks = append(tasks, task)
 
 		for _, task := range tasks {
-			err = c.taskFinished(task.Meta.ID)
-			if err != nil {
-				t.Fatalf("Error: %v, pass: %d\n", err, i)
+			cErr = c.taskFinished(task.Meta.ID)
+			if cErr != nil && cErr.Error() != AllTaskFinishError.Error() {
+				t.Fatalf("Non-AllTaskFinishError: %v, pass: %d\n", cErr, i)
 			}
 		}
 	}
 
-	for i := 0; i < req.NumPasses-1; i++ {
+	for i := 0; i < 10; i++ {
+		// init pass data
+		err = c.SetDataset([]string{path})
+		if err != nil {
+			panic(err)
+		}
 		checkOnePass(i)
-	}
-	// last pass check all task finish of all passes
-	for idx := 0; idx < totalTask; idx++ {
-		task, e := c.getTask()
-		if e != nil {
-			t.Fatalf("Error: %v\n", e)
-		}
-		err = c.taskFinished(task.Meta.ID)
-		if idx < totalTask-1 {
-			if err != nil {
-				t.Fatal(err)
-			}
-		} else {
-			// FIXME: use error string to identify error
-			if err.Error() != "all task done" {
-				t.Fatal(err)
-			}
-		}
-	}
-	_, e := c.getTask()
-	if e == nil || e.Error() != "all task done" {
-		t.Error(e)
 	}
 }

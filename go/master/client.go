@@ -2,7 +2,6 @@ package master
 
 import (
 	"os"
-	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
 	"github.com/PaddlePaddle/recordio"
@@ -29,7 +28,7 @@ func NewClient(addrCh <-chan string, bufSize int) *Client {
 	c.conn = connection.New()
 	c.ch = make(chan record, bufSize)
 	go c.monitorMaster(addrCh)
-	go c.getRecords()
+	// go c.getRecords()
 	return c
 }
 
@@ -37,10 +36,18 @@ func (c *Client) getRecords() {
 	for {
 		t, err := c.getTask()
 		if err != nil {
-			// getTask call.
-			log.Errorf("Get task failed, sleep 3 seconds and continue, %s", err)
-			time.Sleep(3 * time.Second)
-			continue
+			if err.Error() == AllTaskFinishError.Error() {
+				log.Infof("Got AllTaskFinishError, stopping getRecords routine.")
+				c.ch <- record{nil, AllTaskFinishError}
+				break
+			} else if err.Error() == NoMoreAvailableError.Error() {
+				log.Errorf("Got NoMoreAvailableError, sleep 3 seconds and continue, %s", err)
+				c.ch <- record{nil, NoMoreAvailableError}
+				// time.Sleep(3 * time.Second)
+				break
+			} else {
+				log.Errorf("getTask error: %s", err)
+			}
 		}
 
 		for _, chunk := range t.Chunks {
@@ -71,6 +78,11 @@ func (c *Client) getRecords() {
 		// correct, but a reasonable approximation.
 		err = c.taskFinished(t.Meta.ID)
 		if err != nil {
+			if err.Error() == AllTaskFinishError.Error() {
+				log.Infof("Got AllTaskFinishError, stopping getRecords routine.")
+				c.ch <- record{nil, AllTaskFinishError}
+				break
+			}
 			log.Errorln(err)
 		}
 	}
@@ -102,12 +114,17 @@ func (c *Client) monitorMaster(addrCh <-chan string) {
 	}
 }
 
-// SetDataset set dataset for the master server to dispatch.
+// SetDataset sets dataset to dispatch for the master server.
 //
-// SetDataset can be call multiple times from different nodes. But
-// only the first call will be honored.
-func (c *Client) SetDataset(request SetDatasetRequest) error {
-	return c.conn.Call("Service.SetDataset", request, nil)
+// SetDataset can be call multiple times at one pass. But only the first call
+// will be honored.
+//
+// After all tasks are done, another call of SetDataset will start another pass.
+func (c *Client) SetDataset(globPaths []string) error {
+	err := c.conn.Call("Service.SetDataset", globPaths, nil)
+	// start to getRecords go-routine before each pass
+	go c.getRecords()
+	return err
 }
 
 // getTask gets a new task from the master server.

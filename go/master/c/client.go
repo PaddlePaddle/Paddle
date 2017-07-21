@@ -1,13 +1,25 @@
+// Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 /*
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
 #define PADDLE_MASTER_OK    0
 #define PADDLE_MASTER_ERROR -1
-
 typedef int paddle_master_client;
 */
 import "C"
@@ -86,16 +98,15 @@ func paddle_release_master_client(client C.paddle_master_client) {
 }
 
 //export paddle_set_dataset
-func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int, passes C.int) C.int {
+func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int) C.int {
 	c := get(client)
-	var request master.SetDatasetRequest
-	request.NumPasses = int(passes)
+	var paths []string
 	for i := 0; i < int(size); i++ {
 		ptr := (**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(path)) + uintptr(i)*unsafe.Sizeof(*path)))
 		str := C.GoString(*ptr)
-		request.GlobPaths = append(request.GlobPaths, str)
+		paths = append(paths, str)
 	}
-	err := c.SetDataset(request)
+	err := c.SetDataset(paths)
 	if err != nil {
 		log.Errorln(err)
 		return C.PADDLE_MASTER_ERROR

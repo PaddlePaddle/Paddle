@@ -6,16 +6,32 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/master"
 	"github.com/PaddlePaddle/recordio"
+	log "github.com/sirupsen/logrus"
 )
 
+// tool function for testing output goroutine ids
+func goid() int {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
+	id, err := strconv.Atoi(idField)
+	if err != nil {
+		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
+	}
+	return id
+}
+
 func TestNextRecord(t *testing.T) {
+	log.SetLevel(log.WarnLevel)
 	const (
 		path  = "/tmp/master_client_TestFull"
 		total = 50
@@ -31,7 +47,7 @@ func TestNextRecord(t *testing.T) {
 		panic(err)
 	}
 	go func(l net.Listener) {
-		s, err := master.NewService(&master.InMemStore{}, 10, time.Second, 1)
+		s, err := master.NewService(&master.InMemStore{}, 1, time.Second, 1)
 		if err != nil {
 			panic(err)
 		}
@@ -55,7 +71,7 @@ func TestNextRecord(t *testing.T) {
 		panic(err)
 	}
 
-	w := recordio.NewWriter(f, -1, -1)
+	w := recordio.NewWriter(f, 1, -1)
 	for i := 0; i < total; i++ {
 		_, err = w.Write([]byte{byte(i)})
 		if err != nil {
@@ -73,26 +89,46 @@ func TestNextRecord(t *testing.T) {
 		panic(err)
 	}
 
-	curAddr := make(chan string, 1)
-	curAddr <- fmt.Sprintf(":%d", p)
-	c := master.NewClient(curAddr, 10)
-	req := master.SetDatasetRequest{}
-	req.GlobPaths = []string{path}
-	req.NumPasses = 50
-	err = c.SetDataset(req)
-	if err != nil {
-		t.Fatal(err)
+	// start several client to test task fetching
+	var wg sync.WaitGroup
+	for i := 0; i < 1; i++ {
+		wg.Add(1)
+		// test for multiple concurrent clients
+		go func() {
+			curAddr := make(chan string, 1)
+			curAddr <- fmt.Sprintf(":%d", p)
+			c := master.NewClient(curAddr, 1)
+			defer wg.Done()
+
+			// test for 50 passes
+			for pass := 0; pass < 5; pass++ {
+				// init for a new pass
+				e := c.SetDataset([]string{path})
+				if e != nil {
+					panic(e)
+				}
+				received := make(map[byte]bool)
+				taskid := 0
+				for {
+					r, e := c.NextRecord()
+					if e != nil {
+						// pass done, break for next pass
+						if e.Error() == master.AllTaskFinishError.Error() || e.Error() == master.NoMoreAvailableError.Error() {
+							break
+						}
+						t.Fatal(pass, taskid, "Read error:", e)
+					}
+					if len(r) != 1 {
+						t.Fatal(pass, taskid, "Length should be 1.", r)
+					}
+					if received[r[0]] {
+						t.Fatal(pass, taskid, "Received duplicate.", received, r)
+					}
+					taskid++
+					received[r[0]] = true
+				}
+			}
+		}()
 	}
-	for pass := 0; pass < req.NumPasses; pass++ {
-
-		r, err := c.NextRecord()
-		if err != nil {
-			t.Fatal(pass, "Read error:", err)
-		}
-
-		if len(r) != 1 {
-			t.Fatal(pass, "Length should be 1.", r)
-		}
-
-	}
+	wg.Wait()
 }

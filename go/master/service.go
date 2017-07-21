@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/gob"
 	"errors"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"sync"
@@ -18,6 +19,12 @@ import (
 const (
 	dialTimeout = 5 * time.Second
 )
+
+// AllTaskFinishError occur when tasks are in done or failed state.
+var AllTaskFinishError = errors.New("AllTaskFinishError")
+
+// NoMoreAvailableError occur when no task in todo and yet not all done or fail.
+var NoMoreAvailableError = errors.New("NoMoreAvailableError")
 
 // Store is the interface for save and load the master state.
 type Store interface {
@@ -61,19 +68,20 @@ type Service struct {
 	chunksPerTask int
 	timeoutDur    time.Duration
 	failureMax    int
-	ready         chan struct{}
+	ready         *sync.Cond
 	store         Store
-
-	mu         sync.Mutex
-	initDone   bool
-	taskQueues taskQueues
-
-	numPasses int
-	currPass  int
+	mu            sync.Mutex
+	initDone      bool
+	taskQueues    taskQueues
 }
 
 func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
-	id := 0
+	// generate uniq id across job using nanosecond + randint + counter
+	// FIXME(typhoonzero): this is a workaround, use uuid
+	randStart := rand.Int()
+	counter := 0
+	timestamp := time.Now().Nanosecond()
+	id := timestamp + randStart + counter
 	if chunksPerTask <= 0 {
 		chunksPerTask = 1
 	}
@@ -83,7 +91,8 @@ func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
 	for i, c := range chunks {
 		if i%chunksPerTask == 0 && len(cur.Task.Chunks) > 0 {
 			cur.Task.Meta.ID = id
-			id++
+			counter++
+			id = timestamp + randStart + counter
 			result = append(result, cur)
 			cur.Task.Chunks = nil
 		}
@@ -107,10 +116,9 @@ func NewService(store Store, chunksPerTask int, timeoutDur time.Duration, failur
 	s.failureMax = failureMax
 	s.taskQueues = taskQueues{}
 	s.taskQueues.Pending = make(map[int]taskEntry)
-	s.ready = make(chan struct{})
+	// s.ready = make(chan struct{})
+	s.ready = sync.NewCond(&sync.Mutex{})
 	s.store = store
-	s.numPasses = 0
-	s.currPass = 0
 	recovered, err := s.recover()
 	if err != nil {
 		return nil, err
@@ -120,7 +128,8 @@ func NewService(store Store, chunksPerTask int, timeoutDur time.Duration, failur
 		// Recovered. Now the state is already initialized,
 		// and the master is ready.
 		s.initDone = true
-		close(s.ready)
+		// close(s.ready)
+		s.ready.Broadcast()
 		log.Info("Master recovered from saved state.")
 	}
 
@@ -233,25 +242,16 @@ func readChunks(globPaths []string) ([]Chunk, error) {
 	return chunks, nil
 }
 
-// SetDatasetRequest is a request for setting datasets and numpaasses
-type SetDatasetRequest struct {
-	GlobPaths []string
-	NumPasses int
-}
-
 // SetDataset sets dataset to dispatch for the master server.
 //
 // SetDataset can be call multiple times. But only the first call will
 // be honored.
-func (s *Service) SetDataset(request SetDatasetRequest, dummy *int) error {
-	globPaths := request.GlobPaths
-	s.numPasses = request.NumPasses
+func (s *Service) SetDataset(globPaths []string, dummy *int) error {
 	if len(globPaths) == 0 {
 		return errors.New("no dataset specified")
 	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.ready.L.Lock()
+	defer s.ready.L.Unlock()
 	if s.initDone {
 		// Already initialized. All trainer will call
 		// SetDataset, but we only handle the first one. Treat
@@ -259,6 +259,8 @@ func (s *Service) SetDataset(request SetDatasetRequest, dummy *int) error {
 		return nil
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	chunks, err := readChunks(globPaths)
 	if err != nil {
 		return err
@@ -271,17 +273,31 @@ func (s *Service) SetDataset(request SetDatasetRequest, dummy *int) error {
 		log.Errorln(err)
 		return err
 	}
-
-	close(s.ready)
 	s.initDone = true
+	s.ready.Broadcast()
 	return nil
 }
 
-func (s *Service) processFailedTask(t taskEntry, epoch int) {
+// checkAllTaskDone check if all task are in "Done" or "Failed" state,
+// no more tasks are "Todo" or "Pending", so that next pass may start
+// must under s.ready.L.Lock()
+func (s *Service) checkAllTaskDone() bool {
+	if len(s.taskQueues.Todo) == 0 && len(s.taskQueues.Pending) == 0 {
+		log.WithFields(s.logFields()).Warningln("all task done/failed, able to start next pass.")
+		s.initDone = false
+		s.ready.Broadcast()
+		return true
+	}
+	return false
+}
+
+// processFailedTask retry s.failureMax times for failed task.
+// return true if all task are done or failed.
+func (s *Service) processFailedTask(t taskEntry, epoch int) bool {
 	if t.Task.Meta.Epoch != epoch {
 		// new epoch, task launched after the
 		// schedule of this timeout check or failed status report.
-		return
+		return false
 	}
 
 	defer func() {
@@ -297,11 +313,12 @@ func (s *Service) processFailedTask(t taskEntry, epoch int) {
 	if t.NumFailure > s.failureMax {
 		log.Warningf("Task %v failed %d times, discard.", t.Task, t.NumFailure)
 		s.taskQueues.Failed = append(s.taskQueues.Failed, t)
-		return
+		return s.checkAllTaskDone()
 	}
 
-	log.Warningf("Task %v failed %d times, discard.", t.Task, t.NumFailure)
+	log.Warningf("Task %v failed %d times, re-dispatch.", t.Task, t.NumFailure)
 	s.taskQueues.Todo = append(s.taskQueues.Todo, t)
+	return false
 }
 
 func (s *Service) checkTimeoutFunc(taskID int, epoch int) func() {
@@ -328,54 +345,33 @@ func (s *Service) logFields() log.Fields {
 	}
 }
 
-// updateQueuePasses check if tasks are done, move to todo to add another pass
-// IMPORTANT: must run under lock
-func (s *Service) updateQueuePasses() error {
-	if len(s.taskQueues.Todo) == 0 && len(s.taskQueues.Pending) == 0 && len(s.taskQueues.Done) > 0 {
-		if s.currPass >= s.numPasses-1 {
-			// FIXME: stop task dispatching by return error
-			return errors.New("all task done")
-		}
-		log.WithFields(s.logFields()).Infof("adding new pass %d", s.currPass)
-		s.taskQueues.Todo = s.taskQueues.Done
-		s.taskQueues.Done = nil
-		if len(s.taskQueues.Failed) > 0 {
-			s.taskQueues.Todo = append(s.taskQueues.Todo, s.taskQueues.Failed...)
-		}
-		s.currPass++
-	}
-	return errors.New("no more available task")
-}
-
 // GetTask gets a new task from the service.
 func (s *Service) GetTask(dummy int, task *Task) error {
-	select {
-	case <-s.ready:
+	s.ready.L.Lock()
+	defer s.ready.L.Unlock()
+	for !s.initDone {
+		s.ready.Wait()
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	if len(s.taskQueues.Todo) == 0 {
 		if len(s.taskQueues.Done) == 0 {
 			if len(s.taskQueues.Pending) == 0 {
-				err := errors.New("all task failed")
-				log.WithFields(s.logFields()).Warningln("All tasks failed.")
-				return err
+				log.WithFields(s.logFields()).Warningln("All tasks failed, may start next pass")
+				s.initDone = false
+				s.ready.Broadcast()
+				return AllTaskFinishError
 			}
-
-			// TODO(helin): client need to retry in this
-			// error case. Gotcha: RPC client can't
-			// compare returned error with predefined
-			// errors like io.EOF, because the error
-			// instance deserialized from RPC is a
-			// different instance than the error defined
-			// in package. So we need to figure out a way
-			// for client to check this error correctly.
-			err := errors.New("no more available task")
-			log.WithFields(s.logFields()).Warningln("No more available task.")
-			return err
 		}
-		return s.updateQueuePasses()
+		allFinish := s.checkAllTaskDone()
+		if allFinish {
+			return AllTaskFinishError
+		}
+
+		log.WithFields(s.logFields()).Warningln("No more available task.")
+		return NoMoreAvailableError
 	}
 
 	t := s.taskQueues.Todo[0]
@@ -396,8 +392,10 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 
 // TaskFinished tell the service that a task is finished.
 func (s *Service) TaskFinished(taskID int, dummy *int) error {
-	select {
-	case <-s.ready:
+	s.ready.L.Lock()
+	defer s.ready.L.Unlock()
+	for !s.initDone {
+		s.ready.Wait()
 	}
 
 	s.mu.Lock()
@@ -415,24 +413,25 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 	delete(s.taskQueues.Pending, taskID)
 
 	log.WithFields(s.logFields()).Infof("Task #%d finished.", taskID)
-	// update queues if pass finishes
-	errPass := s.updateQueuePasses()
 
+	allFinish := s.checkAllTaskDone()
 	err := s.snapshot()
 	if err != nil {
 		log.Errorln(err)
 	}
-	// return updateQueuePasses errors
-	if errPass.Error() == "no more available task" {
-		return nil
+	// return finish status after snapshot
+	if allFinish {
+		return AllTaskFinishError
 	}
-	return errPass
+	return err
 }
 
 // TaskFailed tells the service that a task is failed.
 func (s *Service) TaskFailed(meta TaskMeta, dummy *int) error {
-	select {
-	case <-s.ready:
+	s.ready.L.Lock()
+	defer s.ready.L.Unlock()
+	for !s.initDone {
+		s.ready.Wait()
 	}
 
 	s.mu.Lock()
@@ -444,11 +443,10 @@ func (s *Service) TaskFailed(meta TaskMeta, dummy *int) error {
 		return nil
 	}
 
-	s.processFailedTask(t, meta.Epoch)
-	// update queues if pass finishes
-	errPass := s.updateQueuePasses()
-	if errPass.Error() == "no more available task" {
-		return nil
+	allFinish := s.processFailedTask(t, meta.Epoch)
+	if allFinish {
+		return AllTaskFinishError
 	}
-	return errPass
+
+	return nil
 }
