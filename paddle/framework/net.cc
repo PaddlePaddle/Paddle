@@ -59,7 +59,7 @@ void PlainNet::CompleteAddOp(bool calc) {
 
 std::string PlainNet::DebugString() const {
   std::ostringstream os;
-  os << this->type_ << ":" << std::endl;
+  os << OperatorBase::DebugString() << std::endl;
   for (auto& op : ops_) {
     std::istringstream is(op->DebugString());
     for (std::string line; std::getline(is, line);) {
