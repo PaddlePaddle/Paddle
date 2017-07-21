@@ -31,7 +31,7 @@ protected:
     PADDLE_ENFORCE(outputs[0] != nullptr, "outputs[0] mast be set");
     PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
                    "Two input of SGD Op's dimension must be same.");
-    outputs[0]->set_dims(inputs[0]->dims());
+    outputs[0]->Resize(inputs[0]->dims());
   }
 };
 

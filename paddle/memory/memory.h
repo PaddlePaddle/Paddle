@@ -38,5 +38,17 @@ void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
           cudaStream_t stream);
 #endif  // PADDLE_ONLY_CPU
 
+template <typename T, /* must be POD types */
+          typename Place /* platform::GPUPlace or platform::CPUPlace */,
+          typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
+class PODDeleter {
+ public:
+  PODDeleter(Place place) : place_(place) {}
+  void operator()(T* ptr) { Free(place_, static_cast<void*>(ptr)); }
+
+ private:
+  Place place_;
+};
+
 }  // namespace memory
 }  // namespace paddle
