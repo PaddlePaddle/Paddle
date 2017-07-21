@@ -345,21 +345,34 @@ def img_conv_group(input,
     """
     Image Convolution Group, Used for vgg net.
 
-    TODO(yuyang18): Complete docs
-
-    :param conv_batchnorm_drop_rate:
-    :param input:
-    :param conv_num_filter:
-    :param pool_size:
-    :param num_channels:
-    :param conv_padding:
-    :param conv_filter_size:
-    :param conv_act:
-    :param conv_with_batchnorm:
-    :param pool_stride:
-    :param pool_type:
-    :param param_attr:
-    :return:
+    :param conv_batchnorm_drop_rate: if conv_with_batchnorm[i] is true,
+        conv_batchnorm_drop_rate[i] represents the drop rate of each batch norm.
+    :type conv_batchnorm_drop_rate: list
+    :param input: layer's input.
+    :type input: LayerOutput
+    :param conv_num_filter: output channels num.
+    :type conv_num_filter: int
+    :param pool_size: pooling filter size.
+    :type pool_size: int
+    :param num_channels: input channels num.
+    :type num_channels: int
+    :param conv_padding: convolution padding size.
+    :type conv_padding: int
+    :param conv_filter_size: convolution filter size.
+    :type conv_filter_size: int
+    :param conv_act: activation funciton after convolution.
+    :type conv_act: BaseActivation
+    :param conv_with_batchnorm: conv_with_batchnorm[i] represents
+        if there is a batch normalization after each convolution.
+    :type conv_with_batchnorm: list
+    :param pool_stride: pooling stride size.
+    :type pool_stride: int
+    :param pool_type: pooling type.
+    :type pool_type: BasePoolingType
+    :param param_attr: see img_conv_layer for details.
+    :type param_attr: ParameterAttribute
+    :return: Layer's output
+    :type: LayerOutput
     """
     tmp = input
 
@@ -399,7 +412,7 @@ def img_conv_group(input,
             padding=conv_padding[i],
             filter_size=conv_filter_size[i],
             num_filters=conv_num_filter[i],
-            param_attr = param_attr,
+            param_attr=param_attr,
             **extra_kwargs)
 
         # logger.debug("tmp.num_filters = %d" % tmp.num_filters)
@@ -1392,7 +1405,7 @@ def inputs(layers, *args):
     if len(args) != 0:
         layers.extend(args)
 
-    Inputs(*[l.name for l in layers])
+    Inputs(* [l.name for l in layers])
 
 
 def outputs(layers, *args):
@@ -1442,7 +1455,7 @@ def outputs(layers, *args):
     assert len(layers) > 0
 
     if HasInputsSet():  # input already set
-        Outputs(*[l.name for l in layers])
+        Outputs(* [l.name for l in layers])
         return  # just return outputs.
 
     if len(layers) != 1:
