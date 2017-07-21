@@ -24,7 +24,7 @@ protected:
       const std::vector<framework::Tensor *> &outputs) const override {
     PADDLE_ENFORCE(inputs.size() == 1, "Sigmoid Op only have one input");
     PADDLE_ENFORCE(outputs.size() == 1, "Sigmoid Op only have one output");
-    outputs[0]->set_dims(inputs[0]->dims());
+    outputs[0]->Resize(inputs[0]->dims());
   }
 };
 

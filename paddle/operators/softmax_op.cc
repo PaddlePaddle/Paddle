@@ -27,7 +27,7 @@ protected:
                    "The input of softmax op must be matrix");
     PADDLE_ENFORCE(outputs.size() == 1, "Only one output is need for softmax");
 
-    outputs[0]->set_dims(inputs[0]->dims());
+    outputs[0]->Resize(inputs[0]->dims());
   }
 };
 

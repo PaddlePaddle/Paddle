@@ -28,5 +28,17 @@ void Free(Place, void*);
 template <class Place>
 size_t Used(Place);
 
+template <typename T, /* must be POD types */
+          typename Place /* platform::GPUPlace or platform::CPUPlace */,
+          typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
+class PODDeleter {
+ public:
+  PODDeleter(Place place) : place_(place) {}
+  void operator()(T* ptr) { Free(place_, static_cast<void*>(ptr)); }
+
+ private:
+  Place place_;
+};
+
 }  // namespace memory
 }  // namespace paddle
