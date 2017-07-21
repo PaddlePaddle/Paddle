@@ -63,23 +63,22 @@ struct EigenTensor {
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
-  // Flatten is to reshape a Tensor into a one dimension EigenVector
-  using Parent = EigenTensor<T, 1, MajorType, IndexType>;
-  static typename Parent::Type Flatten(Tensor& tensor) {
-    return Parent::From(tensor,
-                        make_ddim({static_cast<int>(product(tensor.dims_))}));
-  }
-
-  static typename Parent::ConstType Flatten(const Tensor& tensor) {
-    return Parent::From(tensor,
-                        make_ddim({static_cast<int>(product(tensor.dims_))}));
-  }
-};
+struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {};
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = EigenTensor<T, 2, MajorType, IndexType>;
+struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
+  // Flatten reshapes a Tensor into an EigenVector.
+  static typename EigenVector::Type Flatten(Tensor& tensor) {
+    return EigenVector::From(
+        tensor, make_ddim({static_cast<int>(product(tensor.dims_))}));
+  }
+
+  static typename EigenVector::ConstType Flatten(const Tensor& tensor) {
+    return EigenVector::From(
+        tensor, make_ddim({static_cast<int>(product(tensor.dims_))}));
+  }
+};
 
 }  // namespace framework
 }  // namespace paddle
