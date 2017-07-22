@@ -50,7 +50,7 @@ void PlainNet::CompleteAddOp(bool calc) {
 
   std::vector<int> tmp_index;
   tmp_index.reserve(temp_output.size());
-  int output_len = (int)outputs_.size();
+  int output_len = static_cast<int>(outputs_.size());
   for (int i = 0; i < output_len; ++i) {
     if (Contains(temp_output, outputs_[i])) {
       tmp_index.push_back(i);
