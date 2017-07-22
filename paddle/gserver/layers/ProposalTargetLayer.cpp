@@ -246,6 +246,26 @@ void ProposalTargetLayer::forward(PassType passType) {
   // labelValue layout(sequence data):
   // | xmin1_1 | ymin1_1 | xmax1_1 | ymax1_1  | class1 | ......
   MatrixPtr labelValue = getInputValue(1);
+
+  if (useGpu_) {
+    MatrixPtr priorCpuBuffer;
+    Matrix::resizeOrCreate(priorCpuBuffer,
+                           priorValue->getHeight(),
+                           priorValue->getWidth(),
+                           false,
+                           false);
+    MatrixPtr labelCpuBuffer;
+    Matrix::resizeOrCreate(labelCpuBuffer,
+                           labelValue->getHeight(),
+                           labelValue->getWidth(),
+                           false,
+                           false);
+    priorCpuBuffer->copyFrom(*priorValue);
+    labelCpuBuffer->copyFrom(*labelValue);
+    priorValue = priorCpuBuffer;
+    labelValue = labelCpuBuffer;
+  }
+
   // Match prior bbox to groundtruth bbox
   Argument label = getInput(1);
   const int* labelIndex = label.sequenceStartPositions->getData(false);
@@ -267,9 +287,20 @@ void ProposalTargetLayer::forward(PassType passType) {
   size_t numROIs = retPair.first + retPair.second;
 
   resetOutput(numROIs, 10);
+  MatrixPtr outputValue = getOutputValue();
+  if (useGpu_) {
+    MatrixPtr outputCpuBuffer;
+    Matrix::resizeOrCreate(outputCpuBuffer,
+                           outputValue->getHeight(),
+                           outputValue->getWidth(),
+                           false,
+                           false);
+    outputValue = outputCpuBuffer;
+  }
+
   // | batchIdx1 | xmin1 | ymin1 | xmax1 | ymax1 | class1 | target1_1 |
   // target2_1 | target3_1 | target4_1 | | batchIdx2 | ......
-  real* outData = getOutputValue()->getData();
+  real* outData = outputValue->getData();
   for (size_t n = 0; n < seqNum; ++n) {
     for (size_t i = 0; i < allMatchIndices_[n].size(); ++i) {
       if (allMatchIndices_[n][i] == -2) continue;  // disabled priorbox
@@ -317,6 +348,10 @@ void ProposalTargetLayer::forward(PassType passType) {
         *(outData++) = gtEncode[3];
       }
     }
+  }
+
+  if (useGpu_) {
+    getOutputValue()->copyFrom(*outputValue);
   }
 }
 
