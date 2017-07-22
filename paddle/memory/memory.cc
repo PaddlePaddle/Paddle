@@ -46,13 +46,6 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
-template <>
-void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
-                                                  platform::CPUPlace,
-                                                  const void* src, size_t num) {
-  std::memcpy(dst, src, num);
-}
-
 #ifndef PADDLE_ONLY_CPU
 
 detail::BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
@@ -83,41 +76,6 @@ void Free<platform::GPUPlace>(platform::GPUPlace place, void* p) {
 template <>
 size_t Used<platform::GPUPlace>(platform::GPUPlace place) {
   return GetGPUBuddyAllocator(place.device)->Used();
-}
-
-template <>
-void Copy<platform::CPUPlace, platform::GPUPlace>(platform::CPUPlace dst_place,
-                                                  void* dst,
-                                                  platform::GPUPlace src_place,
-                                                  const void* src, size_t num,
-                                                  cudaStream_t stream) {
-  platform::SetDeviceId(src_place.device);
-  platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
-}
-
-template <>
-void Copy<platform::GPUPlace, platform::CPUPlace>(platform::GPUPlace dst_place,
-                                                  void* dst,
-                                                  platform::CPUPlace src_place,
-                                                  const void* src, size_t num,
-                                                  cudaStream_t stream) {
-  platform::SetDeviceId(dst_place.device);
-  platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
-}
-
-template <>
-void Copy<platform::GPUPlace, platform::GPUPlace>(platform::GPUPlace dst_place,
-                                                  void* dst,
-                                                  platform::GPUPlace src_place,
-                                                  const void* src, size_t num,
-                                                  cudaStream_t stream) {
-  if (dst_place == src_place) {
-    platform::SetDeviceId(src_place.device);
-    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToDevice, stream);
-  } else {
-    platform::GpuMemcpyPeer(dst, dst_place.device, src, src_place.device, num,
-                            stream);
-  }
 }
 
 #endif  // PADDLE_ONLY_CPU
