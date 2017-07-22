@@ -8,7 +8,10 @@ cc_library(paddle_memory
     memory
     memcpy
     meta_data
-    meta_cache memory_block
-    buddy_allocator system_allocator)
+    meta_cache
+    memory_block
+    buddy_allocator
+    system_allocator
+    device_context)
 
 cc_test(memory_test SRCS memory_test.cc DEPS place paddle_memory)
