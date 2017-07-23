@@ -6,16 +6,19 @@ import cPickle as pickle
 
 etcd_ip = os.getenv("MASTER_IP", "127.0.0.1")
 etcd_endpoint = "http://" + etcd_ip + ":2379"
+print "connecting to master, etcd endpoints: ", etcd_endpoint
+master_client = master.client(etcd_endpoint, 5, 64)
 
 
 def cloud_reader():
-    print "connecting to master, etcd endpoints: ", etcd_endpoint
-    master_client = master.client(etcd_endpoint, 5, 64)
+    global master_client
     master_client.set_dataset(
         ["/pfs/dlnel/public/dataset/uci_housing/uci_housing-*"], passes=30)
     while 1:
         r, e = master_client.next_record()
         if not r:
+            if e != -2:  # other errors
+                print "get record error:", e
             break
         yield pickle.loads(r)
 

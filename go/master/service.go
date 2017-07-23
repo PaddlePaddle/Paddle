@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"encoding/gob"
 	"errors"
-	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -21,11 +20,11 @@ const (
 	dialTimeout = 5 * time.Second
 )
 
-// AllTaskFinishError occur when tasks are in done or failed state.
-var AllTaskFinishError = errors.New("AllTaskFinishError")
+// ErrAllTaskFinishError occur when tasks are in done or failed state.
+var ErrAllTaskFinishError = errors.New("all task finished")
 
-// NoMoreAvailableError occur when no task in todo and yet not all done or fail.
-var NoMoreAvailableError = errors.New("NoMoreAvailableError")
+// ErrNoMoreAvailableError occur when no task in todo and yet not all done or fail.
+var ErrNoMoreAvailableError = errors.New("no more available task")
 
 // Store is the interface for save and load the master state.
 type Store interface {
@@ -66,17 +65,20 @@ type taskQueues struct {
 
 // Service is the master server service.
 type Service struct {
-	chunksPerTask      int
-	timeoutDur         time.Duration
-	failureMax         int
-	ready              *sync.Cond
-	store              Store
-	mu                 sync.Mutex
-	initDone           bool
-	taskQueues         taskQueues
+	chunksPerTask int
+	timeoutDur    time.Duration
+	failureMax    int
+	store         Store
+
+	ready    *sync.Cond
+	initDone bool
+
+	mu         sync.Mutex
+	taskQueues taskQueues
+
+	passEndCond        *sync.Cond
 	clientCount        int
 	clientPassFinished int
-	passEndCond        *sync.Cond
 }
 
 func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
@@ -277,7 +279,6 @@ func (s *Service) SetDataset(globPaths []string, dummy *int) error {
 		log.Errorln(err)
 		return err
 	}
-	fmt.Println("initDone refresh")
 	s.initDone = true
 	s.ready.Broadcast()
 	return nil
@@ -289,8 +290,6 @@ func (s *Service) SetDataset(globPaths []string, dummy *int) error {
 func (s *Service) checkAllTaskDone() bool {
 	if len(s.taskQueues.Todo) == 0 && len(s.taskQueues.Pending) == 0 {
 		log.WithFields(s.logFields()).Warningln("all task done/failed, able to start next pass.")
-		// s.initDone = false
-		// s.ready.Broadcast()
 		return true
 	}
 	return false
@@ -298,11 +297,11 @@ func (s *Service) checkAllTaskDone() bool {
 
 // processFailedTask retry s.failureMax times for failed task.
 // return true if all task are done or failed.
-func (s *Service) processFailedTask(t taskEntry, epoch int) bool {
+func (s *Service) processFailedTask(t taskEntry, epoch int) {
 	if t.Task.Meta.Epoch != epoch {
 		// new epoch, task launched after the
 		// schedule of this timeout check or failed status report.
-		return false
+		return
 	}
 
 	defer func() {
@@ -318,12 +317,12 @@ func (s *Service) processFailedTask(t taskEntry, epoch int) bool {
 	if t.NumFailure > s.failureMax {
 		log.Warningf("Task %v failed %d times, discard.", t.Task, t.NumFailure)
 		s.taskQueues.Failed = append(s.taskQueues.Failed, t)
-		return s.checkAllTaskDone()
+		return
 	}
 
 	log.Warningf("Task %v failed %d times, re-dispatch.", t.Task, t.NumFailure)
 	s.taskQueues.Todo = append(s.taskQueues.Todo, t)
-	return false
+	return
 }
 
 func (s *Service) checkTimeoutFunc(taskID int, epoch int) func() {
@@ -366,16 +365,16 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 				log.WithFields(s.logFields()).Warningln("All tasks failed, may start next pass")
 				// s.initDone = false
 				// s.ready.Broadcast()
-				return AllTaskFinishError
+				return ErrAllTaskFinishError
 			}
 		}
 		allFinish := s.checkAllTaskDone()
 		if allFinish {
-			return AllTaskFinishError
+			return ErrAllTaskFinishError
 		}
 
 		log.WithFields(s.logFields()).Warningln("No more available task.")
-		return NoMoreAvailableError
+		return ErrNoMoreAvailableError
 	}
 
 	t := s.taskQueues.Todo[0]
@@ -418,14 +417,9 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 
 	log.WithFields(s.logFields()).Infof("Task #%d finished.", taskID)
 
-	allFinish := s.checkAllTaskDone()
 	err := s.snapshot()
 	if err != nil {
 		log.Errorln(err)
-	}
-	// return finish status after snapshot
-	if allFinish {
-		return AllTaskFinishError
 	}
 	return err
 }
@@ -447,11 +441,7 @@ func (s *Service) TaskFailed(meta TaskMeta, dummy *int) error {
 		return nil
 	}
 
-	allFinish := s.processFailedTask(t, meta.Epoch)
-	if allFinish {
-		return AllTaskFinishError
-	}
-
+	s.processFailedTask(t, meta.Epoch)
 	return nil
 }
 

@@ -94,7 +94,7 @@ func TestGetFinishTask(t *testing.T) {
 		var tasks []Task
 		for idx := 0; idx < totalTask; idx++ {
 			task, cErr := c.getTask()
-			if cErr != nil && cErr.Error() != NoMoreAvailableError.Error() {
+			if cErr != nil && cErr.Error() != ErrNoMoreAvailableError.Error() {
 				t.Fatalf("error: %v, pass: %d\n", cErr, i)
 			}
 			tasks = append(tasks, task)
@@ -119,14 +119,14 @@ func TestGetFinishTask(t *testing.T) {
 
 		tasks = tasks[1:]
 		_, cErr = c.getTask()
-		if cErr != nil && cErr.Error() != NoMoreAvailableError.Error() && cErr.Error() != AllTaskFinishError.Error() {
-			t.Fatalf("Should be NoMoreAvailableError or AllTaskFinishError: %s", cErr)
+		if cErr != nil && cErr.Error() != ErrNoMoreAvailableError.Error() && cErr.Error() != ErrAllTaskFinishError.Error() {
+			t.Fatalf("Should be ErrNoMoreAvailableError or ErrAllTaskFinishError: %s", cErr)
 		}
 
 		for _, task := range tasks {
 			cErr = c.taskFinished(task.Meta.ID)
-			if cErr != nil && cErr.Error() != AllTaskFinishError.Error() {
-				t.Fatalf("Non-AllTaskFinishError: %v, pass: %d\n", cErr, i)
+			if cErr != nil && cErr.Error() != ErrAllTaskFinishError.Error() {
+				t.Fatalf("Non-ErrAllTaskFinishError: %v, pass: %d\n", cErr, i)
 			}
 		}
 	}

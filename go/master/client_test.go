@@ -119,7 +119,7 @@ func TestNextRecord(t *testing.T) {
 					r, e := c.NextRecord()
 					if e != nil {
 						// pass done, break for next pass
-						if e.Error() == master.AllTaskFinishError.Error() || e.Error() == master.NoMoreAvailableError.Error() {
+						if e.Error() == master.ErrAllTaskFinishError.Error() || e.Error() == master.ErrNoMoreAvailableError.Error() {
 							break
 						}
 						t.Fatal(pass, taskid, "Read error:", e)

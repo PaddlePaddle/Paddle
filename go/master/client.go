@@ -1,11 +1,7 @@
 package master
 
 import (
-	"fmt"
 	"os"
-	"runtime"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
@@ -46,18 +42,12 @@ func (c *Client) getRecords() {
 	for {
 		t, err := c.getTask()
 		if err != nil {
-			if err.Error() == AllTaskFinishError.Error() {
-				log.Infof("Got AllTaskFinishError, stopping getRecords routine.")
-				c.ch <- record{nil, AllTaskFinishError}
-				break
-			} else if err.Error() == NoMoreAvailableError.Error() {
-				log.Errorf("Got NoMoreAvailableError, sleep 3 seconds and continue, %s", err)
-				c.ch <- record{nil, NoMoreAvailableError}
-				// time.Sleep(3 * time.Second)
-				break
-			} else {
-				log.Errorf("getTask error: %s", err)
+			if err.Error() == ErrAllTaskFinishError.Error() || err.Error() == ErrNoMoreAvailableError.Error() {
+				log.Infof("Got %v, stopping getRecords routine.", err)
+				c.ch <- record{nil, err}
+				return
 			}
+			log.Errorf("getTask error: %s", err)
 		}
 
 		for _, chunk := range t.Chunks {
@@ -88,11 +78,6 @@ func (c *Client) getRecords() {
 		// correct, but a reasonable approximation.
 		err = c.taskFinished(t.Meta.ID)
 		if err != nil {
-			if err.Error() == AllTaskFinishError.Error() {
-				log.Infof("Got AllTaskFinishError, stopping getRecords routine.")
-				c.ch <- record{nil, AllTaskFinishError}
-				break
-			}
 			log.Errorln(err)
 		}
 	}
@@ -154,25 +139,13 @@ func (c *Client) taskFailed(meta TaskMeta) error {
 	return c.conn.Call("Service.TaskFailed", meta, nil)
 }
 
-// tool function for testing output goroutine ids
-func goid() int {
-	var buf [64]byte
-	n := runtime.Stack(buf[:], false)
-	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
-	id, err := strconv.Atoi(idField)
-	if err != nil {
-		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
-	}
-	return id
-}
-
 // NextRecord returns next record in the dataset.
 //
 // NextRecord will block until the next record is available. It is
 // thread-safe.
 func (c *Client) NextRecord() ([]byte, error) {
 	r := <-c.ch
-	if r.err != nil && (r.err.Error() == AllTaskFinishError.Error() || r.err.Error() == NoMoreAvailableError.Error()) {
+	if r.err != nil && (r.err.Error() == ErrAllTaskFinishError.Error() || r.err.Error() == ErrNoMoreAvailableError.Error()) {
 		err := c.PassFinish()
 		if err != nil {
 			return nil, err

@@ -22,7 +22,7 @@
     hooks:
     -   id: clang-formater
 -   repo: https://github.com/PaddlePaddle/pre-commit-golang
-    sha: 762c7c84af6ddce7cbcbe030217856fd0b5aec46
+    sha: 8337620115c25ff8333f1b1a493bd031049bd7c0
     hooks:
     -   id: go-fmt
         types:
