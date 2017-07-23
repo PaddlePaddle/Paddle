@@ -43,10 +43,26 @@ namespace platform {
 // For more details, please check https://stackoverflow.com/a/43870188/724872.
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
 
+template <typename T>
+inline void throw_on_error(T e) {
+  throw_on_error(e, "");
+}
+
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    int stat, const Args&... args) {
+  if (UNLIKELY(!(stat))) {
+    throw std::runtime_error(
+        string::Sprintf(args...) +
+        string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
+  }
+}
+
 #ifndef PADDLE_ONLY_CPU
 
 template <typename... Args>
-inline void throw_on_error(cudaError_t e, const Args&... args) {
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    cudaError_t e, const Args&... args) {
   if (UNLIKELY(e)) {
     // clang-format off
     throw thrust::system_error(
@@ -58,7 +74,8 @@ inline void throw_on_error(cudaError_t e, const Args&... args) {
 }
 
 template <typename... Args>
-inline void throw_on_error(curandStatus_t stat, const Args&... args) {
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    curandStatus_t stat, const Args&... args) {
   if (stat != CURAND_STATUS_SUCCESS) {
     // clang-format off
     throw thrust::system_error(
@@ -70,7 +87,8 @@ inline void throw_on_error(curandStatus_t stat, const Args&... args) {
 }
 
 template <typename... Args>
-inline void throw_on_error(cudnnStatus_t stat, const Args&... args) {
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    cudnnStatus_t stat, const Args&... args) {
   if (stat == CUDNN_STATUS_SUCCESS) {
     return;
   } else {
@@ -84,7 +102,8 @@ inline void throw_on_error(cudnnStatus_t stat, const Args&... args) {
 }
 
 template <typename... Args>
-inline void throw_on_error(cublasStatus_t stat, const Args&... args) {
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    cublasStatus_t stat, const Args&... args) {
   std::string err;
   if (stat == CUBLAS_STATUS_SUCCESS) {
     return;
@@ -113,15 +132,6 @@ inline void throw_on_error(cublasStatus_t stat, const Args&... args) {
 
 #endif  // PADDLE_ONLY_CPU
 
-template <typename... Args>
-inline void throw_on_error(int stat, const Args&... args) {
-  if (UNLIKELY(!(stat))) {
-    throw std::runtime_error(
-        string::Sprintf(args...) +
-        string::Sprintf(" at [%s:%s];", __FILE__, __LINE__));
-  }
-}
-
 #define PADDLE_THROW(...)                                     \
   do {                                                        \
     throw std::runtime_error(                                 \
@@ -129,12 +139,9 @@ inline void throw_on_error(int stat, const Args&... args) {
         string::Sprintf(" at [%s:%s];", __FILE__, __LINE__)); \
   } while (0)
 
-/**
- * @brief Enforce a condition, otherwise throw an EnforceNotMet
- */
-#define PADDLE_ENFORCE(condition, ...)                          \
-  do {                                                          \
-    ::paddle::platform::throw_on_error(condition, __VA_ARGS__); \
+#define PADDLE_ENFORCE(...)                          \
+  do {                                               \
+    ::paddle::platform::throw_on_error(__VA_ARGS__); \
   } while (0)
 
 }  // namespace platform

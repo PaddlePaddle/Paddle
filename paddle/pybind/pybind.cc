@@ -27,8 +27,13 @@ namespace py = pybind11;
 namespace pd = paddle::framework;
 
 USE_OP(add_two);
+USE_OP(onehot_cross_entropy);
 USE_OP_WITHOUT_KERNEL(fc);
 USE_OP(sgd);
+USE_OP(mul);
+USE_OP(sigmoid);
+USE_OP(softmax);
+USE_OP(rowwise_add);
 
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of Paddle Paddle");
@@ -41,7 +46,7 @@ PYBIND11_PLUGIN(core) {
            [](const pd::Tensor& self) { return pd::vectorize(self.dims()); })
       .def("set_dims",
            [](pd::Tensor& self, const std::vector<int>& dim) {
-             self.set_dims(pd::make_ddim(dim));
+             self.Resize(pd::make_ddim(dim));
            })
       .def("alloc_float",
            [](pd::Tensor& self) {

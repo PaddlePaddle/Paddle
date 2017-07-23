@@ -31,9 +31,10 @@ protected:
         "Inputs/Outputs of AddOp must all be set");
     PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
                    "Two input of Add Op's dimension must be same.");
-    outputs[0]->set_dims(inputs[0]->dims());
+    outputs[0]->Resize(inputs[0]->dims());
     DLOG(INFO) << "output shape:" << outputs[0]->dims()[0] << " "
                << outputs[0]->dims()[1];
+    // outputs[0]->Resize(inputs[0]->dims());
   }
 };
 
@@ -55,6 +56,5 @@ The equation is: Out = X + Y
 }  // namespace paddle
 
 REGISTER_OP(add_two, paddle::operators::AddOp, paddle::operators::AddOpMaker);
-typedef paddle::operators::AddKernel<::paddle::platform::CPUPlace, float>
-    AddKernel_CPU_float;
-REGISTER_OP_CPU_KERNEL(add_two, AddKernel_CPU_float);
+REGISTER_OP_CPU_KERNEL(
+    add_two, paddle::operators::AddKernel<paddle::platform::CPUPlace, float>);

@@ -44,7 +44,7 @@ void SegmentInputs(std::vector<ScopePtr>& step_scopes,
                                ->CreateVariable(inlinks[i].internal)
                                ->GetMutable<Tensor>();
       *step_input = input->Slice<float>(j, j + 1);
-      step_input->set_dims(step_dims);
+      step_input->Resize(step_dims);
     }
   }
 }
@@ -99,7 +99,7 @@ void LinkMemories(std::vector<ScopePtr>& scopes,
     auto mem = scope->CreateVariable(attr.pre_var)->GetMutable<Tensor>();
     // maybe share variable is better?
     auto linked_mem = linked_scope->GetVariable(attr.var)->GetMutable<Tensor>();
-    mem->ShareDataFrom<float>(*linked_mem);
+    mem->ShareDataWith<float>(*linked_mem);
 
     // TODO(qingqing) remove following code
     // for unit test
@@ -209,7 +209,7 @@ void RecurrentAlgorithm::InferShape(const ScopePtr& scope) const {
     dims_vec.insert(dims_vec.begin(), seq_len_);
     Tensor* output =
         step_scopes[0]->GetVariable(outlinks[i].external)->GetMutable<Tensor>();
-    output->set_dims(make_ddim(dims_vec));
+    output->Resize(make_ddim(dims_vec));
   }
 }
 
@@ -297,7 +297,7 @@ void RecurrentAlgorithm::InitMemories(ScopePtr step_scope) const {
         step_scope->CreateVariable(attr.boot_var)->GetMutable<Tensor>();
     PADDLE_ENFORCE(boot_mem != nullptr,
                    "boot_tensor should be retrieved before");
-    pre_mem->ShareDataFrom<float>(*boot_mem);
+    pre_mem->ShareDataWith<float>(*boot_mem);
 
     // TODO(qingqing) remove following code
     // the memory of current step should be allocated in step net
@@ -379,9 +379,7 @@ void RecurrentGradientAlgorithm::Run(
   size_t seq_len = scope->GetVariable((arg_->inlinks[0]).external)
                        ->GetMutable<Tensor>()
                        ->dims()[0];
-  DLOG(INFO) << "sequence length " << seq_len;
 
-  DLOG(INFO) << "segment input";
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len);
 
   PADDLE_ENFORCE(scope->HasVariable(arg_->step_net),
@@ -398,7 +396,6 @@ void RecurrentGradientAlgorithm::Run(
   }
   LinkBootMemoryGradients(step_scopes[0]);
 
-  DLOG(INFO) << "concat outputs";
   rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len);
 }
 
@@ -414,7 +411,7 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
                    attr.boot_var);
     Tensor* boot_mem_g =
         step_scope->CreateVariable(attr.boot_var)->GetMutable<Tensor>();
-    boot_mem_g->ShareDataFrom<float>(*mem_g);
+    boot_mem_g->ShareDataWith<float>(*mem_g);
   }
 }
 
@@ -426,6 +423,44 @@ void RecurrentGradientOp::Init() {
   rnn::InitArgument(arg_name, arg.get(), *this);
 
   alg_.Init(std::move(arg));
+}
+
+void RecurrentGradientAlgorithm::InferShape(const ScopePtr& scope) const {
+  auto step_scopes = *(scope->GetVariable(arg_->step_scopes))
+                          ->GetMutable<std::vector<ScopePtr>>();
+  seq_len_ = scope->GetVariable((arg_->inlinks[0]).external)
+                 ->GetMutable<Tensor>()
+                 ->dims()[0];
+  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_);
+
+  PADDLE_ENFORCE(scope->HasVariable(arg_->step_net),
+                 "step net is not in scope.");
+  Variable* net = scope->GetVariable(arg_->step_net);
+  PADDLE_ENFORCE(net != nullptr, "failed to get step net");
+
+  for (int step_id = seq_len_ - 1; step_id >= 0; --step_id) {
+    if (static_cast<size_t>(step_id) != seq_len_ - 1) {
+      rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1);
+    }
+
+    net->GetMutable<PlainNet>()->InferShape(step_scopes[step_id]);
+  }
+
+  auto outlinks = arg_->outlinks;
+  for (size_t i = 0; i < outlinks.size(); i++) {
+    DDim step_dims = step_scopes[0]
+                         ->GetVariable(outlinks[i].internal)
+                         ->GetMutable<Tensor>()
+                         ->dims();
+    std::vector<int> dims_vec = vectorize(step_dims);
+    // now only support fixed length
+    dims_vec.insert(dims_vec.begin(), seq_len_);
+    Tensor* output =
+        step_scopes[0]->GetVariable(outlinks[i].external)->GetMutable<Tensor>();
+    output->Resize(make_ddim(dims_vec));
+  }
+
+  LinkBootMemoryGradients(step_scopes[0]);
 }
 
 }  // namespace operators

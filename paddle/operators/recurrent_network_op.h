@@ -88,8 +88,6 @@ void LinkMemories(std::vector<ScopePtr>& step_scopes,
 
 void InitArgument(const ArgumentName& name, Argument* arg);
 
-void InferShape(const ScopePtr& scope);
-
 };  // namespace rnn
 
 // fake interfaces end
@@ -183,9 +181,11 @@ public:
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
   void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const;
   void LinkBootMemoryGradients(ScopePtr step_scopes) const;
+  void InferShape(const ScopePtr& scope) const;
 
 private:
   std::unique_ptr<rnn::Argument> arg_;
+  mutable size_t seq_len_;
 };
 
 /*
@@ -218,7 +218,9 @@ public:
   void Init() override;
 
   // TODO(Superjom) implement this when step net's InferShape ready.
-  virtual void InferShape(const ScopePtr& scope) const override {}
+  virtual void InferShape(const ScopePtr& scope) const override {
+    alg_.InferShape(scope);
+  }
 
   virtual void Run(const ScopePtr& scope,
                    const platform::DeviceContext& dev_ctx) const override {
