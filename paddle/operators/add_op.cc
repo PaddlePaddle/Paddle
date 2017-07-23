@@ -21,17 +21,16 @@ namespace operators {
 
 class AddOp : public framework::OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 2, "Input size of AddOp must be two");
-    PADDLE_ENFORCE(outputs.size() == 1, "Output size of AddOp must be one");
-    PADDLE_ENFORCE(
-        inputs[0] != nullptr && inputs[1] != nullptr && outputs[0] != nullptr,
-        "Inputs/Outputs of AddOp must all be set");
-    PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
+  void InferShapeImpl(const framework::InferContext &ctx) const override {
+    PADDLE_ENFORCE(ctx.InputSize() == 2, "Input size of AddOp must be two");
+    PADDLE_ENFORCE(ctx.OutputSize() == 1, "Output size of AddOp must be one");
+    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr && ctx.InputVar(1) != nullptr,
+                   "Inputs of AddOp must all be set");
+    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
+                   "Outputs of AddOp must all be set");
+    PADDLE_ENFORCE(ctx.Input(0).dims() == ctx.Input(1).dims(),
                    "Two input of Add Op's dimension must be same.");
-    outputs[0]->Resize(inputs[0]->dims());
+    ctx.Output(0)->Resize(ctx.Input(0).dims());
   }
 };
 

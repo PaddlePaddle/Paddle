@@ -31,23 +31,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <typename T>
-struct EigenDeviceConverter;
-
-template <>
-struct EigenDeviceConverter<platform::CPUPlace> {
-  using EigenDeviceType = Eigen::DefaultDevice;
-};
-
-#ifndef PADDLE_ONLY_CPU
-template <>
-struct EigenDeviceConverter<platform::GPUPlace> {
-  using EigenDeviceType = Eigen::GpuDevice;
-};
-#endif
-
 class OperatorBase;
 using OperatorPtr = std::shared_ptr<OperatorBase>;
+
+class InferContext;
+class RunContext;
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -80,7 +68,8 @@ class OperatorBase {
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  virtual void InferShape(const ScopePtr& scope) const = 0;
+  void InferShape(const ScopePtr& scope) const;
+  virtual void InferShapeImpl(const InferContext& ctx) const = 0;
 
   /// Net will call this function to Run an op.
   virtual void Run(const ScopePtr& scope,
@@ -97,6 +86,9 @@ class OperatorBase {
   // TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Outputs(const std::string& name) const;
 
+ protected:
+  //  virtual void InferShape(const InferContext& ctx) const = 0;
+
  public:
   std::string type_;
   std::vector<std::string> inputs_;
@@ -106,29 +98,32 @@ class OperatorBase {
   std::shared_ptr<std::unordered_map<std::string, int>> in_out_idxs_;
 };
 
-class KernelContext {
+class OperatorContext {
  public:
-  KernelContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
-                const platform::DeviceContext& device_context)
-      : op_(*op), scope_(scope), device_context_(device_context) {}
+  OperatorContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope)
+      : op_(*op), scope_(scope) {}
 
-  const Variable* Input(int index) const {
+  int InputSize() const { return static_cast<int>(op_.inputs_.size()); }
+
+  int OutputSize() const { return static_cast<int>(op_.outputs_.size()); }
+
+  const Variable* InputVar(int index) const {
     return scope_->GetVariable(op_.inputs_[index]);
   }
 
-  Variable* Output(int index) const {
+  Variable* OutputVar(int index) const {
     return scope_->GetVariable(op_.outputs_[index]);
   }
 
-  const Variable* Input(const std::string& name) const {
+  const Variable* InputVar(const std::string& name) const {
     return scope_->GetVariable(op_.Input(name));
   }
 
-  const Variable* Output(const std::string& name) const {
+  Variable* OutputVar(const std::string& name) const {
     return scope_->GetVariable(op_.Output(name));
   }
 
-  const std::vector<const Variable*> Inputs(const std::string& name) const {
+  const std::vector<const Variable*> InputVars(const std::string& name) const {
     auto names = op_.Inputs(name);
     std::vector<const Variable*> res;
     std::transform(
@@ -137,7 +132,7 @@ class KernelContext {
     return res;
   }
 
-  const std::vector<const Variable*> Outputs(const std::string& name) const {
+  const std::vector<const Variable*> OutputVars(const std::string& name) const {
     auto names = op_.Outputs(name);
     std::vector<const Variable*> res;
     std::transform(
@@ -146,30 +141,44 @@ class KernelContext {
     return res;
   }
 
-  template <typename PlaceType,
-            typename DeviceType =
-                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
-  DeviceType* GetEigenDevice() const;
+  const Tensor& Input(int index) const {
+    return InputVar(index)->Get<Tensor>();
+  }
 
-  platform::Place GetPlace() const { return device_context_.GetPlace(); }
+  Tensor* Output(int index) const {
+    return OutputVar(index)->GetMutable<Tensor>();
+  }
+
+  const Tensor& Input(const std::string& name) const {
+    return InputVar(name)->Get<Tensor>();
+  }
+
+  Tensor* Output(const std::string& name) const {
+    return OutputVar(name)->GetMutable<Tensor>();
+  }
+
+  const std::vector<const Tensor*> Inputs(const std::string& name) const {
+    auto names = op_.Inputs(name);
+    std::vector<const Tensor*> res;
+    std::transform(names.begin(), names.end(), res.begin(),
+                   [this](const std::string& name) {
+                     return scope_->GetVariable(name)->GetMutable<Tensor>();
+                   });
+    return res;
+  }
+
+  std::vector<const Tensor*> Outputs(const std::string& name) const {
+    auto names = op_.Outputs(name);
+    std::vector<const Tensor*> res;
+    std::transform(names.begin(), names.end(), res.begin(),
+                   [this](const std::string& name) {
+                     return scope_->GetVariable(name)->GetMutable<Tensor>();
+                   });
+    return res;
+  }
 
   const OperatorBase& op_;
   const std::shared_ptr<Scope>& scope_;
-  const platform::DeviceContext& device_context_;
-};
-
-class OpKernel {
- public:
-  /**
-   * KernelContext is the only parameter of Kernel Run function.
-   * Run will get input/output variables, state such as momentum and
-   * device resource such as CUDA stream, cublas handle, etc. from
-   * KernelContext. User should construct it before run the Operator.
-   */
-
-  virtual void Compute(const KernelContext& context) const = 0;
-
-  virtual ~OpKernel() {}
 };
 
 template <typename T>
@@ -183,6 +192,57 @@ struct VarToTensor<Tensor*> {
 template <>
 struct VarToTensor<const Tensor*> {
   const Tensor* operator()(Variable* var) { return &var->Get<Tensor>(); }
+};
+
+class InferContext : public OperatorContext {
+ public:
+  InferContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope)
+      : OperatorContext(op, scope) {}
+};
+
+template <typename T>
+struct EigenDeviceConverter;
+
+template <>
+struct EigenDeviceConverter<platform::CPUPlace> {
+  using EigenDeviceType = Eigen::DefaultDevice;
+};
+
+#ifndef PADDLE_ONLY_CPU
+template <>
+struct EigenDeviceConverter<platform::GPUPlace> {
+  using EigenDeviceType = Eigen::GpuDevice;
+};
+#endif
+
+class RunContext : public OperatorContext {
+ public:
+  RunContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
+             const platform::DeviceContext& device_context)
+      : OperatorContext(op, scope), device_context_(device_context) {}
+
+  template <typename PlaceType,
+            typename DeviceType =
+                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
+  DeviceType* GetEigenDevice() const;
+
+  platform::Place GetPlace() const { return device_context_.GetPlace(); }
+
+  const platform::DeviceContext& device_context_;
+};
+
+class OpKernel {
+ public:
+  /**
+   * KernelContext is the only parameter of Kernel Run function.
+   * Run will get input/output variables, state such as momentum and
+   * device resource such as CUDA stream, cublas handle, etc. from
+   * KernelContext. User should construct it before run the Operator.
+   */
+
+  virtual void Compute(const RunContext& context) const = 0;
+
+  virtual ~OpKernel() {}
 };
 
 class OperatorWithKernel : public OperatorBase {
@@ -211,7 +271,7 @@ class OperatorWithKernel : public OperatorBase {
   void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(KernelContext(this, scope, dev_ctx));
+    opKernel->Compute(RunContext(this, scope, dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
@@ -219,35 +279,6 @@ class OperatorWithKernel : public OperatorBase {
     static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
     return g_all_op_kernels;
   }
-
-  void InferShape(const std::shared_ptr<Scope>& scope) const final {
-    std::vector<const Tensor*> ins;
-    VarNamesToTensors(scope, inputs_, &ins);
-    std::vector<Tensor*> outs;
-    VarNamesToTensors(scope, outputs_, &outs);
-    InferShape(ins, outs);
-  };
-
- private:
-  template <typename T>
-  void VarNamesToTensors(const std::shared_ptr<Scope>& scope,
-                         const std::vector<std::string>& var_names,
-                         std::vector<T>* container) const {
-    container->reserve(var_names.size());
-    VarToTensor<T> convert;
-    for (auto& name : var_names) {
-      auto var = scope->GetVariable(name);
-      if (var != nullptr) {
-        container->push_back(convert(var));
-      } else {
-        container->push_back(nullptr);
-      }
-    }
-  }
-
- protected:
-  virtual void InferShape(const std::vector<const Tensor*>& inputs,
-                          const std::vector<Tensor*>& outputs) const = 0;
 };
 
 }  // namespace framework

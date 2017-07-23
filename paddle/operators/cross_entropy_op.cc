@@ -21,21 +21,19 @@ namespace operators {
 
 class OnehotCrossEntropyOp : public framework::OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 2,
+  void InferShapeImpl(const framework::InferContext &ctx) const override {
+    PADDLE_ENFORCE(ctx.InputSize() == 2,
                    "Input size of OnehotCrossEntropyOp must be two");
-    PADDLE_ENFORCE(outputs.size() == 1,
+    PADDLE_ENFORCE(ctx.OutputSize() == 1,
                    "Output size of OnehotCrossEntropyOp must be one");
-    PADDLE_ENFORCE(inputs[0] != nullptr && inputs[1] != nullptr,
+    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr && ctx.InputVar(1) != nullptr,
                    "Inputs of OnehotCrossEntropyOp must all be set");
-    PADDLE_ENFORCE(outputs[0] != nullptr,
+    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
                    "Outputs of OnehotCrossEntropyOp must all be set");
-    PADDLE_ENFORCE(inputs[0]->dims().size() == 2, "X's dimension must be 2.");
-    PADDLE_ENFORCE(outputs[0]->dims().size() == 1,
+    PADDLE_ENFORCE(ctx.Input(0).dims().size() == 2, "X's dimension must be 2.");
+    PADDLE_ENFORCE(ctx.Output(0)->dims().size() == 1,
                    "label's dimension must be 1.");
-    outputs[0]->Resize(framework::make_ddim({inputs[0]->dims()[0]}));
+    ctx.Output(0)->Resize(framework::make_ddim({ctx.Input(0).dims()[0]}));
   }
 };
 

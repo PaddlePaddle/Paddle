@@ -24,20 +24,18 @@ namespace operators {
 template <typename Place, typename T>
 class MulKernel : public framework::OpKernel {
 public:
-  void Compute(const framework::KernelContext& context) const override {
+  void Compute(const framework::RunContext& context) const override {
     Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
         {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
 
-    auto input0 = context.Input(0)->Get<framework::Tensor>();
-    auto input1 = context.Input(1)->Get<framework::Tensor>();
-    auto* output = context.Output(0)->GetMutable<framework::Tensor>();
-
+    auto* output = context.Output(0);
     output->mutable_data<T>(context.GetPlace());
 
     framework::EigenMatrix<T>::From(*output).device(
         *(context.GetEigenDevice<Place>())) =
-        framework::EigenMatrix<T>::From(input0).contract(
-            framework::EigenMatrix<T>::From(input1), dim_pair);
+        framework::EigenMatrix<T>::From(context.Input("X"))
+            .contract(framework::EigenMatrix<T>::From(context.Input("Y")),
+                      dim_pair);
   }
 };
 }  // namespace operators

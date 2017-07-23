@@ -24,14 +24,13 @@ class OnehotCrossEntropyOpKernel : public framework::OpKernel {
 public:
   constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
 
-  void Compute(const framework::KernelContext& context) const override {
-    auto X = context.Input(0)->Get<framework::Tensor>();
+  void Compute(const framework::RunContext& ctx) const override {
+    auto X = ctx.Input(0);
     const T* X_data = X.data<T>();
-    const int* label_data =
-        context.Input(1)->Get<framework::Tensor>().data<int>();
-    auto* Y = context.Output(0)->GetMutable<framework::Tensor>();
+    const int* label_data = ctx.Input(1).data<int>();
+    auto* Y = ctx.Output(0);
 
-    Y->mutable_data<T>(context.GetPlace());
+    Y->mutable_data<T>(ctx.GetPlace());
 
     T* Y_data = Y->data<T>();
 

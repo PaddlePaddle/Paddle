@@ -24,9 +24,9 @@ namespace operators {
 template <typename Place, typename T>
 class SoftmaxKernel : public framework::OpKernel {
 public:
-  void Compute(const framework::KernelContext& context) const override {
-    auto input = context.Input(0)->Get<framework::Tensor>();
-    auto* output = context.Output(0)->GetMutable<framework::Tensor>();
+  void Compute(const framework::RunContext& context) const override {
+    auto input = context.Input(0);
+    auto* output = context.Output(0);
     output->mutable_data<T>(context.GetPlace());
 
     auto logits = framework::EigenMatrix<T>::From(input);

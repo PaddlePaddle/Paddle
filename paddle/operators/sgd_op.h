@@ -23,10 +23,10 @@ namespace operators {
 template <typename Place, typename T>
 class SGDOpKernel : public framework::OpKernel {
 public:
-  void Compute(const framework::KernelContext& ctx) const override {
-    auto param = ctx.Input("param")->Get<framework::Tensor>();
-    auto grad = ctx.Input("grad")->Get<framework::Tensor>();
-    auto* param_out = ctx.Output(0)->GetMutable<framework::Tensor>();
+  void Compute(const framework::RunContext& ctx) const override {
+    auto param = ctx.Input("param");
+    auto grad = ctx.Input("grad");
+    auto* param_out = ctx.Output(0);
     float lr = ctx.op_.GetAttr<float>("learning_rate");
 
     param_out->mutable_data<T>(ctx.GetPlace());

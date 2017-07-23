@@ -23,14 +23,12 @@ namespace operators {
 template <typename Place, typename T>
 class RowWiseAddKernel : public framework::OpKernel {
 public:
-  void Compute(const framework::KernelContext& context) const override {
-    auto in0 = context.Input(0)->Get<framework::Tensor>();
-    auto in1 = context.Input(1)->Get<framework::Tensor>();
-    auto* out = context.Output(0)->GetMutable<framework::Tensor>();
+  void Compute(const framework::RunContext& context) const override {
+    auto* out = context.Output(0);
     out->mutable_data<T>(context.GetPlace());
 
-    auto input = framework::EigenMatrix<T>::From(in0);
-    auto bias = framework::EigenVector<T>::From(in1);
+    auto input = framework::EigenMatrix<T>::From(context.Input(0));
+    auto bias = framework::EigenVector<T>::From(context.Input(1));
     auto output = framework::EigenMatrix<T>::From(*out);
 
     const int bias_size = bias.dimension(0);

@@ -19,12 +19,10 @@ namespace operators {
 
 class SigmoidOp : public framework::OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 1, "Sigmoid Op only have one input");
-    PADDLE_ENFORCE(outputs.size() == 1, "Sigmoid Op only have one output");
-    outputs[0]->Resize(inputs[0]->dims());
+  void InferShapeImpl(const framework::InferContext &ctx) const override {
+    PADDLE_ENFORCE(ctx.InputSize() == 1, "Sigmoid Op only have one input");
+    PADDLE_ENFORCE(ctx.OutputSize() == 1, "Sigmoid Op only have one output");
+    ctx.Output(0)->Resize(ctx.Input(0).dims());
   }
 };
 

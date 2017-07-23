@@ -19,15 +19,13 @@ namespace operators {
 
 class SoftmaxOp : public framework::OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 1, "Only one input is need for softmax");
-    PADDLE_ENFORCE(inputs[0]->dims().size() == 2,
+  void InferShapeImpl(const framework::InferContext &ctx) const override {
+    PADDLE_ENFORCE(ctx.InputSize() == 1, "Only one input is need for softmax");
+    PADDLE_ENFORCE(ctx.Input(0).dims().size() == 2,
                    "The input of softmax op must be matrix");
-    PADDLE_ENFORCE(outputs.size() == 1, "Only one output is need for softmax");
-
-    outputs[0]->Resize(inputs[0]->dims());
+    PADDLE_ENFORCE(ctx.OutputSize() == 1,
+                   "Only one output is need for softmax");
+    ctx.Output(0)->Resize(ctx.Input(0).dims());
   }
 };
 

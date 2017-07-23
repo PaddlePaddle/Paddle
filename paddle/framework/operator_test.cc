@@ -24,7 +24,7 @@ static int op_run_num = 0;
 class OpWithoutKernelTest : public OperatorBase {
  public:
   void Init() override { x = 1; }
-  void InferShape(const ScopePtr& scope) const override {}
+  void InferShapeImpl(const framework::InferContext& ctx) const override {}
   void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const override {
     op_run_num++;
@@ -74,6 +74,7 @@ TEST(OperatorBase, all) {
       paddle::framework::OpRegistry::CreateOp(op_desc);
   scope->CreateVariable("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
+  op->InferShape(scope);
   op->Run(scope, device_context);
   ASSERT_EQ(paddle::framework::op_run_num, 1);
 }
@@ -98,14 +99,13 @@ static int cpu_kernel_run_num = 0;
 
 class OpWithKernelTest : public OperatorWithKernel {
  protected:
-  void InferShape(const std::vector<const Tensor*>& inputs,
-                  const std::vector<Tensor*>& outputs) const override {}
+  void InferShapeImpl(const framework::InferContext& ctx) const override {}
 };
 
 template <typename T1, typename T2>
 class CPUKernelTest : public OpKernel {
  public:
-  void Compute(const KernelContext& ctx) const {
+  void Compute(const RunContext& ctx) const {
     std::cout << "this is cpu kernel" << std::endl;
     std::cout << ctx.op_.DebugString() << std::endl;
     cpu_kernel_run_num++;
@@ -118,7 +118,7 @@ class CPUKernelTest : public OpKernel {
 class OperatorMultiInputsTest : public OperatorBase {
  public:
   void Init() override { x = 1; }
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
+  void InferShapeImpl(const framework::InferContext& ctx) const override {}
   void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const override {
     ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
@@ -150,7 +150,7 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
 
 class CPUKernalMultiInputsTest : public OpKernel {
  public:
-  void Compute(const KernelContext& ctx) const {
+  void Compute(const RunContext& ctx) const {
     auto xs = ctx.op_.Inputs("xs");
     ASSERT_EQ(xs.size(), 3UL);
     ASSERT_EQ(xs[0], "x0");
