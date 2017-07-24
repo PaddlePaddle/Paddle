@@ -25,12 +25,12 @@ struct OpInOutArg {
   size_t end_idx_;
 };
 
-class GradOpCreator {
+class GradOpBuilder {
   using VarIndexMap = std::unordered_map<std::string, int>;
 
  public:
-  GradOpCreator(const OperatorBase* op) : op_(op) {}
-  OperatorBase* Create();
+  GradOpBuilder(const OperatorBase* op) : op_(op) {}
+  OperatorBase* Build();
 
  private:
   OpInOutArg* BuildArg(const VarProto& var, const VarIndexMap& var_map,
