@@ -63,7 +63,7 @@ message OpProto {
 
 To generate Python code automatically:
 
-```python
+```python 
 def create_python_ops_creatation_functions():
 	op_protos = paddle.framework.OpRegistry.get_all_op_proto()
 	for type_name in op_protos:

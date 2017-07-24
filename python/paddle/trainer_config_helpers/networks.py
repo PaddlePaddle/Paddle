@@ -1395,7 +1395,7 @@ def inputs(layers, *args):
     if len(args) != 0:
         layers.extend(args)
 
-    Inputs(* [l.name for l in layers])
+    Inputs(*[l.name for l in layers])
 
 
 def outputs(layers, *args):
@@ -1408,6 +1408,8 @@ def outputs(layers, *args):
     :return:
     """
 
+    traveled = set()
+
     def __dfs_travel__(layer,
                        predicate=lambda x: x.layer_type == LayerType.DATA):
         """
@@ -1419,6 +1421,11 @@ def outputs(layers, *args):
         :type layer: LayerOutput
         :return:
         """
+        if layer in traveled:
+            return []
+        else:
+            traveled.add(layer)
+
         assert isinstance(layer, LayerOutput), "layer is %s" % (layer)
         retv = []
         if layer.parents is not None:
@@ -1438,7 +1445,7 @@ def outputs(layers, *args):
     assert len(layers) > 0
 
     if HasInputsSet():  # input already set
-        Outputs(* [l.name for l in layers])
+        Outputs(*[l.name for l in layers])
         return  # just return outputs.
 
     if len(layers) != 1:

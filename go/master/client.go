@@ -2,6 +2,7 @@ package master
 
 import (
 	"os"
+	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
 	"github.com/PaddlePaddle/recordio"
@@ -11,7 +12,12 @@ import (
 // Client is the client of the master server.
 type Client struct {
 	conn *connection.Conn
-	ch   chan []byte
+	ch   chan record
+}
+
+type record struct {
+	r   []byte
+	err error
 }
 
 // NewClient creates a new Client.
@@ -21,7 +27,7 @@ type Client struct {
 func NewClient(addrCh <-chan string, bufSize int) *Client {
 	c := &Client{}
 	c.conn = connection.New()
-	c.ch = make(chan []byte, bufSize)
+	c.ch = make(chan record, bufSize)
 	go c.monitorMaster(addrCh)
 	go c.getRecords()
 	return c
@@ -31,9 +37,9 @@ func (c *Client) getRecords() {
 	for {
 		t, err := c.getTask()
 		if err != nil {
-			// TODO(helin): wait before move on with next
 			// getTask call.
-			log.Errorln(err)
+			log.Errorf("Get task failed, sleep 3 seconds and continue, %s", err)
+			time.Sleep(3 * time.Second)
 			continue
 		}
 
@@ -46,10 +52,11 @@ func (c *Client) getRecords() {
 
 			s := recordio.NewRangeScanner(f, &chunk.Index, -1, -1)
 			for s.Scan() {
-				c.ch <- s.Record()
+				c.ch <- record{s.Record(), nil}
 			}
 
 			if s.Err() != nil {
+				c.ch <- record{nil, s.Err()}
 				log.Errorln(err, chunk.Path)
 			}
 
@@ -62,7 +69,10 @@ func (c *Client) getRecords() {
 		// We treat a task as finished whenever the last data
 		// instance of the task is read. This is not exactly
 		// correct, but a reasonable approximation.
-		c.taskFinished(t.ID)
+		err = c.taskFinished(t.Meta.ID)
+		if err != nil {
+			log.Errorln(err)
+		}
 	}
 }
 
@@ -112,10 +122,16 @@ func (c *Client) taskFinished(taskID int) error {
 	return c.conn.Call("Service.TaskFinished", taskID, nil)
 }
 
+// TaskFailed tell the master server as task is failed.
+func (c *Client) taskFailed(meta TaskMeta) error {
+	return c.conn.Call("Service.TaskFailed", meta, nil)
+}
+
 // NextRecord returns next record in the dataset.
 //
 // NextRecord will block until the next record is available. It is
 // thread-safe.
-func (c *Client) NextRecord() []byte {
-	return <-c.ch
+func (c *Client) NextRecord() ([]byte, error) {
+	r := <-c.ch
+	return r.r, r.err
 }

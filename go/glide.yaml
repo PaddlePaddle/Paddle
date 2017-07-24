@@ -1,0 +1,13 @@
+package: github.com/PaddlePaddle/Paddle/go
+import:
+- package: github.com/PaddlePaddle/recordio
+- package: github.com/coreos/etcd
+  version: ^3.2.1
+  subpackages:
+  - clientv3
+  - clientv3/concurrency
+- package: github.com/namsral/flag
+  version: ^1.7.4-pre
+- package: github.com/sirupsen/logrus
+  version: ^1.0.0
+- package: github.com/topicai/candy

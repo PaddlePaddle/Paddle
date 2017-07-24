@@ -30,7 +30,7 @@ type EtcdClient struct {
 // NewEtcdClient creates a new EtcdClient.
 func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePath string, ttlSec int) (*EtcdClient, error) {
 	log.Debugf("Connecting to etcd at %v", endpoints)
-	// TODO(helin): gracefully shutdown etcd store. Becuase etcd
+	// TODO(helin): gracefully shutdown etcd store. Because etcd
 	// store holds a etcd lock, even though the lock will expire
 	// when the lease timeout, we need to implement graceful
 	// shutdown to release the lock.
@@ -50,7 +50,7 @@ func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePat
 	lock := concurrency.NewMutex(sess, lockPath)
 	// It's fine for the lock to get stuck, in this case we have
 	// multiple master servers running (only configured to have
-	// one master running, but split-brain problem may cuase
+	// one master running, but split-brain problem may cause
 	// multiple master servers running), and the cluster management
 	// software will kill one of them.
 	log.Debugf("Trying to acquire lock at %s.", lockPath)
@@ -60,7 +60,7 @@ func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePat
 	}
 	log.Debugf("Successfully acquired lock at %s.", lockPath)
 
-	put := clientv3.OpPut(addrPath, string(addr))
+	put := clientv3.OpPut(addrPath, addr)
 	resp, err := cli.Txn(context.Background()).If(lock.IsOwner()).Then(put).Commit()
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (e *EtcdClient) Save(state []byte) error {
 			// We lost the master lock and can not acquire
 			// it back, it means some other master is
 			// already started. We don't want cluster
-			// managment system to kill the master server
+			// management system to kill the master server
 			// who is holding the lock and running
 			// correctly. So the most feasible solution is
 			// to kill current master server. The current

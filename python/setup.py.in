@@ -9,7 +9,9 @@ packages=['paddle',
           'paddle.v2.dataset',
           'paddle.v2.reader',
           'paddle.v2.master',
-          'paddle.v2.plot']
+          'paddle.v2.plot',
+          'paddle.v2.framework',
+          'paddle.v2.framework.proto']
 
 setup_requires=["requests",
                 "numpy",
@@ -17,7 +19,9 @@ setup_requires=["requests",
                 "recordio",
                 "matplotlib",
                 "rarfile",
-                "scipy>=0.19.0"]
+                "scipy>=0.19.0",
+                "Pillow",
+                "nltk"]
 
 if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
     setup_requires+=["opencv-python"]
@@ -27,8 +31,13 @@ setup(name='paddle',
       description='Parallel Distributed Deep Learning',
       install_requires=setup_requires,
       packages=packages,
-      package_data={'paddle.v2.master': ['${paddle_master_LIB_NAME}'], },
+      package_data={'paddle.v2.master': ['libpaddle_master.so'],
+            'paddle.v2.framework': ['core.so']
+      },
       package_dir={
-          '': '${CMAKE_CURRENT_SOURCE_DIR}'
+          '': '${CMAKE_CURRENT_SOURCE_DIR}',
+          # The paddle.v2.framework.proto will be generated while compiling.
+          # So that package points to other directory.
+          'paddle.v2.framework.proto': '${PROJ_BINARY_ROOT}/paddle/framework'
       },
 )

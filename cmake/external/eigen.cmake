@@ -2,10 +2,10 @@ INCLUDE(ExternalProject)
 
 SET(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3)
 
-INCLUDE_DIRECTORIES(${EIGEN_SOURCE_DIR}/src/eigen3)
+INCLUDE_DIRECTORIES(${EIGEN_SOURCE_DIR}/src/extern_eigen3)
 
 ExternalProject_Add(
-    eigen3
+    extern_eigen3
     ${EXTERNAL_PROJECT_LOG_ARGS}
     # for latest version, please get from official website
     # URL            "https://bitbucket.org/eigen/eigen/get/3.3.4.tar.gz"
@@ -25,5 +25,15 @@ ExternalProject_Add(
     INSTALL_COMMAND   ""
     TEST_COMMAND      ""
 )
+
+if (${CMAKE_VERSION} VERSION_LESS "3.3.0")
+    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/eigen3_dummy.c)
+    file(WRITE ${dummyfile} "const char * dummy_eigen3 = \"${dummyfile}\";")
+    add_library(eigen3 STATIC ${dummyfile})
+else()
+    add_library(eigen3 INTERFACE)
+endif()
+
+add_dependencies(eigen3 extern_eigen3)
 
 LIST(APPEND external_project_dependencies eigen3)
