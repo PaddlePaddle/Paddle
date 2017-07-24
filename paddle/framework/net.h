@@ -59,7 +59,7 @@ class PlainNet : public Net {
    */
   void InferShapeImpl(const InferShapeContext& ctx) const override {
     for (auto& op : ops_) {
-      op->InferShapeImpl(ctx);
+      op->InferShape(ctx.scope_);
     }
   }
 
