@@ -31,21 +31,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <typename T>
-struct EigenDeviceConverter;
-
-template <>
-struct EigenDeviceConverter<platform::CPUPlace> {
-  using EigenDeviceType = Eigen::DefaultDevice;
-};
-
-#ifndef PADDLE_ONLY_CPU
-template <>
-struct EigenDeviceConverter<platform::GPUPlace> {
-  using EigenDeviceType = Eigen::GpuDevice;
-};
-#endif
-
 class OperatorBase;
 using OperatorPtr = std::shared_ptr<OperatorBase>;
 /**
@@ -147,8 +132,8 @@ class KernelContext {
   }
 
   template <typename PlaceType,
-            typename DeviceType =
-                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
+            typename DeviceType = typename platform::EigenDeviceConverter<
+                PlaceType>::EigenDeviceType>
   DeviceType* GetEigenDevice() const;
 
   platform::Place GetPlace() const { return device_context_.GetPlace(); }
