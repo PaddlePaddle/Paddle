@@ -318,3 +318,6 @@ Paddle二进制在运行时捕获了浮点数异常，只要出现浮点数异�
 
 pip uninstall py_paddle paddle
 
+然后安装paddle的python环境
+
+pip install python/dist/paddle*.whl && pip install ../paddle/dist/py_paddle*.whl
