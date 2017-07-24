@@ -57,12 +57,10 @@ ExternalProject_Add(
     GIT_REPOSITORY      "https://github.com/01org/mkl-dnn.git"
     GIT_TAG             "v0.9"
     PREFIX              ${MKLDNN_SOURCES_DIR}
-    CONFIGURE_COMMAND   mkdir -p <SOURCE_DIR>/build
-    BUILD_COMMAND       cd <SOURCE_DIR>/build
-                        && cmake .. -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR} -DMKLROOT=${MKLDNN_MKLROOT}
-                        && $(MAKE)
-    INSTALL_COMMAND     cd <SOURCE_DIR>/build && $(MAKE) install
     UPDATE_COMMAND      ""
+    CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
+    CMAKE_ARGS          -DMKLROOT=${MKLDNN_MKLROOT}
+    CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${MKLDNN_INSTALL_DIR}
 )
 
 ADD_LIBRARY(mkldnn SHARED IMPORTED GLOBAL)
