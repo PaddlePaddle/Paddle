@@ -19,7 +19,7 @@ limitations under the License. */
 #include <stdexcept>
 #include <vector>
 #include "paddle/framework/dim.h"
-#include "paddle/framework/enforce.h"
+#include "paddle/platform/enforce.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -118,17 +118,6 @@ DDim slice_ddim(const DDim& dim, int begin, int end);
 int arity(const DDim& ddim);
 
 std::ostream& operator<<(std::ostream&, const DDim&);
-
-template <int NDIMS>
-Eigen::DSizes<Eigen::DenseIndex, NDIMS> ToEigenDSizes(const DDim& dims) {
-  int rank = arity(dims);
-  PADDLE_ENFORCE(rank == NDIMS, "DDim and NDIMS must be same");
-  Eigen::DSizes<Eigen::DenseIndex, NDIMS> dsizes;
-  for (int d = 0; d < rank; d++) {
-    dsizes[d] = dims[d];
-  }
-  return dsizes;
-}
 
 }  // namespace framework
 }  // namespace paddle
