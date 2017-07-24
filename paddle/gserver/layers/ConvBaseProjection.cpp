@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "ConvBaseProjection.h"
+#include "paddle/math/MemoryHandle.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
