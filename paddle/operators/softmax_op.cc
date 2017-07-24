@@ -42,9 +42,7 @@ public:
 
 class SoftmaxOpGrad : public framework::OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {}
+  void InferShapeImpl(const framework::InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "SoftmaxOpGrad";
     return "";

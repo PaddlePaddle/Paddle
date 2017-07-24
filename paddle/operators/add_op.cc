@@ -51,9 +51,7 @@ The equation is: Out = X + Y
 
 class AddOpGrad : public framework::OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {}
+  void InferShapeImpl(const framework::InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "AddOpGrad";
     return "";

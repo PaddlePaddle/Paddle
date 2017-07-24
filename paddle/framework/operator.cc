@@ -79,7 +79,7 @@ std::vector<std::string> OperatorBase::Outputs(const std::string& name) const {
       outputs_.begin() + output_format.at(offset + 1)};
 }
 
-void OperatorBase::InferShape(const ScopePtr& scope) const {
+void OperatorBase::InferShape(const std::shared_ptr<Scope>& scope) const {
   InferShapeImpl(InferShapeContext(this, scope));
 }
 
