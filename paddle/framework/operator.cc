@@ -29,7 +29,7 @@ Eigen::DefaultDevice* KernelContext::GetEigenDevice<
 template <>
 Eigen::GpuDevice*
 KernelContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
-  return device_context_.get_eigen_device<platform::CPUPlace>();
+  return device_context_.get_eigen_device<platform::GPUPlace>();
 }
 #endif
 

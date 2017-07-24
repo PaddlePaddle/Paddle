@@ -15,14 +15,13 @@ limitations under the License. */
 #include "paddle/platform/device_context.h"
 #include "gtest/gtest.h"
 
-using DEVICE_GPU = Eigen::GpuDevice;
 TEST(Device, Init) {
   int count = paddle::platform::GetDeviceCount();
   for (int i = 0; i < count; i++) {
     paddle::platform::DeviceContext* device_context =
         new paddle::platform::CUDADeviceContext(i);
     Eigen::GpuDevice* gpu_device =
-        device_context->template get_eigen_device<DEVICE_GPU>();
+        device_context->template get_eigen_device<paddle::platform::GPUPlace>();
     ASSERT_NE(nullptr, gpu_device);
     delete device_context;
   }
