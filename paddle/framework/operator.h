@@ -71,7 +71,7 @@ class OperatorBase {
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  virtual void InferShape(const std::shared_ptr<Scope>& scope) const;
+  virtual void InferShape(const std::shared_ptr<Scope>& scope) const final;
   virtual void InferShapeImpl(const InferShapeContext& ctx) const = 0;
 
   /// Net will call this function to Run an op.
