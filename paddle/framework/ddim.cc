@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/ddim.h"
-#include "paddle/framework/enforce.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

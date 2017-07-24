@@ -12,8 +12,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <paddle/framework/op_registry.h>
-#include <paddle/operators/rowwise_add_op.h>
+#include "paddle/operators/rowwise_add_op.h"
+#include "paddle/framework/op_registry.h"
 namespace paddle {
 namespace operators {
 
@@ -30,7 +30,7 @@ protected:
     PADDLE_ENFORCE(dim1.size() == 1, "The second input must be vector");
     PADDLE_ENFORCE(dim0[1] == dim1[0], "The width of two input must be same");
     PADDLE_ENFORCE(outputs.size() == 1, "The output size must be 1");
-    outputs[0]->set_dims(inputs[0]->dims());
+    outputs[0]->Resize(inputs[0]->dims());
   }
 };
 
@@ -58,4 +58,4 @@ REGISTER_OP(rowwise_add,
             paddle::operators::RowWiseAddOpMaker);
 REGISTER_OP_CPU_KERNEL(
     rowwise_add,
-    paddle::operators::RowWiseAddKernel<paddle::platform::CPUPlace>);
+    paddle::operators::RowWiseAddKernel<paddle::platform::CPUPlace, float>);
