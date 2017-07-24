@@ -3,6 +3,18 @@
 
 namespace paddle {
 namespace operators {
+
+using paddle::platform::GPUPlace;
+template <GPUPlace, typename T, typename Generator>
+bool Gaussian(
+    Generator g, T* output, const int size, const T& mean, const T& std) {
+  std::normal_distribution<double> distribution(mean, std);
+  for (int i = 0; i < size; ++i) {
+    output[i] = distribution(g());
+  }
+  return true;
+}
+
 class RandomOp : public framework::OperatorWithKernel {
 protected:
   void InferShape(
@@ -12,7 +24,7 @@ protected:
     PADDLE_ENFORCE(outputs.size() == 1, "Output size of RandomOp must be one.");
     PADDLE_ENFORCE(inputs[0] != nullptr && outputs[0] != nullptr,
                    "Inputs/Outputs of RandomOp must all be set.");
-    outputs[0]->set_dims(inputs[0]->dims());
+    outputs[0]->set_dims(context.op_.attrs_.at("shape"));
   }
 };
 
