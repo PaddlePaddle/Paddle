@@ -1,6 +1,14 @@
 from setuptools import setup
 import subprocess
 
+MAJOR   = 0
+MINOR   = 10
+PATCH   = 0
+RC      = 0
+ISTAGED = False
+
+
+
 def git_commit():
     try:
         cmd = ["git", "rev-parse", "HEAD"]
@@ -13,14 +21,34 @@ def write_version_py(filename="paddle/version.py"):
     cnt = """
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
-version = "%(version)s"
-git_commit = "%(git_commit)s"
+full_version    = "%(major)d.%(minor)d.%(patch)d"
+major           = "%(major)d"
+minor           = "%(minor)d"
+patch           = "%(patch)d"
+rc              = "%(rc)d"
+istaged         = %(istaged)s
+commit          = "%(commit)s"
+
+def show():
+    if istaged:
+        print "full_version:", full_version
+        print "major:", major
+        print "minor:", minor
+        print "patch:", patch
+        print "rc:", rc
+    else:
+        print "commit:", commit
 """
-    commit_id = git_commit()
+    commit = git_commit()
     with open(filename, "w") as f:
         f.write(cnt % {
-            "version" : "${PADDLE_VERSION}",
-            "git_commit": commit_id})
+            "major": MAJOR,
+            "minor": MINOR,
+            "patch": PATCH,
+            "rc": RC,
+            "version": "${PADDLE_VERSION}",
+            "commit": commit,
+            "istaged": ISTAGED})
 
 write_version_py(filename="${PROJ_ROOT}/python/paddle/version.py")
 
