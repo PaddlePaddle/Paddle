@@ -1354,6 +1354,7 @@ class LayerBase(object):
             active_type="",
             drop_rate=0.,
             coeff=None,
+            score_with_paddle_wgt=None,
             error_clipping_threshold=None):
         config_assert('@' not in name,
                       "layer name: %s contain special character @" % name)
@@ -1376,6 +1377,11 @@ class LayerBase(object):
         self.config.name = name
         self.config.type = type
         self.config.active_type = active_type
+        if score_with_paddle_wgt is not None:
+            self.config.score_with_paddle_wgt = score_with_paddle_wgt
+        else:
+            self.config.score_with_paddle_wgt = bool(
+              int(g_command_config_args.get("score_with_paddle_wgt", 0)))
         if coeff is not None:
             self.config.coeff = float(coeff)
         if size != 0:
@@ -1575,6 +1581,7 @@ class MultiClassCrossEntropySelfNormCostLayer(LayerBase):
 
 @config_layer('fc')
 class FCLayer(LayerBase):
+    layer_type = 'fc'
     def __init__(self,
                  name,
                  size,
@@ -1582,7 +1589,26 @@ class FCLayer(LayerBase):
                  bias=True,
                  error_clipping_threshold=None,
                  **xargs):
-        super(FCLayer, self).__init__(name, 'fc', size, inputs=inputs, **xargs)
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
+        if use_mkldnn:
+            self.layer_type = "mkldnn_fc"
+        super(FCLayer, self).__init__(name, self.layer_type, size, inputs=inputs, **xargs)
+        if use_mkldnn:
+          config_assert(len(inputs) == 1,
+            "MkldnnFCLayer support one and only one input!")
+          idx = 0
+          input_layer = self.get_input_layer(idx)
+          fc_conf = self.config.inputs[idx].fc_conf
+          fc_conf.dim_in = input_layer.size
+          fc_conf.dim_out = self.config.size
+          psize = fc_conf.dim_in * fc_conf.dim_out
+          dims = [fc_conf.dim_in, fc_conf.dim_out]
+          format = self.inputs[idx].format
+          config_assert((format == "") or (format is None),
+            "MkldnnFCLayer do not support sparse format yet")
+          self.create_input_parameter(idx, psize, dims)
+          self.create_bias_parameter(bias, self.config.size)
+          return None
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             psize = self.config.size * input_layer.size
@@ -1600,6 +1626,11 @@ class FCLayer(LayerBase):
         self.create_bias_parameter(bias, self.config.size)
         if error_clipping_threshold is not None:
             self.config.error_clipping_threshold = error_clipping_threshold
+
+
+@config_layer('mkldnn_fc')
+class MkldnnFcLayer(FCLayer):
+    layer_type = 'mkldnn_fc'
 
 
 @config_layer('selective_fc')

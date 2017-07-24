@@ -105,6 +105,145 @@ protected:
   std::vector<std::shared_ptr<FunctionBase>> backward_;
 
 public:
+#ifdef PADDLE_USE_MKLDNN
+  /// Next layers pointer
+  /// to build the whole Bidirectional Topology
+  /// for compatibility with mixed un-MKLDNN type layers
+  /// and for summing mkldnn diffs when backward branches
+  std::vector<LayerPtr> nextLayers_;
+
+  /// Whether the layer need pass mkl seq info
+  bool needMklSeqInfo_;
+
+  /** 
+   * Add the next layer pointer.
+   */
+  void addNextLayer(LayerPtr l) {
+    nextLayers_.push_back(l);
+  }
+
+  /**
+   * check if has next layer l
+   */
+  bool hasNextLayer(const LayerPtr& l) {
+    if (std::find(nextLayers_.begin(), nextLayers_.end(), l)
+      == nextLayers_.end()) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+  
+  /** 
+   * Get the pointer of nextLayer[i].
+   */
+  const LayerPtr& getNextLayer(size_t i) {
+    return nextLayers_[i];
+  }
+
+  /** 
+   * Get the number of nextLayers.
+   */
+  size_t getNextSize() { return nextLayers_.size(); }
+
+  /**
+   * Get mkldnn top data memory
+   */
+  virtual std::shared_ptr<void> getMkldnnTopData() {
+    return nullptr;
+  }
+
+  /**
+   * Get mkldnn bottom diff memory
+   */
+  virtual std::shared_ptr<void> getMkldnnBotDiff() {
+    return nullptr;
+  }
+
+  /**
+   * is the type start with "mkldnn_"
+   */
+  bool isDnnType(const std::string& type) {
+    const std::string dnn("mkldnn_");
+    return type.compare(0, dnn.length(), dnn) == 0;
+  }
+    
+  /**
+   * If this layer has an activation
+   */
+  bool hasActivation() {
+    return (nullptr != activation_ && !(activation_->getName().empty()));
+  }
+
+  /**
+   * If this layer has activation with MKLDNN type
+   */
+  bool hasMkldnnAct() {
+    if (!hasActivation()) {
+      return false;
+    }
+    return isDnnType(config_.active_type());
+  }
+
+  /**
+   * Are next layers all MKLDNN types
+   */
+  bool areNextAllDnn() {
+    bool hasAct = this->hasActivation();
+    bool hasMkldnnAct = this->hasMkldnnAct();
+    // if this layer has activation but it's not mkldnn type, return false
+    if (hasAct && !hasMkldnnAct) {
+      return false;
+    }
+    // since activaion do not change format, so then depends on next layer
+    bool res = nextLayers_.size() > 0;
+    for (size_t i = 0; i < nextLayers_.size(); ++i) {
+      bool yes = isDnnType(nextLayers_[i]->getType());
+      CHECK(i == 0 || res == yes)
+        << "Do not support mixed layer type inside the branch, "
+        << "since MKLDNN layers would over wirte diff in backward.";
+      res = res && yes;
+    }
+    return res;
+  }
+
+  /**
+   * Is the prev layer MKLDNN type
+   * If true
+   * then if the prev layer has several output layers
+   * all of them should also be MKLDNN type, otherwise return false 
+   */
+  bool isPrevDnn(size_t idx) {
+    const LayerPtr& prev = getPrev(idx);
+    if (nullptr == prev || prev->getType().empty()) {
+      return false;
+    }
+
+    // if prev layer has activation but it's not mkldnn type, return false
+    bool hasAct = prev->hasActivation();
+    bool hasMkldnnAct = prev->hasMkldnnAct();
+    if (hasAct && !hasMkldnnAct) {
+      return false;
+    }
+
+    if (isDnnType(prev->getType()) == false) {
+      return false;
+    }
+
+    if (passType_ != PASS_TEST) {
+      // in training pass, the branch point should be MKLDNN type
+      CHECK_EQ(prev->areNextAllDnn(), true)
+        << "Since this layer " << getName() << " is with " << getType()
+        << " type , so all the outputs of inputlayer should also be MKLDNN type."
+        << " Prevlayer is " << prev->getName() << ", outsize of prevlayer: "
+        << prev->getNextSize();
+    }
+
+    return true;
+  }
+  
+#endif
+
   /**
    * Wait until all input value ready.
    * Called before Layer::forward() function.
@@ -413,6 +552,11 @@ public:
       output_.subSequenceStartPositions = input.subSequenceStartPositions;
       output_.cpuSequenceDims = input.cpuSequenceDims;
     }
+#ifdef PADDLE_USE_MKLDNN
+    if (!inputLayers_.empty() && needMklSeqInfo_) {
+      output_.mklSeqLen = getInput(0).mklSeqLen;
+    }
+#endif
   }
 
   /**

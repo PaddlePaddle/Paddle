@@ -40,3 +40,4 @@ DECLARE_bool(show_layer_stat);
 DECLARE_string(predict_file);
 DECLARE_bool(prev_batch_state);
 DECLARE_string(init_model_path);
+DECLARE_bool(use_mkldnn);

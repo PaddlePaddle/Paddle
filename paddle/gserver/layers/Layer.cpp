@@ -42,7 +42,11 @@ Layer::Layer(const LayerConfig& config, bool useGpu)
     : config_(config),
       useGpu_(useGpu),
       deviceId_(-1),
-      needSequenceInfo_(true) {}
+      needSequenceInfo_(true)
+#ifdef PADDLE_USE_MKLDNN
+      ,needMklSeqInfo_(true)
+#endif
+     {}
 
 bool Layer::init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
   if (useGpu_ && FLAGS_parallel_nn) {
@@ -64,6 +68,15 @@ bool Layer::init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
     this->addPrev(inputLayer);
 
     inputLayer->addOutputArgument(deviceId_);
+
+#ifdef PADDLE_USE_MKLDNN
+    LayerPtr thisLayer;
+    CHECK(mapGet(getName(), layerMap, &thisLayer))
+      << "Cannot find this layer " << getName();
+    if (!inputLayer->hasNextLayer(thisLayer)) {
+      inputLayer->addNextLayer(thisLayer);
+    }
+#endif
 
     if (inputConfig.has_input_parameter_name()) {
       ParameterPtr parameter;

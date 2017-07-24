@@ -35,6 +35,9 @@ struct Argument {
         strs(nullptr),
         frameHeight(0),
         frameWidth(0),
+#ifdef PADDLE_USE_MKLDNN
+        mklSeqLen(0),
+#endif
         sequenceStartPositions(nullptr),
         subSequenceStartPositions(nullptr),
         cpuSequenceDims(nullptr),
@@ -76,6 +79,13 @@ struct Argument {
   // A dataBatch includes batchSize frames, one frame maybe not only vector
   size_t frameHeight;
   size_t frameWidth;
+
+#ifdef PADDLE_USE_MKLDNN
+  int mklSeqLen;  // length of different sequences, should be euqal in one Batch
+  bool hasMklSeq() const {return mklSeqLen > 1 ? true : false;}
+  int getMklSeqLen() const {return mklSeqLen;}
+  void setMklSeqLen(int len) {mklSeqLen = len;}
+#endif
 
   // If NULL, each position is treated independently.
   // Otherwise, its size should be #NumberOfSequences + 1.

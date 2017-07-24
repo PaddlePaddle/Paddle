@@ -289,6 +289,12 @@ message DetectionOutputConfig {
   optional uint32 width = 9 [default = 1];
 }
 
+message FCConfig {
+  // fully connection config
+  required uint64 dim_in = 1;
+  required uint64 dim_out = 2;
+}
+
 message LayerInputConfig {
   required string input_layer_name = 1;
   optional string input_parameter_name = 2;
@@ -309,6 +315,7 @@ message LayerInputConfig {
   optional RowConvConfig row_conv_conf = 15;
   optional MultiBoxLossConfig multibox_loss_conf = 16;
   optional DetectionOutputConfig detection_output_conf = 17;
+  optional FCConfig fc_conf = 18;
 }
 
 message LayerConfig {
@@ -482,6 +489,10 @@ message LayerConfig {
   repeated uint32 offset = 55;
   repeated uint32 shape = 56;
 
+  // MKLDNN can support original CPU weights in Paddle when inference only.
+  // It can speedup scoring time with MKLDNN layers while the layer weights 
+  // are trained without MKLDNN layers
+  optional bool score_with_paddle_wgt = 57 [default = false];
 }
 
 message EvaluatorConfig {

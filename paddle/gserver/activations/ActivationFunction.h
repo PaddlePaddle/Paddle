@@ -61,6 +61,24 @@ public:
   virtual Error __must_check backward(Argument& act) = 0;
 
   virtual const std::string& getName() const = 0;
+
+#ifdef PADDLE_USE_MKLDNN
+  /**
+   * @brief Reset forward primitive and memory
+   * each dnn layer should have function
+   * to reset dnn forward
+   */
+  virtual void resetFwd(const Argument& arg,
+    std::shared_ptr<void> topDataMD) {}
+
+  /**
+   * @brief Reset backward primitive and memory
+   * each dnn layer should have function
+   * to reset dnn backward
+   */
+  virtual void resetBwd(const Argument& arg,
+    std::shared_ptr<void> topDiffMD) {}
+#endif
 };
 
 }  // namespace paddle
