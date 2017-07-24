@@ -380,6 +380,7 @@ void RecurrentGradientAlgorithm::Run(
   PADDLE_ENFORCE(net != nullptr, "failed to get step net");
 
   for (int step_id = seq_len - 1; step_id >= 0; --step_id) {
+    LOG(INFO) << step_id;
     DLOG(INFO) << "run step " << step_id;
     if (static_cast<size_t>(step_id) != seq_len - 1) {
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1);
