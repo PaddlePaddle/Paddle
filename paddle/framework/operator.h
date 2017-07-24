@@ -47,7 +47,6 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 #endif
 
 class OperatorBase;
-using OperatorPtr = std::shared_ptr<OperatorBase>;
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -80,10 +79,10 @@ class OperatorBase {
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  virtual void InferShape(const ScopePtr& scope) const = 0;
+  virtual void InferShape(const std::shared_ptr<Scope>& scope) const = 0;
 
   /// Net will call this function to Run an op.
-  virtual void Run(const ScopePtr& scope,
+  virtual void Run(const std::shared_ptr<Scope>& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
   // Get a input with argument's name described in `op_proto`
@@ -208,7 +207,7 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
-  void Run(const ScopePtr& scope,
+  void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
     opKernel->Compute(KernelContext(this, scope, dev_ctx));

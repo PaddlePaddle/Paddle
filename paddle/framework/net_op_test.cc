@@ -10,10 +10,10 @@ static int run_cnt = 0;
 
 class TestOp : public pd::OperatorBase {
  public:
-  void InferShape(const paddle::framework::ScopePtr& scope) const override {
+  void InferShape(const std::shared_ptr<pd::Scope>& scope) const override {
     ++infer_shape_cnt;
   }
-  void Run(const paddle::framework::ScopePtr& scope,
+  void Run(const std::shared_ptr<pd::Scope>& scope,
            const paddle::platform::DeviceContext& dev_ctx) const override {
     ++run_cnt;
   }
