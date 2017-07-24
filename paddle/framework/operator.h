@@ -34,8 +34,8 @@ namespace framework {
 class OperatorBase;
 using OperatorPtr = std::shared_ptr<OperatorBase>;
 
-class InferContext;
-class RunContext;
+class InferShapeContext;
+class KernelContext;
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -69,7 +69,7 @@ class OperatorBase {
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
   void InferShape(const ScopePtr& scope) const;
-  virtual void InferShapeImpl(const InferContext& ctx) const = 0;
+  virtual void InferShapeImpl(const InferShapeContext& ctx) const = 0;
 
   /// Net will call this function to Run an op.
   virtual void Run(const ScopePtr& scope,
@@ -85,9 +85,6 @@ class OperatorBase {
   // Get an output which has multiple variables.
   // TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Outputs(const std::string& name) const;
-
- protected:
-  //  virtual void InferShape(const InferContext& ctx) const = 0;
 
  public:
   std::string type_;
@@ -162,7 +159,7 @@ class OperatorContext {
     std::vector<const Tensor*> res;
     std::transform(names.begin(), names.end(), res.begin(),
                    [this](const std::string& name) {
-                     return scope_->GetVariable(name)->GetMutable<Tensor>();
+                     return &scope_->GetVariable(name)->Get<Tensor>();
                    });
     return res;
   }
@@ -181,22 +178,9 @@ class OperatorContext {
   const std::shared_ptr<Scope>& scope_;
 };
 
-template <typename T>
-struct VarToTensor {};
-
-template <>
-struct VarToTensor<Tensor*> {
-  Tensor* operator()(Variable* var) { return var->GetMutable<Tensor>(); }
-};
-
-template <>
-struct VarToTensor<const Tensor*> {
-  const Tensor* operator()(Variable* var) { return &var->Get<Tensor>(); }
-};
-
-class InferContext : public OperatorContext {
+class InferShapeContext : public OperatorContext {
  public:
-  InferContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope)
+  InferShapeContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope)
       : OperatorContext(op, scope) {}
 };
 
@@ -215,10 +199,10 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 };
 #endif
 
-class RunContext : public OperatorContext {
+class KernelContext : public OperatorContext {
  public:
-  RunContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
-             const platform::DeviceContext& device_context)
+  KernelContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
+                const platform::DeviceContext& device_context)
       : OperatorContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
@@ -240,7 +224,7 @@ class OpKernel {
    * KernelContext. User should construct it before run the Operator.
    */
 
-  virtual void Compute(const RunContext& context) const = 0;
+  virtual void Compute(const KernelContext& context) const = 0;
 
   virtual ~OpKernel() {}
 };
@@ -271,7 +255,7 @@ class OperatorWithKernel : public OperatorBase {
   void Run(const ScopePtr& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(RunContext(this, scope, dev_ctx));
+    opKernel->Compute(KernelContext(this, scope, dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&

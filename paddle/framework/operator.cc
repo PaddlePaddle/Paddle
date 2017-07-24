@@ -20,8 +20,8 @@ namespace paddle {
 namespace framework {
 
 template <>
-Eigen::DefaultDevice*
-RunContext::GetEigenDevice<platform::CPUPlace, Eigen::DefaultDevice>() const {
+Eigen::DefaultDevice* KernelContext::GetEigenDevice<
+    platform::CPUPlace, Eigen::DefaultDevice>() const {
   return device_context_.get_eigen_device<Eigen::DefaultDevice>();
 }
 
@@ -80,7 +80,7 @@ std::vector<std::string> OperatorBase::Outputs(const std::string& name) const {
 }
 
 void OperatorBase::InferShape(const ScopePtr& scope) const {
-  InferShapeImpl(InferContext(this, scope));
+  InferShapeImpl(InferShapeContext(this, scope));
 }
 
 std::string OperatorBase::DebugString() const {

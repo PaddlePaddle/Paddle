@@ -21,7 +21,7 @@ namespace operators {
 
 class MulOp : public framework::OperatorWithKernel {
 protected:
-  void InferShapeImpl(const framework::InferContext &ctx) const override {
+  void InferShapeImpl(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2, "The mul op must take two inputs");
     auto dim0 = ctx.Input(0).dims();
     auto dim1 = ctx.Input(1).dims();

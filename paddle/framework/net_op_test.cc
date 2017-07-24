@@ -11,7 +11,7 @@ static int run_cnt = 0;
 class TestOp : public pd::OperatorBase {
  public:
   void InferShapeImpl(
-      const paddle::framework::InferContext& ctx) const override {
+      const paddle::framework::InferShapeContext& ctx) const override {
     ++infer_shape_cnt;
   }
   void Run(const paddle::framework::ScopePtr& scope,

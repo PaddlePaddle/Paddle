@@ -21,7 +21,7 @@ namespace operators {
 
 class OnehotCrossEntropyOp : public framework::OperatorWithKernel {
 protected:
-  void InferShapeImpl(const framework::InferContext &ctx) const override {
+  void InferShapeImpl(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2,
                    "Input size of OnehotCrossEntropyOp must be two");
     PADDLE_ENFORCE(ctx.OutputSize() == 1,

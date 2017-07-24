@@ -23,7 +23,7 @@ namespace operators {
 template <typename Place, typename T>
 class RowWiseAddKernel : public framework::OpKernel {
 public:
-  void Compute(const framework::RunContext& context) const override {
+  void Compute(const framework::KernelContext& context) const override {
     auto* out = context.Output(0);
     out->mutable_data<T>(context.GetPlace());
 

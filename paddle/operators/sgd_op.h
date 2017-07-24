@@ -23,7 +23,7 @@ namespace operators {
 template <typename Place, typename T>
 class SGDOpKernel : public framework::OpKernel {
 public:
-  void Compute(const framework::RunContext& ctx) const override {
+  void Compute(const framework::KernelContext& ctx) const override {
     auto param = ctx.Input("param");
     auto grad = ctx.Input("grad");
     auto* param_out = ctx.Output(0);

@@ -57,7 +57,7 @@ class PlainNet : public Net {
    * Infer all the operators' input and output variables' shapes, will be called
    * before every mini-batch
    */
-  void InferShapeImpl(const InferContext& ctx) const override {
+  void InferShapeImpl(const InferShapeContext& ctx) const override {
     for (auto& op : ops_) {
       op->InferShapeImpl(ctx);
     }

@@ -19,7 +19,7 @@ namespace operators {
 
 class SigmoidOp : public framework::OperatorWithKernel {
 protected:
-  void InferShapeImpl(const framework::InferContext &ctx) const override {
+  void InferShapeImpl(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 1, "Sigmoid Op only have one input");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "Sigmoid Op only have one output");
     ctx.Output(0)->Resize(ctx.Input(0).dims());

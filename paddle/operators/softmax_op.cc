@@ -19,7 +19,7 @@ namespace operators {
 
 class SoftmaxOp : public framework::OperatorWithKernel {
 protected:
-  void InferShapeImpl(const framework::InferContext &ctx) const override {
+  void InferShapeImpl(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 1, "Only one input is need for softmax");
     PADDLE_ENFORCE(ctx.Input(0).dims().size() == 2,
                    "The input of softmax op must be matrix");

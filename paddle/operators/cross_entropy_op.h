@@ -24,7 +24,7 @@ class OnehotCrossEntropyOpKernel : public framework::OpKernel {
 public:
   constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
 
-  void Compute(const framework::RunContext& ctx) const override {
+  void Compute(const framework::KernelContext& ctx) const override {
     auto X = ctx.Input(0);
     const T* X_data = X.data<T>();
     const int* label_data = ctx.Input(1).data<int>();

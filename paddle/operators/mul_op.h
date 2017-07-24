@@ -24,7 +24,7 @@ namespace operators {
 template <typename Place, typename T>
 class MulKernel : public framework::OpKernel {
 public:
-  void Compute(const framework::RunContext& context) const override {
+  void Compute(const framework::KernelContext& context) const override {
     Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
         {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
 
