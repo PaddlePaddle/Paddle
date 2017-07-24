@@ -298,9 +298,10 @@ class OpRegistry {
     return CreateOp(op_desc.type(), inputs, outputs, attrs);
   }
 
-  static OperatorPtr CreateGradOp(OperatorPtr op) {
+  static std::shared_ptr<OperatorBase> CreateGradOp(
+      std::shared_ptr<OperatorBase> op) {
     GradOpCreator creator(op.get());
-    OperatorPtr grad_op(creator.Create());
+    std::shared_ptr<OperatorBase> grad_op(creator.Create());
     grad_op->Init();
     return grad_op;
   }
