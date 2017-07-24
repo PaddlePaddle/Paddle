@@ -56,7 +56,9 @@ class Scope {
     if (var) {
       return var;
     } else {
-      vars_[name] = std::unique_ptr<Variable>(new Variable());
+      auto ptr = new Variable();
+      vars_[name] = std::unique_ptr<Variable>(ptr);
+      var_names_[ptr] = name;
       return GetVariable(name);
     }
   }
@@ -88,7 +90,16 @@ class Scope {
             (parent_ && parent_->HasVariable(name)));
   }
 
+  std::string GetVariableName(Variable* const var) const {
+    try {
+      return var_names_.at(var);
+    } catch (...) {
+      return "";
+    }
+  }
+
  private:
+  std::unordered_map<Variable*, std::string> var_names_;
   std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
   std::shared_ptr<Scope> parent_{nullptr};
 };

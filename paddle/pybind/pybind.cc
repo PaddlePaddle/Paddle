@@ -56,6 +56,11 @@ void ExposeOperator(ClassType& m) {
       .def("__str__", &ClassType::type::DebugString);
 }
 
+static size_t UniqueIntegerGenerator() {
+  static std::atomic<size_t> generator;
+  return generator.fetch_add(1);
+}
+
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of PaddlePaddle");
 
@@ -106,7 +111,8 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference)
       .def("create_var",
            &pd::Scope::CreateVariable,
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+      .def("get_var_name", &pd::Scope::GetVariableName);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
@@ -165,6 +171,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("complete_add_op", &pd::PlainNet::CompleteAddOp)
       .def("complete_add_op", [](PlainNetPtr& self) { self->CompleteAddOp(); });
   ExposeOperator(net);
+
+  m.def("unique_integer", UniqueIntegerGenerator);
 
   return m.ptr();
 }

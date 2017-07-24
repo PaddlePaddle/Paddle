@@ -18,6 +18,15 @@ class TestNet(unittest.TestCase):
         Op(sigmoid), inputs:(@TEMP@fc@0), outputs:(fc@OUT@1).
 ''', str(net))
 
+        net2 = Network()
+        tmp = net2.add_two(X="X", Y="Y")
+        self.assertTrue(isinstance(tmp, core.Variable))
+        net2.complete_add_op()
+        self.assertEqual(
+            '''Op(naive_net), inputs:(X, Y), outputs:(add_two@OUT@2).
+    Op(add_two), inputs:(X, Y), outputs:(add_two@OUT@2).
+''', str(net2))
+
 
 if __name__ == '__main__':
     unittest.main()
