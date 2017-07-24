@@ -25,7 +25,7 @@ class OpWithoutKernelTest : public OperatorBase {
  public:
   void Init() override { x = 1; }
   void InferShapeImpl(const framework::InferShapeContext& ctx) const override {}
-  void Run(const ScopePtr& scope,
+  void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const override {
     op_run_num++;
     ASSERT_EQ((int)inputs_.size(), 1);
@@ -70,8 +70,7 @@ TEST(OperatorBase, all) {
   paddle::platform::CPUDeviceContext device_context;
   auto scope = std::make_shared<paddle::framework::Scope>();
 
-  paddle::framework::OperatorPtr op =
-      paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   scope->CreateVariable("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
   op->InferShape(scope);
@@ -189,8 +188,7 @@ TEST(OpKernel, all) {
   paddle::platform::CPUDeviceContext cpu_device_context;
   auto scope = std::make_shared<paddle::framework::Scope>();
 
-  paddle::framework::OperatorPtr op =
-      paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
   op->Run(scope, cpu_device_context);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
@@ -236,6 +234,6 @@ TEST(OpKernel, multi_inputs) {
   paddle::platform::CPUDeviceContext cpu_device_context;
   auto scope = std::make_shared<Scope>();
 
-  OperatorPtr op(paddle::framework::OpRegistry::CreateOp(op_desc));
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);
 }

@@ -39,7 +39,7 @@ namespace framework {
  */
 class Net : public OperatorBase {
  public:
-  virtual void AddOp(const OperatorPtr& op) = 0;
+  virtual void AddOp(const std::shared_ptr<OperatorBase>& op) = 0;
   virtual void CompleteAddOp(bool calc) = 0;
 };
 
@@ -70,7 +70,7 @@ class PlainNet : public Net {
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  void Run(const ScopePtr& scope,
+  void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const override {
     for (auto& op : ops_) {
       op->Run(scope, dev_ctx);
@@ -80,7 +80,7 @@ class PlainNet : public Net {
   /**
    * @brief Add an operator by ptr
    */
-  void AddOp(const OperatorPtr& op) override {
+  void AddOp(const std::shared_ptr<OperatorBase>& op) override {
     PADDLE_ENFORCE(!add_op_done_, "Cannot AddOp when this network is sealed");
     ops_.push_back(op);
   }
@@ -89,7 +89,7 @@ class PlainNet : public Net {
 
   std::string DebugString() const override;
 
-  std::vector<OperatorPtr> ops_;
+  std::vector<std::shared_ptr<OperatorBase>> ops_;
 
  private:
   bool add_op_done_{false};
@@ -99,6 +99,8 @@ class PlainNet : public Net {
     return container.find(key) != container.end();
   }
 };
+
+std::shared_ptr<PlainNet> AddBackwardOp(std::shared_ptr<PlainNet> ForwardOps);
 
 }  // namespace framework
 }  // namespace paddle

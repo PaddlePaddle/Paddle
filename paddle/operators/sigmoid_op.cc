@@ -37,12 +37,25 @@ public:
   }
 };
 
+class SigmoidOpGrad : public framework::OperatorWithKernel {
+protected:
+  void InferShape(
+      const std::vector<const framework::Tensor *> &inputs,
+      const std::vector<framework::Tensor *> &outputs) const override {}
+  std::string DebugString() const override {
+    LOG(INFO) << "SigmoidGrad";
+    return "";
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_OP(sigmoid,
             paddle::operators::SigmoidOp,
             paddle::operators::SigmoidOpMaker);
+REGISTER_GRADIENT_OP(sigmoid, paddle::operators::SigmoidOpGrad);
+
 REGISTER_OP_CPU_KERNEL(
     sigmoid,
     paddle::operators::SigmoidKernel<paddle::platform::CPUPlace, float>);

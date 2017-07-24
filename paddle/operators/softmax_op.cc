@@ -40,11 +40,23 @@ public:
   }
 };
 
+class SoftmaxOpGrad : public framework::OperatorWithKernel {
+protected:
+  void InferShape(
+      const std::vector<const framework::Tensor *> &inputs,
+      const std::vector<framework::Tensor *> &outputs) const override {}
+  std::string DebugString() const override {
+    LOG(INFO) << "SoftmaxOpGrad";
+    return "";
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker);
+REGISTER_GRADIENT_OP(softmax, paddle::operators::SoftmaxOpGrad);
 REGISTER_OP_CPU_KERNEL(softmax,
                        ops::SoftmaxKernel<paddle::platform::CPUPlace, float>);

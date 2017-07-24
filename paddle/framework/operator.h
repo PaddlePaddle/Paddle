@@ -32,8 +32,6 @@ namespace paddle {
 namespace framework {
 
 class OperatorBase;
-using OperatorPtr = std::shared_ptr<OperatorBase>;
-
 class InferShapeContext;
 class KernelContext;
 /**
@@ -50,6 +48,11 @@ class OperatorBase {
   /// If a variable is a temporary variable, that name will be set in Python,
   /// but it will be convert to a unique name in scope after OpCreator.
   static std::string TMP_VAR_NAME() { return "@TEMP@"; }
+
+  /// If a variable's name has a certain suffix, it means that the
+  /// variable is the gradient of another varibale.
+  /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
+  static std::string GRAD_VAR_SUFFIX() { return "@GRAD"; }
 
   virtual ~OperatorBase() {}
 
@@ -68,11 +71,11 @@ class OperatorBase {
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  void InferShape(const ScopePtr& scope) const;
+  virtual void InferShape(const std::shared_ptr<Scope>& scope) const = 0;
   virtual void InferShapeImpl(const InferShapeContext& ctx) const = 0;
 
   /// Net will call this function to Run an op.
-  virtual void Run(const ScopePtr& scope,
+  virtual void Run(const std::shared_ptr<Scope>& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
   // Get a input with argument's name described in `op_proto`
@@ -252,7 +255,7 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
-  void Run(const ScopePtr& scope,
+  void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
     opKernel->Compute(KernelContext(this, scope, dev_ctx));
