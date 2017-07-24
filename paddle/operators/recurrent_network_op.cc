@@ -13,15 +13,14 @@
    limitations under the License. */
 
 #include "paddle/operators/recurrent_network_op.h"
-#include "paddle/platform/enforce.h"
 
 #include <glog/logging.h>
 #include <cstring>
 #include <sstream>
 
-#include "paddle/framework/op_registry.h"
-// #include "paddle/framework/tensor.h"
 #include "paddle/framework/net.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -64,7 +63,7 @@ void ConcatOutputs(std::vector<ScopePtr>& step_scopes,
                          ->dims();
     std::vector<int> dims_vec = vectorize(step_dims);
     dims_vec.insert(dims_vec.begin(), seq_len);
-    output->mutable_data<double>(make_ddim(dims_vec), platform::CPUPlace());
+    output->mutable_data<float>(make_ddim(dims_vec), platform::CPUPlace());
 
     for (size_t j = 0; j < seq_len; j++) {
       Tensor* step_output = step_scopes[j]
@@ -102,9 +101,11 @@ void LinkMemories(std::vector<ScopePtr>& scopes,
     mem->ShareDataWith<float>(*linked_mem);
 
     // TODO(qingqing) remove following code
-    // for unit test
     // the memory of current step should be allocated in step net
     auto m = scope->CreateVariable(attr.var)->GetMutable<Tensor>();
+    // for unit test, as addOp and mulOp are null currently, if not
+    // mutable_data, mem.data() in output will be error. We will
+    // remove this line after merge the correct addOp and mulOp.
     m->mutable_data<float>(mem->dims(), platform::CPUPlace());
   }
 }
@@ -215,13 +216,7 @@ void RecurrentAlgorithm::InferShape(const ScopePtr& scope) const {
 
 void RecurrentAlgorithm::Run(const ScopePtr& scope,
                              const platform::DeviceContext& dev_ctx) const {
-  // DLOG(INFO) << "create scopes";
-  // CreateScopes(scope);
   auto step_scopes = GetStepScopes(scope);
-
-  // DLOG(INFO) << "segment input";
-  // rnn::SegmentInputs(step_scopes, arg_->inlinks);
-  // InitMemories(step_scopes[0]);
 
   Variable* net = scope->GetVariable(arg_->step_net);
   for (size_t step_id = 0; step_id < seq_len_; step_id++) {
@@ -339,10 +334,6 @@ void RecurrentOp::Init() {
   DLOG(INFO) << alg_.debug_string();
 }
 
-void RecurrentOp::InferShape(const ScopePtr& scope) const {
-  alg_.InferShape(scope);
-}
-
 /*
  * Op definition of RNNOp
  */
@@ -352,16 +343,17 @@ public:
                                          OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     const auto& name = RecurrentOp::arg_name;
+    // inputs and outputs stored in proto
     AddInputs(name.inlinks,
               "the input that need to be segmented for each step.");
     AddInputs(name.boot_memories, "variables to initialize memories.");
-
     AddInput(name.step_net, "network shared by all steps.");
 
     AddOutputs(name.outlinks,
                "the output that need to concated for all steps.");
     AddOutput(name.step_scopes, "step scopes");
 
+    // Attributes stored in AttributeMap
     AddAttr<std::vector<std::string>>(name.inlink_alias, "alias of inlinks");
     AddAttr<std::vector<std::string>>(name.outlink_alias, "alias of outlinks");
     AddAttr<std::vector<std::string>>(name.pre_memories,

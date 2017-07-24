@@ -60,11 +60,11 @@ struct ArgumentName {
   std::string step_scopes;
   std::string inlinks;
   std::string outlinks;
-  std::string inlink_alias;
-  std::string outlink_alias;
-  std::string memories;
-  std::string pre_memories;
-  std::string boot_memories;
+  std::string inlink_alias;   // the alias of inlinks in step net.
+  std::string outlink_alias;  // the alias of outlinks in step net.
+  std::string memories;       // the memory name
+  std::string pre_memories;   // the previous memory name
+  std::string boot_memories;  // the boot memory name
 };
 
 /*
@@ -90,8 +90,6 @@ void InitArgument(const ArgumentName& name, Argument* arg);
 
 };  // namespace rnn
 
-// fake interfaces end
-// --------------------------------------------------------------------
 // The sequence format in RecurrentOp is Tensor<seq_len, batch_size, dim> now.
 // TODO:
 // 1. No-padding computing for sequences with indifinite length in one batch.
@@ -100,28 +98,6 @@ void InitArgument(const ArgumentName& name, Argument* arg);
 // 4. More Complex RNN architecture, such as Gated Feedback RNN.
 //    Refer to: https://arxiv.org/pdf/1502.02367.pdf
 
-/*
- * RecurrentOp inputs stored in proto:
- * - in_links : real inputs that need to be segmented to steps.
- * - boot memories
- * - all weights in step net
- * - step net
- *
- * outputs:
- * - out_links : real outputs
- * - step scopes
- *
- * Attributes stored in AttributeMap:
- * - in_links: vector<int>
- * - boot_memories: vector<int>
- * - step_net: int
- * - in_link_alias: vector<string>  the alias of in_links in step net.
- * - out_link_alias: vector<string> the alias of out_links in step net
- * - memories: vector<string> the memory names
- * - pre_memories: vector<string> the previous memory names
- *
- * see RecurrentOpProtoAndCheckerMaker
- */
 class RecurrentAlgorithm {
 public:
   /*
@@ -195,12 +171,12 @@ class RecurrentOp final : public OperatorBase {
 public:
   void Init() override;
 
-  virtual void InferShape(const ScopePtr& scope) const override;
+  virtual void InferShape(const ScopePtr& scope) const {
+    alg_.InferShape(scope);
+  }
 
   virtual void Run(const ScopePtr& scope,
-                   const platform::DeviceContext& dev_ctx) const override {
-    alg_.Run(scope, dev_ctx);
-  }
+                   const platform::DeviceContext& dev_ctx) const override {}
 
   virtual ~RecurrentOp() {}
 
@@ -217,15 +193,12 @@ class RecurrentGradientOp final : public OperatorBase {
 public:
   void Init() override;
 
-  // TODO(Superjom) implement this when step net's InferShape ready.
-  virtual void InferShape(const ScopePtr& scope) const override {
+  virtual void InferShape(const ScopePtr& scope) const {
     alg_.InferShape(scope);
   }
 
   virtual void Run(const ScopePtr& scope,
-                   const platform::DeviceContext& dev_ctx) const override {
-    alg_.Run(scope, dev_ctx);
-  }
+                   const platform::DeviceContext& dev_ctx) const override {}
 
   virtual ~RecurrentGradientOp() {}
 
