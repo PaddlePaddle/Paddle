@@ -20,7 +20,7 @@ namespace framework {
 
 OperatorBase* GradOpBuilder::Build() {
   BuildOpInOutArgList();
-  std::string grad_op_type = OpRegistry::grad_ops().at(op->type_);
+  std::string grad_op_type = OpRegistry::grad_ops().at(op_->type_);
   OperatorBase* grad_op = OpRegistry::op_creators().at(grad_op_type)();
   grad_op->type_ = grad_op_type;
   CompleteGradOp(grad_op);
