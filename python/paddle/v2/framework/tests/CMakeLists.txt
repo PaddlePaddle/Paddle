@@ -12,4 +12,5 @@ add_python_test(test_framework
     test_mul_op.py
     test_sigmoid_op.py
     test_softmax_op.py
-    test_rowwise_add_op.py)
+    test_rowwise_add_op.py
+    test_network.py)

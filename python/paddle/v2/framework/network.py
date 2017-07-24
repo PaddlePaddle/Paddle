@@ -2,13 +2,28 @@ import paddle.v2.framework.core as core
 from paddle.v2.framework.create_op_creation_methods import op_creations
 from default_scope_funcs import create_var, get_var, get_cur_scope
 
+__all__ = ['Network']  # Only expose Network
+
 
 class NetworkFunctor(object):
+    """
+    Network Op Creation Function. Used internally in this module.
+    It convert string input to Variable. If it is not created before, just 
+    create in scope.
+    
+    It is a functor object. means the instances are callable.
+    
+    :param func: The op creation function which generated in Python.
+    :param net: The Network instance.
+    """
+
     def __init__(self, func, net):
         self.func = func
         self.net = net
 
-    def __call__(self, **kwargs):
+    def __call__(self, *args, **kwargs):
+        if len(args) != 0:
+            raise ValueError("Paddle must use keyword argument")
         inputs = self.func.all_input_args
         for ipt in inputs:
             if ipt in kwargs:
@@ -58,6 +73,22 @@ class NetworkFunctor(object):
 
 
 class Network(object):
+    """
+    The network concept. It avoid user to manually create operator, create 
+    variable, and combine them into a Net. Just use Network.xxx can create the
+    operator, create variables in default scope, and add them into `self.net`.
+    
+    For example:
+    
+    ..  code-block: python
+    
+        net = Network()
+        out = net.add_two(X="a", Y="b")
+        fc_out = net.fc(X="out", W="fc.w")
+        
+        net.run(...)
+    """
+
     def __init__(self):
         self.net = core.Net.create()
         funcs = (func_name for func_name in dir(op_creations)
@@ -65,6 +96,9 @@ class Network(object):
         self.generate_idx = 0
         self.var_name_map = dict()
 
+        # TODO(yuyang18): This code can work, but do not generate a good
+        # docstring, try to give a better way generate function in runtime
+        # later.
         for func_name in funcs:
             func = getattr(op_creations, func_name)
             impl = NetworkFunctor(func, self)
@@ -92,5 +126,5 @@ if __name__ == '__main__':
     net = Network()
     out = net.add_two(X="a", Y="b")
     fc_out = net.fc(X=out, W="fc.w", b="fc.b", activation="softmax")
-
-    print str(net)
+    net.complete_add_op()
+    print net

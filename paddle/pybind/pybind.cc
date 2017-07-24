@@ -56,17 +56,6 @@ void ExposeOperator(ClassType& m) {
       .def("__str__", &ClassType::type::DebugString);
 }
 
-template <typename ClassType>
-void ExposeOperator(ClassType& m) {
-  m.def("infer_shape", &ClassType::type::InferShape)
-      .def("run", &ClassType::type::Run)
-      .def("outputs",
-           [](const typename ClassType::type& op) -> std::vector<std::string> {
-             return op.outputs_;
-           })
-      .def("__str__", &ClassType::type::DebugString);
-}
-
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of PaddlePaddle");
 
