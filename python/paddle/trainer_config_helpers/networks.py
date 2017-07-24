@@ -369,7 +369,8 @@ def img_conv_group(input,
     :type pool_stride: int
     :param pool_type: pooling type.
     :type pool_type: BasePoolingType
-    :param param_attr: see img_conv_layer for details.
+    :param param_attr: Convolution param attribute.
+        None means default attribute.
     :type param_attr: ParameterAttribute
     :return: Layer's output
     :type: LayerOutput
