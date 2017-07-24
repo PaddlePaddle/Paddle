@@ -251,7 +251,7 @@ void GpuMatrix::resetOne() {
 void GpuMatrix::resize(size_t newHeight, size_t newWidth) {
   size_t newSize = newHeight * newWidth;
   if (NULL == memoryHandle_.get() ||
-      newSize * sizeof(real) > memoryHandle_->getAllocSize()) {
+      newSize * sizeof(real) > memoryHandle_->getSize()) {
     memoryHandle_ = std::make_shared<GpuMemoryHandle>(newSize * sizeof(real));
     data_ = reinterpret_cast<real*>(memoryHandle_->getBuf());
   }
@@ -1638,7 +1638,7 @@ MatrixPtr CpuMatrix::clone(size_t height, size_t width, bool useGpu) {
 void CpuMatrix::resize(size_t newHeight, size_t newWidth) {
   size_t newSize = newHeight * newWidth;
   if (NULL == memoryHandle_.get() ||
-      newSize * sizeof(real) > memoryHandle_->getAllocSize()) {
+      newSize * sizeof(real) > memoryHandle_->getSize()) {
     memoryHandle_ = std::make_shared<CpuMemoryHandle>(newSize * sizeof(real));
     data_ = reinterpret_cast<real*>(memoryHandle_->getBuf());
   }

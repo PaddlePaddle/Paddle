@@ -28,7 +28,7 @@ else()
     cuda_add_library(paddle_math ${MATH_SOURCES})
 endif()
 
-
+target_link_libraries(paddle_math place paddle_memory)
 
 add_style_check_target(paddle_math ${MATH_SOURCES})
 add_style_check_target(paddle_math ${MATH_HEADERS})

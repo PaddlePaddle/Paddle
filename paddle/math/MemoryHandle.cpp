@@ -13,44 +13,46 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "MemoryHandle.h"
+
+#include "glog/logging.h"
+
 #include <cmath>
-#include "Storage.h"
+
+#include "paddle/memory/memory.h"
+#include "paddle/platform/place.h"
 
 namespace paddle {
 
 /**
  * Calculate the actual allocation size according to the required size.
  */
-MemoryHandle::MemoryHandle(size_t size) : size_(size), buf_(nullptr) {
-  if (size_ <= 256) {
-    // Memory allocation in cuda is always aligned to at least 256 bytes.
-    // In many cases it is 512 bytes.
-    allocSize_ = 256;
-  } else if (size_ <= 512) {
-    allocSize_ = 512;
-  } else if (size_ <= (1 << 16)) {
-    // Allocate multiple of 1024 bytes.
-    allocSize_ = (size + 1023) & ~(1023);
-  } else {
-    allocSize_ = size_;
-  }
-}
+MemoryHandle::MemoryHandle(size_t size) : size_(size), buf_(nullptr) {}
+
+#ifndef PADDLE_ONLY_CPU
 
 GpuMemoryHandle::GpuMemoryHandle(size_t size) : MemoryHandle(size) {
   CHECK(size != 0) << " allocate 0 bytes";
-  deviceId_ = hl_get_device();
-  allocator_ = StorageEngine::singleton()->getGpuAllocator(deviceId_);
-  buf_ = allocator_->alloc(allocSize_);
+  deviceId_ = paddle::platform::GetCurrentDeviceId();
+  paddle::platform::GPUPlace gpu_place(deviceId_);
+  buf_ = paddle::memory::Alloc(gpu_place, size);
 }
 
-GpuMemoryHandle::~GpuMemoryHandle() { allocator_->free(buf_, allocSize_); }
+GpuMemoryHandle::~GpuMemoryHandle() {
+  paddle::platform::GPUPlace gpu_place(deviceId_);
+  paddle::memory::Free(gpu_place, buf_);
+}
+
+#endif  // PADDLE_ONLY_CPU
 
 CpuMemoryHandle::CpuMemoryHandle(size_t size) : MemoryHandle(size) {
   CHECK(size != 0) << " allocate 0 bytes";
-  allocator_ = StorageEngine::singleton()->getCpuAllocator();
-  buf_ = allocator_->alloc(allocSize_);
+  paddle::platform::GPUPlace cpu_place;
+  buf_ = paddle::memory::Alloc(cpu_place, size);
 }
 
-CpuMemoryHandle::~CpuMemoryHandle() { allocator_->free(buf_, allocSize_); }
+CpuMemoryHandle::~CpuMemoryHandle() {
+  paddle::platform::CPUPlace cpu_place;
+  paddle::memory::Free(cpu_place, buf_);
+}
 
 }  // namespace paddle

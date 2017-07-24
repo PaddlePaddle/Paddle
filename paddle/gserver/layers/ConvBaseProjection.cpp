@@ -179,7 +179,7 @@ void *ConvBaseProjection::getSpaceBytes(size_t size) {
 
   int devId = hl_get_device();
   MemoryHandle **localMem = &(convMem[devId]);
-  if (NULL == *localMem || size > (*localMem)->getAllocSize()) {
+  if (NULL == *localMem || size > (*localMem)->getSize()) {
     *localMem = new GpuMemoryHandle(size);
   }
   return (*localMem)->getBuf();

@@ -131,7 +131,7 @@ protected:
 
   template <DeviceType Device>
   void resizeBuffer(size_t newSize) {
-    if (!memory_ || newSize * sizeof(real) > memory_->getAllocSize()) {
+    if (!memory_ || newSize * sizeof(real) > memory_->getSize()) {
       if (Device == DEVICE_TYPE_CPU) {
         memory_ = std::make_shared<CpuMemoryHandle>(newSize * sizeof(real));
       } else {

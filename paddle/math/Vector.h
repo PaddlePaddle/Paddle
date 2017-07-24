@@ -104,7 +104,7 @@ public:
    * resizing to a big vector will not preserve old values.
    */
   void resize(size_t newSize) {
-    if (!memoryHandle_ || newSize * sizeof(T) > memoryHandle_->getAllocSize()) {
+    if (!memoryHandle_ || newSize * sizeof(T) > memoryHandle_->getSize()) {
       memoryHandle_ = newMemory(newSize * sizeof(T));
       this->data_ = reinterpret_cast<T*>(memoryHandle_->getBuf());
     }

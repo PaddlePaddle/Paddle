@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
-#include "PoolAllocator.h"
 
 namespace paddle {
 
@@ -27,13 +26,10 @@ protected:
 public:
   void* getBuf() const { return buf_; }
   size_t getSize() const { return size_; }
-  size_t getAllocSize() const { return allocSize_; }
 
 protected:
-  PoolAllocator* allocator_;
-  size_t size_;       // the requested size
-  size_t allocSize_;  // the allocated size
-  int deviceId_;      // the device id of memory if gpu memory
+  size_t size_;   // the requested size
+  int deviceId_;  // the device id of memory if gpu memory
   void* buf_;
 };
 
