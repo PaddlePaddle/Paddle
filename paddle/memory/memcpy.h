@@ -20,26 +20,14 @@ limitations under the License. */
 namespace paddle {
 namespace memory {
 
-template <typename Place>
-void* Alloc(Place, size_t);
+template <typename DstPlace, typename SrcPlace>
+void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
 
-template <typename Place>
-void Free(Place, void*);
-
-template <typename Place>
-size_t Used(Place);
-
-template <typename T, /* must be POD types */
-          typename Place /* platform::GPUPlace or platform::CPUPlace */,
-          typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
-class PODDeleter {
- public:
-  PODDeleter(Place place) : place_(place) {}
-  void operator()(T* ptr) { Free(place_, static_cast<void*>(ptr)); }
-
- private:
-  Place place_;
-};
+#ifndef PADDLE_ONLY_CPU
+template <typename DstPlace, typename SrcPlace>
+void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
+          cudaStream_t stream);
+#endif  // PADDLE_ONLY_CPU
 
 }  // namespace memory
 }  // namespace paddle
