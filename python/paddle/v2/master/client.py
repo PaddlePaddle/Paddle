@@ -18,13 +18,13 @@ class client(object):
         lib.paddle_release_master_client(self.c)
         self.c = None
 
-    def set_dataset(self, paths, passes=1):
+    def set_dataset(self, paths):
         holder_type = ctypes.c_char_p * len(paths)
         holder = holder_type()
         for idx, path in enumerate(paths):
             c_ptr = ctypes.c_char_p(path)
             holder[idx] = c_ptr
-        lib.paddle_set_dataset(self.c, holder, len(paths), passes)
+        lib.paddle_set_dataset(self.c, holder, len(paths))
 
     # return format: (record, errno)
     # errno =  0: ok

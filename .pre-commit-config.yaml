@@ -4,12 +4,12 @@
     -   id: remove-crlf
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
 -   repo: https://github.com/PaddlePaddle/mirrors-yapf.git
-    sha: v0.16.2
+    sha: 0d79c0c469bab64f7229c9aca2b1186ef47f0e37
     hooks:
     -   id: yapf
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    sha: v0.9.1
+    sha: 5bf6c09bfa1297d3692cadd621ef95f1284e33c0
     hooks:
     -   id: check-added-large-files
     -   id: check-merge-conflict
@@ -18,7 +18,7 @@
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
     -   id: end-of-file-fixer
 -   repo: https://github.com/PaddlePaddle/clang-format-pre-commit-hook.git
-    sha: 32a6f751000a9b3d22020203b848b487e829a229
+    sha: 28c0ea8a67a3e2dbbf4822ef44e85b63a0080a29
     hooks:
     -   id: clang-formater
 -   repo: https://github.com/PaddlePaddle/pre-commit-golang
