@@ -22,6 +22,9 @@ package main
 #define PADDLE_MASTER_OK    0
 #define PADDLE_MASTER_ERROR -1
 
+#define PADDLE_SAVE_MODEL_OK   1
+#define PADDLE_SAVE_MODEL_SKIP 0
+
 typedef int paddle_master_client;
 */
 import "C"
@@ -146,7 +149,7 @@ func paddle_next_record(client C.paddle_master_client, record **C.uchar) C.int {
 // paddle_request_save_model requests the master server to approve the
 // caller to save the model.
 //
-// returns 1 if the save the model request is approved, 0 if does the
+// returns 1 if the save the model request is approved, 0 if the
 // request is rejected because other trainer is saving the model, -1
 // if error happened.
 //
@@ -156,14 +159,14 @@ func paddle_request_save_model(client C.paddle_master_client, trainerID string, 
 	need, err := c.RequestSaveModel(trainerID, time.Duration(blockMS)*time.Millisecond)
 	if err != nil {
 		log.Errorln(err)
-		return -1
+		return C.PADDLE_MASTER_ERROR
 	}
 
 	if need {
-		return 1
+		return C.PADDLE_SAVE_MODEL_OK
 	}
 
-	return 0
+	return C.PADDLE_SAVE_MODEL_SKIP
 }
 
 //export mem_free
