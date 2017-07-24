@@ -13,8 +13,8 @@ struct add {
                   framework::Tensor* output) {
     framework::EigenVector<T>::Flatten(*output).device(
         *(device_context.get_eigen_device<Place>())) =
-        framework::EigenVector<T>::Flatten(input0) +
-        framework::EigenVector<T>::Flatten(input1);
+        framework::EigenVector<T>::Flatten(input1) +
+        framework::EigenVector<T>::Flatten(input2);
   }
 };
 
@@ -26,8 +26,8 @@ struct sub {
                   framework::Tensor* output) {
     framework::EigenVector<T>::Flatten(*output).device(
         *(device_context.get_eigen_device<Place>())) =
-        framework::EigenVector<T>::Flatten(input0) -
-        framework::EigenVector<T>::Flatten(input1);
+        framework::EigenVector<T>::Flatten(input1) -
+        framework::EigenVector<T>::Flatten(input2);
   }
 };
 
