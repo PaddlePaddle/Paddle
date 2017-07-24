@@ -19,7 +19,7 @@ TEST(Tensor, Dims) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   Tensor tt;
-  tt.set_dims(make_ddim({2, 3, 4}));
+  tt.Resize(make_ddim({2, 3, 4}));
   DDim dims = tt.dims();
   ASSERT_EQ(arity(dims), 3);
   for (int i = 0; i < 3; ++i) {
@@ -97,7 +97,7 @@ TEST(Tensor, MutableData) {
 #endif
 }
 
-TEST(Tensor, ShareDataFrom) {
+TEST(Tensor, ShareDataWith) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   {
@@ -106,7 +106,7 @@ TEST(Tensor, ShareDataFrom) {
     // Try to share data form uninitialized tensor
     bool caught = false;
     try {
-      dst_tensor.ShareDataFrom<float>(src_tensor);
+      dst_tensor.ShareDataWith<float>(src_tensor);
     } catch (std::runtime_error& err) {
       caught = true;
       std::string msg =
@@ -119,7 +119,7 @@ TEST(Tensor, ShareDataFrom) {
     ASSERT_TRUE(caught);
 
     src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), CPUPlace());
-    dst_tensor.ShareDataFrom<int>(src_tensor);
+    dst_tensor.ShareDataWith<int>(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 
@@ -128,7 +128,7 @@ TEST(Tensor, ShareDataFrom) {
     Tensor src_tensor;
     Tensor dst_tensor;
     src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), GPUPlace());
-    dst_tensor.ShareDataFrom<int>(src_tensor);
+    dst_tensor.ShareDataWith<int>(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 #endif

@@ -86,7 +86,7 @@ void PyTensorSetFromArray(
     dims.push_back((int)array.shape()[i]);
   }
 
-  self.set_dims(framework::make_ddim(dims));
+  self.Resize(framework::make_ddim(dims));
   auto *dst = self.mutable_data<T>(paddle::platform::CPUPlace());
   std::memcpy(dst, array.data(), sizeof(T) * array.size());
 }
