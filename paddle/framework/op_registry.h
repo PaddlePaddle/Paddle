@@ -250,10 +250,10 @@ class OpRegistry {
     grad_creators()[op_type] = [] { return new OpType; };
   }
 
-  static OperatorPtr CreateOp(const std::string& type,
-                              const VarNameList& inputs,
-                              const VarNameList& outputs,
-                              const AttributeMap& attrs) {
+  static std::shared_ptr<OperatorBase> CreateOp(const std::string& type,
+                                                const VarNameList& inputs,
+                                                const VarNameList& outputs,
+                                                const AttributeMap& attrs) {
     auto op_create_it = creators().find(type);
     PADDLE_ENFORCE(op_create_it != creators().end(),
                    "Operator %s cannot be found.", type);
@@ -276,10 +276,10 @@ class OpRegistry {
     }
 
     op->Init();
-    return OperatorPtr(op);
+    return std::shared_ptr<OperatorBase>(op);
   }
 
-  static OperatorPtr CreateOp(const OpDesc& op_desc) {
+  static std::shared_ptr<OperatorBase> CreateOp(const OpDesc& op_desc) {
     std::vector<std::string> inputs;
     inputs.reserve((size_t)op_desc.inputs_size());
     std::copy(op_desc.inputs().begin(), op_desc.inputs().end(),

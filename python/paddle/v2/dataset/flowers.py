@@ -116,7 +116,7 @@ def reader_creator(data_file,
             data = batch['data']
             labels = batch['label']
             for sample, label in itertools.izip(data, batch['label']):
-                yield sample, int(label)
+                yield sample, int(label) - 1
 
     if use_xmap:
         return xmap_readers(mapper, reader, cpu_count(), buffered_size)

@@ -16,9 +16,11 @@ static int run_cnt = 0;
 
 class TestOp : public OperatorBase {
  public:
-  void InferShape(const ScopePtr& scope) const override { ++infer_shape_cnt; }
-  void Run(const ScopePtr& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+  void InferShape(const std::shared_ptr<pd::Scope>& scope) const override {
+    ++infer_shape_cnt;
+  }
+  void Run(const std::shared_ptr<pd::Scope>& scope,
+           const paddle::platform::DeviceContext& dev_ctx) const override {
     ++run_cnt;
   }
 };
