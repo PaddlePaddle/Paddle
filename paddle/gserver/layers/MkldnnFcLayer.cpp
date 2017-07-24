@@ -63,20 +63,20 @@ bool MkldnnFcLayer::initWgt(const LayerMap &layerMap,
   return true;
 }
 
-void MkldnnFcLayer::reshapeOutputInfo() {
+void MkldnnFcLayer::reshape() {
   CHECK_EQ(inputLayers_.size(), 1UL);
-  CHECK_EQ(dim_in_, inputMatW_) << "should not change input layer size,"
+  CHECK_EQ(dim_in_, iMatW_) << "should not change input layer size,"
     << "this would need to change the weight size which is fixed";
 
   // FC layer do not care about the seqlen changing
   // the bs would not be actually used,
-  // use outputMatH_ instead as the bs in MKLDNN
+  // use oMatH_ instead as the bs in MKLDNN
   reshapeOutMatSize();
 
   reshapeBatchSize();
 
   reshapeImgSize();
-  
+
   setOutImgSize();
 }
 
@@ -107,7 +107,7 @@ void MkldnnFcLayer::resetBwd() {
   CHECK_EQ(hasBias_, biases_ && biases_->getWGrad());
   std::shared_ptr<fc_bwdWgt::primitive_desc> bwdWgtPD;
   std::shared_ptr<fc_bwdData::primitive_desc> bwdDataPD;
- 
+
   resetDnnBwdWgtPD(bwdWgtPD);
 
   resetDnnBwdDataPD(bwdDataPD);
@@ -127,22 +127,23 @@ void MkldnnFcLayer::submitBwd(const UpdateCallback &callback) {
 
 /*************************** protected methods: *******************************/
 /// reshape the output matrix size according to input matrix size
-// TODO: move to mkldnnlayer comments
 void MkldnnFcLayer::reshapeOutMatSize() {
   // keep the output dim unchanged
-  outputMatW_ = dim_out_;
+  oMatW_ = dim_out_;
+  CHECK_EQ(oMatW_, getSize());
+  // config_.set_size(oMatW_);
 
   // only can change matrix height
-  outputMatH_ = inputMatH_;
+  oMatH_ = iMatH_;
 }
 
 void MkldnnFcLayer::reshapeBatchSize() {
   int seqLen = getInput(0).getMklSeqLen();
   if (seqLen > 1) {
-    bs_ = outputMatH_ / seqLen;
-    CHECK_EQ(bs_ * seqLen, outputMatH_) << "not divisible";
+    bs_ = oMatH_ / seqLen;
+    CHECK_EQ(bs_ * seqLen, oMatH_) << "not divisible";
   } else {
-    bs_ = outputMatH_;
+    bs_ = oMatH_;
   }
 }
 
@@ -161,17 +162,17 @@ void MkldnnFcLayer::reshapeImgSize() {
   if (ih_ == 1 && iw_ == 1) {
     hasSpatial_ = false;
   }
-  ic_ = inputMatW_ / (ih_ * iw_);
-  CHECK_EQ(ic_ * ih_ * iw_, inputMatW_) << "not divisible";
+  ic_ = iMatW_ / (ih_ * iw_);
+  CHECK_EQ(ic_ * ih_ * iw_, iMatW_) << "not divisible";
 
-  oc_ = outputMatW_;
+  oc_ = oMatW_;
   CHECK_EQ(oc_, dim_out_) << "output channel can not be changed";
   oh_ = 1;
   ow_ = 1;
 }
 
 void MkldnnFcLayer::setOutImgSize() {
-  CHECK_EQ(oc_, outputMatW_) << "output layersize can not be changed";
+  CHECK_EQ(oc_, oMatW_) << "output layersize can not be changed";
   CHECK_EQ(oh_, 1);
   CHECK_EQ(ow_, 1);
 
@@ -182,18 +183,18 @@ void MkldnnFcLayer::setOutImgSize() {
 void MkldnnFcLayer::resetDnnBufferShapes() {
   if (hasSpatial_) {
     // use output matrix height instead of batchsize
-    botDims_ = {(int)(outputMatH_), ic_, ih_, iw_};
+    botDims_ = {(int)(oMatH_), ic_, ih_, iw_};
     botFmt_ = memory::format::nchw;
     wgtDims_ = {oc_, ic_, ih_, iw_};
     wgtFmt_ = memory::format::oihw;
   } else {
-    botDims_ = {(int)outputMatH_, ic_};
+    botDims_ = {(int)oMatH_, ic_};
     botFmt_ = memory::format::nc;
     wgtDims_ = {oc_, ic_};
     wgtFmt_ = memory::format::oi;
   }
 
-  topDims_ = {(int)outputMatH_, oc_};
+  topDims_ = {(int)oMatH_, oc_};
   topFmt_ = memory::format::nc;
 
   if (hasBias_) {
@@ -327,7 +328,7 @@ void MkldnnFcLayer::initWgtFromPaddle() {
   const MatrixPtr& wgtVal = weight_->getW();
   paddleWgt_->copyFrom(*wgtVal);
   paddleWgt_ = paddleWgt_->getTranspose();  // paddle wgt is transposed
-  
+
   MkldnnBufferPtr cvtWgt(new MkldnnBuffer());
   cvtWgt->initUser(paddleWgt_->getData(), wgtDims_, wgtFmt_, engine_);
   cvtWgt->initIntl(wgtData_->getIntl());
@@ -434,8 +435,8 @@ void MkldnnFcLayer::resetDnnTopDiffBwdData(
   topDiff_.reset(new MkldnnBuffer());
   real *topGradData = getOutputGrad()->getData();
   if (nextIsDnn_) {
-    const MkldnnBufferPtr nextBotDiff =
-      std::static_pointer_cast<MkldnnBuffer> (nextLayers_[0]->getMkldnnBotDiff());
+    const MkldnnBufferPtr nextBotDiff = std::static_pointer_cast<MkldnnBuffer>
+      (nextLayers_[0]->getMkldnnBotDiff());
     CHECK(nextBotDiff) << "next layer should have dnn buffer.";
     topDiff_->resetUser(nextBotDiff->getUser());
     VLOG(4) << "topdiff use next diff fmt: " << topDiff_->getUserFmt();
@@ -452,11 +453,12 @@ void MkldnnFcLayer::resetDnnTopDiffBwdWgt(
   topDiffBwdWgt_.reset(new MkldnnBuffer());
   real *topGradData = getOutputGrad()->getData();
   if (nextIsDnn_) {
-    const MkldnnBufferPtr nextBotDiff =
-      std::static_pointer_cast<MkldnnBuffer> (nextLayers_[0]->getMkldnnBotDiff());
+    const MkldnnBufferPtr nextBotDiff = std::static_pointer_cast<MkldnnBuffer>
+      (nextLayers_[0]->getMkldnnBotDiff());
     CHECK(nextBotDiff) << "next layer should have dnn buffer.";
     topDiffBwdWgt_->resetUser(nextBotDiff->getUser());
-    VLOG(4) << "topdiffBwdWgt use next diff fmt: " << topDiffBwdWgt_->getUserFmt();
+    VLOG(4) << "topdiffBwdWgt use next diff fmt: "
+      << topDiffBwdWgt_->getUserFmt();
   } else {
     topDiffBwdWgt_->resetUser(topGradData, topDims_, topFmt_, engine_);
   }
@@ -482,7 +484,7 @@ void MkldnnFcLayer::resetDnnWgtBiasDiff(
   CHECK(wgtDiff_->getUserPD() == wgtDiff_->getIntlPD());
 
   // always create bias buffer even do not hasbias for empty bias buffer
-  biasDiff_.reset(new MkldnnBuffer()); // TODO: check if needed?
+  biasDiff_.reset(new MkldnnBuffer());  // TODO(TJ): check if needed?
   if (hasBias_) {
     real* biasGradData = biases_->getWGrad()->getData();
     biasDiff_->resetUser(biasGradData, biasDims_, biasFmt_, engine_);
@@ -516,14 +518,14 @@ void MkldnnFcLayer::resetDnnBotDiff(
 void MkldnnFcLayer::resetDnnBwdPipeline(
   const std::shared_ptr<fc_bwdWgt::primitive_desc>& bwdWgtPD,
   const std::shared_ptr<fc_bwdData::primitive_desc>& bwdDataPD) {
-
   /// backward weight and bias
   CHECK(bwdWgtPD);
   // bias buffer will automatic be empty memory if do not have bias
   bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD,
     *(botData_->getIntl()), *(topDiffBwdWgt_->getIntl()),
     *(wgtDiff_->getIntl()), *(biasDiff_->getIntl())));
-  //memory emptyBias = memory(memory::primitive_desc(memory::desc({}, memory::data_type::f32, biasFmt_), engine_))
+  // memory emptyBias = memory(memory::primitive_desc(
+  //   memory::desc({}, memory::data_type::f32, biasFmt_), engine_))
 
   if (topDiffBwdWgt_->needReorder()) {
     pipelineBwd_.push_back(*topDiffBwdWgt_->getReorder());
@@ -537,7 +539,7 @@ void MkldnnFcLayer::resetDnnBwdPipeline(
     return;
   }
   CHECK(bwdDataPD);
-  bwdData_.reset(new fc_bwdData(*bwdDataPD, 
+  bwdData_.reset(new fc_bwdData(*bwdDataPD,
     *(topDiff_->getIntl()), *(wgtData_->getIntl()),
     *(botDiff_->getIntl())));
   if (topDiff_->needReorder()) {
@@ -570,7 +572,7 @@ void MkldnnFcLayer::updateParameter(const UpdateCallback &callback) {
   if (weight_->getWGrad()) {
     weight_->getParameterPtr()->incUpdate(callback);
   }
-  
+
   if (hasBias_) {
     biases_->getParameterPtr()->incUpdate(callback);
   }

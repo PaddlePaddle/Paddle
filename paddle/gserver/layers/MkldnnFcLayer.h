@@ -30,7 +30,8 @@ namespace paddle {
  */
 class MkldnnFcLayer : public MkldnnLayer {
 protected:
-  std::shared_ptr<mkldnn::inner_product_forward> fwd_; // TODO: move to local var
+  // TODO(TJ): move to local var
+  std::shared_ptr<mkldnn::inner_product_forward> fwd_;
   std::shared_ptr<mkldnn::inner_product_backward_data> bwdData_;
   std::shared_ptr<mkldnn::inner_product_backward_weights> bwdWgt_;
 
@@ -100,7 +101,7 @@ public:
    * reshape the input and output image size
    * reshape the output image size
    */
-  void reshapeOutputInfo();
+  void reshape();
 
   void resetFwd(PassType passType);
 
@@ -129,20 +130,20 @@ protected:
   void resetDnnFwdPD(
     std::shared_ptr<mkldnn::inner_product_forward::primitive_desc>& fwdPD);
 
-  void resetDnnFwdBuffers(
-    const std::shared_ptr<mkldnn::inner_product_forward::primitive_desc>& fwdPD);
+  void resetDnnFwdBuffers(const std::shared_ptr
+    <mkldnn::inner_product_forward::primitive_desc>& fwdPD);
 
-  void resetDnnBotData(
-    const std::shared_ptr<mkldnn::inner_product_forward::primitive_desc>& fwdPD);
+  void resetDnnBotData(const std::shared_ptr
+    <mkldnn::inner_product_forward::primitive_desc>& fwdPD);
 
-  void resetDnnTopData(
-    const std::shared_ptr<mkldnn::inner_product_forward::primitive_desc>& fwdPD);
+  void resetDnnTopData(const std::shared_ptr
+    <mkldnn::inner_product_forward::primitive_desc>& fwdPD);
 
-  void resetDnnWgtBiasData(
-    const std::shared_ptr<mkldnn::inner_product_forward::primitive_desc>& fwdPD);
+  void resetDnnWgtBiasData(const std::shared_ptr
+    <mkldnn::inner_product_forward::primitive_desc>& fwdPD);
 
-  void resetFwdPipeline(
-    const std::shared_ptr<mkldnn::inner_product_forward::primitive_desc>& fwdPD);
+  void resetFwdPipeline(const std::shared_ptr
+    <mkldnn::inner_product_forward::primitive_desc>& fwdPD);
 
   /**
    * init mkldnn weight from paddle format only once
@@ -154,37 +155,41 @@ protected:
   void forwardDnnVal();
 
   /*************************** for backward methods: **************************/
-  void resetDnnBwdWgtPD(
-    std::shared_ptr<mkldnn::inner_product_backward_weights::primitive_desc>& bwdWgtPD);
+  void resetDnnBwdWgtPD(std::shared_ptr
+    <mkldnn::inner_product_backward_weights::primitive_desc>& bwdWgtPD);
 
-  void resetDnnBwdDataPD(
-    std::shared_ptr<mkldnn::inner_product_backward_data::primitive_desc>& bwdDataPD);
+  void resetDnnBwdDataPD(std::shared_ptr
+    <mkldnn::inner_product_backward_data::primitive_desc>& bwdDataPD);
 
   void getBwdFwdPD(
     std::shared_ptr<mkldnn::inner_product_forward::primitive_desc>& bwdFwdPD);
 
   void resetDnnBwdBuffers(
-    const std::shared_ptr<mkldnn::inner_product_backward_weights::primitive_desc>& bwdWgtPD,
-    const std::shared_ptr<mkldnn::inner_product_backward_data::primitive_desc>& bwdDataPD);
+    const std::shared_ptr
+    <mkldnn::inner_product_backward_weights::primitive_desc>& bwdWgtPD,
+    const std::shared_ptr
+    <mkldnn::inner_product_backward_data::primitive_desc>& bwdDataPD);
 
-  void resetDnnTopDiffBwdData(
-    const std::shared_ptr<mkldnn::inner_product_backward_data::primitive_desc>& bwdDataPD);
+  void resetDnnTopDiffBwdData(const std::shared_ptr
+    <mkldnn::inner_product_backward_data::primitive_desc>& bwdDataPD);
 
-  void resetDnnTopDiffBwdWgt(
-    const std::shared_ptr<mkldnn::inner_product_backward_weights::primitive_desc>& bwdWgtPD);
+  void resetDnnTopDiffBwdWgt(const std::shared_ptr
+    <mkldnn::inner_product_backward_weights::primitive_desc>& bwdWgtPD);
 
-  void resetDnnWgtBiasDiff(
-    const std::shared_ptr<mkldnn::inner_product_backward_weights::primitive_desc>& bwdWgtPD);
+  void resetDnnWgtBiasDiff(const std::shared_ptr
+    <mkldnn::inner_product_backward_weights::primitive_desc>& bwdWgtPD);
 
-  void resetDnnBotDiff(
-    const std::shared_ptr<mkldnn::inner_product_backward_data::primitive_desc>& bwdDataPD);
+  void resetDnnBotDiff(const std::shared_ptr
+    <mkldnn::inner_product_backward_data::primitive_desc>& bwdDataPD);
 
-  void resetDnnBwdWgtPD(
-    const std::shared_ptr<mkldnn::inner_product_backward_weights::primitive_desc>& bwdWgtPD);
+  void resetDnnBwdWgtPD(const std::shared_ptr
+    <mkldnn::inner_product_backward_weights::primitive_desc>& bwdWgtPD);
 
   void resetDnnBwdPipeline(
-    const std::shared_ptr<mkldnn::inner_product_backward_weights::primitive_desc>& bwdWgtPD,
-    const std::shared_ptr<mkldnn::inner_product_backward_data::primitive_desc>& bwdDataPD);
+    const std::shared_ptr
+    <mkldnn::inner_product_backward_weights::primitive_desc>& bwdWgtPD,
+    const std::shared_ptr
+    <mkldnn::inner_product_backward_data::primitive_desc>& bwdDataPD);
 
   void backwardDnnVal();
 

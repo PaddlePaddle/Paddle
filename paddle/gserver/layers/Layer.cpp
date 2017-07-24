@@ -44,7 +44,7 @@ Layer::Layer(const LayerConfig& config, bool useGpu)
       deviceId_(-1),
       needSequenceInfo_(true)
 #ifdef PADDLE_USE_MKLDNN
-      ,needMklSeqInfo_(true)
+      , needMklSeqInfo_(true)
 #endif
      {}
 

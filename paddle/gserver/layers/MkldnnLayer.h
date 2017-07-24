@@ -30,7 +30,7 @@ class MkldnnLayer;
 typedef std::shared_ptr<MkldnnLayer> MkldnnLayerPtr;
 
 /**
- * @brief Base class of Dnnlayer.
+ * @brief Base class of Mkldnnlayer.
  *
  */
 class MkldnnLayer : public Layer {
@@ -48,14 +48,15 @@ public:
   // input element cnt
   size_t inputElmCnt_;
   // the input matrix height and width
-  size_t inputMatH_, inputMatW_;
+  size_t iMatH_, iMatW_;
 
   // the output matrix height and width
   // height: mklSeqLen * bs
   // width : layer size == oc * oh * ow
-  size_t outputMatH_, outputMatW_;
+  size_t oMatH_, oMatW_;
 
   // MKLDNN aligned seqLen
+  // The lengths of sequences in one Batch should be equal
   int seqLen_;
   // batchsize
   int bs_;
@@ -86,6 +87,12 @@ public:
       topData_(nullptr),
       topDiff_(nullptr),
       engine_(mkldnn::engine::cpu, 0),
+      inputElmCnt_(0),
+      iMatH_(0), iMatW_(0),
+      oMatH_(0), oMatW_(0),
+      seqLen_(0), bs_(0),
+      ic_(0), ih_(0), iw_(0),
+      oc_(0), oh_(0), ow_(0),
       needResetBwd_(true),
       nextIsDnn_(false),
       scoreWithPaddleWgt_(false),
@@ -93,20 +100,6 @@ public:
     {}
 
   ~MkldnnLayer() {}
-
-  /**
-   * Get mkldnn top data memory
-   */
-  virtual std::shared_ptr<void> getMkldnnTopData() {
-    return topData_;
-  }
-
-  /**
-   * Get mkldnn bottom diff memory
-   */
-  virtual std::shared_ptr<void> getMkldnnBotDiff() {
-    return botDiff_;
-  }
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
     /* Initialize the basic parent class */
@@ -121,10 +114,7 @@ public:
       VLOG(1) << "Layer name: " << getName() << ", type: " << getType();
     }
 
-    inputElmCnt_ = 0;
-    seqLen_ = 0;
-
-    // buffers
+    // buffers dims
     botDims_ = {};
     wgtDims_ = {};
     biasDims_ = {};
@@ -133,9 +123,6 @@ public:
     wgtFmt_ = mkldnn::memory::format::format_undef;
     biasFmt_ = mkldnn::memory::format::x;
     topFmt_ = mkldnn::memory::format::nchw;
-    bs_ = 0; 
-    oc_ = 0; ih_ = 0; iw_ = 0;
-    ic_ = 0; oh_ = 0; ow_ = 0;
 
     // load from proto setting
     loadConfig();
@@ -143,18 +130,27 @@ public:
     return initWgt(layerMap, parameterMap);
   }
 
+  /**
+   * @brief Forward propagation of MKLDNN
+   */
   void forward(PassType passType) {
     passType_ = passType;
     if (inputElmCnt_ != getInputValue(0)->getElementCnt()) {
       VLOG(1) << "reshape mkldnn fwd of layer: " << getName();
+      inputElmCnt_ = getInputValue(0)->getElementCnt();
+      iMatW_ = getInputValue(0)->getWidth();
+      iMatH_ = getInputValue(0)->getHeight();
+      CHECK_EQ(inputElmCnt_, iMatW_ * iMatH_);
 
       prepareOnce();
-      
-      updateInputShape();
 
-      reshapeOutputInfo();
+      reshape();
+      printSizeInfo();
 
-      reshapeOutputBuffer();
+      CHECK_GT(oMatH_, 0);
+      CHECK_EQ(oMatW_, getSize())
+        << "maybe forget to set new layersize when reshape output info";
+      resetOutput(oMatH_, oMatW_);
 
       resetFwd(passType);
 
@@ -162,52 +158,83 @@ public:
 
       printDataFlow();
 
-      needResetBwd_ = true;
-
-      printInfo();
-      
       if (scoreWithPaddleWgt_ && passType != PASS_TEST) {
-        LOG(WARNING) << "scoreWithPaddleWgt_ is invalid when training";
+        LOG(WARNING) << "scoreWithPaddleWgt_ is invalid in training";
       }
+      needResetBwd_ = true;
     }
-
     {
-      //REGISTER_TIMER_DYNAMIC("Fwd_" + getName());
       REGISTER_TIMER_INFO("mkldnn_FwdTimer", getName().c_str());
       Layer::forward(passType);
       submitFwd();
     }
   }
 
+  /**
+   * @brief Backward propagation of MKLDNN
+   */
   void backward(const UpdateCallback& callback) {
     if (needResetBwd_) {
       needResetBwd_ = false;
       VLOG(1) << "reshape mkldnn bwd of layer: " << getName();
 
-      gatherTopDiffs();
+      resetSumTopDiffs();
 
       resetBwd();
 
       resetBwdAct();
 
-      printDiffFlow();      
+      printDiffFlow();
     }
     {
-      //REGISTER_TIMER_DYNAMIC("Bwd_" + getName());
       REGISTER_TIMER_INFO("mkldnn_BwdTimer", getName().c_str());
-      /*
-      sumbitSumTopDiffs();
-      if (nullptr != sumTopDiffs_) {
-        std::vector<primitive> sum;
-        sum.push_back(*sumTopDiffs_);
-        mkldnn::stream(mkldnn::stream::kind::eager).submit(sum).wait();
-      }
-      */
+      submitSumTopDiffs();
       submitBwd(callback);
     }
   }
 
-  // reset activation fwd
+  /**
+   * Load settings from proto
+   */
+  virtual void loadConfig() = 0;
+
+  /**
+   * Initial weight of this layer
+   */
+  virtual bool initWgt(const LayerMap& layerMap,
+                           const ParameterMap& parameterMap) = 0;
+
+  /**
+   * Reshape all the sizes needed including input, output and image sizes
+   * Should take iMatH_ and iMatW_ as input
+   * and cal the oMatH_ and oMatW_
+   */
+  virtual void reshape() = 0;
+
+  /** 
+   * Reset the primitive and buffer needed in Forward
+   */
+  virtual void resetFwd(PassType passType) = 0;
+
+  /** 
+   * Submit the forward primitive
+   */
+  virtual void submitFwd() = 0;
+
+  /** 
+   * each dnn layer should have function
+   * to init or reset backward mkldnn
+   */
+  virtual void resetBwd() = 0;
+
+  /** 
+   * Submit the forward primitive
+   */
+  virtual void submitBwd(const UpdateCallback& callback) = 0;
+
+  /** 
+   * Reset the primitive and buffer needed in forward activation
+   */
   virtual void resetFwdAct() {
     if (!hasMkldnnAct()) {
       return;
@@ -218,7 +245,9 @@ public:
     activation_->resetFwd(output_, std::static_pointer_cast<void>(md));
   }
 
-  // reset activation bwd
+  /** 
+   * Reset the primitive and buffer needed in backward activation
+   */
   virtual void resetBwdAct() {
     if (!hasMkldnnAct()) {
       return;
@@ -229,62 +258,64 @@ public:
     activation_->resetBwd(output_, std::static_pointer_cast<void>(md));
   }
 
-  // the activation will auto call dnn act if have
+  /**
+   * Forward the activation
+   * It will auto call mkldnn activation if have
+   */
   virtual void forwardDnnAct() {
     forwardActivation();
   }
 
-  // the activation will auto call dnn act if have
+  /**
+   * Backward the activation
+   * It will auto call mkldnn activation if have
+   */
   virtual void BackwardDnnAct() {
     backwardActivation();
   }
 
-  // reshape the buffer of output
-  virtual void reshapeOutputBuffer() {
-    CHECK_EQ(outputMatW_, getSize())
-      << "maybe forget to set new layersize when reshape output info";
-    resetOutput(outputMatH_, outputMatW_);
+  /**
+   * Reset primitive to sum the top diffs if have several branches
+   * Used in GoogleNet, ResNet, etc.
+   */
+  virtual void resetSumTopDiffs() {
+    // TODO(TJ): enable me
   }
 
-  // reload the settings from proto
-  virtual void loadConfig() = 0;
+  /**
+   * Submit the primitive of summing the top diffs if have
+   * Used in GoogleNet, ResNet, etc.
+   */
+  virtual void submitSumTopDiffs() {
+    // TODO(TJ): enable me
+  }
 
   /**
-   * each dnn layer should have function 
-   * to init weight
+   * This function is for transform the mkldnn weight to
+   * the format in original cpu layers
    */
-  virtual bool initWgt(const LayerMap& layerMap,
-                           const ParameterMap& parameterMap) = 0;
+   // TODO(TJ): add func to be called only for gtest
 
-  /** 
-   * each dnn layer should have function
-   * to init or reset forward mkldnn
+public:
+  /**
+   * Get mkldnn top data buffer
    */
-  virtual void resetFwd(PassType passType) = 0;
+  std::shared_ptr<void> getMkldnnTopData() override {
+    return topData_;
+  }
 
-  /** 
-   * each dnn layer should have function
-   * to init or reset backward mkldnn
+  /**
+   * Get mkldnn bottom diff buffer
    */
-  virtual void resetBwd() = 0;
-
-  virtual void submitFwd() = 0;
-
-  virtual void submitBwd(const UpdateCallback& callback) = 0;
-
-  // reshape output info:
-  // output matrix height and width 
-  // bs and sometimes seqlen
-  virtual void reshapeOutputInfo() = 0;
-
-
-
-
-
-  
+  std::shared_ptr<void> getMkldnnBotDiff() override {
+    return botDiff_;
+  }
 
 protected:
-  // TODO: add comment or rename
+  /**
+   * Functions that should be called only once after initial
+   * should be placed in this functoin
+   */
   void prepareOnce() {
     if (preparedOnce_) {
       return;
@@ -323,13 +354,18 @@ protected:
     }
   }
 
-  void updateInputShape() {
-    inputElmCnt_ = getInputValue(0)->getElementCnt();
-    inputMatW_ = getInputValue(0)->getWidth();
-    inputMatH_ = getInputValue(0)->getHeight();
-    CHECK_EQ(inputElmCnt_, inputMatW_ * inputMatH_);
+  /**
+   * Print some size info like input, output or image sizes
+   */
+  virtual void printSizeInfo() {
+    VLOG(2) << "bs: " << bs_
+      << ", ic: " << ic_ << ", ih: " << ih_ << ", iw: " << iw_
+      << ", oc: " << oc_ << ", oh: " << oh_ << ", ow: " << ow_;
   }
 
+  /**
+   * Print the mkldnn memory format flow of data
+   */
   void printDataFlow() {
     if (botData_ && topData_) {
       VLOG(1) << "data format flow --- "
@@ -340,8 +376,10 @@ protected:
     }
   }
 
+  /**
+   * Print the mkldnn memory format flow of diff
+   */
   void printDiffFlow() {
-    // print the diff flow
     if (botDiff_ && topDiff_) {
       VLOG(1) << "diff format flow --- "
         << botDiff_->getUserFmt() << " <<< ("
@@ -349,78 +387,6 @@ protected:
         << topDiff_->getIntlFmt() << ") <<< "
         << topDiff_->getUserFmt();
     }
-  }
-
-  /**
-   * if have several input topdiffs
-   * then create a handle to sum them
-   */
-  virtual void gatherTopDiffs() {
-    /*sumTopDiffs_ = nullptr;
-    if (nextLayers_.size() <= 1)
-      return;
-    engine eg = CpuEngine::Instance().getEngine();
-    std::vector<memory::primitive_desc> srcPDs;
-    std::vector<std::shared_ptr<memory::desc>> prvMDs;
-    std::vector<primitive::at> srcMems;
-    std::vector<double> scales;
-    CHECK_EQ(nextLayers_.size(), topDiffBuffers_.size());
-    for (size_t i = 0; i < topDiffBuffers_.size(); ++i) {
-      // 1. create buffers and init user
-      real* diff = dnnOutGrads_[i]->getData();
-      topDiffBuffers_[i].reset(new MkldnnBuffer());
-      topDiffBuffers_[i]->initUser(diff, topDims_, topFmt_, eg);
-      // 2. use private MD when init user if has
-      // TODO(TJ): any improvment if prvs are different format?
-      const std::shared_ptr<memory::desc>& prvMD = getTopDiffMD(i);
-      if (prvMD) {
-        topDiffBuffers_[i]->resetUser(diff, *prvMD, eg);
-        prvMDs.push_back(prvMD);
-      }
-      // 3. init Intl with empty cvt
-      topDiffBuffers_[i]->initCvt();
-      CHECK(i == 0 || (topDiffBuffers_[i-1]->getIntlSize()
-        == topDiffBuffers_[i]->getIntlSize())) << "All size should be equal";
-      VLOG(1) << "TopDiff format: " << DNN_FMTS[topDiffBuffers_[i]->getIntlFmt()];
-      // 4. save buffers
-      scales.push_back(1.0);  // no scale
-      srcPDs.push_back(topDiffBuffers_[i]->getIntlPD());
-      srcMems.push_back(*(topDiffBuffers_[i]->getIntlMem()));
-    }
-    if (prvMDs.size() > 0 && prvMDs.size() != nextLayers_.size()) {
-      LOG(INFO) << "prvMDs.size() != nextLayers_.size(): " << prvMDs.size()
-        << " vs " << nextLayers_.size();
-      LOG(INFO) << "Next layers: ";
-      for (size_t i = 0; i < nextLayers_.size(); ++i) {
-        LOG(INFO) << nextLayers_[i]->getName()
-          << ", type: " << nextLayers_[i]->getType();
-      }
-      LOG(FATAL)  << "Do not support mixed layer type inside branch";
-    }
-    // 5. create sum PD
-    std::shared_ptr<sum::primitive_desc> sumPD;
-    sumPD.reset(new sum::primitive_desc(
-      MkldnnBuffer::getMD(topDims_), scales, srcPDs));
-    // 6. init the buffer of result
-    tmpDiff_.reset(new MkldnnBuffer());
-    real *topDiffData = getDnnOutputGrad()->getData();
-    tmpDiff_->initUser(topDiffData, sumPD->dst_primitive_desc());
-    tmpDiff_->initCvt();
-    // change the first intl MD
-    topDiffMDs_[0].reset(new memory::desc(tmpDiff_->getIntlMD()));
-    // 7. create sum handle
-    sumTopDiffs_.reset(new sum(*sumPD, srcMems, *(tmpDiff_->getIntlMem())));
-    */
-  };
-
-  /**
-   * print some info like input or output size
-   */
-  virtual void printInfo() {
-    
-    VLOG(2) << "bs: " << bs_
-      << ", ic: " << ic_ << ", ih: " << ih_ << ", iw: " << iw_
-      << ", oc: " << oc_ << ", oh: " << oh_ << ", ow: " << ow_;
   }
 
   // get the aligned seq length from paddle sequence info
@@ -455,7 +421,7 @@ protected:
    *   - outputSize = 5;
    *** for conv only support caffe mode by now
    */
-  int getOutputSize(int imageSize, int filterSize, int padding, int stride,
+  int calOutputSize(int imageSize, int filterSize, int padding, int stride,
                        bool caffeMode = true) {
     int outputSize;
     if (!caffeMode) {
@@ -467,8 +433,6 @@ protected:
     CHECK_GE(outputSize, 1);
     return outputSize;
   }
-
-
 };
 
 }  // namespace paddle

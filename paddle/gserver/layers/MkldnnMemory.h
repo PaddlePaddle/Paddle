@@ -186,7 +186,7 @@ public:
     CHECK(pIntl_) << "shoud have inited internal buffer";
     return pIntl_->get_primitive_desc();
   }
-  
+
   bool needReorder() {
     if (pUser_ == pIntl_) {
       return false;
@@ -216,7 +216,7 @@ public:
   const std::shared_ptr<mkldnn::primitive>& getReorder() {
     if (nullptr == pReorder) {
       LOG(WARNING) << "reoder should not be empty! reset it before get";
-    } 
+    }
     return pReorder;
   }
 
@@ -236,7 +236,7 @@ public:
     CHECK(pUser_) << "shoud have inited user buffer";
     return pUser_->get_primitive_desc().desc();
   }
-  
+
   // get internal memory desc
   mem::desc getIntlMD() {
     CHECK(pIntl_) << "shoud have inited internal buffer";

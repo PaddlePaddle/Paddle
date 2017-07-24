@@ -133,15 +133,15 @@ public:
       return true;
     }
   }
-  
-  /** 
+
+  /**
    * Get the pointer of nextLayer[i].
    */
   const LayerPtr& getNextLayer(size_t i) {
     return nextLayers_[i];
   }
 
-  /** 
+  /**
    * Get the number of nextLayers.
    */
   size_t getNextSize() { return nextLayers_.size(); }
@@ -167,7 +167,7 @@ public:
     const std::string dnn("mkldnn_");
     return type.compare(0, dnn.length(), dnn) == 0;
   }
-    
+
   /**
    * If this layer has an activation
    */
@@ -234,14 +234,13 @@ public:
       // in training pass, the branch point should be MKLDNN type
       CHECK_EQ(prev->areNextAllDnn(), true)
         << "Since this layer " << getName() << " is with " << getType()
-        << " type , so all the outputs of inputlayer should also be MKLDNN type."
-        << " Prevlayer is " << prev->getName() << ", outsize of prevlayer: "
+        << " type , so all the outputs of inputlayer should also be MKLDNN type"
+        << ". Prevlayer is " << prev->getName() << ", outsize of prevlayer: "
         << prev->getNextSize();
     }
 
     return true;
   }
-  
 #endif
 
   /**
