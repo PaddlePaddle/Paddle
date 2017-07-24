@@ -1594,21 +1594,21 @@ class FCLayer(LayerBase):
             self.layer_type = "mkldnn_fc"
         super(FCLayer, self).__init__(name, self.layer_type, size, inputs=inputs, **xargs)
         if use_mkldnn:
-          config_assert(len(inputs) == 1,
-            "MkldnnFCLayer support one and only one input!")
-          idx = 0
-          input_layer = self.get_input_layer(idx)
-          fc_conf = self.config.inputs[idx].fc_conf
-          fc_conf.dim_in = input_layer.size
-          fc_conf.dim_out = self.config.size
-          psize = fc_conf.dim_in * fc_conf.dim_out
-          dims = [fc_conf.dim_in, fc_conf.dim_out]
-          format = self.inputs[idx].format
-          config_assert((format == "") or (format is None),
-            "MkldnnFCLayer do not support sparse format yet")
-          self.create_input_parameter(idx, psize, dims)
-          self.create_bias_parameter(bias, self.config.size)
-          return None
+            config_assert(len(inputs) == 1,
+              "MkldnnFCLayer support one and only one input!")
+            idx = 0
+            input_layer = self.get_input_layer(idx)
+            fc_conf = self.config.inputs[idx].fc_conf
+            fc_conf.dim_in = input_layer.size
+            fc_conf.dim_out = self.config.size
+            psize = fc_conf.dim_in * fc_conf.dim_out
+            dims = [fc_conf.dim_in, fc_conf.dim_out]
+            format = self.inputs[idx].format
+            config_assert((format == "") or (format is None),
+              "MkldnnFCLayer do not support sparse format yet")
+            self.create_input_parameter(idx, psize, dims)
+            self.create_bias_parameter(bias, self.config.size)
+            return None
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             psize = self.config.size * input_layer.size
