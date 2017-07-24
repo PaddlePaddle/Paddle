@@ -464,8 +464,8 @@ func (s *Service) TaskFailed(meta TaskMeta, dummy *int) error {
 // AddClient need to be called when a new master client connected.
 // We need to keep a internal client count to sync all clients when pass ends.
 func (s *Service) AddClient(dummyIn int, dummyOut *int) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.passEndCond.L.Lock()
+	defer s.passEndCond.L.Unlock()
 	s.clientCount++
 	return nil
 }
