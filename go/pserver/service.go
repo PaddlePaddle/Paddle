@@ -36,6 +36,10 @@ import (
 // ElementType is the type of elements of a Parameter.
 type ElementType int
 
+// ErrCheckpointNotFound indicates that the pserver checkpoint could
+// not be found.
+var ErrCheckpointNotFound = errors.New("checkpoint not found")
+
 // RPC error message.
 const (
 	AlreadyInitialized  = "pserver already initialized"
@@ -101,6 +105,10 @@ func NewCheckpointFromFile(cpPath string, idx int, e *EtcdClient) (Checkpoint, e
 	v, err := e.GetKey(PsPath+string(idx), 3*time.Second)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(v) == 0 {
+		return nil, ErrCheckpointNotFound
 	}
 
 	var cpMeta checkpointMeta

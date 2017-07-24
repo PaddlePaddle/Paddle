@@ -59,7 +59,11 @@ func main() {
 
 		cp, err = pserver.NewCheckpointFromFile(*checkpointPath, idx, e)
 		if err != nil {
-			log.Errorf("Fetch checkpoint failed, %s", err)
+			if err == pserver.ErrCheckpointNotFound {
+				log.Infof("Could not find the pserver checkpoint.")
+			} else {
+				log.Errorf("Fetch checkpoint failed, %s", err)
+			}
 		}
 	}
 
