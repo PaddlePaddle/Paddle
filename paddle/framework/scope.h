@@ -24,7 +24,6 @@ namespace paddle {
 namespace framework {
 
 class Scope;
-using ScopePtr = std::shared_ptr<Scope>;
 
 /**
  * @brief Scope that manage all variables.
@@ -44,7 +43,7 @@ class Scope {
   /**
    * @brief Initialize a Scope with parent.
    */
-  explicit Scope(const ScopePtr& parent) : parent_(parent) {}
+  explicit Scope(const std::shared_ptr<Scope>& parent) : parent_(parent) {}
 
   /**
    * @brief Create Variable
@@ -91,7 +90,7 @@ class Scope {
 
  private:
   std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
-  ScopePtr parent_{nullptr};
+  std::shared_ptr<Scope> parent_{nullptr};
 };
 
 }  // namespace framework
