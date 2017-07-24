@@ -59,6 +59,6 @@ protected:
 namespace ops = paddle::operators;
 
 REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker);
-REGISTER_GRADIENT_OP(softmax, paddle::operators::SoftmaxOpGrad);
+REGISTER_GRADIENT_OP(softmax, softmax_grad, paddle::operators::SoftmaxOpGrad);
 REGISTER_OP_CPU_KERNEL(softmax,
                        ops::SoftmaxKernel<paddle::platform::CPUPlace, float>);

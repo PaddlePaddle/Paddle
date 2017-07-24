@@ -67,7 +67,7 @@ protected:
 }  // namespace paddle
 
 REGISTER_OP(mul, paddle::operators::MulOp, paddle::operators::MulOpMaker);
-REGISTER_GRADIENT_OP(mul, paddle::operators::MulOpGrad);
+REGISTER_GRADIENT_OP(mul, mul_grad, paddle::operators::MulOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     mul, paddle::operators::MulKernel<paddle::platform::CPUPlace, float>);
