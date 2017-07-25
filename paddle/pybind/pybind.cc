@@ -66,9 +66,17 @@ PYBIND11_PLUGIN(core) {
            [](pd::Tensor& self, paddle::platform::Place& place) {
              self.mutable_data<float>(place);
            })
+      .def("alloc_float",
+           [](pd::Tensor& self) {
+             self.mutable_data<float>(paddle::platform::CPUPlace());
+           })
       .def("alloc_int",
            [](pd::Tensor& self, paddle::platform::Place& place) {
              self.mutable_data<int>(place);
+           })
+      .def("alloc_int",
+           [](pd::Tensor& self) {
+             self.mutable_data<int>(paddle::platform::CPUPlace());
            })
       .def("set", paddle::pybind::PyTensorSetFromArray<float>)
       .def("set", paddle::pybind::PyTensorSetFromArray<int>)

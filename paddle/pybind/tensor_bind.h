@@ -57,11 +57,17 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
         strides[i - 1] = sizeof(CUR_TYPE) * prod;
         prod *= dims_outside[i - 1];
       }
+      Tensor dst_tensor;
+      if (paddle::platform::is_gpu_place(tensor.holder_->place())) {
+        dst_tensor.CopyFrom(tensor, platform::CPUPlace());
+      } else if (paddle::platform::is_gpu_place(tensor.holder_->place())) {
+        dst_tensor = tensor;
+      }
       return py::buffer_info(
-          tensor.mutable_data<CUR_TYPE>(tensor.holder_->place()),
+          dst_tensor.mutable_data<CUR_TYPE>(dst_tensor.holder_->place()),
           sizeof(CUR_TYPE),
           py::format_descriptor<CUR_TYPE>::format(),
-          (size_t)framework::arity(tensor.dims()),
+          (size_t)framework::arity(dst_tensor.dims()),
           dims_outside,
           strides);
     } else {

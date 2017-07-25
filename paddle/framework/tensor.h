@@ -19,6 +19,7 @@ limitations under the License. */
 #include <memory>
 #include <typeindex>
 #include "paddle/framework/ddim.h"
+#include "paddle/memory/memcpy.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
@@ -104,15 +105,21 @@ class Tensor {
 
   template <typename T>
   void CopyFrom(const Tensor& src, platform::Place dst_place) {
-    PADDLE_ENFORCE(platform::is_cpu_place(src.holder_->place()) &&
-                       platform::is_cpu_place(dst_place),
-                   "Tensor::CopyFrom only support CPU now.");
-    src.EnforceSufficientMemory<T>();
+    PADDLE_ENFORCE(platform::is_cpu_place(dst_place),
+                   "Tensor::CopyFrom only support dst CPU now.");
     size_t size = product(src.dims_) * sizeof(T);
     Resize(src.dims());
     const void* src_ptr = static_cast<const void*>(src.data<T>());
     void* dst_ptr = static_cast<void*>(mutable_data<T>(dst_place));
-    memcpy(dst_ptr, src_ptr, size);
+    if (paddle::platform::is_cpu_place(holder_->place())) {
+      std::memcpy(dst_ptr, src_ptr, size);
+    } else if (paddle::platform::is_gpu_place(holder_->place())) {
+#ifdef PADDLE_ONLY_CPU
+      PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+#else
+      GpuMemcpySync(dst_ptr, src_ptr, size, cudaMemcpyDeviceToHost);
+#endif
+    }
   }
 
   template <typename T>
