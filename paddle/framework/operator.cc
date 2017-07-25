@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-
 #include "paddle/framework/operator.h"
+#include <algorithm>
+#include <iterator>
 
 namespace paddle {
 namespace framework {
@@ -94,6 +94,16 @@ std::string OperatorBase::DebugString() const {
     if (i != outputs_.size() - 1) {
       ss << ", ";
     }
+  }
+  ss << "), ";
+  ss << "Attrs:(";
+  size_t i = 0;
+  for (auto& attr : attrs_) {
+    ss << attr.first;
+    if (i != attrs_.size() - 1) {
+      ss << ", ";
+    }
+    i++;
   }
   ss << ").";
   return ss.str();

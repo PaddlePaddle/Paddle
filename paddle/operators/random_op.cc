@@ -13,27 +13,11 @@
    limitations under the License. */
 
 #include "paddle/operators/random_op.h"
+#include "glog/logging.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
-
-// using paddle::platform::CPUPlace;
-// template <paddle::platform::CPUPlace, typename T, typename DeviceContext>
-template <typename T>
-bool Gaussian(platform::CPUDeviceContext& ctx,
-              framework::Tensor* output,
-              const int size,
-              const T& mean,
-              const T& std,
-              const T& seed) {
-  auto g = ctx.RandGenerator(seed);
-  std::normal_distribution<double> distribution(mean, std);
-  for (int i = 0; i < size; ++i) {
-    output[i] = distribution(g());
-  }
-  return true;
-}
 
 class RandomOp : public framework::OperatorWithKernel {
 protected:
@@ -42,11 +26,10 @@ protected:
       const std::vector<framework::Tensor*>& outputs) const override {
     PADDLE_ENFORCE(inputs.size() == 0, "Input size of RandomOp must be zero.");
     PADDLE_ENFORCE(outputs.size() == 1, "Output size of RandomOp must be one.");
-    PADDLE_ENFORCE(inputs[0] != nullptr && outputs[0] != nullptr,
-                   "Inputs/Outputs of RandomOp must all be set.");
+    PADDLE_ENFORCE(outputs[0] != nullptr,
+                   "Outputs of RandomOp must all be set.");
     outputs[0]->Resize(
         framework::make_ddim(this->GetAttr<std::vector<int>>("shape")));
-    // outputs[0]->set_dims(context.op_.attrs_.at("shape"));
   }
 };
 

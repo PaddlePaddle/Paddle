@@ -15,13 +15,14 @@ class TestRandomOp(unittest.TestCase):
             if scope.get_var(out) is None:
                 scope.create_var(out).get_tensor()
 
-        tensor = scope.get_var("Y").get_tensor()
+        tensor = scope.get_var("Out").get_tensor()
         op.infer_shape(scope)
         self.assertEqual([1000, 1000], tensor.shape())
         ctx = core.DeviceContext.cpu_context()
         op.run(scope, ctx)
-        self.assertAlmostEqual(numpy.std(tensor), 1.0)
-        self.assertAlmostEqual(numpy.mean(tensor), 5.0)
+        tensor_array = numpy.array(tensor)
+        self.assertAlmostEqual(numpy.std(tensor_array), 1.0)
+        self.assertAlmostEqual(numpy.mean(tensor_array), 5.0)
 
 
 if __name__ == '__main__':

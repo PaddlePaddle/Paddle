@@ -13,7 +13,9 @@ bool Gaussian(DeviceContext& ctx,
               const int size,
               const T& mean,
               const T& std,
-              const T& seed);
+              const T& seed) {
+  return false;
+}
 
 template <typename T>
 bool Gaussian(platform::CPUDeviceContext& ctx,
@@ -21,14 +23,27 @@ bool Gaussian(platform::CPUDeviceContext& ctx,
               const int size,
               const T& mean,
               const T& std,
-              const T& seed);
+              const T& seed) {
+  auto g = ctx.RandGenerator(seed);
+  std::normal_distribution<double> distribution(mean, std);
+  for (int i = 0; i < size; ++i) {
+    output[i] = distribution(g);
+  }
+  return true;
+}
+
+#ifndef PADDLE_ONLY_CPU
 template <typename T>
 bool Gaussian(platform::CUDADeviceContext& ctx,
               framework::Tensor* output,
               const int size,
               const T& mean,
               const T& std,
-              const T& seed);
+              const T& seed) {
+  auto g = RandGenerator(seed);
+  return curandGenerateNormal(g, output, size, mean, std);
+}
+#endif
 
 template <typename Place, typename T>
 class RandomOpKernel : public framework::OpKernel {
@@ -45,41 +60,8 @@ public:
              mean,
              std,
              seed);
-    // Gaussian<T, const platform::DeviceContext>(context.device_context_,
-    // output,
-    //                                            framework::product(output->dims()),
-    //                                            mean, std, seed);
-    // std::default_random_engine generator(seed);
-    // std::normal_distribution<double> distribution(mean, std);
-
-    // framework::EigenMatrix<T>::From(*output).device(*(
-    //     context.GetEigenDevice<Place>())) =
-    //     framework::EigenMatrix<T>::Random();
   }
 };
-
-// using paddle::platform::CPUPlace;
-// template<CPUPlace, typename T>
-// class RandomOpKernel : public framework::OpKernel {
-// public:
-//   void Compute(const framework::KernelContext& context) const override {
-
-//     std::unique_ptr<default_random_engine> generator(seed);
-//     for(size_t i=0; i < output->size(); ++i) {
-//       output[i] = distribution(generator());
-//     }
-//   }
-
-// };
-
-// using paddle::platform::GPUPlace;
-// template<GPUPlace, typename T>
-// class RandomOpKernel : public framework::OpKernel {
-// public:
-//   void Compute(const framework::KernelContext& context) const override {
-
-//   }
-// }
 
 }  // namespace operators
 }  // namespace paddle
