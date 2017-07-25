@@ -65,7 +65,7 @@ double getDelta(const real* d1, const real* d2, size_t len,
   EXPECT_TRUE(std::isnormal(sum));
   EXPECT_FALSE(std::isinf(sum));
   EXPECT_FALSE(std::isnan(delta));
-  VLOG(6) <<"ref avg data: " << sum / len << ", delta: " << delta / sum
+  VLOG(3) <<"ref avg data: " << sum / len << ", delta: " << delta / sum
     << ", failCnt:" << failCnt;
   return (failCnt / (float)len) > failRate ? maxOut : delta / sum;
 }
@@ -128,7 +128,7 @@ void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
 
   }
   CHECK_EQ(dataLayers[0].size(), dataLayers[1].size());
-  LOG(INFO) << "Test functionality: "
+  LOG(INFO) << "Test MKLDNN functionality: "
     << configs[0].layerConfig.type() << " vs " << configs[1].layerConfig.type();
 
   const size_t iter = 3;

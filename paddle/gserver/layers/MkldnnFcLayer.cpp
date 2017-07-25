@@ -487,17 +487,15 @@ void MkldnnFcLayer::resetDnnWgtBiasDiff(
     << "can not use mkldnn wgt since memory size does not equal";
   CHECK(wgtDiff_->getUserPD() == wgtDiff_->getIntlPD());
 
-  // always create bias buffer even do not hasbias for empty bias buffer
-  biasDiff_.reset(new MkldnnBuffer());  // TODO(TJ): check if needed?
-  if (hasBias_) {
-    real* biasGradData = biases_->getWGrad()->getData();
-    biasDiff_->resetUser(biasGradData, biasDims_, biasFmt_, engine_);
-    biasDiff_->resetIntl(biasDiff_->getUser());
-    CHECK(biasDiff_->getUserPD() == bwdWgtPD->diff_bias_primitive_desc())
-      << "should always be format::x, or changed in new mkldnn version";
-  } else {
-    LOG(FATAL) << "only support with bias yet";
+  if (!hasBias_) {
+    return;
   }
+  biasDiff_.reset(new MkldnnBuffer());
+  real* biasGradData = biases_->getWGrad()->getData();
+  biasDiff_->resetUser(biasGradData, biasDims_, biasFmt_, engine_);
+  biasDiff_->resetIntl(biasDiff_->getUser());
+  CHECK(biasDiff_->getUserPD() == bwdWgtPD->diff_bias_primitive_desc())
+    << "should always be format::x, or changed in new mkldnn version";
 }
 
 void MkldnnFcLayer::resetDnnBotDiff(
@@ -528,20 +526,26 @@ void MkldnnFcLayer::resetDnnBwdPipeline(
   CHECK(botData_->getIntl());
   CHECK(topDiffBwdWgt_->getIntl());
   CHECK(wgtDiff_->getIntl());
-  CHECK(biasDiff_->getIntl());
-  // bias buffer will automatic be empty memory if do not have bias
-  bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD,
-    *(botData_->getIntl()), *(topDiffBwdWgt_->getIntl()),
-    *(wgtDiff_->getIntl()), *(biasDiff_->getIntl())));
-  // memory emptyBias = memory(memory::primitive_desc(
-  //   memory::desc({}, memory::data_type::f32, biasFmt_), engine_))
+  if (hasBias_) {
+    CHECK(biasDiff_->getIntl());
+    bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD,
+        *(botData_->getIntl()), *(topDiffBwdWgt_->getIntl()),
+        *(wgtDiff_->getIntl()), *(biasDiff_->getIntl())));
+  } else {
+    bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD,
+        *(botData_->getIntl()), *(topDiffBwdWgt_->getIntl()),
+        *(wgtDiff_->getIntl())));
+  }
 
   if (topDiffBwdWgt_->needReorder()) {
     pipelineBwd_.push_back(*topDiffBwdWgt_->getReorder());
   }
   pipelineBwd_.push_back(*bwdWgt_);
   CHECK_EQ(wgtDiff_->needReorder(), false) << "wgt should not need reorder!";
-  CHECK_EQ(biasDiff_->needReorder(), false) << "wgt should not need reorder!";
+  if (hasBias_) {
+    CHECK_EQ(biasDiff_->needReorder(), false)
+      << "bias should not need reorder!";
+  }
 
   /// backward data
   if (!hasBotGrad()) {

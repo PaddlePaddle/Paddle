@@ -63,8 +63,8 @@ void testFcLayer(const testFCDesc& pm) {
 }
 
 TEST(MkldnnLayer, fcLayer) {
-  testFcLayer({2, 2, 3, 1, 1});/*
-  testFcLayer({64, 256, 128, 1, 1});
+  testFcLayer({2, 2, 3, 1, 1});
+  testFcLayer({64, 256, 128, 1, 1});/*
   testFcLayer({8, 32, 64, 14, 11});
   testFcLayer({2, 64, 32, 16, 16});
   testFcLayer({15, 3, 6, 16, 16});*/
