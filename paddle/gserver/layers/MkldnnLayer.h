@@ -108,10 +108,10 @@ public:
     }
 
     if (hasActivation()) {
-      VLOG(1) << "Layer name: " << getName() << ", type: " << getType()
+      VLOG(DNN_BASE) << "Layer name: " << getName() << ", type: " << getType()
         << ", act: " << activation_->getName();
     } else {
-      VLOG(1) << "Layer name: " << getName() << ", type: " << getType();
+      VLOG(DNN_BASE) << "Layer name: " << getName() << ", type: " << getType();
     }
 
     // buffers dims
@@ -136,7 +136,7 @@ public:
   void forward(PassType passType) {
     passType_ = passType;
     if (inputElmCnt_ != getInputValue(0)->getElementCnt()) {
-      VLOG(1) << "reshape mkldnn fwd of layer: " << getName();
+      VLOG(DNN_BASE) << "reshape mkldnn forward of layer: " << getName();
       inputElmCnt_ = getInputValue(0)->getElementCnt();
       iMatW_ = getInputValue(0)->getWidth();
       iMatH_ = getInputValue(0)->getHeight();
@@ -176,7 +176,7 @@ public:
   void backward(const UpdateCallback& callback) {
     if (needResetBwd_) {
       needResetBwd_ = false;
-      VLOG(1) << "reshape mkldnn bwd of layer: " << getName();
+      VLOG(DNN_BASE) << "reshape mkldnn backward of layer: " << getName();
 
       resetSumTopDiffs();
 
@@ -366,7 +366,7 @@ protected:
    * Print some size info like input, output or image sizes
    */
   virtual void printSizeInfo() {
-    VLOG(2) << "bs: " << bs_
+    VLOG(DNN_SIZES) << "bs: " << bs_
       << ", ic: " << ic_ << ", ih: " << ih_ << ", iw: " << iw_
       << ", oc: " << oc_ << ", oh: " << oh_ << ", ow: " << ow_;
   }
@@ -376,7 +376,7 @@ protected:
    */
   void printDataFlow() {
     if (botData_ && topData_) {
-      VLOG(1) << "data format flow --- "
+      VLOG(DNN_FMTS) << "data format flow --- "
         << botData_->getUserFmt() << " >>> ("
         << botData_->getIntlFmt() << " >>> "
         << topData_->getIntlFmt() << ") >>> "
@@ -389,7 +389,7 @@ protected:
    */
   void printDiffFlow() {
     if (botDiff_ && topDiff_) {
-      VLOG(1) << "diff format flow --- "
+      VLOG(DNN_FMTS) << "diff format flow --- "
         << botDiff_->getUserFmt() << " <<< ("
         << botDiff_->getIntlFmt()<< " <<< "
         << topDiff_->getIntlFmt() << ") <<< "

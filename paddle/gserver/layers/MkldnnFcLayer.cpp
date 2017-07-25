@@ -243,7 +243,7 @@ void MkldnnFcLayer::resetDnnBotData(
         std::static_pointer_cast<MkldnnBuffer> (getPrev(0)->getMkldnnTopData());
     CHECK(prvTop) << "prev layer should have dnn buffer.";
     botData_->resetUser(prvTop->getUser());
-    VLOG(4) << "use prev data fmt: " << botData_->getUserFmt();
+    VLOG(DNN_FMTS) << "use prev data fmt: " << botData_->getUserFmt();
   } else {
     botData_->resetUser(botValData, botDims_, botFmt_, engine_);
   }
@@ -276,7 +276,7 @@ void MkldnnFcLayer::resetDnnWgtBiasData(
   wgtData_->resetIntl(wgtData_->getUser());
   CHECK_EQ(wgtData_->getIntlSize(), parameters_[0]->getSize())
     << "can not use mkldnn wgt since memory size does not equal";
-  VLOG(3) << "weight format: " << wgtData_->getIntlFmt();
+  VLOG(DNN_FMTS) << "weight format: " << wgtData_->getIntlFmt();
 
   // bias
   if (!hasBias_) {
@@ -440,7 +440,7 @@ void MkldnnFcLayer::resetDnnTopDiffBwdData(
       (nextLayers_[0]->getMkldnnBotDiff());
     CHECK(nextBotDiff) << "next layer should have dnn buffer.";
     topDiff_->resetUser(nextBotDiff->getUser());
-    VLOG(4) << "topdiff use next diff fmt: " << topDiff_->getUserFmt();
+    VLOG(DNN_FMTS) << "topdiff use next diff fmt: " << topDiff_->getUserFmt();
   } else {
     topDiff_->resetUser(topGradData, topDims_, topFmt_, engine_);
   }
@@ -458,7 +458,7 @@ void MkldnnFcLayer::resetDnnTopDiffBwdWgt(
       (nextLayers_[0]->getMkldnnBotDiff());
     CHECK(nextBotDiff) << "next layer should have dnn buffer.";
     topDiffBwdWgt_->resetUser(nextBotDiff->getUser());
-    VLOG(4) << "topdiffBwdWgt use next diff fmt: "
+    VLOG(DNN_FMTS) << "topdiffBwdWgt use next diff fmt: "
       << topDiffBwdWgt_->getUserFmt();
   } else {
     topDiffBwdWgt_->resetUser(topGradData, topDims_, topFmt_, engine_);
@@ -466,7 +466,7 @@ void MkldnnFcLayer::resetDnnTopDiffBwdWgt(
   topDiffBwdWgt_->resetIntl(bwdWgtPD->diff_dst_primitive_desc());
   topDiffBwdWgt_->resetReorder(dnnUser2Intl);
   // topdiff for bwdwgt may differ for bwddata
-  VLOG(3) << "topdiff for bwd weight flow --- "
+  VLOG(DNN_FMTS) << "topdiff for bwd weight flow --- "
     << topDiffBwdWgt_->getIntlFmt()
     << " <<< "
     << topDiffBwdWgt_->getUserFmt();

@@ -16,15 +16,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "ModelConfig.pb.h"
-#include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/trainer/Trainer.h"
-#include "paddle/math/MathUtils.h"
-
 #include "LayerGradUtil.h"
-#include "paddle/testing/TestUtil.h"
+#include "MkldnnTestFunc.h"
 
 using namespace paddle;  // NOLINT
-using namespace std;     // NOLINT
 
 DECLARE_bool(thread_local_rand_use_global_seed);
 
@@ -64,7 +59,7 @@ void testFcLayer(const testFCDesc& pm) {
 
 TEST(MkldnnLayer, fcLayer) {
   testFcLayer({2, 2, 3, 1, 1});
-  testFcLayer({32, 256, 128, 1, 1});
+  testFcLayer({32, 64, 128, 1, 1});
   testFcLayer({8, 32, 64, 13, 13});
   testFcLayer({8, 32, 32, 13, 11});
   testFcLayer({2, 64, 32, 16, 16});
@@ -80,4 +75,3 @@ int main(int argc, char** argv) {
   srand(1);
   return RUN_ALL_TESTS();
 }
-

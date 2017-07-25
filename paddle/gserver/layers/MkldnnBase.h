@@ -18,6 +18,16 @@ limitations under the License. */
 
 namespace paddle {
 
+typedef enum {
+  DNN_BASE = 1,
+  DNN_TESTS = 1,
+  DNN_SIZES,
+  DNN_FMTS,
+  DNN_TESTS_DETAILS,
+  DNN_TESTS_MORE,
+  DNN_ALL,
+} DNN_LOG_LEVEL;
+
 /// For mkldnn cpu engine
 class CpuEngine {
 public:

@@ -18,21 +18,21 @@ limitations under the License. */
 #include "paddle/utils/Logging.h"
 #include "mkldnn.hpp"
 
-
 namespace paddle {
 /**
  * @brief A MKLDNN memory buffer class
  *
  * 
  */
- typedef enum { 
+
+typedef enum { 
   dnnUser2Intl = 0,
   dnnIntl2User, 
 } dnnCvtType_t;
 
 using dnnfmt = mkldnn::memory::format;
 // This format should be matched with the version of MKLDNN
-const static std::map<dnnfmt, std::string> DNN_FMT_STR = {
+const static std::map<dnnfmt, std::string> DNN_FORMAT_STR = {
   {dnnfmt::format_undef, "format_undef"}, {dnnfmt::any, "any"},
   {dnnfmt::blocked, "blocked"}, {dnnfmt::x, "x"}, {dnnfmt::nc, "nc"},
   {dnnfmt::nchw, "nchw"}, {dnnfmt::nhwc, "nhwc"}, {dnnfmt::chwn, "chwn"}, 
@@ -269,7 +269,7 @@ public:
     CHECK(pIntl_) << "shoud have inited internal buffer";
     dnnfmt fmt = dnnfmt(getMDFmt(getIntlMD()));
     std::string fmtStr;
-    CHECK(mapGet(fmt, DNN_FMT_STR, &fmtStr)) << "invalid format: " << fmt;
+    CHECK(mapGet(fmt, DNN_FORMAT_STR, &fmtStr)) << "invalid format: " << fmt;
     return fmtStr;
   }
 
@@ -278,7 +278,7 @@ public:
     CHECK(pUser_) << "shoud have inited user buffer";
     dnnfmt fmt = dnnfmt(getMDFmt(getUserMD()));
     std::string fmtStr;
-    CHECK(mapGet(fmt, DNN_FMT_STR, &fmtStr)) << "invalid format: " << fmt;
+    CHECK(mapGet(fmt, DNN_FORMAT_STR, &fmtStr)) << "invalid format: " << fmt;
     return fmtStr;
   }
 

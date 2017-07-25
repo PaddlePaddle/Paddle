@@ -22,8 +22,8 @@ add_test(NAME test_LayerGrad
 if(WITH_MKLDNN)
     add_unittest_without_exec(test_Mkldnn
         test_Mkldnn.cpp
-        LayerGradUtil.cpp
-        ../../testing/TestUtil.cpp)
+        MkldnnTestFunc.cpp
+        LayerGradUtil.cpp)
     add_test(NAME test_Mkldnn COMMAND test_Mkldnn)
 endif()
 
