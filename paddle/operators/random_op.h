@@ -6,6 +6,7 @@
 
 namespace paddle {
 namespace operators {
+
 template <typename T, typename DeviceContext>
 bool Gaussian(DeviceContext& ctx,
               framework::Tensor* output,
