@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #pragma once
+#include <string>
 #include "paddle/framework/tensor.h"
 #include "paddle/memory/memcpy.h"
 #include "pybind11/numpy.h"
@@ -57,9 +58,9 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
         strides[i - 1] = sizeof(CUR_TYPE) * prod;
         prod *= dims_outside[i - 1];
       }
-      Tensor dst_tensor;
+      framework::Tensor dst_tensor;
       if (paddle::platform::is_gpu_place(tensor.holder_->place())) {
-        dst_tensor.CopyFrom(tensor, platform::CPUPlace());
+        dst_tensor.CopyFrom<CUR_TYPE>(tensor, platform::CPUPlace());
       } else if (paddle::platform::is_gpu_place(tensor.holder_->place())) {
         dst_tensor = tensor;
       }
@@ -96,20 +97,13 @@ void PyTensorSetFromArray(
   auto *dst = self.mutable_data<T>(self.place());
 
   if (paddle::platform::is_cpu_place(self.place())) {
-    paddle::memory::Copy<paddle::platform::CPUPlace,
-                         paddle::platform::CPUPlace>(
-        place, dst, place, array.data(), sizeof(T) * array.size());
-  } else if (paddle::platform::is_gpu_place(place)) {
+    std::memcpy(dst, array.data(), sizeof(T) * array.size());
+  } else if (paddle::platform::is_gpu_place(self.place())) {
 #ifdef PADDLE_ONLY_CPU
     PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
 #else
-    paddle::memory::Copy<paddle::platform::GPUPlace,
-                         paddle::platform::CPUPlace>(
-        place,
-        dst,
-        paddle::platform::CPUPlace(),
-        array.data(),
-        sizeof(T) * array.size());
+    GpuMemcpySync(
+        dst, array.data(), sizeof(T) * array.size(), cudaMemcpyHostToDevice);
 #endif
   }
 }

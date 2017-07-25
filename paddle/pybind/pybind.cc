@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/scope.h"
+#include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "paddle/pybind/tensor_bind.h"
 #include "pybind11/numpy.h"
@@ -131,18 +132,24 @@ All parameter, weight, gradient are variables in Paddle.
       .def("temp", pd::OperatorBase::TMP_VAR_NAME);
 
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
-      .def_static(
-          "create",
-          [](paddle::platform::Place) -> paddle::platform::DeviceContext* {
-            if (paddle::platform::is_gpu_place(place)) {
-              return new paddle::platform::GPUDeviceContext(place);
-            } else if (paddle::platform::is_cpu_place(place)) {
-              return new paddle::platform::CPUDeviceContext();
-            }
-          });
+      .def_static("cpu_context",
+                  []() -> paddle::platform::DeviceContext* {
+                    return new paddle::platform::CPUDeviceContext();
+                  })
+      .def_static("gpu_context",
+                  [](paddle::platform::Place& place)
+                      -> paddle::platform::DeviceContext* {
+#ifdef PADDLE_ONLY_CPU
+
+                    // PADDLE_THROW("'GPUPlace' is not supported in CPU only
+                    // device.");
+                    return nullptr;
+#else
+                    return new paddle::platform::CUDADeviceContext(place);
+#endif
+                  });
 
   py::class_<paddle::platform::Place>(m, "GPUPlace").def(py::init<int>());
-  .def(py::init<>());
 
   py::class_<paddle::platform::Place>(m, "CPUPlace").def(py::init<>());
 
