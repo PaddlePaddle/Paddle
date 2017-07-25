@@ -36,6 +36,10 @@ import (
 // ElementType is the type of elements of a Parameter.
 type ElementType int
 
+// ErrCheckpointNotFound indicates that the pserver checkpoint could
+// not be found.
+var ErrCheckpointNotFound = errors.New("checkpoint not found")
+
 // RPC error message.
 const (
 	AlreadyInitialized  = "pserver already initialized"
@@ -103,6 +107,10 @@ func NewCheckpointFromFile(cpPath string, idx int, e *EtcdClient) (Checkpoint, e
 		return nil, err
 	}
 
+	if len(v) == 0 {
+		return nil, ErrCheckpointNotFound
+	}
+
 	var cpMeta checkpointMeta
 	if err = json.Unmarshal(v, &cpMeta); err != nil {
 		return nil, err
@@ -156,7 +164,7 @@ func NewService(idx int, interval time.Duration, path string, client *EtcdClient
 }
 
 // InitParam initializes a parameter.
-func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, dummy *int) error {
+func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, _ *int) error {
 	select {
 	case <-s.initialized:
 		return errors.New(AlreadyInitialized)
@@ -177,7 +185,7 @@ func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, dummy *int) er
 
 // FinishInitParams tells the parameter server that the parameter
 // initialization has finished.
-func (s *Service) FinishInitParams(dummy0 int, dummy1 *int) error {
+func (s *Service) FinishInitParams(_ int, _ *int) error {
 	select {
 	case <-s.initialized:
 		return errors.New(AlreadyInitialized)
@@ -190,7 +198,7 @@ func (s *Service) FinishInitParams(dummy0 int, dummy1 *int) error {
 
 // SendGrad sends gradient to parameter servers for parameter
 // optimization.
-func (s *Service) SendGrad(g Gradient, dummy *int) error {
+func (s *Service) SendGrad(g Gradient, _ *int) error {
 	select {
 	case <-s.initialized:
 	default:
