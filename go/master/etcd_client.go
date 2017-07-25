@@ -39,6 +39,7 @@ type EtcdClient struct {
 	statePath string
 	client    *clientv3.Client
 	lock      *concurrency.Mutex
+	sess      *concurrency.Session
 }
 
 // NewEtcdClient creates a new EtcdClient.
@@ -89,6 +90,7 @@ func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePat
 		statePath: statePath,
 		client:    cli,
 		lock:      lock,
+		sess:      sess,
 	}
 
 	return e, nil
@@ -155,6 +157,21 @@ func (e *EtcdClient) Load() ([]byte, error) {
 
 	state := kvs[0].Value
 	return state, nil
+}
+
+// Shutdown shuts down the etcd client gracefully.
+func (e *EtcdClient) Shutdown() error {
+	err := e.sess.Close()
+	newErr := e.client.Close()
+	if newErr != nil {
+		if err == nil {
+			err = newErr
+		} else {
+			log.Errorln(newErr)
+		}
+	}
+
+	return err
 }
 
 // GetKey gets the value by the specify key.
