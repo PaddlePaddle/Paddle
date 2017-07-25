@@ -191,9 +191,7 @@ func TestClientPassSync(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			curAddr := make(chan string, 1)
-			curAddr <- fmt.Sprintf(":%d", p)
-			c, e := master.NewClient(master.WithAddr(fmt.Sprintf(":%d", p)), master.WithBuffer(10))
+			c, e := master.NewClient(master.WithAddr(fmt.Sprintf(":%d", p)), master.WithBuffer(1))
 			if e != nil {
 				t.Fatal(e)
 			}

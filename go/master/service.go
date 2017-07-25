@@ -474,10 +474,11 @@ func (s *Service) AddClient(dummyIn int, dummyOut *int) error {
 func (s *Service) PassStart(dummyIn int, dummyOut *int) error {
 	s.passEndCond.L.Lock()
 	defer s.passEndCond.L.Unlock()
-	s.ready.L.Lock()
-	defer s.ready.L.Unlock()
+
 	if s.clientPassFinished == s.clientCount {
 		// FIXME: only reinit when synced pass start
+		s.ready.L.Lock()
+		defer s.ready.L.Unlock()
 		s.initDone = false
 		s.clientPassFinished = 0
 	}
@@ -493,8 +494,11 @@ func (s *Service) PassFinish(dummyIn int, dummyOut *int) error {
 		// wakeup all pass end waiting clients
 		s.passEndCond.Broadcast()
 	} else {
-		for s.clientPassFinished != s.clientCount {
-			s.passEndCond.Wait()
+		// HACK: must quit when wake up, or the clientPassFinished may be
+		// renewed by other clients
+		s.passEndCond.Wait()
+		if s.clientPassFinished != s.clientCount {
+			log.Debugf("cond not satisfied, curr/total: %d/%d", s.clientPassFinished, s.clientCount)
 		}
 	}
 	return nil
