@@ -165,7 +165,7 @@ protected:
 
   // father scope
   std::shared_ptr<Scope> scope_;
-  OperatorPtr rnn_op_;
+  std::shared_ptr<OperatorBase> rnn_op_;
 };
 
 TEST_F(RecurrentOpTest, Run) {
@@ -231,8 +231,9 @@ protected:
   }
 
   void CreateStepScopes() {
-    std::vector<ScopePtr>* step_scopes =
-        scope_->GetVariable("step_scopes")->GetMutable<std::vector<ScopePtr>>();
+    std::vector<std::shared_ptr<Scope>>* step_scopes =
+        scope_->GetVariable("step_scopes")
+            ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
     for (int i = 0; i < 10; ++i) {
       auto scope = std::make_shared<Scope>(scope_);
       auto pre_t = scope->CreateVariable("rnn/pre_h")->GetMutable<Tensor>();
@@ -299,8 +300,9 @@ protected:
     rnn::Link inlink;
     inlink.external = "x";
     inlink.internal = "rnn/x";
-    std::vector<ScopePtr>* step_scopes =
-        scope_->GetVariable("step_scopes")->GetMutable<std::vector<ScopePtr>>();
+    std::vector<std::shared_ptr<Scope>>* step_scopes =
+        scope_->GetVariable("step_scopes")
+            ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
     rnn::SegmentInputs(*step_scopes, std::vector<rnn::Link>{inlink}, 10);
   }
 
@@ -312,8 +314,9 @@ protected:
     mem_attr.boot_var = "boot_h";
     std::vector<rnn::MemoryAttr> memories;
     memories.push_back(mem_attr);
-    std::vector<ScopePtr>* step_scopes =
-        scope_->GetVariable("step_scopes")->GetMutable<std::vector<ScopePtr>>();
+    std::vector<std::shared_ptr<Scope>>* step_scopes =
+        scope_->GetVariable("step_scopes")
+            ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
     for (int i = 1; i < 10; ++i) {
       rnn::LinkMemories(*step_scopes, memories, i, -1);
     }
@@ -338,7 +341,7 @@ TEST(RecurrentOp, LinkMemories) {
 
   // create and init step scopes
   int len = 10;
-  std::vector<ScopePtr> step_scopes;
+  std::vector<std::shared_ptr<Scope>> step_scopes;
   for (int i = 0; i < len; ++i) {
     auto scope = std::make_shared<Scope>();
     scope->CreateVariable("pre_h");

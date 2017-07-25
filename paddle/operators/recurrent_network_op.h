@@ -70,18 +70,18 @@ struct ArgumentName {
 /*
  * Prepare inputs for each stepnet.
  */
-void SegmentInputs(std::vector<ScopePtr>& step_scopes,
+void SegmentInputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
                    const std::vector<Link>& inlinks,
                    const size_t seq_len);
 
 /*
  * Process outputs of stepnets and merge to variables.
  */
-void ConcatOutputs(std::vector<ScopePtr>& step_scopes,
+void ConcatOutputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
                    const std::vector<Link>& outlinks,
                    const size_t seq_len);
 
-void LinkMemories(std::vector<ScopePtr>& step_scopes,
+void LinkMemories(std::vector<std::shared_ptr<Scope>>& step_scopes,
                   const std::vector<MemoryAttr>& memories,
                   size_t step_id,
                   int offset);
@@ -106,11 +106,12 @@ public:
    * NOTE the context's scope is not given until `Run` called, so step scopes'
    * father should be set/updated in this method.
    */
-  void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const;
+  void Run(const std::shared_ptr<Scope>& scope,
+           const platform::DeviceContext& dev_ctx) const;
 
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
 
-  void InferShape(const ScopePtr& scope) const;
+  void InferShape(const std::shared_ptr<Scope>& scope) const;
 
   std::string debug_string() const;
 
@@ -123,20 +124,21 @@ protected:
    * NOTE the scopes are reused by both the `Forward` and `Backward`, so just
    * create once and expand its size if more steps need.
    */
-  void CreateScopes(ScopePtr scope) const;
+  void CreateScopes(std::shared_ptr<Scope> scope) const;
 
   /*
    * Get the step scopes.
    */
-  inline const std::vector<ScopePtr>& GetStepScopes(ScopePtr scope) const {
+  inline const std::vector<std::shared_ptr<Scope>>& GetStepScopes(
+      std::shared_ptr<Scope> scope) const {
     return *(scope->GetVariable(arg_->step_scopes))
-                ->GetMutable<std::vector<ScopePtr>>();
+                ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
   }
 
   /*
    * Init memories.
    */
-  void InitMemories(ScopePtr step_scopes) const;
+  void InitMemories(std::shared_ptr<Scope> step_scopes) const;
 
 private:
   std::unique_ptr<rnn::Argument> arg_;
@@ -155,9 +157,10 @@ private:
 class RecurrentGradientAlgorithm {
 public:
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
-  void Run(const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const;
-  void LinkBootMemoryGradients(ScopePtr step_scopes) const;
-  void InferShape(const ScopePtr& scope) const;
+  void Run(const std::shared_ptr<Scope>& scope,
+           const platform::DeviceContext& dev_ctx) const;
+  void LinkBootMemoryGradients(std::shared_ptr<Scope> step_scopes) const;
+  void InferShape(const std::shared_ptr<Scope>& scope) const;
 
 private:
   std::unique_ptr<rnn::Argument> arg_;
@@ -171,11 +174,11 @@ class RecurrentOp final : public OperatorBase {
 public:
   void Init() override;
 
-  virtual void InferShape(const ScopePtr& scope) const {
+  virtual void InferShape(const std::shared_ptr<Scope>& scope) const {
     alg_.InferShape(scope);
   }
 
-  virtual void Run(const ScopePtr& scope,
+  virtual void Run(const std::shared_ptr<Scope>& scope,
                    const platform::DeviceContext& dev_ctx) const override {}
 
   virtual ~RecurrentOp() {}
@@ -193,11 +196,11 @@ class RecurrentGradientOp final : public OperatorBase {
 public:
   void Init() override;
 
-  virtual void InferShape(const ScopePtr& scope) const {
+  virtual void InferShape(const std::shared_ptr<Scope>& scope) const {
     alg_.InferShape(scope);
   }
 
-  virtual void Run(const ScopePtr& scope,
+  virtual void Run(const std::shared_ptr<Scope>& scope,
                    const platform::DeviceContext& dev_ctx) const override {}
 
   virtual ~RecurrentGradientOp() {}
