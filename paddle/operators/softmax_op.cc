@@ -11,8 +11,8 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-#include <paddle/framework/op_registry.h>
-#include <paddle/operators/softmax_op.h>
+#include "paddle/operators/softmax_op.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -23,9 +23,11 @@ protected:
       const std::vector<const framework::Tensor *> &inputs,
       const std::vector<framework::Tensor *> &outputs) const override {
     PADDLE_ENFORCE(inputs.size() == 1, "Only one input is need for softmax");
+    PADDLE_ENFORCE(inputs[0]->dims().size() == 2,
+                   "The input of softmax op must be matrix");
     PADDLE_ENFORCE(outputs.size() == 1, "Only one output is need for softmax");
 
-    outputs[0]->set_dims(inputs[0]->dims());
+    outputs[0]->Resize(inputs[0]->dims());
   }
 };
 
@@ -40,10 +42,23 @@ public:
   }
 };
 
+class SoftmaxOpGrad : public framework::OperatorWithKernel {
+protected:
+  void InferShape(
+      const std::vector<const framework::Tensor *> &inputs,
+      const std::vector<framework::Tensor *> &outputs) const override {}
+  std::string DebugString() const override {
+    LOG(INFO) << "SoftmaxOpGrad";
+    return "";
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker);
-REGISTER_OP_CPU_KERNEL(softmax, ops::SoftmaxKernel<paddle::platform::CPUPlace>);
+REGISTER_GRADIENT_OP(softmax, softmax_grad, paddle::operators::SoftmaxOpGrad);
+REGISTER_OP_CPU_KERNEL(softmax,
+                       ops::SoftmaxKernel<paddle::platform::CPUPlace, float>);

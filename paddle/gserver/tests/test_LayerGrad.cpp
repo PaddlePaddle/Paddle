@@ -347,6 +347,55 @@ TEST(Layer, CosSimVecMatLayer) {
   }
 }
 
+void testDepthwiseConvLayer(const string& type, bool useGpu) {
+  TestConfig config;
+  config.biasSize = 32;
+  config.layerConfig.set_type(type);
+  config.layerConfig.set_num_filters(32);
+  config.layerConfig.set_partial_sum(1);
+  config.layerConfig.set_shared_biases(true);
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 2048, 192});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ConvConfig* conv = input->mutable_conv_conf();
+  conv->set_filter_size(2);
+  conv->set_filter_size_y(3);
+  conv->set_channels(16);
+  conv->set_padding(0);
+  conv->set_padding_y(1);
+  conv->set_stride(2);
+  conv->set_stride_y(2);
+  conv->set_groups(16);
+  conv->set_filter_channels(conv->channels() / conv->groups());
+  conv->set_img_size(16);
+  conv->set_img_size_y(8);
+  conv->set_output_x(outputSize(conv->img_size(),
+                                conv->filter_size(),
+                                conv->padding(),
+                                conv->stride(),
+                                /* caffeMode */ true));
+  conv->set_output_y(outputSize(conv->img_size_y(),
+                                conv->filter_size_y(),
+                                conv->padding_y(),
+                                conv->stride_y(),
+                                /* caffeMode */ true));
+  config.layerConfig.set_size(conv->output_x() * conv->output_y() *
+                              config.layerConfig.num_filters());
+
+  testLayerGrad(config, "depthwise_conv", 100, false, useGpu);
+  // Use small batch_size and useWeight=true to test biasGrad
+  testLayerGrad(config, "depthwise_conv", 2, false, useGpu, true, 0.02);
+}
+
+TEST(Layer, depthwiseConvLayer) {
+  //  'depthwise_conv' is a sepecial case of 'exconv' whose
+  //  groups size equals to the input channels size.
+  testDepthwiseConvLayer("exconv", /* useGpu= */ false);
+#ifndef PADDLE_ONLY_CPU
+  testDepthwiseConvLayer("exconv", /* useGpu= */ true);
+#endif
+}
+
 void testConvLayer(const string& type, bool trans, bool useGpu) {
   TestConfig config;
   config.biasSize = 16;

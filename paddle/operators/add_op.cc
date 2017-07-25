@@ -31,7 +31,7 @@ protected:
         "Inputs/Outputs of AddOp must all be set");
     PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
                    "Two input of Add Op's dimension must be same.");
-    outputs[0]->set_dims(inputs[0]->dims());
+    outputs[0]->Resize(inputs[0]->dims());
   }
 };
 
@@ -49,10 +49,22 @@ The equation is: Out = X + Y
 )DOC");
   }
 };
+
+class AddOpGrad : public framework::OperatorWithKernel {
+protected:
+  void InferShape(
+      const std::vector<const framework::Tensor *> &inputs,
+      const std::vector<framework::Tensor *> &outputs) const override {}
+  std::string DebugString() const override {
+    LOG(INFO) << "AddOpGrad";
+    return "";
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_OP(add_two, paddle::operators::AddOp, paddle::operators::AddOpMaker);
-typedef paddle::operators::AddKernel<::paddle::platform::CPUPlace, float>
-    AddKernel_CPU_float;
-REGISTER_OP_CPU_KERNEL(add_two, AddKernel_CPU_float);
+REGISTER_GRADIENT_OP(add_two, add_two_grad, paddle::operators::AddOpGrad);
+REGISTER_OP_CPU_KERNEL(
+    add_two, paddle::operators::AddKernel<paddle::platform::CPUPlace, float>);
