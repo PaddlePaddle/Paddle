@@ -88,7 +88,7 @@ class OperatorBase {
 
   /// Net will call this function to Run an op.
   virtual void Run(const std::shared_ptr<Scope>& scope,
-                   const platform::DeviceContext& dev_ctx) const = 0;
+                   platform::DeviceContext& dev_ctx) const = 0;
 
   // Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
@@ -113,8 +113,8 @@ class OperatorBase {
 class KernelContext {
  public:
   KernelContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
-                const platform::DeviceContext& device_context)
-      : op_(*op), scope_(scope), device_context_(device_context) {}
+                platform::DeviceContext& device_context)
+      : op_(*op), scope_(scope), device_context_(&device_context) {}
 
   const Variable* Input(int index) const {
     return scope_->GetVariable(op_.inputs_[index]);
@@ -155,11 +155,11 @@ class KernelContext {
                 typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
   DeviceType* GetEigenDevice() const;
 
-  platform::Place GetPlace() const { return device_context_.GetPlace(); }
+  platform::Place GetPlace() const { return device_context_->GetPlace(); }
 
   const OperatorBase& op_;
-  const std::shared_ptr<Scope>& scope_;
-  const platform::DeviceContext& device_context_;
+  const std::shared_ptr<Scope> scope_;
+  platform::DeviceContext* device_context_;
 };
 
 class OpKernel {
@@ -213,7 +213,7 @@ class OperatorWithKernel : public OperatorBase {
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
   void Run(const std::shared_ptr<Scope>& scope,
-           const platform::DeviceContext& dev_ctx) const final {
+           platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
     opKernel->Compute(KernelContext(this, scope, dev_ctx));
   }

@@ -49,7 +49,7 @@ class CPUDeviceContext : public DeviceContext {
     return retv;
   }
 
-  const random_generator_type& RandGenerator(const int seed) {
+  random_generator_type& RandGenerator(const int seed) {
     if (!rand_generator_) {
       random_seed_ = seed;
       rand_generator_.reset(new random_generator_type(random_seed_));
@@ -98,7 +98,7 @@ class CUDADeviceContext : public DeviceContext {
                    "cudaStreamSynchronize failed");
   }
 
-  const curandGenerator_t RandGenerator(const int seed) {
+  curandGenerator_t RandGenerator(const int seed) {
     if (!rand_generator_) {
       random_seed_ = seed;
       GPUPlaceGuard guard(gpu_place_);
