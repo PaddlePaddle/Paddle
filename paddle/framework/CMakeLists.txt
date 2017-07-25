@@ -19,10 +19,10 @@ cc_test(op_desc_test SRCS op_desc_test.cc DEPS op_desc protobuf)
 cc_library(operator SRCS operator.cc DEPS op_desc device_context tensor)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
 
-cc_library(grad_op_creator SRCS grad_op_creator.cc DEPS op_proto operator)
-cc_library(op_registry SRCS op_registry.cc DEPS op_desc grad_op_creator)
+cc_library(grad_op_builder SRCS grad_op_builder.cc DEPS op_proto operator)
+cc_library(op_registry SRCS op_registry.cc DEPS op_desc grad_op_builder)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
-cc_test(grad_op_creator_test SRCS grad_op_creator_test.cc DEPS grad_op_creator op_registry add_op)
+cc_test(grad_op_builder_test SRCS grad_op_builder_test.cc DEPS grad_op_builder op_registry add_op)
 
 py_proto_compile(framework_py_proto SRCS attr_type.proto op_proto.proto op_desc.proto)
 # Generate an empty __init__.py to make framework_py_proto as a valid python module.

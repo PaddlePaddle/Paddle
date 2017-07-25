@@ -12,20 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/grad_op_creator.h"
+#include "paddle/framework/grad_op_builder.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
 
-OperatorBase* GradOpCreator::Create() {
+OperatorBase* GradOpBuilder::Build() {
   BuildOpInOutArgList();
-  OperatorBase* grad_op = OpRegistry::grad_creators().at(op_->type_)();
+  std::string grad_op_type = OpRegistry::grad_ops().at(op_->type_);
+  OperatorBase* grad_op = OpRegistry::op_creators().at(grad_op_type)();
+  grad_op->type_ = grad_op_type;
   CompleteGradOp(grad_op);
   return grad_op;
 }
 
-OpInOutArg* GradOpCreator::BuildArg(const VarProto& var,
+OpInOutArg* GradOpBuilder::BuildArg(const VarProto& var,
                                     const VarIndexMap& var_map,
                                     const std::vector<int>& format,
                                     InOutType type) {
@@ -36,7 +38,7 @@ OpInOutArg* GradOpCreator::BuildArg(const VarProto& var,
                         end_idx);
 }
 
-void GradOpCreator::BuildOpInOutArgList() {
+void GradOpBuilder::BuildOpInOutArgList() {
   const OpProto& op_proto = OpRegistry::protos().at(op_->type_);
   const auto& var_map = *(OpRegistry::VarIndexMaps().at(op_->type_));
   const std::vector<int>& in_format =
@@ -57,7 +59,7 @@ void GradOpCreator::BuildOpInOutArgList() {
   }
 }
 
-void GradOpCreator::AddArgIntoGradOp(const OpInOutArg* arg,
+void GradOpBuilder::AddArgIntoGradOp(const OpInOutArg* arg,
                                      std::vector<std::string>& in_out,
                                      std::vector<int>& format,
                                      VarIndexMap* varmap, int& idx,
@@ -80,8 +82,7 @@ void GradOpCreator::AddArgIntoGradOp(const OpInOutArg* arg,
   format.push_back(in_out.size());
 }
 
-void GradOpCreator::CompleteGradOp(OperatorBase* grad_op) const {
-  grad_op->type_ = op_->type_ + "@GRAD";  // not necessary
+void GradOpBuilder::CompleteGradOp(OperatorBase* grad_op) const {
   grad_op->attrs_ = op_->attrs_;
   grad_op->attrs_.erase("input_format");
   grad_op->attrs_.erase("output_format");

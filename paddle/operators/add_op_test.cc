@@ -22,7 +22,7 @@ TEST(AddOp, GetOpProto) {
   auto& protos = paddle::framework::OpRegistry::protos();
   auto it = protos.find("add_two");
   ASSERT_NE(it, protos.end());
-  auto& grad_creators = paddle::framework::OpRegistry::grad_creators();
-  auto it1 = grad_creators.find("add_two");
-  ASSERT_NE(it1, grad_creators.end());
+  auto& op_creators = paddle::framework::OpRegistry::op_creators();
+  auto it1 = op_creators.find("add_two_grad");
+  ASSERT_NE(it1, op_creators.end());
 }
