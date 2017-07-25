@@ -10,11 +10,31 @@ class client(object):
     client is a client to the master server.
     """
 
-    def __init__(self, etcd_endpoints, timeout, buf_size):
-        self.c = lib.paddle_new_etcd_master_client(etcd_endpoints, timeout,
+    def __init__(self, etcd_endpoints, timeout_sec, buf_size=0):
+        self.c = lib.paddle_new_etcd_master_client(etcd_endpoints, timeout_sec,
                                                    buf_size)
 
-    def close(self):
+    def request_save_model(self, trainer_id, block_ms):
+        """request to save model
+
+        Conventionally the 0-th trainer will save model. But in
+        distributed training, any trainer could be killed. This
+        function asks the master server if the trainer should proceed
+        with saving model.
+
+        :param trainer_id: trainer id.
+        :param block_ms: number of millisecond that other save model
+        will be blocked if this save model request succeeded.
+
+        Returns:
+            int: 1 if the save the model request is approved, 0 if
+            does the request is rejected because other trainer is
+            saving the model, -1 if error happened.
+
+        """
+        return lib.paddle_request_save_model(self.c, trainer_id, block_ms)
+
+    def release(self):
         lib.paddle_release_master_client(self.c)
         self.c = None
 
@@ -27,10 +47,13 @@ class client(object):
             holder[idx] = c_ptr
         lib.paddle_set_dataset(self.c, holder, len(paths))
 
-    # return format: (record, errno)
-    # errno =  0: ok
-    #       <  0: error
     def next_record(self):
+        """gets next record for training
+
+        Returns:
+            string: the record.
+            int: error code, 0 if successful, < 0 otherwise.
+        """
         p = ctypes.c_char_p()
         ret = ctypes.pointer(p)
         size = lib.paddle_next_record(self.c, ret)
