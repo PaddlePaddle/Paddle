@@ -72,9 +72,9 @@ func main() {
 
 	shutdown := func() {
 		log.Infoln("shutting down gracefully")
-		e := store.Shutdown()
-		if e != nil {
-			log.Errorln(e)
+		err := store.Shutdown()
+		if err != nil {
+			log.Errorln(err)
 		}
 	}
 

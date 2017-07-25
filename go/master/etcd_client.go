@@ -68,12 +68,12 @@ func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePat
 	// one master running, but split-brain problem may cause
 	// multiple master servers running), and the cluster management
 	// software will kill one of them.
-	log.Debugf("Trying to acquire lock at %s.", lockPath)
+	log.Infof("Trying to acquire lock at %s.", lockPath)
 	err = lock.Lock(context.TODO())
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("Successfully acquired lock at %s.", lockPath)
+	log.Infof("Successfully acquired lock at %s.", lockPath)
 
 	put := clientv3.OpPut(addrPath, addr)
 	resp, err := cli.Txn(context.Background()).If(lock.IsOwner()).Then(put).Commit()
