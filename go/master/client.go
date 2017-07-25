@@ -90,6 +90,12 @@ func WithEtcd(endpoints []string, timeout time.Duration) func(*Client) error {
 
 		go watchKey(cli, DefaultAddrPath, ch)
 		go c.monitorMaster(ch)
+
+		// register trainer etcd nodes
+		err = RegisterTrainer(cli, timeout)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 }

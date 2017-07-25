@@ -18,8 +18,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/PaddlePaddle/Paddle/go/utils/networkhelper"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
+	"github.com/nu7hatch/gouuid"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -171,6 +173,44 @@ func GetKey(c *clientv3.Client, key string, timeout time.Duration) (string, erro
 	}
 	v := kvs[0].Value
 	return string(v), nil
+}
+
+// RegisterTrainer will generate a uuid and write as key to etcd for each trainer node.
+func RegisterTrainer(c *clientv3.Client, timeout time.Duration) error {
+	clientUUID, e := uuid.NewV4()
+	if e != nil {
+		return e
+	}
+	trainerIP, e := networkhelper.GetExternalIP()
+	if e != nil {
+		return e
+	}
+	// put trainer uniq id with etcd lease
+	resp, err := c.Grant(context.TODO(), 5)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	_, err = c.Put(ctx, clientUUID.String(), trainerIP, clientv3.WithLease(resp.ID))
+	cancel()
+	if err != nil {
+		log.Error("put trainer key to etcd error:", err)
+		return err
+	}
+
+	ch, kaerr := c.KeepAlive(context.TODO(), resp.ID)
+	if kaerr != nil {
+		log.Errorf("keepalive etcd node error: %v", kaerr)
+		return kaerr
+	}
+	// Eat the keep alive message so etcd will not expire the lease.
+	go func(ch <-chan *clientv3.LeaseKeepAliveResponse) {
+		ka := <-ch
+		log.Debugf("keepalive: %d\n", ka.TTL)
+	}(ch)
+
+	return nil
 }
 
 // watchKey watches the specify key and send to valChan if there is some event.
