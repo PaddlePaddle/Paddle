@@ -25,6 +25,7 @@ class OpTestMeta(type):
             self.assertIsNotNone(func)
 
             scope = core.Scope(None)
+            place = core.CPUPlace()
             kwargs = dict()
 
             for in_name in func.all_input_args:
@@ -33,7 +34,7 @@ class OpTestMeta(type):
                     var = scope.create_var(in_name).get_tensor()
                     arr = getattr(self, in_name)
                     var.set_dims(arr.shape)
-                    var.set(arr)
+                    var.set(arr, place)
                 else:
                     kwargs[in_name] = "@EMPTY@"
 

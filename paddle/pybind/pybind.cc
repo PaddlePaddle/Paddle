@@ -64,23 +64,25 @@ PYBIND11_PLUGIN(core) {
              self.Resize(pd::make_ddim(dim));
            })
       .def("alloc_float",
-           [](pd::Tensor& self, paddle::platform::Place& place) {
+           [](pd::Tensor& self, paddle::platform::GPUPlace& place) {
              self.mutable_data<float>(place);
            })
       .def("alloc_float",
-           [](pd::Tensor& self) {
-             self.mutable_data<float>(paddle::platform::CPUPlace());
+           [](pd::Tensor& self, paddle::platform::CPUPlace& place) {
+             self.mutable_data<float>(place);
            })
       .def("alloc_int",
-           [](pd::Tensor& self, paddle::platform::Place& place) {
+           [](pd::Tensor& self, paddle::platform::CPUPlace& place) {
              self.mutable_data<int>(place);
            })
       .def("alloc_int",
-           [](pd::Tensor& self) {
-             self.mutable_data<int>(paddle::platform::CPUPlace());
+           [](pd::Tensor& self, paddle::platform::GPUPlace& place) {
+             self.mutable_data<int>(place);
            })
-      .def("set", paddle::pybind::PyTensorSetFromArray<float>)
-      .def("set", paddle::pybind::PyTensorSetFromArray<int>)
+      .def("set", paddle::pybind::PyCPUTensorSetFromArray<float>)
+      .def("set", paddle::pybind::PyCUDATensorSetFromArray<float>)
+      .def("set", paddle::pybind::PyCPUTensorSetFromArray<int>)
+      .def("set", paddle::pybind::PyCUDATensorSetFromArray<int>)
       .def("shape",
            [](pd::Tensor& self) { return pd::vectorize(self.dims()); });
 
@@ -144,9 +146,9 @@ All parameter, weight, gradient are variables in Paddle.
                       })
 #endif
       ;  // NOLINT
-  py::class_<paddle::platform::Place>(m, "GPUPlace").def(py::init<int>());
+  py::class_<paddle::platform::GPUPlace>(m, "GPUPlace").def(py::init<int>());
 
-  py::class_<paddle::platform::Place>(m, "CPUPlace").def(py::init<>());
+  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace").def(py::init<>());
 
   py::class_<pd::OperatorBase, std::shared_ptr<pd::OperatorBase>> operator_base(
       m, "Operator");

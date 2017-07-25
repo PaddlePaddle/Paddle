@@ -61,7 +61,7 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
       framework::Tensor dst_tensor;
       if (paddle::platform::is_gpu_place(tensor.holder_->place())) {
         dst_tensor.CopyFrom<CUR_TYPE>(tensor, platform::CPUPlace());
-      } else if (paddle::platform::is_gpu_place(tensor.holder_->place())) {
+      } else if (paddle::platform::is_cpu_place(tensor.holder_->place())) {
         dst_tensor = tensor;
       }
       return py::buffer_info(
@@ -84,9 +84,10 @@ inline py::buffer_info CastToPyBuffer(framework::Tensor &tensor) {
 }
 
 template <typename T>
-void PyTensorSetFromArray(
+void PyCPUTensorSetFromArray(
     framework::Tensor &self,
-    py::array_t<T, py::array::c_style | py::array::forcecast> array) {
+    py::array_t<T, py::array::c_style | py::array::forcecast> array,
+    paddle::platform::CPUPlace &place) {
   std::vector<int> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
@@ -94,18 +95,26 @@ void PyTensorSetFromArray(
   }
 
   self.Resize(framework::make_ddim(dims));
-  auto *dst = self.mutable_data<T>(self.place());
+  auto *dst = self.mutable_data<T>(place);
+  std::memcpy(dst, array.data(), sizeof(T) * array.size());
+}
 
-  if (paddle::platform::is_cpu_place(self.place())) {
-    std::memcpy(dst, array.data(), sizeof(T) * array.size());
-  } else if (paddle::platform::is_gpu_place(self.place())) {
-#ifdef PADDLE_ONLY_CPU
-    PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
-#else
-    platform::GpuMemcpySync(
-        dst, array.data(), sizeof(T) * array.size(), cudaMemcpyHostToDevice);
-#endif
+template <typename T>
+void PyCUDATensorSetFromArray(
+    framework::Tensor &self,
+    py::array_t<T, py::array::c_style | py::array::forcecast> array,
+    paddle::platform::GPUPlace &place) {
+  std::vector<int> dims;
+  dims.reserve(array.ndim());
+  for (size_t i = 0; i < array.ndim(); ++i) {
+    dims.push_back((int)array.shape()[i]);
   }
+
+  self.Resize(framework::make_ddim(dims));
+  auto *dst = self.mutable_data<T>(place);
+  std::memcpy(dst, array.data(), sizeof(T) * array.size());
+  paddle::platform::GpuMemcpySync(
+      dst, array.data(), sizeof(T) * array.size(), cudaMemcpyHostToDevice);
 }
 
 }  // namespace pybind
