@@ -10,3 +10,5 @@ test_prelu_layer test_row_conv test_detection_output_layer test_multibox_loss_la
 test_recursive_topology test_gated_unit_layer)
 
 export whole_configs=(test_split_datasource)
+
+export configs_with_args=(test_batch_norm_parallel_nn_gpu test_batch_norm_parallel_nn_cpu)
