@@ -196,7 +196,12 @@ public:
   /**
    * Load settings from proto
    */
-  virtual void loadConfig() = 0;
+  virtual void loadConfig() {
+    CHECK_EQ(config_.inputs_size(), 1) << "Only support one input config!";
+    if (config_.has_score_with_paddle_wgt()) {
+      scoreWithPaddleWgt_ = config_.score_with_paddle_wgt();
+    }
+  }
 
   /**
    * Initial weight of this layer

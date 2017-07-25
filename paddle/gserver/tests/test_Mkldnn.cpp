@@ -41,10 +41,10 @@ void testFcLayer(const testFCDesc& pm) {
   cfg.layerConfig.set_size(pm.oc);
   cfg.inputDefs.push_back({INPUT_DATA, "layer_0",
     /* size of input layer= */ size_t(pm.ic * pm.ih * pm.iw),
-    /* size of weight= */      size_t(pm.ic * pm.oc)});
+    /* size of weight= */      size_t(pm.oc * pm.ic * pm.ih * pm.iw)});
   LayerInputConfig* input = cfg.layerConfig.add_inputs();
   FCConfig* fc = input->mutable_fc_conf();
-  fc->set_dim_in(pm.ic);
+  fc->set_dim_in(pm.ic * pm.ih *pm.iw);
   fc->set_dim_out(pm.oc);
 
   // TODO(TJ): test true and false
@@ -64,10 +64,11 @@ void testFcLayer(const testFCDesc& pm) {
 
 TEST(MkldnnLayer, fcLayer) {
   testFcLayer({2, 2, 3, 1, 1});
-  testFcLayer({64, 256, 128, 1, 1});/*
-  testFcLayer({8, 32, 64, 14, 11});
+  testFcLayer({32, 256, 128, 1, 1});
+  testFcLayer({8, 32, 64, 13, 13});
+  testFcLayer({8, 32, 32, 13, 11});
   testFcLayer({2, 64, 32, 16, 16});
-  testFcLayer({15, 3, 6, 16, 16});*/
+  testFcLayer({15, 3, 6, 16, 16});
 }
 
 // TODO(TJ): add branch test

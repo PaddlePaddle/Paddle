@@ -27,10 +27,7 @@ REGISTER_LAYER(mkldnn_fc, MkldnnFcLayer);
 
 // load the settings from proto
 void MkldnnFcLayer::loadConfig() {
-  CHECK_EQ(config_.inputs_size(), 1) << "should have only one input config!";
-  if (config_.has_score_with_paddle_wgt()) {
-    scoreWithPaddleWgt_ = config_.score_with_paddle_wgt();
-  }
+  MkldnnLayer::loadConfig();
 
   // get dim of input and output
   const FCConfig &conf = config_.inputs(0).fc_conf();
