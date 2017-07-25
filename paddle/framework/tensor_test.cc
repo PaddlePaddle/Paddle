@@ -33,7 +33,7 @@ TEST(Tensor, DataAssert) {
   bool caught = false;
   try {
     src_tensor.data<double>();
-  } catch (std::runtime_error& err) {
+  } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg =
         "Tenosr holds no memory. Call Tensor::mutable_data first.";
@@ -107,7 +107,7 @@ TEST(Tensor, ShareDataWith) {
     bool caught = false;
     try {
       dst_tensor.ShareDataWith<float>(src_tensor);
-    } catch (std::runtime_error& err) {
+    } catch (paddle::platform::EnforceNotMet err) {
       caught = true;
       std::string msg =
           "Tenosr holds no memory. Call Tensor::mutable_data first.";
