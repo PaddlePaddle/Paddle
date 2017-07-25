@@ -44,12 +44,14 @@ inline T* Tensor::data() {
 
 template <typename T>
 inline T* Tensor::mutable_data(DDim dims, platform::Place place) {
+  static_assert(std::is_pod<T>::value, "T must be POD");
   Resize(dims);
   return mutable_data<T>(place);
 }
 
 template <typename T>
 inline T* Tensor::mutable_data(platform::Place place) {
+  static_assert(std::is_pod<T>::value, "T must be POD");
   PADDLE_ENFORCE(product(dims_) > 0,
                  "Tensor's numel must be larger than zero to call "
                  "Tensor::mutable_data. Call Tensor::set_dim first.");
