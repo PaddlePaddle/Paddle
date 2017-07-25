@@ -32,6 +32,8 @@ const (
 	DefaultStatePath = "/master/state"
 	// DefaultAddrPath is the default etcd key for master address.
 	DefaultAddrPath = "/master/addr"
+	// DefaultTrainerPath is the default trainer key prefix.
+	DefaultTrainerPath = "/trainer"
 )
 
 // EtcdClient is the etcd client that the master uses for fault
@@ -192,7 +194,7 @@ func RegisterTrainer(c *clientv3.Client, timeout time.Duration) error {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	_, err = c.Put(ctx, clientUUID.String(), trainerIP, clientv3.WithLease(resp.ID))
+	_, err = c.Put(ctx, DefaultTrainerPath+"/"+clientUUID.String(), trainerIP, clientv3.WithLease(resp.ID))
 	cancel()
 	if err != nil {
 		log.Error("put trainer key to etcd error:", err)
