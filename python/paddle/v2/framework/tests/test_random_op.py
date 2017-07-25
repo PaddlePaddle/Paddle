@@ -21,8 +21,8 @@ class TestRandomOp(unittest.TestCase):
         ctx = core.DeviceContext.cpu_context()
         op.run(scope, ctx)
         tensor_array = numpy.array(tensor)
-        self.assertAlmostEqual(numpy.std(tensor_array), 1.0)
-        self.assertAlmostEqual(numpy.mean(tensor_array), 5.0)
+        self.assertAlmostEqual(numpy.mean(tensor_array), 5.0, places=3)
+        self.assertAlmostEqual(numpy.std(tensor_array), 1.0, places=3)
 
 
 if __name__ == '__main__':
