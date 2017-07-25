@@ -47,8 +47,9 @@ bool MkldnnFcLayer::initWgt(const LayerMap &layerMap,
   weight_ = std::unique_ptr<Weight>(
               new Weight(dim_out_, dim_in_, parameters_[0], 0));
 
-  initWgtT_ = Matrix::create(dim_out_, dim_in_, false, false);
-  initWgtT_->zeroMem();
+  // The weight_ is transposed from initial paddle weight
+  paddleWgt_ = Matrix::create(weight_->getW()->getData(),
+    dim_in_, dim_out_, false, false);
 
   // create biases
   if (biasParameter_.get() != NULL) {
@@ -313,33 +314,30 @@ void MkldnnFcLayer::resetFwdPipeline(
 }
 
 void MkldnnFcLayer::initWgtFromPaddle() {
-  // TODO(TJ): move to mkldnnlayer.h for common use
   if (passType_ == PASS_TEST && !scoreWithPaddleWgt_) {
     return;
   }
-
+  
   if (hasInitedWgt_) {
     return;
   }
+  
+  // Firstly in mkldnn, the matrix is transposed from initial paddle weight
+  MatrixPtr paddleWgtT;
+  paddleWgt_->transpose(paddleWgtT, true);
 
-  const MatrixPtr& wgtVal = weight_->getW();
-  // The initial weight firstly is saved in weight_
-  // mkldnn weight transposed from inital wgt
-  // the tranposed weight saved in initWgtT_
-  MatrixPtr initialWgt = Matrix::create(wgtVal->getData(),
-                         wgtVal->getWidth(), wgtVal->getHeight(), false);
-  initialWgt->transpose(initWgtT_, false);
-
+  // Then, reorder the format from transpoesd matrix to mkldnn intl memory
   MkldnnBufferPtr cvtWgt(new MkldnnBuffer());
-  cvtWgt->initUser(initWgtT_->getData(), wgtDims_, wgtFmt_, engine_);
-  cvtWgt->initIntl(wgtData_->getIntl());
+  cvtWgt->resetUser(paddleWgtT->getData(), wgtDims_, wgtFmt_, engine_);
+  cvtWgt->resetIntl(wgtData_->getIntl());
   cvtWgt->resetReorder(dnnUser2Intl);
 
+  // start cvt
   std::vector<primitive> cvtToDnnWgt;
-  CHECK(cvtWgt->needReorder()) << "should need cvt from paddle weight";
+  CHECK(cvtWgt->needReorder()) << "should always need cvt from paddle weight";
   cvtToDnnWgt.push_back(*cvtWgt->getReorder());
   stream(stream::kind::eager).submit(cvtToDnnWgt).wait();
-
+  
   hasInitedWgt_ = true;
 }
 
@@ -509,7 +507,7 @@ void MkldnnFcLayer::resetDnnBotDiff(
     botDiff_->resetUser(botGradData, bwdDataPD->diff_src_primitive_desc());
     botDiff_->resetIntl(botDiff_->getUser());
   } else {
-    botDiff_->initUser(botGradData, botDims_, botFmt_, engine_);
+    botDiff_->resetUser(botGradData, botDims_, botFmt_, engine_);
     botDiff_->resetIntl(bwdDataPD->diff_src_primitive_desc());
     botDiff_->resetReorder(dnnIntl2User);
   }

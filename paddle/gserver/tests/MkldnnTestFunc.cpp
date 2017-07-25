@@ -195,7 +195,7 @@ void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
         break;
       }
     }
-    testLayer[0]->reorderWeights();
+    testLayer[0]->cvtWgtToPaddle();
     for (size_t idx = 0; idx < parameters[0].size(); ++idx) {
       const VectorPtr& tgt = parameters[0][idx]->getBuf(PARAMETER_VALUE);
       const VectorPtr& ref = parameters[0][idx]->getBuf(PARAMETER_VALUE);

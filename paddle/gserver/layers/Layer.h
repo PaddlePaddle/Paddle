@@ -242,11 +242,12 @@ public:
     return nullptr;
   }
 
-  /**
-   * This function is to transform the mkldnn weights to
-   * the format in original cpu layers
-   */
-  virtual void reorderWeights() {
+ /**
+  * Convert the mkldnn weights to the paddle format
+  * This functions could be called in gtest
+  */
+  virtual void cvtWgtToPaddle() {
+    // do not need cvt in base layer.h
     return;
   }
 #endif

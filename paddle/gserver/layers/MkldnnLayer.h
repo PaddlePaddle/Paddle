@@ -311,14 +311,6 @@ public:
     return botDiff_;
   }
 
-  /**
-   * This function is to reorder the mkldnn weights format to
-   * the format in original cpu layers
-   */
-  void reorderWeights() override {
-    // TODO(TJ): enable me
-  }
-
 protected:
   /**
    * Functions that should be called only once after initial

@@ -47,10 +47,10 @@ protected:
   std::unique_ptr<Weight> weight_;
   std::unique_ptr<Weight> biases_;
 
-  /// save the transposed initial weight to support:
+  /// The layout of paddle weight is different with mkldnn
   /// 1. initial weight from paddle
   /// 2. inference with paddle format wgt if do not use mkldnn wgt as input
-  MatrixPtr initWgtT_;
+  MatrixPtr paddleWgt_;
 
   /// weight data and diff buffers
   MkldnnBufferPtr wgtData_;
@@ -68,13 +68,13 @@ protected:
 
   bool hasBias_;
 
-  /// only init wgt once
+  /// only init wgt from paddle once
   bool hasInitedWgt_;
 
 public:
   explicit MkldnnFcLayer(const LayerConfig& config)
     : MkldnnLayer(config),
-      initWgtT_(nullptr),
+      paddleWgt_(nullptr),
       wgtData_(nullptr),
       wgtDiff_(nullptr),
       biasData_(nullptr),
@@ -113,6 +113,21 @@ public:
 
   void submitBwd(const UpdateCallback& callback);
 
+  /**
+   * Init mkldnn weight from paddle format only once
+   * when training or scoring from paddle format
+   * however when scoring with mkldnn wgt donot need initial from paddle format
+   */
+  void initWgtFromPaddle();
+
+  /**
+   * Convert the mkldnn weights to the paddle format
+   * This functions could be called in gtest
+   */
+  void cvtWgtToPaddle() override {
+    // TODO(TJ): enable me
+  }
+
 protected:
   // fc can only change the out mat height but not width(layersize)
   // since when input width changed, the wgt would need be changed too
@@ -146,13 +161,6 @@ protected:
 
   void resetFwdPipeline(const std::shared_ptr
     <mkldnn::inner_product_forward::primitive_desc>& fwdPD);
-
-  /**
-   * init mkldnn weight from paddle format only once
-   * when training or scoring from paddle format
-   * however when scoring with mkldnn wgt donot need initial from paddle format
-   */
-  void initWgtFromPaddle();
 
   void forwardDnnVal();
 
