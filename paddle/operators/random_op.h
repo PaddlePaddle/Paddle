@@ -53,6 +53,7 @@ public:
           std,
           seed);
     } else {
+#ifndef PADDLE_ONLY_CPU
       Gaussian(
           dynamic_cast<platform::CUDADeviceContext*>(context.device_context_),
           output->mutable_data<T>(context.GetPlace()),
@@ -60,6 +61,7 @@ public:
           mean,
           std,
           seed);
+#endif
     }
   }
 };
