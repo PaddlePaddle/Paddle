@@ -79,10 +79,6 @@ std::vector<std::string> OperatorBase::Outputs(const std::string& name) const {
       outputs_.begin() + output_format.at(offset + 1)};
 }
 
-void OperatorBase::InferShape(const std::shared_ptr<Scope>& scope) const {
-  InferShapeImpl(InferShapeContext(this, scope));
-}
-
 std::string OperatorBase::DebugString() const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:(";

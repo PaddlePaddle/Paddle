@@ -21,7 +21,7 @@ namespace operators {
 
 class AddOp : public framework::OperatorWithKernel {
 protected:
-  void InferShapeImpl(const framework::InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2, "Input size of AddOp must be two");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "Output size of AddOp must be one");
     PADDLE_ENFORCE(ctx.InputVar(0) != nullptr && ctx.InputVar(1) != nullptr,
@@ -51,7 +51,7 @@ The equation is: Out = X + Y
 
 class AddOpGrad : public framework::OperatorWithKernel {
 protected:
-  void InferShapeImpl(const framework::InferShapeContext &ctx) const override {}
+  void InferShape(const framework::InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "AddOpGrad";
     return "";

@@ -71,8 +71,7 @@ class OperatorBase {
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  virtual void InferShape(const std::shared_ptr<Scope>& scope) const final;
-  virtual void InferShapeImpl(const InferShapeContext& ctx) const = 0;
+  virtual void InferShape(const std::shared_ptr<Scope>& scope) const = 0;
 
   /// Net will call this function to Run an op.
   virtual void Run(const std::shared_ptr<Scope>& scope,
@@ -254,6 +253,11 @@ class OperatorWithKernel : public OperatorBase {
 
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
+
+  void InferShape(const std::shared_ptr<Scope>& scope) const {
+    InferShape(InferShapeContext(this, scope));
+  }
+  virtual void InferShape(const InferShapeContext& ctx) const = 0;
 
   void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const final {

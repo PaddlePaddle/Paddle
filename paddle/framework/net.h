@@ -57,9 +57,9 @@ class PlainNet : public Net {
    * Infer all the operators' input and output variables' shapes, will be called
    * before every mini-batch
    */
-  void InferShapeImpl(const InferShapeContext& ctx) const override {
+  void InferShape(const std::shared_ptr<Scope>& scope) const override {
     for (auto& op : ops_) {
-      op->InferShape(ctx.scope_);
+      op->InferShape(scope);
     }
   }
 

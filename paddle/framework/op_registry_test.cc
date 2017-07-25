@@ -9,7 +9,7 @@ class CosineOp : public OperatorBase {
  public:
   void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const override {}
-  void InferShapeImpl(const InferShapeContext& ctx) const override {}
+  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
 };
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -27,7 +27,7 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 class MyTestOp : public OperatorBase {
  public:
-  void InferShapeImpl(const InferShapeContext& ctx) const override {}
+  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
   void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const override {}
 };

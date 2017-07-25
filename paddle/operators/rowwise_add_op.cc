@@ -19,7 +19,7 @@ namespace operators {
 
 class RowWiseAddOp : public framework::OperatorWithKernel {
 protected:
-  void InferShapeImpl(const framework::InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2UL,
                    "Two inputs is needed by rowwise add");
     auto dim0 = ctx.Input(0).dims();

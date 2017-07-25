@@ -21,7 +21,7 @@ namespace operators {
 
 class SGDOp : public framework::OperatorWithKernel {
 protected:
-  void InferShapeImpl(const framework::InferShapeContext &ctx) const override {
+  void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2, "Input size of SGDOp must be two");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "Output size of SGDOp must be one");
     PADDLE_ENFORCE(ctx.InputVar(0) != nullptr, "inputs[0] mast be set");
