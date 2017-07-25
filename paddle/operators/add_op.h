@@ -13,27 +13,24 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "glog/logging.h"
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/operator.h"
+#include "paddle/operators/type_alias.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class AddKernel : public framework::OpKernel {
+class AddKernel : public OpKernel {
 public:
-  void Compute(const framework::KernelContext& context) const override {
-    auto input0 = context.Input(0)->Get<framework::Tensor>();
-    auto input1 = context.Input(1)->Get<framework::Tensor>();
-    auto* output = context.Output(0)->GetMutable<framework::Tensor>();
+  void Compute(const KernelContext& context) const override {
+    auto input0 = context.Input(0)->Get<Tensor>();
+    auto input1 = context.Input(1)->Get<Tensor>();
+    auto output = context.Output(0)->GetMutable<Tensor>();
 
     output->mutable_data<T>(context.GetPlace());
 
-    framework::EigenVector<T>::Flatten(*output).device(
+    EigenVector<T>::Flatten(*output).device(
         *(context.GetEigenDevice<Place>())) =
-        framework::EigenVector<T>::Flatten(input0) +
-        framework::EigenVector<T>::Flatten(input1);
+        EigenVector<T>::Flatten(input0) + EigenVector<T>::Flatten(input1);
   }
 };
 
