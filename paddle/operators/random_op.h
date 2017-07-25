@@ -15,6 +15,21 @@ bool Gaussian(DeviceContext& ctx,
               const T& std,
               const T& seed);
 
+template <typename T>
+bool Gaussian(platform::CPUDeviceContext& ctx,
+              framework::Tensor* output,
+              const int size,
+              const T& mean,
+              const T& std,
+              const T& seed);
+template <typename T>
+bool Gaussian(platform::CUDADeviceContext& ctx,
+              framework::Tensor* output,
+              const int size,
+              const T& mean,
+              const T& std,
+              const T& seed);
+
 template <typename Place, typename T>
 class RandomOpKernel : public framework::OpKernel {
 public:
