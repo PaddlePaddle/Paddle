@@ -14,14 +14,16 @@ class TestNet(unittest.TestCase):
         net2.complete_add_op(True)
         net.add_op(net2)
         net.complete_add_op(True)
-        expected = '''naive_net:
+
+        expected = '''
+Op(plain_net), inputs:(@EMPTY@, X, Y, w), outputs:(@TEMP@fc@0, Out, fc.out).
     Op(add_two), inputs:(X, Y), outputs:(Out).
-    naive_net:
-        fc:
+    Op(plain_net), inputs:(@EMPTY@, X, w), outputs:(@TEMP@fc@0, fc.out).
+        Op(fc), inputs:(X, w, @EMPTY@), outputs:(fc.out, @TEMP@fc@0).
             Op(mul), inputs:(X, w), outputs:(@TEMP@fc@0).
             Op(sigmoid), inputs:(@TEMP@fc@0), outputs:(fc.out).
 '''
-        self.assertEqual(expected, str(net))
+        self.assertEqual(expected, "\n" + str(net))
 
 
 if __name__ == '__main__':
