@@ -305,5 +305,9 @@ void testOperatorGrad(TestConfig& config,
                       size_t batchSize,
                       bool useGpu,
                       bool testState = false);
+#ifdef PADDLE_USE_MKLDNN
+void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
+                    float epsilon = 1e-4);
+#endif
 
 }  //  namespace paddle

@@ -47,8 +47,10 @@ protected:
   std::unique_ptr<Weight> weight_;
   std::unique_ptr<Weight> biases_;
 
-  // support inference with paddle format wgt if do not use dnn wgt
-  MatrixPtr paddleWgt_;
+  /// save the transposed initial weight to support:
+  /// 1. initial weight from paddle
+  /// 2. inference with paddle format wgt if do not use mkldnn wgt as input
+  MatrixPtr initWgtT_;
 
   /// weight data and diff buffers
   MkldnnBufferPtr wgtData_;
@@ -72,7 +74,7 @@ protected:
 public:
   explicit MkldnnFcLayer(const LayerConfig& config)
     : MkldnnLayer(config),
-      paddleWgt_(nullptr),
+      initWgtT_(nullptr),
       wgtData_(nullptr),
       wgtDiff_(nullptr),
       biasData_(nullptr),

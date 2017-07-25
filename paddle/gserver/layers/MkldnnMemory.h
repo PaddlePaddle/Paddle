@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <vector>
@@ -26,13 +25,30 @@ namespace paddle {
  *
  * 
  */
- typedef enum {
-//    dnnCvtNone             = 0,
-    dnnUser2Intl        = 1,
-    dnnIntl2User        = 2
-//    dnnCvtNoNeed           = 3,
-//    dnnCvtNumber           = 4
+ typedef enum { 
+  dnnUser2Intl = 0,
+  dnnIntl2User, 
 } dnnCvtType_t;
+
+using dnnfmt = mkldnn::memory::format;
+// This format should be matched with the version of MKLDNN
+const static std::map<dnnfmt, std::string> DNN_FMT_STR = {
+  {dnnfmt::format_undef, "format_undef"}, {dnnfmt::any, "any"},
+  {dnnfmt::blocked, "blocked"}, {dnnfmt::x, "x"}, {dnnfmt::nc, "nc"},
+  {dnnfmt::nchw, "nchw"}, {dnnfmt::nhwc, "nhwc"}, {dnnfmt::chwn, "chwn"}, 
+  {dnnfmt::nChw8c, "nChw8c"}, {dnnfmt::nChw16c, "nChw16c"}, {dnnfmt::oi, "oi"},
+  {dnnfmt::io, "io"}, {dnnfmt::oihw, "oihw"}, {dnnfmt::ihwo, "ihwo"}, 
+  {dnnfmt::oIhw8i, "oIhw8i"}, {dnnfmt::oIhw16i, "oIhw16i"},
+  {dnnfmt::OIhw8i8o, "OIhw8i8o"}, {dnnfmt::OIhw16i16o, "OIhw16i16o"},
+  {dnnfmt::OIhw8o8i, "OIhw8o8i"}, {dnnfmt::OIhw16o16i, "OIhw16o16i"},
+  {dnnfmt::OIhw8i16o2i, "OIhw8i16o2i"}, {dnnfmt::Ohwi8o, "Ohwi8o"},
+  {dnnfmt::Ohwi16o, "Ohwi16o"}, {dnnfmt::OhIw16o4i, "OhIw16o4i"},
+  {dnnfmt::goihw, "goihw"}, {dnnfmt::gOIhw8i8o, "gOIhw8i8o"},
+  {dnnfmt::gOIhw16i16o, "gOIhw16i16o"}, {dnnfmt::gOIhw8i16o2i, "gOIhw8i16o2i"},
+  // {dnnfmt::gOhwi8o, "gOhwi8o"}, {dnnfmt::gOhwi16o, "gOhwi16o"},
+  {dnnfmt::gOIhw8o8i, "gOIhw8o8i"}, {dnnfmt::gOIhw16o16i, "gOIhw16o16i"},
+  {dnnfmt::gOhIw16o4i, "gOhIw16o4i"}};
+
 
 class MkldnnBuffer {
 using mem = mkldnn::memory;
@@ -249,15 +265,21 @@ public:
   }
 
   // get internal memory format
-  int getIntlFmt() {
+  std::string getIntlFmt() {
     CHECK(pIntl_) << "shoud have inited internal buffer";
-    return getMDFmt(getIntlMD());
+    dnnfmt fmt = dnnfmt(getMDFmt(getIntlMD()));
+    std::string fmtStr;
+    CHECK(mapGet(fmt, DNN_FMT_STR, &fmtStr)) << "invalid format: " << fmt;
+    return fmtStr;
   }
 
   // get user memory format
-  int getUserFmt() {
+  std::string getUserFmt() {
     CHECK(pUser_) << "shoud have inited user buffer";
-    return getMDFmt(getUserMD());
+    dnnfmt fmt = dnnfmt(getMDFmt(getUserMD()));
+    std::string fmtStr;
+    CHECK(mapGet(fmt, DNN_FMT_STR, &fmtStr)) << "invalid format: " << fmt;
+    return fmtStr;
   }
 
 

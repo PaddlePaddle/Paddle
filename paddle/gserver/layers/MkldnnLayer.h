@@ -290,11 +290,6 @@ public:
     // TODO(TJ): enable me
   }
 
-  /**
-   * This function is for transform the mkldnn weight to
-   * the format in original cpu layers
-   */
-   // TODO(TJ): add func to be called only for gtest
 
 public:
   /**
@@ -309,6 +304,14 @@ public:
    */
   std::shared_ptr<void> getMkldnnBotDiff() override {
     return botDiff_;
+  }
+
+  /**
+   * This function is to reorder the mkldnn weights format to
+   * the format in original cpu layers
+   */
+  void reorderWeights() override {
+    // TODO(TJ): enable me
   }
 
 protected:

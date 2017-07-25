@@ -50,9 +50,8 @@ bool MkldnnFcLayer::initWgt(const LayerMap &layerMap,
   weight_ = std::unique_ptr<Weight>(
               new Weight(dim_out_, dim_in_, parameters_[0], 0));
 
-  // paddle weight for initial mkldnn wgt or scoring with paddle wgt
-  paddleWgt_ = Matrix::create(dim_in_, dim_out_, false, false);
-  paddleWgt_->zeroMem();
+  initWgtT_ = Matrix::create(dim_out_, dim_in_, false, false);
+  initWgtT_->zeroMem();
 
   // create biases
   if (biasParameter_.get() != NULL) {
@@ -317,6 +316,7 @@ void MkldnnFcLayer::resetFwdPipeline(
 }
 
 void MkldnnFcLayer::initWgtFromPaddle() {
+  // TODO(TJ): move to mkldnnlayer.h for common use
   if (passType_ == PASS_TEST && !scoreWithPaddleWgt_) {
     return;
   }
@@ -326,11 +326,15 @@ void MkldnnFcLayer::initWgtFromPaddle() {
   }
 
   const MatrixPtr& wgtVal = weight_->getW();
-  paddleWgt_->copyFrom(*wgtVal);
-  paddleWgt_ = paddleWgt_->getTranspose();  // paddle wgt is transposed
+  // The initial weight firstly is saved in weight_
+  // mkldnn weight transposed from inital wgt
+  // the tranposed weight saved in initWgtT_
+  MatrixPtr initialWgt = Matrix::create(wgtVal->getData(),
+                         wgtVal->getWidth(), wgtVal->getHeight(), false);
+  initialWgt->transpose(initWgtT_, false);
 
   MkldnnBufferPtr cvtWgt(new MkldnnBuffer());
-  cvtWgt->initUser(paddleWgt_->getData(), wgtDims_, wgtFmt_, engine_);
+  cvtWgt->initUser(initWgtT_->getData(), wgtDims_, wgtFmt_, engine_);
   cvtWgt->initIntl(wgtData_->getIntl());
   cvtWgt->resetReorder(dnnUser2Intl);
 
@@ -492,6 +496,7 @@ void MkldnnFcLayer::resetDnnWgtBiasDiff(
     CHECK(biasDiff_->getUserPD() == bwdWgtPD->diff_bias_primitive_desc())
       << "should always be format::x, or changed in new mkldnn version";
   } else {
+    LOG(FATAL) << "only support with bias yet";
   }
 }
 
@@ -520,6 +525,10 @@ void MkldnnFcLayer::resetDnnBwdPipeline(
   const std::shared_ptr<fc_bwdData::primitive_desc>& bwdDataPD) {
   /// backward weight and bias
   CHECK(bwdWgtPD);
+  CHECK(botData_->getIntl());
+  CHECK(topDiffBwdWgt_->getIntl());
+  CHECK(wgtDiff_->getIntl());
+  CHECK(biasDiff_->getIntl());
   // bias buffer will automatic be empty memory if do not have bias
   bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD,
     *(botData_->getIntl()), *(topDiffBwdWgt_->getIntl()),

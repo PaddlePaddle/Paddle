@@ -147,20 +147,6 @@ public:
   size_t getNextSize() { return nextLayers_.size(); }
 
   /**
-   * Get mkldnn top data memory
-   */
-  virtual std::shared_ptr<void> getMkldnnTopData() {
-    return nullptr;
-  }
-
-  /**
-   * Get mkldnn bottom diff memory
-   */
-  virtual std::shared_ptr<void> getMkldnnBotDiff() {
-    return nullptr;
-  }
-
-  /**
    * is the type start with "mkldnn_"
    */
   bool isDnnType(const std::string& type) {
@@ -240,6 +226,28 @@ public:
     }
 
     return true;
+  }
+
+  /**
+   * Get mkldnn top data memory
+   */
+  virtual std::shared_ptr<void> getMkldnnTopData() {
+    return nullptr;
+  }
+
+  /**
+   * Get mkldnn bottom diff memory
+   */
+  virtual std::shared_ptr<void> getMkldnnBotDiff() {
+    return nullptr;
+  }
+
+  /**
+   * This function is to transform the mkldnn weights to
+   * the format in original cpu layers
+   */
+  virtual void reorderWeights() {
+    return;
   }
 #endif
 
