@@ -17,4 +17,4 @@ bool Gaussian(platform::CUDADeviceContext &ctx, framework::Tensor* output,
 
 typedef paddle::operators::RandomOpKernel<paddle::platform::GPUPlace, float>
   RandomOpKernel_GPU_float;
-REGISTER_OP_GPU_KERNEL(random_op, RandomOpKernel_GPU_float);
+REGISTER_OP_GPU_KERNEL(random, RandomOpKernel_GPU_float);

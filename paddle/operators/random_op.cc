@@ -71,10 +71,10 @@ The eqution : Out = Random(Shape=(d0, d1, ...), Dtype, mean, std)
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(random_op,
+REGISTER_OP(random,
             paddle::operators::RandomOp,
             paddle::operators::RandomOpMaker);
 
 typedef paddle::operators::RandomOpKernel<paddle::platform::CPUPlace, float>
     RandomOpKernel_CPU_float;
-REGISTER_OP_CPU_KERNEL(random_op, RandomOpKernel_CPU_float);
+REGISTER_OP_CPU_KERNEL(random, RandomOpKernel_CPU_float);
