@@ -5,8 +5,8 @@ __lib__ = None
 
 
 def get_c_lib():
+    global __lib__
     if __lib__ is None:
-        global __lib__
         path = os.path.join(os.path.dirname(__file__), "libpaddle_master.so")
         __lib__ = ctypes.cdll.LoadLibrary(path)
     return __lib__
