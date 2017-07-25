@@ -111,9 +111,5 @@ retry:
     getParams(c);
   }
 
-  if (paddle_save_model(c, "/tmp/")) {
-    fail();
-  }
-
   return 0;
 }

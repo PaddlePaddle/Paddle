@@ -16,8 +16,13 @@ limitations under the License. */
 #define private public
 #include <paddle/framework/op_registry.h>
 USE_OP(add_two);
+// USE_OP(add_two_grad);
+
 TEST(AddOp, GetOpProto) {
   auto& protos = paddle::framework::OpRegistry::protos();
   auto it = protos.find("add_two");
   ASSERT_NE(it, protos.end());
+  auto& grad_creators = paddle::framework::OpRegistry::grad_creators();
+  auto it1 = grad_creators.find("add_two");
+  ASSERT_NE(it1, grad_creators.end());
 }

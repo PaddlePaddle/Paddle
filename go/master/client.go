@@ -16,17 +16,20 @@ package master
 
 import (
 	"os"
+	"sync"
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
 	"github.com/PaddlePaddle/recordio"
+	"github.com/coreos/etcd/clientv3"
 	log "github.com/sirupsen/logrus"
 )
 
 // Client is the client of the master server.
 type Client struct {
-	conn *connection.Conn
-	ch   chan record
+	conn       *connection.Conn
+	ch         chan record
+	initChOnce sync.Once
 }
 
 type record struct {
@@ -34,24 +37,83 @@ type record struct {
 	err error
 }
 
-// NewClient creates a new Client.
+// WithBuffer sets the client to buffer the training record.
 //
 // bufSize is the record buffer size. NextRecord will read from this
 // buffer.
-func NewClient(addrCh <-chan string, bufSize int) *Client {
+func WithBuffer(bufSize int) func(*Client) error {
+	return func(c *Client) error {
+		if bufSize <= 0 {
+			return nil
+		}
+
+		c.initChOnce.Do(func() {
+			c.ch = make(chan record, bufSize)
+			go c.getRecords()
+		})
+		return nil
+	}
+}
+
+// WithAddr sets the client to use fixed master address.
+func WithAddr(addr string) func(c *Client) error {
+	return func(c *Client) error {
+		ch := make(chan string, 1)
+		ch <- addr
+		go c.monitorMaster(ch)
+		return nil
+	}
+}
+
+// WithEtcd sets the client to use etcd for master discovery.
+func WithEtcd(endpoints []string, timeout time.Duration) func(*Client) error {
+	return func(c *Client) error {
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   endpoints,
+			DialTimeout: timeout,
+		})
+		if err != nil {
+			return err
+		}
+
+		ch := make(chan string, 1)
+		a, err := GetKey(cli, DefaultAddrPath, timeout)
+		if err != nil {
+			return err
+		}
+
+		if a != "" {
+			// Master is registered, send to the master address
+			// channel.
+			ch <- a
+		}
+
+		go watchKey(cli, DefaultAddrPath, ch)
+		go c.monitorMaster(ch)
+		return nil
+	}
+}
+
+// NewClient creates a new Client.
+func NewClient(opts ...func(*Client) error) (*Client, error) {
 	c := &Client{}
 	c.conn = connection.New()
-	c.ch = make(chan record, bufSize)
-	go c.monitorMaster(addrCh)
-	go c.getRecords()
-	return c
+
+	for _, opt := range opts {
+		err := opt(c)
+		if err != nil {
+			return nil, err
+		}
+
+	}
+
+	return c, nil
 }
 
 func (c *Client) getRecords() {
 	for {
 		t, err := c.getTask()
 		if err != nil {
-			// getTask call.
 			log.Errorf("Get task failed, sleep 3 seconds and continue, %s", err)
 			time.Sleep(3 * time.Second)
 			continue
@@ -146,6 +208,20 @@ func (c *Client) taskFailed(meta TaskMeta) error {
 // NextRecord will block until the next record is available. It is
 // thread-safe.
 func (c *Client) NextRecord() ([]byte, error) {
+	c.initChOnce.Do(func() {
+		// initialize with in case WithBuffer is not used.
+		c.ch = make(chan record, 0)
+		go c.getRecords()
+	})
+
 	r := <-c.ch
 	return r.r, r.err
+}
+
+// RequestSaveModel requests the master server to approve the caller
+// to save the model.
+func (c *Client) RequestSaveModel(trainerID string, blockDur time.Duration) (bool, error) {
+	var need bool
+	err := c.conn.Call("Service.RequestSaveModel", SaveModelRequest{TrainerID: trainerID, BlockDur: blockDur}, &need)
+	return need, err
 }

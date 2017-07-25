@@ -100,5 +100,7 @@ class PlainNet : public Net {
   }
 };
 
+std::shared_ptr<PlainNet> AddBackwardOp(std::shared_ptr<PlainNet> ForwardOps);
+
 }  // namespace framework
 }  // namespace paddle
