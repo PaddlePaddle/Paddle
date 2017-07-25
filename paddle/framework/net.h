@@ -71,7 +71,7 @@ class PlainNet : public Net {
    * will be used.
    */
   void Run(const std::shared_ptr<Scope>& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+           platform::DeviceContext& dev_ctx) const override {
     for (auto& op : ops_) {
       op->Run(scope, dev_ctx);
     }
