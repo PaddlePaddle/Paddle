@@ -4,9 +4,10 @@
 namespace paddle {
 namespace operators {
 
-using paddle::platform::GPUPlace;
-template<GPUPlace, typename T, typename Generator>
-bool Gaussian(Generator g, T* output, const int size, const T& mean, const T& std) {
+template <typename T>
+bool Gaussian(platform::CUDADeviceContext &ctx, framework::Tensor* output,
+              const int size, const T& mean, const T& std, const T& seed) {
+  auto g = RandGenerator(seed);
   return curandGenerateNormal(g, output, size, mean, std);
 }
 

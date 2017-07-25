@@ -6,21 +6,33 @@
 
 namespace paddle {
 namespace operators {
-template <typename Place, typename T, typename Generator>
-bool Gaussian(
-    Generator g, T* output, const int size, const T& mean, const T& std);
+template <typename T, typename DeviceContext>
+bool Gaussian(DeviceContext& ctx,
+              framework::Tensor* output,
+              const int size,
+              const T& mean,
+              const T& std,
+              const T& seed);
 
 template <typename Place, typename T>
 class RandomOpKernel : public framework::OpKernel {
 public:
   void Compute(const framework::KernelContext& context) const override {
-    auto mean = context.op_.attrs_.at("mean");
-    auto std = context.op_.attrs_.at("std");
-    auto seed = context.op_.attrs_.at("seed");
+    auto mean = context.op_.GetAttr<T>("mean");
+    auto std = context.op_.GetAttr<T>("std");
+    auto seed = context.op_.GetAttr<T>("seed");
     auto* output = context.Output(0)->GetMutable<framework::Tensor>();
     output->mutable_data<T>(context.GetPlace());
-
-    Gaussian<Place, T, >(, output, output->size(), mean, std) :
+    Gaussian(context.device_context_,
+             output,
+             framework::product(output->dims()),
+             mean,
+             std,
+             seed);
+    // Gaussian<T, const platform::DeviceContext>(context.device_context_,
+    // output,
+    //                                            framework::product(output->dims()),
+    //                                            mean, std, seed);
     // std::default_random_engine generator(seed);
     // std::normal_distribution<double> distribution(mean, std);
 

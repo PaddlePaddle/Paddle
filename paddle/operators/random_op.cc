@@ -1,13 +1,33 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
+
 #include "paddle/operators/random_op.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-using paddle::platform::GPUPlace;
-template <GPUPlace, typename T, typename Generator>
-bool Gaussian(
-    Generator g, T* output, const int size, const T& mean, const T& std) {
+// using paddle::platform::CPUPlace;
+// template <paddle::platform::CPUPlace, typename T, typename DeviceContext>
+template <typename T>
+bool Gaussian(platform::CPUDeviceContext& ctx,
+              framework::Tensor* output,
+              const int size,
+              const T& mean,
+              const T& std,
+              const T& seed) {
+  auto g = ctx.RandGenerator(seed);
   std::normal_distribution<double> distribution(mean, std);
   for (int i = 0; i < size; ++i) {
     output[i] = distribution(g());
@@ -24,7 +44,9 @@ protected:
     PADDLE_ENFORCE(outputs.size() == 1, "Output size of RandomOp must be one.");
     PADDLE_ENFORCE(inputs[0] != nullptr && outputs[0] != nullptr,
                    "Inputs/Outputs of RandomOp must all be set.");
-    outputs[0]->set_dims(context.op_.attrs_.at("shape"));
+    outputs[0]->Resize(
+        framework::make_ddim(this->GetAttr<std::vector<int>>("shape")));
+    // outputs[0]->set_dims(context.op_.attrs_.at("shape"));
   }
 };
 
@@ -32,7 +54,7 @@ class RandomOpMaker : public framework::OpProtoAndCheckerMaker {
 public:
   RandomOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<std::vector<int>>("Shape", "The shape of matrix to be randomized");
+    AddAttr<std::vector<int>>("shape", "The shape of matrix to be randomized");
     AddAttr<float>("seed", "random seed generator.").SetDefault(1337);
     AddAttr<float>("mean", "mean value of random.").SetDefault(.0);
     AddAttr<float>("std", "minimum value of random value")

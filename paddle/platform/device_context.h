@@ -39,6 +39,7 @@ class DeviceContext {
 
 class CPUDeviceContext : public DeviceContext {
  public:
+  typedef std::mt19937 random_generator_type;
   CPUDeviceContext() { eigen_device_.reset(new Eigen::DefaultDevice()); }
 
   Eigen::DefaultDevice* eigen_device() const { return eigen_device_.get(); }
@@ -48,7 +49,17 @@ class CPUDeviceContext : public DeviceContext {
     return retv;
   }
 
+  const random_generator_type& RandGenerator(const int seed) {
+    if (!rand_generator_) {
+      random_seed_ = seed;
+      rand_generator_.reset(new random_generator_type(random_seed_));
+    }
+    return *rand_generator_.get();
+  }
+
  private:
+  int random_seed_;
+  std::unique_ptr<random_generator_type> rand_generator_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
@@ -87,6 +98,24 @@ class CUDADeviceContext : public DeviceContext {
                    "cudaStreamSynchronize failed");
   }
 
+  const curandGenerator_t RandGenerator(const int seed) {
+    if (!rand_generator_) {
+      random_seed_ = seed;
+      GPUPlaceGuard guard(gpu_place_);
+      PADDLE_ENFORCE(paddle::platform::dynload::curandCreateGenerator(
+                         &rand_generator_, CURAND_RNG_PSEUDO_DEFAULT),
+                     "curandCreateGenerator failed");
+      PADDLE_ENFORCE(
+          paddle::platform::dynload::curandSetPseudoRandomGeneratorSeed(
+              rand_generator_, random_seed_),
+          "curandSetPseudoRandomGeneratorSeed failed");
+      PADDLE_ENFORCE(
+          paddle::platform::dynload::curandSetStream(rand_generator_, stream_),
+          "curandSetStream failed");
+    }
+    return rand_generator_;
+  }
+
   cudaStream_t stream() { return stream_; }
 
   Eigen::GpuDevice* eigen_device() const { return eigen_device_.get(); }
@@ -113,23 +142,6 @@ class CUDADeviceContext : public DeviceContext {
           "cudnnSetStream failed");
     }
     return dnn_handle_;
-  }
-
-  curandGenerator_t curand_generator() {
-    if (!rand_generator_) {
-      GPUPlaceGuard guard(gpu_place_);
-      PADDLE_ENFORCE(paddle::platform::dynload::curandCreateGenerator(
-                         &rand_generator_, CURAND_RNG_PSEUDO_DEFAULT),
-                     "curandCreateGenerator failed");
-      PADDLE_ENFORCE(
-          paddle::platform::dynload::curandSetPseudoRandomGeneratorSeed(
-              rand_generator_, random_seed_),
-          "curandSetPseudoRandomGeneratorSeed failed");
-      PADDLE_ENFORCE(
-          paddle::platform::dynload::curandSetStream(rand_generator_, stream_),
-          "curandSetStream failed");
-    }
-    return rand_generator_;
   }
 
   ~CUDADeviceContext() {
