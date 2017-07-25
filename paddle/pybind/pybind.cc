@@ -15,14 +15,6 @@ limitations under the License. */
 #include <Python.h>
 #include <fstream>
 #include <vector>
-#include "paddle/framework/net.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
-#include "paddle/framework/scope.h"
-#include "paddle/pybind/tensor_bind.h"
-#include "pybind11/numpy.h"
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
 
 #include "paddle/framework/net.h"
 #include "paddle/framework/op_registry.h"
@@ -160,7 +152,7 @@ All parameter, weight, gradient are variables in Paddle.
   net.def_static("create",
                  []() -> std::shared_ptr<pd::PlainNet> {
                    auto retv = std::make_shared<pd::PlainNet>();
-                   retv->type_ = "naive_net";
+                   retv->type_ = "plain_net";
                    return retv;
                  })
       .def("add_op", &pd::PlainNet::AddOp)

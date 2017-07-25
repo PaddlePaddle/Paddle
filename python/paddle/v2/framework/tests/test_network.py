@@ -11,7 +11,7 @@ class TestNet(unittest.TestCase):
         net.complete_add_op()
         self.assertTrue(isinstance(fc_out, core.Variable))
         self.assertEqual(
-            '''Op(naive_net), inputs:(@EMPTY@, X, Y, w), outputs:(@TEMP@fc@0, add_two@OUT@0, fc@OUT@1).
+            '''Op(plain_net), inputs:(@EMPTY@, X, Y, w), outputs:(@TEMP@fc@0, add_two@OUT@0, fc@OUT@1).
     Op(add_two), inputs:(X, Y), outputs:(add_two@OUT@0).
     Op(fc), inputs:(add_two@OUT@0, w, @EMPTY@), outputs:(fc@OUT@1, @TEMP@fc@0).
         Op(mul), inputs:(add_two@OUT@0, w), outputs:(@TEMP@fc@0).
@@ -23,7 +23,7 @@ class TestNet(unittest.TestCase):
         self.assertTrue(isinstance(tmp, core.Variable))
         net2.complete_add_op()
         self.assertEqual(
-            '''Op(naive_net), inputs:(X, Y), outputs:(add_two@OUT@2).
+            '''Op(plain_net), inputs:(X, Y), outputs:(add_two@OUT@2).
     Op(add_two), inputs:(X, Y), outputs:(add_two@OUT@2).
 ''', str(net2))
 
