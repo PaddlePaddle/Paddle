@@ -16,7 +16,6 @@ package master
 
 import (
 	"os"
-	"sync"
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
@@ -27,10 +26,9 @@ import (
 
 // Client is the client of the master server.
 type Client struct {
-	conn       *connection.Conn
-	ch         chan record
-	initChOnce sync.Once
-	bufSize    int
+	conn    *connection.Conn
+	ch      chan record
+	bufSize int
 }
 
 type record struct {
@@ -48,11 +46,6 @@ func WithBuffer(bufSize int) func(*Client) error {
 			return nil
 		}
 		c.bufSize = bufSize
-
-		// c.initChOnce.Do(func() {
-		// 	c.ch = make(chan record, bufSize)
-		// 	go c.getRecords()
-		// })
 		return nil
 	}
 }
@@ -225,12 +218,6 @@ func (c *Client) taskFailed(meta TaskMeta) error {
 // NextRecord will block until the next record is available. It is
 // thread-safe.
 func (c *Client) NextRecord() ([]byte, error) {
-	// c.initChOnce.Do(func() {
-	// 	// initialize with in case WithBuffer is not used.
-	// 	c.ch = make(chan record, 0)
-	// 	go c.getRecords()
-	// })
-
 	r := <-c.ch
 	if r.err != nil && (r.err.Error() == ErrAllTaskFinishError.Error() || r.err.Error() == ErrNoMoreAvailableError.Error()) {
 		err := c.PassFinish()
