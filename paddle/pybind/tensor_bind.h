@@ -13,9 +13,10 @@
    limitations under the License. */
 
 #pragma once
-#include <paddle/framework/tensor.h>
-#include <pybind11/numpy.h>
-#include <pybind11/pybind11.h>
+#include "paddle/framework/tensor.h"
+#include "paddle/memory/memcpy.h"
+#include "pybind11/numpy.h"
+#include "pybind11/pybind11.h"
 
 namespace py = pybind11;
 
@@ -56,7 +57,6 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
         strides[i - 1] = sizeof(CUR_TYPE) * prod;
         prod *= dims_outside[i - 1];
       }
-
       return py::buffer_info(
           tensor.mutable_data<CUR_TYPE>(tensor.holder_->place()),
           sizeof(CUR_TYPE),
@@ -87,8 +87,25 @@ void PyTensorSetFromArray(
   }
 
   self.Resize(framework::make_ddim(dims));
-  auto *dst = self.mutable_data<T>(paddle::platform::CPUPlace());
-  std::memcpy(dst, array.data(), sizeof(T) * array.size());
+  auto *dst = self.mutable_data<T>(self.place());
+
+  if (paddle::platform::is_cpu_place(self.place())) {
+    paddle::memory::Copy<paddle::platform::CPUPlace,
+                         paddle::platform::CPUPlace>(
+        place, dst, place, array.data(), sizeof(T) * array.size());
+  } else if (paddle::platform::is_gpu_place(place)) {
+#ifdef PADDLE_ONLY_CPU
+    PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+#else
+    paddle::memory::Copy<paddle::platform::GPUPlace,
+                         paddle::platform::CPUPlace>(
+        place,
+        dst,
+        paddle::platform::CPUPlace(),
+        array.data(),
+        sizeof(T) * array.size());
+#endif
+  }
 }
 
 }  // namespace pybind

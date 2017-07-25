@@ -137,6 +137,8 @@ class Tensor {
 
   const DDim& dims() const { return dims_; }
 
+  paddle::platform::Place place() const { return holder_->place(); }
+
  private:
   // Placeholder hides type T, so it doesn't appear as a template
   // parameter of Variable.
