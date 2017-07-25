@@ -52,7 +52,7 @@ void testFcLayer(const testFCDesc& pm) {
     ref.layerConfig.set_type("fc");
     std::vector<TestConfig> configs = {cfg, ref};
     for (auto bs : {pm.bs, 1}) {
-      testLayerFunc(configs, bs);
+      testLayerFunc(configs, bs, pm.ih, pm.iw);
     }
   }
 }

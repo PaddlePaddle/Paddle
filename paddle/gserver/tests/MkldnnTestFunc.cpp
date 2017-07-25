@@ -92,7 +92,7 @@ void printVector(const VectorPtr& v, int level = DNN_ALL) {
 }
 
 void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
-                           float epsilon) {
+  size_t inputImgH, size_t inputImgW, float epsilon) {
   CHECK(isMkldnnLayer(configs[0].layerConfig)
     || isMkldnnAct(configs[0].layerConfig)) << "test type go first";
 
@@ -141,13 +141,21 @@ void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
       refGrad->zeroMem();
     }
   }
-  // clear botdiff
+  // clear botdiffs
   for (size_t idx = 0; idx < dataLayers[0].size(); ++idx) {
     dataLayers[0][idx]->getOutputGrad()->zeroMem();
     dataLayers[1][idx]->getOutputGrad()->zeroMem();
   }
+
+  // set image size
+  // TODO(TJ): fix me when concat and elewise
+  for (size_t idx = 0; idx < dataLayers[0].size(); ++idx) {
+    dataLayers[0][idx]->getOutput().setFrameHeight(inputImgH);
+    dataLayers[1][idx]->getOutput().setFrameWidth(inputImgW);
+  }
   // repeat some times, make sure all of them pass
   for (size_t i = 0; i < iter; ++i) {
+    VLOG(lvl) << "Check Iteration " << i;
     // random botdata, copy same to ref
     for (size_t idx = 0; idx < dataLayers[0].size(); ++idx) {
       dataLayers[0][idx]->getOutputValue()->randomizeUniform();
@@ -198,12 +206,12 @@ void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
     testLayer[0]->cvtWgtToPaddle();
     for (size_t idx = 0; idx < parameters[0].size(); ++idx) {
       const VectorPtr& tgt = parameters[0][idx]->getBuf(PARAMETER_VALUE);
-      const VectorPtr& ref = parameters[0][idx]->getBuf(PARAMETER_VALUE);
+      const VectorPtr& ref = parameters[1][idx]->getBuf(PARAMETER_VALUE);
       deltaParam.push_back(compareVector(tgt, ref));
 
       VLOG(lvl) << "Mkldnn Output " << parameters[0][idx]->getName() << ":";
       printVector(tgt, lvl);
-      VLOG(lvl) << "Reference Output " << parameters[0][idx]->getName() << ":";
+      VLOG(lvl) << "Reference Output " << parameters[1][idx]->getName() << ":";
       printVector(ref, lvl);
     }
 

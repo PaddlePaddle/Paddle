@@ -15,6 +15,6 @@ limitations under the License. */
 #pragma once
 
 namespace paddle {
-void testLayerFunc(
-  std::vector<TestConfig>& configs, size_t batchSize, float epsilon = 1e-4);
+void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
+  size_t inputImgH = 1, size_t inputImgW = 1, float epsilon = 1e-4);
 }  //  namespace paddle
