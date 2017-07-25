@@ -33,6 +33,7 @@ import networks
 import minibatch
 import plot
 import image
+import model
 
 __all__ = [
     'optimizer',
@@ -54,6 +55,7 @@ __all__ = [
     'evaluator',
     'image',
     'master',
+    'model',
 ]
 
 
