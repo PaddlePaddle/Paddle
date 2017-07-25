@@ -199,7 +199,11 @@ class OperatorWithKernel : public OperatorBase {
       place_ = dev_ctx.GetPlace();
     }
 
-    bool operator==(const OpKernelKey& o) const { return place_ == o.place_; }
+    // bool operator==(const OpKernelKey& o) const { return place_ == o.place_;
+    // }
+    bool operator==(const OpKernelKey& o) const {
+      return platform::places_are_same_class(place_, o.place_);
+    }
   };
 
   struct OpKernelHash {

@@ -42,9 +42,6 @@ template <size_t I, typename... ARGS>
 struct CastToPyBufferImpl<true, I, ARGS...> {
   using CUR_TYPE = typename std::tuple_element<I, std::tuple<ARGS...>>::type;
   py::buffer_info operator()(framework::Tensor &tensor) {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(tensor.holder_->place()),
-                   "Only CPU tensor can cast to numpy array");
-
     if (std::type_index(typeid(CUR_TYPE)) == tensor.holder_->type()) {
       auto dim_vec = framework::vectorize(tensor.dims());
       std::vector<size_t> dims_outside;
@@ -99,6 +96,7 @@ void PyCPUTensorSetFromArray(
   std::memcpy(dst, array.data(), sizeof(T) * array.size());
 }
 
+#ifndef PADDLE_ONLY_CPU
 template <typename T>
 void PyCUDATensorSetFromArray(
     framework::Tensor &self,
@@ -112,10 +110,10 @@ void PyCUDATensorSetFromArray(
 
   self.Resize(framework::make_ddim(dims));
   auto *dst = self.mutable_data<T>(place);
-  std::memcpy(dst, array.data(), sizeof(T) * array.size());
   paddle::platform::GpuMemcpySync(
       dst, array.data(), sizeof(T) * array.size(), cudaMemcpyHostToDevice);
 }
+#endif
 
 }  // namespace pybind
 }  // namespace paddle

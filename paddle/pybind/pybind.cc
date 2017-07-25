@@ -80,9 +80,11 @@ PYBIND11_PLUGIN(core) {
              self.mutable_data<int>(place);
            })
       .def("set", paddle::pybind::PyCPUTensorSetFromArray<float>)
-      .def("set", paddle::pybind::PyCUDATensorSetFromArray<float>)
       .def("set", paddle::pybind::PyCPUTensorSetFromArray<int>)
+#ifndef PADDLE_ONLY_CPU
+      .def("set", paddle::pybind::PyCUDATensorSetFromArray<float>)
       .def("set", paddle::pybind::PyCUDATensorSetFromArray<int>)
+#endif
       .def("shape",
            [](pd::Tensor& self) { return pd::vectorize(self.dims()); });
 
