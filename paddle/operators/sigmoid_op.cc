@@ -56,7 +56,7 @@ protected:
 REGISTER_OP(sigmoid,
             paddle::operators::SigmoidOp,
             paddle::operators::SigmoidOpMaker);
-REGISTER_GRADIENT_OP(sigmoid, paddle::operators::SigmoidOpGrad);
+REGISTER_GRADIENT_OP(sigmoid, sigmoid_grad, paddle::operators::SigmoidOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     sigmoid,

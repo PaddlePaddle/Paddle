@@ -65,6 +65,6 @@ protected:
 }  // namespace paddle
 
 REGISTER_OP(add_two, paddle::operators::AddOp, paddle::operators::AddOpMaker);
-REGISTER_GRADIENT_OP(add_two, paddle::operators::AddOpGrad);
+REGISTER_GRADIENT_OP(add_two, add_two_grad, paddle::operators::AddOpGrad);
 REGISTER_OP_CPU_KERNEL(
     add_two, paddle::operators::AddKernel<paddle::platform::CPUPlace, float>);

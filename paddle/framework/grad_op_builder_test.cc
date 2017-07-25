@@ -1,4 +1,4 @@
-#include "paddle/framework/grad_op_creator.h"
+#include "paddle/framework/grad_op_builder.h"
 #include <gtest/gtest.h>
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
@@ -8,7 +8,7 @@ USE_OP(add_two);
 namespace paddle {
 namespace framework {
 
-TEST(GradOpCreator, AddTwo) {
+TEST(GradOpBuilder, AddTwo) {
   std::shared_ptr<OperatorBase> add_op(
       OpRegistry::CreateOp("add_two", {"x", "y"}, {"out"}, {}));
   std::shared_ptr<OperatorBase> grad_add_op = OpRegistry::CreateGradOp(add_op);
