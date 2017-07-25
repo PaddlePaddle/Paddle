@@ -151,6 +151,8 @@ void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
   // TODO(TJ): fix me when concat and elewise
   for (size_t idx = 0; idx < dataLayers[0].size(); ++idx) {
     dataLayers[0][idx]->getOutput().setFrameHeight(inputImgH);
+    dataLayers[0][idx]->getOutput().setFrameWidth(inputImgW);
+    dataLayers[1][idx]->getOutput().setFrameHeight(inputImgH);
     dataLayers[1][idx]->getOutput().setFrameWidth(inputImgW);
   }
   // repeat some times, make sure all of them pass
