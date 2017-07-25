@@ -21,7 +21,8 @@ IF(NOT ${CBLAS_FOUND})
     SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
     SET(CBLAS_INC_DIR "${CBLAS_INSTALL_DIR}/include" CACHE PATH "openblas include directory." FORCE)
 
-    SET(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/${LIBRARY_PREFIX}openblas${STATIC_LIBRARY_SUFFIX}"
+    SET(CBLAS_LIBRARIES
+        "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE FILEPATH "openblas library." FORCE)
 
     SET(COMMON_ARGS CC=${CMAKE_C_COMPILER} NO_SHARED=1 NO_LAPACK=1 libs)
@@ -31,7 +32,12 @@ IF(NOT ${CBLAS_FOUND})
             # arm_soft_fp_abi branch of OpenBLAS to support softfp
             #   https://github.com/xianyi/OpenBLAS/tree/arm_soft_fp_abi
             SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
-            SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0)
+            IF(ANDROID_ABI MATCHES "^armeabi(-v7a)?$")
+                SET(TARGET "ARMV7")
+            ELSEIF(ANDROID_ABI STREQUAL "arm64-v8a")
+                SET(TARGET "ARMV8")
+            ENDIF()
+            SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER} TARGET=${TARGET} ARM_SOFTFP_ABI=1 USE_THREAD=0)
         ELSEIF(RPI)
             # use hardfp
             SET(OPENBLAS_COMMIT "v0.2.19")

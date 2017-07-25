@@ -90,8 +90,7 @@ public:
     ConvFunctionBase::init(config);
   }
 
-  virtual void check(const BufferArgs& inputs,
-                     const BufferArgs& outputs) override {
+  void check(const BufferArgs& inputs, const BufferArgs& outputs) override {
     const TensorShape& input = inputs[0].shape();
     const TensorShape& filter = inputs[1].shape();
     const TensorShape& output = outputs[0].shape();

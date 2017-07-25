@@ -191,6 +191,11 @@ void Layer::addOutputArgument(int deviceId) {
 void Layer::copyOutputToOtherDevice() {
   for (size_t i = 0; i != outputOtherDevice_.size(); i++) {
     SetDevice device(outputOtherDevice_[i].deviceId);
+    // If outputOtherDevice_[i].value is a CpuMatrix,
+    // the copyFrom is a synchronous interface.
+    // If outputOtherDevice_[i].value is a GpuMatrix, since subsequent
+    // calculations are all on HPPL_STREAM_DEFAULT,
+    // copyFrom can be an asynchronous interface.
     outputOtherDevice_[i].value->copyFrom(*getOutputValue(),
                                           HPPL_STREAM_DEFAULT);
     outputOtherDevice_[i].sequenceStartPositions =
@@ -354,12 +359,11 @@ void Layer::backwardActivation() {
   /* Do error clipping */
   if (config_.error_clipping_threshold() > 0.0f) {
     if (FLAGS_log_error_clipping) {
-      CpuVector outGradVec(0, nullptr);
-      outGradVec.subVecFrom(
-          output_.grad->getData(), 0, output_.grad->getElementCnt());
-      real maxAbsGrad = outGradVec.getAbsMax();
+      VectorPtr outGradVec = Vector::create(
+          output_.grad->getData(), output_.grad->getElementCnt(), useGpu_);
+      real maxAbsGrad = outGradVec->getAbsMax();
       if (maxAbsGrad > config_.error_clipping_threshold()) {
-        real avgAbsGrad = outGradVec.getAbsSum() / outGradVec.getSize();
+        real avgAbsGrad = outGradVec->getAbsSum() / outGradVec->getSize();
         LOG(INFO) << " layer=" << config_.name() << " need clipping,"
                   << " max error=" << maxAbsGrad << " avg error=" << avgAbsGrad;
       }

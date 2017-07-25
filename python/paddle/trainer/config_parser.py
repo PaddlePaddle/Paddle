@@ -1280,20 +1280,23 @@ def parse_maxout(maxout, input_layer_name, maxout_conf):
 
 # Define an evaluator
 @config_func
-def Evaluator(
-        name,
-        type,
-        inputs,
-        chunk_scheme=None,
-        num_chunk_types=None,
-        classification_threshold=None,
-        positive_label=None,
-        dict_file=None,
-        result_file=None,
-        num_results=None,
-        top_k=None,
-        delimited=None,
-        excluded_chunk_types=None, ):
+def Evaluator(name,
+              type,
+              inputs,
+              chunk_scheme=None,
+              num_chunk_types=None,
+              classification_threshold=None,
+              positive_label=None,
+              dict_file=None,
+              result_file=None,
+              num_results=None,
+              top_k=None,
+              delimited=None,
+              excluded_chunk_types=None,
+              overlap_threshold=None,
+              background_id=None,
+              evaluate_difficult=None,
+              ap_type=None):
     evaluator = g_config.model_config.evaluators.add()
     evaluator.type = type
     evaluator.name = MakeLayerNameInSubmodel(name)
@@ -1327,6 +1330,18 @@ def Evaluator(
     if excluded_chunk_types:
         evaluator.excluded_chunk_types.extend(excluded_chunk_types)
 
+    if overlap_threshold is not None:
+        evaluator.overlap_threshold = overlap_threshold
+
+    if background_id is not None:
+        evaluator.background_id = background_id
+
+    if evaluate_difficult is not None:
+        evaluator.evaluate_difficult = evaluate_difficult
+
+    if ap_type is not None:
+        evaluator.ap_type = ap_type
+
 
 class LayerBase(object):
     def __init__(
@@ -1338,7 +1353,8 @@ class LayerBase(object):
             device=None,
             active_type="",
             drop_rate=0.,
-            coeff=None):
+            coeff=None,
+            error_clipping_threshold=None):
         config_assert('@' not in name,
                       "layer name: %s contain special character @" % name)
         global g_current_submodel
@@ -1371,6 +1387,9 @@ class LayerBase(object):
             self.config.device = device
         elif g_default_device is not None:
             self.config.device = g_default_device
+
+        if error_clipping_threshold is not None:
+            self.config.error_clipping_threshold = error_clipping_threshold
 
         for input_index in xrange(len(self.inputs)):
             input = self.inputs[input_index]
@@ -1556,7 +1575,13 @@ class MultiClassCrossEntropySelfNormCostLayer(LayerBase):
 
 @config_layer('fc')
 class FCLayer(LayerBase):
-    def __init__(self, name, size, inputs, bias=True, **xargs):
+    def __init__(self,
+                 name,
+                 size,
+                 inputs,
+                 bias=True,
+                 error_clipping_threshold=None,
+                 **xargs):
         super(FCLayer, self).__init__(name, 'fc', size, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
@@ -1573,6 +1598,8 @@ class FCLayer(LayerBase):
             self.create_input_parameter(input_index, psize, dims, sparse,
                                         format)
         self.create_bias_parameter(bias, self.config.size)
+        if error_clipping_threshold is not None:
+            self.config.error_clipping_threshold = error_clipping_threshold
 
 
 @config_layer('selective_fc')
@@ -1656,6 +1683,52 @@ class PriorBoxLayer(LayerBase):
         self.config.inputs[0].priorbox_conf.max_size.extend(max_size)
         self.config.inputs[0].priorbox_conf.aspect_ratio.extend(aspect_ratio)
         self.config.inputs[0].priorbox_conf.variance.extend(variance)
+        self.config.size = size
+
+
+@config_layer('multibox_loss')
+class MultiBoxLossLayer(LayerBase):
+    def __init__(self, name, inputs, input_num, num_classes, overlap_threshold,
+                 neg_pos_ratio, neg_overlap, background_id, **xargs):
+        super(MultiBoxLossLayer, self).__init__(name, 'multibox_loss', 0,
+                                                inputs)
+        config_assert(
+            len(inputs) == (input_num * 2 + 2),
+            'MultiBoxLossLayer does not have enough inputs')
+        config_assert(num_classes > background_id,
+                      'Classes number must greater than background ID')
+        self.config.inputs[0].multibox_loss_conf.num_classes = num_classes
+        self.config.inputs[
+            0].multibox_loss_conf.overlap_threshold = overlap_threshold
+        self.config.inputs[0].multibox_loss_conf.neg_pos_ratio = neg_pos_ratio
+        self.config.inputs[0].multibox_loss_conf.neg_overlap = neg_overlap
+        self.config.inputs[0].multibox_loss_conf.background_id = background_id
+        self.config.inputs[0].multibox_loss_conf.input_num = input_num
+        self.config.size = 1
+
+
+@config_layer('detection_output')
+class DetectionOutputLayer(LayerBase):
+    def __init__(self, name, inputs, size, input_num, num_classes,
+                 nms_threshold, nms_top_k, keep_top_k, confidence_threshold,
+                 background_id, **xargs):
+        super(DetectionOutputLayer, self).__init__(name, 'detection_output', 0,
+                                                   inputs)
+        config_assert(
+            len(inputs) == (input_num * 2 + 1),
+            'DetectionOutputLayer does not have enough inputs')
+        config_assert(num_classes > background_id,
+                      'Classes number must greater than background ID')
+        self.config.inputs[0].detection_output_conf.num_classes = num_classes
+        self.config.inputs[
+            0].detection_output_conf.nms_threshold = nms_threshold
+        self.config.inputs[0].detection_output_conf.nms_top_k = nms_top_k
+        self.config.inputs[0].detection_output_conf.keep_top_k = keep_top_k
+        self.config.inputs[
+            0].detection_output_conf.confidence_threshold = confidence_threshold
+        self.config.inputs[
+            0].detection_output_conf.background_id = background_id
+        self.config.inputs[0].detection_output_conf.input_num = input_num
         self.config.size = size
 
 
@@ -1925,6 +1998,23 @@ class PadLayer(LayerBase):
         self.config.size = out_ch * out_h * out_w
 
 
+@config_layer('crop')
+class CropLayer(LayerBase):
+    def __init__(self, name, inputs, axis, offset, shape, **xargs):
+        super(CropLayer, self).__init__(name, 'crop', 0, inputs=inputs, **xargs)
+        self.config.axis = axis
+        self.config.offset.extend(offset)
+        self.config.shape.extend(shape)
+
+        # get channel, width and height from input_0 layer
+        input_layer = self.get_input_layer(0)
+        image_conf = self.config.inputs[0].image_conf
+        image_conf.img_size = input_layer.width
+        image_conf.img_size_y = input_layer.height
+        image_conf.channels = input_layer.size / (input_layer.width *
+                                                  input_layer.height)
+
+
 @config_layer('batch_norm')
 class BatchNormLayer(LayerBase):
     layer_type = 'batch_norm'
@@ -2067,10 +2157,10 @@ class MaxOutLayer(LayerBase):
 class RowConvLayer(LayerBase):
     def __init__(self, name, inputs, context_length, **xargs):
         super(RowConvLayer, self).__init__(
-            name, 'maxout', 0, inputs=inputs, **xargs)
+            name, 'row_conv', 0, inputs=inputs, **xargs)
         config_assert(
             len(self.inputs) == 1,
-            'TransLayer must have one and only one input')
+            'row convolution layer must have one and only one input.')
         input_layer = self.get_input_layer(0)
         row_conv_conf = self.config.inputs[0].row_conv_conf
         row_conv_conf.context_length = context_length
@@ -2405,10 +2495,14 @@ class MaxLayer(LayerBase):
                  trans_type='non-seq',
                  bias=False,
                  output_max_index=None,
+                 stride=-1,
                  **xargs):
         super(MaxLayer, self).__init__(name, 'max', 0, inputs=inputs, **xargs)
         config_assert(len(self.inputs) == 1, 'MaxLayer must have 1 input')
+        if trans_type == 'seq':
+            config_assert(stride == -1, 'subseq does not support stride window')
         self.config.trans_type = trans_type
+        self.config.seq_pool_stride = stride
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             self.set_layer_size(input_layer.size)
@@ -2670,11 +2764,15 @@ class AverageLayer(LayerBase):
                  average_strategy='average',
                  trans_type='non-seq',
                  bias=False,
+                 stride=-1,
                  **xargs):
         super(AverageLayer, self).__init__(
             name, 'average', 0, inputs=inputs, **xargs)
         self.config.average_strategy = average_strategy
+        if trans_type == 'seq':
+            config_assert(stride == -1, 'subseq does not support stride window')
         self.config.trans_type = trans_type
+        self.config.seq_pool_stride = stride
         config_assert(len(inputs) == 1, 'AverageLayer must have 1 input')
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
@@ -2713,13 +2811,7 @@ class TensorLayer(LayerBase):
 
 @config_layer('mixed')
 class MixedLayer(LayerBase):
-    def __init__(self,
-                 name,
-                 inputs,
-                 size=0,
-                 bias=True,
-                 error_clipping_threshold=None,
-                 **xargs):
+    def __init__(self, name, inputs, size=0, bias=True, **xargs):
         config_assert(inputs, 'inputs cannot be empty')
         super(MixedLayer, self).__init__(
             name, 'mixed', size, inputs=inputs, **xargs)
@@ -2800,9 +2892,6 @@ class MixedLayer(LayerBase):
         if bias:
             self.config.bias_size = psize
             self.create_bias_parameter(bias, psize)
-
-        if error_clipping_threshold is not None:
-            self.config.error_clipping_threshold = error_clipping_threshold
 
 
 # like MixedLayer, but no bias parameter
@@ -3124,11 +3213,15 @@ def Layer(name, type, **xargs):
 @config_func
 def ParameterHook(type, **kwargs):
     if type == 'pruning':
-        mask_filename = kwargs.get('mask_filename', None)
-        assert mask_filename is not None
         hook = ParameterUpdaterHookConfig()
         hook.type = type
-        hook.purning_mask_filename = mask_filename
+        sparsity_ratio = kwargs.get('sparsity_ratio', None)
+        if sparsity_ratio is not None:
+            hook.sparsity_ratio = sparsity_ratio
+        return hook
+    elif type == 'dpruning':
+        hook = ParameterUpdaterHookConfig()
+        hook.type = type
         return hook
     else:
         return None
@@ -3236,13 +3329,13 @@ def Parameter(name,
 
     if update_hooks is not None:
         if hasattr(update_hooks, '__call__'):
-            update_hooks = update_hooks(para.name)
+            update_hooks = update_hooks()
 
         if isinstance(update_hooks, list):
             for hook in update_hooks:
                 para.update_hooks.extend([hook])
         else:
-            para.update_hooks.extend(update_hooks)
+            para.update_hooks.extend([update_hooks])
 
     g_parameter_map[name] = para
     if initializer is not None:

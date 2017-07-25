@@ -22,18 +22,27 @@ import importlib
 import paddle.v2.dataset
 import cPickle
 import glob
+import cPickle as pickle
+import random
 
-__all__ = ['DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader']
+__all__ = [
+    'DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader',
+    'convert'
+]
 
 DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
 
-if not os.path.exists(DATA_HOME):
-    try:
-        os.makedirs(DATA_HOME)
-    except OSError as exc:
-        if exc.errno != errno.EEXIST:
-            raise
-        pass
+# When running unit tests, there could be multiple processes that
+# trying to create DATA_HOME directory simultaneously, so we cannot
+# use a if condition to check for the existence of the directory;
+# instead, we use the filesystem as the synchronization mechanism by
+# catching returned errors.
+try:
+    os.makedirs(DATA_HOME)
+except OSError as exc:
+    if exc.errno != errno.EEXIST:
+        raise
+    pass
 
 
 def md5file(fname):
@@ -163,8 +172,6 @@ def convert(output_path,
             name_prefix,
             max_lines_to_shuffle=1000):
     import recordio
-    import cPickle as pickle
-    import random
     """
     Convert data from reader to recordio format files.
 
@@ -194,8 +201,10 @@ def convert(output_path,
     def write_data(w, lines):
         random.shuffle(lines)
         for i, d in enumerate(lines):
-            d = pickle.dumps(d, pickle.HIGHEST_PROTOCOL)
-            w[i % num_shards].write(d)
+            # FIXME(Yancey1989):
+            # dumps with protocol: pickle.HIGHEST_PROTOCOL
+            o = pickle.dumps(d)
+            w[i % num_shards].write(o)
 
     w = open_writers()
     lines = []

@@ -1,9 +1,7 @@
 import numpy
-import py_paddle.swig_paddle as api
 import collections
 import topology
 import minibatch
-from data_feeder import DataFeeder
 
 __all__ = ['infer', 'Inference']
 
@@ -28,6 +26,7 @@ class Inference(object):
     """
 
     def __init__(self, output_layer, parameters):
+        import py_paddle.swig_paddle as api
         topo = topology.Topology(output_layer)
         gm = api.GradientMachine.createFromConfigProto(
             topo.proto(), api.CREATE_MODE_TESTING, [api.PARAMETER_VALUE])
@@ -40,6 +39,7 @@ class Inference(object):
         self.__data_types__ = topo.data_type()
 
     def iter_infer(self, input, feeding=None):
+        from data_feeder import DataFeeder
         feeder = DataFeeder(self.__data_types__, feeding)
         batch_size = len(input)
 

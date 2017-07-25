@@ -20,14 +20,17 @@ import cStringIO
 import numpy
 
 
-def __rand_param_config__(name):
+def __rand_param_config__(name, psize=None):
     conf = ParameterConfig()
     conf.name = name
     size = 1
-    for i in xrange(2):
-        dim = random.randint(1, 1000)
-        conf.dims.append(dim)
-        size *= dim
+    if psize is None:
+        for i in xrange(2):
+            dim = random.randint(1, 1000)
+            conf.dims.append(dim)
+            size *= dim
+    else:
+        size = psize
     conf.size = size
     assert conf.IsInitialized()
     return conf
@@ -76,6 +79,50 @@ class TestParameters(unittest.TestCase):
         assert val.shape == (3, 2)
         expected = numpy.array([[1, 1], [1, 2], [1, 1]], numpy.float32)
         assert numpy.logical_and.reduce(numpy.reshape(val == expected, 6))
+
+    def test_init_from_tar(self):
+        def get_param(names, size):
+            p = parameters.Parameters()
+            for k, v in zip(names, size):
+                p.__append_config__(__rand_param_config__(k, v))
+            for name in p.names():
+                param = p.get(name)
+                param[:] = numpy.random.uniform(
+                    -1.0, 1.0, size=p.get_shape(name))
+                p.set(name, param)
+            return p
+
+        def get_parames():
+            name1 = ['param_0', 'param_1']
+            size1 = [128, 256]
+            p1 = get_param(name1, size1)
+            file1 = cStringIO.StringIO()
+            p1.to_tar(file1)
+            file1.seek(0)
+
+            name2 = ['param_0', 'param_1', 'param_2']
+            size2 = [128, 256, 288]
+            p2 = get_param(name2, size2)
+            file2 = cStringIO.StringIO()
+            p2.to_tar(file2)
+            file2.seek(0)
+            return p1, file1, p2, file2
+
+        p1, file1, p2, file2 = get_parames()
+        p2.init_from_tar(file1)
+        for name in p1.names():
+            self.assertEqual(p1.get_shape(name), p2.get_shape(name))
+            v1 = p1.get(name)
+            v2 = p2.get(name)
+            self.assertTrue(numpy.isclose(v1, v2).all())
+
+        p1, file1, p2, file2 = get_parames()
+        p1.init_from_tar(file2)
+        for name in p1.names():
+            self.assertEqual(p1.get_shape(name), p2.get_shape(name))
+            v1 = p1.get(name)
+            v2 = p2.get(name)
+            self.assertTrue(numpy.isclose(v1, v2).all())
 
 
 if __name__ == '__main__':

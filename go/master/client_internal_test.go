@@ -1,3 +1,17 @@
+// Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package master
 
 import (
@@ -26,12 +40,6 @@ func init() {
 	log.SetLevel(log.ErrorLevel)
 }
 
-type TestAddresser string
-
-func (a TestAddresser) Address() string {
-	return string(a)
-}
-
 func TestGetFinishTask(t *testing.T) {
 	const path = "/tmp/master_client_test_0"
 
@@ -45,11 +53,14 @@ func TestGetFinishTask(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
 	go func(l net.Listener) {
-		s := NewService(chunkPerTask, time.Second, 1)
+		s, err := NewService(&InMemStore{}, chunkPerTask, time.Second, 1)
+		if err != nil {
+			panic(err)
+		}
+
 		server := rpc.NewServer()
-		err := server.Register(s)
+		err = server.Register(s)
 		if err != nil {
 			panic(err)
 		}
@@ -69,17 +80,33 @@ func TestGetFinishTask(t *testing.T) {
 
 	for i := 0; i < totalTask*chunkPerTask; i++ {
 		w := recordio.NewWriter(f, -1, -1)
-		w.Write(nil)
+		_, err = w.Write(nil)
+		if err != nil {
+			panic(err)
+		}
+
 		// call Close to force RecordIO writing a chunk.
-		w.Close()
+		err = w.Close()
+		if err != nil {
+			panic(err)
+		}
 	}
-	f.Close()
+	err = f.Close()
+	if err != nil {
+		panic(err)
+	}
 
 	// Manually intialize client to avoid calling c.getRecords()
 	c := &Client{}
 	c.conn = connection.New()
-	go c.monitorMaster(TestAddresser(fmt.Sprintf(":%d", p)))
-	c.SetDataset([]string{path})
+	addr := fmt.Sprintf(":%d", p)
+	ch := make(chan string, 1)
+	ch <- addr
+	go c.monitorMaster(ch)
+	err = c.SetDataset([]string{path})
+	if err != nil {
+		panic(err)
+	}
 
 	checkOnePass := func(i int) {
 		var tasks []Task
@@ -96,10 +123,16 @@ func TestGetFinishTask(t *testing.T) {
 			t.Fatalf("Should get error, pass: %d\n", i)
 		}
 
-		err = c.taskFinished(tasks[0].ID)
+		err = c.taskFinished(tasks[0].Meta.ID)
 		if err != nil {
 			t.Fatalf("Error: %v, pass: %d\n", err, i)
 		}
+
+		err = c.taskFailed(tasks[0].Meta)
+		if err != nil {
+			t.Fatalf("Error: %v, pass: %d\n", err, i)
+		}
+
 		tasks = tasks[1:]
 		task, err := c.getTask()
 		if err != nil {
@@ -108,7 +141,7 @@ func TestGetFinishTask(t *testing.T) {
 		tasks = append(tasks, task)
 
 		for _, task := range tasks {
-			err = c.taskFinished(task.ID)
+			err = c.taskFinished(task.Meta.ID)
 			if err != nil {
 				t.Fatalf("Error: %v, pass: %d\n", err, i)
 			}
