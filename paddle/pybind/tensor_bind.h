@@ -102,7 +102,7 @@ void PyTensorSetFromArray(
 #ifdef PADDLE_ONLY_CPU
     PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
 #else
-    GpuMemcpySync(
+    platform::GpuMemcpySync(
         dst, array.data(), sizeof(T) * array.size(), cudaMemcpyHostToDevice);
 #endif
   }

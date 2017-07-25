@@ -138,13 +138,12 @@ All parameter, weight, gradient are variables in Paddle.
                   })
 #ifndef PADDLE_ONLY_CPU
       .def_static("gpu_context",
-                  [](paddle::platform::Place& place)
+                  [](paddle::platform::GPUPlace& place)
                       -> paddle::platform::DeviceContext* {
-                    return new paddle::platform::CUDADeviceContext(place);
-                  })
+                        return new paddle::platform::CUDADeviceContext(place);
+                      })
 #endif
-      ;
-
+      ;  // NOLINT
   py::class_<paddle::platform::Place>(m, "GPUPlace").def(py::init<int>());
 
   py::class_<paddle::platform::Place>(m, "CPUPlace").def(py::init<>());

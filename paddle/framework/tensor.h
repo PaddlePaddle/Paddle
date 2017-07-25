@@ -117,7 +117,7 @@ class Tensor {
 #ifdef PADDLE_ONLY_CPU
       PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
 #else
-      GpuMemcpySync(dst_ptr, src_ptr, size, cudaMemcpyDeviceToHost);
+      platform::GpuMemcpySync(dst_ptr, src_ptr, size, cudaMemcpyDeviceToHost);
 #endif
     }
   }
