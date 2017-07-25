@@ -110,14 +110,15 @@ func TestNextRecord(t *testing.T) {
 		wg.Add(1)
 		// test for multiple concurrent clients
 		go func() {
-			// each go-routine needs a single client connection instance
-			curAddr := make(chan string, 1)
-			curAddr <- fmt.Sprintf(":%d", p)
-			c := master.NewClient(curAddr, 1)
 			defer wg.Done()
-
+			// each go-routine needs a single client connection instance
+			c, e := master.NewClient(master.WithAddr(fmt.Sprintf(":%d", p)), master.WithBuffer(1))
+			if e != nil {
+				t.Fatal(e)
+			}
 			// test for n passes
 			for pass := 0; pass < 5; pass++ {
+				fmt.Println("starting new pass", pass)
 				// wait for last pass end and init for a new pass
 				e := c.PassStart()
 				if e != nil {
@@ -192,7 +193,10 @@ func TestClientPassSync(t *testing.T) {
 			defer wg.Done()
 			curAddr := make(chan string, 1)
 			curAddr <- fmt.Sprintf(":%d", p)
-			c := master.NewClient(curAddr, 1)
+			c, e := master.NewClient(master.WithAddr(fmt.Sprintf(":%d", p)), master.WithBuffer(10))
+			if e != nil {
+				t.Fatal(e)
+			}
 			for pass := 0; pass < 10; pass++ {
 				e := c.PassStart()
 				if e != nil {

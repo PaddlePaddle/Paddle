@@ -93,6 +93,8 @@ type Service struct {
 	passEndCond        *sync.Cond
 	clientCount        int
 	clientPassFinished int
+
+	savingTrainer string
 }
 
 func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
@@ -266,7 +268,7 @@ func readChunks(globPaths []string) ([]Chunk, error) {
 //
 // SetDataset can be call multiple times. But only the first call will
 // be honored.
-func (s *Service) SetDataset(globPaths []string, dummy *int) error {
+func (s *Service) SetDataset(globPaths []string, _ *int) error {
 	if len(globPaths) == 0 {
 		return errors.New("no dataset specified")
 	}
@@ -377,8 +379,6 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 		if len(s.taskQueues.Done) == 0 {
 			if len(s.taskQueues.Pending) == 0 {
 				log.WithFields(s.logFields()).Warningln("All tasks failed, may start next pass")
-				// s.initDone = false
-				// s.ready.Broadcast()
 				return ErrAllTaskFinishError
 			}
 		}
@@ -501,3 +501,42 @@ func (s *Service) PassFinish(dummyIn int, dummyOut *int) error {
 }
 
 // ========================== Client Pass Sync Calls ==========================
+
+// SaveModelRequest is the request for saving model
+type SaveModelRequest struct {
+	TrainerID string
+	BlockDur  time.Duration
+}
+
+// RequestSaveModel requests the master server to approve the caller
+// to save the model.
+func (s *Service) RequestSaveModel(req SaveModelRequest, need *bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if req.TrainerID == "" {
+		return errors.New("trainer id is empty")
+	}
+
+	if s.savingTrainer == "" {
+		*need = true
+	} else {
+		if req.TrainerID == s.savingTrainer {
+			// save trainer asked to save model again
+			*need = true
+		} else {
+			*need = false
+		}
+	}
+
+	if *need {
+		s.savingTrainer = req.TrainerID
+		time.AfterFunc(req.BlockDur, func() {
+			s.mu.Lock()
+			s.savingTrainer = ""
+			s.mu.Unlock()
+		})
+	}
+
+	return nil
+}

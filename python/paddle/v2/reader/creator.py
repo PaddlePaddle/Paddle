@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Creator package contains some simple reader creator, which could be used in user
-program.
+Creator package contains some simple reader creator, which could
+be used in user program.
 """
 
 __all__ = ['np_array', 'text_file', "recordio"]
@@ -59,7 +59,7 @@ def text_file(path):
 
 def recordio_local(paths, buf_size=100):
     """
-    Creates a data reader from given RecordIO file paths separated by ",", 
+    Creates a data reader from given RecordIO file paths separated by ",",
         glob pattern is supported.
     :path: path of recordio files.
     :returns: data reader of recordio files.
@@ -83,7 +83,7 @@ def recordio_local(paths, buf_size=100):
 
 def recordio(paths, buf_size=100):
     """
-    Creates a data reader that outputs record one one by one 
+    Creates a data reader that outputs record one one by one
         from given local or cloud recordio path.
     :path: path of recordio files.
     :returns: data reader of recordio files.
@@ -96,7 +96,7 @@ def recordio(paths, buf_size=100):
 
     host_name = "MASTER_SERVICE_HOST"
     if host_name not in os.environ.keys():
-        raise Exception('not find ' + host_name + ' in environ.')
+        raise Exception('not find ' + host_name + ' in environment variable.')
 
     addr = os.environ(host)
 
@@ -110,6 +110,6 @@ def recordio(paths, buf_size=100):
                 break
             yield r
 
-        c.close()
+        c.release()
 
     return reader
