@@ -76,7 +76,11 @@ void NewRemoteParameterUpdater::init(
       sgdConfigV2->set_decay(paramConfig.decay_rate());
       optimizeConfigV2.set_lr_policy(paddle::OptimizerConfig::Const);
       auto constlr = optimizeConfigV2.mutable_const_lr();
-      constlr->set_learning_rate(paramConfig.learning_rate());
+      if (paramConfig.has_learning_rate()) {
+        constlr->set_learning_rate(paramConfig.learning_rate());
+      } else {
+        constlr->set_learning_rate(trainerConfig_.learning_rate());
+      }
       if (trainerConfig_.algorithm() == "sgd") {
         optimizeConfigV2.set_optimizer(paddle::OptimizerConfig::SGD);
         // FIXME: config all algorithms
