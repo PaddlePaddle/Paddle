@@ -71,6 +71,7 @@ static void DeDuplicate(NetOp* net, std::unordered_se)
   auto* net = new NetOp();
 
   if (forwardOp.IsNetOp()) {
+    //! TODO(dzh)
     std::unordered_map<std::string, int> dup_output;
     std::unordered_map<std::string std::vector<int>> dup_output_ops;
     const unsigned uniq_id_local = uniq_id;
@@ -98,12 +99,12 @@ static void DeDuplicate(NetOp* net, std::unordered_se)
           if (op_ptr->inputs_[i] == dup.first) {
             // unique the duplicate name
             op_ptr->inputs_[i] += std::to_string(uniq_id++);
+            // TODO(dzh): need a generic add op here
           }
         }
       }
     }
 
-    //! TODO(dzh)
   } else {
     //! TODO(fjy)
     std::shared_ptr<OperatorBase> grad_op = OpRegistry::CreateGradOp(forwardOp);
