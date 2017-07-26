@@ -105,7 +105,7 @@ func TestNextRecord(t *testing.T) {
 
 	// start several client to test task fetching
 	var wg sync.WaitGroup
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 4; i++ {
 		wg.Add(1)
 		// test for multiple concurrent clients
 		go func() {
@@ -120,7 +120,7 @@ func TestNextRecord(t *testing.T) {
 				panic(e)
 			}
 			// test for n passes
-			for pass := 0; pass < 2; pass++ {
+			for pass := 0; pass < 10; pass++ {
 				c.StartGetRecords(pass)
 
 				received := make(map[byte]bool)
