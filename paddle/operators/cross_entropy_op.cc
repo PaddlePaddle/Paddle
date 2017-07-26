@@ -30,10 +30,12 @@ protected:
                    "Inputs of OnehotCrossEntropyOp must all be set");
     PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
                    "Outputs of OnehotCrossEntropyOp must all be set");
-    PADDLE_ENFORCE(ctx.Input(0).dims().size() == 2, "X's dimension must be 2.");
-    PADDLE_ENFORCE(ctx.Output(0)->dims().size() == 1,
+    PADDLE_ENFORCE(ctx.Input<framework::Tensor>(0).dims().size() == 2,
+                   "X's dimension must be 2.");
+    PADDLE_ENFORCE(ctx.Output<framework::Tensor>(0)->dims().size() == 1,
                    "label's dimension must be 1.");
-    ctx.Output(0)->Resize(framework::make_ddim({ctx.Input(0).dims()[0]}));
+    ctx.Output<framework::Tensor>(0)->Resize(
+        framework::make_ddim({ctx.Input<framework::Tensor>(0).dims()[0]}));
   }
 };
 

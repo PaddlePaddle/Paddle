@@ -23,15 +23,15 @@ class MulOp : public framework::OperatorWithKernel {
 protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2, "The mul op must take two inputs");
-    auto dim0 = ctx.Input(0).dims();
-    auto dim1 = ctx.Input(1).dims();
+    auto dim0 = ctx.Input<framework::Tensor>(0).dims();
+    auto dim1 = ctx.Input<framework::Tensor>(1).dims();
     PADDLE_ENFORCE(dim0.size() == 2 && dim1.size() == 2,
                    "The input of mul op must be matrix");
     PADDLE_ENFORCE(
         dim0[1] == dim1[0],
         "First matrix's width must be equal with second matrix's height.");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "The mul op must take one output");
-    ctx.Output(0)->Resize({dim0[0], dim1[1]});
+    ctx.Output<framework::Tensor>(0)->Resize({dim0[0], dim1[1]});
   }
 };
 

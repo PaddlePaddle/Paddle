@@ -22,7 +22,8 @@ protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 1, "Sigmoid Op only have one input");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "Sigmoid Op only have one output");
-    ctx.Output(0)->Resize(ctx.Input(0).dims());
+    ctx.Output<framework::Tensor>(0)->Resize(
+        ctx.Input<framework::Tensor>(0).dims());
   }
 };
 

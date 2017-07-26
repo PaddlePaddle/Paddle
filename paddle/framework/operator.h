@@ -140,38 +140,44 @@ class OperatorContext {
     return res;
   }
 
-  const Tensor& Input(int index) const {
-    return InputVar(index)->Get<Tensor>();
+  template <typename T>
+  const T& Input(int index) const {
+    return InputVar(index)->Get<T>();
   }
 
-  Tensor* Output(int index) const {
-    return OutputVar(index)->GetMutable<Tensor>();
+  template <typename T>
+  T* Output(int index) const {
+    return OutputVar(index)->GetMutable<T>();
   }
 
-  const Tensor& Input(const std::string& name) const {
-    return InputVar(name)->Get<Tensor>();
+  template <typename T>
+  const T& Input(const std::string& name) const {
+    return InputVar(name)->Get<T>();
   }
 
-  Tensor* Output(const std::string& name) const {
-    return OutputVar(name)->GetMutable<Tensor>();
+  template <typename T>
+  T* Output(const std::string& name) const {
+    return OutputVar(name)->GetMutable<T>();
   }
 
-  const std::vector<const Tensor*> Inputs(const std::string& name) const {
+  template <typename T>
+  const std::vector<const T*> Inputs(const std::string& name) const {
     auto names = op_.Inputs(name);
-    std::vector<const Tensor*> res;
+    std::vector<const T*> res;
     std::transform(names.begin(), names.end(), res.begin(),
                    [this](const std::string& name) {
-                     return &scope_->GetVariable(name)->Get<Tensor>();
+                     return &scope_->GetVariable(name)->Get<T>();
                    });
     return res;
   }
 
-  std::vector<const Tensor*> Outputs(const std::string& name) const {
+  template <typename T>
+  std::vector<const T*> Outputs(const std::string& name) const {
     auto names = op_.Outputs(name);
-    std::vector<const Tensor*> res;
+    std::vector<const T*> res;
     std::transform(names.begin(), names.end(), res.begin(),
                    [this](const std::string& name) {
-                     return scope_->GetVariable(name)->GetMutable<Tensor>();
+                     return scope_->GetVariable(name)->GetMutable<T>();
                    });
     return res;
   }

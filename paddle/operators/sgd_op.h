@@ -24,9 +24,9 @@ template <typename Place, typename T>
 class SGDOpKernel : public framework::OpKernel {
 public:
   void Compute(const framework::KernelContext& ctx) const override {
-    auto param = ctx.Input("param");
-    auto grad = ctx.Input("grad");
-    auto* param_out = ctx.Output(0);
+    auto param = ctx.Input<framework::Tensor>("param");
+    auto grad = ctx.Input<framework::Tensor>("grad");
+    auto* param_out = ctx.Output<framework::Tensor>(0);
     float lr = ctx.op_.GetAttr<float>("learning_rate");
 
     param_out->mutable_data<T>(ctx.GetPlace());

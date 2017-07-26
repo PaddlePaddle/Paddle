@@ -27,9 +27,11 @@ protected:
     PADDLE_ENFORCE(ctx.InputVar(0) != nullptr, "inputs[0] mast be set");
     PADDLE_ENFORCE(ctx.InputVar(1) != nullptr, "inputs[1] mast be set");
     PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr, "outputs[0] mast be set");
-    PADDLE_ENFORCE(ctx.Input(0).dims() == ctx.Input(1).dims(),
+    PADDLE_ENFORCE(ctx.Input<framework::Tensor>(0).dims() ==
+                       ctx.Input<framework::Tensor>(1).dims(),
                    "Two input of SGD Op's dimension must be same.");
-    ctx.Output(0)->Resize(ctx.Input(0).dims());
+    ctx.Output<framework::Tensor>(0)->Resize(
+        ctx.Input<framework::Tensor>(0).dims());
   }
 };
 

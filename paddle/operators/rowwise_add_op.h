@@ -24,11 +24,13 @@ template <typename Place, typename T>
 class RowWiseAddKernel : public framework::OpKernel {
 public:
   void Compute(const framework::KernelContext& context) const override {
-    auto* out = context.Output(0);
+    auto* out = context.Output<framework::Tensor>(0);
     out->mutable_data<T>(context.GetPlace());
 
-    auto input = framework::EigenMatrix<T>::From(context.Input(0));
-    auto bias = framework::EigenVector<T>::From(context.Input(1));
+    auto input =
+        framework::EigenMatrix<T>::From(context.Input<framework::Tensor>(0));
+    auto bias =
+        framework::EigenVector<T>::From(context.Input<framework::Tensor>(1));
     auto output = framework::EigenMatrix<T>::From(*out);
 
     const int bias_size = bias.dimension(0);

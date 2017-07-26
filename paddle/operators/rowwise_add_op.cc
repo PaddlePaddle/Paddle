@@ -22,14 +22,15 @@ protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2UL,
                    "Two inputs is needed by rowwise add");
-    auto dim0 = ctx.Input(0).dims();
-    auto dim1 = ctx.Input(1).dims();
+    auto dim0 = ctx.Input<framework::Tensor>(0).dims();
+    auto dim1 = ctx.Input<framework::Tensor>(1).dims();
 
     PADDLE_ENFORCE(dim0.size() == 2, "Input 0 must be matrix");
     PADDLE_ENFORCE(dim1.size() == 1, "The second input must be vector");
     PADDLE_ENFORCE(dim0[1] == dim1[0], "The width of two input must be same");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "The output size must be 1");
-    ctx.Output(0)->Resize(ctx.Input(0).dims());
+    ctx.Output<framework::Tensor>(0)->Resize(
+        ctx.Input<framework::Tensor>(0).dims());
   }
 };
 

@@ -28,13 +28,14 @@ public:
     Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
         {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
 
-    auto* output = context.Output(0);
+    auto* output = context.Output<framework::Tensor>(0);
     output->mutable_data<T>(context.GetPlace());
 
     framework::EigenMatrix<T>::From(*output).device(
         *(context.GetEigenDevice<Place>())) =
-        framework::EigenMatrix<T>::From(context.Input("X"))
-            .contract(framework::EigenMatrix<T>::From(context.Input("Y")),
+        framework::EigenMatrix<T>::From(context.Input<framework::Tensor>("X"))
+            .contract(framework::EigenMatrix<T>::From(
+                          context.Input<framework::Tensor>("Y")),
                       dim_pair);
   }
 };
