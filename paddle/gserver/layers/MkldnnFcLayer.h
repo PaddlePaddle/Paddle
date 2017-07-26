@@ -38,7 +38,8 @@ protected:
   std::vector<mkldnn::primitive> pipelineFwd_;
   std::vector<mkldnn::primitive> pipelineBwd_;
 
-  /// dim of input layer, it can not be changed even in reshape
+  /// dim of input layer(== input layersize)
+  /// it can not be changed even in reshape
   size_t dim_in_;
   /// dim(== output change) of output layer, it also can not be changed
   size_t dim_out_;

@@ -31,9 +31,8 @@ void MkldnnFcLayer::loadConfig() {
 
   // get dim of input and output
   CHECK_EQ(config_.inputs_size(), 1) << "Only support one input config!";
-  const FCConfig &conf = config_.inputs(0).fc_conf();
-  dim_in_ = conf.dim_in();
-  dim_out_ = conf.dim_out();
+  dim_in_ = inputLayers_[0]->getSize();  // layer size of input layer
+  dim_out_ = getSize();  // layer size of this layer
 }
 
 bool MkldnnFcLayer::initWgt(const LayerMap &layerMap,
