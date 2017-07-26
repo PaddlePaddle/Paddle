@@ -146,7 +146,7 @@ void MkldnnFcLayer::initWgtFromPaddle() {
   CHECK(cvtWgt->needReorder()) << "should always need cvt from paddle weight"
     << ", since the data pointers are not equal";
   cvtToDnnWgt.push_back(*cvtWgt->getReorder());
-  stream(stream::kind::eager).submit(cvtToDnnWgt).wait();
+  stream_->submit(cvtToDnnWgt);
 
   hasInitedWgt_ = true;
 }
@@ -165,7 +165,7 @@ void MkldnnFcLayer::cvtWgtToPaddle() {
   CHECK(cvtWgt->needReorder())
     << "should always cvt, since the data pointers are not equal";
   cvtToDnnWgt.push_back(*cvtWgt->getReorder());
-  stream(stream::kind::eager).submit(cvtToDnnWgt).wait();
+  stream_->submit(cvtToDnnWgt);
 
   // Then transpose to paddle weight
   // pay attention here paddleWgt_ use the same buffer with mkldnn weight
@@ -367,7 +367,7 @@ void MkldnnFcLayer::resetFwdPipeline(
 void MkldnnFcLayer::forwardDnnVal() {
   real *botValData = getPrev(0)->getOutputValue()->getData();
   botData_->updateUserData(botValData);
-  stream(stream::kind::eager).submit(pipelineFwd_).wait();
+  stream_->submit(pipelineFwd_);
 }
 
 /*************************** for backward methods: ****************************/
@@ -595,7 +595,7 @@ void MkldnnFcLayer::backwardDnnVal() {
     botDiff_->updateUserData(botGradData);
   }
 
-  stream(stream::kind::eager).submit(pipelineBwd_).wait();
+  stream_->submit(pipelineBwd_);
 }
 
 

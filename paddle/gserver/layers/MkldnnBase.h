@@ -28,18 +28,23 @@ typedef enum {
   DNN_ALL,
 } DNN_LOG_LEVEL;
 
-/// For mkldnn cpu engine
+/**
+ * @brief MKLDNN CPU engine.
+ *
+ */
 class CpuEngine {
 public:
   static CpuEngine & Instance() {
-    // I's thread-safe in C++11.
+    // Thread-safe in C++11.
     static CpuEngine myInstance;
     return myInstance;
   }
-  CpuEngine(CpuEngine const&) = delete;             // Copy construct
-  CpuEngine(CpuEngine&&) = delete;                  // Move construct
-  CpuEngine& operator=(CpuEngine const&) = delete;  // Copy assign
-  CpuEngine& operator=(CpuEngine &&) = delete;      // Move assign
+
+  // Disallow copy or move
+  CpuEngine(const CpuEngine&) = delete;             // Copy constructor
+  CpuEngine(CpuEngine&&) = delete;                  // Move constructor
+  CpuEngine& operator=(const CpuEngine&) = delete;  // Copy assignment
+  CpuEngine& operator=(CpuEngine&&) = delete;       // Move assignment
 
   mkldnn::engine & getEngine() { return cpuEngine_; }
 protected:
@@ -48,6 +53,47 @@ protected:
   ~CpuEngine() {}
 private:
   mkldnn::engine cpuEngine_;
+};
+
+/**
+ * @brief MKLDNN Stream.
+ *
+ */
+class MkldnnStream {
+public:
+  explicit MkldnnStream() : ready_(false) {
+    resetState();
+  }
+
+  virtual ~MkldnnStream() {}
+
+  /**
+   * @brief Submit stream
+   * @param prims The primitives vector
+   *        block Waiting for the stream to complete
+   */
+  void submit(std::vector<mkldnn::primitive>& prims, bool block = true) {
+    resetState();
+    stream_->submit(prims).wait(block);
+    ready_ = false;
+  }
+
+  /**
+   * @brief Reset the mkldnn stream
+   */
+  void resetState() {
+    if (ready_) {
+      return;
+    }
+    // TODO(TJ): change me when mkldnn have method to reset this state
+    stream_.reset(new mkldnn::stream(mkldnn::stream::kind::eager));
+//    stream_.reset(new stream(stream::kind::lazy));
+    ready_ = true;
+  }
+
+private:
+  bool ready_;
+  std::shared_ptr<mkldnn::stream> stream_;
 };
 
 }  // namespace paddle

@@ -44,6 +44,7 @@ public:
   mkldnn::memory::dims botDims_, wgtDims_, biasDims_, topDims_;
   mkldnn::memory::format botFmt_, wgtFmt_, biasFmt_, topFmt_;
   mkldnn::engine engine_;
+  std::shared_ptr<MkldnnStream> stream_;
 
   // input element cnt
   size_t inputElmCnt_;
@@ -87,6 +88,7 @@ public:
       topData_(nullptr),
       topDiff_(nullptr),
       engine_(mkldnn::engine::cpu, 0),
+      stream_(nullptr),
       inputElmCnt_(0),
       iMatH_(0), iMatW_(0),
       oMatH_(0), oMatW_(0),
@@ -113,6 +115,8 @@ public:
     } else {
       VLOG(DNN_BASE) << "Layer name: " << getName() << ", type: " << getType();
     }
+
+    stream_.reset(new MkldnnStream());
 
     // buffers dims
     botDims_ = {};
