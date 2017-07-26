@@ -15,11 +15,7 @@
 package master
 
 import (
-	"fmt"
 	"os"
-	"runtime"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -118,47 +114,27 @@ func NewClient(opts ...func(*Client) error) (*Client, error) {
 
 // StartGetRecords must be called at beginning of each pass
 func (c *Client) StartGetRecords(passID int) {
-	c.mu.Lock()
-	fmt.Println("StartGetRecords set passid and start getRecords go-routine", passID)
 	c.passID = passID
-	c.mu.Unlock()
 	go c.getRecords()
-}
-
-// tool function for testing output goroutine ids
-func goid() int {
-	var buf [64]byte
-	n := runtime.Stack(buf[:], false)
-	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
-	id, err := strconv.Atoi(idField)
-	if err != nil {
-		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
-	}
-	return id
 }
 
 func (c *Client) getRecords() {
 	for {
-		c.mu.Lock()
 		t, err := c.getTask(c.passID)
-		c.mu.Unlock()
 		if err != nil {
-			log.Errorf("getTask error: %s", err)
-			// ErrAllTaskFinish may never occur
-			if err.Error() == ErrAllTaskFinish.Error() {
+			// FIXME(typhoonzero): ErrAllTaskFinish may never occur
+			if err.Error() == ErrPassBefore.Error() ||
+				err.Error() == ErrNoMoreAvailable.Error() ||
+				err.Error() == ErrAllTaskFinish.Error() {
 				c.ch <- record{nil, err}
-			}
-			if err.Error() == ErrPassBefore.Error() {
-				c.ch <- record{nil, err}
+				break
 			}
 			if err.Error() == ErrPassAfter.Error() {
+				// wait util last pass finishes
 				time.Sleep(time.Second * 3)
 				continue
 			}
-			if err.Error() == ErrNoMoreAvailable.Error() {
-				c.ch <- record{nil, err}
-			}
-			break
+			log.Errorf("getTask error: %s", err)
 		}
 
 		for _, chunk := range t.Chunks {

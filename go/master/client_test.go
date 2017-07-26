@@ -29,7 +29,6 @@ import (
 
 	"github.com/PaddlePaddle/Paddle/go/master"
 	"github.com/PaddlePaddle/recordio"
-	log "github.com/sirupsen/logrus"
 )
 
 // tool function for testing output goroutine ids
@@ -45,7 +44,6 @@ func goid() int {
 }
 
 func TestNextRecord(t *testing.T) {
-	log.SetLevel(log.WarnLevel)
 	const (
 		path  = "/tmp/master_client_TestFull"
 		total = 50
@@ -61,7 +59,7 @@ func TestNextRecord(t *testing.T) {
 		panic(err)
 	}
 	go func(l net.Listener) {
-		s, err := master.NewService(&master.InMemStore{}, 1, time.Second, 1)
+		s, err := master.NewService(&master.InMemStore{}, 1, time.Second*60, 1)
 		if err != nil {
 			panic(err)
 		}
@@ -128,10 +126,9 @@ func TestNextRecord(t *testing.T) {
 				for {
 					r, e := c.NextRecord(pass)
 					if e != nil {
-						if e.Error() == master.ErrPassBefore.Error() {
-							break
-						}
-						if e.Error() == master.ErrNoMoreAvailable.Error() {
+						// ErrorPassAfter will wait, else break for next pass
+						if e.Error() == master.ErrPassBefore.Error() ||
+							e.Error() == master.ErrNoMoreAvailable.Error() {
 							break
 						}
 						t.Fatal(pass, taskid, "Read error:", e)
@@ -140,7 +137,6 @@ func TestNextRecord(t *testing.T) {
 						t.Fatal(pass, taskid, "Length should be 1.", r)
 					}
 					if received[r[0]] {
-						fmt.Println(pass, taskid, "Received duplicate.", received, r)
 						t.Fatal(pass, taskid, "Received duplicate.", received, r)
 					}
 					taskid++

@@ -376,7 +376,6 @@ func (s *Service) GetTask(passID int, task *Task) error {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	// log.WithFields(s.logFields()).Warningln("***getTask***", passID, s.currPass)
 	if passID < s.currPass {
 		return ErrPassBefore
 	}
@@ -441,12 +440,13 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 
 	log.WithFields(s.logFields()).Infof("Task #%d finished.", taskID)
 	if len(s.taskQueues.Todo) == 0 && len(s.taskQueues.Pending) == 0 {
+		// increase master side pass count if all tasks finished
 		s.currPass++
-		// put s.jobTasks to start a new pass
 		s.taskQueues.Todo = s.jobTasks
 		s.taskQueues.Done = []taskEntry{}
+		// TODO(typhoonzero): deal with failed tasks
 		s.taskQueues.Failed = []taskEntry{}
-		log.WithFields(s.logFields()).Warningf("*******server all task finished, add new pass data, newpass: %d******", s.currPass)
+		log.WithFields(s.logFields()).Warningf("all task finished, add new pass data, newpass: %d.", s.currPass)
 		return nil
 	}
 
