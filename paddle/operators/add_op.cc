@@ -24,15 +24,16 @@ protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2, "Input size of AddOp must be two");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "Output size of AddOp must be one");
-    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr && ctx.InputVar(1) != nullptr,
+    PADDLE_ENFORCE(ctx.Input<framework::Variable>(0) != nullptr &&
+                       ctx.Input<framework::Variable>(1) != nullptr,
                    "Inputs of AddOp must all be set");
-    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
+    PADDLE_ENFORCE(ctx.Output<framework::Variable>(0) != nullptr,
                    "Outputs of AddOp must all be set");
-    PADDLE_ENFORCE(ctx.Input<framework::Tensor>(0).dims() ==
-                       ctx.Input<framework::Tensor>(1).dims(),
+    PADDLE_ENFORCE(ctx.Input<framework::Tensor>(0)->dims() ==
+                       ctx.Input<framework::Tensor>(1)->dims(),
                    "Two input of Add Op's dimension must be same.");
     ctx.Output<framework::Tensor>(0)->Resize(
-        ctx.Input<framework::Tensor>(0).dims());
+        ctx.Input<framework::Tensor>(0)->dims());
   }
 };
 

@@ -25,13 +25,13 @@ template <typename Place, typename T>
 class SigmoidKernel : public framework::OpKernel {
 public:
   void Compute(const framework::KernelContext& context) const override {
-    auto input = context.Input<framework::Tensor>(0);
+    auto* input = context.Input<framework::Tensor>(0);
     auto* output = context.Output<framework::Tensor>(0);
     output->mutable_data<T>(context.GetPlace());
 
     framework::EigenVector<T>::Flatten(*output).device(
         *(context.GetEigenDevice<Place>())) =
-        1.0 / (1.0 + (-1.0 * framework::EigenVector<T>::Flatten(input)).exp());
+        1.0 / (1.0 + (-1.0 * framework::EigenVector<T>::Flatten(*input)).exp());
   }
 };
 }  // namespace operators

@@ -24,16 +24,16 @@ template <typename Place, typename T>
 class AddKernel : public framework::OpKernel {
 public:
   void Compute(const framework::KernelContext& context) const override {
-    auto input0 = context.Input<framework::Tensor>(0);
-    auto input1 = context.Input<framework::Tensor>(1);
+    auto* input0 = context.Input<framework::Tensor>(0);
+    auto* input1 = context.Input<framework::Tensor>(1);
     auto* output = context.Output<framework::Tensor>(0);
 
     output->mutable_data<T>(context.GetPlace());
 
     framework::EigenVector<T>::Flatten(*output).device(
         *(context.GetEigenDevice<Place>())) =
-        framework::EigenVector<T>::Flatten(input0) +
-        framework::EigenVector<T>::Flatten(input1);
+        framework::EigenVector<T>::Flatten(*input0) +
+        framework::EigenVector<T>::Flatten(*input1);
   }
 };
 

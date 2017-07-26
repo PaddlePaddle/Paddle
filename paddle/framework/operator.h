@@ -106,58 +106,24 @@ class OperatorContext {
 
   int OutputSize() const { return static_cast<int>(op_.outputs_.size()); }
 
-  const Variable* InputVar(int index) const {
-    return scope_->GetVariable(op_.inputs_[index]);
-  }
-
-  Variable* OutputVar(int index) const {
-    return scope_->GetVariable(op_.outputs_[index]);
-  }
-
-  const Variable* InputVar(const std::string& name) const {
-    return scope_->GetVariable(op_.Input(name));
-  }
-
-  Variable* OutputVar(const std::string& name) const {
-    return scope_->GetVariable(op_.Output(name));
-  }
-
-  const std::vector<const Variable*> InputVars(const std::string& name) const {
-    auto names = op_.Inputs(name);
-    std::vector<const Variable*> res;
-    std::transform(
-        names.begin(), names.end(), res.begin(),
-        [this](const std::string& name) { return scope_->GetVariable(name); });
-    return res;
-  }
-
-  const std::vector<const Variable*> OutputVars(const std::string& name) const {
-    auto names = op_.Outputs(name);
-    std::vector<const Variable*> res;
-    std::transform(
-        names.begin(), names.end(), res.begin(),
-        [this](const std::string& name) { return scope_->GetVariable(name); });
-    return res;
-  }
-
   template <typename T>
-  const T& Input(int index) const {
-    return InputVar(index)->Get<T>();
+  const T* Input(int index) const {
+    return &Input<Variable>(index)->Get<T>();
   }
 
   template <typename T>
   T* Output(int index) const {
-    return OutputVar(index)->GetMutable<T>();
+    return Output<Variable>(index)->GetMutable<T>();
   }
 
   template <typename T>
-  const T& Input(const std::string& name) const {
-    return InputVar(name)->Get<T>();
+  const T* Input(const std::string& name) const {
+    return &Input<Variable>(name)->Get<T>();
   }
 
   template <typename T>
   T* Output(const std::string& name) const {
-    return OutputVar(name)->GetMutable<T>();
+    return Output<Variable>(name)->GetMutable<T>();
   }
 
   template <typename T>

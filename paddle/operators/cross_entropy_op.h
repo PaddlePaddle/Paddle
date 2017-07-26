@@ -25,17 +25,17 @@ public:
   constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
 
   void Compute(const framework::KernelContext& ctx) const override {
-    auto X = ctx.Input<framework::Tensor>(0);
-    const T* X_data = X.data<T>();
-    const int* label_data = ctx.Input<framework::Tensor>(1).data<int>();
+    auto* X = ctx.Input<framework::Tensor>(0);
+    const T* X_data = X->data<T>();
+    const int* label_data = ctx.Input<framework::Tensor>(1)->data<int>();
     auto* Y = ctx.Output<framework::Tensor>(0);
 
     Y->mutable_data<T>(ctx.GetPlace());
 
     T* Y_data = Y->data<T>();
 
-    int batch_size = X.dims()[0];
-    int class_num = X.dims()[1];
+    int batch_size = X->dims()[0];
+    int class_num = X->dims()[1];
 
     // Y[i] = -log(X[i][j])
     for (int i = 0; i < batch_size; ++i) {

@@ -24,8 +24,8 @@ template <typename Place, typename T>
 class SGDOpKernel : public framework::OpKernel {
 public:
   void Compute(const framework::KernelContext& ctx) const override {
-    auto param = ctx.Input<framework::Tensor>("param");
-    auto grad = ctx.Input<framework::Tensor>("grad");
+    auto* param = ctx.Input<framework::Tensor>("param");
+    auto* grad = ctx.Input<framework::Tensor>("grad");
     auto* param_out = ctx.Output<framework::Tensor>(0);
     float lr = ctx.op_.GetAttr<float>("learning_rate");
 
@@ -33,8 +33,8 @@ public:
 
     framework::EigenVector<T>::Flatten(*param_out)
         .device(*(ctx.GetEigenDevice<Place>())) =
-        framework::EigenVector<T>::Flatten(param) -
-        lr * framework::EigenVector<T>::Flatten(grad);
+        framework::EigenVector<T>::Flatten(*param) -
+        lr * framework::EigenVector<T>::Flatten(*grad);
   }
 };
 

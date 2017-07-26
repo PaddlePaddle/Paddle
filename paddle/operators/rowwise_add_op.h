@@ -28,9 +28,9 @@ public:
     out->mutable_data<T>(context.GetPlace());
 
     auto input =
-        framework::EigenMatrix<T>::From(context.Input<framework::Tensor>(0));
+        framework::EigenMatrix<T>::From(*context.Input<framework::Tensor>(0));
     auto bias =
-        framework::EigenVector<T>::From(context.Input<framework::Tensor>(1));
+        framework::EigenVector<T>::From(*context.Input<framework::Tensor>(1));
     auto output = framework::EigenMatrix<T>::From(*out);
 
     const int bias_size = bias.dimension(0);

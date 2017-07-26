@@ -21,12 +21,12 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 1, "Only one input is need for softmax");
-    PADDLE_ENFORCE(ctx.Input<framework::Tensor>(0).dims().size() == 2,
+    PADDLE_ENFORCE(ctx.Input<framework::Tensor>(0)->dims().size() == 2,
                    "The input of softmax op must be matrix");
     PADDLE_ENFORCE(ctx.OutputSize() == 1,
                    "Only one output is need for softmax");
     ctx.Output<framework::Tensor>(0)->Resize(
-        ctx.Input<framework::Tensor>(0).dims());
+        ctx.Input<framework::Tensor>(0)->dims());
   }
 };
 

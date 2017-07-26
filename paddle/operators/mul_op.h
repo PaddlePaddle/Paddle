@@ -33,9 +33,9 @@ public:
 
     framework::EigenMatrix<T>::From(*output).device(
         *(context.GetEigenDevice<Place>())) =
-        framework::EigenMatrix<T>::From(context.Input<framework::Tensor>("X"))
+        framework::EigenMatrix<T>::From(*context.Input<framework::Tensor>("X"))
             .contract(framework::EigenMatrix<T>::From(
-                          context.Input<framework::Tensor>("Y")),
+                          *context.Input<framework::Tensor>("Y")),
                       dim_pair);
   }
 };

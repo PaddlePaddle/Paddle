@@ -26,16 +26,17 @@ protected:
                    "Input size of OnehotCrossEntropyOp must be two");
     PADDLE_ENFORCE(ctx.OutputSize() == 1,
                    "Output size of OnehotCrossEntropyOp must be one");
-    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr && ctx.InputVar(1) != nullptr,
+    PADDLE_ENFORCE(ctx.Input<framework::Variable>(0) != nullptr &&
+                       ctx.Input<framework::Variable>(1) != nullptr,
                    "Inputs of OnehotCrossEntropyOp must all be set");
-    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
+    PADDLE_ENFORCE(ctx.Output<framework::Variable>(0) != nullptr,
                    "Outputs of OnehotCrossEntropyOp must all be set");
-    PADDLE_ENFORCE(ctx.Input<framework::Tensor>(0).dims().size() == 2,
+    PADDLE_ENFORCE(ctx.Input<framework::Tensor>(0)->dims().size() == 2,
                    "X's dimension must be 2.");
     PADDLE_ENFORCE(ctx.Output<framework::Tensor>(0)->dims().size() == 1,
                    "label's dimension must be 1.");
     ctx.Output<framework::Tensor>(0)->Resize(
-        framework::make_ddim({ctx.Input<framework::Tensor>(0).dims()[0]}));
+        framework::make_ddim({ctx.Input<framework::Tensor>(0)->dims()[0]}));
   }
 };
 
