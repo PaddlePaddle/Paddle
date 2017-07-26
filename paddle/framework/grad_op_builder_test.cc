@@ -11,7 +11,7 @@ namespace framework {
 TEST(GradOpBuilder, AddTwo) {
   std::shared_ptr<OperatorBase> add_op(
       OpRegistry::CreateOp("add_two", {"x", "y"}, {"out"}, {}));
-  std::shared_ptr<OperatorBase> grad_add_op = OpRegistry::CreateGradOp(add_op);
+  std::shared_ptr<OperatorBase> grad_add_op = OpRegistry::CreateGradOp(*add_op);
   EXPECT_EQ(static_cast<int>(grad_add_op->inputs_.size()), 4);
   EXPECT_EQ(static_cast<int>(grad_add_op->outputs_.size()), 2);
   EXPECT_EQ(grad_add_op->Input("X"), "x");

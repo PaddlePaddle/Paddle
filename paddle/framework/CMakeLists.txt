@@ -33,4 +33,4 @@ cc_library(net SRCS net.cc DEPS op_registry)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net add_op mul_op sigmoid_op softmax_op fc_op)
 
 cc_library(backward SRCS backward.cc DEPS net)
-cc_test(backward_test SRCS backward_test.cc DEPS net)
+cc_test(backward_test SRCS backward_test.cc DEPS backward)
