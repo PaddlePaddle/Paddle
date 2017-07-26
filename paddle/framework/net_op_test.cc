@@ -69,7 +69,7 @@ TEST(OpKernel, all) {
   net->Run(scope, dev_ctx);
   ASSERT_EQ(2, infer_shape_cnt);
   ASSERT_EQ(2, run_cnt);
-  ASSERT_THROW(net->AddOp(op2), std::runtime_error);
+  ASSERT_THROW(net->AddOp(op2), paddle::platform::EnforceNotMet);
 }
 TEST(AddBackwardOp, TestGradOp) {
   auto net = std::make_shared<PlainNet>();
