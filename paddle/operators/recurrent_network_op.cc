@@ -28,7 +28,7 @@ namespace operators {
 
 namespace rnn {
 
-void SegmentInputs(std::vector<ScopePtr>& step_scopes,
+void SegmentInputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
                    const std::vector<Link>& inlinks,
                    const size_t seq_len) {
   PADDLE_ENFORCE(!inlinks.empty(), "no in links are provided.");
@@ -49,7 +49,7 @@ void SegmentInputs(std::vector<ScopePtr>& step_scopes,
   }
 }
 
-void ConcatOutputs(std::vector<ScopePtr>& step_scopes,
+void ConcatOutputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
                    const std::vector<Link>& outlinks,
                    const size_t seq_len) {
   for (size_t i = 0; i < outlinks.size(); i++) {
@@ -76,7 +76,7 @@ void ConcatOutputs(std::vector<ScopePtr>& step_scopes,
   }
 }
 
-void LinkMemories(std::vector<ScopePtr>& scopes,
+void LinkMemories(std::vector<std::shared_ptr<Scope>>& scopes,
                   const std::vector<rnn::MemoryAttr>& memories,
                   size_t step_id,
                   int offset) {
@@ -93,8 +93,8 @@ void LinkMemories(std::vector<ScopePtr>& scopes,
                  offset,
                  scopes.size(),
                  step_id);
-  ScopePtr scope = scopes[step_id];
-  ScopePtr linked_scope = scopes[step_id + offset];
+  std::shared_ptr<Scope> scope = scopes[step_id];
+  std::shared_ptr<Scope> linked_scope = scopes[step_id + offset];
   for (auto& attr : memories) {
     auto mem = scope->CreateVariable(attr.pre_var)->GetMutable<Tensor>();
     // maybe share variable is better?
@@ -170,7 +170,7 @@ void InitArgument(const ArgumentName& name,
 
 }  // namespace rnn
 
-void RecurrentAlgorithm::InferShape(const ScopePtr& scope) const {
+void RecurrentAlgorithm::InferShape(const std::shared_ptr<Scope>& scope) const {
   seq_len_ = scope->GetVariable((arg_->inlinks[0]).external)
                  ->GetMutable<Tensor>()
                  ->dims()[0];
@@ -213,7 +213,7 @@ void RecurrentAlgorithm::InferShape(const ScopePtr& scope) const {
   }
 }
 
-void RecurrentAlgorithm::Run(const ScopePtr& scope,
+void RecurrentAlgorithm::Run(const std::shared_ptr<Scope>& scope,
                              const platform::DeviceContext& dev_ctx) const {
   // DLOG(INFO) << "create scopes";
   // CreateScopes(scope);
@@ -260,16 +260,16 @@ std::string RecurrentAlgorithm::debug_string() const {
   return ss.str();
 }
 
-void RecurrentAlgorithm::CreateScopes(ScopePtr scope) const {
+void RecurrentAlgorithm::CreateScopes(std::shared_ptr<Scope> scope) const {
   // TODO(xxx) update this function when using variable-length of sequence.
   // TODO(xxx) Only two scopes are needed for inference, this case will be
   // supported later.
-  std::vector<ScopePtr>* step_scopes =
+  std::vector<std::shared_ptr<Scope>>* step_scopes =
       scope->GetVariable(arg_->step_scopes)
-          ->GetMutable<std::vector<ScopePtr>>();
+          ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
   if (seq_len_ > step_scopes->size()) {
     for (size_t i = step_scopes->size(); i < seq_len_; ++i) {
-      ScopePtr step_scope = std::make_shared<Scope>(scope);
+      std::shared_ptr<Scope> step_scope = std::make_shared<Scope>(scope);
 
       // Now all variables in scope must be created outside of op.
       auto net_op = scope->GetVariable(arg_->step_net)->GetMutable<PlainNet>();
@@ -285,7 +285,7 @@ void RecurrentAlgorithm::CreateScopes(ScopePtr scope) const {
   }
 }
 
-void RecurrentAlgorithm::InitMemories(ScopePtr step_scope) const {
+void RecurrentAlgorithm::InitMemories(std::shared_ptr<Scope> step_scope) const {
   for (auto& attr : arg_->memories) {
     Tensor* pre_mem =
         step_scope->CreateVariable(attr.pre_var)->GetMutable<Tensor>();
@@ -339,7 +339,7 @@ void RecurrentOp::Init() {
   DLOG(INFO) << alg_.debug_string();
 }
 
-void RecurrentOp::InferShape(const ScopePtr& scope) const {
+void RecurrentOp::InferShape(const std::shared_ptr<Scope>& scope) const {
   alg_.InferShape(scope);
 }
 
@@ -373,9 +373,10 @@ public:
 };
 
 void RecurrentGradientAlgorithm::Run(
-    const ScopePtr& scope, const platform::DeviceContext& dev_ctx) const {
+    const std::shared_ptr<Scope>& scope,
+    const platform::DeviceContext& dev_ctx) const {
   auto step_scopes = *(scope->GetVariable(arg_->step_scopes))
-                          ->GetMutable<std::vector<ScopePtr>>();
+                          ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
   size_t seq_len = scope->GetVariable((arg_->inlinks[0]).external)
                        ->GetMutable<Tensor>()
                        ->dims()[0];
@@ -400,7 +401,7 @@ void RecurrentGradientAlgorithm::Run(
 }
 
 void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
-    ScopePtr step_scope) const {
+    std::shared_ptr<Scope> step_scope) const {
   for (auto& attr : arg_->memories) {
     Tensor* mem_g = step_scope->CreateVariable(attr.var)->GetMutable<Tensor>();
     PADDLE_ENFORCE(mem_g != nullptr, "boot_tensor should be retrieved before");
@@ -425,9 +426,10 @@ void RecurrentGradientOp::Init() {
   alg_.Init(std::move(arg));
 }
 
-void RecurrentGradientAlgorithm::InferShape(const ScopePtr& scope) const {
+void RecurrentGradientAlgorithm::InferShape(
+    const std::shared_ptr<Scope>& scope) const {
   auto step_scopes = *(scope->GetVariable(arg_->step_scopes))
-                          ->GetMutable<std::vector<ScopePtr>>();
+                          ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
   seq_len_ = scope->GetVariable((arg_->inlinks[0]).external)
                  ->GetMutable<Tensor>()
                  ->dims()[0];
@@ -467,5 +469,5 @@ void RecurrentGradientAlgorithm::InferShape(const ScopePtr& scope) const {
 }  // namespace paddle
 
 REGISTER_OP(recurrent_op,
-            ::paddle::operators::RecurrentOp,
-            ::paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker);
+            paddle::operators::RecurrentOp,
+            paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker);

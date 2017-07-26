@@ -32,9 +32,6 @@ protected:
     PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
                    "Two input of Add Op's dimension must be same.");
     outputs[0]->Resize(inputs[0]->dims());
-    DLOG(INFO) << "output shape:" << outputs[0]->dims()[0] << " "
-               << outputs[0]->dims()[1];
-    // outputs[0]->Resize(inputs[0]->dims());
   }
 };
 
