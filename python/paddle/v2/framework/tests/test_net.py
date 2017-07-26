@@ -5,11 +5,11 @@ import unittest
 
 class TestNet(unittest.TestCase):
     def test_net_all(self):
-        net = core.PlainNet.create()
+        net = core.Net.create()
         op1 = op_creations.add_two(X="X", Y="Y", Out="Out")
         net.add_op(op1)
 
-        net2 = core.PlainNet.create()
+        net2 = core.Net.create()
         net2.add_op(op_creations.fc(X="X", W="w", Y="fc.out"))
         net2.complete_add_op(True)
         net.add_op(net2)
