@@ -104,18 +104,23 @@ func TestGetFinishTask(t *testing.T) {
 	ch <- addr
 	go c.monitorMaster(ch)
 
+	err = c.SetDataset([]string{path})
+	if err != nil {
+		panic(err)
+	}
+
 	checkOnePass := func(i int) {
 		var tasks []Task
 		for idx := 0; idx < totalTask; idx++ {
-			task, cErr := c.getTask()
-			if cErr != nil && cErr.Error() != ErrNoMoreAvailableError.Error() {
+			task, cErr := c.getTask(i)
+			if cErr != nil && cErr.Error() != ErrNoMoreAvailable.Error() && cErr.Error() != ErrPassAfter.Error() {
 				t.Fatalf("error: %v, pass: %d\n", cErr, i)
 			}
 			tasks = append(tasks, task)
 		}
 
 		// getting task before task finishes should return error
-		_, cErr := c.getTask()
+		_, cErr := c.getTask(i)
 		if cErr == nil {
 			t.Fatalf("Should get error, pass: %d\n", i)
 		}
@@ -132,25 +137,22 @@ func TestGetFinishTask(t *testing.T) {
 		}
 
 		tasks = tasks[1:]
-		_, cErr = c.getTask()
-		if cErr != nil && cErr.Error() != ErrNoMoreAvailableError.Error() && cErr.Error() != ErrAllTaskFinishError.Error() {
-			t.Fatalf("Should be ErrNoMoreAvailableError or ErrAllTaskFinishError: %s", cErr)
+		_, cErr = c.getTask(i)
+		if cErr != nil && cErr.Error() != ErrNoMoreAvailable.Error() && cErr.Error() != ErrPassAfter.Error() {
+			t.Fatalf("Should be ErrNoMoreAvailable or ErrAllTaskFinish: %s", cErr)
 		}
 
 		for _, task := range tasks {
 			cErr = c.taskFinished(task.Meta.ID)
-			if cErr != nil && cErr.Error() != ErrAllTaskFinishError.Error() {
-				t.Fatalf("Non-ErrAllTaskFinishError: %v, pass: %d\n", cErr, i)
+			if cErr != nil && cErr.Error() != ErrAllTaskFinish.Error() {
+				t.Fatalf("Non-ErrAllTaskFinish: %v, pass: %d\n", cErr, i)
 			}
 		}
 	}
 
 	for i := 0; i < 10; i++ {
 		// init pass data
-		err = c.SetDataset([]string{path})
-		if err != nil {
-			panic(err)
-		}
+		c.StartGetRecords(i)
 		checkOnePass(i)
 	}
 }

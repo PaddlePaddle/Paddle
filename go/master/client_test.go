@@ -16,7 +16,6 @@ package master_test
 
 import (
 	"fmt"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -106,7 +105,7 @@ func TestNextRecord(t *testing.T) {
 
 	// start several client to test task fetching
 	var wg sync.WaitGroup
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 5; i++ {
 		wg.Add(1)
 		// test for multiple concurrent clients
 		go func() {
@@ -116,25 +115,23 @@ func TestNextRecord(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
+			e = c.SetDataset([]string{path})
+			if e != nil {
+				panic(e)
+			}
 			// test for n passes
-			for pass := 0; pass < 5; pass++ {
-				fmt.Println("starting new pass", pass)
-				// wait for last pass end and init for a new pass
-				e := c.PassStart()
-				if e != nil {
-					t.Fatal(e)
-				}
-				e = c.SetDataset([]string{path})
-				if e != nil {
-					panic(e)
-				}
+			for pass := 0; pass < 2; pass++ {
+				c.StartGetRecords(pass)
+
 				received := make(map[byte]bool)
 				taskid := 0
 				for {
-					r, e := c.NextRecord()
+					r, e := c.NextRecord(pass)
 					if e != nil {
-						// pass done, break for next pass
-						if e.Error() == master.ErrAllTaskFinishError.Error() || e.Error() == master.ErrNoMoreAvailableError.Error() {
+						if e.Error() == master.ErrPassBefore.Error() {
+							break
+						}
+						if e.Error() == master.ErrNoMoreAvailable.Error() {
 							break
 						}
 						t.Fatal(pass, taskid, "Read error:", e)
@@ -143,68 +140,11 @@ func TestNextRecord(t *testing.T) {
 						t.Fatal(pass, taskid, "Length should be 1.", r)
 					}
 					if received[r[0]] {
+						fmt.Println(pass, taskid, "Received duplicate.", received, r)
 						t.Fatal(pass, taskid, "Received duplicate.", received, r)
 					}
 					taskid++
 					received[r[0]] = true
-				}
-			}
-		}()
-	}
-	wg.Wait()
-}
-
-func TestClientPassSync(t *testing.T) {
-	log.SetLevel(log.WarnLevel)
-	l, err := net.Listen("tcp", ":0")
-	if err != nil {
-		panic(err)
-	}
-
-	ss := strings.Split(l.Addr().String(), ":")
-	p, err := strconv.Atoi(ss[len(ss)-1])
-	if err != nil {
-		panic(err)
-	}
-	go func(l net.Listener) {
-		s, err := master.NewService(&master.InMemStore{}, 1, time.Second, 1)
-		if err != nil {
-			panic(err)
-		}
-
-		server := rpc.NewServer()
-		err = server.Register(s)
-		if err != nil {
-			panic(err)
-		}
-
-		mux := http.NewServeMux()
-		mux.Handle(rpc.DefaultRPCPath, server)
-		err = http.Serve(l, mux)
-		if err != nil {
-			panic(err)
-		}
-	}(l)
-
-	var wg sync.WaitGroup
-	for i := 0; i < 5; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			c, e := master.NewClient(master.WithAddr(fmt.Sprintf(":%d", p)), master.WithBuffer(1))
-			if e != nil {
-				t.Fatal(e)
-			}
-			for pass := 0; pass < 10; pass++ {
-				e := c.PassStart()
-				if e != nil {
-					t.Fatal(e)
-				}
-				// simulate run pass
-				time.Sleep(time.Duration(rand.Intn(3)) * time.Second)
-				e = c.PassFinish()
-				if e != nil {
-					t.Fatal(e)
 				}
 			}
 		}()

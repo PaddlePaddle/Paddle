@@ -34,11 +34,17 @@ const (
 	dialTimeout = 5 * time.Second
 )
 
-// ErrAllTaskFinishError occur when tasks are in done or failed state.
-var ErrAllTaskFinishError = errors.New("all task finished")
+// ErrAllTaskFinish occur when tasks are in done or failed state.
+var ErrAllTaskFinish = errors.New("all task finished")
 
-// ErrNoMoreAvailableError occur when no task in todo and yet not all done or fail.
-var ErrNoMoreAvailableError = errors.New("no more available task")
+// ErrNoMoreAvailable occur when no task in todo and yet not all done or fail.
+var ErrNoMoreAvailable = errors.New("no more available task")
+
+// ErrPassBefore client side pass number does not match with master counter.
+var ErrPassBefore = errors.New("pass number smaller than master")
+
+// ErrPassAfter client side pass number does not match with master counter.
+var ErrPassAfter = errors.New("pass number larger than master")
 
 // Store is the interface for save and load the master state.
 type Store interface {
@@ -84,15 +90,13 @@ type Service struct {
 	failureMax    int
 	store         Store
 
-	ready    *sync.Cond
+	ready    chan struct{}
 	initDone bool
 
 	mu         sync.Mutex
 	taskQueues taskQueues
-
-	passEndCond        *sync.Cond
-	clientCount        int
-	clientPassFinished int
+	currPass   int
+	jobTasks   []taskEntry
 
 	savingTrainer string
 }
@@ -138,9 +142,7 @@ func NewService(store Store, chunksPerTask int, timeoutDur time.Duration, failur
 	s.failureMax = failureMax
 	s.taskQueues = taskQueues{}
 	s.taskQueues.Pending = make(map[int]taskEntry)
-	// s.ready = make(chan struct{})
-	s.ready = sync.NewCond(&sync.Mutex{})
-	s.passEndCond = sync.NewCond(&sync.Mutex{})
+	s.ready = make(chan struct{})
 	s.store = store
 	recovered, err := s.recover()
 	if err != nil {
@@ -151,7 +153,7 @@ func NewService(store Store, chunksPerTask int, timeoutDur time.Duration, failur
 		// Recovered. Now the state is already initialized,
 		// and the master is ready.
 		s.initDone = true
-		s.ready.Broadcast()
+		close(s.ready)
 		log.Info("Master recovered from saved state.")
 	}
 
@@ -272,8 +274,9 @@ func (s *Service) SetDataset(globPaths []string, _ *int) error {
 	if len(globPaths) == 0 {
 		return errors.New("no dataset specified")
 	}
-	s.ready.L.Lock()
-	defer s.ready.L.Unlock()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.initDone {
 		// Already initialized. All trainer will call
 		// SetDataset, but we only handle the first one. Treat
@@ -281,22 +284,21 @@ func (s *Service) SetDataset(globPaths []string, _ *int) error {
 		return nil
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	chunks, err := readChunks(globPaths)
 	if err != nil {
 		return err
 	}
 
-	s.taskQueues.Todo = partition(chunks, s.chunksPerTask)
+	s.jobTasks = partition(chunks, s.chunksPerTask)
+	s.taskQueues.Todo = s.jobTasks
 
 	err = s.snapshot()
 	if err != nil {
 		log.Errorln(err)
 		return err
 	}
+	close(s.ready)
 	s.initDone = true
-	s.ready.Broadcast()
 	return nil
 }
 
@@ -366,29 +368,39 @@ func (s *Service) logFields() log.Fields {
 }
 
 // GetTask gets a new task from the service.
-func (s *Service) GetTask(dummy int, task *Task) error {
-	s.ready.L.Lock()
-	defer s.ready.L.Unlock()
-	for !s.initDone {
-		s.ready.Wait()
+// passID is the client side pass count
+func (s *Service) GetTask(passID int, task *Task) error {
+	select {
+	case <-s.ready:
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// log.WithFields(s.logFields()).Warningln("***getTask***", passID, s.currPass)
+	if passID < s.currPass {
+		return ErrPassBefore
+	}
+	if passID > s.currPass {
+		// Client may get run to pass after master when one client faster than the
+		// other
+		return ErrPassAfter
+	}
+
 	if len(s.taskQueues.Todo) == 0 {
 		if len(s.taskQueues.Done) == 0 {
 			if len(s.taskQueues.Pending) == 0 {
 				log.WithFields(s.logFields()).Warningln("All tasks failed, may start next pass")
-				return ErrAllTaskFinishError
+				return ErrAllTaskFinish
 			}
 		}
+		// FIXME: this may not exist
 		allFinish := s.checkAllTaskDone()
 		if allFinish {
-			return ErrAllTaskFinishError
+			return ErrAllTaskFinish
 		}
 
 		log.WithFields(s.logFields()).Warningln("No more available task.")
-		return ErrNoMoreAvailableError
+		return ErrNoMoreAvailable
 	}
 
 	t := s.taskQueues.Todo[0]
@@ -409,10 +421,8 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 
 // TaskFinished tell the service that a task is finished.
 func (s *Service) TaskFinished(taskID int, dummy *int) error {
-	s.ready.L.Lock()
-	defer s.ready.L.Unlock()
-	for !s.initDone {
-		s.ready.Wait()
+	select {
+	case <-s.ready:
 	}
 
 	s.mu.Lock()
@@ -430,6 +440,15 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 	delete(s.taskQueues.Pending, taskID)
 
 	log.WithFields(s.logFields()).Infof("Task #%d finished.", taskID)
+	if len(s.taskQueues.Todo) == 0 && len(s.taskQueues.Pending) == 0 {
+		s.currPass++
+		// put s.jobTasks to start a new pass
+		s.taskQueues.Todo = s.jobTasks
+		s.taskQueues.Done = []taskEntry{}
+		s.taskQueues.Failed = []taskEntry{}
+		log.WithFields(s.logFields()).Warningf("*******server all task finished, add new pass data, newpass: %d******", s.currPass)
+		return nil
+	}
 
 	err := s.snapshot()
 	if err != nil {
@@ -440,10 +459,8 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 
 // TaskFailed tells the service that a task is failed.
 func (s *Service) TaskFailed(meta TaskMeta, dummy *int) error {
-	s.ready.L.Lock()
-	defer s.ready.L.Unlock()
-	for !s.initDone {
-		s.ready.Wait()
+	select {
+	case <-s.ready:
 	}
 
 	s.mu.Lock()
@@ -458,53 +475,6 @@ func (s *Service) TaskFailed(meta TaskMeta, dummy *int) error {
 	s.processFailedTask(t, meta.Epoch)
 	return nil
 }
-
-// ========================== Client Pass Sync Calls ==========================
-
-// AddClient need to be called when a new master client connected.
-// We need to keep a internal client count to sync all clients when pass ends.
-func (s *Service) AddClient(dummyIn int, dummyOut *int) error {
-	s.passEndCond.L.Lock()
-	defer s.passEndCond.L.Unlock()
-	s.clientCount++
-	return nil
-}
-
-// PassStart reset pass counter.
-func (s *Service) PassStart(dummyIn int, dummyOut *int) error {
-	s.passEndCond.L.Lock()
-	defer s.passEndCond.L.Unlock()
-
-	if s.clientPassFinished == s.clientCount {
-		// FIXME: only reinit when synced pass start
-		s.ready.L.Lock()
-		defer s.ready.L.Unlock()
-		s.initDone = false
-		s.clientPassFinished = 0
-	}
-	return nil
-}
-
-// PassFinish tell server that the current pass is finished.
-func (s *Service) PassFinish(dummyIn int, dummyOut *int) error {
-	s.passEndCond.L.Lock()
-	defer s.passEndCond.L.Unlock()
-	s.clientPassFinished++
-	if s.clientPassFinished == s.clientCount {
-		// wakeup all pass end waiting clients
-		s.passEndCond.Broadcast()
-	} else {
-		// HACK: must quit when wake up, or the clientPassFinished may be
-		// renewed by other clients
-		s.passEndCond.Wait()
-		if s.clientPassFinished != s.clientCount {
-			log.Debugf("cond not satisfied, curr/total: %d/%d", s.clientPassFinished, s.clientCount)
-		}
-	}
-	return nil
-}
-
-// ========================== Client Pass Sync Calls ==========================
 
 // SaveModelRequest is the request for saving model
 type SaveModelRequest struct {

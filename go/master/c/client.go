@@ -100,22 +100,22 @@ func paddle_release_master_client(client C.paddle_master_client) {
 	remove(client)
 }
 
+//export paddle_start_get_records
+func paddle_start_get_records(client C.paddle_master_client, pass C.int) {
+	c := get(client)
+	c.StartGetRecords(int(pass))
+}
+
 //export paddle_set_dataset
 func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int) C.int {
 	c := get(client)
-	// call PassStart to init a new dataset iteration
-	err := c.PassStart()
-	if err != nil {
-		log.Errorln(err)
-		return C.PADDLE_MASTER_ERROR
-	}
 	var paths []string
 	for i := 0; i < int(size); i++ {
 		ptr := (**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(path)) + uintptr(i)*unsafe.Sizeof(*path)))
 		str := C.GoString(*ptr)
 		paths = append(paths, str)
 	}
-	err = c.SetDataset(paths)
+	err := c.SetDataset(paths)
 	if err != nil {
 		log.Errorln(err)
 		return C.PADDLE_MASTER_ERROR
@@ -129,12 +129,14 @@ func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int
 // returns number of bytes of the records if success, -1 if failed, -2 if pass end.
 //
 //export paddle_next_record
-func paddle_next_record(client C.paddle_master_client, record **C.uchar) C.int {
+func paddle_next_record(client C.paddle_master_client, record **C.uchar, pass C.int) C.int {
 	c := get(client)
-	r, err := c.NextRecord()
+	r, err := c.NextRecord(int(pass))
 	if err != nil {
 		// NOTE: use errors to indicate pass ends
-		if err.Error() == master.ErrAllTaskFinishError.Error() || err.Error() == master.ErrNoMoreAvailableError.Error() {
+		if err.Error() == master.ErrAllTaskFinish.Error() ||
+			err.Error() == master.ErrNoMoreAvailable.Error() ||
+			err.Error() == master.ErrPassBefore.Error() {
 			return -2
 		}
 		*record = (*C.uchar)(nil)

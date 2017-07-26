@@ -15,7 +15,12 @@
 package master
 
 import (
+	"fmt"
 	"os"
+	"runtime"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
@@ -29,6 +34,9 @@ type Client struct {
 	conn    *connection.Conn
 	ch      chan record
 	bufSize int
+
+	mu     sync.Mutex
+	passID int
 }
 
 type record struct {
@@ -100,28 +108,57 @@ func NewClient(opts ...func(*Client) error) (*Client, error) {
 			return nil, err
 		}
 	}
+	c.passID = 0
 	c.ch = make(chan record, c.bufSize)
 	// FIXME: connection is created asyncrosly in monitorMaster go routine,
 	//        ensure the connection is ready for use before calling c.addClient.
 	time.Sleep(time.Second)
-	err := c.addClient()
-	if err != nil {
-		log.Errorln("init client(addClient) error:", err)
-	}
-
 	return c, nil
+}
+
+// StartGetRecords must be called at beginning of each pass
+func (c *Client) StartGetRecords(passID int) {
+	c.mu.Lock()
+	fmt.Println("StartGetRecords set passid and start getRecords go-routine", passID)
+	c.passID = passID
+	c.mu.Unlock()
+	go c.getRecords()
+}
+
+// tool function for testing output goroutine ids
+func goid() int {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
+	id, err := strconv.Atoi(idField)
+	if err != nil {
+		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
+	}
+	return id
 }
 
 func (c *Client) getRecords() {
 	for {
-		t, err := c.getTask()
+		c.mu.Lock()
+		t, err := c.getTask(c.passID)
+		c.mu.Unlock()
 		if err != nil {
-			if err.Error() == ErrAllTaskFinishError.Error() || err.Error() == ErrNoMoreAvailableError.Error() {
-				log.Infof("Got %v, stopping getRecords routine.", err)
-				c.ch <- record{nil, err}
-				return
-			}
 			log.Errorf("getTask error: %s", err)
+			// ErrAllTaskFinish may never occur
+			if err.Error() == ErrAllTaskFinish.Error() {
+				c.ch <- record{nil, err}
+			}
+			if err.Error() == ErrPassBefore.Error() {
+				c.ch <- record{nil, err}
+			}
+			if err.Error() == ErrPassAfter.Error() {
+				time.Sleep(time.Second * 3)
+				continue
+			}
+			if err.Error() == ErrNoMoreAvailable.Error() {
+				c.ch <- record{nil, err}
+			}
+			break
 		}
 
 		for _, chunk := range t.Chunks {
@@ -192,14 +229,14 @@ func (c *Client) monitorMaster(addrCh <-chan string) {
 func (c *Client) SetDataset(globPaths []string) error {
 	err := c.conn.Call("Service.SetDataset", globPaths, nil)
 	// start to getRecords go-routine before each pass
-	go c.getRecords()
+	//go c.getRecords()
 	return err
 }
 
 // getTask gets a new task from the master server.
-func (c *Client) getTask() (Task, error) {
+func (c *Client) getTask(passID int) (Task, error) {
 	var t Task
-	err := c.conn.Call("Service.GetTask", 0, &t)
+	err := c.conn.Call("Service.GetTask", passID, &t)
 	return t, err
 }
 
@@ -217,30 +254,9 @@ func (c *Client) taskFailed(meta TaskMeta) error {
 //
 // NextRecord will block until the next record is available. It is
 // thread-safe.
-func (c *Client) NextRecord() ([]byte, error) {
+func (c *Client) NextRecord(passID int) ([]byte, error) {
 	r := <-c.ch
-	if r.err != nil && (r.err.Error() == ErrAllTaskFinishError.Error() || r.err.Error() == ErrNoMoreAvailableError.Error()) {
-		err := c.PassFinish()
-		if err != nil {
-			return nil, err
-		}
-	}
 	return r.r, r.err
-}
-
-func (c *Client) addClient() error {
-	return c.conn.Call("Service.AddClient", 0, nil)
-}
-
-// PassFinish set current pass to finish
-func (c *Client) PassFinish() error {
-	err := c.conn.Call("Service.PassFinish", 0, nil)
-	return err
-}
-
-// PassStart reset pass counter.
-func (c *Client) PassStart() error {
-	return c.conn.Call("Service.PassStart", 0, nil)
 }
 
 // RequestSaveModel requests the master server to approve the caller
