@@ -330,7 +330,7 @@ __global__ void KeSequenceAvgForward(real* dst,
     }
     sum = mode == 1 ? sum :
         (mode == 0 ? sum / seqLength : sum * my_rsqrt((real)seqLength));
-    dst[gid] = sum;
+    dst[gid] += sum;
   }
 }
 

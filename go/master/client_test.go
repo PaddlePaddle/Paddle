@@ -87,9 +87,11 @@ func TestNextRecord(t *testing.T) {
 		panic(err)
 	}
 
-	curAddr := make(chan string, 1)
-	curAddr <- fmt.Sprintf(":%d", p)
-	c := master.NewClient(curAddr, 10)
+	c, err := master.NewClient(master.WithAddr(fmt.Sprintf(":%d", p)), master.WithBuffer(10))
+	if err != nil {
+		panic(err)
+	}
+
 	err = c.SetDataset([]string{path})
 	if err != nil {
 		panic(err)

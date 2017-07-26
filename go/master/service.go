@@ -78,9 +78,10 @@ type Service struct {
 	ready         chan struct{}
 	store         Store
 
-	mu         sync.Mutex
-	initDone   bool
-	taskQueues taskQueues
+	mu            sync.Mutex
+	initDone      bool
+	taskQueues    taskQueues
+	savingTrainer string
 }
 
 func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
@@ -246,7 +247,7 @@ func readChunks(globPaths []string) ([]Chunk, error) {
 //
 // SetDataset can be call multiple times. But only the first call will
 // be honored.
-func (s *Service) SetDataset(globPaths []string, dummy *int) error {
+func (s *Service) SetDataset(globPaths []string, _ *int) error {
 	if len(globPaths) == 0 {
 		return errors.New("no dataset specified")
 	}
@@ -330,7 +331,7 @@ func (s *Service) logFields() log.Fields {
 }
 
 // GetTask gets a new task from the service.
-func (s *Service) GetTask(dummy int, task *Task) error {
+func (s *Service) GetTask(_ int, task *Task) error {
 	select {
 	case <-s.ready:
 	}
@@ -380,7 +381,7 @@ func (s *Service) GetTask(dummy int, task *Task) error {
 }
 
 // TaskFinished tell the service that a task is finished.
-func (s *Service) TaskFinished(taskID int, dummy *int) error {
+func (s *Service) TaskFinished(taskID int, _ *int) error {
 	select {
 	case <-s.ready:
 	}
@@ -415,7 +416,7 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 }
 
 // TaskFailed tells the service that a task is failed.
-func (s *Service) TaskFailed(meta TaskMeta, dummy *int) error {
+func (s *Service) TaskFailed(meta TaskMeta, _ *int) error {
 	select {
 	case <-s.ready:
 	}
@@ -430,5 +431,44 @@ func (s *Service) TaskFailed(meta TaskMeta, dummy *int) error {
 	}
 
 	s.processFailedTask(t, meta.Epoch)
+	return nil
+}
+
+// SaveModelRequest is the request for saving model
+type SaveModelRequest struct {
+	TrainerID string
+	BlockDur  time.Duration
+}
+
+// RequestSaveModel requests the master server to approve the caller
+// to save the model.
+func (s *Service) RequestSaveModel(req SaveModelRequest, need *bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if req.TrainerID == "" {
+		return errors.New("trainer id is empty")
+	}
+
+	if s.savingTrainer == "" {
+		*need = true
+	} else {
+		if req.TrainerID == s.savingTrainer {
+			// save trainer asked to save model again
+			*need = true
+		} else {
+			*need = false
+		}
+	}
+
+	if *need {
+		s.savingTrainer = req.TrainerID
+		time.AfterFunc(req.BlockDur, func() {
+			s.mu.Lock()
+			s.savingTrainer = ""
+			s.mu.Unlock()
+		})
+	}
+
 	return nil
 }

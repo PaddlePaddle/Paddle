@@ -24,7 +24,6 @@ namespace paddle {
 namespace framework {
 
 class Scope;
-using ScopePtr = std::shared_ptr<Scope>;
 
 /**
  * @brief Scope that manage all variables.
@@ -44,7 +43,7 @@ class Scope {
   /**
    * @brief Initialize a Scope with parent.
    */
-  explicit Scope(const ScopePtr& parent) : parent_(parent) {}
+  explicit Scope(const std::shared_ptr<Scope>& parent) : parent_(parent) {}
 
   /**
    * @brief Create Variable
@@ -57,7 +56,9 @@ class Scope {
     if (var) {
       return var;
     } else {
-      vars_[name] = std::unique_ptr<Variable>(new Variable());
+      auto ptr = new Variable();
+      name_to_var_[name] = std::unique_ptr<Variable>(ptr);
+      var_to_name_[ptr] = name;
       return GetVariable(name);
     }
   }
@@ -69,8 +70,8 @@ class Scope {
    * from it's parent scope. Return nullptr if not found.
    */
   Variable* GetVariable(const std::string& name) const {
-    auto it = vars_.find(name);
-    if (it != vars_.end()) {
+    auto it = name_to_var_.find(name);
+    if (it != name_to_var_.end()) {
       return it->second.get();
     } else if (parent_ != nullptr) {
       return parent_->GetVariable(name);
@@ -85,13 +86,22 @@ class Scope {
    * Find if there is a Variable in this scope and it's parent scope
    */
   bool HasVariable(const std::string& name) const {
-    return (vars_.find(name) != vars_.end() ||
+    return (name_to_var_.find(name) != name_to_var_.end() ||
             (parent_ && parent_->HasVariable(name)));
   }
 
+  std::string GetVariableName(Variable* const var) const {
+    try {
+      return var_to_name_.at(var);
+    } catch (...) {
+      return "";
+    }
+  }
+
  private:
-  std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
-  ScopePtr parent_{nullptr};
+  std::unordered_map<Variable*, std::string> var_to_name_;
+  std::unordered_map<std::string, std::unique_ptr<Variable>> name_to_var_;
+  std::shared_ptr<Scope> parent_{nullptr};
 };
 
 }  // namespace framework

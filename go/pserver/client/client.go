@@ -219,32 +219,6 @@ func (c *Client) GetParams(names []string) ([]pserver.Parameter, error) {
 	return ps, nil
 }
 
-// Save indicates parameters to save the parameter to the given path.
-func (c *Client) Save(path string) error {
-	errCh := make(chan error, len(c.pservers))
-
-	for _, p := range c.pservers {
-		err := p.Call("Service.Save", path, nil)
-		errCh <- err
-	}
-
-	recv := 0
-	for err := range errCh {
-		if err != nil {
-			return err
-		}
-
-		recv++
-		if recv == len(c.pservers) {
-			break
-		}
-	}
-
-	// TODO(helin): there will be many files under path, need to
-	// merge them into a single file.
-	return nil
-}
-
 func strHash(s string) uint32 {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(s))

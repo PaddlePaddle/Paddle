@@ -3,17 +3,24 @@
 #include <paddle/framework/op_registry.h>
 #include <paddle/framework/operator.h>
 
-namespace pd = paddle::framework;
+USE_OP(add_two);
+USE_OP(mul);
+USE_OP(sigmoid);
+USE_OP(softmax);
+
+namespace paddle {
+namespace framework {
 
 static int infer_shape_cnt = 0;
 static int run_cnt = 0;
 
-class TestOp : public pd::OperatorBase {
+class TestOp : public OperatorBase {
  public:
-  void InferShape(const paddle::framework::ScopePtr& scope) const override {
+  void InferShape(
+      const std::shared_ptr<framework::Scope>& scope) const override {
     ++infer_shape_cnt;
   }
-  void Run(const paddle::framework::ScopePtr& scope,
+  void Run(const std::shared_ptr<framework::Scope>& scope,
            const paddle::platform::DeviceContext& dev_ctx) const override {
     ++run_cnt;
   }
@@ -33,7 +40,7 @@ void AssertSameVectorWithoutOrder(const std::vector<T>& expected,
 }
 
 TEST(OpKernel, all) {
-  auto net = std::make_shared<paddle::framework::PlainNet>();
+  auto net = std::make_shared<PlainNet>();
   ASSERT_NE(net, nullptr);
 
   auto op1 = std::make_shared<TestOp>();
@@ -55,13 +62,37 @@ TEST(OpKernel, all) {
   ASSERT_EQ(1UL, tmp_idx.size());
   ASSERT_EQ("y", net->outputs_[tmp_idx[0]]);
 
-  auto scope = std::make_shared<pd::Scope>();
-  paddle::platform::CPUDeviceContext dev_ctx;
+  auto scope = std::make_shared<Scope>();
+  platform::CPUDeviceContext dev_ctx;
 
   net->InferShape(scope);
   net->Run(scope, dev_ctx);
   ASSERT_EQ(2, infer_shape_cnt);
   ASSERT_EQ(2, run_cnt);
-
-  ASSERT_THROW(net->AddOp(op2), std::runtime_error);
+  ASSERT_THROW(net->AddOp(op2), paddle::platform::EnforceNotMet);
 }
+TEST(AddBackwardOp, TestGradOp) {
+  auto net = std::make_shared<PlainNet>();
+  ASSERT_NE(net, nullptr);
+  net->AddOp(framework::OpRegistry::CreateOp("mul", {"X", "Y"}, {"Out"}, {}));
+  net->AddOp(
+      framework::OpRegistry::CreateOp("add_two", {"X", "Y"}, {"Out"}, {}));
+  net->AddOp(framework::OpRegistry::CreateOp("add_two", {"X", "Y"}, {""}, {}));
+  auto grad_ops = AddBackwardOp(net);
+  for (auto& op : grad_ops->ops_) {
+    op->DebugString();
+  }
+}
+
+// TODO(zhihong): add fc grad without registering.
+// TEST(AddBackwardOp, TestNoGradOp) {
+//   auto net = std::make_shared<PlainNet>();
+//   ASSERT_NE(net, nullptr);
+//   net->AddOp(framework::OpRegistry::CreateOp("fc", {"X", "W", "b"}, {"Y"},
+//   {})); auto grad_ops = AddBackwardOp(net); for (auto& op : grad_ops->ops_) {
+//     op->DebugString();
+//   }
+// }
+
+}  // namespace framework
+}  // namespace paddle

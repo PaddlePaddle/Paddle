@@ -220,6 +220,9 @@ def create_op_creation_method(op_proto):
     __impl__.all_input_args = [var.name for var in op_proto.inputs]
     __impl__.all_output_args = [var.name for var in op_proto.outputs]
     __impl__.all_attr_args = [attr.name for attr in op_proto.attrs]
+    __impl__.all_not_temp_output_args = [
+        var.name for var in op_proto.outputs if not var.temporary
+    ]
 
     return __impl__
 

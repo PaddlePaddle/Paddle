@@ -53,9 +53,22 @@ The equation is: Out = X * Y
   }
 };
 
+class MulOpGrad : public framework::OperatorWithKernel {
+protected:
+  void InferShape(
+      const std::vector<const framework::Tensor *> &inputs,
+      const std::vector<framework::Tensor *> &outputs) const override {}
+  std::string DebugString() const override {
+    LOG(INFO) << "MulGrad";
+    return "";
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_OP(mul, paddle::operators::MulOp, paddle::operators::MulOpMaker);
+REGISTER_GRADIENT_OP(mul, mul_grad, paddle::operators::MulOpGrad);
+
 REGISTER_OP_CPU_KERNEL(
     mul, paddle::operators::MulKernel<paddle::platform::CPUPlace, float>);
