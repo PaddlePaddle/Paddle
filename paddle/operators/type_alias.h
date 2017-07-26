@@ -43,7 +43,7 @@ using OpProto = framework::OpProto;
 using OpAttrChecker = framework::OpAttrChecker;
 using CPUPlace = platform::CPUPlace;
 using GPUPlace = platform::GPUPlace;
-using PlainNet = framework::PlainNet;
+using NetOp = framework::NetOp;
 using OpRegistry = framework::OpRegistry;
 }  // namespace operators
 }  // namespace paddle
