@@ -67,6 +67,9 @@ class OperatorBase {
   /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
   static std::string GRAD_VAR_SUFFIX() { return "@GRAD"; }
 
+  /// Variables with this suffix are supposed to be filled up with zeros.
+  static std::string ZERO_VAR_SUFFIX() { return "@ZERO"; }
+
   virtual ~OperatorBase() {}
 
   template <typename T>
