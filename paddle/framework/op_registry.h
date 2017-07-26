@@ -86,43 +86,46 @@ class OpProtoAndCheckerMaker {
   }
 
  protected:
-  void AddInput(const std::string& name, const std::string& comment,
-                bool multiple = false, bool ignore_gradient = false) {
+  struct VariableBuilder {
+    VarProto* var_;
+    std::function<void()> on_multiple_;
+    std::function<void()> on_temporary_;
+
+    VariableBuilder& SetMultiple() {
+      var_->set_multiple(true);
+      on_multiple_();
+      return *this;
+    }
+
+    VariableBuilder& SetTemporary() {
+      PADDLE_ENFORCE(bool(on_temporary_), "Cannot set temporary");
+      var_->set_temporary(true);
+      on_temporary_();
+      return *this;
+    }
+
+    VariableBuilder& IgnoreGradient() {
+      var_->set_ignore_gradient(true);
+      return *this;
+    }
+  };
+
+  VariableBuilder AddInput(const std::string& name,
+                           const std::string& comment) {
     auto input = proto_->mutable_inputs()->Add();
     *input->mutable_name() = name;
     *input->mutable_comment() = comment;
-    input->set_ignore_gradient(ignore_gradient);
-    input->set_multiple(multiple);
-    if (multiple) {
-      SetHasMultipleInput();
-    }
+    return VariableBuilder{input, [=] { this->SetHasMultipleInput(); },
+                           nullptr};
   }
 
-  void AddInputs(const std::string& name, const std::string& comment,
-                 bool ignore_gradient = false) {
-    AddInput(name, comment, true, ignore_gradient);
-  }
-
-  void AddOutput(const std::string& name, const std::string& comment,
-                 bool temporary = false, bool multiple = false,
-                 bool ignore_gradient = false) {
+  VariableBuilder AddOutput(const std::string& name,
+                            const std::string& comment) {
     auto output = proto_->mutable_outputs()->Add();
     *output->mutable_name() = name;
     *output->mutable_comment() = comment;
-    output->set_ignore_gradient(ignore_gradient);
-    output->set_multiple(multiple);
-    if (multiple) {
-      SetHasMultipleOutput();
-    }
-    output->set_temporary(temporary);
-    if (temporary) {
-      SetHasTemporaryOutput();
-    }
-  }
-
-  void AddOutputs(const std::string& name, const std::string& comment,
-                  bool temporary = false, bool ignore_gradient = false) {
-    AddOutput(name, comment, temporary, true, ignore_gradient);
+    return VariableBuilder{output, [=] { this->SetHasMultipleOutput(); },
+                           [=] { this->SetHasTemporaryOutput(); }};
   }
 
   template <typename T>

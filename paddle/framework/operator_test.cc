@@ -137,9 +137,9 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
   OpKernelTestMultiInputsProtoAndCheckerMaker(OpProto* proto,
                                               OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInputs("xs", "inputs of test op");
+    AddInput("xs", "inputs of test op").SetMultiple();
     AddInput("k", "input of test op");
-    AddOutputs("ys", "outputs of test op");
+    AddOutput("ys", "outputs of test op").SetMultiple();
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
         .LargerThan(0.0);
