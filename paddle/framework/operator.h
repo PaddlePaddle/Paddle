@@ -127,7 +127,7 @@ class OperatorContext {
   }
 
   template <typename T>
-  const std::vector<const T*> Inputs(const std::string& name) const {
+  const std::vector<const T*> MultiInput(const std::string& name) const {
     auto names = op_.Inputs(name);
     std::vector<const T*> res;
     std::transform(names.begin(), names.end(), res.begin(),
@@ -138,7 +138,7 @@ class OperatorContext {
   }
 
   template <typename T>
-  std::vector<const T*> Outputs(const std::string& name) const {
+  std::vector<const T*> MultiOutput(const std::string& name) const {
     auto names = op_.Outputs(name);
     std::vector<const T*> res;
     std::transform(names.begin(), names.end(), res.begin(),

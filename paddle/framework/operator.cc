@@ -121,7 +121,7 @@ Variable* OperatorContext::Output(const std::string& name) const {
 }
 
 template <>
-const std::vector<const Variable*> OperatorContext::Inputs(
+const std::vector<const Variable*> OperatorContext::MultiInput(
     const std::string& name) const {
   auto names = op_.Inputs(name);
   std::vector<const Variable*> res;
@@ -132,7 +132,7 @@ const std::vector<const Variable*> OperatorContext::Inputs(
 }
 
 template <>
-std::vector<const Variable*> OperatorContext::Outputs(
+std::vector<const Variable*> OperatorContext::MultiOutput(
     const std::string& name) const {
   auto names = op_.Outputs(name);
   std::vector<const Variable*> res;
