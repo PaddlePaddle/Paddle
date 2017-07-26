@@ -31,8 +31,9 @@ struct testFCDesc {
 };
 
 void testFcLayer(const testFCDesc& pm) {
+  const std::string compareTypes[] = {"mkldnn_fc", "fc"};
   TestConfig cfg;
-  cfg.layerConfig.set_type("mkldnn_fc");
+  cfg.layerConfig.set_type(compareTypes[0]);
   cfg.layerConfig.set_size(pm.oc);
   cfg.inputDefs.push_back({INPUT_DATA, "layer_0",
     /* size of input layer= */ size_t(pm.ic * pm.ih * pm.iw),
@@ -49,7 +50,7 @@ void testFcLayer(const testFCDesc& pm) {
     cfg.biasSize = biasSize;
     // test functionality with paddle cpu fc
     TestConfig ref = cfg;
-    ref.layerConfig.set_type("fc");
+    ref.layerConfig.set_type(compareTypes[1]);
     std::vector<TestConfig> configs = {cfg, ref};
     for (auto bs : {pm.bs, 1}) {
       testLayerFunc(configs, bs, pm.ih, pm.iw);

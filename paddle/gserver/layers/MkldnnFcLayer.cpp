@@ -30,6 +30,7 @@ void MkldnnFcLayer::loadConfig() {
   MkldnnLayer::loadConfig();
 
   // get dim of input and output
+  CHECK_EQ(config_.inputs_size(), 1) << "Only support one input config!";
   const FCConfig &conf = config_.inputs(0).fc_conf();
   dim_in_ = conf.dim_in();
   dim_out_ = conf.dim_out();
@@ -120,6 +121,57 @@ void MkldnnFcLayer::submitBwd(const UpdateCallback &callback) {
   backwardDnnVal();
 
   updateParameter(callback);
+}
+
+void MkldnnFcLayer::initWgtFromPaddle() {
+  if (passType_ == PASS_TEST && !scoreWithPaddleWgt_) {
+    return;
+  }
+  
+  if (hasInitedWgt_) {
+    return;
+  }
+  
+  // Firstly in mkldnn, the matrix is transposed from initial paddle weight
+  MatrixPtr paddleWgtT;
+  paddleWgt_->transpose(paddleWgtT, true);
+
+  // Then, reorder the format from transpoesd matrix to mkldnn intl memory
+  MkldnnBufferPtr cvtWgt(new MkldnnBuffer());
+  cvtWgt->resetUser(paddleWgtT->getData(), wgtDims_, wgtFmt_, engine_);
+  cvtWgt->resetIntl(wgtData_->getIntl());
+  cvtWgt->resetReorder(dnnUser2Intl);
+
+  // start cvt
+  std::vector<primitive> cvtToDnnWgt;
+  CHECK(cvtWgt->needReorder()) << "should always need cvt from paddle weight"
+    << ", since the data pointers are not equal";
+  cvtToDnnWgt.push_back(*cvtWgt->getReorder());
+  stream(stream::kind::eager).submit(cvtToDnnWgt).wait();
+
+  hasInitedWgt_ = true;
+}
+
+void MkldnnFcLayer::cvtWgtToPaddle() {
+  MatrixPtr paddleWgtT = Matrix::create(
+    paddleWgt_->getWidth(), paddleWgt_->getHeight(), false, false);
+
+  MkldnnBufferPtr cvtWgt(new MkldnnBuffer());
+  cvtWgt->resetUser(paddleWgtT->getData(), wgtDims_, wgtFmt_, engine_);
+  cvtWgt->resetIntl(wgtData_->getIntl());
+  cvtWgt->resetReorder(dnnIntl2User);
+
+  // First cvt from mkldnn to transposed
+  std::vector<primitive> cvtToDnnWgt;
+  CHECK(cvtWgt->needReorder())
+    << "should always cvt, since the data pointers are not equal";
+  cvtToDnnWgt.push_back(*cvtWgt->getReorder());
+  stream(stream::kind::eager).submit(cvtToDnnWgt).wait();
+
+  // Then transpose to paddle weight
+  // pay attention here paddleWgt_ use the same buffer with mkldnn weight
+  // it should only be called at gtest
+  paddleWgtT->transpose(paddleWgt_, false);
 }
 
 /*************************** protected methods: *******************************/
@@ -311,34 +363,6 @@ void MkldnnFcLayer::resetFwdPipeline(
   if (topData_->needReorder()) {
     pipelineFwd_.push_back(*topData_->getReorder());
   }
-}
-
-void MkldnnFcLayer::initWgtFromPaddle() {
-  if (passType_ == PASS_TEST && !scoreWithPaddleWgt_) {
-    return;
-  }
-  
-  if (hasInitedWgt_) {
-    return;
-  }
-  
-  // Firstly in mkldnn, the matrix is transposed from initial paddle weight
-  MatrixPtr paddleWgtT;
-  paddleWgt_->transpose(paddleWgtT, true);
-
-  // Then, reorder the format from transpoesd matrix to mkldnn intl memory
-  MkldnnBufferPtr cvtWgt(new MkldnnBuffer());
-  cvtWgt->resetUser(paddleWgtT->getData(), wgtDims_, wgtFmt_, engine_);
-  cvtWgt->resetIntl(wgtData_->getIntl());
-  cvtWgt->resetReorder(dnnUser2Intl);
-
-  // start cvt
-  std::vector<primitive> cvtToDnnWgt;
-  CHECK(cvtWgt->needReorder()) << "should always need cvt from paddle weight";
-  cvtToDnnWgt.push_back(*cvtWgt->getReorder());
-  stream(stream::kind::eager).submit(cvtToDnnWgt).wait();
-  
-  hasInitedWgt_ = true;
 }
 
 void MkldnnFcLayer::forwardDnnVal() {

@@ -106,6 +106,7 @@ void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
   vector<LayerMap> layerMap(2);
   vector<vector<Argument>> datas(2);
   vector<vector<ParameterPtr>> parameters(2);
+  vector<VectorPtr> dnnWgts;  // used to save mkldnn weights temply
   vector<LayerPtr> testLayer(2);
   for (size_t i = 0; i < 2; ++i) {
     configs[i].layerConfig.set_name(layerNames[i]);
@@ -127,8 +128,8 @@ void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
   EXPECT_EQ(parameters[0].size(), parameters[1].size());
   for (size_t i = 0; i < parameters[0].size(); ++i) {
     parameters[0][i]->randomize();
-    VectorPtr srcValue = parameters[0][i]->getBuf(PARAMETER_VALUE);
-    VectorPtr dstValue = parameters[1][i]->getBuf(PARAMETER_VALUE);
+    const VectorPtr& srcValue = parameters[0][i]->getBuf(PARAMETER_VALUE);
+    const VectorPtr& dstValue = parameters[1][i]->getBuf(PARAMETER_VALUE);
     const VectorPtr& tstGrad = parameters[0][i]->getBuf(PARAMETER_GRADIENT);
     const VectorPtr& refGrad = parameters[1][i]->getBuf(PARAMETER_GRADIENT);
     dstValue->copyFrom(*srcValue);
@@ -141,6 +142,15 @@ void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
       refGrad->zeroMem();
     }
   }
+
+  // init dnn weights
+  dnnWgts.resize(parameters[0].size());
+  for (size_t i = 0; i < dnnWgts.size(); ++i) {
+    const VectorPtr& cpuWgt = parameters[1][i]->getBuf(PARAMETER_VALUE);
+    dnnWgts[i] = Vector::create(cpuWgt->getSize(), false);
+    dnnWgts[i]->zeroMem();
+  }
+
   // clear botdiffs
   for (size_t idx = 0; idx < dataLayers[0].size(); ++idx) {
     dataLayers[0][idx]->getOutputGrad()->zeroMem();
@@ -148,7 +158,7 @@ void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
   }
 
   // set image size
-  // TODO(TJ): fix me when concat and elewise
+  // TODO(TJ): fix me when concat and elewise ready
   for (size_t idx = 0; idx < dataLayers[0].size(); ++idx) {
     dataLayers[0][idx]->getOutput().setFrameHeight(inputImgH);
     dataLayers[0][idx]->getOutput().setFrameWidth(inputImgW);
@@ -205,6 +215,14 @@ void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
         break;
       }
     }
+
+    // save dnn weights before compare weight
+    VLOG(DNN_TESTS_DETAILS) << "Save dnn weights before comapre";
+    for (size_t idx = 0; idx < dnnWgts.size(); ++idx) {
+      const VectorPtr& dnnWgt = parameters[0][idx]->getBuf(PARAMETER_VALUE);
+      dnnWgts[idx]->copyFrom(*dnnWgt);
+    }
+
     testLayer[0]->cvtWgtToPaddle();
     for (size_t idx = 0; idx < parameters[0].size(); ++idx) {
       const VectorPtr& tgt = parameters[0][idx]->getBuf(PARAMETER_VALUE);
@@ -215,6 +233,13 @@ void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
       printVector(tgt, lvl);
       VLOG(lvl) << "Reference Output " << parameters[1][idx]->getName() << ":";
       printVector(ref, lvl);
+    }
+
+    // restore dnn weights after compare
+    VLOG(DNN_TESTS_DETAILS) << "Restore dnn weights before comapre";
+    for (size_t idx = 0; idx < dnnWgts.size(); ++idx) {
+      const VectorPtr& dnnWgt = parameters[0][idx]->getBuf(PARAMETER_VALUE);
+      dnnWgt->copyFrom(*dnnWgts[idx]);
     }
 
     // clear topdata
@@ -256,6 +281,5 @@ void testLayerFunc(std::vector<TestConfig>& configs, size_t batchSize,
     EXPECT_LE(fabs(deltaParam[i]), epsilon);
   }
 }
-
 
 }  //  namespace paddle

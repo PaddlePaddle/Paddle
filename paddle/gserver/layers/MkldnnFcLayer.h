@@ -124,9 +124,7 @@ public:
    * Convert the mkldnn weights to the paddle format
    * This functions could be called in gtest
    */
-  void cvtWgtToPaddle() override {
-    // TODO(TJ): enable me
-  }
+  void cvtWgtToPaddle() override;
 
 protected:
   // fc can only change the out mat height but not width(layersize)
