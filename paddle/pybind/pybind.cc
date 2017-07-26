@@ -94,6 +94,11 @@ All parameter, weight, gradient are variables in Paddle.
            [](pd::Variable& self) -> pd::Tensor* {
              return self.GetMutable<pd::Tensor>();
            },
+           py::return_value_policy::reference)
+      .def("get_net",
+           [](pd::Variable& self) -> pd::PlainNet* {
+             return self.GetMutable<pd::PlainNet>();
+           },
            py::return_value_policy::reference);
 
   py::class_<pd::Scope, std::shared_ptr<pd::Scope>>(m, "Scope")
