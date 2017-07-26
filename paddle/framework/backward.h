@@ -25,7 +25,7 @@ namespace framework {
  * @return
  */
 extern std::shared_ptr<OperatorBase> Backward(
-    const std::shared_ptr<OperatorBase>& forwardOp,
+    const OperatorBase& forwardOp,
     const std::unordered_set<std::string>& no_grad_vars);
 }  // namespace framework
 }  // namespace paddle

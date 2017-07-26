@@ -29,10 +29,10 @@ static bool AllInSet(const std::vector<std::string>& names,
   return true;
 }
 
-static std::vector<int> InSetIdx(const std::vector<std::string>& names,
-                                 const std::string& suffix,
-                                 const std::unordered_set<std::string>& set) {
-  std::vector<int> ret_val;
+static std::vector<size_t> InSetIdx(
+    const std::vector<std::string>& names, const std::string& suffix,
+    const std::unordered_set<std::string>& set) {
+  std::vector<size_t> ret_val;
   ret_val.reserve(names.size());
   for (size_t i = 0; i < names.size(); ++i) {
     if (set.find(names[i] + suffix) != set.end()) {
@@ -78,7 +78,7 @@ static std::shared_ptr<OperatorBase> BackwardImpl(
 }
 
 extern std::shared_ptr<OperatorBase> Backward(
-    const std::shared_ptr<OperatorBase>& forwardOp,
+    const OperatorBase& forwardOp,
     const std::unordered_set<std::string>& no_grad_vars) {
   std::unordered_set<std::string> no_grad_names;
   no_grad_names.reserve(no_grad_vars.size());
@@ -87,7 +87,7 @@ extern std::shared_ptr<OperatorBase> Backward(
     no_grad_names.insert(name + OperatorBase::GRAD_VAR_SUFFIX());
   }
   int uid = 0;
-  return BackwardImpl(*forwardOp, no_grad_names, uid);
+  return BackwardImpl(forwardOp, no_grad_names, uid);
 }
 }  // namespace framework
 }  // namespace paddle
