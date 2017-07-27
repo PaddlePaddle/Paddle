@@ -13,23 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "glog/logging.h"
-#include "paddle/framework/operator.h"
+#include "paddle/operators/type_alias.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class OnehotCrossEntropyOpKernel : public framework::OpKernel {
+class OnehotCrossEntropyOpKernel : public OpKernel {
 public:
   constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
 
-  void Compute(const framework::KernelContext& context) const override {
-    auto X = context.Input(0)->Get<framework::Tensor>();
+  void Compute(const KernelContext& context) const override {
+    auto X = context.Input(0)->Get<Tensor>();
     const T* X_data = X.data<T>();
-    const int* label_data =
-        context.Input(1)->Get<framework::Tensor>().data<int>();
-    auto* Y = context.Output(0)->GetMutable<framework::Tensor>();
+    const int* label_data = context.Input(1)->Get<Tensor>().data<int>();
+    auto* Y = context.Output(0)->GetMutable<Tensor>();
 
     Y->mutable_data<T>(context.GetPlace());
 

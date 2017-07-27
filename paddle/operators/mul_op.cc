@@ -13,17 +13,14 @@
    limitations under the License. */
 
 #include "paddle/operators/mul_op.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
 
-class MulOp : public framework::OperatorWithKernel {
+class MulOp : public OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {
+  void InferShape(const std::vector<const Tensor *> &inputs,
+                  const std::vector<Tensor *> &outputs) const override {
     PADDLE_ENFORCE(inputs.size() == 2, "The mul op must take two inputs");
     auto dim0 = inputs[0]->dims();
     auto dim1 = inputs[1]->dims();
@@ -37,10 +34,10 @@ protected:
   }
 };
 
-class MulOpMaker : public framework::OpProtoAndCheckerMaker {
+class MulOpMaker : public OpProtoAndCheckerMaker {
 public:
-  MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  MulOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of mul op");
     AddInput("Y", "The second input of mul op");
     AddOutput("Out", "The output of mul op");
@@ -52,11 +49,10 @@ The equation is: Out = X * Y
   }
 };
 
-class MulOpGrad : public framework::OperatorWithKernel {
+class MulOpGrad : public OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {}
+  void InferShape(const std::vector<const Tensor *> &inputs,
+                  const std::vector<Tensor *> &outputs) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "MulGrad";
     return "";
@@ -66,8 +62,7 @@ protected:
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(mul, paddle::operators::MulOp, paddle::operators::MulOpMaker);
-REGISTER_GRADIENT_OP(mul, mul_grad, paddle::operators::MulOpGrad);
+REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker);
+REGISTER_GRADIENT_OP(mul, mul_grad, ops::MulOpGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    mul, paddle::operators::MulKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<ops::CPUPlace, float>);

@@ -14,30 +14,27 @@
 
 #pragma once
 
-#include "glog/logging.h"
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/operator.h"
+#include "paddle/operators/type_alias.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class MulKernel : public framework::OpKernel {
+class MulKernel : public OpKernel {
 public:
-  void Compute(const framework::KernelContext& context) const override {
+  void Compute(const KernelContext& context) const override {
     Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
         {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
 
-    auto input0 = context.Input(0)->Get<framework::Tensor>();
-    auto input1 = context.Input(1)->Get<framework::Tensor>();
-    auto* output = context.Output(0)->GetMutable<framework::Tensor>();
+    auto input0 = context.Input(0)->Get<Tensor>();
+    auto input1 = context.Input(1)->Get<Tensor>();
+    auto* output = context.Output(0)->GetMutable<Tensor>();
 
     output->mutable_data<T>(context.GetPlace());
 
-    framework::EigenMatrix<T>::From(*output).device(
-        *(context.GetEigenDevice<Place>())) =
-        framework::EigenMatrix<T>::From(input0).contract(
-            framework::EigenMatrix<T>::From(input1), dim_pair);
+    EigenMatrix<T>::From(*output).device(*(context.GetEigenDevice<Place>())) =
+        EigenMatrix<T>::From(input0).contract(EigenMatrix<T>::From(input1),
+                                              dim_pair);
   }
 };
 }  // namespace operators

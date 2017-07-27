@@ -13,28 +13,24 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "glog/logging.h"
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/operator.h"
+#include "paddle/operators/type_alias.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class SGDOpKernel : public framework::OpKernel {
+class SGDOpKernel : public OpKernel {
 public:
-  void Compute(const framework::KernelContext& ctx) const override {
-    auto param = ctx.Input("param")->Get<framework::Tensor>();
-    auto grad = ctx.Input("grad")->Get<framework::Tensor>();
-    auto* param_out = ctx.Output(0)->GetMutable<framework::Tensor>();
+  void Compute(const KernelContext& ctx) const override {
+    auto param = ctx.Input("param")->Get<Tensor>();
+    auto grad = ctx.Input("grad")->Get<Tensor>();
+    auto* param_out = ctx.Output(0)->GetMutable<Tensor>();
     float lr = ctx.op_.GetAttr<float>("learning_rate");
 
     param_out->mutable_data<T>(ctx.GetPlace());
 
-    framework::EigenVector<T>::Flatten(*param_out)
-        .device(*(ctx.GetEigenDevice<Place>())) =
-        framework::EigenVector<T>::Flatten(param) -
-        lr * framework::EigenVector<T>::Flatten(grad);
+    EigenVector<T>::Flatten(*param_out).device(*(ctx.GetEigenDevice<Place>())) =
+        EigenVector<T>::Flatten(param) - lr * EigenVector<T>::Flatten(grad);
   }
 };
 
