@@ -83,11 +83,7 @@ class Inference(object):
                 retv = [[] for i in xrange(len(result))]
             for i, item in enumerate(result):
                 retv[i].append(item)
-        retv = [numpy.concatenate(out) for out in retv]
-        if len(retv) == 1:
-            return retv[0]
-        else:
-            return retv
+        return retv
 
 
 def infer(output_layer, parameters, input, feeding=None, field='value'):
