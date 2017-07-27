@@ -104,9 +104,9 @@ class OperatorContext {
   OperatorContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope)
       : op_(*op), scope_(scope) {}
 
-  int InputSize() const { return static_cast<int>(op_.inputs_.size()); }
+  int InputSize() const { return op_.inputs_.size(); }
 
-  int OutputSize() const { return static_cast<int>(op_.outputs_.size()); }
+  int OutputSize() const { return op_.outputs_.size(); }
 
   template <typename T>
   const T* Input(int index) const {
