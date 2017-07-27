@@ -113,16 +113,7 @@ class Parameters(object):
         """
         return iter(self.__param_conf__)
 
-    def __getitem__(self, key):
-        """
-        Get parameter by parameter name. It uses Python dict syntax.
-
-        :note: It will always copy the parameter from C++ side.
-        :param key: Parameter name
-        :type key: basestring
-        :return: parameter value
-        :rtype: np.ndarray
-        """
+    def __getter_inner(self, key, param_type):
         import py_paddle.swig_paddle as api
         shape = self.get_shape(key)
 
@@ -138,13 +129,26 @@ class Parameters(object):
                     each_gradient_machine, key)
                 # for simplify implementation now, we always copy from C++
                 assert isinstance(param, api.Parameter)
-                val = param.getBuf(api.PARAMETER_VALUE)
+                val = param.getBuf(param_type)
                 assert isinstance(val, api.Vector)
                 val = val.copyToNumpyArray()
                 return val
                 # else continue
 
             raise RuntimeError("Unexpected branch")
+
+    def __getitem__(self, key):
+        """
+        Get parameter by parameter name. It uses Python dict syntax.
+
+        :note: It will always copy the parameter from C++ side.
+        :param key: Parameter name
+        :type key: basestring
+        :return: parameter value
+        :rtype: np.ndarray
+        """
+        import py_paddle.swig_paddle as api
+        return self.__getter_inner(key, api.PARAMETER_VALUE)
 
     def get_shape(self, key):
         """
@@ -201,6 +205,19 @@ class Parameters(object):
         :rtype: np.ndarray
         """
         return self.__getitem__(key=parameter_name)
+
+    def get_grad(self, key):
+        """
+        Get grandient by parameter name.
+
+        :note: It will always copy the parameter from C++ side.
+        :param key: parameter name
+        :type key: basestring
+        :return: The grandient matrix.
+        :rtype: np.ndarray
+        """
+        import py_paddle.swig_paddle as api
+        return self.__getter_inner(key, api.PARAMETER_GRADIENT)
 
     def set(self, parameter_name, value):
         """
