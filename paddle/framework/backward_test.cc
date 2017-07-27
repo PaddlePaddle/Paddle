@@ -306,7 +306,7 @@ TEST(Backward, op_part_of_input_are_not_need) {
   ASSERT_EQ(grad_mul.Input("Out"), "out");
 }
 
-TEST(Backward, intermediate_variable_not_need_in_linear_net) {
+TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
   f::NetOp net;
   net.AddOp(f::OpRegistry::CreateOp("fc", {"x1", "w1", "b1"}, {"out1"}, {}));
   net.AddOp(f::OpRegistry::CreateOp("fc", {"out1", "w2", "b2"}, {"out2"}, {}));
