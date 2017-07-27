@@ -132,7 +132,8 @@ class OperatorContext {
   const std::vector<const T*> MultiInput(const std::string& name) const {
     auto names = op_.Inputs(name);
     std::vector<const T*> res;
-    std::transform(names.begin(), names.end(), res.begin(),
+    res.reserve(names.size());
+    std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [this](const std::string& name) {
                      return &scope_->GetVariable(name)->Get<T>();
                    });
@@ -143,7 +144,8 @@ class OperatorContext {
   std::vector<const T*> MultiOutput(const std::string& name) const {
     auto names = op_.Outputs(name);
     std::vector<const T*> res;
-    std::transform(names.begin(), names.end(), res.begin(),
+    res.reserve(names.size());
+    std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [this](const std::string& name) {
                      return scope_->GetVariable(name)->GetMutable<T>();
                    });

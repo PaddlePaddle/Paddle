@@ -158,6 +158,24 @@ class CPUKernalMultiInputsTest : public OpKernel {
     ASSERT_EQ(xs[1], "x1");
     ASSERT_EQ(xs[2], "x2");
 
+    auto inVar0 = ctx.MultiInput<Variable>("xs");
+    ASSERT_EQ((int)inVar0.size(), 3);
+
+    auto intVar1 = ctx.Input<Variable>("k");
+    ASSERT_NE(intVar1, nullptr);
+
+    auto outVar0 = ctx.MultiOutput<Variable>("ys");
+    ASSERT_EQ((int)outVar0.size(), 2);
+
+    auto inTensor0 = ctx.MultiInput<Tensor>("xs");
+    ASSERT_EQ((int)inTensor0.size(), 3);
+
+    auto intTensor1 = ctx.Input<Tensor>("k");
+    ASSERT_NE(intTensor1, nullptr);
+
+    auto outTensor0 = ctx.MultiOutput<Tensor>("ys");
+    ASSERT_EQ((int)outTensor0.size(), 2);
+
     auto k = ctx.op_.Input("k");
     ASSERT_EQ(k, "k0");
 
@@ -235,6 +253,12 @@ TEST(OpKernel, multi_inputs) {
 
   paddle::platform::CPUDeviceContext cpu_device_context;
   auto scope = std::make_shared<Scope>();
+  scope->CreateVariable("x0")->GetMutable<Tensor>();
+  scope->CreateVariable("x1")->GetMutable<Tensor>();
+  scope->CreateVariable("x2")->GetMutable<Tensor>();
+  scope->CreateVariable("k0")->GetMutable<Tensor>();
+  scope->CreateVariable("y0")->GetMutable<Tensor>();
+  scope->CreateVariable("y1")->GetMutable<Tensor>();
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);
