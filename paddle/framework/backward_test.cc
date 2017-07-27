@@ -249,14 +249,20 @@ TEST(Backward, part_of_output_are_not_need) {
 }
 
 TEST(Backward, part_of_input_are_not_need) {
-  auto fwd = f::OpRegistry::CreateOp("rowwise_add", {"X", "b"}, {"Out"}, {});
-  auto backward = f::Backward(*fwd, {"X"});
+  auto fwd = f::OpRegistry::CreateOp("mul", {"a", "b"}, {"out"}, {});
+  auto backward = f::Backward(*fwd, {"a"});
   ASSERT_TRUE(backward->IsNetOp());
   auto net = static_cast<f::NetOp *>(backward.get());
-  ASSERT_EQ(1UL, net->ops_.size());
+  ASSERT_EQ(net->ops_.size(), 1UL);
 
-  auto &d_add = *net->ops_[0];
-  ASSERT_EQ("rowwise_add_grad", d_add.type_);
-  ASSERT_EQ(f::OperatorBase::EMPTY_VAR_NAME(),
-            d_add.Output("X" + f::OperatorBase::GRAD_VAR_SUFFIX()));
+  auto &grad_mul = *net->ops_[0];
+  ASSERT_EQ(grad_mul.type_, "mul_grad");
+  ASSERT_EQ(grad_mul.inputs_.size(), 2UL + 1UL + 1UL);
+  ASSERT_EQ(grad_mul.outputs_.size(), 2UL);
+  ASSERT_EQ(grad_mul.Output("A" + f::OperatorBase::GRAD_VAR_SUFFIX()),
+            f::OperatorBase::EMPTY_VAR_NAME());
+  ASSERT_EQ(grad_mul.Output("B" + f::OperatorBase::GRAD_VAR_SUFFIX()),
+            "b" + f::OperatorBase::GRAD_VAR_SUFFIX());
+  ASSERT_EQ(grad_mul.Input("Out" + f::OperatorBase::GRAD_VAR_SUFFIX()),
+            "out" + f::OperatorBase::GRAD_VAR_SUFFIX());
 }
