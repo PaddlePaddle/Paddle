@@ -13,34 +13,31 @@
    limitations under the License. */
 
 #include "paddle/operators/sigmoid_op.h"
-#include "paddle/framework/op_registry.h"
 namespace paddle {
 namespace operators {
 
-class SigmoidOp : public framework::OperatorWithKernel {
+class SigmoidOp : public OperatorWithKernel {
 protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
+  void InferShape(const InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 1, "Sigmoid Op only have one input");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "Sigmoid Op only have one output");
-    ctx.Output<framework::Tensor>(0)->Resize(
-        ctx.Input<framework::Tensor>(0)->dims());
+    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
   }
 };
 
-class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
+class SigmoidOpMaker : public OpProtoAndCheckerMaker {
 public:
-  SigmoidOpMaker(framework::OpProto *proto,
-                 framework::OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  SigmoidOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "sigmoid input");
     AddOutput("Y", "sigmoid output");
     AddComment("Sigmoid function");
   }
 };
 
-class SigmoidOpGrad : public framework::OperatorWithKernel {
+class SigmoidOpGrad : public OperatorWithKernel {
 protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {}
+  void InferShape(const InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "SigmoidGrad";
     return "";
@@ -50,11 +47,7 @@ protected:
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(sigmoid,
-            paddle::operators::SigmoidOp,
-            paddle::operators::SigmoidOpMaker);
-REGISTER_GRADIENT_OP(sigmoid, sigmoid_grad, paddle::operators::SigmoidOpGrad);
+REGISTER_OP(sigmoid, ops::SigmoidOp, ops::SigmoidOpMaker);
+REGISTER_GRADIENT_OP(sigmoid, sigmoid_grad, ops::SigmoidOpGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    sigmoid,
-    paddle::operators::SigmoidKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(sigmoid, ops::SigmoidKernel<ops::CPUPlace, float>);

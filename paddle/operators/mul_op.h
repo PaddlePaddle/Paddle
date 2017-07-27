@@ -14,28 +14,24 @@
 
 #pragma once
 
-#include "glog/logging.h"
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/operator.h"
+#include "paddle/operators/type_alias.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class MulKernel : public framework::OpKernel {
+class MulKernel : public OpKernel {
 public:
-  void Compute(const framework::KernelContext& context) const override {
+  void Compute(const KernelContext& context) const override {
     Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
         {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
 
-    auto* output = context.Output<framework::Tensor>(0);
+    auto* output = context.Output<Tensor>(0);
     output->mutable_data<T>(context.GetPlace());
 
-    framework::EigenMatrix<T>::From(*output).device(
-        *(context.GetEigenDevice<Place>())) =
-        framework::EigenMatrix<T>::From(*context.Input<framework::Tensor>("X"))
-            .contract(framework::EigenMatrix<T>::From(
-                          *context.Input<framework::Tensor>("Y")),
+    EigenMatrix<T>::From(*output).device(*(context.GetEigenDevice<Place>())) =
+        EigenMatrix<T>::From(*context.Input<Tensor>("X"))
+            .contract(EigenMatrix<T>::From(*context.Input<Tensor>("Y")),
                       dim_pair);
   }
 };

@@ -126,22 +126,17 @@ public:
   }
 
   /**
-   * @brief operator bool, return True if there is something error.
+   * @brief check this status by glog.
+   * @note It is a temp method used during cleaning Paddle code. It will be
+   *       removed later.
    */
-  operator bool() const { return !this->isOK(); }
+  void check() const { CHECK(this->isOK()) << msg(); }
 
   /**
    * @brief isOK return True if there is no error.
    * @return True if no error.
    */
   bool isOK() const { return msg_ == nullptr; }
-
-  /**
-   * @brief check this status by glog.
-   * @note It is a temp method used during cleaning Paddle code. It will be
-   *       removed later.
-   */
-  void check() const { CHECK(this->isOK()) << msg(); }
 
 private:
   std::shared_ptr<std::string> msg_;

@@ -13,32 +13,30 @@
    limitations under the License. */
 
 #include "paddle/operators/mul_op.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
 
-class MulOp : public framework::OperatorWithKernel {
+class MulOp : public OperatorWithKernel {
 protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
+  void InferShape(const InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2, "The mul op must take two inputs");
-    auto dim0 = ctx.Input<framework::Tensor>(0)->dims();
-    auto dim1 = ctx.Input<framework::Tensor>(1)->dims();
+    auto dim0 = ctx.Input<Tensor>(0)->dims();
+    auto dim1 = ctx.Input<Tensor>(1)->dims();
     PADDLE_ENFORCE(dim0.size() == 2 && dim1.size() == 2,
                    "The input of mul op must be matrix");
     PADDLE_ENFORCE(
         dim0[1] == dim1[0],
         "First matrix's width must be equal with second matrix's height.");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "The mul op must take one output");
-    ctx.Output<framework::Tensor>(0)->Resize({dim0[0], dim1[1]});
+    ctx.Output<Tensor>(0)->Resize({dim0[0], dim1[1]});
   }
 };
 
-class MulOpMaker : public framework::OpProtoAndCheckerMaker {
+class MulOpMaker : public OpProtoAndCheckerMaker {
 public:
-  MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  MulOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of mul op");
     AddInput("Y", "The second input of mul op");
     AddOutput("Out", "The output of mul op");
@@ -50,9 +48,9 @@ The equation is: Out = X * Y
   }
 };
 
-class MulOpGrad : public framework::OperatorWithKernel {
+class MulOpGrad : public OperatorWithKernel {
 protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {}
+  void InferShape(const InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "MulGrad";
     return "";
@@ -62,8 +60,7 @@ protected:
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(mul, paddle::operators::MulOp, paddle::operators::MulOpMaker);
-REGISTER_GRADIENT_OP(mul, mul_grad, paddle::operators::MulOpGrad);
+REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker);
+REGISTER_GRADIENT_OP(mul, mul_grad, ops::MulOpGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    mul, paddle::operators::MulKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<ops::CPUPlace, float>);

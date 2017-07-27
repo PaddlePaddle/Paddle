@@ -13,35 +13,29 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/sgd_op.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
 
-class SGDOp : public framework::OperatorWithKernel {
+class SGDOp : public OperatorWithKernel {
 protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
+  void InferShape(const InferShapeContext &ctx) const override {
     PADDLE_ENFORCE(ctx.InputSize() == 2, "Input size of SGDOp must be two");
     PADDLE_ENFORCE(ctx.OutputSize() == 1, "Output size of SGDOp must be one");
-    PADDLE_ENFORCE(ctx.Input<framework::Variable>(0) != nullptr,
-                   "inputs[0] mast be set");
-    PADDLE_ENFORCE(ctx.Input<framework::Variable>(1) != nullptr,
-                   "inputs[1] mast be set");
-    PADDLE_ENFORCE(ctx.Output<framework::Variable>(0) != nullptr,
+    PADDLE_ENFORCE(ctx.Input<Variable>(0) != nullptr, "inputs[0] mast be set");
+    PADDLE_ENFORCE(ctx.Input<Variable>(1) != nullptr, "inputs[1] mast be set");
+    PADDLE_ENFORCE(ctx.Output<Variable>(0) != nullptr,
                    "outputs[0] mast be set");
-    PADDLE_ENFORCE(ctx.Input<framework::Tensor>(0)->dims() ==
-                       ctx.Input<framework::Tensor>(1)->dims(),
+    PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims() == ctx.Input<Tensor>(1)->dims(),
                    "Two input of SGD Op's dimension must be same.");
-    ctx.Output<framework::Tensor>(0)->Resize(
-        ctx.Input<framework::Tensor>(0)->dims());
+    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
   }
 };
 
-class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
+class SGDOpMaker : public OpProtoAndCheckerMaker {
 public:
-  SGDOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  SGDOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("param", "input parameter");
     AddInput("grad", "input gradient");
     AddOutput("param_out", "output parameter");
@@ -58,7 +52,5 @@ param_out = param - learning_rate * grad;
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(sgd, paddle::operators::SGDOp, paddle::operators::SGDOpMaker);
-typedef paddle::operators::SGDOpKernel<::paddle::platform::CPUPlace, float>
-    SGDOpKernel_CPU_float;
-REGISTER_OP_CPU_KERNEL(sgd, SGDOpKernel_CPU_float);
+REGISTER_OP(sgd, ops::SGDOp, ops::SGDOpMaker);
+REGISTER_OP_CPU_KERNEL(sgd, ops::SGDOpKernel<ops::CPUPlace, float>);

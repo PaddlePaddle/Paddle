@@ -40,6 +40,11 @@ TEST(Scope, Create) {
   /// already exist.
   Variable* var4 = scope->CreateVariable("a");
   EXPECT_EQ(var4, var2);
+
+  EXPECT_EQ("a", scope->GetVariableName(var4));
+  Scope scope2;
+  auto var = scope2.CreateVariable("tmp");
+  EXPECT_EQ("", scope->GetVariableName(var));
 }
 
 TEST(Scope, Parent) {
