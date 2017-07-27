@@ -20,12 +20,96 @@ Eigen::DefaultDevice* DeviceContext::get_eigen_device<Eigen::DefaultDevice>()
   return reinterpret_cast<const CPUDeviceContext*>(this)->eigen_device();
 }
 
+CPUDeviceContext::CPUDeviceContext() {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+CPUDeviceContext::CPUDeviceContext(CPUPlace place) {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+Place CPUDeviceContext::place() const { return CPUPlace(); }
+
 #ifndef PADDLE_ONLY_CPU
+
 template <>
 Eigen::GpuDevice* DeviceContext::get_eigen_device<Eigen::GpuDevice>() const {
   return reinterpret_cast<const CUDADeviceContext*>(this)->eigen_device();
 }
-#endif
+
+CUDADeviceContext::CUDADeviceContext(GPUPlace place) : place_(place) {
+  SetDeviceId(place_.device);
+  PADDLE_ENFORCE(cudaStreamCreate(&stream_));
+  eigen_stream_.reset(new Eigen::CudaStreamDevice(&stream_));
+  eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
+}
+
+CUDADeviceContext::~CUDADeviceContext() {
+  SetDeviceId(place_.device);
+  wait();
+  if (cublas_handle_) {
+    PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
+  }
+
+  if (cudnn_handle_) {
+    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+  }
+
+  if (curand_generator_) {
+    PADDLE_ENFORCE(dynload::curandDestroyGenerator(curand_generator_));
+  }
+  eigen_stream_.reset();
+  eigen_device_.reset();
+  PADDLE_ENFORCE(cudaStreamDestroy(stream_));
+}
+
+Place CUDADeviceContext::place() const { return place_; }
+
+cudaStream_t CUDADeviceContext::stream() const { return stream_; }
+
+void CUDADeviceContext::wait() const {
+  PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
+}
+
+Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+cublasHandle_t CUDADeviceContext::cublas_handle() {
+  if (!cublas_handle_) {
+    SetDeviceId(place_.device);
+    PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
+    PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
+  }
+  return cublas_handle_;
+}
+
+cudnnHandle_t CUDADeviceContext::cudnn_handle() {
+  if (!cudnn_handle_) {
+    SetDeviceId(place_.device);
+    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
+  }
+  return cudnn_handle_;
+}
+
+curandGenerator_t CUDADeviceContext::curand_generator() {
+  if (!curand_generator_) {
+    SetDeviceId(place_.device);
+    PADDLE_ENFORCE(dynload::curandCreateGenerator(&curand_generator_,
+                                                  CURAND_RNG_PSEUDO_DEFAULT));
+    PADDLE_ENFORCE(
+        dynload::curandSetPseudoRandomGeneratorSeed(curand_generator_, seed_));
+    PADDLE_ENFORCE(dynload::curandSetStream(curand_generator_, stream_));
+  }
+  return curand_generator_;
+}
+
+#endif  // PADDLE_ONLY_CPU
 
 }  // namespace platform
 }  // namespace paddle
