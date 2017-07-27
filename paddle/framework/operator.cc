@@ -99,5 +99,11 @@ std::string OperatorBase::DebugString() const {
   return ss.str();
 }
 
+void OperatorBase::Rename(const std::string& old_name,
+                          const std::string& new_name) {
+  std::replace(inputs_.begin(), inputs_.end(), old_name, new_name);
+  std::replace(outputs_.begin(), outputs_.end(), old_name, new_name);
+}
+
 }  // namespace framework
 }  // namespace paddle

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <boost/variant.hpp>
 #include <string>
 #include <unordered_map>
@@ -95,6 +96,9 @@ class OperatorBase {
 
   virtual bool IsNetOp() const { return false; }
 
+  /// rename inputs outputs name
+  void Rename(const std::string& old_name, const std::string& new_name);
+
   //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
   //! Get a input which has multiple variables.
@@ -108,7 +112,13 @@ class OperatorBase {
 
  public:
   std::string type_;
+  // NOTE: in case of OpGrad, inputs_ contains:
+  // I (Inputs)
+  // O (Outputs)
+  // OG (Output Gradients)
   std::vector<std::string> inputs_;
+  // NOTE: in case of OpGrad, outputs_ contains
+  // IG (Inputs Gradients)
   std::vector<std::string> outputs_;
   AttributeMap attrs_;
   // store the arguments' offset described in op_desc.
