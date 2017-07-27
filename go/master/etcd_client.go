@@ -45,10 +45,6 @@ type EtcdClient struct {
 // NewEtcdClient creates a new EtcdClient.
 func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePath string, ttlSec int) (*EtcdClient, error) {
 	log.Debugf("Connecting to etcd at %v", endpoints)
-	// TODO(helin): gracefully shutdown etcd store. Because etcd
-	// store holds a etcd lock, even though the lock will expire
-	// when the lease timeout, we need to implement graceful
-	// shutdown to release the lock.
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
