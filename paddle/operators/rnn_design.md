@@ -31,29 +31,80 @@
   - 额外会有一个`SeqPosVar`，存储句子的结构，比如offest：`0,2,5,9`
   
 为了支持sub-sequence，Paddle里使用 `Argument.subSequenceStartPositions` 来存储2维的序列信息，更高维度的序列无法支持；
-这里为了扩展性，将SeqPosVar定义成如下数据结构来支持N维的序列信息的存储：
+这里为了扩展性，将SeqPosVar定义成如下数据结构来支持N维的序列信息的存储
 
 ```c++
-struct SeqPos {
-  int dim{1};
-  std::vector<std::shared_ptr<std::vector<int>> startPoses;
-};
+std::vector <std::vector<std::vector<int>> seq_start_positions_;
 ```
 
-其中，startPoses可以用于存储多维的子序列，具体如下：
-
-- 如果为1维序列，则 `dim=1`， `startPoses.size() = 1` 
-- 如果为 2 维序列，则 `dim=2`, `startPoses[0]` 存储第一维序列信息，`startPoses[1:]` 存储第二维序列信息
-- 如果为 n 维序列，则 `dim=n`, `startPoses[0]` 存储第一维序列，后续追加第 `2.. n` 维序列
-  - 当有完整的 n 维序列的 `SeqPos` 信息时，可以从前往后，粒度从粗到细解析序列
-  - 当拆解成 n-1 维序列时， `dim=n-1`，startPoses 去除第 1 维序列信息，为每个次级序列单独抽取出对应的信息组成新的 `SeqPos`
+附录中演示如何用二维的vector来存储多个 level 的变长序列的start position.
 
 Tensor 扩展为
 ```c++
-struct TensorWithSequence {
-  Tensor* tensor;
-  std::shared_ptr<SeqPos> seq_pos;
-}
+/*
+ * Tensor storing sequences.
+ */
+class TensorWithSequence {
+public:
+  Tenser *tensor() { return tensor_; }
+
+  /*
+   * get an element of current level.
+   */
+  TensorWithSequence Element(int element) const;
+
+  /*
+   * get an element of n-th level.
+   * NOTE low performance.
+   */
+  TensorWithSequence Element(int level, int element) const;
+
+  /*
+   * get number of elements in n-th level.
+   */
+  size_t Elements(int level = 0) const;
+
+  /*
+   * get the number of levels of sequences.
+   */
+  size_t Levels() const;
+
+  /*
+   * copy other's pointers to share their data.
+   */
+  void ShareDataFrom(const TensorWithSequence &other);
+
+  /*
+   * just copy other's sequence info (use shared_ptr to share memory).
+   */
+  void ShareSeqPosFrom(const TensorWithSequence &other);
+
+  /*
+   * copy others' sequence info for mutation.
+   */
+  void CopySeqPosFrom(const TensorWithSequence &other);
+
+private:
+  Tensor *tensor_;
+  /*
+   * store start positions of all levels.
+   *
+   * data format like
+   *
+   *   0-th level start positions
+   *   1-th level, element 0, start positions
+   *   1-th level, element 1, start positions
+   *   ...
+   *   1-th level, element k, start positions
+   *   2-th level, element 0, start positions
+   *   2-th level, element 1, start positions
+   *   ...
+   *   2-th level, element n, start positions
+   *   ...
+   *
+   */
+  std::vector < std::vector<std::vector<int>> seq_start_positions_;
+};
 ```
 
 ## 框架支持方法
@@ -143,6 +194,56 @@ x    x
 
 - 将每个时间步的输出重新还原为原始输入的序列顺序（以防止Infer阶段顺序打乱）
 - 将序列折叠，在batch维度上展开
+
+## 附录
+这里演示多level的变长序列的存储方法，本设计会用两层的`vector` 来存储所有序列的信息，具体数据格式如下
+
+```c++
+std::vector < std::vector<std::vector<int>> seq_start_positions_;
+```
+为了方便讨论，可以临时修改为
+```c++
+typedef std::vector<int> element_t;
+std::vector<element_t> seq_start_positions_;
+```
+
+假设tensor 里按batch存储 instance作为基本单位， 
+默认序列里的元素都是相邻排列，
+因此只需要以instance 为基本单位，
+记录 start position就可以分解出每个序列的信息。
+
+`seq_start_positions_` 里从上往下存储着 `level 0 ~ level L`的元素，可以认为level越小，表示的序列粒度越大。
+比如存储 `batch of paragraphs` 则有
+
+- `level 0` 存储 paragraphs 的 start positions 
+- `level 1` 存储 sentences 的 start positions 
+
+因为 tensor 里存储着batch of words，所以以上两个level的start positions的单位均为word。
+
+具体地，假设有如下例子，比如需要存储 batch of paragraphs，tensor中存储了 batch of words，而序列信息如下
+
+- paragraph 0 has 3 sentences:
+  - sentence 0 has 3 words
+  - sentence 1 has 4 words
+  - sentence 2 has 2 words
+- paragraph 1 has 2 sentences:
+  - sentence 0 has 5 words
+  - sentence 1 has 3 words
+
+那么`seq_start_positions_` 会有如下内容
+
+- 0 9(=3+4+2)
+- 0 3 7
+- 0 5
+
+其中每行是一个 `element_t`，具体含义如下
+
+- `seq_start_positions_[0]` 存储了`0 9` ，表示paragraph 0 在 tensor 中的偏移为 0，对应地， paragraph 1 为 9 (以word 为单位)
+- 从 `seq_start_positions_[0]` 中可以知道，当前 `mini-batch` 总共只有 2 个 paragraph，因此后续的两个 `element_t` 分别存储了两个 paragraph 中句子的信息
+- 紧接着`seq_start_positions_[1]` 存储了第0个paragraph 的信息，表明有3个sentence，其在paragraph 0在tensor中对应部分的偏移分别为0,3 和7
+- 紧接着`seq_start_positions_[2]` 存储了第1个paragraph 的信息，表明有2个sentence，其在paragraph 0在tensor中对应部分的偏移分别为0和 5
+
+如上证明了`seq_start_positions_`的数据结构适用于 level 为 1（也就是Paddle中subseq），通过归纳法可以证明其适用于 N level 的序列，这里暂不赘述。
 
 ## 参考文献
 1. [Tensorflow Bucketing](https://www.tensorflow.org/versions/r0.12/api_docs/python/contrib.training/bucketing)
