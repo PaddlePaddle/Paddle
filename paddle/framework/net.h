@@ -50,11 +50,6 @@ class NetOp : public OperatorBase {
   }
 
   /**
-   * @brief rename duplicated output gradient name in Net
-   */
-  bool Rename(size_t& uniq_id);
-
-  /**
    * @brief Run the network.
    *
    * Run all the operators with the `scope`, if no scope is provided, default

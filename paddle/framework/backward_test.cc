@@ -215,7 +215,7 @@ TEST(Backward, net_input_of_network_not_need_grad) {
   ASSERT_EQ(all_output.find("X" + f::OperatorBase::GRAD_VAR_SUFFIX()),
             all_output.end());
 
-  ASSERT_EQ(2, bwd_net->ops_.size());
+  ASSERT_EQ(2UL, bwd_net->ops_.size());
   ASSERT_TRUE(bwd_net->ops_[1]->IsNetOp());
   auto first_fc_grad = static_cast<f::NetOp *>(bwd_net->ops_[1].get());
   ASSERT_EQ(3, first_fc_grad->ops_.size());

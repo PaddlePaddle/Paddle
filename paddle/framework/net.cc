@@ -74,27 +74,5 @@ std::string NetOp::DebugString() const {
 
 bool NetOp::IsNetOp() const { return true; }
 
-void NetOp::Rename(const std::unordered_map<
-                       std::string, std::vector<OpIdentity>>& dup_output_ops,
-                   size_t& uniq_id) {
-  for (auto& op : ops_) {
-    if (op->isNetOp()) {
-      op->Rename(dup_output_ops, uniq_id);
-    }
-    for (size_t i = 0; i < op->outputs_.size(); ++i) {
-      std::vector<std::string> dup_outputs;
-      if (op->outputs_[i] ==) {
-        op->outputs_[i] += std::to_string(uniq_id++);
-        dup_outputs.push_back(op->outputs_[i]);
-      }
-      // add duplicate output together. replace with AddOp
-      if (dup_outputs.size() >= 2) {
-        AddOp(OpRegistry::CreateOp("generic_add", {dup_outputs}, {op->inputs_},
-                                   {}));
-      }
-    }
-  }
-}
-
 }  // namespace framework
 }  // namespace paddle
