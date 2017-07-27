@@ -21,7 +21,7 @@ namespace operators {
 template <typename Place, typename T>
 class SGDOpKernel : public OpKernel {
 public:
-  void Compute(const KernelContext& ctx) const override {
+  void Compute(const ExecutionContext& ctx) const override {
     auto param = ctx.Input<Tensor>("param");
     auto grad = ctx.Input<Tensor>("grad");
     auto param_out = ctx.Output<Tensor>(0);

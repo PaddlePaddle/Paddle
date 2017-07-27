@@ -22,7 +22,7 @@ namespace operators {
 template <typename Place, typename T>
 class MulKernel : public OpKernel {
 public:
-  void Compute(const KernelContext& context) const override {
+  void Compute(const ExecutionContext& context) const override {
     Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
         {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
 

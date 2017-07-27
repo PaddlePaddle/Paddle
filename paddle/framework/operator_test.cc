@@ -105,7 +105,7 @@ class OpWithKernelTest : public OperatorWithKernel {
 template <typename T1, typename T2>
 class CPUKernelTest : public OpKernel {
  public:
-  void Compute(const KernelContext& ctx) const {
+  void Compute(const ExecutionContext& ctx) const {
     std::cout << "this is cpu kernel" << std::endl;
     std::cout << ctx.op_.DebugString() << std::endl;
     cpu_kernel_run_num++;
@@ -151,7 +151,7 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
 
 class CPUKernalMultiInputsTest : public OpKernel {
  public:
-  void Compute(const KernelContext& ctx) const {
+  void Compute(const ExecutionContext& ctx) const {
     auto xs = ctx.op_.Inputs("xs");
     ASSERT_EQ(xs.size(), 3UL);
     ASSERT_EQ(xs[0], "x0");

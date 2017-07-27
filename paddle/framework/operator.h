@@ -33,7 +33,7 @@ namespace framework {
 
 class OperatorBase;
 class InferShapeContext;
-class KernelContext;
+class ExecutionContext;
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -177,10 +177,10 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 };
 #endif
 
-class KernelContext : public OperatorContext {
+class ExecutionContext : public OperatorContext {
  public:
-  KernelContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
-                const platform::DeviceContext& device_context)
+  ExecutionContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
+                   const platform::DeviceContext& device_context)
       : OperatorContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
@@ -196,13 +196,13 @@ class KernelContext : public OperatorContext {
 class OpKernel {
  public:
   /**
-   * KernelContext is the only parameter of Kernel Run function.
+   * ExecutionContext is the only parameter of Kernel Run function.
    * Run will get input/output variables, state such as momentum and
    * device resource such as CUDA stream, cublas handle, etc. from
-   * KernelContext. User should construct it before run the Operator.
+   * ExecutionContext. User should construct it before run the Operator.
    */
 
-  virtual void Compute(const KernelContext& context) const = 0;
+  virtual void Compute(const ExecutionContext& context) const = 0;
 
   virtual ~OpKernel() {}
 };
@@ -238,7 +238,7 @@ class OperatorWithKernel : public OperatorBase {
   void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(KernelContext(this, scope, dev_ctx));
+    opKernel->Compute(ExecutionContext(this, scope, dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&

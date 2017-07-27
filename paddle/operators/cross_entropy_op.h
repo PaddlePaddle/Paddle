@@ -23,7 +23,7 @@ class OnehotCrossEntropyOpKernel : public OpKernel {
 public:
   constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
 
-  void Compute(const KernelContext& ctx) const override {
+  void Compute(const ExecutionContext& ctx) const override {
     auto X = ctx.Input<Tensor>(0);
     const T* X_data = X->data<T>();
     const int* label_data = ctx.Input<Tensor>(1)->data<int>();
