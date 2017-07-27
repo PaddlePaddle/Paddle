@@ -170,13 +170,18 @@ TEST(Backward, part_of_output_are_not_need) {
 
   auto &fill_zero = *net->ops_[0];
   ASSERT_EQ("fill_zeros_like", fill_zero.type_);
-  ASSERT_EQ(1, fill_zero.inputs_.size());
+  ASSERT_EQ(1UL, fill_zero.inputs_.size());
   ASSERT_EQ("Z", fill_zero.inputs_[0]);
-  ASSERT_EQ(1, fill_zero.outputs_.size());
-  ASSERT_EQ("Z@ZERO", fill_zero.outputs_[0]);
+  ASSERT_EQ(1UL, fill_zero.outputs_.size());
+  ASSERT_EQ("Z" + f::OperatorBase::ZERO_VAR_SUFFIX(), fill_zero.outputs_[0]);
 
   auto &d_many_out = *net->ops_[1];
   ASSERT_EQ("many_output_op_grad", d_many_out.type_);
-  ASSERT_EQ(1 + 2 + 2, d_many_out.inputs_.size());  // I/O/OG
-  ASSERT_EQ("Z@ZERO", d_many_out.Input("z@GRAD"));
+  ASSERT_EQ(1UL + 2UL + 2UL, d_many_out.inputs_.size());  // I/O/OG
+  ASSERT_EQ("Z" + f::OperatorBase::ZERO_VAR_SUFFIX(),
+            d_many_out.Input("z" + f::OperatorBase::GRAD_VAR_SUFFIX()));
+  ASSERT_EQ("Y" + f::OperatorBase::GRAD_VAR_SUFFIX(),
+            d_many_out.Input("y" + f::OperatorBase::GRAD_VAR_SUFFIX()));
+  ASSERT_EQ("X" + f::OperatorBase::GRAD_VAR_SUFFIX(),
+            d_many_out.Output("x" + f::OperatorBase::GRAD_VAR_SUFFIX()));
 }
