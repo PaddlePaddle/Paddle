@@ -185,3 +185,16 @@ TEST(Backward, part_of_output_are_not_need) {
   ASSERT_EQ("X" + f::OperatorBase::GRAD_VAR_SUFFIX(),
             d_many_out.Output("x" + f::OperatorBase::GRAD_VAR_SUFFIX()));
 }
+
+TEST(Backward, part_of_input_are_not_need) {
+  auto fwd = f::OpRegistry::CreateOp("rowwise_add", {"X", "b"}, {"Out"}, {});
+  auto backward = f::Backward(*fwd, {"X"});
+  ASSERT_TRUE(backward->IsNetOp());
+  auto net = static_cast<f::NetOp *>(backward.get());
+  ASSERT_EQ(1UL, net->ops_.size());
+
+  auto &d_add = *net->ops_[0];
+  ASSERT_EQ("rowwise_add_grad", d_add.type_);
+  ASSERT_EQ(f::OperatorBase::EMPTY_VAR_NAME(),
+            d_add.Output("X" + f::OperatorBase::GRAD_VAR_SUFFIX()));
+}
