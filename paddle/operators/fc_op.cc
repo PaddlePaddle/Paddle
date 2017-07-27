@@ -12,41 +12,38 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/framework/net.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
+#include "type_alias.h"
 
 namespace paddle {
 namespace operators {
 
-class FullyConnectedOp : public framework::PlainNet {
+class FullyConnectedOp : public NetOp {
 public:
   void Init() override {
-    AddOp(framework::OpRegistry::CreateOp("mul",
-                                          {
-                                              Input("X"), Input("W"),
-                                          },
-                                          {Output("before_act")},
-                                          {}));
+    AddOp(OpRegistry::CreateOp("mul",
+                               {
+                                   Input("X"), Input("W"),
+                               },
+                               {Output("before_act")},
+                               {}));
     auto b = Input("b");
-    if (b != framework::OperatorBase::EMPTY_VAR_NAME()) {
-      AddOp(framework::OpRegistry::CreateOp("rowwise_add",
-                                            {Output("before_act"), Input("b")},
-                                            {Output("before_act")},
-                                            {}));
+    if (b != EMPTY_VAR_NAME()) {
+      AddOp(OpRegistry::CreateOp("rowwise_add",
+                                 {Output("before_act"), Input("b")},
+                                 {Output("before_act")},
+                                 {}));
     }
 
     auto activation = GetAttr<std::string>("activation");
-    AddOp(framework::OpRegistry::CreateOp(
+    AddOp(OpRegistry::CreateOp(
         activation, {Output("before_act")}, {Output("Y")}, {}));
     CompleteAddOp(false);
   }
 };
 
-class FullyConnectedOpMaker : public framework::OpProtoAndCheckerMaker {
+class FullyConnectedOpMaker : public OpProtoAndCheckerMaker {
 public:
-  FullyConnectedOpMaker(framework::OpProto *proto,
-                        framework::OpAttrChecker *op_checker)
+  FullyConnectedOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "the input of fc operator");
     AddInput("W", "the weight of fc operator");
@@ -71,6 +68,4 @@ USE_OP(rowwise_add);
 USE_OP(sigmoid);
 USE_OP(softmax);
 
-REGISTER_OP(fc,
-            paddle::operators::FullyConnectedOp,
-            paddle::operators::FullyConnectedOpMaker);
+REGISTER_OP(fc, ops::FullyConnectedOp, ops::FullyConnectedOpMaker);

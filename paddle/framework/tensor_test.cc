@@ -72,7 +72,8 @@ TEST(Tensor, MutableData) {
     p2 = src_tensor.mutable_data<float>(make_ddim({2, 2}), CPUPlace());
     EXPECT_EQ(p1, p2);
   }
-#ifdef __CUDACC__
+
+#ifndef PADDLE_ONLY_CPU
   {
     Tensor src_tensor;
     float* p1 = nullptr;
@@ -123,7 +124,7 @@ TEST(Tensor, ShareDataWith) {
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 
-#ifdef __CUDACC__
+#ifndef PADDLE_ONLY_CPU
   {
     Tensor src_tensor;
     Tensor dst_tensor;
@@ -160,7 +161,7 @@ TEST(Tensor, Slice) {
     EXPECT_EQ(src_data_address + 3 * 4 * 1 * sizeof(int), slice_data_address);
   }
 
-#ifdef __CUDACC__
+#ifndef PADDLE_ONLY_CPU
   {
     Tensor src_tensor;
     src_tensor.mutable_data<double>(make_ddim({6, 9}), GPUPlace());
@@ -188,25 +189,74 @@ TEST(Tensor, Slice) {
 TEST(Tensor, CopyFrom) {
   using namespace paddle::framework;
   using namespace paddle::platform;
+  {
+    Tensor src_tensor;
+    Tensor dst_tensor;
 
-  Tensor src_tensor;
-  int* src_ptr = src_tensor.mutable_data<int>(make_ddim({3, 3}), CPUPlace());
-  int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-  memcpy(src_ptr, arr, 9 * sizeof(int));
-  Tensor dst_tensor;
-  dst_tensor.CopyFrom<int>(src_tensor, CPUPlace());
-  const int* dst_ptr = dst_tensor.data<int>();
-  ASSERT_NE(src_ptr, dst_ptr);
-  for (size_t i = 0; i < 9; ++i) {
-    EXPECT_EQ(src_ptr[i], dst_ptr[i]);
-  }
+    int* src_ptr = src_tensor.mutable_data<int>(make_ddim({3, 3}), CPUPlace());
 
-  Tensor slice_tensor = src_tensor.Slice<int>(1, 2);
-  dst_tensor.CopyFrom<int>(slice_tensor, CPUPlace());
-  const int* slice_ptr = slice_tensor.data<int>();
-  dst_ptr = dst_tensor.data<int>();
-  ASSERT_NE(dst_ptr, slice_ptr);
-  for (size_t i = 0; i < 3; ++i) {
-    EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
+    int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    memcpy(src_ptr, arr, 9 * sizeof(int));
+
+    auto* cpu_ctx = new paddle::platform::CPUDeviceContext();
+    dst_tensor.CopyFrom<int>(src_tensor, *cpu_ctx);
+
+    const int* dst_ptr = dst_tensor.data<int>();
+    ASSERT_NE(src_ptr, dst_ptr);
+    for (size_t i = 0; i < 9; ++i) {
+      EXPECT_EQ(src_ptr[i], dst_ptr[i]);
+    }
+
+    Tensor slice_tensor = src_tensor.Slice<int>(1, 2);
+    dst_tensor.CopyFrom<int>(slice_tensor, *cpu_ctx);
+    const int* slice_ptr = slice_tensor.data<int>();
+    dst_ptr = dst_tensor.data<int>();
+    ASSERT_NE(dst_ptr, slice_ptr);
+    for (size_t i = 0; i < 3; ++i) {
+      EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
+    }
   }
+#ifndef PADDLE_ONLY_CPU
+  {
+    Tensor src_tensor;
+    Tensor gpu_tensor;
+    Tensor dst_tensor;
+
+    int* src_ptr = src_tensor.mutable_data<int>(make_ddim({3, 3}), CPUPlace());
+
+    int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    memcpy(src_ptr, arr, 9 * sizeof(int));
+
+    // CPU Tensor to GPU Tensor
+    auto gpu_ctx = new paddle::platform::CUDADeviceContext(0);
+    gpu_tensor.CopyFrom<int>(src_tensor, *gpu_ctx);
+
+    // GPU Tensor to CPU Tensor
+    auto cpu_ctx = new paddle::platform::CPUDeviceContext();
+    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_ctx);
+
+    // Compare Tensors
+    const int* dst_ptr = dst_tensor.data<int>();
+    ASSERT_NE(src_ptr, dst_ptr);
+    for (size_t i = 0; i < 9; ++i) {
+      EXPECT_EQ(src_ptr[i], dst_ptr[i]);
+    }
+
+    Tensor slice_tensor = src_tensor.Slice<int>(1, 2);
+
+    // CPU Slice Tensor to GPU Tensor
+    gpu_tensor.CopyFrom<int>(slice_tensor, *gpu_ctx);
+
+    // GPU Tensor to CPU Tensor
+    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_ctx);
+
+    // Compare Slice Tensors
+    const int* slice_ptr = slice_tensor.data<int>();
+    dst_ptr = dst_tensor.data<int>();
+    ASSERT_NE(dst_ptr, slice_ptr);
+    for (size_t i = 0; i < 3; ++i) {
+      EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
+    }
+  }
+#endif
 }

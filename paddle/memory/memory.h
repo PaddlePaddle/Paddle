@@ -29,10 +29,10 @@ void Free(Place, void*);
 template <typename Place>
 size_t Used(Place);
 
-template <typename T, /* must be POD types */
-          typename Place /* platform::GPUPlace or platform::CPUPlace */,
-          typename std::enable_if<std::is_pod<T>::value>::type* = nullptr>
+template <typename T, typename Place>
 class PODDeleter {
+  static_assert(std::is_pod<T>::value, "T must be POD");
+
  public:
   PODDeleter(Place place) : place_(place) {}
   void operator()(T* ptr) { Free(place_, static_cast<void*>(ptr)); }
