@@ -32,7 +32,7 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 
-Place CPUDeviceContext::place() const { return CPUPlace(); }
+Place CPUDeviceContext::GetPlace() const { return CPUPlace(); }
 
 #ifndef PADDLE_ONLY_CPU
 
@@ -50,7 +50,7 @@ CUDADeviceContext::CUDADeviceContext(GPUPlace place) : place_(place) {
 
 CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
-  wait();
+  Wait();
   if (cublas_handle_) {
     PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
   }
@@ -67,11 +67,11 @@ CUDADeviceContext::~CUDADeviceContext() {
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
 }
 
-Place CUDADeviceContext::place() const { return place_; }
+Place CUDADeviceContext::GetPlace() const { return place_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
-void CUDADeviceContext::wait() const {
+void CUDADeviceContext::Wait() const {
   PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
 }
 
