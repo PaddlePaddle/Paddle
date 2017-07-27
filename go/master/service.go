@@ -428,7 +428,6 @@ func (s *Service) TaskFinished(taskID int, dummy *int) error {
 		// TODO(typhoonzero): deal with failed tasks
 		s.taskQueues.Failed = []taskEntry{}
 		log.WithFields(s.logFields()).Warningf("all task finished, add new pass data, newpass: %d.", s.currPass)
-		return nil
 	}
 
 	err := s.snapshot()
