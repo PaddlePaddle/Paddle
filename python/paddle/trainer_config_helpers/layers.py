@@ -865,7 +865,7 @@ def data_layer(name, size, height=None, width=None, layer_attr=None):
 
 @wrap_name_default("embedding")
 @wrap_param_attr_default()
-@layer_support(ERROR_CLIPPING)
+@layer_support(ERROR_CLIPPING, DROPOUT)
 def embedding_layer(input, size, name=None, param_attr=None, layer_attr=None):
     """
     Define a embedding Layer.
@@ -1320,7 +1320,7 @@ def pooling_layer(input,
 @wrap_act_default(param_names=['gate_act'], act=SigmoidActivation())
 @wrap_act_default(param_names=["act", 'state_act'], act=TanhActivation())
 @wrap_name_default("lstmemory")
-@layer_support(DROPOUT)
+@layer_support()
 def lstmemory(input,
               name=None,
               size=None,
@@ -1429,7 +1429,7 @@ def lstmemory(input,
 @wrap_act_default(param_names=['gate_act'], act=SigmoidActivation())
 @wrap_act_default(param_names=["act"], act=TanhActivation())
 @wrap_name_default("gru")
-@layer_support(DROPOUT)
+@layer_support()
 def grumemory(input,
               size=None,
               name=None,
@@ -1793,7 +1793,7 @@ def repeat_layer(input,
 @wrap_name_default("seqreshape")
 @wrap_act_default(act=IdentityActivation())
 @wrap_bias_attr_default(has_bias=False)
-@layer_support()
+@layer_support(ERROR_CLIPPING, DROPOUT)
 def seq_reshape_layer(input,
                       reshape_size,
                       act=None,
@@ -2703,7 +2703,7 @@ def img_cmrnorm_layer(input,
     default_factory=lambda _: ParamAttr(initial_mean=1.0, initial_std=0.))
 @wrap_act_default(act=ReluActivation())
 @wrap_name_default("batch_norm")
-@layer_support(DROPOUT)
+@layer_support(DROPOUT, ERROR_CLIPPING)
 def batch_norm_layer(input,
                      act=None,
                      name=None,
@@ -2783,15 +2783,6 @@ def batch_norm_layer(input,
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
-    if not isinstance(act, ReluActivation):
-        logger.log(logging.WARN,
-                   "%s is not recommend for batch normalization's activation, "
-                   "maybe the relu is better" % act.name)
-
-    if not isinstance(input.activation, LinearActivation):
-        logger.log(logging.WARN,
-                   "The activation should be inside batch normalization, the "
-                   "previous layer's activation may be Linear")
 
     if num_channels is None:
         if input.num_filters is not None:
@@ -2861,7 +2852,7 @@ def sum_to_one_norm_layer(input, name=None, layer_attr=None):
 @wrap_name_default("addto")
 @wrap_act_default(act=LinearActivation())
 @wrap_bias_attr_default(has_bias=False)
-@layer_support(DROPOUT)
+@layer_support(DROPOUT, ERROR_CLIPPING)
 def addto_layer(input, act=None, name=None, bias_attr=None, layer_attr=None):
     """
     AddtoLayer.
@@ -2940,7 +2931,7 @@ def addto_layer(input, act=None, name=None, bias_attr=None, layer_attr=None):
 
 @wrap_act_default(act=IdentityActivation())
 @wrap_name_default("concat")
-@layer_support()
+@layer_support(DROPOUT, ERROR_CLIPPING)
 def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
     """
     Concat all input vector into one huge vector.
@@ -3024,7 +3015,7 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
 @wrap_name_default("seqconcat")
 @wrap_act_default(act=IdentityActivation())
 @wrap_bias_attr_default(has_bias=False)
-@layer_support()
+@layer_support(DROPOUT, ERROR_CLIPPING)
 def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
                      bias_attr=None):
     """
@@ -3177,7 +3168,7 @@ def memory(name,
 @wrap_act_default(param_names=['state_act'], act=TanhActivation())
 @wrap_act_default(act=TanhActivation())
 @wrap_name_default('lstm_step')
-@layer_support(ERROR_CLIPPING, DROPOUT)
+@layer_support()
 def lstm_step_layer(input,
                     state,
                     size=None,
@@ -4480,7 +4471,7 @@ def tensor_layer(a,
 @wrap_param_attr_default()
 @wrap_bias_attr_default()
 @wrap_act_default()
-@layer_support()
+@layer_support(DROPOUT, ERROR_CLIPPING)
 def selective_fc_layer(input,
                        size,
                        select=None,
@@ -5974,7 +5965,7 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
     """
     The crop layer crops images by offset and shape. User can set crop shape by
     args 'shape' explicitly or by reference input layer.
-    
+
     The example usage is:
 
     .. code-block:: python
