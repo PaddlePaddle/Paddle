@@ -1879,6 +1879,19 @@ TEST(Layer, CropLayer) {
   }
 }
 
+TEST(Layer, RowL2NormLayer) {
+  const size_t batchSize = 128;
+  const size_t size = 512;
+  TestConfig config;
+  config.layerConfig.set_type("row_l2_norm");
+  config.layerConfig.set_size(size);
+  config.inputDefs.push_back({INPUT_DATA, "input", size, 0});
+  config.layerConfig.add_inputs();
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "row_l2_norm", batchSize, false, useGpu, false);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);
