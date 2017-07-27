@@ -133,6 +133,8 @@ TEST(Backward, simple_grad) {
   ASSERT_EQ("X" + f::OperatorBase::GRAD_VAR_SUFFIX(), gop->outputs_[0]);
   ASSERT_EQ("b" + f::OperatorBase::GRAD_VAR_SUFFIX(), gop->outputs_[1]);
 
+  ASSERT_EQ("X" + f::OperatorBase::GRAD_VAR_SUFFIX(),
+            gop->Output("X" + f::OperatorBase::GRAD_VAR_SUFFIX()));
   //  LOG(INFO) << gop->Output("X" + "@GRAD");
 }
 
