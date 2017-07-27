@@ -174,12 +174,14 @@ class RecurrentOp final : public OperatorBase {
 public:
   void Init() override;
 
-  virtual void InferShape(const std::shared_ptr<Scope>& scope) const {
+  virtual void InferShape(const std::shared_ptr<Scope>& scope) const override {
     alg_.InferShape(scope);
   }
 
   virtual void Run(const std::shared_ptr<Scope>& scope,
-                   const platform::DeviceContext& dev_ctx) const override {}
+                   const platform::DeviceContext& dev_ctx) const override {
+    alg_.Run(scope, dev_ctx);
+  }
 
   virtual ~RecurrentOp() {}
 
@@ -196,12 +198,14 @@ class RecurrentGradientOp final : public OperatorBase {
 public:
   void Init() override;
 
-  virtual void InferShape(const std::shared_ptr<Scope>& scope) const {
+  virtual void InferShape(const std::shared_ptr<Scope>& scope) const override {
     alg_.InferShape(scope);
   }
 
   virtual void Run(const std::shared_ptr<Scope>& scope,
-                   const platform::DeviceContext& dev_ctx) const override {}
+                   const platform::DeviceContext& dev_ctx) const override {
+    alg_.Run(scope, dev_ctx);
+  }
 
   virtual ~RecurrentGradientOp() {}
 

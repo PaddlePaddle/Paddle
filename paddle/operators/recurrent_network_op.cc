@@ -462,5 +462,5 @@ void RecurrentGradientAlgorithm::InferShape(
 }  // namespace paddle
 
 REGISTER_OP(recurrent_op,
-            ::paddle::operators::RecurrentOp,
-            ::paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker);
+            paddle::operators::RecurrentOp,
+            paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker);

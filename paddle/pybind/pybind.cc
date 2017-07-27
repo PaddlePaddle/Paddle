@@ -36,6 +36,7 @@ USE_OP(mul);
 USE_OP(sigmoid);
 USE_OP(softmax);
 USE_OP(rowwise_add);
+USE_OP_WITHOUT_KERNEL(recurrent_op);
 
 template <typename ClassType>
 void ExposeOperator(ClassType& m) {
@@ -93,6 +94,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_tensor",
            [](pd::Variable& self) -> pd::Tensor* {
              return self.GetMutable<pd::Tensor>();
+           },
+           py::return_value_policy::reference)
+      .def("get_net",
+           [](pd::Variable& self) -> pd::PlainNet* {
+             return self.GetMutable<pd::PlainNet>();
            },
            py::return_value_policy::reference);
 
