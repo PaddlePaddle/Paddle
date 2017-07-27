@@ -13,25 +13,23 @@
    limitations under the License. */
 
 #pragma once
-#include "glog/logging.h"
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/operator.h"
+#include "paddle/operators/type_alias.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class RowWiseAddKernel : public framework::OpKernel {
+class RowWiseAddKernel : public OpKernel {
 public:
-  void Compute(const framework::KernelContext& context) const override {
-    auto in0 = context.Input(0)->Get<framework::Tensor>();
-    auto in1 = context.Input(1)->Get<framework::Tensor>();
-    auto* out = context.Output(0)->GetMutable<framework::Tensor>();
+  void Compute(const KernelContext& context) const override {
+    auto in0 = context.Input(0)->Get<Tensor>();
+    auto in1 = context.Input(1)->Get<Tensor>();
+    auto* out = context.Output(0)->GetMutable<Tensor>();
     out->mutable_data<T>(context.GetPlace());
 
-    auto input = framework::EigenMatrix<T>::From(in0);
-    auto bias = framework::EigenVector<T>::From(in1);
-    auto output = framework::EigenMatrix<T>::From(*out);
+    auto input = EigenMatrix<T>::From(in0);
+    auto bias = EigenVector<T>::From(in1);
+    auto output = EigenMatrix<T>::From(*out);
 
     const int bias_size = bias.dimension(0);
     const int rest_size = input.size() / bias_size;
