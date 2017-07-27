@@ -6,8 +6,19 @@ import:
   subpackages:
   - clientv3
   - clientv3/concurrency
+  - embed
+  - etcdserver
 - package: github.com/namsral/flag
   version: ^1.7.4-pre
 - package: github.com/sirupsen/logrus
   version: ^1.0.0
 - package: github.com/topicai/candy
+- package: golang.org/x/crypto
+  vcs: git
+  repo: git@github.com:golang/crypto.git
+- package: golang.org/x/sys
+  vcs: git
+  repo: git@github.com:golang/sys.git
+- package: golang.org/x/text
+  vcs: git
+  repo: git@github.com:golang/text.git
