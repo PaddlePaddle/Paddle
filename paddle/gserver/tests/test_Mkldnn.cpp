@@ -16,8 +16,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "ModelConfig.pb.h"
-#include "LayerGradUtil.h"
-#include "MkldnnTestFunc.h"
+#include "MkldnnTester.h"
 
 using namespace paddle;  // NOLINT
 
@@ -46,9 +45,9 @@ void testFcLayer(const testFCDesc& pm) {
     // test functionality with paddle cpu fc
     TestConfig ref = cfg;
     ref.layerConfig.set_type(compareTypes[1]);
-    std::vector<TestConfig> configs = {cfg, ref};
     for (auto bs : {pm.bs, 1}) {
-      testLayerFunc(configs, bs, pm.ih, pm.iw);
+      MkldnnTester tester(cfg, ref, bs, pm.ih, pm.iw);
+      tester.run();
     }
   }
 }

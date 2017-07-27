@@ -177,6 +177,8 @@ public:
   bool areNextAllDnn() {
     bool hasAct = this->hasActivation();
     bool hasMkldnnAct = this->hasMkldnnAct();
+    // TODO(TJ): double check if activation really depends on format
+    // TODO(TJ): then add gtest for dnn format output
     // if this layer has activation but it's not mkldnn type, return false
     if (hasAct && !hasMkldnnAct) {
       return false;
