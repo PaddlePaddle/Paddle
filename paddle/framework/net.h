@@ -73,7 +73,16 @@ class NetOp : public OperatorBase {
    */
   void AddOp(const std::shared_ptr<OperatorBase>& op) {
     PADDLE_ENFORCE(!add_op_done_, "Cannot AddOp when this network is sealed");
+    PADDLE_ENFORCE(op != nullptr, "Cannot Insert Null op");
     ops_.push_back(op);
+  }
+
+  void InsertOp(size_t pos, const std::shared_ptr<OperatorBase>& op) {
+    PADDLE_ENFORCE(!add_op_done_,
+                   "Cannot InsertOp when this network is sealed");
+    PADDLE_ENFORCE(op != nullptr, "Cannot Insert Null op");
+    PADDLE_ENFORCE(pos <= ops_.size(), "Out of range");
+    ops_.insert(ops_.begin() + pos, op);
   }
 
   void CompleteAddOp(bool calculate = true);
