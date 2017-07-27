@@ -26,7 +26,7 @@ public:
     Eigen::array<Eigen::IndexPair<Eigen::DenseIndex>, 1> dim_pair = {
         {Eigen::IndexPair<Eigen::DenseIndex>(1, 0)}};
 
-    auto* output = context.Output<Tensor>(0);
+    auto output = context.Output<Tensor>(0);
     output->mutable_data<T>(context.GetPlace());
 
     EigenMatrix<T>::From(*output).device(*(context.GetEigenDevice<Place>())) =

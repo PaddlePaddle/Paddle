@@ -23,8 +23,8 @@ template <typename Place, typename T>
 class SigmoidKernel : public OpKernel {
 public:
   void Compute(const KernelContext& context) const override {
-    auto* input = context.Input<Tensor>(0);
-    auto* output = context.Output<Tensor>(0);
+    auto input = context.Input<Tensor>(0);
+    auto output = context.Output<Tensor>(0);
     output->mutable_data<T>(context.GetPlace());
 
     EigenVector<T>::Flatten(*output).device(

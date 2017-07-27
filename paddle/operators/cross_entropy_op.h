@@ -24,10 +24,10 @@ public:
   constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
 
   void Compute(const KernelContext& ctx) const override {
-    auto* X = ctx.Input<Tensor>(0);
+    auto X = ctx.Input<Tensor>(0);
     const T* X_data = X->data<T>();
     const int* label_data = ctx.Input<Tensor>(1)->data<int>();
-    auto* Y = ctx.Output<Tensor>(0);
+    auto Y = ctx.Output<Tensor>(0);
 
     Y->mutable_data<T>(ctx.GetPlace());
 

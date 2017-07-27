@@ -33,7 +33,7 @@ protected:
                    "X's dimension must be 2.");
     PADDLE_ENFORCE(ctx.Output<Tensor>(0)->dims().size() == 1,
                    "label's dimension must be 1.");
-    outputs[0]->Resize({inputs[0]->dims()[0]});
+    ctx.Output<Tensor>(0)->Resize({ctx.Input<Tensor>(0)->dims()[0]});
   }
 };
 

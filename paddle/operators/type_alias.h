@@ -22,7 +22,9 @@ namespace paddle {
 namespace operators {
 
 using OpKernel = framework::OpKernel;
+using InferShapeContext = framework::InferShapeContext;
 using KernelContext = framework::KernelContext;
+using Variable = framework::Variable;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>

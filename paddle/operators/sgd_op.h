@@ -22,15 +22,15 @@ template <typename Place, typename T>
 class SGDOpKernel : public OpKernel {
 public:
   void Compute(const KernelContext& ctx) const override {
-    auto* param = ctx.Input<Tensor>("param");
-    auto* grad = ctx.Input<Tensor>("grad");
-    auto* param_out = ctx.Output<Tensor>(0);
+    auto param = ctx.Input<Tensor>("param");
+    auto grad = ctx.Input<Tensor>("grad");
+    auto param_out = ctx.Output<Tensor>(0);
     float lr = ctx.op_.GetAttr<float>("learning_rate");
 
     param_out->mutable_data<T>(ctx.GetPlace());
 
     EigenVector<T>::Flatten(*param_out).device(*(ctx.GetEigenDevice<Place>())) =
-        EigenVector<T>::Flatten(param) - lr * EigenVector<T>::Flatten(grad);
+        EigenVector<T>::Flatten(*param) - lr * EigenVector<T>::Flatten(*grad);
   }
 };
 
