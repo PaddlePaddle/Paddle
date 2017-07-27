@@ -18,28 +18,37 @@ limitations under the License. */
 namespace paddle {
 
 // init data layer and test layer of both dnn and reference
-void MkldnnTester::init(
+void MkldnnTester::reset(
   const TestConfig& dnn, const TestConfig& ref, size_t batchSize) {
   const bool trans = false;
   const bool useGpu = false;
 
-  // resize
-  configs_.resize(2);
-  layerNames_.resize(2);
-  dataLayers_.resize(2);
-  datas_.resize(2);
-  layerMaps_.resize(2);
-  parameters_.resize(2);
-  testLayers_.resize(2);
+  // clear
+  configs_.clear();
+  layerNames_.clear();
+  dataLayers_.clear();
+  datas_.clear();
+  layerMaps_.clear();
+  parameters_.clear();
+  testLayers_.clear();
 
-  // init configs and layer names
+  // resize
+  configs_.resize(NUM);
+  layerNames_.resize(NUM);
+  dataLayers_.resize(NUM);
+  datas_.resize(NUM);
+  layerMaps_.resize(NUM);
+  parameters_.resize(NUM);
+  testLayers_.resize(NUM);
+
+  // reset configs and layer names
   configs_[DNN] = dnn;
   configs_[REF] = ref;
   layerNames_[DNN] = "mkldnn";  // the first is mkldnn layer
   layerNames_[REF] = "reference";  // second is reference layer
 
-  // init others
-  for (size_t i = 0; i < 2; ++i) {
+  // reset others
+  for (size_t i = 0; i < NUM; ++i) {
     configs_[i].layerConfig.set_name(layerNames_[i]);
     initDataLayer(configs_[i], &(dataLayers_[i]), &(datas_[i]), &(layerMaps_[i]),
       layerNames_[i], batchSize, trans, useGpu);
@@ -50,6 +59,8 @@ void MkldnnTester::init(
   refLayer_ = testLayers_[REF];
   EXPECT_EQ(dataLayers_[DNN].size(), dataLayers_[REF].size());
   EXPECT_EQ(parameters_[DNN].size(), parameters_[REF].size());
+  
+  setInputImgSize();
 }
 
 void MkldnnTester::setInputImgSize() {
@@ -126,13 +137,7 @@ void MkldnnTester::checkBackwardData() {
 void MkldnnTester::checkBackwardWgts() {
   CHECK_EQ(parameters_[DNN].size(), parameters_[REF].size());
   vector<VectorPtr> dnnWgts;  // used to temply save mkldnn weights
-  dnnWgts.resize(parameters_[DNN].size());
-  VLOG(DNN_TESTS_DETAILS) << "Save dnn weights before comapre";
-  for (size_t i = 0; i < dnnWgts.size(); ++i) {
-    const VectorPtr& dnnWgt = parameters_[DNN][i]->getBuf(PARAMETER_VALUE);
-    dnnWgts[i] = Vector::create(dnnWgt->getSize(), false);
-    dnnWgts[i]->copyFrom(*dnnWgt);
-  }
+  saveWgt(parameters_[DNN], dnnWgts);
 
   dnnLayer_->cvtWgtToPaddle();
   for (size_t i = 0; i < parameters_[DNN].size(); ++i) {
@@ -148,11 +153,29 @@ void MkldnnTester::checkBackwardWgts() {
   }
 
   VLOG(DNN_TESTS_DETAILS) << "Restore dnn weights before comapre";
-  for (size_t i = 0; i < dnnWgts.size(); ++i) {
-    const VectorPtr& dnnWgt = parameters_[DNN][i]->getBuf(PARAMETER_VALUE);
-    dnnWgt->copyFrom(*dnnWgts[i]);
+  restoreWgt(dnnWgts, parameters_[DNN]);
+}
+
+void MkldnnTester::saveWgt(
+  const vector<ParameterPtr>& from, vector<VectorPtr>& to) {
+  const bool useGpu = false;
+  to.resize(from.size());
+  for (size_t i = 0; i < to.size(); ++i) {
+    const VectorPtr& wgt = from[i]->getBuf(PARAMETER_VALUE);
+    to[i] = Vector::create(wgt->getSize(), useGpu);
+    to[i]->copyFrom(*wgt);
   }
 }
+
+void MkldnnTester::restoreWgt(
+  const vector<VectorPtr>& from, vector<ParameterPtr>& to) {
+  CHECK_EQ(from.size(), to.size());
+  for (size_t i = 0; i < from.size(); ++i) {
+    const VectorPtr& wgt = to[i]->getBuf(PARAMETER_VALUE);
+    wgt->copyFrom(*from[i]);
+  }
+}
+
 
 // clear parameters grad
 void MkldnnTester::clearWgtDiffs() {
@@ -246,43 +269,78 @@ double MkldnnTester::compareVector(const VectorPtr& v1, const VectorPtr& v2) {
   return getDelta(v1->getData(), v2->getData(), v1->getSize());
 }
 
-void MkldnnTester::run() {
-  VLOG(DNN_TESTS) << "Test MKLDNN functionality: "
-      << dnnLayer_->getType() << " vs " << refLayer_->getType();
+void MkldnnTester::runOnce() {
+  // test forward
+  randomBotDatas();
+  dnnLayer_->forward(PASS_TRAIN);
+  refLayer_->forward(PASS_TRAIN);
+  checkForward();
+  
+  // test backward
+  randomTopDiffs();
+  dnnLayer_->backward(nullptr);
+  refLayer_->backward(nullptr);
+  checkBackwardData();
+  checkBackwardWgts();
 
+  // clear buffers
+  clearTopDatas();
+  clearBotDiffs();
+  clearWgtDiffs();
+}
+
+void MkldnnTester::run(
+  const TestConfig& dnn, const TestConfig& ref, size_t batchSize,
+  size_t inputImgH, size_t inputImgW, size_t iter, float epsilon, int level) {
+  VLOG(DNN_TESTS) << "Test MKLDNN functionality: "
+      << dnn.layerConfig.type() << " vs " << ref.layerConfig.type();
+  ih_ = inputImgH;
+  iw_ = inputImgW;
+  iter_ = iter;
+  eps_ = epsilon;
+  lvl_ = level;
+
+  // Firstly always set flag false to initial from paddle weight
+  TestConfig first = dnn;
+  first.layerConfig.set_init_wgt_from_mkldnn(false);
+
+  // reset and run once
+  reset(first, ref, batchSize);
   randomWgtDatas();
   clearWgtDiffs();
   clearBotDiffs();
 
-  bool inputIsDnnWgt = configs_[DNN].layerConfig.has_score_with_paddle_wgt() &&
-    configs_[DNN].layerConfig.score_with_paddle_wgt() == false;
-  if (inputIsDnnWgt) {
-    // test scoring directly with mkldnn weight
-    // TODO(TJ): enable me
-  } else {
-    // test training
-    for (size_t i = 0; i < iter_; ++i) {
-      VLOG(DNN_TESTS) << "Check Iteration " << i;
-      // test forward
-      randomBotDatas();
-      dnnLayer_->forward(PASS_TRAIN);
-      refLayer_->forward(PASS_TRAIN);
-      checkForward();
-      
-      // test backward
-      randomTopDiffs();
-      dnnLayer_->backward(nullptr);
-      refLayer_->backward(nullptr);
-      checkBackwardData();
-      checkBackwardWgts();
+  VLOG(DNN_TESTS) << "Check Iteration 0";
+  runOnce();
 
-      // clear buffers
-      clearTopDatas();
-      clearBotDiffs();
-      clearWgtDiffs();
-    }
+  // firstly get the flag
+  bool initWgtFromMkldnn = dnn.layerConfig.has_init_wgt_from_mkldnn()
+    && dnn.layerConfig.init_wgt_from_mkldnn();
+  if (initWgtFromMkldnn) {
+    // after run once the mkldnn weight has been stored in dnnlayer
+    // then save the weigths and restart again
+    vector<VectorPtr> dnnWgts, refWgts;
+    CHECK_EQ(parameters_[DNN].size(), parameters_[REF].size());
+    saveWgt(parameters_[DNN], dnnWgts);
+    saveWgt(parameters_[REF], refWgts);
+
+    // restart again with flag true
+    reset(dnn, ref, batchSize);
+
+    // restore wgt
+    restoreWgt(dnnWgts, parameters_[DNN]);
+    restoreWgt(refWgts, parameters_[REF]);
+    clearWgtDiffs();
+    clearBotDiffs();
+
+    // at least run once
+    runOnce();
   }
 
+  for (size_t i = 1; i < iter_; ++i) {
+    VLOG(DNN_TESTS) << "Check Iteration " << i;
+    runOnce();
+  }
 }
 
 }  //  namespace paddle

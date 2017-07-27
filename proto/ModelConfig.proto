@@ -482,10 +482,12 @@ message LayerConfig {
   repeated uint32 offset = 55;
   repeated uint32 shape = 56;
 
-  // MKLDNN can support original CPU weights in Paddle when inference only.
+  // MKLDNN can support initial weight from original CPU weights.
   // It can speedup scoring time with MKLDNN layers while the layer weights 
   // are trained without MKLDNN layers
-  optional bool score_with_paddle_wgt = 57 [default = false];
+  // After training with MKLDNN layers, the weight will be stored as MKLDNN format
+  // If restore from this checkpoint must set it true
+  optional bool init_wgt_from_mkldnn = 57 [default = false];
 }
 
 message EvaluatorConfig {

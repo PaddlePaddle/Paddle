@@ -44,7 +44,7 @@ protected:
 
   /// run some iterations, all the result should pass
   size_t iter_;
-  /// log level to print the matrix details datas
+  /// vlog level to print the matrix details datas
   int lvl_;
   /// epsilon
   float eps_;
@@ -53,29 +53,24 @@ protected:
 
 public:
   explicit MkldnnTester(
-    const TestConfig& dnn, const TestConfig& ref, size_t batchSize,
-    size_t inputImgH = 1, size_t inputImgW = 1,
-    const size_t iter = 3, const float epsilon = 1e-4) {
-    lvl_ = DNN_TESTS_MORE;  // vlog level
-    ih_ = inputImgH;
-    iw_ = inputImgW;
+    size_t iter = 3, float epsilon = 1e-4) {
     iter_ = iter;
     eps_ = epsilon;
-    init(dnn, ref, batchSize);
-    setInputImgSize();
+    lvl_ = DNN_TESTS_MORE;
   }
 
   ~MkldnnTester() {}
 
 public:
-  void run();
-  void setLogLevel(int lvl) {
-    lvl_ = lvl;
-  }
+  void run(const TestConfig& dnn, const TestConfig& ref, size_t batchSize,
+    size_t inputImgH = 1, size_t inputImgW = 1, size_t iter = 3,
+    float epsilon = 1e-4, int level = DNN_TESTS_MORE);
+  void setLogLevel(int lvl) { lvl_ = lvl; }
 
 private:
-  void init(const TestConfig& dnn, const TestConfig& ref, size_t batchSize);
+  void reset(const TestConfig& dnn, const TestConfig& ref, size_t batchSize);
   void setInputImgSize();
+  void runOnce();
 
   void randomWgtDatas();
   void randomBotDatas();
@@ -92,6 +87,9 @@ private:
   void printTopDatas();
   void printMatrix(const MatrixPtr& m);
   void printVector(const VectorPtr& v);
+
+  void saveWgt(const vector<ParameterPtr>& from, vector<VectorPtr>& to);
+  void restoreWgt(const vector<VectorPtr>& from, vector<ParameterPtr>& to);
 
   double compareMatrix(const MatrixPtr& m1, const MatrixPtr& m2);
   double compareVector(const VectorPtr& v1, const VectorPtr& v2);

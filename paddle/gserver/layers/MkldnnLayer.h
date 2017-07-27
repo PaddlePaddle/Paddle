@@ -74,8 +74,8 @@ public:
   bool nextIsDnn_;
   std::vector<bool> prevIsDnn_;
 
-  /// support with original cpu weights format for only scoring phase
-  bool scoreWithPaddleWgt_;
+  /// compatible initial weight from original cpu weights format
+  bool initWgtFromMkldnn_;
 
   /// some functions need prepare only once, but not suitable at init
   bool preparedOnce_;
@@ -97,7 +97,7 @@ public:
       oc_(0), oh_(0), ow_(0),
       needResetBwd_(true),
       nextIsDnn_(false),
-      scoreWithPaddleWgt_(false),
+      initWgtFromMkldnn_(false),
       preparedOnce_(false)
     {}
 
@@ -162,9 +162,6 @@ public:
 
       printDataFlow();
 
-      if (scoreWithPaddleWgt_ && passType != PASS_TEST) {
-        LOG(WARNING) << "scoreWithPaddleWgt_ is invalid in training";
-      }
       needResetBwd_ = true;
     }
     {
@@ -201,8 +198,8 @@ public:
    * Load settings from proto
    */
   virtual void loadConfig() {
-    if (config_.has_score_with_paddle_wgt()) {
-      scoreWithPaddleWgt_ = config_.score_with_paddle_wgt();
+    if (config_.has_init_wgt_from_mkldnn()) {
+      initWgtFromMkldnn_ = config_.init_wgt_from_mkldnn();
     }
   }
 

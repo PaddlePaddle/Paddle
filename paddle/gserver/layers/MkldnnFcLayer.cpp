@@ -123,7 +123,7 @@ void MkldnnFcLayer::submitBwd(const UpdateCallback &callback) {
 }
 
 void MkldnnFcLayer::initWgtFromPaddle() {
-  if (passType_ == PASS_TEST && !scoreWithPaddleWgt_) {
+  if (initWgtFromMkldnn_) {
     return;
   }
   

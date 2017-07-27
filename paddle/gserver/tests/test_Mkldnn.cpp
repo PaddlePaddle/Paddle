@@ -34,20 +34,21 @@ void testFcLayer(const testFCDesc& pm) {
   TestConfig cfg;
   cfg.layerConfig.set_type(compareTypes[0]);
   cfg.layerConfig.set_size(pm.oc);
-  cfg.layerConfig.set_score_with_paddle_wgt(false);
   cfg.inputDefs.push_back({INPUT_DATA, "layer_0",
     /* size of input layer= */ size_t(pm.ic * pm.ih * pm.iw),
     /* size of weight= */      size_t(pm.oc * pm.ic * pm.ih * pm.iw)});
   cfg.layerConfig.add_inputs();
 
-  for (auto biasSize : {pm.oc, 0}) {
-    cfg.biasSize = biasSize;
-    // test functionality with paddle cpu fc
-    TestConfig ref = cfg;
-    ref.layerConfig.set_type(compareTypes[1]);
-    for (auto bs : {pm.bs, 1}) {
-      MkldnnTester tester(cfg, ref, bs, pm.ih, pm.iw);
-      tester.run();
+  for (auto dnnWgt : {false, true}) {
+    cfg.layerConfig.set_init_wgt_from_mkldnn(dnnWgt);
+    for (auto biasSize : {pm.oc, 0}) {
+      cfg.biasSize = biasSize;
+      TestConfig ref = cfg;
+      ref.layerConfig.set_type(compareTypes[1]);
+      for (auto bs : {pm.bs, 1}) {
+        MkldnnTester tester;  // TODO(TJ): move out
+        tester.run(cfg, ref, bs, pm.ih, pm.iw);
+      }
     }
   }
 }
@@ -60,9 +61,6 @@ TEST(MkldnnLayer, fcLayer) {
   testFcLayer({2, 64, 32, 16, 16});
   testFcLayer({15, 3, 6, 16, 16});
 }
-
-
-// TODO(TJ): test set_score_with_paddle_wgt when focus on scoring
 
 // TODO(TJ): add branch test
 
