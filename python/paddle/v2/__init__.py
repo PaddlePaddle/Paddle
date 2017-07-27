@@ -34,6 +34,7 @@ import minibatch
 import plot
 import image
 import model
+import paddle.trainer.config_parser as cp
 
 __all__ = [
     'optimizer',
@@ -58,6 +59,8 @@ __all__ = [
     'model',
 ]
 
+cp.begin_parse()
+
 
 def init(**kwargs):
     import py_paddle.swig_paddle as api
@@ -72,6 +75,11 @@ def init(**kwargs):
     # NOTE: overwrite arguments from ENV if it is in kwargs
     for key in args_dict.keys():
         args.append('--%s=%s' % (key, str(args_dict[key])))
+
+    if 'use_gpu' in kwargs:
+        cp.g_command_config_args['use_gpu'] = kwargs['use_gpu']
+    assert 'parallel_nn' not in kwargs, ("currently 'parallel_nn' is not "
+                                         "supported in v2 APIs.")
 
     api.initPaddle(*args)
 
