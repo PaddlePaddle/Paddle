@@ -139,13 +139,13 @@ func TestGetFinishTask(t *testing.T) {
 		tasks = tasks[1:]
 		_, cErr = c.getTask(i)
 		if cErr != nil && cErr.Error() != ErrNoMoreAvailable.Error() && cErr.Error() != ErrPassAfter.Error() {
-			t.Fatalf("Should be ErrNoMoreAvailable or ErrAllTaskFinish: %s", cErr)
+			t.Fatalf("Should be ErrNoMoreAvailable or ErrPassAfter: %s", cErr)
 		}
 
 		for _, task := range tasks {
 			cErr = c.taskFinished(task.Meta.ID)
-			if cErr != nil && cErr.Error() != ErrAllTaskFinish.Error() {
-				t.Fatalf("Non-ErrAllTaskFinish: %v, pass: %d\n", cErr, i)
+			if cErr != nil {
+				t.Fatal(cErr)
 			}
 		}
 	}

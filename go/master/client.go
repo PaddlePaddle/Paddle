@@ -16,7 +16,6 @@ package master
 
 import (
 	"os"
-	"sync"
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
@@ -30,9 +29,6 @@ type Client struct {
 	conn    *connection.Conn
 	ch      chan record
 	bufSize int
-
-	mu     sync.Mutex
-	passID int
 }
 
 type record struct {
@@ -104,7 +100,6 @@ func NewClient(opts ...func(*Client) error) (*Client, error) {
 			return nil, err
 		}
 	}
-	c.passID = 0
 	c.ch = make(chan record, c.bufSize)
 	// FIXME: connection is created asyncrosly in monitorMaster go routine,
 	//        ensure the connection is ready for use before calling c.addClient.
@@ -114,18 +109,16 @@ func NewClient(opts ...func(*Client) error) (*Client, error) {
 
 // StartGetRecords must be called at beginning of each pass
 func (c *Client) StartGetRecords(passID int) {
-	c.passID = passID
-	go c.getRecords()
+	go c.getRecords(passID)
 }
 
-func (c *Client) getRecords() {
+func (c *Client) getRecords(passID int) {
 	for {
-		t, err := c.getTask(c.passID)
+		t, err := c.getTask(passID)
 		if err != nil {
-			// FIXME(typhoonzero): ErrAllTaskFinish may never occur
 			if err.Error() == ErrPassBefore.Error() ||
 				err.Error() == ErrNoMoreAvailable.Error() ||
-				err.Error() == ErrAllTaskFinish.Error() {
+				err.Error() == ErrAllTaskFailed.Error() {
 				c.ch <- record{nil, err}
 				break
 			}
@@ -204,8 +197,6 @@ func (c *Client) monitorMaster(addrCh <-chan string) {
 // After all tasks are done, another call of SetDataset will start another pass.
 func (c *Client) SetDataset(globPaths []string) error {
 	err := c.conn.Call("Service.SetDataset", globPaths, nil)
-	// start to getRecords go-routine before each pass
-	//go c.getRecords()
 	return err
 }
 
@@ -230,7 +221,7 @@ func (c *Client) taskFailed(meta TaskMeta) error {
 //
 // NextRecord will block until the next record is available. It is
 // thread-safe.
-func (c *Client) NextRecord(passID int) ([]byte, error) {
+func (c *Client) NextRecord() ([]byte, error) {
 	r := <-c.ch
 	return r.r, r.err
 }

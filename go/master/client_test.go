@@ -124,7 +124,7 @@ func TestNextRecord(t *testing.T) {
 				received := make(map[byte]bool)
 				taskid := 0
 				for {
-					r, e := c.NextRecord(pass)
+					r, e := c.NextRecord()
 					if e != nil {
 						// ErrorPassAfter will wait, else break for next pass
 						if e.Error() == master.ErrPassBefore.Error() ||

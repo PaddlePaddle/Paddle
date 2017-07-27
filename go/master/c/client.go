@@ -129,12 +129,12 @@ func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int
 // returns number of bytes of the records if success, -1 if failed, -2 if pass end.
 //
 //export paddle_next_record
-func paddle_next_record(client C.paddle_master_client, record **C.uchar, pass C.int) C.int {
+func paddle_next_record(client C.paddle_master_client, record **C.uchar) C.int {
 	c := get(client)
-	r, err := c.NextRecord(int(pass))
+	r, err := c.NextRecord()
 	if err != nil {
 		// NOTE: use errors to indicate pass ends
-		if err.Error() == master.ErrAllTaskFinish.Error() ||
+		if err.Error() == master.ErrAllTaskFailed.Error() ||
 			err.Error() == master.ErrNoMoreAvailable.Error() ||
 			err.Error() == master.ErrPassBefore.Error() {
 			return -2

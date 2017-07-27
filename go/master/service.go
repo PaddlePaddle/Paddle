@@ -34,8 +34,8 @@ const (
 	dialTimeout = 5 * time.Second
 )
 
-// ErrAllTaskFinish occur when tasks are in done or failed state.
-var ErrAllTaskFinish = errors.New("all task finished")
+// ErrAllTaskFailed occur when tasks are in done or failed state.
+var ErrAllTaskFailed = errors.New("all task finished")
 
 // ErrNoMoreAvailable occur when no task in todo and yet not all done or fail.
 var ErrNoMoreAvailable = errors.New("no more available task")
@@ -302,17 +302,6 @@ func (s *Service) SetDataset(globPaths []string, _ *int) error {
 	return nil
 }
 
-// checkAllTaskDone check if all task are in "Done" or "Failed" state,
-// no more tasks are "Todo" or "Pending", so that next pass may start
-// must under s.ready.L.Lock()
-func (s *Service) checkAllTaskDone() bool {
-	if len(s.taskQueues.Todo) == 0 && len(s.taskQueues.Pending) == 0 {
-		log.WithFields(s.logFields()).Warningln("all task done/failed, able to start next pass.")
-		return true
-	}
-	return false
-}
-
 // processFailedTask retry s.failureMax times for failed task.
 // return true if all task are done or failed.
 func (s *Service) processFailedTask(t taskEntry, epoch int) {
@@ -386,18 +375,10 @@ func (s *Service) GetTask(passID int, task *Task) error {
 	}
 
 	if len(s.taskQueues.Todo) == 0 {
-		if len(s.taskQueues.Done) == 0 {
-			if len(s.taskQueues.Pending) == 0 {
-				log.WithFields(s.logFields()).Warningln("All tasks failed, may start next pass")
-				return ErrAllTaskFinish
-			}
+		if len(s.taskQueues.Done) == 0 && len(s.taskQueues.Pending) == 0 {
+			log.WithFields(s.logFields()).Warningln("All tasks failed, may start next pass")
+			return ErrAllTaskFailed
 		}
-		// FIXME: this may not exist
-		allFinish := s.checkAllTaskDone()
-		if allFinish {
-			return ErrAllTaskFinish
-		}
-
 		log.WithFields(s.logFields()).Warningln("No more available task.")
 		return ErrNoMoreAvailable
 	}
