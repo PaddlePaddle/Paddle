@@ -129,12 +129,12 @@ REGISTER_OP(mul, f::EmptyOp, f::MulOpMaker);
 REGISTER_GRADIENT_OP(mul, mul_grad, f::EmptyOp);
 REGISTER_OP(sigmoid, f::EmptyOp, f::SigmoidOpMaker);
 REGISTER_GRADIENT_OP(sigmoid, sigmoid_grad, f::EmptyOp);
-REGISTER_OP(fc, f::FcOp, f::FcOpMaker);
-REGISTER_OP(many_output_op, f::EmptyOp, f::ManyOutputOpMaker);
-REGISTER_GRADIENT_OP(many_output_op, many_output_op_grad, f::EmptyOp);
 REGISTER_OP(fill_zeros_like, f::EmptyOp, f::FillZeroOpMaker);
 REGISTER_OP(add, f::EmptyOp, f::AddOpMaker);
 REGISTER_GRADIENT_OP(add, add_grad, f::EmptyOp);
+REGISTER_OP(fc, f::FcOp, f::FcOpMaker);
+REGISTER_OP(many_output_op, f::EmptyOp, f::ManyOutputOpMaker);
+REGISTER_GRADIENT_OP(many_output_op, many_output_op_grad, f::EmptyOp);
 
 TEST(Backward, simple_op_grad) {
   auto fwd = f::OpRegistry::CreateOp("rowwise_add", {"X", "b"}, {"Out"}, {});
@@ -218,7 +218,7 @@ TEST(Backward, net_input_of_network_not_need_grad) {
   ASSERT_EQ(2UL, bwd_net->ops_.size());
   ASSERT_TRUE(bwd_net->ops_[1]->IsNetOp());
   auto first_fc_grad = static_cast<f::NetOp *>(bwd_net->ops_[1].get());
-  ASSERT_EQ(3, first_fc_grad->ops_.size());
+  ASSERT_EQ(3UL, first_fc_grad->ops_.size());
   ASSERT_EQ(f::OperatorBase::EMPTY_VAR_NAME(),
             first_fc_grad[2].Output("X" + f::OperatorBase::GRAD_VAR_SUFFIX()));
 }

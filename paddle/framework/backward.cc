@@ -77,14 +77,17 @@ static std::shared_ptr<OperatorBase> BackwardImpl(
   if (forwardOp.IsNetOp()) {
     //! TODO(dzh)
     std::unordered_map<std::string /*var name*/,
-                       std::vector<size_t> /*op offs et*/>
+                       std::vector<size_t> /*op offset*/>
         dup_output_ops;
     size_t local_op_id = 0;
     // Because it is a net op, it can static_cast.
     auto& forwardNet = static_cast<const NetOp&>(forwardOp);
 
     // travesal subnet/op
-    for (auto& fwd : forwardNet.ops_) {
+    for (auto it = forwardNet.ops_.end(); it != forwardNet.ops_.begin(); --it) {
+      auto fwd = *it;
+      // for (auto& fwd : forwardNet.ops_) {
+      // auto bwd = Backward(*fwd, no_grad_names);
       auto bwd = Backward(*fwd, no_grad_names);
       net->AddOp(bwd);
       for (size_t i = 0; i < bwd->outputs_.size(); ++i) {
