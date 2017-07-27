@@ -1,8 +1,8 @@
-hash: a8faea3a363468a88917ddeb3b1c9ea36886fb2c622acbad42604fa9cb4d3855
-updated: 2017-07-11T10:04:40.786745417+08:00
+hash: e320a9cf934fa366ada2f63c6e66cc100c4b7f939938bd69795ee0dd8513fb09
+updated: 2017-07-25T17:42:04.341068458+08:00
 imports:
 - name: github.com/coreos/etcd
-  version: cb2a496c4ddd1c87a9f280e116649b599999ec79
+  version: c31bec0f29facff13f7c3e3d948e55dd6689ed42
   subpackages:
   - auth/authpb
   - clientv3
@@ -19,10 +19,12 @@ imports:
   version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/namsral/flag
   version: 71ceffbeb0ba60fccc853971bb3ed4d7d90bfd04
+- name: github.com/nu7hatch/gouuid
+  version: 179d4d0c4d8d407a32af483c2354df1d2c91e6c3
 - name: github.com/PaddlePaddle/recordio
   version: edfb82af0739c84f241c87390ec5649c7b28c129
 - name: github.com/sirupsen/logrus
-  version: 7f976d3a76720c4c27af2ba716b85d2e0a7e38b1
+  version: a3f95b5c423586578a4e099b11a46c2479628cac
 - name: github.com/topicai/candy
   version: 1b9030d056fa9f8c4b1f9c91b52fe4b8ab4cd8cc
 - name: golang.org/x/net
