@@ -10,6 +10,7 @@ def create_tensor(scope, name, shape):
     tensor = scope.create_var(name).get_tensor()
     tensor.set_dims(shape)
     tensor.alloc_float()
+    tensor.set(np.random.random(shape))
     return tensor
 
 
@@ -78,6 +79,10 @@ class TestRNN(unittest.TestCase):
             outlink_alias=[output_alias],
             pre_memories=[prememory],
             memories=[memory])
+
+        ctx = core.DeviceContext.cpu_context()
+        rnnop.infer_shape(self.scope)
+        rnnop.run(self.scope, ctx)
 
     def test_recurrent(self):
         self.init()
