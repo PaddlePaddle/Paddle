@@ -49,7 +49,6 @@ class client(object):
     def set_dataset(self, paths):
         holder_type = ctypes.c_char_p * len(paths)
         holder = holder_type()
-        print paths
         for idx, path in enumerate(paths):
             c_ptr = ctypes.c_char_p(path)
             holder[idx] = c_ptr
