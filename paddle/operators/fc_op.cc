@@ -17,7 +17,7 @@
 namespace paddle {
 namespace operators {
 
-class FullyConnectedOp : public PlainNet {
+class FullyConnectedOp : public NetOp {
 public:
   void Init() override {
     AddOp(OpRegistry::CreateOp("mul",
