@@ -87,7 +87,7 @@ class CUDADeviceContext : public DeviceContext {
                    "cudaStreamSynchronize failed");
   }
 
-  cudaStream_t stream() { return stream_; }
+  cudaStream_t stream() const { return stream_; }
 
   Eigen::GpuDevice* eigen_device() const { return eigen_device_.get(); }
 
