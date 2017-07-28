@@ -51,7 +51,7 @@ void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
  */
 template <typename DstPlace, typename SrcPlace>
 void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
-          cudaStream_t stream);
+          cudaStream_t stream = 0);
 
 #endif  // PADDLE_ONLY_CPU
 

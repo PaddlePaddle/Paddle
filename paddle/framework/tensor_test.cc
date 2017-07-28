@@ -198,8 +198,8 @@ TEST(Tensor, CopyFrom) {
     int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     memcpy(src_ptr, arr, 9 * sizeof(int));
 
-    auto* cpu_ctx = new paddle::platform::CPUDeviceContext();
-    dst_tensor.CopyFrom<int>(src_tensor, *cpu_ctx);
+    auto cpu_place = new paddle::platform::CPUPlace();
+    dst_tensor.CopyFrom<int>(src_tensor, *cpu_place);
 
     const int* dst_ptr = dst_tensor.data<int>();
     ASSERT_NE(src_ptr, dst_ptr);
@@ -208,7 +208,7 @@ TEST(Tensor, CopyFrom) {
     }
 
     Tensor slice_tensor = src_tensor.Slice<int>(1, 2);
-    dst_tensor.CopyFrom<int>(slice_tensor, *cpu_ctx);
+    dst_tensor.CopyFrom<int>(slice_tensor, *cpu_place);
     const int* slice_ptr = slice_tensor.data<int>();
     dst_ptr = dst_tensor.data<int>();
     ASSERT_NE(dst_ptr, slice_ptr);
@@ -228,12 +228,12 @@ TEST(Tensor, CopyFrom) {
     memcpy(src_ptr, arr, 9 * sizeof(int));
 
     // CPU Tensor to GPU Tensor
-    auto gpu_ctx = new paddle::platform::CUDADeviceContext(0);
-    gpu_tensor.CopyFrom<int>(src_tensor, *gpu_ctx);
+    auto gpu_place = new paddle::platform::GPUPlace(0);
+    gpu_tensor.CopyFrom<int>(src_tensor, *gpu_place);
 
     // GPU Tensor to CPU Tensor
-    auto cpu_ctx = new paddle::platform::CPUDeviceContext();
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_ctx);
+    auto cpu_place = new paddle::platform::CPUPlace();
+    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place);
 
     // Compare Tensors
     const int* dst_ptr = dst_tensor.data<int>();
@@ -245,10 +245,10 @@ TEST(Tensor, CopyFrom) {
     Tensor slice_tensor = src_tensor.Slice<int>(1, 2);
 
     // CPU Slice Tensor to GPU Tensor
-    gpu_tensor.CopyFrom<int>(slice_tensor, *gpu_ctx);
+    gpu_tensor.CopyFrom<int>(slice_tensor, *gpu_place);
 
     // GPU Tensor to CPU Tensor
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_ctx);
+    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place);
 
     // Compare Slice Tensors
     const int* slice_ptr = slice_tensor.data<int>();
