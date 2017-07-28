@@ -3,7 +3,7 @@ cc_library(ddim SRCS ddim.cc DEPS eigen3)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 
-cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory)
+cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context)
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
@@ -29,7 +29,5 @@ py_proto_compile(framework_py_proto SRCS attr_type.proto op_proto.proto op_desc.
 add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
 add_dependencies(framework_py_proto framework_py_proto_init)
 
-proto_library(net_proto SRCS net_proto.proto DEPS op_proto)
-# cc_library(net SRCS net.cc DEPS operator net_proto op_registry fc_op)
-cc_library(net SRCS net.cc DEPS operator net_proto op_registry)
+cc_library(net SRCS net.cc DEPS op_registry)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net add_op mul_op sigmoid_op softmax_op fc_op)

@@ -13,17 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/add_op.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
 
-class AddOp : public framework::OperatorWithKernel {
+class AddOp : public OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {
+  void InferShape(const std::vector<const Tensor *> &inputs,
+                  const std::vector<Tensor *> &outputs) const override {
     PADDLE_ENFORCE(inputs.size() == 2, "Input size of AddOp must be two");
     PADDLE_ENFORCE(outputs.size() == 1, "Output size of AddOp must be one");
     PADDLE_ENFORCE(
@@ -35,10 +32,10 @@ protected:
   }
 };
 
-class AddOpMaker : public framework::OpProtoAndCheckerMaker {
+class AddOpMaker : public OpProtoAndCheckerMaker {
 public:
-  AddOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  AddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of add op");
     AddInput("Y", "The second input of add op");
     AddOutput("Out", "The output of add op");
@@ -50,11 +47,10 @@ The equation is: Out = X + Y
   }
 };
 
-class AddOpGrad : public framework::OperatorWithKernel {
+class AddOpGrad : public OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {}
+  void InferShape(const std::vector<const Tensor *> &inputs,
+                  const std::vector<Tensor *> &outputs) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "AddOpGrad";
     return "";
@@ -64,7 +60,6 @@ protected:
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(add_two, paddle::operators::AddOp, paddle::operators::AddOpMaker);
-REGISTER_GRADIENT_OP(add_two, add_two_grad, paddle::operators::AddOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    add_two, paddle::operators::AddKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP(add_two, ops::AddOp, ops::AddOpMaker);
+REGISTER_GRADIENT_OP(add_two, add_two_grad, ops::AddOpGrad);
+REGISTER_OP_CPU_KERNEL(add_two, ops::AddKernel<ops::CPUPlace, float>);
