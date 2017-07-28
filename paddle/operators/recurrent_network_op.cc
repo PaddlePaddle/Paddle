@@ -32,11 +32,8 @@ void SegmentInputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
                    const size_t seq_len) {
   PADDLE_ENFORCE(!inlinks.empty(), "no in links are provided.");
   for (size_t i = 0; i < inlinks.size(); ++i) {
-    LOG(INFO) << "++++++" << inlinks[i].external;
-    LOG(INFO) << "++++++" << step_scopes[0];
     Tensor* input =
         step_scopes[0]->GetVariable(inlinks[i].external)->GetMutable<Tensor>();
-    LOG(INFO) << "======";
     DDim dims = input->dims();
     PADDLE_ENFORCE(static_cast<size_t>(dims[0]) == seq_len,
                    "all the inlinks must have same length");
@@ -180,6 +177,11 @@ void RecurrentAlgorithm::InferShape(const std::shared_ptr<Scope>& scope) const {
   CreateScopes(scope);
   auto step_scopes = GetStepScopes(scope);
 
+  // SegmentInputs is called in InferShape. The input must hold memory in
+  // SegmentInputs. But the other op only set dimension for the output in
+  // InferShape. That's a problem. Wether the RNN op needs InferShape or not?
+  // Wether the following functions (SegmentInputs, InitMemories, ...) need
+  // to rewrite for RNN op?
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_);
 
   InitMemories(step_scopes[0]);
