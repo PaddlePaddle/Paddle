@@ -199,6 +199,14 @@ void MkldnnTester::clearBotDiffs() {
   }
 }
 
+void MkldnnTester::clearBotDiffs(int n) {
+  CHECK_LT(n, NUM);
+  // all inputs layers
+  for (size_t i = 0; i < dataLayers_[n].size(); ++i) {
+    dataLayers_[n][i]->getOutputGrad()->zeroMem();
+  }
+}
+
 void MkldnnTester::clearTopDatas() {
   for (size_t i = 0; i < testLayers_.size(); ++i) {
     testLayers_[i]->getOutputValue()->zeroMem();
@@ -284,9 +292,11 @@ void MkldnnTester::runOnce() {
   checkBackwardWgts();
 
   // clear buffers
-  clearTopDatas();
-  clearBotDiffs();
-  clearWgtDiffs();
+  // ref code will addto the diff, dnn code will writeto it
+  clearBotDiffs(REF);
+  // below two should be coverd by test layers
+  // clearTopDatas();
+  // clearWgtDiffs();
 }
 
 void MkldnnTester::run(

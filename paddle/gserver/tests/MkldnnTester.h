@@ -82,6 +82,7 @@ private:
 
   void clearWgtDiffs();
   void clearBotDiffs();
+  void clearBotDiffs(int n);  // clear specific layer
   void clearTopDatas();
 
   void printTopDatas();
