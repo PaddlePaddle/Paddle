@@ -20,15 +20,49 @@ limitations under the License. */
 namespace paddle {
 namespace memory {
 
+/**
+ * \brief   Allocate memory block in one place.
+ *
+ * \param[in]  place  Allocation place (CPU or GPU).
+ * \param[in]  size   Allocation size.
+ *
+ * \return  Allocated memory block address.
+ *
+ * \note    If return nullptr, it indicates memory allocation failed
+ *          because insufficient memory in current system. When Alloc
+ *          function is invoked, you must check the returned memory
+ *          address is valid or not.
+ */
 template <typename Place>
-void* Alloc(Place, size_t);
+void* Alloc(Place place, size_t size);
 
+/**
+ * \brief   Free memory block in one place.
+ *
+ * \param[in]  place  Allocation place (CPU or GPU).
+ * \param[in]  ptr    Memory block address to free.
+ *
+ */
 template <typename Place>
-void Free(Place, void*);
+void Free(Place place, void* ptr);
 
+/**
+ * \brief   Total size of used memory in one place.
+ *
+ * \param[in]  place  Allocation place (CPU or GPU).
+ *
+ */
 template <typename Place>
-size_t Used(Place);
+size_t Used(Place place);
 
+/**
+ * \brief   Free memory block in one place.
+ *
+ * \note    In some cases, custom deleter is used to
+ *          deallocate the memory automatically for
+ *          std::unique_ptr<T> in tensor.h.
+ *
+ */
 template <typename T, typename Place>
 class PODDeleter {
   static_assert(std::is_pod<T>::value, "T must be POD");

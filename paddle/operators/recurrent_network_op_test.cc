@@ -151,7 +151,7 @@ protected:
   void CreateStepNet() {
     LOG(INFO) << "create variable step_net";
     Variable* var = scope_->CreateVariable("step_net");
-    auto net = var->GetMutable<PlainNet>();
+    auto net = var->GetMutable<NetOp>();
     // rnn/s is net's input or output?
     net->inputs_ = {"rnn/h@pre", "rnn/w", "rnn/x"};
     net->inputs_ = {"rnn/s", "rnn/h"};
@@ -281,7 +281,7 @@ protected:
   void CreateStepNet() {
     LOG(INFO) << "create variable step_net";
     Variable* var = scope_->CreateVariable("step_net");
-    auto net = var->GetMutable<PlainNet>();
+    auto net = var->GetMutable<NetOp>();
     net->AddOp(OpRegistry::CreateOp("mul",
                                     {"rnn/h_pre", "rnn/w", "rnn/s_grad"},
                                     {"rnn/h_pre_grad", "rnn/w_grad"},
