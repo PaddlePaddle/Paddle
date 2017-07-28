@@ -315,7 +315,7 @@ TEST(Backward, op_part_of_output_are_not_need) {
 TEST(Backward, op_part_of_input_are_not_need) {
   auto fwd = f::OpRegistry::CreateOp("mul", {"a", "b"}, {"out"}, {});
   auto backward = f::Backward(*fwd, {"a"});
-  ASSERT_False(backward->IsNetOp());
+  ASSERT_FALSE(backward->IsNetOp());
   auto net = static_cast<f::NetOp *>(backward.get());
   ASSERT_EQ(net->ops_.size(), 1UL);
 
