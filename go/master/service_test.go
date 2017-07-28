@@ -1,7 +1,6 @@
 package master_test
 
 import (
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -17,13 +16,13 @@ func TestNewServiceWithEtcd(t *testing.T) {
 	// setup an embed etcd server
 	etcdDir, err := ioutils.TempDir("", "")
 	if err != nil {
-		t.Fatal(nil)
+		t.Fatal(err)
 	}
 	cfg := embed.NewConfig()
 	cfg.Dir = etcdDir
 	e, err := embed.StartEtcd(cfg)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	defer func() {
 		e.Close()
@@ -33,10 +32,10 @@ func TestNewServiceWithEtcd(t *testing.T) {
 	}()
 	select {
 	case <-e.Server.ReadyNotify():
-		log.Printf("Server is ready!")
+		t.Log("Server is ready!")
 	case <-time.After(60 * time.Second):
 		e.Server.Stop() // trigger a shutdown
-		log.Printf("Server took too long to start!")
+		t.Fatal("Server took too long to start!")
 	}
 
 	ep := []string{"127.0.0.1:2379"}
