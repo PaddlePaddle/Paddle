@@ -233,7 +233,6 @@ class OperatorWithKernel : public OperatorBase {
   void InferShape(const std::shared_ptr<Scope>& scope) const {
     InferShape(InferShapeContext(this, scope));
   }
-  virtual void InferShape(const InferShapeContext& ctx) const = 0;
 
   void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const final {
@@ -246,6 +245,9 @@ class OperatorWithKernel : public OperatorBase {
     static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
     return g_all_op_kernels;
   }
+
+ protected:
+  virtual void InferShape(const InferShapeContext& ctx) const = 0;
 };
 
 }  // namespace framework
