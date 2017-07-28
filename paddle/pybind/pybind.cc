@@ -97,8 +97,8 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::reference)
       .def("get_net",
-           [](pd::Variable& self) -> pd::PlainNet* {
-             return self.GetMutable<pd::PlainNet>();
+           [](pd::Variable& self) -> pd::NetOp* {
+             return self.GetMutable<pd::NetOp>();
            },
            py::return_value_policy::reference);
 
