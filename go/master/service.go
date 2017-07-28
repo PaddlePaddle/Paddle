@@ -50,6 +50,7 @@ var ErrPassAfter = errors.New("pass number larger than master")
 type Store interface {
 	Save([]byte) error
 	Load() ([]byte, error)
+	Shutdown() error
 }
 
 // Chunk is a chunk of data consisted of several data instances.

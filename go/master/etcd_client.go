@@ -39,15 +39,12 @@ type EtcdClient struct {
 	statePath string
 	client    *clientv3.Client
 	lock      *concurrency.Mutex
+	sess      *concurrency.Session
 }
 
 // NewEtcdClient creates a new EtcdClient.
 func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePath string, ttlSec int) (*EtcdClient, error) {
 	log.Debugf("Connecting to etcd at %v", endpoints)
-	// TODO(helin): gracefully shutdown etcd store. Because etcd
-	// store holds a etcd lock, even though the lock will expire
-	// when the lease timeout, we need to implement graceful
-	// shutdown to release the lock.
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
@@ -67,12 +64,12 @@ func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePat
 	// one master running, but split-brain problem may cause
 	// multiple master servers running), and the cluster management
 	// software will kill one of them.
-	log.Debugf("Trying to acquire lock at %s.", lockPath)
+	log.Infof("Trying to acquire lock at %s.", lockPath)
 	err = lock.Lock(context.TODO())
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("Successfully acquired lock at %s.", lockPath)
+	log.Infof("Successfully acquired lock at %s.", lockPath)
 
 	put := clientv3.OpPut(addrPath, addr)
 	resp, err := cli.Txn(context.Background()).If(lock.IsOwner()).Then(put).Commit()
@@ -89,6 +86,7 @@ func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePat
 		statePath: statePath,
 		client:    cli,
 		lock:      lock,
+		sess:      sess,
 	}
 
 	return e, nil
@@ -155,6 +153,21 @@ func (e *EtcdClient) Load() ([]byte, error) {
 
 	state := kvs[0].Value
 	return state, nil
+}
+
+// Shutdown shuts down the etcd client gracefully.
+func (e *EtcdClient) Shutdown() error {
+	err := e.sess.Close()
+	newErr := e.client.Close()
+	if newErr != nil {
+		if err == nil {
+			err = newErr
+		} else {
+			log.Errorln(newErr)
+		}
+	}
+
+	return err
 }
 
 // GetKey gets the value by the specify key.
