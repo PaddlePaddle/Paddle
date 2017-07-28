@@ -44,7 +44,8 @@ func TestPartionIndex(t *testing.T) {
 	cs := make([]Chunk, 100)
 	ts := partition(cs, 20)
 	for i := range ts {
-		if ts[i].Task.Meta.ID != i {
+		// test auto increament ids
+		if i > 0 && ts[i].Task.Meta.ID != ts[i-1].Task.Meta.ID+1 {
 			t.Error(ts[i], i)
 		}
 	}

@@ -101,6 +101,7 @@ class OperatorBase {
 
   //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
+
   //! Get a input which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Inputs(const std::string& name) const;
@@ -214,7 +215,9 @@ class OperatorWithKernel : public OperatorBase {
       place_ = dev_ctx.GetPlace();
     }
 
-    bool operator==(const OpKernelKey& o) const { return place_ == o.place_; }
+    bool operator==(const OpKernelKey& o) const {
+      return platform::places_are_same_class(place_, o.place_);
+    }
   };
 
   struct OpKernelHash {

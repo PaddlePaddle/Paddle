@@ -72,7 +72,7 @@ static std::shared_ptr<OperatorBase> BackwardImpl(
     return EmptyOp();
   }
 
-  auto* net = new NetOp();
+  auto net = std::make_shared<NetOp>();
 
   if (forwardOp.IsNetOp()) {
     //! TODO(dzh)
@@ -84,7 +84,8 @@ static std::shared_ptr<OperatorBase> BackwardImpl(
     auto& forwardNet = static_cast<const NetOp&>(forwardOp);
 
     // travesal subnet/op
-    for (auto it = forwardNet.ops_.end(); it != forwardNet.ops_.begin(); --it) {
+    for (auto it = forwardNet.ops_.rbegin(); it != forwardNet.ops_.rend();
+         ++it) {
       auto fwd = *it;
       auto bwd = Backward(*fwd, no_grad_names);
       net->AddOp(bwd);
@@ -113,7 +114,7 @@ static std::shared_ptr<OperatorBase> BackwardImpl(
       insert_postion.push_back(
           {dup_op.back(),
            OpRegistry::CreateOp(
-               "Add", {dup_outputs}, {name},
+               "add", {dup_outputs}, {name},
                {{"input_format",
                  std::vector<int>{0, (int)dup_outputs.size()}}})});
     }
@@ -140,11 +141,15 @@ static std::shared_ptr<OperatorBase> BackwardImpl(
         grad_output = OperatorBase::EMPTY_VAR_NAME();
       }
     }
+
+    if (net->ops_.empty()) {  // Current no aux op is added to network
+      return grad_op;
+    }
     net->AddOp(grad_op);
   }
 
   net->CompleteAddOp();
-  return std::shared_ptr<OperatorBase>(net);
+  return net;
 }
 
 extern std::shared_ptr<OperatorBase> Backward(
