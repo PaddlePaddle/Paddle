@@ -45,7 +45,8 @@ struct Argument {
         allCount(0),
         valueCount(0),
         gradCount(0),
-        dataId(0) {}
+        dataId(0) {
+  }
   Argument(const Argument& argument) {
     *this = argument;
     valueCount = 0;
@@ -82,9 +83,9 @@ struct Argument {
 
 #ifdef PADDLE_USE_MKLDNN
   int mklSeqLen;  // length of different sequences, should be euqal in one Batch
-  bool hasMklSeq() const {return mklSeqLen > 1 ? true : false;}
-  int getMklSeqLen() const {return mklSeqLen;}
-  void setMklSeqLen(int len) {mklSeqLen = len;}
+  bool hasMklSeq() const { return mklSeqLen > 1 ? true : false; }
+  int getMklSeqLen() const { return mklSeqLen; }
+  void setMklSeqLen(int len) { mklSeqLen = len; }
 #endif
 
   // If NULL, each position is treated independently.

@@ -26,12 +26,12 @@ namespace paddle {
  * refer to paddle original function
  */
 class MkldnnTester {
-enum {
-  DNN = 0,
-  REF = 1,
-  NUM = 2,
-};
-  
+  enum {
+    DNN = 0,
+    REF = 1,
+    NUM = 2,
+  };
+
 protected:
   std::vector<TestConfig> configs_;
   vector<string> layerNames_;
@@ -52,8 +52,7 @@ protected:
   size_t ih_, iw_;
 
 public:
-  explicit MkldnnTester(
-    size_t iter = 3, float epsilon = 1e-4) {
+  explicit MkldnnTester(size_t iter = 3, float epsilon = 1e-4) {
     iter_ = iter;
     eps_ = epsilon;
     lvl_ = DNN_TESTS_MORE;
@@ -62,9 +61,14 @@ public:
   ~MkldnnTester() {}
 
 public:
-  void run(const TestConfig& dnn, const TestConfig& ref, size_t batchSize,
-    size_t inputImgH = 1, size_t inputImgW = 1, size_t iter = 3,
-    float epsilon = 1e-4, int level = DNN_TESTS_MORE);
+  void run(const TestConfig& dnn,
+           const TestConfig& ref,
+           size_t batchSize,
+           size_t inputImgH = 1,
+           size_t inputImgW = 1,
+           size_t iter = 3,
+           float epsilon = 1e-4,
+           int level = DNN_TESTS_MORE);
   void setLogLevel(int lvl) { lvl_ = lvl; }
 
 private:
@@ -97,11 +101,15 @@ private:
 
   /**
    * Get delta percent
-   * if many(>failRate) wrong(abs(dnn-ref)/abs(ref)>thres) points return the max(diff/ref)
+   * if many(>failRate) wrong(abs(dnn-ref)/abs(ref)>thres) points return the
+   * max(diff/ref)
    * else return sum(abs(a-b)) / sum(abs(b)) should smaller than eps
    */
-  double getDelta(const real* d1, const real* d2, size_t len,
-    const float failRate = 1e-3, const float thres = 0.1);
+  double getDelta(const real* d1,
+                  const real* d2,
+                  size_t len,
+                  const float failRate = 1e-3,
+                  const float thres = 0.1);
 };
 
 }  //  namespace paddle

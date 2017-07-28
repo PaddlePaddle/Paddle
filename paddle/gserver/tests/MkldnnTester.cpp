@@ -18,8 +18,9 @@ limitations under the License. */
 namespace paddle {
 
 // init data layer and test layer of both dnn and reference
-void MkldnnTester::reset(
-  const TestConfig& dnn, const TestConfig& ref, size_t batchSize) {
+void MkldnnTester::reset(const TestConfig& dnn,
+                         const TestConfig& ref,
+                         size_t batchSize) {
   const bool trans = false;
   const bool useGpu = false;
 
@@ -44,16 +45,22 @@ void MkldnnTester::reset(
   // reset configs and layer names
   configs_[DNN] = dnn;
   configs_[REF] = ref;
-  layerNames_[DNN] = "mkldnn";  // the first is mkldnn layer
+  layerNames_[DNN] = "mkldnn";     // the first is mkldnn layer
   layerNames_[REF] = "reference";  // second is reference layer
 
   // reset others
   for (size_t i = 0; i < NUM; ++i) {
     configs_[i].layerConfig.set_name(layerNames_[i]);
-    initDataLayer(configs_[i], &(dataLayers_[i]), &(datas_[i]),
-      &(layerMaps_[i]), layerNames_[i], batchSize, trans, useGpu);
-    initTestLayer(configs_[i], &(layerMaps_[i]), &(parameters_[i]),
-      &(testLayers_[i]));
+    initDataLayer(configs_[i],
+                  &(dataLayers_[i]),
+                  &(datas_[i]),
+                  &(layerMaps_[i]),
+                  layerNames_[i],
+                  batchSize,
+                  trans,
+                  useGpu);
+    initTestLayer(
+        configs_[i], &(layerMaps_[i]), &(parameters_[i]), &(testLayers_[i]));
   }
   dnnLayer_ = testLayers_[DNN];
   refLayer_ = testLayers_[REF];
@@ -65,7 +72,7 @@ void MkldnnTester::reset(
 
 void MkldnnTester::setInputImgSize() {
   for (size_t n = 0; n < dataLayers_.size(); ++n) {
-     for (size_t i = 0; i < dataLayers_[n].size(); ++i) {
+    for (size_t i = 0; i < dataLayers_[n].size(); ++i) {
       // TODO(TJ): fix me when concat and elewise ready
       dataLayers_[n][i]->getOutput().setFrameHeight(ih_);
       dataLayers_[n][i]->getOutput().setFrameWidth(iw_);
@@ -93,7 +100,7 @@ void MkldnnTester::randomBotDatas() {
   for (size_t i = 0; i < dataLayers_[DNN].size(); ++i) {
     dataLayers_[REF][i]->getOutputValue()->randomizeUniform();
     dataLayers_[DNN][i]->getOutputValue()->copyFrom(
-      *(dataLayers_[REF][i]->getOutputValue()));
+        *(dataLayers_[REF][i]->getOutputValue()));
     VLOG(lvl_) << "Input " << i << " data:";
     printMatrix(dataLayers_[REF][i]->getOutputValue());
   }
@@ -108,9 +115,8 @@ void MkldnnTester::randomTopDiffs() {
 
 void MkldnnTester::checkForward() {
   printTopDatas();
-  double delta = compareMatrix(
-        testLayers_[DNN]->getOutputValue(),
-        testLayers_[REF]->getOutputValue());
+  double delta = compareMatrix(testLayers_[DNN]->getOutputValue(),
+                               testLayers_[REF]->getOutputValue());
   VLOG(DNN_TESTS_DETAILS) << "Check Forward";
   EXPECT_LE(fabs(delta), eps_);
 }
@@ -156,8 +162,8 @@ void MkldnnTester::checkBackwardWgts() {
   restoreWgt(dnnWgts, parameters_[DNN]);
 }
 
-void MkldnnTester::saveWgt(
-  const vector<ParameterPtr>& from, vector<VectorPtr>& to) {
+void MkldnnTester::saveWgt(const vector<ParameterPtr>& from,
+                           vector<VectorPtr>& to) {
   const bool useGpu = false;
   to.resize(from.size());
   for (size_t i = 0; i < to.size(); ++i) {
@@ -167,15 +173,14 @@ void MkldnnTester::saveWgt(
   }
 }
 
-void MkldnnTester::restoreWgt(
-  const vector<VectorPtr>& from, vector<ParameterPtr>& to) {
+void MkldnnTester::restoreWgt(const vector<VectorPtr>& from,
+                              vector<ParameterPtr>& to) {
   CHECK_EQ(from.size(), to.size());
   for (size_t i = 0; i < from.size(); ++i) {
     const VectorPtr& wgt = to[i]->getBuf(PARAMETER_VALUE);
     wgt->copyFrom(*from[i]);
   }
 }
-
 
 // clear parameters grad
 void MkldnnTester::clearWgtDiffs() {
@@ -243,8 +248,11 @@ void MkldnnTester::printVector(const VectorPtr& v) {
   VLOG(lvl_) << row.str();
 }
 
-double MkldnnTester::getDelta(const real* d1, const real* d2, size_t len,
-  const float failRate, const float thres) {
+double MkldnnTester::getDelta(const real* d1,
+                              const real* d2,
+                              size_t len,
+                              const float failRate,
+                              const float thres) {
   double delta = 0, sum = 0;
   int failCnt = 0;
   const double eps = 1e-5;
@@ -263,7 +271,7 @@ double MkldnnTester::getDelta(const real* d1, const real* d2, size_t len,
   EXPECT_FALSE(std::isinf(sum));
   EXPECT_FALSE(std::isnan(delta));
   VLOG(DNN_TESTS_MORE) << "reference avg data: " << sum / len
-    << ", delta: " << delta / sum << ", failCnt:" << failCnt;
+                       << ", delta: " << delta / sum << ", failCnt:" << failCnt;
   return (failCnt / (float)len) > failRate ? maxOut : delta / sum;
 }
 
@@ -299,11 +307,16 @@ void MkldnnTester::runOnce() {
   // clearWgtDiffs();
 }
 
-void MkldnnTester::run(
-  const TestConfig& dnn, const TestConfig& ref, size_t batchSize,
-  size_t inputImgH, size_t inputImgW, size_t iter, float epsilon, int level) {
-  VLOG(DNN_TESTS) << "Test MKLDNN functionality: "
-      << dnn.layerConfig.type() << " vs " << ref.layerConfig.type();
+void MkldnnTester::run(const TestConfig& dnn,
+                       const TestConfig& ref,
+                       size_t batchSize,
+                       size_t inputImgH,
+                       size_t inputImgW,
+                       size_t iter,
+                       float epsilon,
+                       int level) {
+  VLOG(DNN_TESTS) << "Test MKLDNN functionality: " << dnn.layerConfig.type()
+                  << " vs " << ref.layerConfig.type();
   ih_ = inputImgH;
   iw_ = inputImgW;
   iter_ = iter;
@@ -324,8 +337,8 @@ void MkldnnTester::run(
   runOnce();
 
   // firstly get the flag
-  bool initWgtFromMkldnn = dnn.layerConfig.has_init_wgt_from_mkldnn()
-    && dnn.layerConfig.init_wgt_from_mkldnn();
+  bool initWgtFromMkldnn = dnn.layerConfig.has_init_wgt_from_mkldnn() &&
+                           dnn.layerConfig.init_wgt_from_mkldnn();
   if (initWgtFromMkldnn) {
     // after run once the mkldnn weight has been stored in dnnlayer
     // then save the weigths and restart again

@@ -115,19 +115,17 @@ public:
   /// Whether the layer need pass mkl seq info
   bool needMklSeqInfo_;
 
-  /** 
+  /**
    * Add the next layer pointer.
    */
-  void addNextLayer(LayerPtr l) {
-    nextLayers_.push_back(l);
-  }
+  void addNextLayer(LayerPtr l) { nextLayers_.push_back(l); }
 
   /**
    * check if has next layer l
    */
   bool hasNextLayer(const LayerPtr& l) {
-    if (std::find(nextLayers_.begin(), nextLayers_.end(), l)
-      == nextLayers_.end()) {
+    if (std::find(nextLayers_.begin(), nextLayers_.end(), l) ==
+        nextLayers_.end()) {
       return false;
     } else {
       return true;
@@ -137,9 +135,7 @@ public:
   /**
    * Get the pointer of nextLayer[i].
    */
-  const LayerPtr& getNextLayer(size_t i) {
-    return nextLayers_[i];
-  }
+  const LayerPtr& getNextLayer(size_t i) { return nextLayers_[i]; }
 
   /**
    * Get the number of nextLayers.
@@ -188,8 +184,8 @@ public:
     for (size_t i = 0; i < nextLayers_.size(); ++i) {
       bool yes = isDnnType(nextLayers_[i]->getType());
       CHECK(i == 0 || res == yes)
-        << "Do not support mixed layer type inside the branch, "
-        << "since MKLDNN layers would over wirte diff in backward.";
+          << "Do not support mixed layer type inside the branch, "
+          << "since MKLDNN layers would over wirte diff in backward.";
       res = res && yes;
     }
     return res;
@@ -199,7 +195,7 @@ public:
    * Is the prev layer MKLDNN type
    * If true
    * then if the prev layer has several output layers
-   * all of them should also be MKLDNN type, otherwise return false 
+   * all of them should also be MKLDNN type, otherwise return false
    */
   bool isPrevDnn(size_t idx) {
     const LayerPtr& prev = getPrev(idx);
@@ -221,10 +217,10 @@ public:
     if (passType_ != PASS_TEST) {
       // in training pass, the branch point should be MKLDNN type
       CHECK_EQ(prev->areNextAllDnn(), true)
-        << "Since this layer " << getName() << " is with " << getType()
-        << " type , so all the outputs of inputlayer should also be MKLDNN type"
-        << ". Prevlayer is " << prev->getName() << ", outsize of prevlayer: "
-        << prev->getNextSize();
+          << "Since this layer " << getName() << " is with " << getType()
+          << " type , so all the outputs of inputlayer should also be MKLDNN "
+          << "type. Prevlayer is " << prev->getName()
+          << ", outsize of prevlayer: " << prev->getNextSize();
     }
 
     return true;
@@ -233,21 +229,17 @@ public:
   /**
    * Get mkldnn top data memory
    */
-  virtual std::shared_ptr<void> getMkldnnTopData() {
-    return nullptr;
-  }
+  virtual std::shared_ptr<void> getMkldnnTopData() { return nullptr; }
 
   /**
    * Get mkldnn bottom diff memory
    */
-  virtual std::shared_ptr<void> getMkldnnBotDiff() {
-    return nullptr;
-  }
+  virtual std::shared_ptr<void> getMkldnnBotDiff() { return nullptr; }
 
- /**
-  * Convert the mkldnn weights to the paddle format
-  * This functions could be called in gtest
-  */
+  /**
+   * Convert the mkldnn weights to the paddle format
+   * This functions could be called in gtest
+   */
   virtual void cvtWgtToPaddle() {
     // do not need cvt in base layer.h
     return;

@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-#include "paddle/utils/Logging.h"
 #include "mkldnn.hpp"
+#include "paddle/utils/Logging.h"
 
 namespace paddle {
 
@@ -28,21 +28,39 @@ typedef enum {
 using dnnfmt = mkldnn::memory::format;
 // This format should be matched with the version of MKLDNN
 static const std::map<dnnfmt, std::string> DNN_FORMAT_STR = {
-  {dnnfmt::format_undef, "format_undef"}, {dnnfmt::any, "any"},
-  {dnnfmt::blocked, "blocked"}, {dnnfmt::x, "x"}, {dnnfmt::nc, "nc"},
-  {dnnfmt::nchw, "nchw"}, {dnnfmt::nhwc, "nhwc"}, {dnnfmt::chwn, "chwn"},
-  {dnnfmt::nChw8c, "nChw8c"}, {dnnfmt::nChw16c, "nChw16c"}, {dnnfmt::oi, "oi"},
-  {dnnfmt::io, "io"}, {dnnfmt::oihw, "oihw"}, {dnnfmt::ihwo, "ihwo"},
-  {dnnfmt::oIhw8i, "oIhw8i"}, {dnnfmt::oIhw16i, "oIhw16i"},
-  {dnnfmt::OIhw8i8o, "OIhw8i8o"}, {dnnfmt::OIhw16i16o, "OIhw16i16o"},
-  {dnnfmt::OIhw8o8i, "OIhw8o8i"}, {dnnfmt::OIhw16o16i, "OIhw16o16i"},
-  {dnnfmt::OIhw8i16o2i, "OIhw8i16o2i"}, {dnnfmt::Ohwi8o, "Ohwi8o"},
-  {dnnfmt::Ohwi16o, "Ohwi16o"}, {dnnfmt::OhIw16o4i, "OhIw16o4i"},
-  {dnnfmt::goihw, "goihw"}, {dnnfmt::gOIhw8i8o, "gOIhw8i8o"},
-  {dnnfmt::gOIhw16i16o, "gOIhw16i16o"}, {dnnfmt::gOIhw8i16o2i, "gOIhw8i16o2i"},
-  // {dnnfmt::gOhwi8o, "gOhwi8o"}, {dnnfmt::gOhwi16o, "gOhwi16o"},  // later ver
-  {dnnfmt::gOIhw8o8i, "gOIhw8o8i"}, {dnnfmt::gOIhw16o16i, "gOIhw16o16i"},
-  {dnnfmt::gOhIw16o4i, "gOhIw16o4i"}};
+    {dnnfmt::format_undef, "format_undef"},
+    {dnnfmt::any, "any"},
+    {dnnfmt::blocked, "blocked"},
+    {dnnfmt::x, "x"},
+    {dnnfmt::nc, "nc"},
+    {dnnfmt::nchw, "nchw"},
+    {dnnfmt::nhwc, "nhwc"},
+    {dnnfmt::chwn, "chwn"},
+    {dnnfmt::nChw8c, "nChw8c"},
+    {dnnfmt::nChw16c, "nChw16c"},
+    {dnnfmt::oi, "oi"},
+    {dnnfmt::io, "io"},
+    {dnnfmt::oihw, "oihw"},
+    {dnnfmt::ihwo, "ihwo"},
+    {dnnfmt::oIhw8i, "oIhw8i"},
+    {dnnfmt::oIhw16i, "oIhw16i"},
+    {dnnfmt::OIhw8i8o, "OIhw8i8o"},
+    {dnnfmt::OIhw16i16o, "OIhw16i16o"},
+    {dnnfmt::OIhw8o8i, "OIhw8o8i"},
+    {dnnfmt::OIhw16o16i, "OIhw16o16i"},
+    {dnnfmt::OIhw8i16o2i, "OIhw8i16o2i"},
+    {dnnfmt::Ohwi8o, "Ohwi8o"},
+    {dnnfmt::Ohwi16o, "Ohwi16o"},
+    {dnnfmt::OhIw16o4i, "OhIw16o4i"},
+    {dnnfmt::goihw, "goihw"},
+    {dnnfmt::gOIhw8i8o, "gOIhw8i8o"},
+    {dnnfmt::gOIhw16i16o, "gOIhw16i16o"},
+    {dnnfmt::gOIhw8i16o2i, "gOIhw8i16o2i"},
+    // {dnnfmt::gOhwi8o, "gOhwi8o"}, {dnnfmt::gOhwi16o, "gOhwi16o"},  // later
+    // ver
+    {dnnfmt::gOIhw8o8i, "gOIhw8o8i"},
+    {dnnfmt::gOIhw16o16i, "gOIhw16o16i"},
+    {dnnfmt::gOhIw16o4i, "gOhIw16o4i"}};
 
 class MkldnnBuffer;
 typedef std::shared_ptr<MkldnnBuffer> MkldnnBufferPtr;
@@ -50,10 +68,10 @@ typedef std::shared_ptr<MkldnnBuffer> MkldnnBufferPtr;
 /**
  * @brief A MKLDNN memory buffer class
  *
- * 
+ *
  */
 class MkldnnBuffer {
-using mem = mkldnn::memory;
+  using mem = mkldnn::memory;
 
 protected:
   /// user and internal memory
@@ -66,13 +84,9 @@ protected:
   /// conversion handle
   std::shared_ptr<mkldnn::primitive> pReorder;
 
-
 public:
-  explicit MkldnnBuffer(
-    mem::data_type type = mem::data_type::f32) :
-    pUser_(nullptr),
-    pIntl_(nullptr),
-    pReorder(nullptr) {
+  explicit MkldnnBuffer(mem::data_type type = mem::data_type::f32)
+      : pUser_(nullptr), pIntl_(nullptr), pReorder(nullptr) {
     tp_ = type;
     if (tp_ != mem::data_type::f32)
       LOG(FATAL) << "only support float 32 so far";
@@ -83,47 +97,45 @@ public:
   /**
    * get memory desc from details info
    */
-  static inline mem::desc getMD(const mem::dims& dm,
-    const mem::format& fmt = mem::format::any,
-    const mem::data_type &tp = mem::data_type::f32) {
+  static inline mem::desc getMD(
+      const mem::dims& dm,
+      const mem::format& fmt = mem::format::any,
+      const mem::data_type& tp = mem::data_type::f32) {
     return mem::desc({dm}, tp, fmt);
   }
 
   /**
    * reset user buffer functions
    */
-  void resetUser(void *pd, const mem::dims& dm,
-    const mem::format& fmt, const mkldnn::engine& eg) {
+  void resetUser(void* pd,
+                 const mem::dims& dm,
+                 const mem::format& fmt,
+                 const mkldnn::engine& eg) {
     resetUser(pd, mem::desc({dm}, tp_, fmt), eg);
   }
 
-  void resetUser(
-    void *pdata, const mem::desc& md, const mkldnn::engine& eg) {
+  void resetUser(void* pdata, const mem::desc& md, const mkldnn::engine& eg) {
     resetUser(pdata, mem::primitive_desc(md, eg));
   }
 
-  void resetUser(void *pdata, const mem::primitive_desc& pd) {
+  void resetUser(void* pdata, const mem::primitive_desc& pd) {
     resetMem(pUser_, pd, pdata);
   }
 
-  void resetUser(const std::shared_ptr<mem>& user) {
-    pUser_ = user;
-  }
+  void resetUser(const std::shared_ptr<mem>& user) { pUser_ = user; }
 
   /**
    * update user data handle
    */
-  void updateUserData(void* data) {
-    setData(pUser_, data);
-  }
+  void updateUserData(void* data) { setData(pUser_, data); }
 
   /**
    * reset internal buffer functions
    * generally, it should be after resetUser
    */
-  void resetIntl(const mem::primitive_desc& intlPD, void *pdata = NULL) {
-    if (nullptr != pUser_ &&
-      getUserPD() == intlPD && (pdata == NULL || pdata == getUserData())) {
+  void resetIntl(const mem::primitive_desc& intlPD, void* pdata = NULL) {
+    if (nullptr != pUser_ && getUserPD() == intlPD &&
+        (pdata == NULL || pdata == getUserData())) {
       pIntl_ = pUser_;
       return;
     }
@@ -134,27 +146,19 @@ public:
     resetMem(pIntl_, intlPD, pdata);
   }
 
-  void resetIntl(const std::shared_ptr<mem>& intl) {
-    pIntl_ = intl;
-  }
+  void resetIntl(const std::shared_ptr<mem>& intl) { pIntl_ = intl; }
 
   /**
    * Other get functions of user
    */
-  const std::shared_ptr<mem>& getUser() {
-    return pUser_;
-  }
+  const std::shared_ptr<mem>& getUser() { return pUser_; }
 
   // get primitive desc
   // do not use const &
-  mem::primitive_desc getUserPD() {
-    return getPD(pUser_);
-  }
+  mem::primitive_desc getUserPD() { return getPD(pUser_); }
 
   // get memory desc
-  mem::desc getUserMD() {
-    return getMD(pUser_);
-  }
+  mem::desc getUserMD() { return getMD(pUser_); }
 
   // get user memory format
   std::string getUserFmt() {
@@ -164,31 +168,21 @@ public:
     return fmtStr;
   }
 
-  const void* getUserData() {
-    return getData(pUser_);
-  }
+  const void* getUserData() { return getData(pUser_); }
 
   /// it's the element size not memory size
-  size_t getUserSize() {
-    return getElementCnt(pUser_);
-  }
+  size_t getUserSize() { return getElementCnt(pUser_); }
 
   /**
    * Other get functions of internal
    */
-  const std::shared_ptr<mem>& getIntl() {
-     return pIntl_;
-  }
+  const std::shared_ptr<mem>& getIntl() { return pIntl_; }
 
   // get primitive desc
-  mem::primitive_desc getIntlPD() {
-    return getPD(pIntl_);
-  }
+  mem::primitive_desc getIntlPD() { return getPD(pIntl_); }
 
   // get memory desc
-  mem::desc getIntlMD() {
-    return getMD(pIntl_);
-  }
+  mem::desc getIntlMD() { return getMD(pIntl_); }
 
   // get internal memory format
   std::string getIntlFmt() {
@@ -199,14 +193,10 @@ public:
     return fmtStr;
   }
 
-  const void* getIntlData() {
-    return getData(pIntl_);
-  }
+  const void* getIntlData() { return getData(pIntl_); }
 
   /// it's the element size not memory size
-  size_t getIntlSize() {
-    return getElementCnt(pIntl_);
-  }
+  size_t getIntlSize() { return getElementCnt(pIntl_); }
 
   /****************************************************************************/
   /**
@@ -224,7 +214,7 @@ public:
 
   void resetReorder(dnnCvtType_t type) {
     CHECK(type == dnnUser2Intl || type == dnnIntl2User)
-      << "please specify one type of reorder";
+        << "please specify one type of reorder";
 
     if (!needReorder()) {
       pReorder = nullptr;
@@ -245,13 +235,14 @@ public:
     return pReorder;
   }
 
-  protected:
+protected:
   /*************** protected functions ****************************************/
   /**
    * Reset memory buffer
    */
   void resetMem(std::shared_ptr<mem>& pMem,
-    const mem::primitive_desc& pd, void* pdata = NULL) {
+                const mem::primitive_desc& pd,
+                void* pdata = NULL) {
     checkType(pd);
     mem::primitive_desc tmp = pd;
     if (pdata == NULL) {
@@ -282,14 +273,10 @@ public:
   }
 
   // get format from memory desc
-  inline int getFmt(const mem::desc& md) {
-    return md.data.format;
-  }
+  inline int getFmt(const mem::desc& md) { return md.data.format; }
 
   // get format from primitive desc
-  inline int getFmt(const mem::primitive_desc& pd) {
-    return getFmt(getMD(pd));
-  }
+  inline int getFmt(const mem::primitive_desc& pd) { return getFmt(getMD(pd)); }
 
   // get format from memory
   inline int getFmt(const std::shared_ptr<mem>& pMem) {
@@ -335,11 +322,11 @@ public:
 
   void checkType(const mem::desc& md) {
     CHECK_EQ(int(md.data.data_type), int(tp_))
-      << "input data type does not match: "
-      << md.data.data_type << " vs " << tp_;
+        << "input data type does not match: " << md.data.data_type << " vs "
+        << tp_;
   }
   void checkType(const mem::primitive_desc& pd) {
-     mem::primitive_desc tmp = pd;
+    mem::primitive_desc tmp = pd;
     checkType(tmp.desc());
   }
 };

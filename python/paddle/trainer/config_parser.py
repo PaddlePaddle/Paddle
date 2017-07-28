@@ -1381,7 +1381,7 @@ class LayerBase(object):
             self.config.init_wgt_from_mkldnn = init_wgt_from_mkldnn
         else:
             self.config.init_wgt_from_mkldnn = bool(
-              int(g_command_config_args.get("init_wgt_from_mkldnn", 0)))
+                int(g_command_config_args.get("init_wgt_from_mkldnn", 0)))
         if coeff is not None:
             self.config.coeff = float(coeff)
         if size != 0:
@@ -1582,6 +1582,7 @@ class MultiClassCrossEntropySelfNormCostLayer(LayerBase):
 @config_layer('fc')
 class FCLayer(LayerBase):
     layer_type = 'fc'
+
     def __init__(self,
                  name,
                  size,
@@ -1592,9 +1593,12 @@ class FCLayer(LayerBase):
         use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
         if use_mkldnn:
             self.layer_type = "mkldnn_fc"
-        super(FCLayer, self).__init__(name, self.layer_type, size, inputs=inputs, **xargs)
+        super(FCLayer, self).__init__(
+            name, self.layer_type, size, inputs=inputs, **xargs)
         if use_mkldnn:
-            config_assert(len(inputs) == 1, "MkldnnFCLayer support one and only one input!")
+            config_assert(
+                len(inputs) == 1,
+                "MkldnnFCLayer support one and only one input!")
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             psize = self.config.size * input_layer.size
@@ -1602,11 +1606,11 @@ class FCLayer(LayerBase):
             sparse = format == "csr" or format == "csc"
             if use_mkldnn:
                 dims = [self.config.size, input_layer.size]
-                config_assert(not sparse, "MkldnnFCLayer do not support sparse format yet")
+                config_assert(not sparse,
+                              "MkldnnFCLayer do not support sparse format yet")
             else:
                 dims = [input_layer.size, self.config.size]
-            if sparse:
-                psize = self.inputs[input_index].nnz
+            if sparse: psize = self.inputs[input_index].nnz
             else:
                 sparse = None
 

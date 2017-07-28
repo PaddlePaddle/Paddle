@@ -15,8 +15,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>
-#include "ModelConfig.pb.h"
 #include "MkldnnTester.h"
+#include "ModelConfig.pb.h"
 
 using namespace paddle;  // NOLINT
 
@@ -34,9 +34,11 @@ void testFcLayer(const testFCDesc& pm) {
   TestConfig cfg;
   cfg.layerConfig.set_type(compareTypes[0]);
   cfg.layerConfig.set_size(pm.oc);
-  cfg.inputDefs.push_back({INPUT_DATA, "layer_0",
-    /* size of input layer= */ size_t(pm.ic * pm.ih * pm.iw),
-    /* size of weight= */      size_t(pm.oc * pm.ic * pm.ih * pm.iw)});
+  cfg.inputDefs.push_back(
+      {INPUT_DATA,
+       "layer_0",
+       /* size of input layer= */ size_t(pm.ic * pm.ih * pm.iw),
+       /* size of weight= */ size_t(pm.oc * pm.ic * pm.ih * pm.iw)});
   cfg.layerConfig.add_inputs();
 
   for (auto dnnWgt : {false, true}) {

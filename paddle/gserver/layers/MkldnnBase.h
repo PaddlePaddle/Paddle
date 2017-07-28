@@ -34,7 +34,7 @@ typedef enum {
  */
 class CpuEngine {
 public:
-  static CpuEngine & Instance() {
+  static CpuEngine& Instance() {
     // Thread-safe in C++11.
     static CpuEngine myInstance;
     return myInstance;
@@ -46,11 +46,13 @@ public:
   CpuEngine& operator=(const CpuEngine&) = delete;  // Copy assignment
   CpuEngine& operator=(CpuEngine&&) = delete;       // Move assignment
 
-  mkldnn::engine & getEngine() { return cpuEngine_; }
+  mkldnn::engine& getEngine() { return cpuEngine_; }
+
 protected:
   CpuEngine() : cpuEngine_(mkldnn::engine::cpu, 0) {}
-//    CpuEngine() : cpuEngine_(mkldnn::engine::cpu_lazy, 0) {}
+  //    CpuEngine() : cpuEngine_(mkldnn::engine::cpu_lazy, 0) {}
   ~CpuEngine() {}
+
 private:
   mkldnn::engine cpuEngine_;
 };
@@ -61,9 +63,7 @@ private:
  */
 class MkldnnStream {
 public:
-  MkldnnStream() : ready_(false) {
-    resetState();
-  }
+  MkldnnStream() : ready_(false) { resetState(); }
 
   virtual ~MkldnnStream() {}
 
@@ -87,7 +87,7 @@ public:
     }
     // TODO(TJ): change me when mkldnn have method to reset this state
     stream_.reset(new mkldnn::stream(mkldnn::stream::kind::eager));
-//    stream_.reset(new stream(stream::kind::lazy));
+    //    stream_.reset(new stream(stream::kind::lazy));
     ready_ = true;
   }
 

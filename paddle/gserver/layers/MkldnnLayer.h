@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "Layer.h"
-#include "paddle/math/Matrix.h"
 #include <vector>
-#include "mkldnn.hpp"
+#include "Layer.h"
 #include "MkldnnBase.h"
 #include "MkldnnMemory.h"
+#include "mkldnn.hpp"
+#include "paddle/math/Matrix.h"
 
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
@@ -82,24 +82,30 @@ public:
 
 public:
   explicit MkldnnLayer(const LayerConfig& config)
-    : Layer(config),
-      botData_(nullptr),
-      botDiff_(nullptr),
-      topData_(nullptr),
-      topDiff_(nullptr),
-      engine_(mkldnn::engine::cpu, 0),
-      stream_(nullptr),
-      inputElmCnt_(0),
-      iMatH_(0), iMatW_(0),
-      oMatH_(0), oMatW_(0),
-      seqLen_(0), bs_(0),
-      ic_(0), ih_(0), iw_(0),
-      oc_(0), oh_(0), ow_(0),
-      needResetBwd_(true),
-      nextIsDnn_(false),
-      initWgtFromMkldnn_(false),
-      preparedOnce_(false)
-    {}
+      : Layer(config),
+        botData_(nullptr),
+        botDiff_(nullptr),
+        topData_(nullptr),
+        topDiff_(nullptr),
+        engine_(mkldnn::engine::cpu, 0),
+        stream_(nullptr),
+        inputElmCnt_(0),
+        iMatH_(0),
+        iMatW_(0),
+        oMatH_(0),
+        oMatW_(0),
+        seqLen_(0),
+        bs_(0),
+        ic_(0),
+        ih_(0),
+        iw_(0),
+        oc_(0),
+        oh_(0),
+        ow_(0),
+        needResetBwd_(true),
+        nextIsDnn_(false),
+        initWgtFromMkldnn_(false),
+        preparedOnce_(false) {}
 
   ~MkldnnLayer() {}
 
@@ -111,7 +117,7 @@ public:
 
     if (hasActivation()) {
       VLOG(DNN_BASE) << "Layer name: " << getName() << ", type: " << getType()
-        << ", act: " << activation_->getName();
+                     << ", act: " << activation_->getName();
     } else {
       VLOG(DNN_BASE) << "Layer name: " << getName() << ", type: " << getType();
     }
@@ -153,7 +159,7 @@ public:
 
       CHECK_GT(oMatH_, 0);
       CHECK_EQ(oMatW_, getSize())
-        << "maybe forget to set new layersize when reshape output info";
+          << "maybe forget to set new layersize when reshape output info";
       resetOutput(oMatH_, oMatW_);
 
       resetFwd(passType);
@@ -207,7 +213,7 @@ public:
    * Initial weight of this layer
    */
   virtual bool initWgt(const LayerMap& layerMap,
-                           const ParameterMap& parameterMap) = 0;
+                       const ParameterMap& parameterMap) = 0;
 
   /**
    * Reshape all the sizes needed including input, output and image sizes
@@ -216,28 +222,28 @@ public:
    */
   virtual void reshape() = 0;
 
-  /** 
+  /**
    * Reset the primitive and buffer needed in Forward
    */
   virtual void resetFwd(PassType passType) = 0;
 
-  /** 
+  /**
    * Submit the forward primitive
    */
   virtual void submitFwd() = 0;
 
-  /** 
+  /**
    * each dnn layer should have function
    * to init or reset backward mkldnn
    */
   virtual void resetBwd() = 0;
 
-  /** 
+  /**
    * Submit the forward primitive
    */
   virtual void submitBwd(const UpdateCallback& callback) = 0;
 
-  /** 
+  /**
    * Reset the primitive and buffer needed in forward activation
    */
   virtual void resetFwdAct() {
@@ -245,12 +251,12 @@ public:
       return;
     }
     std::shared_ptr<mkldnn::memory::desc> md(
-      new mkldnn::memory::desc(topData_->getUserMD()));
+        new mkldnn::memory::desc(topData_->getUserMD()));
     CHECK(md);
     activation_->resetFwd(output_, std::static_pointer_cast<void>(md));
   }
 
-  /** 
+  /**
    * Reset the primitive and buffer needed in backward activation
    */
   virtual void resetBwdAct() {
@@ -258,7 +264,7 @@ public:
       return;
     }
     std::shared_ptr<mkldnn::memory::desc> md(
-      new mkldnn::memory::desc(topDiff_->getUserMD()));
+        new mkldnn::memory::desc(topDiff_->getUserMD()));
     CHECK(md);
     activation_->resetBwd(output_, std::static_pointer_cast<void>(md));
   }
@@ -267,17 +273,13 @@ public:
    * Forward the activation
    * It will auto call mkldnn activation if have
    */
-  virtual void forwardDnnAct() {
-    forwardActivation();
-  }
+  virtual void forwardDnnAct() { forwardActivation(); }
 
   /**
    * Backward the activation
    * It will auto call mkldnn activation if have
    */
-  virtual void BackwardDnnAct() {
-    backwardActivation();
-  }
+  virtual void BackwardDnnAct() { backwardActivation(); }
 
   /**
    * Reset primitive to sum the top diffs if have several branches
@@ -295,21 +297,16 @@ public:
     // TODO(TJ): enable me
   }
 
-
 public:
   /**
    * Get mkldnn top data buffer
    */
-  std::shared_ptr<void> getMkldnnTopData() override {
-    return topData_;
-  }
+  std::shared_ptr<void> getMkldnnTopData() override { return topData_; }
 
   /**
    * Get mkldnn bottom diff buffer
    */
-  std::shared_ptr<void> getMkldnnBotDiff() override {
-    return botDiff_;
-  }
+  std::shared_ptr<void> getMkldnnBotDiff() override { return botDiff_; }
 
 protected:
   /**
@@ -358,9 +355,9 @@ protected:
    * Print some size info like input, output or image sizes
    */
   virtual void printSizeInfo() {
-    VLOG(DNN_SIZES) << "bs: " << bs_
-      << ", ic: " << ic_ << ", ih: " << ih_ << ", iw: " << iw_
-      << ", oc: " << oc_ << ", oh: " << oh_ << ", ow: " << ow_;
+    VLOG(DNN_SIZES) << "bs: " << bs_ << ", ic: " << ic_ << ", ih: " << ih_
+                    << ", iw: " << iw_ << ", oc: " << oc_ << ", oh: " << oh_
+                    << ", ow: " << ow_;
   }
 
   /**
@@ -368,11 +365,10 @@ protected:
    */
   void printDataFlow() {
     if (botData_ && topData_) {
-      VLOG(DNN_FMTS) << "data format flow --- "
-        << botData_->getUserFmt() << " >>> ("
-        << botData_->getIntlFmt() << " >>> "
-        << topData_->getIntlFmt() << ") >>> "
-        << topData_->getUserFmt();
+      VLOG(DNN_FMTS) << "data format flow --- " << botData_->getUserFmt()
+                     << " >>> (" << botData_->getIntlFmt() << " >>> "
+                     << topData_->getIntlFmt() << ") >>> "
+                     << topData_->getUserFmt();
     }
   }
 
@@ -381,11 +377,10 @@ protected:
    */
   void printDiffFlow() {
     if (botDiff_ && topDiff_) {
-      VLOG(DNN_FMTS) << "diff format flow --- "
-        << botDiff_->getUserFmt() << " <<< ("
-        << botDiff_->getIntlFmt()<< " <<< "
-        << topDiff_->getIntlFmt() << ") <<< "
-        << topDiff_->getUserFmt();
+      VLOG(DNN_FMTS) << "diff format flow --- " << botDiff_->getUserFmt()
+                     << " <<< (" << botDiff_->getIntlFmt() << " <<< "
+                     << topDiff_->getIntlFmt() << ") <<< "
+                     << topDiff_->getUserFmt();
     }
   }
 
@@ -400,8 +395,8 @@ protected:
     int len = 0;
     for (size_t i = 0; i < numSequences; ++i) {
       int tmp = starts[i + 1] - starts[i];
-      CHECK(len == 0 || len == tmp)
-        << "all seq length should be equal," << len << " vs " << tmp;
+      CHECK(len == 0 || len == tmp) << "all seq length should be equal," << len
+                                    << " vs " << tmp;
       len = tmp;
     }
     return len;
@@ -421,8 +416,11 @@ protected:
    *   - outputSize = 5;
    *** for conv only support caffe mode by now
    */
-  int calOutputSize(int imageSize, int filterSize, int padding, int stride,
-                       bool caffeMode = true) {
+  int calOutputSize(int imageSize,
+                    int filterSize,
+                    int padding,
+                    int stride,
+                    bool caffeMode = true) {
     int outputSize;
     if (!caffeMode) {
       outputSize =

@@ -36,27 +36,26 @@ public:
 
 public:
   MkldnnActivation()
-    : botData_(nullptr),
-      botDiff_(nullptr),
-      topData_(nullptr),
-      topDiff_(nullptr)
-    {}
+      : botData_(nullptr),
+        botDiff_(nullptr),
+        topData_(nullptr),
+        topDiff_(nullptr) {}
 
   virtual ~MkldnnActivation() {}
 
-  /** 
+  /**
    * each dnn layer should have function
    * to reset forward
    */
   virtual void resetFwd(const Argument& arg,
-    std::shared_ptr<void> topDataMD) = 0;
+                        std::shared_ptr<void> topDataMD) = 0;
 
-  /** 
+  /**
    * each dnn layer should have function
    * to reset backward
    */
   virtual void resetBwd(const Argument& arg,
-    std::shared_ptr<void> topDiffMD) = 0;
+                        std::shared_ptr<void> topDiffMD) = 0;
 };
 
 }  // namespace paddle
