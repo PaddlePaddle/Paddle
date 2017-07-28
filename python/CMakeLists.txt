@@ -39,7 +39,7 @@ add_custom_command(OUTPUT ${OUTPUT_DIR}/.timestamp
     DEPENDS gen_proto_py copy_paddle_pybind framework_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
 
 add_custom_target(paddle_python ALL DEPENDS
-    ${OUTPUT_DIR}/.timestamp)
+    ${OUTPUT_DIR}/.timestamp paddle_pserver_main paddle_trainer paddle_merge_model)
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 
