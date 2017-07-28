@@ -126,11 +126,11 @@ void MkldnnFcLayer::initWgtFromPaddle() {
   if (initWgtFromMkldnn_) {
     return;
   }
-  
+
   if (hasInitedWgt_) {
     return;
   }
-  
+
   // Firstly in mkldnn, the matrix is transposed from initial paddle weight
   MatrixPtr paddleWgtT;
   paddleWgt_->transpose(paddleWgtT, true);

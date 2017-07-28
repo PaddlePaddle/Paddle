@@ -19,25 +19,20 @@ limitations under the License. */
 #include "mkldnn.hpp"
 
 namespace paddle {
-/**
- * @brief A MKLDNN memory buffer class
- *
- * 
- */
 
-typedef enum { 
+typedef enum {
   dnnUser2Intl = 0,
-  dnnIntl2User, 
+  dnnIntl2User,
 } dnnCvtType_t;
 
 using dnnfmt = mkldnn::memory::format;
 // This format should be matched with the version of MKLDNN
-const static std::map<dnnfmt, std::string> DNN_FORMAT_STR = {
+static const std::map<dnnfmt, std::string> DNN_FORMAT_STR = {
   {dnnfmt::format_undef, "format_undef"}, {dnnfmt::any, "any"},
   {dnnfmt::blocked, "blocked"}, {dnnfmt::x, "x"}, {dnnfmt::nc, "nc"},
-  {dnnfmt::nchw, "nchw"}, {dnnfmt::nhwc, "nhwc"}, {dnnfmt::chwn, "chwn"}, 
+  {dnnfmt::nchw, "nchw"}, {dnnfmt::nhwc, "nhwc"}, {dnnfmt::chwn, "chwn"},
   {dnnfmt::nChw8c, "nChw8c"}, {dnnfmt::nChw16c, "nChw16c"}, {dnnfmt::oi, "oi"},
-  {dnnfmt::io, "io"}, {dnnfmt::oihw, "oihw"}, {dnnfmt::ihwo, "ihwo"}, 
+  {dnnfmt::io, "io"}, {dnnfmt::oihw, "oihw"}, {dnnfmt::ihwo, "ihwo"},
   {dnnfmt::oIhw8i, "oIhw8i"}, {dnnfmt::oIhw16i, "oIhw16i"},
   {dnnfmt::OIhw8i8o, "OIhw8i8o"}, {dnnfmt::OIhw16i16o, "OIhw16i16o"},
   {dnnfmt::OIhw8o8i, "OIhw8o8i"}, {dnnfmt::OIhw16o16i, "OIhw16o16i"},
@@ -49,7 +44,14 @@ const static std::map<dnnfmt, std::string> DNN_FORMAT_STR = {
   {dnnfmt::gOIhw8o8i, "gOIhw8o8i"}, {dnnfmt::gOIhw16o16i, "gOIhw16o16i"},
   {dnnfmt::gOhIw16o4i, "gOhIw16o4i"}};
 
+class MkldnnBuffer;
+typedef std::shared_ptr<MkldnnBuffer> MkldnnBufferPtr;
 
+/**
+ * @brief A MKLDNN memory buffer class
+ *
+ * 
+ */
 class MkldnnBuffer {
 using mem = mkldnn::memory;
 
@@ -120,7 +122,7 @@ public:
    * generally, it should be after resetUser
    */
   void resetIntl(const mem::primitive_desc& intlPD, void *pdata = NULL) {
-    if (nullptr != pUser_ && 
+    if (nullptr != pUser_ &&
       getUserPD() == intlPD && (pdata == NULL || pdata == getUserData())) {
       pIntl_ = pUser_;
       return;
@@ -131,7 +133,7 @@ public:
     }
     resetMem(pIntl_, intlPD, pdata);
   }
-  
+
   void resetIntl(const std::shared_ptr<mem>& intl) {
     pIntl_ = intl;
   }
@@ -200,7 +202,7 @@ public:
   const void* getIntlData() {
     return getData(pIntl_);
   }
-  
+
   /// it's the element size not memory size
   size_t getIntlSize() {
     return getElementCnt(pIntl_);
@@ -243,14 +245,13 @@ public:
     return pReorder;
   }
 
-
-  /*************** protected functions ***************************************************/
-protected:
+  protected:
+  /*************** protected functions ****************************************/
   /**
    * Reset memory buffer
    */
-  void resetMem(
-    std::shared_ptr<mem>& pMem, const mem::primitive_desc& pd, void* pdata = NULL) {
+  void resetMem(std::shared_ptr<mem>& pMem,
+    const mem::primitive_desc& pd, void* pdata = NULL) {
     checkType(pd);
     mem::primitive_desc tmp = pd;
     if (pdata == NULL) {
@@ -341,9 +342,6 @@ protected:
      mem::primitive_desc tmp = pd;
     checkType(tmp.desc());
   }
-
 };
-
-typedef std::shared_ptr<MkldnnBuffer> MkldnnBufferPtr;
 
 }  // namespace paddle

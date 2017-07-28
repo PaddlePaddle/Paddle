@@ -50,8 +50,8 @@ void MkldnnTester::reset(
   // reset others
   for (size_t i = 0; i < NUM; ++i) {
     configs_[i].layerConfig.set_name(layerNames_[i]);
-    initDataLayer(configs_[i], &(dataLayers_[i]), &(datas_[i]), &(layerMaps_[i]),
-      layerNames_[i], batchSize, trans, useGpu);
+    initDataLayer(configs_[i], &(dataLayers_[i]), &(datas_[i]),
+      &(layerMaps_[i]), layerNames_[i], batchSize, trans, useGpu);
     initTestLayer(configs_[i], &(layerMaps_[i]), &(parameters_[i]),
       &(testLayers_[i]));
   }
@@ -59,7 +59,7 @@ void MkldnnTester::reset(
   refLayer_ = testLayers_[REF];
   EXPECT_EQ(dataLayers_[DNN].size(), dataLayers_[REF].size());
   EXPECT_EQ(parameters_[DNN].size(), parameters_[REF].size());
-  
+
   setInputImgSize();
 }
 
@@ -124,7 +124,7 @@ void MkldnnTester::checkBackwardData() {
     printMatrix(dnnDiff);
     VLOG(lvl_) << "Reference Backward Output BotDiff " << i;
     printMatrix(refDiff);
-    
+
     double delta = compareMatrix(dnnDiff, refDiff);
     EXPECT_LE(fabs(delta), eps_);
     if (isBN) {
@@ -224,7 +224,7 @@ void MkldnnTester::printMatrix(const MatrixPtr& m) {
   const real* pd = m->getData();
   const int width = m->getWidth();
   const int height = m->getHeight();
-  for(int h = 0; h < height; ++h) {
+  for (int h = 0; h < height; ++h) {
     std::stringstream row;
     for (int w = 0; w < width; ++w) {
       row << pd[width * h + w] << ", ";
@@ -237,7 +237,7 @@ void MkldnnTester::printVector(const VectorPtr& v) {
   const real* pd = v->getData();
   const int sz = v->getSize();
   std::stringstream row;
-  for(int i = 0; i < sz; ++i) {
+  for (int i = 0; i < sz; ++i) {
     row << pd[i] << ", ";
   }
   VLOG(lvl_) << row.str();
@@ -283,7 +283,7 @@ void MkldnnTester::runOnce() {
   dnnLayer_->forward(PASS_TRAIN);
   refLayer_->forward(PASS_TRAIN);
   checkForward();
-  
+
   // test backward
   randomTopDiffs();
   dnnLayer_->backward(nullptr);

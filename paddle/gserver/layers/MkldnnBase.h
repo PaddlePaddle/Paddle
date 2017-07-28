@@ -61,7 +61,7 @@ private:
  */
 class MkldnnStream {
 public:
-  explicit MkldnnStream() : ready_(false) {
+  MkldnnStream() : ready_(false) {
     resetState();
   }
 
