@@ -97,9 +97,5 @@ class NetOp : public OperatorBase {
   }
 };
 
-/**
- * @brief Identify operator in local Net. used in backward
- */
-
 }  // namespace framework
 }  // namespace paddle
