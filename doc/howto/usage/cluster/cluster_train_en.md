@@ -21,23 +21,23 @@
 
 # Introduction
 
-In this article, we'll explain how to do distributed training jobs with PaddlePaddle on different types of clusters. The diagram below shows the mail architecture of a distributed trainning job:
+In this article, we'll explain how to run distributed training jobs with PaddlePaddle on different types of clusters. The diagram below shows the main architecture of a distributed trainning job:
 
 <img src="src/trainer.png" width="500">
 
-- Data shard: training data will be split into multiple parts, trainers use some parts of the whole dataset to do the training job.
-- Trainer: each trainer reads the data shard, and do Neural Network training algorithms like "forward" and "backward". Then the trainer will upload calculated "gradients" to parameter servers, and wait for parameters to be optimized on the parameter server side. When that finishes, the trainer download optimized parameters and continues its training.
-- Parameter server: every parameter server stores part of the whole Neural Network model data. They will do optimization calculations when gradients are uploaded from trainers, and then send updated parameters to trainers.
+- Data shard: training data will be split into multiple partitions, trainers use the partitions of the whole dataset to do the training job.
+- Trainer: each trainer reads the data shard, and train the neural network. Then the trainer will upload calculated "gradients" to parameter servers, and wait for parameters to be optimized on the parameter server side. When that finishes, the trainer download optimized parameters and continues its training.
+- Parameter server: every parameter server stores part of the whole neural network model data. They will do optimization calculations when gradients are uploaded from trainers, and then send updated parameters to trainers.
 
-Trainers and Parameter servers coordinate form the distributed SGD(stochastic gradient descent) training algorithm. Meanwhile, PaddlePaddle can support both synchronize SGD and asynchronous SGD.
+PaddlePaddle can support both synchronize stochastic gradient descent (SGD) and asynchronous SGD.
 
-When training with synchronize SGD, PaddlePaddle uses an internal "synchronize barrier" which makes gradients update and parameter download in strict order. On the other hand, asynchronous SGD won't wait for all trainers to finish upload at a single step, this will increase the parallelism of distributed training: parameter servers do not depend on each other, they'll do parameter optimization concurrently. Parameter servers will not wait for trainers, so trainers will also do their work concurrently. But asynchronous SGD will introduce more randomness and noises.
+When training with synchronize SGD, PaddlePaddle uses an internal "synchronize barrier" which makes gradients update and parameter download in strict order. On the other hand, asynchronous SGD won't wait for all trainers to finish upload at a single step, this will increase the parallelism of distributed training: parameter servers do not depend on each other, they'll do parameter optimization concurrently. Parameter servers will not wait for trainers, so trainers will also do their work concurrently. But asynchronous SGD will introduce more randomness and noises in the gradient.
 
 # Preparations
-1. Ready your computer cluster. They are normally a bunch of Linux servers connected by LAN. Each server will be assigned a unique IP address. The computer in the cluster can be called "nodes". Different hardware setup may cause some issue when using different cluster management platforms.
-2. Install PaddlePaddle on every node. If you are going to take advantage of GPU cards, you'll also need to install proper driver and CUDA libraries. To install PaddlePaddle try to read [this](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/getstarted/build_and_install) document. We strongly recommend using [Docker installation](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_en.rst).
+1. Prepare your computer cluster. It's normally a bunch of Linux servers connected by LAN. Each server will be assigned a unique IP address. The computers in the cluster can be called "nodes".
+2. Install PaddlePaddle on every node. If you are going to take advantage of GPU cards, you'll also need to install proper driver and CUDA libraries. To install PaddlePaddle please read [this build and install](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/getstarted/build_and_install) document. We strongly recommend using [Docker installation](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_en.rst).
 
-After installation, you can check the version by typing the below command(run into a docker container if using docker: `docker run -it paddlepaddle/paddle:0.10.0rc3 /bin/bash`):
+After installation, you can check the version by typing the below command (run a docker container  if using docker: `docker run -it paddlepaddle/paddle:[tag] /bin/bash`):
 
 ```bash
 $ paddle version
@@ -81,7 +81,7 @@ Type the command below to start the trainer(name the file whatever you want, lik
 $ python train.py
 ```
 
-Trainers network need to be connected with parameter servers to finish the job. Trainers need to know port and IPs to locate parameter servers. You can pass arguments to trainers through [environment variables](https://en.wikipedia.org/wiki/Environment_variable) or pass to `paddle.init()` function. Arguments passed to the `paddle.init()` function will overwrite environment variables.
+Trainers' network need to be connected with parameter servers' network to finish the job. Trainers need to know port and IPs to locate parameter servers. You can pass arguments to trainers through [environment variables](https://en.wikipedia.org/wiki/Environment_variable) or pass to `paddle.init()` function. Arguments passed to the `paddle.init()` function will overwrite environment variables.
 
 Use environment viriables:
 
@@ -124,7 +124,7 @@ paddle.init(
 
 ## Prepare Training Dataset
 
-Here's some example code “prepare.py”(located in `doc/howto/usage/cluster/src/word2vec/prepare.py`), it will download public `imikolov` dataset and split it into multiple files according to job parallelism(trainers count). Modify `SPLIT_COUNT` to change the count of output files.
+Here's some example code [prepare.py](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/cluster/src/word2vec/prepare.py), it will download public `imikolov` dataset and split it into multiple files according to job parallelism(trainers count). Modify `SPLIT_COUNT` at the begining of `prepare.py` to change the count of output files.
 
 In the real world, we often use `MapReduce` job's output as training data, so there will be lots of files. You can use `mod` to assign training file to trainers:
 
@@ -151,7 +151,7 @@ test.txt-00001
 test.txt-00002
 ```
 
-When job started, every trainer needs to get it's own part of data. In some distributed systems they will provide a storage service, so the date under that path can be accessed by all the trainer nodes. Without storage service, you must copy the training data to each trainer node.
+When job started, every trainer needs to get it's own part of data. In some distributed systems a storage service will be provided, so the date under that path can be accessed by all the trainer nodes. Without the storage service, you must copy the training data to each trainer node.
 
 Different training jobs may have different data format and `reader()` function, developers may need to write different data prepare scripts and `reader()` functions for their job.
 
@@ -176,10 +176,10 @@ Your workspace may looks like:
     `-- test.txt-00002
 ```
 
-- `mylib.py`: some library functions. This is optional.
+- `my_lib.py`: user defined libraries, like PIL libs. This is optional.
 - `word_dict.pickle`: dict file for training word embeding.
-- `train.py`: training program. Sample code: "api_train_v2_cluster.py"(located in `doc/howto/usage/cluster/src/word2vec/api_train_v2_cluster.py`).
-  - ***NOTE:*** You may need to modify the head part of `train.py` when using different cluster platform to retrive configuration environment variables:
+- `train.py`: training program. Sample code: [api_train_v2_cluster.py](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/cluster/src/word2vec/prepare.py). ***NOTE:*** You may need to modify the head part of `train.py` when using different cluster platform to retrive configuration environment variables:
+
   ```python
   cluster_train_file = "./train_data_dir/train/train.txt"
   cluster_test_file = "./test_data_dir/test/test.txt"
@@ -187,19 +187,20 @@ Your workspace may looks like:
   if not node_id:
       raise EnvironmentError("must provied OMPI_COMM_WORLD_RANK")
   ```
+
 - `train_data_dir`: containing training data. Mount from storage service or copy trainning data to here.
 - `test_data_dir`: containing testing data.
 
 # Use cluster platforms or cluster management tools
 
 PaddlePaddle supports running jobs on several platforms including:
-- [Kubernetes](http://kubernetes.io)
-- [OpenMPI](https://www.open-mpi.org)
+- [Kubernetes](http://kubernetes.io) open-source system for automating deployment, scaling, and management of containerized applications from Google.
+- [OpenMPI](https://www.open-mpi.org) Mature high performance parallel computing framework.
 - [Fabric](http://www.fabfile.org) A cluster management tool. Write scripts to submit jobs or manage the cluster.
 
-We'll introduce cluster job management on these platforms. The examples can be found under [here](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/scripts/cluster_train_v2).
+We'll introduce cluster job management on these platforms. The examples can be found under [cluster_train_v2](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/scripts/cluster_train_v2).
 
-These cluster platforms provide API or runtime environment variables for training jobs.
+These cluster platforms provide API or environment variables for training processes, when the job is dispatched to different nodes. Like node ID, IP or total number of nodes etc.
 
 ## Cluster Training Using Fabric
 
@@ -208,12 +209,12 @@ These cluster platforms provide API or runtime environment variables for trainin
 Run `kubectl -f ssh_servers.yaml` under the directory:  `paddle/scripts/cluster_train_v2/fabric/docker_cluster` will launch a demo cluster. Run `kubectl get po -o wide` to get IP addresses of these nodes.
 
 ### Launching Cluster Job
-`paddle.py` provides automatical scripts to start all PaddlePaddle cluster processes in different nodes. By default, all command line options can set as `paddle.py` command options and `paddle.py` will transparently and automatically set these options to PaddlePaddle lower level processes.
+`paddle.py` provides automatical scripts to start all PaddlePaddle cluster processes in different nodes. By default, all command line options can be set as `paddle.py` command options and `paddle.py` will transparently and automatically set these options to PaddlePaddle lower level processes.
 
 `paddle.py`provides two distinguished command option for easy job launching.
 
-`job_dispatch_package`  set it with local `workspace`directory, it will be dispatched to all nodes set in conf.py. It could be helpful for frequent hacking workspace files, otherwise, frequent multi-nodes workspace deployment could make your crazy.
-`job_workspace`  set it with already deployed workspace directory, `paddle.py` will skip dispatch stage to directly launch cluster job with all nodes. It could help to reduce heavy
+- `job_dispatch_package` set it with local `workspace` directory, it will be dispatched to all nodes which is set in `conf.py`. It could be helpful for frequently manipulating workspace files. otherwise, frequent multi-nodes workspace deployment is very annoying.
+- `job_workspace`  set it with already deployed workspace directory, `paddle.py` will skip dispatch stage to directly launch cluster job with all nodes. It could help to reduce heavy
 dispatch latency.
 
 `cluster_train/run.sh` provides command line sample to run `demo/recommendation` cluster job, just modify `job_dispatch_package` and `job_workspace` with your defined directory, then:
