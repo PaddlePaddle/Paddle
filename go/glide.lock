@@ -1,5 +1,5 @@
 hash: 5b22f072fca8ba4b272d48d3cad6fb1f0cb2a5b2a1c6d108af4da98083aad805
-updated: 2017-07-27T12:59:18.359565619+08:00
+updated: 2017-07-28T23:59:00.440183214+08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -173,7 +173,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: 02a66801d979d706a4b445e24e03916eeaa2a404
+  version: e48874b42435b4347fc52bdee0424a52abc974d7
   repo: git@github.com:golang/sys.git
   vcs: git
   subpackages:
@@ -204,8 +204,20 @@ imports:
 - name: gopkg.in/yaml.v2
   version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 testImports:
+- name: github.com/davecgh/go-spew
+  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
+  subpackages:
+  - spew
 - name: github.com/docker/docker
-  version: 8c72417b51a4998caae9f44eaf2f5a654ffcd839
+  version: e9cd2fef805c8182b719d489967fb4d1aa34eecd
   subpackages:
   - pkg/ioutils
   - pkg/longpath
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: 05e8a0eda380579888eb53c394909df027f06991
+  subpackages:
+  - assert

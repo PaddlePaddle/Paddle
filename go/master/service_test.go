@@ -28,7 +28,7 @@ func TestNewServiceWithEtcd(t *testing.T) {
 	defer func() {
 		e.Close()
 		if err := os.RemoveAll(etcdDir); err != nil {
-			log.Fatal(err)
+			t.Fatal(err)
 		}
 	}()
 	select {
@@ -43,26 +43,26 @@ func TestNewServiceWithEtcd(t *testing.T) {
 	masterAddr := "127.0.0.1:3306"
 	store, err := master.NewEtcdClient(ep, masterAddr, master.DefaultLockPath, master.DefaultAddrPath, master.DefaultStatePath, 30)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	_, err = master.NewService(store, 10, 10, 3)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   ep,
 		DialTimeout: 3 * time.Second,
 	})
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	v, err := master.GetKey(cli, master.DefaultAddrPath, 3*time.Second)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	if err := cli.Close(); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	// test master process registry itself into etcd server.
 	assert.Equal(t, masterAddr, v, "master process should registry itself into etcd server.")
