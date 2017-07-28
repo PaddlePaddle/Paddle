@@ -44,7 +44,19 @@ Eigen::GpuDevice* DeviceContext::get_eigen_device<Eigen::GpuDevice>() const {
 CUDADeviceContext::CUDADeviceContext(GPUPlace place) : place_(place) {
   SetDeviceId(place_.device);
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
-  eigen_stream_.reset(new Eigen::CudaStreamDevice(&stream_));
+  // TODO (qijun) Pass a created cuda stream to Eigen::CudaStreamDevice directly
+  // here will cause segment fault. We must implement a class derived from
+  // Eigen::StreamInterface, and reinitialize it with a cuda stream and a gpu id
+  // later. Please refer to the implementation of class EigenCudaStreamDevice
+  // in TensorFlow.
+  //
+  // We find that CUDA 7 introduces a new option, the per-thread default stream,
+  // that has two effects. Please refer to https://devblogs.nvidia.com/
+  // parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
+  //
+  // So, we decide to use default stream and add –default-stream per-thread nvcc
+  // flag. Than, two threads with two CUDADeviceContexts will run parallelly.
+  eigen_stream_.reset(new Eigen::CudaStreamDevice());
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
 }
 
