@@ -30,8 +30,6 @@ using namespace std;     // NOLINT
 using autotest::TensorCheckEqual;
 using autotest::TensorCheckErr;
 
-// clang-format off
-
 void testMatrixMaxSequence(int batchSize, int inputDim) {
   // forward
   MatrixPtr cpuInput = std::make_shared<CpuMatrix>(batchSize, inputDim);
@@ -1160,11 +1158,10 @@ void testBatch2seqPadding(int batchSize, int inputDim) {
   cpuOutput->zero();
   gpuOutput->zero();
 
-
   size_t maxSeqLen = 0;
   size_t numSeq = cpuSequence->getSize() - 1;
-  maxSeqLen = *std::max_element(
-      cpuSequence->getData(), cpuSequence->getData() + numSeq);
+  maxSeqLen = *std::max_element(cpuSequence->getData(),
+                                cpuSequence->getData() + numSeq);
 
   MatrixPtr cBatch = std::make_shared<CpuMatrix>(numSeq * maxSeqLen, inputDim);
   MatrixPtr gBatch = std::make_shared<GpuMatrix>(numSeq * maxSeqLen, inputDim);
@@ -1179,8 +1176,6 @@ void testBatch2seqPadding(int batchSize, int inputDim) {
                                  false,
                                  true);
   cCheck->copyFrom(*gBatch);
-
-  // CPU
 
   int* seqStart = cpuSequence->getData();
   float* batchData = cBatch->getData();
@@ -1204,12 +1199,11 @@ void testBatch2seqPadding(int batchSize, int inputDim) {
   TensorCheckErr(*cBatch, *cCheck);
 }
 
-
 TEST(Matrix, warpCTC) {
   for (auto batchSize : {51, 1285, 3884}) {
     for (auto inputDim : {32, 512, 3026}) {
-        VLOG(3) << " batchSize=" << batchSize << " inputDim=" << inputDim;
-        testBatch2seqPadding(batchSize, inputDim);
+      VLOG(3) << " batchSize=" << batchSize << " inputDim=" << inputDim;
+      testBatch2seqPadding(batchSize, inputDim);
     }
   }
 }
