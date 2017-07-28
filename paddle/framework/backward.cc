@@ -86,8 +86,6 @@ static std::shared_ptr<OperatorBase> BackwardImpl(
     // travesal subnet/op
     for (auto it = forwardNet.ops_.end(); it != forwardNet.ops_.begin(); --it) {
       auto fwd = *it;
-      // for (auto& fwd : forwardNet.ops_) {
-      // auto bwd = Backward(*fwd, no_grad_names);
       auto bwd = Backward(*fwd, no_grad_names);
       net->AddOp(bwd);
       for (size_t i = 0; i < bwd->outputs_.size(); ++i) {
