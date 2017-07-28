@@ -53,11 +53,6 @@ static std::shared_ptr<OperatorBase> EmptyOp() {
 static std::shared_ptr<OperatorBase> BackwardImpl(
     const OperatorBase& forwardOp,
     std::unordered_set<std::string>& no_grad_names, size_t& uniq_id) {
-  // struct OpIdentity {
-  //   size_t local_op_id;
-  //   size_t op_output_offset;
-  // };
-
   if (AllInSet(forwardOp.inputs_, OperatorBase::GRAD_VAR_SUFFIX(),
                no_grad_names)) {
     return EmptyOp();
@@ -87,9 +82,7 @@ static std::shared_ptr<OperatorBase> BackwardImpl(
     for (auto it = forwardNet.ops_.rbegin(); it != forwardNet.ops_.rend();
          ++it) {
       auto fwd = *it;
-      // for (auto& fwd : forwardNet.ops_) {
-      // auto bwd = Backward(*fwd, no_grad_names);
-      auto bwd = Backward(*fwd, no_grad_names);
+      auto bwd = BackwardImpl(*fwd, no_grad_names, uniq_id);
       net->AddOp(bwd);
       for (size_t i = 0; i < bwd->outputs_.size(); ++i) {
         dup_output_ops[bwd->outputs_[i]].emplace_back(local_op_id);
@@ -138,6 +131,7 @@ static std::shared_ptr<OperatorBase> BackwardImpl(
                                         {grad_input}, {}));
       }
     }
+
     for (std::string& grad_output : grad_op->outputs_) {
       if (no_grad_names.count(grad_output)) {
         grad_output = OperatorBase::EMPTY_VAR_NAME();
