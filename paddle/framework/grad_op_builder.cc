@@ -109,7 +109,7 @@ void GradOpBuilder::CompleteGradOp(OperatorBase* grad_op) const {
   }
   grad_op->attrs_["input_format"] = in_format;
   grad_op->attrs_["output_format"] = out_format;
-  grad_op->in_out_idxs_.resect(grad_varmap);
+  grad_op->in_out_idxs_.reset(grad_varmap);
 }
 
 }  // namespace framework
