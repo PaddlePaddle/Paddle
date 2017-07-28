@@ -241,8 +241,6 @@ TEST(Backward, net_input_of_network_not_need_grad) {
       bwd_net->outputs_.begin(), bwd_net->outputs_.end());
   all_output.erase(f::OperatorBase::EMPTY_VAR_NAME());
 
-  LOG(INFO) << bwd_net->DebugString();
-  LOG(INFO) << bwd_net->ops_.size();
   for (auto &out : {"W1", "b1", "hidden0", "W2", "b2"}) {
     ASSERT_NE(all_output.find(out + f::OperatorBase::GRAD_VAR_SUFFIX()),
               all_output.end());
@@ -256,9 +254,9 @@ TEST(Backward, net_input_of_network_not_need_grad) {
   ASSERT_TRUE(bwd_net->ops_[1]->IsNetOp());
   auto first_fc_grad = static_cast<f::NetOp *>(bwd_net->ops_[1].get());
   ASSERT_EQ(3UL, first_fc_grad->ops_.size());
-  LOG(INFO) << first_fc_grad->DebugString();
-  ASSERT_EQ(f::OperatorBase::EMPTY_VAR_NAME(),
-            first_fc_grad[2].Output("X" + f::OperatorBase::GRAD_VAR_SUFFIX()));
+  ASSERT_EQ(
+      f::OperatorBase::EMPTY_VAR_NAME(),
+      first_fc_grad->ops_[2]->Output("A" + f::OperatorBase::GRAD_VAR_SUFFIX()));
 }
 
 TEST(Backward, net_shared_weight) {
@@ -271,7 +269,6 @@ TEST(Backward, net_shared_weight) {
   ASSERT_TRUE(bwd->IsNetOp());
   auto bwd_net = static_cast<f::NetOp *>(bwd.get());
   ASSERT_EQ(3UL, bwd_net->ops_.size());
-  LOG(INFO) << bwd_net->DebugString();
   ASSERT_EQ("add_grad", bwd_net->ops_[2]->type_);
 }
 
