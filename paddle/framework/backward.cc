@@ -46,6 +46,7 @@ static std::vector<size_t> InSetIdx(
 
 static std::shared_ptr<OperatorBase> EmptyOp() {
   auto net_op = std::make_shared<NetOp>();
+  net_op->type_ = "@EMPTY_OP@";
   net_op->CompleteAddOp();
   return net_op;
 }
@@ -140,7 +141,7 @@ static std::shared_ptr<OperatorBase> BackwardImpl(
         [](const Pos& l, const Pos& r) { return l.first > r.first; });
 
     for (auto& pos : insert_position) {
-      net->InsertOp(pos.first, pos.second);
+      net->InsertOp(pos.first + 1, pos.second);
     }
 
   } else {
@@ -167,7 +168,7 @@ static std::shared_ptr<OperatorBase> BackwardImpl(
     }
     net->AddOp(grad_op);
   }
-
+  net->type_ = "@GENERATED_BACKWARD@";
   net->CompleteAddOp();
   return net;
 }

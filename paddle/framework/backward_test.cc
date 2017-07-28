@@ -269,15 +269,14 @@ TEST(Backward, net_shared_weight) {
   ASSERT_TRUE(bwd->IsNetOp());
   auto bwd_net = static_cast<f::NetOp *>(bwd.get());
   ASSERT_EQ(3UL, bwd_net->ops_.size());
-  ASSERT_EQ("add_grad", bwd_net->ops_[2]->type_);
+  ASSERT_EQ("add", bwd_net->ops_[2]->type_);
 }
 
 TEST(Backward, op_register_grad_not_for_network) {
-  // auto fwd =
-  //     f::OpRegistry::CreateOp("fc", {"X", "W", "b"}, {"Out", "tmp_out"},
-  //                             {{"temporary_index", std::vector<int>{1}}});
+  auto fwd = f::OpRegistry::CreateOp(
+      "fc", {"X", "W", "b"}, {"mul_out", "add_out", "out1"},
+      {{"temporary_index", std::vector<int>{0, 1}}});
 
-  auto fwd = f::OpRegistry::CreateOp("nograd", {"x"}, {"x"}, {});
   ASSERT_THROW(f::OpRegistry::CreateGradOp(*fwd), EnforceNotMet);
 }
 
@@ -350,13 +349,11 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
                                     {"mul_out3", "tmp_out3", "out3"}, {}));
   net.CompleteAddOp();
   auto backward = f::Backward(net, {"mul_out2", "tmp_out2", "out2"});
+  LOG(INFO) << backward->DebugString();
+
   ASSERT_TRUE(backward->IsNetOp());
   auto bwd_net = static_cast<f::NetOp *>(backward.get());
   ASSERT_EQ(bwd_net->ops_.size(), 3UL);
-  EXPECT_EQ(bwd_net->ops_[0]->type_, "");
-  EXPECT_EQ(bwd_net->ops_[1]->type_, "");
-  EXPECT_EQ(bwd_net->ops_[2]->type_, "");
-
   auto &grad_fc = *bwd_net->ops_[0];
   EXPECT_EQ(grad_fc.inputs_.size(), 3UL + 3UL + 3UL);
   EXPECT_EQ(grad_fc.outputs_.size(), 3UL);
