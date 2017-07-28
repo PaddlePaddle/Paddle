@@ -94,6 +94,9 @@ class Tensor {
    * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
    */
   template <typename T>
+  inline void CopyFrom(const Tensor& src, const platform::DeviceContext& ctx);
+
+  template <typename T>
   inline void CopyFrom(const Tensor& src,
                        const platform::CPUDeviceContext& ctx);
 
