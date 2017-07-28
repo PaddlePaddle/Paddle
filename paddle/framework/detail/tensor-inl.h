@@ -96,7 +96,7 @@ inline void Tensor::CopyFrom(const Tensor& src,
     return;
   }
 #endif
-  PADDLE_ENFORCE(false, "Thte device context type is not supported.");
+  PADDLE_ENFORCE(false, "The device context type is not supported.");
 }
 
 template <typename T>
