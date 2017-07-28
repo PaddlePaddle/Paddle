@@ -1354,7 +1354,7 @@ class LayerBase(object):
             active_type="",
             drop_rate=0.,
             coeff=None,
-            score_with_paddle_wgt=None,
+            init_wgt_from_mkldnn=None,
             error_clipping_threshold=None):
         config_assert('@' not in name,
                       "layer name: %s contain special character @" % name)
@@ -1377,11 +1377,11 @@ class LayerBase(object):
         self.config.name = name
         self.config.type = type
         self.config.active_type = active_type
-        if score_with_paddle_wgt is not None:
-            self.config.score_with_paddle_wgt = score_with_paddle_wgt
+        if init_wgt_from_mkldnn is not None:
+            self.config.init_wgt_from_mkldnn = init_wgt_from_mkldnn
         else:
-            self.config.score_with_paddle_wgt = bool(
-              int(g_command_config_args.get("score_with_paddle_wgt", 0)))
+            self.config.init_wgt_from_mkldnn = bool(
+              int(g_command_config_args.get("init_wgt_from_mkldnn", 0)))
         if coeff is not None:
             self.config.coeff = float(coeff)
         if size != 0:
@@ -1602,7 +1602,7 @@ class FCLayer(LayerBase):
             sparse = format == "csr" or format == "csc"
             if use_mkldnn:
                 dims = [self.config.size, input_layer.size]
-                config_assert(not sparse), "MkldnnFCLayer do not support sparse format yet")
+                config_assert(not sparse, "MkldnnFCLayer do not support sparse format yet")
             else:
                 dims = [input_layer.size, self.config.size]
             if sparse:

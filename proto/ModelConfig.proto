@@ -487,6 +487,8 @@ message LayerConfig {
   // are trained without MKLDNN layers
   // After training with MKLDNN layers, the weight will be stored as MKLDNN format
   // If restore from this checkpoint must set it true
+  // TODO(TJ): always save mkldnn weight as paddle format when checkpoint
+  //           then can remove this flag
   optional bool init_wgt_from_mkldnn = 57 [default = false];
 }
 
