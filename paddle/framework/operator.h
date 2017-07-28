@@ -101,6 +101,7 @@ class OperatorBase {
 
   //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
+
   //! Get a input which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Inputs(const std::string& name) const;
