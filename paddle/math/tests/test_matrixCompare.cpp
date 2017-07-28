@@ -30,6 +30,8 @@ using namespace std;     // NOLINT
 using autotest::TensorCheckEqual;
 using autotest::TensorCheckErr;
 
+// clang-format off
+
 void testMatrixMaxSequence(int batchSize, int inputDim) {
   // forward
   MatrixPtr cpuInput = std::make_shared<CpuMatrix>(batchSize, inputDim);
@@ -1139,6 +1141,77 @@ TEST(CpuMatrix, copyFrom) {
   copy.copyFrom(gpu, HPPL_STREAM_DEFAULT);
 
   TensorCheckEqual(cpu, copy);
+}
+
+void testBatch2seqPadding(int batchSize, int inputDim) {
+  MatrixPtr cpuInput = std::make_shared<CpuMatrix>(batchSize, inputDim);
+  MatrixPtr gpuInput = std::make_shared<GpuMatrix>(batchSize, inputDim);
+  cpuInput->randomizeUniform();
+  gpuInput->copyFrom(*cpuInput);
+
+  IVectorPtr cpuSequence;
+  generateSequenceStartPositions(batchSize, cpuSequence);
+  IVectorPtr gpuSequence = IVector::create(cpuSequence->getSize(), true);
+  gpuSequence->copyFrom(*cpuSequence);
+
+  int newBatchSize = cpuSequence->getSize() - 1;
+  MatrixPtr cpuOutput = std::make_shared<CpuMatrix>(newBatchSize, inputDim);
+  MatrixPtr gpuOutput = std::make_shared<GpuMatrix>(newBatchSize, inputDim);
+  cpuOutput->zero();
+  gpuOutput->zero();
+
+
+  size_t maxSeqLen = 0;
+  size_t numSeq = cpuSequence->getSize() - 1;
+  maxSeqLen = *std::max_element(
+      cpuSequence->getData(), cpuSequence->getData() + numSeq);
+
+  MatrixPtr cBatch = std::make_shared<CpuMatrix>(numSeq * maxSeqLen, inputDim);
+  MatrixPtr gBatch = std::make_shared<GpuMatrix>(numSeq * maxSeqLen, inputDim);
+  MatrixPtr cCheck = std::make_shared<CpuMatrix>(numSeq * maxSeqLen, inputDim);
+
+  hl_sequence2batch_copy_padding(gBatch->getData(),
+                                 gpuInput->getData(),
+                                 cpuSequence->getData(),
+                                 inputDim,
+                                 maxSeqLen,
+                                 numSeq,
+                                 false,
+                                 true);
+  cCheck->copyFrom(*gBatch);
+
+  // CPU
+
+  int* seqStart = cpuSequence->getData();
+  float* batchData = cBatch->getData();
+  float* seqData = cpuInput->getData();
+  for (size_t i = 0; i < maxSeqLen; i++) {
+    for (size_t j = 0; j < numSeq; j++) {
+      size_t sequenceStart = seqStart[j];
+      size_t sequenceLength = seqStart[j + 1] - seqStart[j];
+      if (i < sequenceLength) {
+        memcpy(batchData + (i * numSeq + j) * inputDim,
+               seqData + (sequenceStart + i) * inputDim,
+               inputDim * sizeof(real));
+      } else {
+        memset(batchData + (i * numSeq + j) * inputDim,
+               0,
+               inputDim * sizeof(real));
+      }
+    }
+  }
+
+  TensorCheckErr(*cBatch, *cCheck);
+}
+
+
+TEST(Matrix, warpCTC) {
+  for (auto batchSize : {51, 1285, 3884}) {
+    for (auto inputDim : {32, 512, 3026}) {
+        VLOG(3) << " batchSize=" << batchSize << " inputDim=" << inputDim;
+        testBatch2seqPadding(batchSize, inputDim);
+    }
+  }
 }
 
 #endif
