@@ -35,7 +35,7 @@ void Copy<platform::CPUPlace, platform::GPUPlace>(platform::CPUPlace dst_place,
                                                   platform::GPUPlace src_place,
                                                   const void* src, size_t num,
                                                   cudaStream_t stream) {
-  platform::GPUPlaceGuard g(src_place.device);
+  platform::SetDeviceId(src_place.device);
   platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
 }
 
@@ -45,7 +45,7 @@ void Copy<platform::GPUPlace, platform::CPUPlace>(platform::GPUPlace dst_place,
                                                   platform::CPUPlace src_place,
                                                   const void* src, size_t num,
                                                   cudaStream_t stream) {
-  platform::GPUPlaceGuard g(dst_place.device);
+  platform::SetDeviceId(dst_place.device);
   platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
 }
 
@@ -56,7 +56,7 @@ void Copy<platform::GPUPlace, platform::GPUPlace>(platform::GPUPlace dst_place,
                                                   const void* src, size_t num,
                                                   cudaStream_t stream) {
   if (dst_place == src_place) {
-    platform::GPUPlaceGuard g(src_place.device);
+    platform::SetDeviceId(src_place.device);
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToDevice, stream);
   } else {
     platform::GpuMemcpyPeer(dst, dst_place.device, src, src_place.device, num,
