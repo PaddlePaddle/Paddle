@@ -19,6 +19,7 @@ import (
 	"compress/gzip"
 	"encoding/gob"
 	"errors"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"sync"
@@ -32,6 +33,18 @@ import (
 const (
 	dialTimeout = 5 * time.Second
 )
+
+// ErrAllTaskFailed occur when tasks are in done or failed state.
+var ErrAllTaskFailed = errors.New("all task finished")
+
+// ErrNoMoreAvailable occur when no task in todo and yet not all done or fail.
+var ErrNoMoreAvailable = errors.New("no more available task")
+
+// ErrPassBefore client side pass number does not match with master counter.
+var ErrPassBefore = errors.New("pass number smaller than master")
+
+// ErrPassAfter client side pass number does not match with master counter.
+var ErrPassAfter = errors.New("pass number larger than master")
 
 // Store is the interface for save and load the master state.
 type Store interface {
@@ -75,17 +88,26 @@ type Service struct {
 	chunksPerTask int
 	timeoutDur    time.Duration
 	failureMax    int
-	ready         chan struct{}
 	store         Store
 
-	mu            sync.Mutex
-	initDone      bool
-	taskQueues    taskQueues
+	ready    chan struct{}
+	initDone bool
+
+	mu         sync.Mutex
+	taskQueues taskQueues
+	currPass   int
+	jobTasks   []taskEntry
+
 	savingTrainer string
 }
 
 func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
-	id := 0
+	// generate uniq id across job using nanosecond + randint + counter
+	// FIXME(typhoonzero): this is a workaround, use uuid
+	randStart := rand.Int()
+	counter := 0
+	timestamp := time.Now().Nanosecond()
+	id := timestamp + randStart + counter
 	if chunksPerTask <= 0 {
 		chunksPerTask = 1
 	}
@@ -95,7 +117,8 @@ func partition(chunks []Chunk, chunksPerTask int) []taskEntry {
 	for i, c := range chunks {
 		if i%chunksPerTask == 0 && len(cur.Task.Chunks) > 0 {
 			cur.Task.Meta.ID = id
-			id++
+			counter++
+			id = timestamp + randStart + counter
 			result = append(result, cur)
 			cur.Task.Chunks = nil
 		}
@@ -266,19 +289,21 @@ func (s *Service) SetDataset(globPaths []string, _ *int) error {
 		return err
 	}
 
-	s.taskQueues.Todo = partition(chunks, s.chunksPerTask)
+	s.jobTasks = partition(chunks, s.chunksPerTask)
+	s.taskQueues.Todo = s.jobTasks
 
 	err = s.snapshot()
 	if err != nil {
 		log.Errorln(err)
 		return err
 	}
-
 	close(s.ready)
 	s.initDone = true
 	return nil
 }
 
+// processFailedTask retry s.failureMax times for failed task.
+// return true if all task are done or failed.
 func (s *Service) processFailedTask(t taskEntry, epoch int) {
 	if t.Task.Meta.Epoch != epoch {
 		// new epoch, task launched after the
@@ -302,8 +327,9 @@ func (s *Service) processFailedTask(t taskEntry, epoch int) {
 		return
 	}
 
-	log.Warningf("Task %v failed %d times, discard.", t.Task, t.NumFailure)
+	log.Warningf("Task %v failed %d times, re-dispatch.", t.Task, t.NumFailure)
 	s.taskQueues.Todo = append(s.taskQueues.Todo, t)
+	return
 }
 
 func (s *Service) checkTimeoutFunc(taskID int, epoch int) func() {
@@ -331,37 +357,30 @@ func (s *Service) logFields() log.Fields {
 }
 
 // GetTask gets a new task from the service.
-func (s *Service) GetTask(_ int, task *Task) error {
+// passID is the client side pass count
+func (s *Service) GetTask(passID int, task *Task) error {
 	select {
 	case <-s.ready:
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if passID < s.currPass {
+		return ErrPassBefore
+	}
+	if passID > s.currPass {
+		// Client may get run to pass after master when one client faster than the
+		// other
+		return ErrPassAfter
+	}
 
 	if len(s.taskQueues.Todo) == 0 {
-		if len(s.taskQueues.Done) == 0 {
-			if len(s.taskQueues.Pending) == 0 {
-				err := errors.New("all task failed")
-				log.WithFields(s.logFields()).Warningln("All tasks failed.")
-				return err
-			}
-
-			// TODO(helin): client need to retry in this
-			// error case. Gotcha: RPC client can't
-			// compare returned error with predefined
-			// errors like io.EOF, because the error
-			// instance deserialized from RPC is a
-			// different instance than the error defined
-			// in package. So we need to figure out a way
-			// for client to check this error correctly.
-			err := errors.New("no more available task")
-			log.WithFields(s.logFields()).Warningln("No more available task.")
-			return err
+		if len(s.taskQueues.Done) == 0 && len(s.taskQueues.Pending) == 0 {
+			log.WithFields(s.logFields()).Warningln("All tasks failed, may start next pass")
+			return ErrAllTaskFailed
 		}
-		s.taskQueues.Todo = s.taskQueues.Done
-		s.taskQueues.Done = nil
-		log.WithFields(s.logFields()).Infoln("No more todo task, but trainer is requesting task to do. Move all done task to todo.")
+		log.WithFields(s.logFields()).Warningln("No more available task.")
+		return ErrNoMoreAvailable
 	}
 
 	t := s.taskQueues.Todo[0]
@@ -381,7 +400,7 @@ func (s *Service) GetTask(_ int, task *Task) error {
 }
 
 // TaskFinished tell the service that a task is finished.
-func (s *Service) TaskFinished(taskID int, _ *int) error {
+func (s *Service) TaskFinished(taskID int, dummy *int) error {
 	select {
 	case <-s.ready:
 	}
@@ -401,11 +420,14 @@ func (s *Service) TaskFinished(taskID int, _ *int) error {
 	delete(s.taskQueues.Pending, taskID)
 
 	log.WithFields(s.logFields()).Infof("Task #%d finished.", taskID)
-
-	if len(s.taskQueues.Pending) == 0 && len(s.taskQueues.Todo) == 0 {
-		log.WithFields(s.logFields()).Infoln("No more todo and pending task, start a new pass.")
-		s.taskQueues.Todo = append(s.taskQueues.Todo, s.taskQueues.Done...)
-		s.taskQueues.Done = nil
+	if len(s.taskQueues.Todo) == 0 && len(s.taskQueues.Pending) == 0 {
+		// increase master side pass count if all tasks finished
+		s.currPass++
+		s.taskQueues.Todo = s.jobTasks
+		s.taskQueues.Done = []taskEntry{}
+		// TODO(typhoonzero): deal with failed tasks
+		s.taskQueues.Failed = []taskEntry{}
+		log.WithFields(s.logFields()).Warningf("all task finished, add new pass data, newpass: %d.", s.currPass)
 	}
 
 	err := s.snapshot()
@@ -416,7 +438,7 @@ func (s *Service) TaskFinished(taskID int, _ *int) error {
 }
 
 // TaskFailed tells the service that a task is failed.
-func (s *Service) TaskFailed(meta TaskMeta, _ *int) error {
+func (s *Service) TaskFailed(meta TaskMeta, dummy *int) error {
 	select {
 	case <-s.ready:
 	}

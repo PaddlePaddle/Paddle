@@ -207,8 +207,8 @@ Error __must_check backward(Argument& act) {
     argument_.value->setData(act.value->getData() + offset, 1UL, size);
     argument_.grad->setData(act.grad->getData() + offset, 1UL, size);
 
-    Error status = softmax_.backward(argument_);
-    if (!status) return status;
+    Error err = softmax_.backward(argument_);
+    if (!err.isOK()) return err;
   }
   return Error();
 }

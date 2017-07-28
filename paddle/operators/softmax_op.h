@@ -14,23 +14,21 @@
 
 #pragma once
 
-#include "glog/logging.h"
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/operator.h"
+#include "paddle/operators/type_alias.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class SoftmaxKernel : public framework::OpKernel {
+class SoftmaxKernel : public OpKernel {
 public:
-  void Compute(const framework::KernelContext& context) const override {
-    auto input = context.Input(0)->Get<framework::Tensor>();
-    auto* output = context.Output(0)->GetMutable<framework::Tensor>();
+  void Compute(const KernelContext& context) const override {
+    auto input = context.Input(0)->Get<Tensor>();
+    auto* output = context.Output(0)->GetMutable<Tensor>();
     output->mutable_data<T>(context.GetPlace());
 
-    auto logits = framework::EigenMatrix<T>::From(input);
-    auto softmax = framework::EigenMatrix<T>::From(*output);
+    auto logits = EigenMatrix<T>::From(input);
+    auto softmax = EigenMatrix<T>::From(*output);
 
     const int kBatchDim = 0;
     const int kClassDim = 1;

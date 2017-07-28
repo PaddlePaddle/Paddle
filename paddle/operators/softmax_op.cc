@@ -12,16 +12,14 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 #include "paddle/operators/softmax_op.h"
-#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-class SoftmaxOp : public framework::OperatorWithKernel {
+class SoftmaxOp : public OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {
+  void InferShape(const std::vector<const Tensor *> &inputs,
+                  const std::vector<Tensor *> &outputs) const override {
     PADDLE_ENFORCE(inputs.size() == 1, "Only one input is need for softmax");
     PADDLE_ENFORCE(inputs[0]->dims().size() == 2,
                    "The input of softmax op must be matrix");
@@ -31,10 +29,9 @@ protected:
   }
 };
 
-class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
+class SoftmaxOpMaker : public OpProtoAndCheckerMaker {
 public:
-  SoftmaxOpMaker(framework::OpProto *proto,
-                 framework::OpAttrChecker *op_checker)
+  SoftmaxOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "input of softmax");
     AddOutput("Y", "output of softmax");
@@ -42,11 +39,10 @@ public:
   }
 };
 
-class SoftmaxOpGrad : public framework::OperatorWithKernel {
+class SoftmaxOpGrad : public OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {}
+  void InferShape(const std::vector<const Tensor *> &inputs,
+                  const std::vector<Tensor *> &outputs) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "SoftmaxOpGrad";
     return "";
@@ -56,9 +52,6 @@ protected:
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
-
 REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker);
-REGISTER_GRADIENT_OP(softmax, softmax_grad, paddle::operators::SoftmaxOpGrad);
-REGISTER_OP_CPU_KERNEL(softmax,
-                       ops::SoftmaxKernel<paddle::platform::CPUPlace, float>);
+REGISTER_GRADIENT_OP(softmax, softmax_grad, ops::SoftmaxOpGrad);
+REGISTER_OP_CPU_KERNEL(softmax, ops::SoftmaxKernel<ops::CPUPlace, float>);
