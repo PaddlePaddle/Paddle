@@ -305,4 +305,5 @@ void testOperatorGrad(TestConfig& config,
                       size_t batchSize,
                       bool useGpu,
                       bool testState = false);
+
 }  //  namespace paddle

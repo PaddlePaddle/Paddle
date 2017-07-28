@@ -1594,8 +1594,7 @@ class FCLayer(LayerBase):
             self.layer_type = "mkldnn_fc"
         super(FCLayer, self).__init__(name, self.layer_type, size, inputs=inputs, **xargs)
         if use_mkldnn:
-            config_assert(len(inputs) == 1,
-              "MkldnnFCLayer support one and only one input!")
+            config_assert(len(inputs) == 1, "MkldnnFCLayer support one and only one input!")
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             psize = self.config.size * input_layer.size
@@ -1603,8 +1602,7 @@ class FCLayer(LayerBase):
             sparse = format == "csr" or format == "csc"
             if use_mkldnn:
                 dims = [self.config.size, input_layer.size]
-                config_assert(not sparse),
-                  "MkldnnFCLayer do not support sparse format yet")
+                config_assert(not sparse), "MkldnnFCLayer do not support sparse format yet")
             else:
                 dims = [input_layer.size, self.config.size]
             if sparse:
