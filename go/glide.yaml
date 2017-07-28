@@ -15,10 +15,10 @@ import:
 - package: github.com/topicai/candy
 - package: golang.org/x/crypto
   vcs: git
-  repo: git@github.com:golang/crypto.git
+  repo: https://github.com/golang/crypto.git
 - package: golang.org/x/sys
   vcs: git
-  repo: git@github.com:golang/sys.git
+  repo: https://github.com/golang/sys.git
 - package: golang.org/x/text
   vcs: git
-  repo: git@github.com:golang/text.git
+  repo: https://github.com/golang/text.git
