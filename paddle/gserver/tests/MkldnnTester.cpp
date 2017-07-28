@@ -226,6 +226,8 @@ void MkldnnTester::printTopDatas() {
 }
 
 void MkldnnTester::printMatrix(const MatrixPtr& m) {
+  CHECK(m);
+  CHECK(m->getData());
   const real* pd = m->getData();
   const int width = m->getWidth();
   const int height = m->getHeight();
@@ -239,6 +241,8 @@ void MkldnnTester::printMatrix(const MatrixPtr& m) {
 }
 
 void MkldnnTester::printVector(const VectorPtr& v) {
+  CHECK(v);
+  CHECK(v->getData());
   const real* pd = v->getData();
   const int sz = v->getSize();
   std::stringstream row;
