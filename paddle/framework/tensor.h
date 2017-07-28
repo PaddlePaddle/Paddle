@@ -132,10 +132,10 @@ class Tensor {
   template <typename T, typename Place>
   struct PlaceholderImpl : public Placeholder {
     PlaceholderImpl(Place place, size_t size)
-        : place_(place),
-          size_(size),
-          ptr_(static_cast<T*>(memory::Alloc(place, size)),
-               memory::PODDeleter<T, Place>(place)) {
+        : ptr_(static_cast<T*>(memory::Alloc(place, size)),
+               memory::PODDeleter<T, Place>(place)),
+          place_(place),
+          size_(size) {
       PADDLE_ENFORCE(ptr_ != nullptr, "Insufficient %s memory to allocation.",
                      is_cpu_place(place_) ? "CPU" : "GPU");
     }
