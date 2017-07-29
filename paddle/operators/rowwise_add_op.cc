@@ -13,15 +13,13 @@
    limitations under the License. */
 
 #include "paddle/operators/rowwise_add_op.h"
-#include "paddle/framework/op_registry.h"
 namespace paddle {
 namespace operators {
 
-class RowWiseAddOp : public framework::OperatorWithKernel {
+class RowWiseAddOp : public OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {
+  void InferShape(const std::vector<const Tensor *> &inputs,
+                  const std::vector<Tensor *> &outputs) const override {
     PADDLE_ENFORCE(inputs.size() == 2UL, "Two inputs is needed by rowwise add");
     auto dim0 = inputs[0]->dims();
     auto dim1 = inputs[1]->dims();
@@ -34,11 +32,10 @@ protected:
   }
 };
 
-class RowWiseAddOpMaker : public framework::OpProtoAndCheckerMaker {
+class RowWiseAddOpMaker : public OpProtoAndCheckerMaker {
 public:
-  RowWiseAddOpMaker(framework::OpProto *proto,
-                    framework::OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  RowWiseAddOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The left input of row-wise add op, must be matrix");
     AddInput("b", "The right input of row-wise add op, must be vector");
     AddOutput("Out", "The output of row-wise add op");
@@ -53,9 +50,6 @@ for i in xrange(X.shape[0]):
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(rowwise_add,
-            paddle::operators::RowWiseAddOp,
-            paddle::operators::RowWiseAddOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    rowwise_add,
-    paddle::operators::RowWiseAddKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP(rowwise_add, ops::RowWiseAddOp, ops::RowWiseAddOpMaker);
+REGISTER_OP_CPU_KERNEL(rowwise_add,
+                       ops::RowWiseAddKernel<ops::CPUPlace, float>);

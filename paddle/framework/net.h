@@ -37,21 +37,7 @@ namespace framework {
  * This is the base class of network, all the networks should implement the APIs
  * it defines.
  */
-class Net : public OperatorBase {
- public:
-  virtual void AddOp(const std::shared_ptr<OperatorBase>& op) = 0;
-  virtual void CompleteAddOp(bool calc) = 0;
-};
-
-using NetPtr = std::shared_ptr<Net>;
-
-/**
- * @brief a basic implementation of Net.
- *
- * PlainNet is a very simple Net, it create a list of operators, and run them
- * sequentially following the order they added.
- */
-class PlainNet : public Net {
+class NetOp : public OperatorBase {
  public:
   /**
    * Infer all the operators' input and output variables' shapes, will be called
@@ -80,14 +66,16 @@ class PlainNet : public Net {
   /**
    * @brief Add an operator by ptr
    */
-  void AddOp(const std::shared_ptr<OperatorBase>& op) override {
+  void AddOp(const std::shared_ptr<OperatorBase>& op) {
     PADDLE_ENFORCE(!add_op_done_, "Cannot AddOp when this network is sealed");
     ops_.push_back(op);
   }
 
-  void CompleteAddOp(bool calculate = true) override;
+  void CompleteAddOp(bool calculate = true);
 
   std::string DebugString() const override;
+
+  bool IsNetOp() const override;
 
   std::vector<std::shared_ptr<OperatorBase>> ops_;
 
@@ -99,8 +87,6 @@ class PlainNet : public Net {
     return container.find(key) != container.end();
   }
 };
-
-std::shared_ptr<PlainNet> AddBackwardOp(std::shared_ptr<PlainNet> ForwardOps);
 
 }  // namespace framework
 }  // namespace paddle

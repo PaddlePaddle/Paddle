@@ -403,15 +403,16 @@ class GradOpRegisterHelper {
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
       __reg_op_kernel_##type##_##DEVICE_TYPE##__,                         \
       "REGISTER_OP_KERNEL must be in global namespace");                  \
-  struct __op_kernel_register__##type##__ {                               \
-    __op_kernel_register__##type##__() {                                  \
+  struct __op_kernel_register__##type##__##DEVICE_TYPE##__ {              \
+    __op_kernel_register__##type##__##DEVICE_TYPE##__() {                 \
       ::paddle::framework::OperatorWithKernel::OpKernelKey key;           \
       key.place_ = PlaceType();                                           \
       ::paddle::framework::OperatorWithKernel::AllOpKernels()[#type][key] \
           .reset(new __VA_ARGS__());                                      \
     }                                                                     \
   };                                                                      \
-  static __op_kernel_register__##type##__ __reg_kernel_##type##__;        \
+  static __op_kernel_register__##type##__##DEVICE_TYPE##__                \
+      __reg_kernel_##type##__##DEVICE_TYPE##__;                           \
   int __op_kernel_register_##type##_handle_##DEVICE_TYPE##__() { return 0; }
 
 // (type, KernelType)

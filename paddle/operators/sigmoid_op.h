@@ -14,25 +14,23 @@
 
 #pragma once
 
-#include "glog/logging.h"
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/operator.h"
+#include "paddle/operators/type_alias.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class SigmoidKernel : public framework::OpKernel {
+class SigmoidKernel : public OpKernel {
 public:
-  void Compute(const framework::KernelContext& context) const override {
-    auto input = context.Input(0)->Get<framework::Tensor>();
-    auto* output = context.Output(0)->GetMutable<framework::Tensor>();
+  void Compute(const KernelContext& context) const override {
+    auto input = context.Input(0)->Get<Tensor>();
+    auto* output = context.Output(0)->GetMutable<Tensor>();
 
     output->mutable_data<T>(context.GetPlace());
 
-    framework::EigenVector<T>::Flatten(*output).device(
+    EigenVector<T>::Flatten(*output).device(
         *(context.GetEigenDevice<Place>())) =
-        1.0 / (1.0 + (-1.0 * framework::EigenVector<T>::Flatten(input)).exp());
+        1.0 / (1.0 + (-1.0 * EigenVector<T>::Flatten(input)).exp());
   }
 };
 }  // namespace operators

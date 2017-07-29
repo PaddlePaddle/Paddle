@@ -23,7 +23,7 @@ using namespace paddle::framework;
 
 namespace rnn {
 
-/*
+/**
  * Memory of a RNN (same as the role of `Momory` in PaddlePaddle).
  *
  * Memory attributes cached by this op, dims will be infered from
@@ -67,15 +67,15 @@ struct ArgumentName {
   std::string boot_memories;  // the boot memory name
 };
 
-/*
- * Prepare inputs for each stepnet.
+/**
+ * Prepare inputs for each step net.
  */
 void SegmentInputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
                    const std::vector<Link>& inlinks,
                    const size_t seq_len);
 
-/*
- * Process outputs of stepnets and merge to variables.
+/**
+ * Process outputs of step nets and merge to variables.
  */
 void ConcatOutputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
                    const std::vector<Link>& outlinks,
@@ -100,44 +100,31 @@ void InitArgument(const ArgumentName& name, Argument* arg);
 
 class RecurrentAlgorithm {
 public:
-  /*
-   * Forward run the RNN.
-   *
-   * NOTE the context's scope is not given until `Run` called, so step scopes'
-   * father should be set/updated in this method.
-   */
   void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const;
 
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
 
+  /**
+   * InferShape must be called before Run.
+   */
   void InferShape(const std::shared_ptr<Scope>& scope) const;
-
-  std::string debug_string() const;
 
 protected:
   /*
-   * the step scopes as the father scope. The step scopes will be stored in
-   * the father scope as a variable whose name is specified by
-   * `step_scopes_name_`.
+   * The step scopes will be stored in the father scope as a variable.
    *
-   * NOTE the scopes are reused by both the `Forward` and `Backward`, so just
+   * NOTE the scopes are reused in both the forward and backward, so just
    * create once and expand its size if more steps need.
    */
   void CreateScopes(std::shared_ptr<Scope> scope) const;
 
-  /*
-   * Get the step scopes.
-   */
   inline const std::vector<std::shared_ptr<Scope>>& GetStepScopes(
       std::shared_ptr<Scope> scope) const {
     return *(scope->GetVariable(arg_->step_scopes))
                 ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
   }
 
-  /*
-   * Init memories.
-   */
   void InitMemories(std::shared_ptr<Scope> step_scopes) const;
 
 private:
@@ -145,35 +132,49 @@ private:
   mutable size_t seq_len_;
 };
 
-/*
- * RNN's backward alogorithm.
- *
- * To accelerate the development of RecurrentGradientOp, we decouple RNN's
- * algorithm and `OperatorBase`'s implementation, the former contains the core
- * implementation of a RNN, and will keep stable even if the framework changes a
- * lot, and the latter is a wrapper acts like an dapter for it to make RNN an
- * operator.
- */
 class RecurrentGradientAlgorithm {
+  /**
+   * RNN's backward alogorithm.
+   *
+   * To accelerate the development of RecurrentGradientOp, we decouple RNN's
+   * algorithm and `OperatorBase`'s implementation, the former contains the core
+   * implementation of a RNN, and will keep stable even if the framework changes
+   * a
+   * lot, and the latter is a wrapper acts like an dapter for it to make RNN an
+   * operator.
+   */
 public:
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
+
   void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const;
+
   void LinkBootMemoryGradients(std::shared_ptr<Scope> step_scopes) const;
+
+  /**
+   * InferShape must be called before Run.
+   */
   void InferShape(const std::shared_ptr<Scope>& scope) const;
+
+protected:
+  inline const std::vector<std::shared_ptr<Scope>>& GetStepScopes(
+      std::shared_ptr<Scope> scope) const {
+    return *(scope->GetVariable(arg_->step_scopes))
+                ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
+  }
 
 private:
   std::unique_ptr<rnn::Argument> arg_;
   mutable size_t seq_len_;
 };
 
-/*
- * RNN forward's op wrapper.
- */
 class RecurrentOp final : public OperatorBase {
 public:
   void Init() override;
 
+  /**
+   * InferShape must be called before Run.
+   */
   virtual void InferShape(const std::shared_ptr<Scope>& scope) const override {
     alg_.InferShape(scope);
   }
@@ -183,21 +184,19 @@ public:
     alg_.Run(scope, dev_ctx);
   }
 
-  virtual ~RecurrentOp() {}
-
-  static const rnn::ArgumentName arg_name;
+  static const rnn::ArgumentName kArgName;
 
 private:
   RecurrentAlgorithm alg_;
 };
 
-/*
- * RNN backward's op wrapper.
- */
 class RecurrentGradientOp final : public OperatorBase {
 public:
   void Init() override;
 
+  /**
+   * InferShape must be called before Run.
+   */
   virtual void InferShape(const std::shared_ptr<Scope>& scope) const override {
     alg_.InferShape(scope);
   }
@@ -207,9 +206,7 @@ public:
     alg_.Run(scope, dev_ctx);
   }
 
-  virtual ~RecurrentGradientOp() {}
-
-  static const rnn::ArgumentName arg_name;
+  static const rnn::ArgumentName kArgName;
 
 private:
   RecurrentGradientAlgorithm alg_;

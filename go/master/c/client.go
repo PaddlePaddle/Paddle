@@ -18,7 +18,6 @@ package main
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
 #define PADDLE_MASTER_OK    0
 #define PADDLE_MASTER_ERROR -1
 
@@ -101,6 +100,12 @@ func paddle_release_master_client(client C.paddle_master_client) {
 	remove(client)
 }
 
+//export paddle_start_get_records
+func paddle_start_get_records(client C.paddle_master_client, pass C.int) {
+	c := get(client)
+	c.StartGetRecords(int(pass))
+}
+
 //export paddle_set_dataset
 func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int) C.int {
 	c := get(client)
@@ -121,15 +126,19 @@ func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int
 
 // paddle_next_record gets the nexts training record.
 //
-// returns number of bytes of the records if success, -1 if failed.
+// returns number of bytes of the records if success, -1 if failed, -2 if pass end.
 //
 //export paddle_next_record
 func paddle_next_record(client C.paddle_master_client, record **C.uchar) C.int {
 	c := get(client)
 	r, err := c.NextRecord()
 	if err != nil {
-		// Error
-		// TODO: return the type of error?
+		// NOTE: use errors to indicate pass ends
+		if err.Error() == master.ErrAllTaskFailed.Error() ||
+			err.Error() == master.ErrNoMoreAvailable.Error() ||
+			err.Error() == master.ErrPassBefore.Error() {
+			return -2
+		}
 		*record = (*C.uchar)(nil)
 		return -1
 	}
