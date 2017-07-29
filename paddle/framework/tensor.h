@@ -18,6 +18,8 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include <typeindex>
+#include <vector>
+
 #include "paddle/framework/ddim.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/device_context.h"
@@ -169,6 +171,44 @@ class Tensor {
    *          PlaceHolder::ptr_ and where the tensor data really begins.
    */
   size_t offset_;
+};
+
+/*
+ * LODTensor
+ */
+class LODTensor {
+ public:
+  typedef std::vector<unsigned int> level_t;
+  typedef std::vector<level_t> lod_t;
+
+  size_t Levels() const { return lod_start_pos_->size(); }
+  size_t Elements(int level = 0) const {
+    return lod_start_pos_->at(level).size();
+  }
+  // Slice of level[elem_begin: elem_end]
+  // NOTE low performance in slice seq_start_positions_.
+  // TODO should call Tensor's Slice.
+  LODTensor LODSlice(int level, int elem_begin, int elem_end) const;
+
+  // Slice with tensor's data shared with this.
+  // LODTensor LODSliceShared(int level, int elem_begin, int elem_end) const;
+
+  // Copy other's lod_start_pos_, to share LOD info.
+  // NOTE the LOD info sould not be changed.
+  void ShareConstLODFrom(const LODTensor& other) {
+    lod_start_pos_ = other.lod_start_pos_;
+  }
+  // Copy other's lod_start_pos_'s content, free to mutate.
+  void ShareMutableLODFrom(const LODTensor& other) {
+    lod_start_pos_ = std::make_shared<lod_t>(other);
+  }
+
+  // Determine whether LODTensor has a valid LOD info.
+  bool HasLOD() const { return lod_start_pos_.get(); }
+
+ private:
+  std::shared_ptr<lod_t> lod_start_pos_;
+  Tensor* tensor_{nullptr};
 };
 
 }  // namespace framework
