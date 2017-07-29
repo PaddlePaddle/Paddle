@@ -96,14 +96,7 @@ class Tensor {
    * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
    */
   template <typename T>
-  inline void CopyFrom(const Tensor& src,
-                       const platform::CPUDeviceContext& ctx);
-
-#ifndef PADDLE_ONLY_CPU
-  template <typename T>
-  inline void CopyFrom(const Tensor& src,
-                       const platform::CUDADeviceContext& ctx);
-#endif
+  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place);
 
   /**
    * @brief   Return the slice of the tensor.
