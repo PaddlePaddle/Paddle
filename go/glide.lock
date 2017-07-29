@@ -1,5 +1,5 @@
-hash: 5b22f072fca8ba4b272d48d3cad6fb1f0cb2a5b2a1c6d108af4da98083aad805
-updated: 2017-07-28T23:59:00.440183214+08:00
+hash: 2a1c0eca5c07a130e3d224f9821f96cfa37a39bf6bce141c855bbc57ef569f1c
+updated: 2017-07-29T07:34:48.722757905+08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -157,7 +157,7 @@ imports:
   version: 07dd2e8dfe18522e9c447ba95f2fe95262f63bb2
 - name: golang.org/x/crypto
   version: 1351f936d976c60a0a48d728281922cf63eafb8d
-  repo: git@github.com:golang/crypto.git
+  repo: https://github.com/golang/crypto.git
   vcs: git
   subpackages:
   - bcrypt
@@ -173,14 +173,14 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: e48874b42435b4347fc52bdee0424a52abc974d7
-  repo: git@github.com:golang/sys.git
+  version: 0f826bdd13b500be0f1d4004938ad978fcc6031e
+  repo: https://github.com/golang/sys.git
   vcs: git
   subpackages:
   - unix
 - name: golang.org/x/text
   version: 836efe42bb4aa16aaa17b9c155d8813d336ed720
-  repo: git@github.com:golang/text.git
+  repo: https://github.com/golang/text.git
   vcs: git
   subpackages:
   - secure/bidirule
@@ -209,7 +209,7 @@ testImports:
   subpackages:
   - spew
 - name: github.com/docker/docker
-  version: e9cd2fef805c8182b719d489967fb4d1aa34eecd
+  version: b6d164e6c46d8115b146e4c3ac93784e9ef8b49e
   subpackages:
   - pkg/ioutils
   - pkg/longpath
