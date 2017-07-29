@@ -83,6 +83,24 @@ inline void Tensor::ShareDataWith(const Tensor& src) {
 
 template <typename T>
 inline void Tensor::CopyFrom(const Tensor& src,
+                             const platform::DeviceContext& ctx) {
+  const auto cpu_ctx = dynamic_cast<const platform::CPUDeviceContext*>(&ctx);
+  if (cpu_ctx) {
+    CopyFrom<T>(src, *cpu_ctx);
+    return;
+  }
+#ifndef PADDLE_ONLY_CPU
+  const auto gpu_ctx = dynamic_cast<const platform::CUDADeviceContext*>(&ctx);
+  if (gpu_ctx) {
+    CopyFrom<T>(src, *gpu_ctx);
+    return;
+  }
+#endif
+  PADDLE_ENFORCE(false, "The device context type is not supported.");
+}
+
+template <typename T>
+inline void Tensor::CopyFrom(const Tensor& src,
                              const platform::CPUDeviceContext& ctx) {
   src.check_memory_size<T>();
   Resize(src.dims());
