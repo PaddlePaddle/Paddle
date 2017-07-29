@@ -129,13 +129,16 @@ class Tensor {
     virtual platform::Place place() const = 0;
   };
 
-  template <typename T, typename PlaceType>
+  template <typename T, typename Place>
   struct PlaceholderImpl : public Placeholder {
-    PlaceholderImpl(PlaceType place, size_t size)
+    PlaceholderImpl(Place place, size_t size)
         : ptr_(static_cast<T*>(memory::Alloc(place, size)),
-               memory::PODDeleter<T, PlaceType>(place)),
+               memory::PODDeleter<T, Place>(place)),
           place_(place),
-          size_(size) {}
+          size_(size) {
+      PADDLE_ENFORCE(ptr_ != nullptr, "Insufficient %s memory to allocation.",
+                     is_cpu_place(place_) ? "CPU" : "GPU");
+    }
 
     virtual size_t size() const { return size_; }
     virtual platform::Place place() const { return place_; }
@@ -143,7 +146,7 @@ class Tensor {
     virtual std::type_index type() const { return std::type_index(typeid(T)); }
 
     /*! the pointer of memory block. */
-    std::unique_ptr<T, memory::PODDeleter<T, PlaceType>> ptr_;
+    std::unique_ptr<T, memory::PODDeleter<T, Place>> ptr_;
 
     /*! the place of memory block. */
     platform::Place place_;
