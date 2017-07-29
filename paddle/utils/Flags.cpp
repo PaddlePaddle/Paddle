@@ -20,11 +20,12 @@ DEFINE_bool(use_gpu, false, "Only support CPU training");
 DEFINE_bool(use_gpu, true, "Whether to use GPU for training");
 #endif
 
-#ifdef PADDLE_USE_MKLDNN
-DEFINE_bool(use_mkldnn, true, "Use MKLDNN for training");
-#else
-DEFINE_bool(use_mkldnn, false, "Only support CPU training");
-#endif
+// TODO(TJ): uncomment me when support multi inputs
+// #ifdef PADDLE_USE_MKLDNN
+// DEFINE_bool(use_mkldnn, true, "Use MKLDNN for training");
+// #else
+DEFINE_bool(use_mkldnn, false, "Default keep CPU training");
+// #endif
 
 DEFINE_bool(parallel_nn,
             false,
