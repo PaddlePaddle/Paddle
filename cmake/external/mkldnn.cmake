@@ -29,15 +29,21 @@ SET(MKLDNN_INSTALL_DIR  "${MKLDNN_INSTALL_ROOT}/opt/paddle/third_party/mkldnn")
 SET(MKLDNN_INC_DIR      "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 
 IF(WIN32)
-    MESSAGE(WARNING "It is not supported compiling with mkldnn in windows Paddle yet."
+    MESSAGE(WARNING "Windowns is not supported with MKLDNN in Paddle yet."
       "Force WITH_MKLDNN=OFF")
     SET(WITH_MKLDNN OFF)
     return()
 ELSE(WIN32)
+    IF(APPLE)
+        MESSAGE(WARNING "MacOS is not supported with MKLDNN in Paddle yet."
+          "Force WITH_MKLDNN=OFF")
+        SET(WITH_MKLDNN OFF)
+        #SET(CMAKE_MACOSX_RPATH 1) # hold for MacOS
+        return()
+    ENDIF(APPLE)
     SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/lib/libmkldnn.so" CACHE FILEPATH "mkldnn library." FORCE)
     MESSAGE(STATUS "Set ${MKLDNN_INSTALL_DIR}/lib to runtime path")
     SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-    #SET(CMAKE_MACOSX_RPATH 1) # hold for MacOS
     SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLDNN_INSTALL_DIR}/lib")
 ENDIF(WIN32)
 
