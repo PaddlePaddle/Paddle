@@ -19,6 +19,10 @@ limitations under the License. */
 #include <memory>
 #include <typeindex>
 #include <vector>
+#if (!PADDLE_ONLY_CPU)
+#include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
+#endif
 
 #include "paddle/framework/ddim.h"
 #include "paddle/memory/memory.h"
@@ -171,17 +175,50 @@ class Tensor {
  */
 class LODTensor {
  public:
-  typedef std::vector<unsigned int> level_t;
+// level_t save offsets of each unit.
+#ifdef PADDLE_ONLY_CPU
+  using level_t = std::vector<uint32_t>;
+#else
+  using level_t = thrust::device_vector<uint32_t>;
+#endif
+  // LOD stores offsets of each level of units, the largest units level first,
+  // then the smaller units level. Each level_t stores the offsets of units in
+  // Tesor.
   typedef std::vector<level_t> lod_t;
 
-  size_t Levels() const { return lod_start_pos_->size(); }
-  size_t Elements(int level = 0) const {
+  explicit LODTensor() {}
+
+  LODTensor(LODTensor&& other)
+      : lod_start_pos_(std::move(other.lod_start_pos_)),
+        tensor_(other.tensor_) {}
+
+  /*
+   * Number of LODTensor's levels, each level has units of data, for example,
+   * in the sentence's view, article, paragraph, sentence are 3 levels.
+   */
+  size_t Levels() const {
+    return lod_start_pos_.get() ? lod_start_pos_->size() : 0UL;
+  }
+  /*
+   * Number of elements in a level.
+   */
+  size_t Elements(uint32_t level = 0) const {
+    PADDLE_ENFORCE(level < Levels(), "level [%d] out of range [%d]", level,
+                   Levels());
     return lod_start_pos_->at(level).size();
   }
-  // Slice of level[elem_begin: elem_end]
-  // NOTE low performance in slice seq_start_positions_.
-  // TODO should call Tensor's Slice.
-  LODTensor LODSlice(int level, int elem_begin, int elem_end) const;
+
+  /*
+   * Slice of a level.
+   */
+  LODTensor Slice(uint32_t level) const;
+
+  /*
+   * Slice of elements of a level, [elem_begin: elem_end]
+   * NOTE low performance in slice seq_start_positions_.
+   */
+  template <typename T>
+  LODTensor Slice(uint32_t level, uint32_t elem_begin, uint32_t elem_end) const;
 
   // Slice with tensor's data shared with this.
   // LODTensor LODSliceShared(int level, int elem_begin, int elem_end) const;
@@ -193,15 +230,18 @@ class LODTensor {
   }
   // Copy other's lod_start_pos_'s content, free to mutate.
   void ShareMutableLODFrom(const LODTensor& other) {
-    lod_start_pos_ = std::make_shared<lod_t>(other);
+    lod_start_pos_ = std::make_shared<lod_t>(*other.lod_start_pos_);
   }
-
   // Determine whether LODTensor has a valid LOD info.
   bool HasLOD() const { return lod_start_pos_.get(); }
 
+  void set_tensor(std::shared_ptr<Tensor> tensor) { tensor_ = tensor; }
+  void set_lod(std::shared_ptr<lod_t> lod) { this->lod_start_pos_ = lod; }
+  Tensor* tensor() { return tensor_.get(); }
+
  private:
   std::shared_ptr<lod_t> lod_start_pos_;
-  Tensor* tensor_{nullptr};
+  std::shared_ptr<Tensor> tensor_;
 };
 
 }  // namespace framework
