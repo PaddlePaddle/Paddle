@@ -20,7 +20,7 @@ IF(WIN32 OR APPLE)
     MESSAGE(WARNING 
         "Windows or Mac is not supported with MKLML in Paddle yet."
         "Force WITH_MKLML=OFF")
-    SET(WITH_MKLML OFF)
+    SET(WITH_MKLML OFF CACHE STRING "Disable MKLML package in Windows and MacOS" FORCE)
     return()
 ENDIF()
 

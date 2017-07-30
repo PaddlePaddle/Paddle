@@ -31,13 +31,13 @@ SET(MKLDNN_INC_DIR      "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn inclu
 IF(WIN32)
     MESSAGE(WARNING "Windowns is not supported with MKLDNN in Paddle yet."
       "Force WITH_MKLDNN=OFF")
-    SET(WITH_MKLDNN OFF)
+    SET(WITH_MKLDNN OFF CACHE STRING "Disable MKLDNN in Windows" FORCE)
     return()
 ELSE(WIN32)
     IF(APPLE)
         MESSAGE(WARNING "MacOS is not supported with MKLDNN in Paddle yet."
-          "Force WITH_MKLDNN=OFF")
-        SET(WITH_MKLDNN OFF)
+            "Force WITH_MKLDNN=OFF")
+        SET(WITH_MKLDNN OFF CACHE STRING "Disable MKLDNN in MacOS" FORCE)
         #SET(CMAKE_MACOSX_RPATH 1) # hold for MacOS
         return()
     ENDIF(APPLE)
