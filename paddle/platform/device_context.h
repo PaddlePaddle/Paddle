@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/platform/gpu_info.h"
 #define EIGEN_USE_GPU
 #endif
+#include <chrono>
 #include <memory>
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -40,7 +41,10 @@ class DeviceContext {
 class CPUDeviceContext : public DeviceContext {
  public:
   typedef std::mt19937 random_generator_type;
-  CPUDeviceContext() { eigen_device_.reset(new Eigen::DefaultDevice()); }
+  CPUDeviceContext() {
+    random_seed_ = std::chrono::system_clock::now().time_since_epoch().count();
+    eigen_device_.reset(new Eigen::DefaultDevice());
+  }
 
   Eigen::DefaultDevice* eigen_device() const { return eigen_device_.get(); }
 
@@ -49,16 +53,15 @@ class CPUDeviceContext : public DeviceContext {
     return retv;
   }
 
-  random_generator_type& RandGenerator(const int seed) {
+  random_generator_type& RandGenerator() {
     if (!rand_generator_) {
-      random_seed_ = seed;
       rand_generator_.reset(new random_generator_type(random_seed_));
     }
     return *rand_generator_.get();
   }
 
  private:
-  int random_seed_;
+  unsigned random_seed_;
   std::unique_ptr<random_generator_type> rand_generator_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
@@ -81,6 +84,9 @@ class GPUPlaceGuard {
 
 class CUDADeviceContext : public DeviceContext {
  public:
+  CUDADeviceContext() {
+    random_seed_ = std::chrono::system_clock::now().time_since_epoch().count();
+  }
   explicit CUDADeviceContext(const GPUPlace gpu_place) : gpu_place_(gpu_place) {
     GPUPlaceGuard guard(gpu_place_);
     PADDLE_ENFORCE(cudaStreamCreate(&stream_), "cudaStreamCreate failed");
@@ -98,9 +104,8 @@ class CUDADeviceContext : public DeviceContext {
                    "cudaStreamSynchronize failed");
   }
 
-  curandGenerator_t RandGenerator(const int seed) {
+  curandGenerator_t RandGenerator() {
     if (!rand_generator_) {
-      random_seed_ = seed;
       GPUPlaceGuard guard(gpu_place_);
       PADDLE_ENFORCE(paddle::platform::dynload::curandCreateGenerator(
                          &rand_generator_, CURAND_RNG_PSEUDO_DEFAULT),
@@ -177,7 +182,7 @@ class CUDADeviceContext : public DeviceContext {
 
   cudnnHandle_t dnn_handle_{nullptr};
 
-  int random_seed_;
+  unsigned random_seed_;
   curandGenerator_t rand_generator_{nullptr};
 };
 

@@ -19,7 +19,28 @@
 namespace paddle {
 namespace operators {
 
-class RandomOp : public framework::OperatorWithKernel {
+template <typename T>
+class GaussianRandomOpKernel<platform::CPUPlace, T>
+    : public framework::OpKernel {
+public:
+  void Compute(const framework::KernelContext& context) const override {
+    auto mean = context.op_.GetAttr<T>("mean");
+    auto std = context.op_.GetAttr<T>("std");
+    // auto seed = context.op_.GetAttr<T>("seed");
+    auto* output = context.Output(0)->GetMutable<framework::Tensor>();
+    T* r = output->mutable_data<T>(context.GetPlace());
+    auto ctx =
+        static_cast<const platform::CPUDeviceContext*>(context.device_context_);
+    // generator need to modify context
+    auto g = const_cast<platform::CPUDeviceContext*>(ctx)->RandGenerator();
+    std::normal_distribution<T> distribution(mean, std);
+    for (int i = 0; i < framework::product(output->dims()); ++i) {
+      r[i] = distribution(g);
+    }
+  }
+};
+
+class GaussianRandomOp : public framework::OperatorWithKernel {
 protected:
   void InferShape(
       const std::vector<const framework::Tensor*>& inputs,
@@ -33,20 +54,21 @@ protected:
   }
 };
 
-class RandomOpMaker : public framework::OpProtoAndCheckerMaker {
+class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
 public:
-  RandomOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  GaussianRandomOpMaker(framework::OpProto* proto,
+                        framework::OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddAttr<std::vector<int>>("shape", "The shape of matrix to be randomized");
-    AddAttr<float>("seed", "random seed generator.").SetDefault(1337);
+    // AddAttr<float>("seed", "random seed generator.").SetDefault(1337);
     AddAttr<float>("mean", "mean value of random.").SetDefault(.0);
     AddAttr<float>("std", "minimum value of random value")
         .SetDefault(1.0)
         .LargerThan(.0);
     AddOutput("Out", "output matrix of random op");
     AddComment(R"DOC(
-Random Operator fill a matrix in normal distribution.
-The eqution : Out = Random(Shape=(d0, d1, ...), Dtype, mean, std)
+GaussianRandom Operator fill a matrix in normal distribution.
+The eqution : Out = GaussianRandom(Shape=(d0, d1, ...), Dtype, mean, std)
 )DOC");
   }
 };
@@ -54,10 +76,11 @@ The eqution : Out = Random(Shape=(d0, d1, ...), Dtype, mean, std)
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(random,
-            paddle::operators::RandomOp,
-            paddle::operators::RandomOpMaker);
+REGISTER_OP(gaussian_random,
+            paddle::operators::GaussianRandomOp,
+            paddle::operators::GaussianRandomOpMaker);
 
-typedef paddle::operators::RandomOpKernel<paddle::platform::CPUPlace, float>
-    RandomOpKernel_CPU_float;
-REGISTER_OP_CPU_KERNEL(random, RandomOpKernel_CPU_float);
+typedef paddle::operators::GaussianRandomOpKernel<paddle::platform::CPUPlace,
+                                                  float>
+    GaussianRandomOpKernel_CPU_float;
+REGISTER_OP_CPU_KERNEL(gaussian_random, GaussianRandomOpKernel_CPU_float);
