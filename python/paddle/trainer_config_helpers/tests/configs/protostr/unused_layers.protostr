@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__sampling_id_layer_0__"
@@ -13,6 +14,7 @@ layers {
   inputs {
     input_layer_name: "probs"
   }
+  init_wgt_from_mkldnn: false
 }
 input_layer_names: "probs"
 output_layer_names: "__sampling_id_layer_0__"

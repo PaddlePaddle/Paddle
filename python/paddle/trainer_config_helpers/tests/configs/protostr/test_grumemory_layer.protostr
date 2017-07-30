@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 120
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__gru_0__"
@@ -17,6 +18,7 @@ layers {
   bias_parameter_name: "___gru_0__.wbias"
   reversed: true
   active_gate_type: "tanh"
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___gru_0__.w0"

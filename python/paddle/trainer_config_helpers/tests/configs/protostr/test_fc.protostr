@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__trans_layer_0__"
@@ -13,6 +14,7 @@ layers {
   inputs {
     input_layer_name: "data"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_0__"
@@ -23,12 +25,14 @@ layers {
     input_layer_name: "__trans_layer_0__"
     input_parameter_name: "___fc_layer_0__.w0"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "mask"
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__selective_fc_layer_0__"
@@ -46,6 +50,7 @@ layers {
   selective_fc_pass_generation: false
   has_selected_colums: true
   selective_fc_full_mul_ratio: 0.02
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___fc_layer_0__.w0"

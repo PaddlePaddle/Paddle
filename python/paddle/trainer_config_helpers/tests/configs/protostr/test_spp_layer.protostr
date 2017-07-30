@@ -6,6 +6,7 @@ layers {
   active_type: ""
   height: 20
   width: 10
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__spp_0__"
@@ -26,6 +27,7 @@ layers {
   }
   height: 1
   width: 5
+  init_wgt_from_mkldnn: false
 }
 input_layer_names: "data"
 output_layer_names: "__spp_0__"

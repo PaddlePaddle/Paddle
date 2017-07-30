@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__exp_0__"
@@ -19,6 +20,7 @@ layers {
       output_size: 100
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__sqrt_0__"
@@ -34,6 +36,7 @@ layers {
       output_size: 100
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__reciprocal_0__"
@@ -49,6 +52,7 @@ layers {
       output_size: 100
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__log_0__"
@@ -64,6 +68,7 @@ layers {
       output_size: 100
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__abs_0__"
@@ -79,6 +84,7 @@ layers {
       output_size: 100
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__sigmoid_0__"
@@ -94,6 +100,7 @@ layers {
       output_size: 100
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__tanh_0__"
@@ -109,6 +116,7 @@ layers {
       output_size: 100
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__square_0__"
@@ -124,6 +132,7 @@ layers {
       output_size: 100
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__relu_0__"
@@ -139,6 +148,7 @@ layers {
       output_size: 100
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__slope_intercept_layer_0__"
@@ -150,6 +160,7 @@ layers {
   }
   slope: 1.0
   intercept: 1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__slope_intercept_layer_1__"
@@ -161,6 +172,7 @@ layers {
   }
   slope: 1.0
   intercept: 1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__mixed_0__"
@@ -185,6 +197,7 @@ layers {
       output_size: 100
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__slope_intercept_layer_2__"
@@ -196,6 +209,7 @@ layers {
   }
   slope: -1.0
   intercept: 0.0
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__mixed_1__"
@@ -220,6 +234,7 @@ layers {
       output_size: 100
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__slope_intercept_layer_3__"
@@ -231,6 +246,7 @@ layers {
   }
   slope: 1.0
   intercept: 2
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__slope_intercept_layer_4__"
@@ -242,6 +258,7 @@ layers {
   }
   slope: -1.0
   intercept: 0.0
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__slope_intercept_layer_5__"
@@ -253,6 +270,7 @@ layers {
   }
   slope: 1.0
   intercept: 2
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__slope_intercept_layer_6__"
@@ -264,6 +282,7 @@ layers {
   }
   slope: 2
   intercept: 0.0
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__slope_intercept_layer_7__"
@@ -275,12 +294,14 @@ layers {
   }
   slope: 3
   intercept: 0.0
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "data_2"
   type: "data"
   size: 1
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__scaling_layer_0__"
@@ -293,6 +314,7 @@ layers {
   inputs {
     input_layer_name: "__slope_intercept_layer_7__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__scaling_layer_1__"
@@ -305,6 +327,7 @@ layers {
   inputs {
     input_layer_name: "__scaling_layer_0__"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__repeat_layer_0__"
@@ -315,6 +338,7 @@ layers {
     input_layer_name: "data_2"
   }
   num_filters: 100
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__mixed_2__"
@@ -339,6 +363,7 @@ layers {
       output_size: 100
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__repeat_layer_1__"
@@ -349,6 +374,7 @@ layers {
     input_layer_name: "data_2"
   }
   num_filters: 100
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__mixed_3__"
@@ -373,6 +399,7 @@ layers {
       output_size: 100
     }
   }
+  init_wgt_from_mkldnn: false
 }
 input_layer_names: "data_2"
 input_layer_names: "data"

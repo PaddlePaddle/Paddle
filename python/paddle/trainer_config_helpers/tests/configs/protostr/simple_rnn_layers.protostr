@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_0__"
@@ -15,6 +16,7 @@ layers {
     input_parameter_name: "___fc_layer_0__.w0"
   }
   bias_parameter_name: "___fc_layer_0__.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__recurrent_layer_0__"
@@ -27,6 +29,7 @@ layers {
   }
   bias_parameter_name: "___recurrent_layer_0__.wbias"
   reversed: false
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__recurrent_layer_1__"
@@ -39,6 +42,7 @@ layers {
   }
   bias_parameter_name: "___recurrent_layer_1__.wbias"
   reversed: true
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_1__"
@@ -49,6 +53,7 @@ layers {
     input_layer_name: "__fc_layer_0__"
     input_parameter_name: "___fc_layer_1__.w0"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__lstmemory_0__"
@@ -63,6 +68,7 @@ layers {
   reversed: false
   active_gate_type: "sigmoid"
   active_state_type: "tanh"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_2__"
@@ -73,6 +79,7 @@ layers {
     input_layer_name: "__fc_layer_0__"
     input_parameter_name: "___fc_layer_2__.w0"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__lstmemory_1__"
@@ -87,6 +94,7 @@ layers {
   reversed: true
   active_gate_type: "sigmoid"
   active_state_type: "tanh"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_3__"
@@ -97,6 +105,7 @@ layers {
     input_layer_name: "__fc_layer_0__"
     input_parameter_name: "___fc_layer_3__.w0"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__gru_0__"
@@ -110,6 +119,7 @@ layers {
   bias_parameter_name: "___gru_0__.wbias"
   reversed: false
   active_gate_type: "sigmoid"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_4__"
@@ -120,6 +130,7 @@ layers {
     input_layer_name: "__fc_layer_0__"
     input_parameter_name: "___fc_layer_4__.w0"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__gru_1__"
@@ -133,6 +144,7 @@ layers {
   bias_parameter_name: "___gru_1__.wbias"
   reversed: true
   active_gate_type: "sigmoid"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__last_seq_0__"
@@ -144,6 +156,7 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__first_seq_0__"
@@ -156,6 +169,7 @@ layers {
   select_first: true
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__last_seq_1__"
@@ -167,6 +181,7 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__first_seq_1__"
@@ -179,6 +194,7 @@ layers {
   select_first: true
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__last_seq_2__"
@@ -190,6 +206,7 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__first_seq_2__"
@@ -202,6 +219,7 @@ layers {
   select_first: true
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___fc_layer_0__.w0"

@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "layer_0"
@@ -15,6 +16,7 @@ layers {
     input_parameter_name: "_layer_0.w0"
   }
   bias_parameter_name: "_layer_0.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "layer_1"
@@ -26,6 +28,7 @@ layers {
     input_parameter_name: "_layer_1.w0"
   }
   bias_parameter_name: "_layer_1.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "layer_2"
@@ -37,6 +40,7 @@ layers {
     input_parameter_name: "_layer_2.w0"
   }
   bias_parameter_name: "_layer_2.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "layer_3"
@@ -48,6 +52,7 @@ layers {
     input_parameter_name: "_layer_3.w0"
   }
   bias_parameter_name: "_layer_3.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "layer_4"
@@ -59,6 +64,7 @@ layers {
     input_parameter_name: "_layer_4.w0"
   }
   bias_parameter_name: "_layer_4.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "layer_5"
@@ -70,6 +76,7 @@ layers {
     input_parameter_name: "_layer_5.w0"
   }
   bias_parameter_name: "_layer_5.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "layer_6"
@@ -81,6 +88,7 @@ layers {
     input_parameter_name: "_layer_6.w0"
   }
   bias_parameter_name: "_layer_6.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "layer_7"
@@ -92,6 +100,7 @@ layers {
     input_parameter_name: "_layer_7.w0"
   }
   bias_parameter_name: "_layer_7.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "layer_8"
@@ -103,6 +112,7 @@ layers {
     input_parameter_name: "_layer_8.w0"
   }
   bias_parameter_name: "_layer_8.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "layer_9"
@@ -114,6 +124,7 @@ layers {
     input_parameter_name: "_layer_9.w0"
   }
   bias_parameter_name: "_layer_9.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "layer_10"
@@ -125,6 +136,7 @@ layers {
     input_parameter_name: "_layer_10.w0"
   }
   bias_parameter_name: "_layer_10.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "layer_11"
@@ -136,6 +148,7 @@ layers {
     input_parameter_name: "_layer_11.w0"
   }
   bias_parameter_name: "_layer_11.wbias"
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "_layer_0.w0"

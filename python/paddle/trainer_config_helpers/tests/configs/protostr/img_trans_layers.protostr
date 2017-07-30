@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 51529
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__conv_0__"
@@ -35,6 +36,7 @@ layers {
   shared_biases: true
   height: 256
   width: 256
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__batch_norm_0__"
@@ -62,6 +64,7 @@ layers {
   moving_average_fraction: 0.9
   height: 256
   width: 256
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__crmnorm_0__"
@@ -85,6 +88,7 @@ layers {
   }
   height: 256
   width: 256
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__pool_0__"
@@ -110,6 +114,7 @@ layers {
   }
   height: 225
   width: 225
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___conv_0__.w0"

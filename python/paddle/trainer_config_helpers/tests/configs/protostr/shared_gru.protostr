@@ -4,12 +4,14 @@ layers {
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "data_b"
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__simple_gru_0___transform"
@@ -26,23 +28,27 @@ layers {
       output_size: 600
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__simple_gru_0___recurrent_group"
   type: "recurrent_layer_group"
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__simple_gru_0___transform@__simple_gru_0___recurrent_group"
   type: "scatter_agent"
   size: 600
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__simple_gru_0__+delay1@__simple_gru_0___recurrent_group"
   type: "agent"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__simple_gru_0__@__simple_gru_0___recurrent_group"
@@ -58,12 +64,14 @@ layers {
   }
   bias_parameter_name: "gru_bias"
   active_gate_type: "sigmoid"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__simple_gru_0__"
   type: "gather_agent"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__simple_gru_1___transform"
@@ -80,23 +88,27 @@ layers {
       output_size: 600
     }
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__simple_gru_1___recurrent_group"
   type: "recurrent_layer_group"
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__simple_gru_1___transform@__simple_gru_1___recurrent_group"
   type: "scatter_agent"
   size: 600
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__simple_gru_1__+delay1@__simple_gru_1___recurrent_group"
   type: "agent"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__simple_gru_1__@__simple_gru_1___recurrent_group"
@@ -112,12 +124,14 @@ layers {
   }
   bias_parameter_name: "gru_bias"
   active_gate_type: "sigmoid"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__simple_gru_1__"
   type: "gather_agent"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__last_seq_0__"
@@ -129,6 +143,7 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__last_seq_1__"
@@ -140,6 +155,7 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_0__"
@@ -154,12 +170,14 @@ layers {
     input_layer_name: "__last_seq_1__"
     input_parameter_name: "softmax_param"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "label"
   type: "data"
   size: 10
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__cost_0__"
@@ -173,6 +191,7 @@ layers {
     input_layer_name: "label"
   }
   coeff: 1.0
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "mixed_param"

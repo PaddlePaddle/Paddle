@@ -4,12 +4,14 @@ layers {
   type: "data"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "feature_b"
   type: "data"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_0__"
@@ -21,6 +23,7 @@ layers {
     input_parameter_name: "fc_param"
   }
   bias_parameter_name: "bias_param"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_1__"
@@ -32,6 +35,7 @@ layers {
     input_parameter_name: "fc_param"
   }
   bias_parameter_name: "bias_param"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_2__"
@@ -46,12 +50,14 @@ layers {
     input_layer_name: "__fc_layer_1__"
     input_parameter_name: "softmax_param"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "label"
   type: "data"
   size: 10
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__cost_0__"
@@ -65,6 +71,7 @@ layers {
     input_layer_name: "label"
   }
   coeff: 1.0
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "fc_param"

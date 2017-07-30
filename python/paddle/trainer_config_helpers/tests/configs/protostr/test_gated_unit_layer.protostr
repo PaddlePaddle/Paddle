@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 256
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__gated_unit_layer_0___input_proj"
@@ -16,6 +17,7 @@ layers {
   }
   bias_parameter_name: "___gated_unit_layer_0___input_proj.wbias"
   error_clipping_threshold: 100.0
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__gated_unit_layer_0___gate"
@@ -28,6 +30,7 @@ layers {
   }
   bias_parameter_name: "___gated_unit_layer_0___gate.wbias"
   error_clipping_threshold: 100.0
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__gated_unit_layer_0___gated_act"
@@ -50,6 +53,7 @@ layers {
     output_size: 512
     dotmul_scale: 1
   }
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___gated_unit_layer_0___input_proj.w0"

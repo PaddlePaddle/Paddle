@@ -4,18 +4,21 @@ layers {
   type: "data"
   size: 300
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "label"
   type: "data"
   size: 1
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "weight"
   type: "data"
   size: 1
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__fc_layer_0__"
@@ -27,6 +30,7 @@ layers {
     input_parameter_name: "___fc_layer_0__.w0"
   }
   bias_parameter_name: "___fc_layer_0__.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__cost_0__"
@@ -43,6 +47,7 @@ layers {
     input_layer_name: "weight"
   }
   coeff: 1.0
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__mse_cost_0__"
@@ -59,12 +64,14 @@ layers {
     input_layer_name: "weight"
   }
   coeff: 1.0
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "multi_class_label"
   type: "data"
   size: 500
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__nce_layer_0__"
@@ -84,6 +91,7 @@ layers {
   bias_parameter_name: "___nce_layer_0__.wbias"
   num_classes: 500
   num_neg_samples: 10
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___fc_layer_0__.w0"

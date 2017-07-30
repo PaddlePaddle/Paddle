@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 30
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__first_seq_0__"
@@ -16,6 +17,7 @@ layers {
   select_first: true
   trans_type: "seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__first_seq_1__"
@@ -28,6 +30,7 @@ layers {
   select_first: true
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__last_seq_0__"
@@ -39,6 +42,7 @@ layers {
   }
   trans_type: "seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__last_seq_1__"
@@ -50,6 +54,7 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__first_seq_2__"
@@ -62,6 +67,7 @@ layers {
   select_first: true
   trans_type: "non-seq"
   seq_pool_stride: 5
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__last_seq_2__"
@@ -73,6 +79,7 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: 5
+  init_wgt_from_mkldnn: false
 }
 input_layer_names: "data"
 output_layer_names: "__first_seq_0__"

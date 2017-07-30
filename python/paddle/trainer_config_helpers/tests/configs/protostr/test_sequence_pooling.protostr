@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__seq_pooling_0__"
@@ -15,6 +16,7 @@ layers {
   }
   trans_type: "seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__seq_pooling_1__"
@@ -26,6 +28,7 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__seq_pooling_2__"
@@ -38,6 +41,7 @@ layers {
   average_strategy: "average"
   trans_type: "seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__seq_pooling_3__"
@@ -50,6 +54,7 @@ layers {
   average_strategy: "average"
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__seq_pooling_4__"
@@ -62,6 +67,7 @@ layers {
   average_strategy: "sum"
   trans_type: "seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__seq_pooling_5__"
@@ -74,6 +80,7 @@ layers {
   average_strategy: "sum"
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__seq_pooling_6__"
@@ -85,6 +92,7 @@ layers {
   }
   trans_type: "non-seq"
   seq_pool_stride: 5
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__seq_pooling_7__"
@@ -97,6 +105,7 @@ layers {
   average_strategy: "average"
   trans_type: "non-seq"
   seq_pool_stride: 5
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__seq_pooling_8__"
@@ -109,6 +118,7 @@ layers {
   average_strategy: "sum"
   trans_type: "non-seq"
   seq_pool_stride: 5
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__seq_pooling_9__"
@@ -121,6 +131,7 @@ layers {
   output_max_index: true
   trans_type: "non-seq"
   seq_pool_stride: -1
+  init_wgt_from_mkldnn: false
 }
 input_layer_names: "dat_in"
 output_layer_names: "__seq_pooling_0__"

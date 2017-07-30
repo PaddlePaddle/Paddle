@@ -4,30 +4,35 @@ layers {
   type: "data"
   size: 1
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "a"
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "b"
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "c"
   type: "data"
   size: 200
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "d"
   type: "data"
   size: 31
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__interpolation_layer_0__"
@@ -43,6 +48,7 @@ layers {
   inputs {
     input_layer_name: "b"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__power_layer_0__"
@@ -55,6 +61,7 @@ layers {
   inputs {
     input_layer_name: "a"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__scaling_layer_0__"
@@ -67,6 +74,7 @@ layers {
   inputs {
     input_layer_name: "a"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__cos_sim_0__"
@@ -80,6 +88,7 @@ layers {
     input_layer_name: "b"
   }
   cos_scale: 1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__cos_sim_1__"
@@ -93,6 +102,7 @@ layers {
     input_layer_name: "c"
   }
   cos_scale: 1
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__sum_to_one_norm_layer_0__"
@@ -102,6 +112,7 @@ layers {
   inputs {
     input_layer_name: "a"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__conv_shift_layer_0__"
@@ -114,6 +125,7 @@ layers {
   inputs {
     input_layer_name: "d"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__tensor_layer_0__"
@@ -128,6 +140,7 @@ layers {
     input_layer_name: "b"
   }
   bias_parameter_name: "___tensor_layer_0__.wbias"
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__slope_intercept_layer_0__"
@@ -139,6 +152,7 @@ layers {
   }
   slope: 0.7
   intercept: 0.9
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__linear_comb_layer_0__"
@@ -151,6 +165,7 @@ layers {
   inputs {
     input_layer_name: "c"
   }
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___tensor_layer_0__.w0"

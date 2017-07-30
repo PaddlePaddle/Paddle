@@ -4,12 +4,14 @@ layers {
   type: "data"
   size: 30
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "data2"
   type: "data"
   size: 30
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__seqconcat_0__"
@@ -22,6 +24,7 @@ layers {
   inputs {
     input_layer_name: "data2"
   }
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__seqreshape_0__"
@@ -31,6 +34,7 @@ layers {
   inputs {
     input_layer_name: "data1"
   }
+  init_wgt_from_mkldnn: false
 }
 input_layer_names: "data1"
 input_layer_names: "data2"

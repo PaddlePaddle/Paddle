@@ -4,6 +4,7 @@ layers {
   type: "data"
   size: 30
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__repeat_layer_0__"
@@ -14,6 +15,7 @@ layers {
     input_layer_name: "data"
   }
   num_filters: 10
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__repeat_layer_1__"
@@ -25,6 +27,7 @@ layers {
   }
   num_filters: 10
   user_arg: "as_col_vec"
+  init_wgt_from_mkldnn: false
 }
 input_layer_names: "data"
 output_layer_names: "__repeat_layer_0__"

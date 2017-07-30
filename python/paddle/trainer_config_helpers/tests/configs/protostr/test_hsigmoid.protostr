@@ -4,12 +4,14 @@ layers {
   type: "data"
   size: 100
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "label"
   type: "data"
   size: 10
   active_type: ""
+  init_wgt_from_mkldnn: false
 }
 layers {
   name: "__hsigmoid_0__"
@@ -25,6 +27,7 @@ layers {
   }
   bias_parameter_name: "___hsigmoid_0__.wbias"
   num_classes: 10
+  init_wgt_from_mkldnn: false
 }
 parameters {
   name: "___hsigmoid_0__.w0"
