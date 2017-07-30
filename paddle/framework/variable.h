@@ -17,7 +17,6 @@
 #include <typeinfo>
 
 #include "paddle/platform/assert.h"
-#include "paddle/string/piece.h"
 
 namespace paddle {
 namespace framework {
@@ -76,7 +75,7 @@ class Variable {
   // the name; in the latter case, the variable should be identified
   // by its address but not the unreadable name.
   friend class Scope;
-  string::Piece name_;
+  const std::string* name_;
 };
 
 }  // namespace framework

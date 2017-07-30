@@ -49,8 +49,8 @@ TEST(Scope, FindVar) {
 TEST(Scope, FindScope) {
   Scope s;
   Scope& ss = s.NewScope();
-  s.NewVar("a");
+  Variable* v = s.NewVar("a");
 
-  EXPECT_EQ(&s, s.FindVar("a"));
-  EXPECT_EQ(&s, ss.FindVar("a"));
+  EXPECT_EQ(&s, s.FindScope(v));
+  EXPECT_EQ(&s, ss.FindScope(v));
 }

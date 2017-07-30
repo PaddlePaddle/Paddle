@@ -53,10 +53,7 @@ class Scope {
   Variable* FindVar(const std::string& name) const;
 
   // Find the scope or an ancestor scope that contains the given variable.
-  Scope* FindScope(const Variable* var) const;
-
-  // Returns the name of a variable in this scope.
-  std::string VarName(const Variable* var) const { return var->name_; }
+  Scope* FindScope(const Variable* var);
 
  private:
   // Call Scope::NewScope for a sub-scope.

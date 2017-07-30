@@ -8,7 +8,9 @@ cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
 cc_test(variable_test SRCS variable_test.cc)
-cc_test(scope_test SRCS scope_test.cc)
+
+cc_library(scope SRCS scope.cc)
+cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
 proto_library(attr_type SRCS attr_type.proto)
 proto_library(op_proto SRCS op_proto.proto DEPS attr_type)
