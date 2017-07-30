@@ -27,4 +27,4 @@ public:
 
 typedef paddle::operators::GaussianRandomOpKernel<paddle::platform::GPUPlace, float>
   RandomOpKernel_GPU_float;
-REGISTER_OP_GPU_KERNEL(random, RandomOpKernel_GPU_float);
+REGISTER_OP_GPU_KERNEL(gaussian_random, GaussianRandomOpKernel_GPU_float);
