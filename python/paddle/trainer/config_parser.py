@@ -2055,8 +2055,7 @@ class BatchNormLayer(LayerBase):
         # Automatically select cudnn_batch_norm for GPU and batch_norm for CPU.
         # Also based on cudnn version.
         use_cudnn = use_gpu and batch_norm_type != "batch_norm" and \
-            ((not parallel_nn) or self.config.device > -1) and \
-            cudnn_version >= 4007
+                ((not parallel_nn) or self.config.device > -1)
         self.layer_type = "cudnn_batch_norm" if use_cudnn else "batch_norm"
         super(BatchNormLayer, self).__init__(
             name, self.layer_type, 0, inputs=inputs, **xargs)
@@ -3232,7 +3231,6 @@ def ParameterHook(type, **kwargs):
         if end_pass is not None:
             hook.end_pass = end_pass
         return hook
-
     else:
         return None
 

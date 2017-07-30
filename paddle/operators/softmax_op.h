@@ -14,17 +14,47 @@
 
 #pragma once
 
-#include <glog/logging.h>
-#include <paddle/framework/operator.h>
+#include "paddle/operators/type_alias.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename Place>
-class SoftmaxKernel : public framework::OpKernel {
+template <typename Place, typename T>
+class SoftmaxKernel : public OpKernel {
 public:
-  void Compute(const framework::KernelContext &context) const override {
-    LOG(INFO) << "Softmax kernel in " << typeid(Place).name();
+  void Compute(const KernelContext& context) const override {
+    auto input = context.Input(0)->Get<Tensor>();
+    auto* output = context.Output(0)->GetMutable<Tensor>();
+    output->mutable_data<T>(context.GetPlace());
+
+    auto logits = EigenMatrix<T>::From(input);
+    auto softmax = EigenMatrix<T>::From(*output);
+
+    const int kBatchDim = 0;
+    const int kClassDim = 1;
+
+    const int batch_size = logits.dimension(kBatchDim);
+    const int num_classes = logits.dimension(kClassDim);
+
+    Eigen::DSizes<int, 1> along_class(kClassDim);
+    Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
+    Eigen::DSizes<int, 2> one_by_class(1, num_classes);
+
+    auto shifted_logits = (logits -
+                           logits.maximum(along_class)
+                               .eval()
+                               .reshape(batch_by_one)
+                               .broadcast(one_by_class));
+
+    softmax.device(*(context.GetEigenDevice<Place>())) = shifted_logits.exp();
+
+    softmax.device(*(context.GetEigenDevice<Place>())) =
+        (softmax *
+         softmax.sum(along_class)
+             .inverse()
+             .eval()
+             .reshape(batch_by_one)
+             .broadcast(one_by_class));
   }
 };
 }  // namespace operators

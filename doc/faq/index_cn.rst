@@ -311,3 +311,13 @@ Paddle二进制在运行时捕获了浮点数异常，只要出现浮点数异�
 * 训练数据有问题，导致参数收敛到了一些奇异的情况。或者输入数据尺度过大，有些特征的取值达到数百万，这时进行矩阵乘法运算就可能导致浮点数溢出。
 
 主要的解决办法是减小学习律或者对数据进行归一化处理。
+
+15. 编译安装后执行 import paddle.v2 as paddle 报ImportError: No module named v2
+------------------------------------------------------------------------
+先查看一下是否曾经安装过paddle v1版本，有的话需要先卸载：
+
+pip uninstall py_paddle paddle
+
+然后安装paddle的python环境, 在build目录下执行
+
+pip install python/dist/paddle*.whl && pip install ../paddle/dist/py_paddle*.whl

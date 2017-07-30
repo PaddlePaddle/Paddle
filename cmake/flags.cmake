@@ -124,6 +124,7 @@ set(GPU_COMMON_FLAGS
     -Wno-error=literal-suffix
     -Wno-error=unused-local-typedefs
     -Wno-error=unused-function  # Warnings in Numpy Header.
+    -Wno-error=array-bounds # Warnings in Eigen::array
 )
 
 if (APPLE)
@@ -152,7 +153,7 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
-LIST(APPEND CUDA_NVCC_FLAGS -std=c++11)
+LIST(APPEND CUDA_NVCC_FLAGS -std=c++11 --default-stream per-thread)
 LIST(APPEND CUDA_NVCC_FLAGS --use_fast_math)
 
 if(CMAKE_BUILD_TYPE  STREQUAL "Debug")

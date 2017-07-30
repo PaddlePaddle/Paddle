@@ -12,9 +12,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <paddle/operators/mul_op.h>
-#include <paddle/framework/op_registry.h>
+#include "paddle/operators/mul_op.h"
 
-REGISTER_OP_GPU_KERNEL(mul,
-                       paddle::operators::MulKernel<paddle::platform
-                       ::GPUPlace>);
+REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<ops::GPUPlace, float>);

@@ -37,27 +37,13 @@ namespace framework {
  * This is the base class of network, all the networks should implement the APIs
  * it defines.
  */
-class Net : public OperatorBase {
- public:
-  virtual void AddOp(const OperatorPtr& op) = 0;
-  virtual void CompleteAddOp(bool calc) = 0;
-};
-
-using NetPtr = std::shared_ptr<Net>;
-
-/**
- * @brief a basic implementation of Net.
- *
- * PlainNet is a very simple Net, it create a list of operators, and run them
- * sequentially following the order they added.
- */
-class PlainNet : public Net {
+class NetOp : public OperatorBase {
  public:
   /**
    * Infer all the operators' input and output variables' shapes, will be called
    * before every mini-batch
    */
-  void InferShape(const ScopePtr& scope) const override {
+  void InferShape(const std::shared_ptr<Scope>& scope) const override {
     for (auto& op : ops_) {
       op->InferShape(scope);
     }
@@ -70,7 +56,7 @@ class PlainNet : public Net {
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  void Run(const ScopePtr& scope,
+  void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const override {
     for (auto& op : ops_) {
       op->Run(scope, dev_ctx);
@@ -80,16 +66,18 @@ class PlainNet : public Net {
   /**
    * @brief Add an operator by ptr
    */
-  void AddOp(const OperatorPtr& op) override {
+  void AddOp(const std::shared_ptr<OperatorBase>& op) {
     PADDLE_ENFORCE(!add_op_done_, "Cannot AddOp when this network is sealed");
     ops_.push_back(op);
   }
 
-  void CompleteAddOp(bool calculate = true) override;
+  void CompleteAddOp(bool calculate = true);
 
   std::string DebugString() const override;
 
-  std::vector<OperatorPtr> ops_;
+  bool IsNetOp() const override;
+
+  std::vector<std::shared_ptr<OperatorBase>> ops_;
 
  private:
   bool add_op_done_{false};

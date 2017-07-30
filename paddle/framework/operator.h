@@ -47,7 +47,6 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 #endif
 
 class OperatorBase;
-using OperatorPtr = std::shared_ptr<OperatorBase>;
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -62,6 +61,11 @@ class OperatorBase {
   /// If a variable is a temporary variable, that name will be set in Python,
   /// but it will be convert to a unique name in scope after OpCreator.
   static std::string TMP_VAR_NAME() { return "@TEMP@"; }
+
+  /// If a variable's name has a certain suffix, it means that the
+  /// variable is the gradient of another varibale.
+  /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
+  static std::string GRAD_VAR_SUFFIX() { return "@GRAD"; }
 
   virtual ~OperatorBase() {}
 
@@ -80,21 +84,23 @@ class OperatorBase {
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  virtual void InferShape(const ScopePtr& scope) const = 0;
+  virtual void InferShape(const std::shared_ptr<Scope>& scope) const = 0;
 
   /// Net will call this function to Run an op.
-  virtual void Run(const ScopePtr& scope,
+  virtual void Run(const std::shared_ptr<Scope>& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
-  // Get a input with argument's name described in `op_proto`
+  virtual bool IsNetOp() const { return false; }
+
+  //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
-  // Get a input which has multiple variables.
-  // TODO add a vector_view to prevent memory copy.
+  //! Get a input which has multiple variables.
+  //! TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Inputs(const std::string& name) const;
-  // Get a output with argument's name described in `op_proto`
+  //! Get a output with argument's name described in `op_proto`
   const std::string& Output(const std::string& name) const;
-  // Get an output which has multiple variables.
-  // TODO add a vector_view to prevent memory copy.
+  //! Get an output which has multiple variables.
+  //! TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Outputs(const std::string& name) const;
 
  public:
@@ -195,7 +201,9 @@ class OperatorWithKernel : public OperatorBase {
       place_ = dev_ctx.GetPlace();
     }
 
-    bool operator==(const OpKernelKey& o) const { return place_ == o.place_; }
+    bool operator==(const OpKernelKey& o) const {
+      return platform::places_are_same_class(place_, o.place_);
+    }
   };
 
   struct OpKernelHash {
@@ -208,7 +216,7 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
-  void Run(const ScopePtr& scope,
+  void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
     opKernel->Compute(KernelContext(this, scope, dev_ctx));
