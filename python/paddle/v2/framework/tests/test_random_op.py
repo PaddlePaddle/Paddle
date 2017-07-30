@@ -10,7 +10,7 @@ class TestRandomOp(unittest.TestCase):
         scope = core.Scope(None)
         # Out = scope.create_var("Out")
         op = creation.op_creations.gaussian_random(
-            shape=[1000, 1000], mean=5.0, std=1.0, seed=1701, Out="Out")
+            shape=[1000, 1000], mean=5.0, std=1.0, Out="Out")
         for out in op.outputs():
             if scope.get_var(out) is None:
                 scope.create_var(out).get_tensor()
