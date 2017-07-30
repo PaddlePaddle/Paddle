@@ -104,17 +104,17 @@ class OperatorContext {
   OperatorContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope)
       : op_(*op), scope_(scope) {}
 
-  int InputSize() const { return op_.inputs_.size(); }
+  size_t InputSize() const { return op_.inputs_.size(); }
 
-  int OutputSize() const { return op_.outputs_.size(); }
+  size_t OutputSize() const { return op_.outputs_.size(); }
 
   template <typename T>
-  const T* Input(int index) const {
+  const T* Input(size_t index) const {
     return &(scope_->GetVariable(op_.inputs_[index])->Get<T>());
   }
 
   template <typename T>
-  T* Output(int index) const {
+  T* Output(size_t index) const {
     return scope_->GetVariable(op_.outputs_[index])->GetMutable<T>();
   }
 

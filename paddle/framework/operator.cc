@@ -100,12 +100,12 @@ std::string OperatorBase::DebugString() const {
 }
 
 template <>
-const Variable* OperatorContext::Input<Variable>(int index) const {
+const Variable* OperatorContext::Input<Variable>(size_t index) const {
   return scope_->GetVariable(op_.inputs_[index]);
 }
 
 template <>
-Variable* OperatorContext::Output<Variable>(int index) const {
+Variable* OperatorContext::Output<Variable>(size_t index) const {
   return scope_->GetVariable(op_.outputs_[index]);
 }
 
