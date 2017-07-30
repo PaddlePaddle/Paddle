@@ -9,7 +9,7 @@ class TestRandomOp(unittest.TestCase):
     def test_random(self):
         scope = core.Scope(None)
         # Out = scope.create_var("Out")
-        op = creation.op_creations.random(
+        op = creation.op_creations.gaussian_random(
             shape=[1000, 1000], mean=5.0, std=1.0, seed=1701, Out="Out")
         for out in op.outputs():
             if scope.get_var(out) is None:
