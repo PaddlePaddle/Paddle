@@ -12,9 +12,9 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/random_op.h"
 #include "glog/logging.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/random_op.h"
 
 namespace paddle {
 namespace operators {

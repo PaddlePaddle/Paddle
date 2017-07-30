@@ -36,10 +36,12 @@ if(WITH_GPU)
     add_simple_unittest(MulOpTest)
     add_simple_unittest(CosSimOpTest)
     add_simple_unittest(RowConvOpTest)
+    add_simple_unittest(BlockExpandOpTest)
     add_simple_unittest(CropOpTest)
 endif()
 
 add_simple_unittest(ConvOpTest)
+add_simple_unittest(Im2ColTest)
 endif()
 
 add_style_check_target(paddle_function ${h_files})

@@ -20,17 +20,7 @@
 namespace paddle {
 namespace framework {
 
-std::shared_ptr<PlainNet> AddBackwardOp(std::shared_ptr<PlainNet> ForwardOps) {
-  auto grad_ops = std::make_shared<PlainNet>();
-  for (auto& op : ForwardOps->ops_) {
-    auto op_grad = OpRegistry::CreateGradOp(op);
-    grad_ops->AddOp(op_grad);
-  }
-  grad_ops->CompleteAddOp();
-  return grad_ops;
-}
-
-void PlainNet::CompleteAddOp(bool calc) {
+void NetOp::CompleteAddOp(bool calc) {
   add_op_done_ = true;
   if (!calc) return;
   std::unordered_set<std::string> input_set;
@@ -70,7 +60,7 @@ void PlainNet::CompleteAddOp(bool calc) {
   attrs_["temporary_index"] = tmp_index;
 }
 
-std::string PlainNet::DebugString() const {
+std::string NetOp::DebugString() const {
   std::ostringstream os;
   os << OperatorBase::DebugString() << std::endl;
   for (auto& op : ops_) {
@@ -81,6 +71,8 @@ std::string PlainNet::DebugString() const {
   }
   return os.str();
 }
+
+bool NetOp::IsNetOp() const { return true; }
 
 }  // namespace framework
 }  // namespace paddle

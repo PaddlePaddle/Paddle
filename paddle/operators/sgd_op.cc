@@ -13,17 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/sgd_op.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
 
-class SGDOp : public framework::OperatorWithKernel {
+class SGDOp : public OperatorWithKernel {
 protected:
-  void InferShape(
-      const std::vector<const framework::Tensor *> &inputs,
-      const std::vector<framework::Tensor *> &outputs) const override {
+  void InferShape(const std::vector<const Tensor *> &inputs,
+                  const std::vector<Tensor *> &outputs) const override {
     PADDLE_ENFORCE(inputs.size() == 2, "Input size of SGDOp must be two");
     PADDLE_ENFORCE(outputs.size() == 1, "Output size of SGDOp must be one");
     PADDLE_ENFORCE(inputs[0] != nullptr, "inputs[0] mast be set");
@@ -35,10 +32,10 @@ protected:
   }
 };
 
-class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
+class SGDOpMaker : public OpProtoAndCheckerMaker {
 public:
-  SGDOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  SGDOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("param", "input parameter");
     AddInput("grad", "input gradient");
     AddOutput("param_out", "output parameter");
@@ -55,7 +52,5 @@ param_out = param - learning_rate * grad;
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(sgd, paddle::operators::SGDOp, paddle::operators::SGDOpMaker);
-typedef paddle::operators::SGDOpKernel<::paddle::platform::CPUPlace, float>
-    SGDOpKernel_CPU_float;
-REGISTER_OP_CPU_KERNEL(sgd, SGDOpKernel_CPU_float);
+REGISTER_OP(sgd, ops::SGDOp, ops::SGDOpMaker);
+REGISTER_OP_CPU_KERNEL(sgd, ops::SGDOpKernel<ops::CPUPlace, float>);

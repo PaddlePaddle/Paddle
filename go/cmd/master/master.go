@@ -19,6 +19,8 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"time"
@@ -68,6 +70,20 @@ func main() {
 		store = &master.InMemStore{}
 	}
 
+	shutdown := func() {
+		log.Infoln("shutting down gracefully")
+		err := store.Shutdown()
+		if err != nil {
+			log.Errorln(err)
+		}
+	}
+
+	// Guaranteed to run even panic happens.
+	defer shutdown()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
 	s, err := master.NewService(store, *chunkPerTask, *taskTimeoutDur, *taskTimeoutMax)
 	if err != nil {
 		log.Fatal(err)
@@ -84,8 +100,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = http.Serve(l, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+	go func() {
+		err = http.Serve(l, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	<-c
 }

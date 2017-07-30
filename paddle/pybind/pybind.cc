@@ -37,6 +37,7 @@ USE_OP(sigmoid);
 USE_OP(softmax);
 USE_OP(rowwise_add);
 USE_OP(gaussian_random);
+USE_OP_WITHOUT_KERNEL(recurrent_op);
 
 template <typename ClassType>
 void ExposeOperator(ClassType& m) {
@@ -47,6 +48,11 @@ void ExposeOperator(ClassType& m) {
              return op.outputs_;
            })
       .def("__str__", &ClassType::type::DebugString);
+}
+
+static size_t UniqueIntegerGenerator() {
+  static std::atomic<size_t> generator;
+  return generator.fetch_add(1);
 }
 
 PYBIND11_PLUGIN(core) {
@@ -90,6 +96,11 @@ All parameter, weight, gradient are variables in Paddle.
            [](pd::Variable& self) -> pd::Tensor* {
              return self.GetMutable<pd::Tensor>();
            },
+           py::return_value_policy::reference)
+      .def("get_net",
+           [](pd::Variable& self) -> pd::NetOp* {
+             return self.GetMutable<pd::NetOp>();
+           },
            py::return_value_policy::reference);
 
   py::class_<pd::Scope, std::shared_ptr<pd::Scope>>(m, "Scope")
@@ -99,7 +110,8 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference)
       .def("create_var",
            &pd::Scope::CreateVariable,
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+      .def("get_var_name", &pd::Scope::GetVariableName);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
@@ -141,24 +153,25 @@ All parameter, weight, gradient are variables in Paddle.
   });
   ExposeOperator(operator_base);
 
-  using PlainNetPtr = std::shared_ptr<pd::PlainNet>;
-  py::class_<pd::PlainNet, PlainNetPtr> plain_net(m, "PlainNet");
+  py::class_<pd::NetOp, std::shared_ptr<pd::NetOp>> net(m, "Net");
 
-  plain_net
-      .def_static("create",
-                  []() -> std::shared_ptr<pd::PlainNet> {
-                    auto retv = std::make_shared<pd::PlainNet>();
-                    retv->type_ = "plain_net";
-                    return retv;
-                  })
-      .def("add_op", &pd::PlainNet::AddOp)
+  net.def_static("create",
+                 []() -> std::shared_ptr<pd::NetOp> {
+                   auto retv = std::make_shared<pd::NetOp>();
+                   retv->type_ = "plain_net";
+                   return retv;
+                 })
+      .def("add_op", &pd::NetOp::AddOp)
       .def("add_op",
-           [](PlainNetPtr& self, const PlainNetPtr& plain_net) -> void {
-             self->AddOp(std::static_pointer_cast<pd::OperatorBase>(plain_net));
+           [](pd::NetOp& self, const std::shared_ptr<pd::NetOp>& net) -> void {
+             self.AddOp(std::static_pointer_cast<pd::OperatorBase>(net));
            })
-      .def("complete_add_op", &pd::PlainNet::CompleteAddOp)
-      .def("complete_add_op", [](PlainNetPtr& self) { self->CompleteAddOp(); });
-  ExposeOperator(plain_net);
+      .def("complete_add_op", &pd::NetOp::CompleteAddOp)
+      .def("complete_add_op",
+           [](std::shared_ptr<pd::NetOp>& self) { self->CompleteAddOp(); });
+  ExposeOperator(net);
+
+  m.def("unique_integer", UniqueIntegerGenerator);
 
   return m.ptr();
 }

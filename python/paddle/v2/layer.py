@@ -324,6 +324,3 @@ def parse_network(output_layers, extra_layers=None):
 
 def get_layer(name):
     return config_base.__layer_map__.get(name)
-
-
-cp.begin_parse()

@@ -40,7 +40,7 @@ void AssertSameVectorWithoutOrder(const std::vector<T>& expected,
 }
 
 TEST(OpKernel, all) {
-  auto net = std::make_shared<PlainNet>();
+  auto net = std::make_shared<NetOp>();
   ASSERT_NE(net, nullptr);
 
   auto op1 = std::make_shared<TestOp>();
@@ -69,30 +69,23 @@ TEST(OpKernel, all) {
   net->Run(scope, dev_ctx);
   ASSERT_EQ(2, infer_shape_cnt);
   ASSERT_EQ(2, run_cnt);
-  ASSERT_THROW(net->AddOp(op2), std::runtime_error);
-}
-TEST(AddBackwardOp, TestGradOp) {
-  auto net = std::make_shared<PlainNet>();
-  ASSERT_NE(net, nullptr);
-  net->AddOp(framework::OpRegistry::CreateOp("mul", {"X", "Y"}, {"Out"}, {}));
-  net->AddOp(
-      framework::OpRegistry::CreateOp("add_two", {"X", "Y"}, {"Out"}, {}));
-  net->AddOp(framework::OpRegistry::CreateOp("add_two", {"X", "Y"}, {""}, {}));
-  auto grad_ops = AddBackwardOp(net);
-  for (auto& op : grad_ops->ops_) {
-    op->DebugString();
-  }
+  ASSERT_THROW(net->AddOp(op2), paddle::platform::EnforceNotMet);
 }
 
-// TODO(zhihong): add fc grad without registering.
-// TEST(AddBackwardOp, TestNoGradOp) {
-//   auto net = std::make_shared<PlainNet>();
-//   ASSERT_NE(net, nullptr);
-//   net->AddOp(framework::OpRegistry::CreateOp("fc", {"X", "W", "b"}, {"Y"},
-//   {})); auto grad_ops = AddBackwardOp(net); for (auto& op : grad_ops->ops_) {
-//     op->DebugString();
-//   }
-// }
+//! TODO(yuyang18): Refine Backward Op.
+// TEST(AddBackwardOp, TestGradOp) {
+//  auto net = std::make_shared<NetOp>();
+//  ASSERT_NE(net, nullptr);
+//  net->AddOp(framework::OpRegistry::CreateOp("mul", {"X", "Y"}, {"Out"}, {}));
+//  net->AddOp(
+//      framework::OpRegistry::CreateOp("add_two", {"X", "Y"}, {"Out"}, {}));
+//  net->AddOp(framework::OpRegistry::CreateOp("add_two", {"X", "Y"}, {""},
+//  {}));
+//  auto grad_ops = AddBackwardOp(net);
+//  for (auto& op : grad_ops->ops_) {
+//    op->DebugString();
+//  }
+//}
 
 }  // namespace framework
 }  // namespace paddle
