@@ -69,9 +69,10 @@ void ConcatOutputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
       Tensor* step_output = step_scopes[j]
                                 ->GetVariable(outlinks[i].internal)
                                 ->GetMutable<Tensor>();
-      // TODO data type and platform::DeviceContext() should set correctly
+      // TODO(luotao02) data type and platform::DeviceContext() should set
+      // correctly
       (output->Slice<float>(j, j + 1))
-          .CopyFrom<float>(*step_output, platform::CPUDeviceContext());
+          .CopyFrom<float>(*step_output, platform::CPUPlace());
     }
   }
 }
