@@ -36,7 +36,7 @@ USE_OP(mul);
 USE_OP(sigmoid);
 USE_OP(softmax);
 USE_OP(rowwise_add);
-USE_OP(random);
+USE_OP(gaussian_random);
 
 template <typename ClassType>
 void ExposeOperator(ClassType& m) {
