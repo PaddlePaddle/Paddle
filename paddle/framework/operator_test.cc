@@ -30,9 +30,9 @@ class OpWithoutKernelTest : public OperatorBase {
     op_run_num++;
     ASSERT_EQ((int)inputs_.size(), 1);
     ASSERT_EQ((int)outputs_.size(), 1);
-    ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
+    ASSERT_EQ(scope->FindVar(inputs_[0]), nullptr);
     ASSERT_EQ(x, 1);
-    ASSERT_NE(scope->GetVariable(outputs_[0]), nullptr);
+    ASSERT_NE(scope->FindVar(outputs_[0]), nullptr);
   }
 
  public:
@@ -71,7 +71,7 @@ TEST(OperatorBase, all) {
   auto scope = std::make_shared<paddle::framework::Scope>();
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  scope->CreateVariable("OUT1");
+  scope->NewVar("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
   op->Run(scope, device_context);
   ASSERT_EQ(paddle::framework::op_run_num, 1);
@@ -120,9 +120,9 @@ class OperatorMultiInputsTest : public OperatorBase {
   void InferShape(const std::shared_ptr<Scope>& scope) const override {}
   void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const override {
-    ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
+    ASSERT_EQ(scope->FindVar(inputs_[0]), nullptr);
     ASSERT_EQ(x, 1);
-    ASSERT_NE(scope->GetVariable(outputs_[0]), nullptr);
+    ASSERT_NE(scope->FindVar(outputs_[0]), nullptr);
     ASSERT_EQ(Input("x"), "IN1");
     ASSERT_EQ(Input("y"), "OUT1");
   }
