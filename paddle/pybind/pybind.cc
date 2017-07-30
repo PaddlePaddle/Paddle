@@ -104,13 +104,9 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<pd::Scope, std::shared_ptr<pd::Scope>>(m, "Scope")
       .def(py::init<const std::shared_ptr<pd::Scope>&>())
-      .def("get_var",
-           &pd::Scope::GetVariable,
-           py::return_value_policy::reference)
-      .def("create_var",
-           &pd::Scope::CreateVariable,
-           py::return_value_policy::reference)
-      .def("get_var_name", &pd::Scope::GetVariableName);
+      .def("get_var", &pd::Scope::FindVar, py::return_value_policy::reference)
+      .def("create_var", &pd::Scope::NewVar, py::return_value_policy::reference)
+      .def("get_var_name", &pd::Scope::FindVarName);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.

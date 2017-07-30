@@ -38,37 +38,37 @@ protected:
     // create input, and init content
     LOG(INFO) << "create global variable x";
     for (auto inlink : std::vector<std::string>{"x", "x0", "x1", "h"}) {
-      Variable* x = scope_->CreateVariable(inlink);
+      Variable* x = scope_->NewVar(inlink);
       DDim dims = make_ddim(std::vector<int>{
           10 /*sent size*/, 20 /*batch size*/, 30 /*input dim*/});
       x->GetMutable<Tensor>()->mutable_data<float>(dims, platform::CPUPlace());
     }
     // create output alias just for test
     for (auto inlink : std::vector<std::string>{"h@alias"}) {
-      Variable* x = scope_->CreateVariable(inlink);
+      Variable* x = scope_->NewVar(inlink);
       DDim dims =
           make_ddim(std::vector<int>{20 /*batch size*/, 30 /*input dim*/});
       x->GetMutable<Tensor>()->mutable_data<float>(dims, platform::CPUPlace());
     }
 
     LOG(INFO) << "create global variable w";
-    Variable* w = scope_->CreateVariable("rnn/w");
+    Variable* w = scope_->NewVar("rnn/w");
     w->GetMutable<Tensor>()->mutable_data<float>(
         make_ddim(std::vector<int>{30, 30}), platform::CPUPlace());
 
     for (auto boot : std::vector<std::string>{"x_boot", "h_boot"}) {
       LOG(INFO) << "create global variable " << boot;
-      Variable* h_boot = scope_->CreateVariable(boot);
+      Variable* h_boot = scope_->NewVar(boot);
       h_boot->GetMutable<Tensor>()->mutable_data<float>(
           make_ddim(std::vector<int>{20 /*batch size*/, 30 /*input dim*/}),
           platform::CPUPlace());
     }
 
     LOG(INFO) << "create variable step_scopes";
-    scope_->CreateVariable("step_scopes");
+    scope_->NewVar("step_scopes");
 
     LOG(INFO) << "create variable h";
-    scope_->CreateVariable("h");
+    scope_->NewVar("h");
   }
 
   void CreateRNNOp() {
@@ -150,7 +150,7 @@ protected:
 
   void CreateStepNet() {
     LOG(INFO) << "create variable step_net";
-    Variable* var = scope_->CreateVariable("step_net");
+    Variable* var = scope_->NewVar("step_net");
     auto net = var->GetMutable<NetOp>();
     // rnn/s is net's input or output?
     net->inputs_ = {"rnn/h@pre", "rnn/w", "rnn/x"};
@@ -194,64 +194,62 @@ protected:
     scope_ = std::make_shared<Scope>();
     // inputs: x
     LOG(INFO) << "create global variable x";
-    Variable* x = scope_->CreateVariable("x");
+    Variable* x = scope_->NewVar("x");
     DDim dims =
         make_ddim({10 /*sent size*/, 20 /*batch size*/, 30 /*input dim*/});
     x->GetMutable<Tensor>()->mutable_data<float>(dims, platform::CPUPlace());
     // inputs: h_boot
     LOG(INFO) << "create global variable h_boot";
-    Variable* h_boot = scope_->CreateVariable("h_boot");
+    Variable* h_boot = scope_->NewVar("h_boot");
     h_boot->GetMutable<Tensor>()->mutable_data<float>(
         make_ddim({20 /*batch size*/, 30 /*input dim*/}), platform::CPUPlace());
     // inputs: w
     LOG(INFO) << "create global variable w";
-    Variable* w = scope_->CreateVariable("rnn/w");
+    Variable* w = scope_->NewVar("rnn/w");
     w->GetMutable<Tensor>()->mutable_data<float>(make_ddim({30, 30}),
                                                  platform::CPUPlace());
     // inputs: h_grad
     LOG(INFO) << "create variable h_grad";
-    Variable* dh = scope_->CreateVariable("h_grad");
+    Variable* dh = scope_->NewVar("h_grad");
     dh->GetMutable<Tensor>()->mutable_data<float>(make_ddim({10, 20, 30}),
                                                   platform::CPUPlace());
     // inputs: step_scopes
     LOG(INFO) << "create variable step_scopes";
-    scope_->CreateVariable("step_scopes");
+    scope_->NewVar("step_scopes");
     // inputs: step_net
     LOG(INFO) << "create variable step_net";
-    scope_->CreateVariable("step_net");
+    scope_->NewVar("step_net");
     // outputs: w_grad
     LOG(INFO) << "create global variable w_grad";
-    scope_->CreateVariable("rnn/w_grad");
+    scope_->NewVar("rnn/w_grad");
     // outputs: x_grad
     LOG(INFO) << "create global variable x_grad";
-    scope_->CreateVariable("x_grad");
+    scope_->NewVar("x_grad");
     // outputs: h_boot_grad
     LOG(INFO) << "create global variable h_boot_grad";
-    scope_->CreateVariable("h_boot_grad");
+    scope_->NewVar("h_boot_grad");
   }
 
   void CreateStepScopes() {
     std::vector<std::shared_ptr<Scope>>* step_scopes =
-        scope_->GetVariable("step_scopes")
+        scope_->FindVar("step_scopes")
             ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
     for (int i = 0; i < 10; ++i) {
       auto scope = std::make_shared<Scope>(scope_);
-      auto pre_t = scope->CreateVariable("rnn/pre_h")->GetMutable<Tensor>();
+      auto pre_t = scope->NewVar("rnn/pre_h")->GetMutable<Tensor>();
       pre_t->mutable_data<float>(make_ddim({20, 30}), platform::CPUPlace());
-      auto tensor = scope->CreateVariable("rnn/h")->GetMutable<Tensor>();
+      auto tensor = scope->NewVar("rnn/h")->GetMutable<Tensor>();
       tensor->mutable_data<float>(make_ddim({20, 30}), platform::CPUPlace());
 
       // for unit test of ConcatOutputs
-      auto xg = scope->CreateVariable("rnn/x_grad")->GetMutable<Tensor>();
+      auto xg = scope->NewVar("rnn/x_grad")->GetMutable<Tensor>();
       xg->mutable_data<float>(make_ddim({20, 30}), platform::CPUPlace());
 
       step_scopes->push_back(scope);
     }
 
     // last time step
-    auto g = (*step_scopes)[9]
-                 ->CreateVariable("rnn/h_pre_grad")
-                 ->GetMutable<Tensor>();
+    auto g = (*step_scopes)[9]->NewVar("rnn/h_pre_grad")->GetMutable<Tensor>();
     g->mutable_data<float>(make_ddim({20, 30}), platform::CPUPlace());
   }
 
@@ -280,7 +278,7 @@ protected:
 
   void CreateStepNet() {
     LOG(INFO) << "create variable step_net";
-    Variable* var = scope_->CreateVariable("step_net");
+    Variable* var = scope_->NewVar("step_net");
     auto net = var->GetMutable<NetOp>();
     net->AddOp(OpRegistry::CreateOp("mul",
                                     {"rnn/h_pre", "rnn/w", "rnn/s_grad"},
@@ -301,7 +299,7 @@ protected:
     inlink.external = "x";
     inlink.internal = "rnn/x";
     std::vector<std::shared_ptr<Scope>>* step_scopes =
-        scope_->GetVariable("step_scopes")
+        scope_->FindVar("step_scopes")
             ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
     rnn::SegmentInputs(*step_scopes, std::vector<rnn::Link>{inlink}, 10);
   }
@@ -315,7 +313,7 @@ protected:
     std::vector<rnn::MemoryAttr> memories;
     memories.push_back(mem_attr);
     std::vector<std::shared_ptr<Scope>>* step_scopes =
-        scope_->GetVariable("step_scopes")
+        scope_->FindVar("step_scopes")
             ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
     for (int i = 1; i < 10; ++i) {
       rnn::LinkMemories(*step_scopes, memories, i, -1);
@@ -344,8 +342,8 @@ TEST(RecurrentOp, LinkMemories) {
   std::vector<std::shared_ptr<Scope>> step_scopes;
   for (int i = 0; i < len; ++i) {
     auto scope = std::make_shared<Scope>();
-    scope->CreateVariable("pre_h");
-    auto tensor = scope->CreateVariable("h")->GetMutable<Tensor>();
+    scope->NewVar("pre_h");
+    auto tensor = scope->NewVar("h")->GetMutable<Tensor>();
     float* data = tensor->mutable_data<float>(make_ddim({15, 20}), CPUPlace());
     for (int i = 0; i < 15 * 20; ++i) {
       data[i] = rand() * (1. / (double)RAND_MAX);
@@ -367,9 +365,9 @@ TEST(RecurrentOp, LinkMemories) {
   // check
   for (int i = 0; i < len - 1; ++i) {
     const float* a =
-        step_scopes[i]->GetVariable("h")->GetMutable<Tensor>()->data<float>();
+        step_scopes[i]->FindVar("h")->GetMutable<Tensor>()->data<float>();
     const float* b = step_scopes[i + 1]
-                         ->GetVariable("pre_h")
+                         ->FindVar("pre_h")
                          ->GetMutable<Tensor>()
                          ->data<float>();
     for (size_t i = 0; i < 15 * 20; ++i) {
@@ -382,14 +380,10 @@ TEST(RecurrentOp, LinkMemories) {
   }
   // check
   for (int i = len - 2; i >= 0; --i) {
-    const float* a = step_scopes[i]
-                         ->GetVariable("pre_h")
-                         ->GetMutable<Tensor>()
-                         ->data<float>();
-    const float* b = step_scopes[i + 1]
-                         ->GetVariable("h")
-                         ->GetMutable<Tensor>()
-                         ->data<float>();
+    const float* a =
+        step_scopes[i]->FindVar("pre_h")->GetMutable<Tensor>()->data<float>();
+    const float* b =
+        step_scopes[i + 1]->FindVar("h")->GetMutable<Tensor>()->data<float>();
     for (size_t i = 0; i < 15 * 20; ++i) {
       ASSERT_FLOAT_EQ(a[i], b[i]);
     }

@@ -128,6 +128,11 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
 #endif  // PADDLE_ONLY_CPU
 
 template <typename T>
+inline void throw_on_error(T* e) {
+  throw_on_error(e != nullptr, "");
+}
+
+template <typename T>
 inline void throw_on_error(T e) {
   throw_on_error(e, "");
 }

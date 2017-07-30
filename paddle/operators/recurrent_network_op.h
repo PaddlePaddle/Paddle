@@ -121,7 +121,7 @@ protected:
 
   inline const std::vector<std::shared_ptr<Scope>>& GetStepScopes(
       std::shared_ptr<Scope> scope) const {
-    return *(scope->GetVariable(arg_->step_scopes))
+    return *(scope->FindVar(arg_->step_scopes))
                 ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
   }
 
@@ -159,7 +159,7 @@ public:
 protected:
   inline const std::vector<std::shared_ptr<Scope>>& GetStepScopes(
       std::shared_ptr<Scope> scope) const {
-    return *(scope->GetVariable(arg_->step_scopes))
+    return *(scope->FindVar(arg_->step_scopes))
                 ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
   }
 
