@@ -43,7 +43,7 @@ Eigen::GpuDevice* DeviceContext::get_eigen_device<Eigen::GpuDevice>() const {
 
 CUDADeviceContext::CUDADeviceContext(GPUPlace place) : place_(place) {
   SetDeviceId(place_.device);
-  // TODO (qijun) Pass a created cuda stream to Eigen::CudaStreamDevice directly
+  // TODO(qijun) Pass a created cuda stream to Eigen::CudaStreamDevice directly
   // here will cause segment fault. We must implement a class derived from
   // Eigen::StreamInterface, and reinitialize it with a cuda stream and a gpu id
   // later. Please refer to the implementation of class EigenCudaStreamDevice
