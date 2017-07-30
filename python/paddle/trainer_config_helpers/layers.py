@@ -31,103 +31,33 @@ except ImportError:
 import copy
 
 __all__ = [
-    'full_matrix_projection',
-    'AggregateLevel',
-    'ExpandLevel',
-    'identity_projection',
-    'dotmul_projection',
-    'dotmul_operator',
-    'repeat_layer',
-    'seq_reshape_layer',
-    'table_projection',
-    'mixed_layer',
-    'data_layer',
-    'embedding_layer',
-    'fc_layer',
-    'grumemory',
-    'pooling_layer',
-    'lstmemory',
-    'last_seq',
-    'first_seq',
-    'cos_sim',
-    'hsigmoid',
-    'conv_projection',
-    'mse_cost',
-    'regression_cost',
-    'classification_cost',
-    'LayerOutput',
-    'img_conv_layer',
-    'img_pool_layer',
-    'batch_norm_layer',
-    'img_cmrnorm_layer',
-    'addto_layer',
-    'concat_layer',
-    'seq_concat_layer',
-    'lstm_step_layer',
-    'recurrent_group',
-    'memory',
-    'StaticInput',
-    'expand_layer',
-    'scaling_layer',
-    'scaling_projection',
-    'power_layer',
-    'interpolation_layer',
-    'bilinear_interp_layer',
-    'trans_layer',
-    'rotate_layer',
-    'sum_to_one_norm_layer',
-    'get_output_layer',
-    'LayerType',
-    'context_projection',
-    'beam_search',
-    'maxid_layer',
-    'GeneratedInput',
-    'SubsequenceInput',
-    'gru_step_layer',
-    'gru_step_naive_layer',
-    'recurrent_layer',
-    'BaseGeneratedInput',
-    'conv_operator',
-    'conv_shift_layer',
-    'tensor_layer',
-    'selective_fc_layer',
-    'sampling_id_layer',
-    'slope_intercept_layer',
-    'trans_full_matrix_projection',
-    'linear_comb_layer',
-    'convex_comb_layer',
-    'ctc_layer',
-    'warp_ctc_layer',
-    'crf_layer',
-    'crf_decoding_layer',
-    'nce_layer',
-    'cross_entropy_with_selfnorm',
-    'cross_entropy',
-    'multi_binary_label_cross_entropy',
-    'sum_cost',
-    'rank_cost',
-    'lambda_cost',
-    'huber_cost',
-    'block_expand_layer',
-    'maxout_layer',
-    'out_prod_layer',
-    'printer_layer',
-    'print_layer',
-    'priorbox_layer',
-    'cross_channel_norm_layer',
-    'multibox_loss_layer',
-    'detection_output_layer',
-    'spp_layer',
-    'pad_layer',
-    'eos_layer',
-    'smooth_l1_cost',
-    'layer_support',
-    'multiplex_layer',
-    'row_conv_layer',
-    'dropout_layer',
-    'prelu_layer',
-    'gated_unit_layer',
-    'crop_layer',
+    'full_matrix_projection', 'AggregateLevel', 'ExpandLevel',
+    'identity_projection', 'dotmul_projection', 'dotmul_operator',
+    'repeat_layer', 'seq_reshape_layer', 'table_projection', 'mixed_layer',
+    'data_layer', 'embedding_layer', 'fc_layer', 'grumemory', 'pooling_layer',
+    'lstmemory', 'last_seq', 'first_seq', 'cos_sim', 'hsigmoid',
+    'conv_projection', 'mse_cost', 'regression_cost', 'classification_cost',
+    'LayerOutput', 'img_conv_layer', 'img_pool_layer', 'batch_norm_layer',
+    'img_cmrnorm_layer', 'addto_layer', 'concat_layer', 'seq_concat_layer',
+    'lstm_step_layer', 'recurrent_group', 'memory', 'StaticInput',
+    'expand_layer', 'scaling_layer', 'scaling_projection', 'power_layer',
+    'interpolation_layer', 'bilinear_interp_layer', 'trans_layer',
+    'rotate_layer', 'sum_to_one_norm_layer', 'get_output_layer', 'LayerType',
+    'context_projection', 'beam_search', 'maxid_layer', 'GeneratedInput',
+    'SubsequenceInput', 'gru_step_layer', 'gru_step_naive_layer',
+    'recurrent_layer', 'BaseGeneratedInput', 'conv_operator',
+    'conv_shift_layer', 'tensor_layer', 'selective_fc_layer',
+    'sampling_id_layer', 'slope_intercept_layer',
+    'trans_full_matrix_projection', 'linear_comb_layer', 'convex_comb_layer',
+    'ctc_layer', 'warp_ctc_layer', 'crf_layer', 'crf_decoding_layer',
+    'nce_layer', 'cross_entropy_with_selfnorm', 'cross_entropy',
+    'multi_binary_label_cross_entropy', 'sum_cost', 'rank_cost', 'lambda_cost',
+    'huber_cost', 'block_expand_layer', 'maxout_layer', 'out_prod_layer',
+    'printer_layer', 'print_layer', 'priorbox_layer',
+    'cross_channel_norm_layer', 'multibox_loss_layer', 'detection_output_layer',
+    'spp_layer', 'pad_layer', 'eos_layer', 'smooth_l1_cost', 'layer_support',
+    'multiplex_layer', 'row_conv_layer', 'dropout_layer', 'prelu_layer',
+    'gated_unit_layer', 'crop_layer', 'clip_layer'
 ]
 
 
@@ -220,6 +150,7 @@ class LayerType(object):
 
     PRELU = 'prelu'
     CROP_LAYER = 'crop'
+    CLIP_LAYER = 'clip'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -6006,3 +5937,36 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
         layer_type=LayerType.CROP_LAYER,
         parents=input,
         size=l.config.size)
+
+
+@wrap_name_default("clip")
+def clip_layer(input, clip_threshold_low, clip_threshold_high, name=None):
+    """
+    A layer for clipping the input value by the threshold.
+
+    .. math::
+
+        out[i] = \min\left(\max\left(in[i],p_{1}\right),p_{2}\right)
+
+    .. code-block:: python
+
+        clip = clip_layer(input=input_layer, clip_threshold_low=-10, clip_threshold_high=10)
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput.
+    :param clip_threshold_low: The lower threshold for clipping.
+    :type clip_threshold_low: float
+    :param clip_threshold_high: The upper threshold for clipping.
+    :type clip_threshold_high: float
+    :return: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.CLIP_LAYER,
+        inputs=[input.name],
+        clip_threshold_low=clip_threshold_low,
+        clip_threshold_high=clip_threshold_high)
+    return LayerOutput(
+        name, LayerType.CLIP_LAYER, parents=[input], size=input.size)

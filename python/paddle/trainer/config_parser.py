@@ -2169,6 +2169,23 @@ class RowConvLayer(LayerBase):
         self.create_input_parameter(0, psize, dims)
 
 
+@config_layer('clip')
+class ClipLayer(LayerBase):
+    def __init__(self, name, inputs, clip_threshold_low, clip_threshold_high):
+        super(ClipLayer, self).__init__(name, 'clip', 0, inputs=inputs)
+        config_assert(
+            len(self.inputs) == 1,
+            'ClipLayer layer must have one and only one input.')
+        config_assert(
+            clip_threshold_low < clip_threshold_high,
+            'clip_threshold_low must be less than clip_threshold_high.')
+        input_layer = self.get_input_layer(0)
+        self.set_layer_size(input_layer.size)
+        self.config.inputs[0].clip_conf.clip_threshold_low = clip_threshold_low
+        self.config.inputs[
+            0].clip_conf.clip_threshold_high = clip_threshold_high
+
+
 # key: cost type
 # value: cost class
 g_cost_map = {}
