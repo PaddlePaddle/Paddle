@@ -110,22 +110,22 @@ class OperatorContext {
 
   template <typename T>
   const T* Input(int index) const {
-    return &Input<Variable>(index)->Get<T>();
+    return &(scope_->GetVariable(op_.inputs_[index])->Get<T>());
   }
 
   template <typename T>
   T* Output(int index) const {
-    return Output<Variable>(index)->GetMutable<T>();
+    return scope_->GetVariable(op_.outputs_[index])->GetMutable<T>();
   }
 
   template <typename T>
   const T* Input(const std::string& name) const {
-    return &Input<Variable>(name)->Get<T>();
+    return &(scope_->GetVariable(op_.Input(name))->Get<T>());
   }
 
   template <typename T>
   T* Output(const std::string& name) const {
-    return Output<Variable>(name)->GetMutable<T>();
+    return scope_->GetVariable(op_.Output(name))->GetMutable<T>();
   }
 
   template <typename T>
