@@ -229,11 +229,11 @@ void MkldnnTester::printMatrix(const MatrixPtr& m) {
   CHECK(m);
   CHECK(m->getData());
   const real* pd = m->getData();
-  const int width = m->getWidth();
-  const int height = m->getHeight();
-  for (int h = 0; h < height; ++h) {
+  const size_t width = m->getWidth();
+  const size_t height = m->getHeight();
+  for (size_t h = 0; h < height; ++h) {
     std::stringstream row;
-    for (int w = 0; w < width; ++w) {
+    for (size_t w = 0; w < width; ++w) {
       row << pd[width * h + w] << ", ";
     }
     VLOG(lvl_) << row.str();
@@ -244,9 +244,9 @@ void MkldnnTester::printVector(const VectorPtr& v) {
   CHECK(v);
   CHECK(v->getData());
   const real* pd = v->getData();
-  const int sz = v->getSize();
+  const size_t sz = v->getSize();
   std::stringstream row;
-  for (int i = 0; i < sz; ++i) {
+  for (size_t i = 0; i < sz; ++i) {
     row << pd[i] << ", ";
   }
   VLOG(lvl_) << row.str();
