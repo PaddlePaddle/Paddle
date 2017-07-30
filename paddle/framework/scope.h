@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <list>
+#include <map>
 #include <string>
-#include <unordered_map>
-#include <vector>
 
 #include "paddle/framework/variable.h"
 
@@ -35,73 +35,36 @@ class Scope;
  */
 class Scope {
  public:
-  /**
-   * @brief Initialize s Scope without parent.
-   */
   Scope() {}
+  ~Scope();
 
-  /**
-   * @brief Initialize a Scope with parent.
-   */
-  explicit Scope(const std::shared_ptr<Scope>& parent) : parent_(parent) {}
+  // Create a sub-scope. Returns a reference other than a pointer so
+  // to prevent from manual deletion.
+  Scope& NewScope();
 
-  /**
-   * @brief Create Variable
-   *
-   * Create Variable in this Scope. Return the exist one if Variable already
-   * been created.
-   */
-  Variable* CreateVariable(const std::string& name) {
-    auto var = GetVariable(name);
-    if (var) {
-      return var;
-    } else {
-      auto ptr = new Variable();
-      name_to_var_[name] = std::unique_ptr<Variable>(ptr);
-      var_to_name_[ptr] = name;
-      return GetVariable(name);
-    }
-  }
+  // Create a variable with given name if it doesn't exist.
+  Variable* NewVar(const std::string& name);
 
-  /**
-   * @brief Get Variable.
-   *
-   * Get Variable from this Scope, this function will recursive find Variable
-   * from it's parent scope. Return nullptr if not found.
-   */
-  Variable* GetVariable(const std::string& name) const {
-    auto it = name_to_var_.find(name);
-    if (it != name_to_var_.end()) {
-      return it->second.get();
-    } else if (parent_ != nullptr) {
-      return parent_->GetVariable(name);
-    } else {
-      return nullptr;
-    }
-  }
+  // Create a variable with a scope-unique name.
+  Variable* NewVar();
 
-  /**
-   * @brief If this scope has a Var named name.
-   *
-   * Find if there is a Variable in this scope and it's parent scope
-   */
-  bool HasVariable(const std::string& name) const {
-    return (name_to_var_.find(name) != name_to_var_.end() ||
-            (parent_ && parent_->HasVariable(name)));
-  }
+  // Find a variable in the scope or any of its ancestors.  Returns
+  // nullptr if cannot find.
+  Variable* FindVar(const std::string& name) const;
 
-  std::string GetVariableName(Variable* const var) const {
-    try {
-      return var_to_name_.at(var);
-    } catch (...) {
-      return "";
-    }
-  }
+  // Find the scope or an ancestor scope that contains the given variable.
+  Scope* FindScope(const Variable* var) const;
+
+  // Returns the name of a variable in this scope.
+  std::string VarName(const Variable* var) const { return var->name_; }
 
  private:
-  std::unordered_map<Variable*, std::string> var_to_name_;
-  std::unordered_map<std::string, std::unique_ptr<Variable>> name_to_var_;
-  std::shared_ptr<Scope> parent_{nullptr};
+  // Call Scope::NewScope for a sub-scope.
+  explicit Scope(Scope* parent) : parent_(parent) {}
+
+  std::map<std::string, Variable*> vars_;
+  std::list<Scope*> kids_;
+  Scope* parent_{nullptr};
 };
 
 }  // namespace framework
