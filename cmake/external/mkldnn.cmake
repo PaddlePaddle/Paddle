@@ -20,13 +20,8 @@ INCLUDE(ExternalProject)
 
 SET(MKLDNN_PROJECT        "extern_mkldnn")
 SET(MKLDNN_SOURCES_DIR    ${THIRD_PARTY_PATH}/mkldnn)
-SET(MKLDNN_INSTALL_ROOT   ${CMAKE_INSTALL_PREFIX})
-IF(NOT "$ENV{HOME}" STREQUAL "/root")
-    SET(MKLDNN_INSTALL_ROOT  "$ENV{HOME}")
-ENDIF()
-
-SET(MKLDNN_INSTALL_DIR  "${MKLDNN_INSTALL_ROOT}/opt/paddle/third_party/mkldnn")
-SET(MKLDNN_INC_DIR      "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
+SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
+SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 
 IF(WIN32)
     MESSAGE(WARNING "Windowns is not supported with MKLDNN in Paddle yet."
