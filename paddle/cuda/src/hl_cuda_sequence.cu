@@ -269,8 +269,7 @@ void hl_sequence2batch_copy_padding(real* batch,
   int blockDimY = CUDA_BLOCK_SIZE / blockDimX;
   dim3 threads(blockDimX, blockDimY);
 
-  int gridDimX = (maxSequenceLength * blockDimX + CUDA_BLOCK_SIZE - 1) /
-      CUDA_BLOCK_SIZE;
+  int gridDimX = (maxSequenceLength + blockDimY - 1) / blockDimY;
   int gridDimY = numSequences;
   dim3 grid(gridDimX, gridDimY);
 
