@@ -21,6 +21,7 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 
 DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_bool(use_gpu);
 
 struct testFCDesc {
   int bs;
@@ -68,6 +69,7 @@ TEST(MkldnnLayer, fcLayer) {
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
+  FLAGS_use_gpu = false;
   initMain(argc, argv);
   FLAGS_thread_local_rand_use_global_seed = true;
   srand(1);
