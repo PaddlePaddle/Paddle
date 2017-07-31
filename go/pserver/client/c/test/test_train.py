@@ -54,9 +54,6 @@ def main():
 
     # event_handler to print training and testing info
     def event_handler(event):
-        if isinstance(event, paddle.event.BeginPass):
-            master_client.paddle_start_get_records(event.pass_id)
-
         if isinstance(event, paddle.event.EndIteration):
             # FIXME: for cloud data reader, pass number is managed by master
             # should print the server side pass number

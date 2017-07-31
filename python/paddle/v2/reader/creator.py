@@ -81,6 +81,9 @@ def recordio_local(paths, buf_size=100):
     return dec.buffered(reader, buf_size)
 
 
+pass_num = 0
+
+
 def recordio(paths, buf_size=100):
     """
     Creates a data reader that outputs record one one by one
@@ -90,6 +93,7 @@ def recordio(paths, buf_size=100):
     """
     import os
     import paddle.v2.master.client as cloud
+    import cPickle as pickle
 
     if "KUBERNETES_SERVICE_HOST" not in os.environ.keys():
         return recordio_local(paths)
@@ -98,14 +102,17 @@ def recordio(paths, buf_size=100):
     if host_name not in os.environ.keys():
         raise Exception('not find ' + host_name + ' in environment variable.')
 
-    addr = os.environ(host)
+    addr = os.getenv(host_name)
 
     def reader():
         c = cloud(addr, buf_size)
         c.set_dataset(paths)
+        c.paddle_start_get_records(pass_id)
+        global pass_num
+        pass_num += 1
 
         while True:
-            r, err = client.next_record()
+            r, err = c.next_record()
             if err < 0:
                 break
             yield r
