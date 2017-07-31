@@ -132,12 +132,12 @@ inline void throw_on_error(T e) {
   throw_on_error(e, "");
 }
 
-#define PADDLE_THROW(...)                                      \
-  do {                                                         \
-    throw ::paddle::platform::EnforceNotMet(                   \
-        std::make_exception_ptr(                               \
-            std::runtime_error(string::Sprintf(__VA_ARGS__))), \
-        __FILE__, __LINE__);                                   \
+#define PADDLE_THROW(...)                                              \
+  do {                                                                 \
+    throw ::paddle::platform::EnforceNotMet(                           \
+        std::make_exception_ptr(                                       \
+            std::runtime_error(paddle::string::Sprintf(__VA_ARGS__))), \
+        __FILE__, __LINE__);                                           \
   } while (0)
 
 #define PADDLE_ENFORCE(...)                                             \

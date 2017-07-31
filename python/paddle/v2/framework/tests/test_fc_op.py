@@ -33,7 +33,7 @@ class TestFc(unittest.TestCase):
         op.infer_shape(scope)
         self.assertEqual([1000, 100], tensor.shape())
 
-        ctx = core.DeviceContext.cpu_context()
+        ctx = core.DeviceContext.create(place)
 
         op.run(scope, ctx)
 

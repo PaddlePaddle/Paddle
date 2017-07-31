@@ -56,6 +56,14 @@ static size_t UniqueIntegerGenerator() {
   return generator.fetch_add(1);
 }
 
+bool IsCompileGPU() {
+#ifdef PADDLE_ONLY_CPU
+  return false;
+#else
+  return true;
+#endif
+}
+
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of PaddlePaddle");
 
@@ -148,18 +156,23 @@ All parameter, weight, gradient are variables in Paddle.
       .def("temp", pd::OperatorBase::TMP_VAR_NAME);
 
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
-      .def_static("cpu_context",
-                  []() -> paddle::platform::DeviceContext* {
+      .def_static("create",
+                  [](paddle::platform::CPUPlace& place)
+                      -> paddle::platform::DeviceContext* {
                     return new paddle::platform::CPUDeviceContext();
                   })
-#ifndef PADDLE_ONLY_CPU
-      .def_static("gpu_context",
-                  [](paddle::platform::GPUPlace& place)
-                      -> paddle::platform::DeviceContext* {
-                    return new paddle::platform::CUDADeviceContext(place);
-                  })
+      .def_static(
+          "create",
+          [](paddle::platform::GPUPlace& place)
+              -> paddle::platform::DeviceContext* {
+#ifdef PADDLE_ONLY_CPU
+            PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+
+#else
+            return new paddle::platform::CUDADeviceContext(place);
 #endif
-      ;  // NOLINT
+          });
+
   py::class_<paddle::platform::GPUPlace>(m, "GPUPlace").def(py::init<int>());
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace").def(py::init<>());
@@ -197,6 +210,8 @@ All parameter, weight, gradient are variables in Paddle.
   ExposeOperator(net);
 
   m.def("unique_integer", UniqueIntegerGenerator);
+
+  m.def("is_compile_gpu", IsCompileGPU);
 
   return m.ptr();
 }
