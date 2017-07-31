@@ -159,19 +159,18 @@ All parameter, weight, gradient are variables in Paddle.
       .def_static("create",
                   [](paddle::platform::CPUPlace& place)
                       -> paddle::platform::DeviceContext* {
-                    return new paddle::platform::CPUDeviceContext();
-                  })
+                        return new paddle::platform::CPUDeviceContext();
+                      })
       .def_static(
           "create",
           [](paddle::platform::GPUPlace& place)
               -> paddle::platform::DeviceContext* {
 #ifdef PADDLE_ONLY_CPU
-            PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
-
+                PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
 #else
-            return new paddle::platform::CUDADeviceContext(place);
+                return new paddle::platform::CUDADeviceContext(place);
 #endif
-          });
+              });
 
   py::class_<paddle::platform::GPUPlace>(m, "GPUPlace").def(py::init<int>());
 
