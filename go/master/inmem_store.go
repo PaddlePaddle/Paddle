@@ -40,3 +40,8 @@ func (m *InMemStore) Load() ([]byte, error) {
 
 	return m.buf, nil
 }
+
+// Shutdown shuts down the in mem store.
+func (m *InMemStore) Shutdown() error {
+	return nil
+}

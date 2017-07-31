@@ -18,6 +18,8 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"os"
+	"os/signal"
 	"strconv"
 	"time"
 
@@ -33,7 +35,8 @@ func main() {
 	index := flag.Int("index", -1, "index of this pserver, should be larger or equal than 0")
 	etcdEndpoint := flag.String("etcd-endpoint", "http://127.0.0.1:2379",
 		"comma separated endpoint string for pserver to connect to etcd")
-	etcdTimeout := flag.Duration("etcd-timeout", 5*time.Second, "timeout for etcd calls")
+	dialTimeout := flag.Duration("dial-timeout", 5*time.Second, "dial timeout")
+	etcdTTL := flag.Int("etcd-ttl", 5, "etcd time to live in seconds")
 	numPservers := flag.Int("num-pservers", 1, "total pserver count in a training job")
 	checkpointPath := flag.String("checkpoint-path", "/checkpoints/", "save checkpoint path")
 	checkpointInterval := flag.Duration("checkpoint-interval", 600*time.Second, "save checkpoint per interval seconds")
@@ -53,7 +56,7 @@ func main() {
 	if *index >= 0 {
 		idx = *index
 	} else {
-		e = pserver.NewEtcdClient(*etcdEndpoint, *numPservers, *etcdTimeout)
+		e = pserver.NewEtcdClient(*etcdEndpoint, *numPservers, *dialTimeout, *etcdTTL)
 		idx, err = e.Register(*port)
 		candy.Must(err)
 
@@ -67,6 +70,20 @@ func main() {
 		}
 	}
 
+	shutdown := func() {
+		log.Infoln("shutting down gracefully")
+		sErr := e.Shutdown()
+		if sErr != nil {
+			log.Errorln(sErr)
+		}
+	}
+
+	// Guaranteed to run even panic happens.
+	defer shutdown()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
 	s, err := pserver.NewService(idx, *checkpointInterval, *checkpointPath, e, cp)
 	candy.Must(err)
 
@@ -77,7 +94,11 @@ func main() {
 	l, err := net.Listen("tcp", ":"+strconv.Itoa(*port))
 	candy.Must(err)
 
-	log.Infof("start pserver at port %d", *port)
-	err = http.Serve(l, nil)
-	candy.Must(err)
+	go func() {
+		log.Infof("start pserver at port %d", *port)
+		err = http.Serve(l, nil)
+		candy.Must(err)
+	}()
+
+	<-c
 }

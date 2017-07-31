@@ -43,8 +43,19 @@ Eigen::GpuDevice* DeviceContext::get_eigen_device<Eigen::GpuDevice>() const {
 
 CUDADeviceContext::CUDADeviceContext(GPUPlace place) : place_(place) {
   SetDeviceId(place_.device);
-  PADDLE_ENFORCE(cudaStreamCreate(&stream_));
-  eigen_stream_.reset(new Eigen::CudaStreamDevice(&stream_));
+  // TODO(qijun) Pass a created cuda stream to Eigen::CudaStreamDevice directly
+  // here will cause segment fault. We must implement a class derived from
+  // Eigen::StreamInterface, and reinitialize it with a cuda stream and a gpu id
+  // later. Please refer to the implementation of class EigenCudaStreamDevice
+  // in TensorFlow.
+  //
+  // We find that CUDA 7 introduces a new option, the per-thread default stream,
+  // that has two effects. Please refer to https://devblogs.nvidia.com/
+  // parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
+  //
+  // So, we decide to use default stream and add –default-stream per-thread nvcc
+  // flag. Than, two threads with two CUDADeviceContexts will run parallelly.
+  eigen_stream_.reset(new Eigen::CudaStreamDevice());
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
 }
 
@@ -64,15 +75,12 @@ CUDADeviceContext::~CUDADeviceContext() {
   }
   eigen_stream_.reset();
   eigen_device_.reset();
-  PADDLE_ENFORCE(cudaStreamDestroy(stream_));
 }
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
-cudaStream_t CUDADeviceContext::stream() const { return stream_; }
-
 void CUDADeviceContext::Wait() const {
-  PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
+  PADDLE_ENFORCE(cudaStreamSynchronize(0));
 }
 
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
@@ -83,7 +91,6 @@ cublasHandle_t CUDADeviceContext::cublas_handle() {
   if (!cublas_handle_) {
     SetDeviceId(place_.device);
     PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
-    PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
   }
   return cublas_handle_;
 }
@@ -92,7 +99,6 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() {
   if (!cudnn_handle_) {
     SetDeviceId(place_.device);
     PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
-    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
   }
   return cudnn_handle_;
 }
@@ -104,7 +110,6 @@ curandGenerator_t CUDADeviceContext::curand_generator() {
                                                   CURAND_RNG_PSEUDO_DEFAULT));
     PADDLE_ENFORCE(
         dynload::curandSetPseudoRandomGeneratorSeed(curand_generator_, seed_));
-    PADDLE_ENFORCE(dynload::curandSetStream(curand_generator_, stream_));
   }
   return curand_generator_;
 }

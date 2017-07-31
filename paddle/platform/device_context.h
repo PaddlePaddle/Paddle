@@ -61,9 +61,6 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const;
 
-  /*! \brief  Return CUDA stream in the device context. */
-  cudaStream_t stream() const;
-
   /*! \brief  Return place in the device context. */
   Place GetPlace() const override;
 
@@ -90,8 +87,6 @@ class CUDADeviceContext : public DeviceContext {
 
  private:
   uint64_t seed_;
-
-  cudaStream_t stream_;
 
   // clang-format off
   cudnnHandle_t     cudnn_handle_     = nullptr;
