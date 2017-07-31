@@ -27,7 +27,7 @@ ENDIF()
 INCLUDE(ExternalProject)
 
 SET(MKLML_PROJECT       "extern_mklml")
-SET(MKLML_VER           "mklml_lnx_2018.0.20170425")
+SET(MKLML_VER           "mklml_lnx_2018.0.20170720")
 SET(MKLML_URL           "https://github.com/01org/mkl-dnn/releases/download/v0.9/${MKLML_VER}.tgz")
 SET(MKLML_SOURCE_DIR    "${THIRD_PARTY_PATH}/mklml")
 SET(MKLML_DOWNLOAD_DIR  "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
