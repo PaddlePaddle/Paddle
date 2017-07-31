@@ -103,6 +103,7 @@ class Tensor {
    * @param[in] begin_idx   The begin index of the slice.
    * @param[in] end_idx     The end index of the slice.
    */
+  template <typename T>
   inline Tensor Slice(const int& begin_idx, const int& end_idx) const;
 
  private:
