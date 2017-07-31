@@ -482,6 +482,8 @@ message LayerConfig {
   repeated uint32 offset = 55;
   repeated uint32 shape = 56;
 
+  // for sub_nest_seq layer to select top k sequence with highest scores
+  optional uint32 top_k = 57 [default = 1];
 }
 
 message EvaluatorConfig {

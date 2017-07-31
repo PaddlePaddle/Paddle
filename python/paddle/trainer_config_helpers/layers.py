@@ -31,103 +31,33 @@ except ImportError:
 import copy
 
 __all__ = [
-    'full_matrix_projection',
-    'AggregateLevel',
-    'ExpandLevel',
-    'identity_projection',
-    'dotmul_projection',
-    'dotmul_operator',
-    'repeat_layer',
-    'seq_reshape_layer',
-    'table_projection',
-    'mixed_layer',
-    'data_layer',
-    'embedding_layer',
-    'fc_layer',
-    'grumemory',
-    'pooling_layer',
-    'lstmemory',
-    'last_seq',
-    'first_seq',
-    'cos_sim',
-    'hsigmoid',
-    'conv_projection',
-    'mse_cost',
-    'regression_cost',
-    'classification_cost',
-    'LayerOutput',
-    'img_conv_layer',
-    'img_pool_layer',
-    'batch_norm_layer',
-    'img_cmrnorm_layer',
-    'addto_layer',
-    'concat_layer',
-    'seq_concat_layer',
-    'lstm_step_layer',
-    'recurrent_group',
-    'memory',
-    'StaticInput',
-    'expand_layer',
-    'scaling_layer',
-    'scaling_projection',
-    'power_layer',
-    'interpolation_layer',
-    'bilinear_interp_layer',
-    'trans_layer',
-    'rotate_layer',
-    'sum_to_one_norm_layer',
-    'get_output_layer',
-    'LayerType',
-    'context_projection',
-    'beam_search',
-    'maxid_layer',
-    'GeneratedInput',
-    'SubsequenceInput',
-    'gru_step_layer',
-    'gru_step_naive_layer',
-    'recurrent_layer',
-    'BaseGeneratedInput',
-    'conv_operator',
-    'conv_shift_layer',
-    'tensor_layer',
-    'selective_fc_layer',
-    'sampling_id_layer',
-    'slope_intercept_layer',
-    'trans_full_matrix_projection',
-    'linear_comb_layer',
-    'convex_comb_layer',
-    'ctc_layer',
-    'warp_ctc_layer',
-    'crf_layer',
-    'crf_decoding_layer',
-    'nce_layer',
-    'cross_entropy_with_selfnorm',
-    'cross_entropy',
-    'multi_binary_label_cross_entropy',
-    'sum_cost',
-    'rank_cost',
-    'lambda_cost',
-    'huber_cost',
-    'block_expand_layer',
-    'maxout_layer',
-    'out_prod_layer',
-    'printer_layer',
-    'print_layer',
-    'priorbox_layer',
-    'cross_channel_norm_layer',
-    'multibox_loss_layer',
-    'detection_output_layer',
-    'spp_layer',
-    'pad_layer',
-    'eos_layer',
-    'smooth_l1_cost',
-    'layer_support',
-    'multiplex_layer',
-    'row_conv_layer',
-    'dropout_layer',
-    'prelu_layer',
-    'gated_unit_layer',
-    'crop_layer',
+    'full_matrix_projection', 'AggregateLevel', 'ExpandLevel',
+    'identity_projection', 'dotmul_projection', 'dotmul_operator',
+    'repeat_layer', 'seq_reshape_layer', 'table_projection', 'mixed_layer',
+    'data_layer', 'embedding_layer', 'fc_layer', 'grumemory', 'pooling_layer',
+    'lstmemory', 'last_seq', 'first_seq', 'cos_sim', 'hsigmoid',
+    'conv_projection', 'mse_cost', 'regression_cost', 'classification_cost',
+    'LayerOutput', 'img_conv_layer', 'img_pool_layer', 'batch_norm_layer',
+    'img_cmrnorm_layer', 'addto_layer', 'concat_layer', 'seq_concat_layer',
+    'lstm_step_layer', 'recurrent_group', 'memory', 'StaticInput',
+    'expand_layer', 'scaling_layer', 'scaling_projection', 'power_layer',
+    'interpolation_layer', 'bilinear_interp_layer', 'trans_layer',
+    'rotate_layer', 'sum_to_one_norm_layer', 'get_output_layer', 'LayerType',
+    'context_projection', 'beam_search', 'maxid_layer', 'GeneratedInput',
+    'SubsequenceInput', 'gru_step_layer', 'gru_step_naive_layer',
+    'recurrent_layer', 'BaseGeneratedInput', 'conv_operator',
+    'conv_shift_layer', 'tensor_layer', 'selective_fc_layer',
+    'sampling_id_layer', 'slope_intercept_layer',
+    'trans_full_matrix_projection', 'linear_comb_layer', 'convex_comb_layer',
+    'ctc_layer', 'warp_ctc_layer', 'crf_layer', 'crf_decoding_layer',
+    'nce_layer', 'cross_entropy_with_selfnorm', 'cross_entropy',
+    'multi_binary_label_cross_entropy', 'sum_cost', 'rank_cost', 'lambda_cost',
+    'huber_cost', 'block_expand_layer', 'maxout_layer', 'out_prod_layer',
+    'printer_layer', 'print_layer', 'priorbox_layer',
+    'cross_channel_norm_layer', 'multibox_loss_layer', 'detection_output_layer',
+    'spp_layer', 'pad_layer', 'eos_layer', 'smooth_l1_cost', 'layer_support',
+    'multiplex_layer', 'row_conv_layer', 'dropout_layer', 'prelu_layer',
+    'gated_unit_layer', 'crop_layer', 'sub_nested_seq_layer'
 ]
 
 
@@ -220,6 +150,7 @@ class LayerType(object):
 
     PRELU = 'prelu'
     CROP_LAYER = 'crop'
+    SUB_NESTED_SEQ = 'sub_nested_seq'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -6004,5 +5935,46 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
     return LayerOutput(
         name=name,
         layer_type=LayerType.CROP_LAYER,
+        parents=input,
+        size=l.config.size)
+
+
+@wrap_name_default()
+@layer_support()
+def sub_nested_seq_layer(input, name=None, top_k=1):
+    """
+    The sub_nest_seq_layer accepts two inputs: the first one is a nested
+    sequence in PaddlePaddle; the second one is a learnable score or
+    distribution over each sequence in the nested sequence.
+
+    Then sub_nest_seq_layer selects top k sentences with highest scores or
+    probabilites according to the second input.
+
+    The example usage is:
+
+    .. code-block:: python
+    prob = fc_layer(input=data, size=1, act=SequenceSoftmaxActivation())
+    sub_nest_seq = sub_nest_seq_layer(input=[data, prob], top_k=3)
+
+    :param input: The two input layers. The first input must be a nested
+        sequence. The second input is a learnable scores, whose size must be 1.
+    :type input: LayerOutput
+    :param name: name of this layer.
+    :type name: basestring
+    :param top_k: number of sequences with highest probabilies to select.
+    :type top_k: int
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, collections.Sequence) and len(input) == 2, (
+        'sub_nest_seq_layer has exactly two inputs.')
+    l = Layer(
+        inputs=[x.name for x in input],
+        name=name,
+        top_k=top_k,
+        type=LayerType.SUB_NESTED_SEQ)
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.SUB_NESTED_SEQ,
         parents=input,
         size=l.config.size)
