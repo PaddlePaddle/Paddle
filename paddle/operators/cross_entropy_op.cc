@@ -24,10 +24,9 @@ protected:
                    "Input size of OnehotCrossEntropyOp must be two");
     PADDLE_ENFORCE(ctx.OutputSize() == 1,
                    "Output size of OnehotCrossEntropyOp must be one");
-    PADDLE_ENFORCE(
-        ctx.Input<Variable>(0) != nullptr && ctx.Input<Variable>(1) != nullptr,
-        "Inputs of OnehotCrossEntropyOp must all be set");
-    PADDLE_ENFORCE(ctx.Output<Variable>(0) != nullptr,
+    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr && ctx.InputVar(1) != nullptr,
+                   "Inputs of OnehotCrossEntropyOp must all be set");
+    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
                    "Outputs of OnehotCrossEntropyOp must all be set");
     PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims().size() == 2,
                    "X's dimension must be 2.");

@@ -108,24 +108,61 @@ class OperatorContext {
 
   size_t OutputSize() const { return op_.outputs_.size(); }
 
+  const Variable* InputVar(size_t index) const {
+    return scope_->GetVariable(op_.inputs_.at(index));
+  }
+
+  Variable* OutputVar(size_t index) const {
+    return scope_->GetVariable(op_.outputs_.at(index));
+  }
+
+  const Variable* InputVar(const std::string& name) const {
+    return scope_->GetVariable(op_.Input(name));
+  }
+
+  Variable* OutputVar(const std::string& name) const {
+    return scope_->GetVariable(op_.Output(name));
+  }
+
+  const std::vector<const Variable*> MultiInputVar(
+      const std::string& name) const {
+    auto names = op_.Inputs(name);
+    std::vector<const Variable*> res;
+    res.reserve(names.size());
+    std::transform(
+        names.begin(), names.end(), std::back_inserter(res),
+        [this](const std::string& name) { return scope_->GetVariable(name); });
+    return res;
+  }
+
+  std::vector<const Variable*> MultiOutputVar(const std::string& name) const {
+    auto names = op_.Outputs(name);
+    std::vector<const Variable*> res;
+    res.reserve(names.size());
+    std::transform(
+        names.begin(), names.end(), std::back_inserter(res),
+        [this](const std::string& name) { return scope_->GetVariable(name); });
+    return res;
+  }
+
   template <typename T>
   const T* Input(size_t index) const {
-    return &(scope_->GetVariable(op_.inputs_[index])->Get<T>());
+    return &(InputVar(index)->Get<T>());
   }
 
   template <typename T>
   T* Output(size_t index) const {
-    return scope_->GetVariable(op_.outputs_[index])->GetMutable<T>();
+    return OutputVar(index)->GetMutable<T>();
   }
 
   template <typename T>
   const T* Input(const std::string& name) const {
-    return &(scope_->GetVariable(op_.Input(name))->Get<T>());
+    return &(InputVar(name)->Get<T>());
   }
 
   template <typename T>
   T* Output(const std::string& name) const {
-    return scope_->GetVariable(op_.Output(name))->GetMutable<T>();
+    return OutputVar(name)->GetMutable<T>();
   }
 
   template <typename T>

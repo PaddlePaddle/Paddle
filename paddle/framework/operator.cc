@@ -105,50 +105,5 @@ std::string OperatorBase::DebugString() const {
   return ss.str();
 }
 
-template <>
-const Variable* OperatorContext::Input<Variable>(size_t index) const {
-  return scope_->GetVariable(op_.inputs_[index]);
-}
-
-template <>
-Variable* OperatorContext::Output<Variable>(size_t index) const {
-  return scope_->GetVariable(op_.outputs_[index]);
-}
-
-template <>
-const Variable* OperatorContext::Input<Variable>(
-    const std::string& name) const {
-  return scope_->GetVariable(op_.Input(name));
-}
-
-template <>
-Variable* OperatorContext::Output(const std::string& name) const {
-  return scope_->GetVariable(op_.Output(name));
-}
-
-template <>
-const std::vector<const Variable*> OperatorContext::MultiInput(
-    const std::string& name) const {
-  auto names = op_.Inputs(name);
-  std::vector<const Variable*> res;
-  res.reserve(names.size());
-  std::transform(
-      names.begin(), names.end(), std::back_inserter(res),
-      [this](const std::string& name) { return scope_->GetVariable(name); });
-  return res;
-}
-
-template <>
-std::vector<const Variable*> OperatorContext::MultiOutput(
-    const std::string& name) const {
-  auto names = op_.Outputs(name);
-  std::vector<const Variable*> res;
-  res.reserve(names.size());
-  std::transform(
-      names.begin(), names.end(), std::back_inserter(res),
-      [this](const std::string& name) { return scope_->GetVariable(name); });
-  return res;
-}
-
 }  // namespace framework
 }  // namespace paddle
