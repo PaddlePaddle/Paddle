@@ -21,3 +21,7 @@ endif()
 if(WITH_C_API)
     add_subdirectory(capi)
 endif()
+
+if(WITH_SWIG_PY)
+  add_subdirectory(api)
+endif()
