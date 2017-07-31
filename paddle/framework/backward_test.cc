@@ -362,8 +362,6 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
   EXPECT_EQ(grad_fc.outputs_.size(), 2UL       /* input number of mul*/
                                          + 2UL /* input number of rowwise_add */
                                          + 1UL /* input number of sigmod */);
-
-  std::cout << std::endl;
   EXPECT_EQ(bwd_net->ops_[1]->inputs_.size(), 0UL);
   EXPECT_EQ(bwd_net->ops_[1]->outputs_.size(), 0UL);
   EXPECT_EQ(bwd_net->ops_[2]->inputs_.size(), 0UL);
