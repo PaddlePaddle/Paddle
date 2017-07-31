@@ -29,7 +29,8 @@ namespace rnn {
 
 void SegmentInputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
                    const std::vector<Link>& inlinks,
-                   const size_t seq_len) {
+                   const size_t seq_len,
+                   bool infer_shape) {
   PADDLE_ENFORCE(!inlinks.empty(), "no in links are provided.");
   for (size_t i = 0; i < inlinks.size(); ++i) {
     Tensor* input =
@@ -42,7 +43,9 @@ void SegmentInputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
       Tensor* step_input = step_scopes[j]
                                ->CreateVariable(inlinks[i].internal)
                                ->GetMutable<Tensor>();
-      *step_input = input->Slice<float>(j, j + 1);
+      if (!infer_shape) {
+        *step_input = input->Slice<float>(j, j + 1);
+      }
       step_input->Resize(step_dims);
     }
   }
@@ -50,20 +53,23 @@ void SegmentInputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
 
 void ConcatOutputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
                    const std::vector<Link>& outlinks,
-                   const size_t seq_len) {
+                   const size_t seq_len,
+                   bool infer_shape) {
   for (size_t i = 0; i < outlinks.size(); i++) {
     Tensor* output =
         step_scopes[0]->GetVariable(outlinks[i].external)->GetMutable<Tensor>();
 
-    // TODO(qingiqng) remove following code after adding
-    // InferShape in RecurrentGradientOp
-    DDim step_dims = step_scopes[0]
-                         ->GetVariable(outlinks[i].internal)
-                         ->GetMutable<Tensor>()
-                         ->dims();
-    std::vector<int> dims_vec = vectorize(step_dims);
-    dims_vec.insert(dims_vec.begin(), seq_len);
-    output->mutable_data<float>(make_ddim(dims_vec), platform::CPUPlace());
+    if (infer_shape) {
+      DDim step_dims = step_scopes[0]
+                           ->GetVariable(outlinks[i].internal)
+                           ->GetMutable<Tensor>()
+                           ->dims();
+      std::vector<int> dims_vec = vectorize(step_dims);
+      dims_vec.insert(dims_vec.begin(), seq_len);
+      output->Resize(make_ddim(dims_vec));
+    } else {
+      output->mutable_data<float>(platform::CPUPlace());
+    }
 
     for (size_t j = 0; j < seq_len; j++) {
       Tensor* step_output = step_scopes[j]
@@ -79,8 +85,9 @@ void ConcatOutputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
 
 void LinkMemories(std::vector<std::shared_ptr<Scope>>& scopes,
                   const std::vector<rnn::MemoryAttr>& memories,
-                  size_t step_id,
-                  int offset) {
+                  const size_t step_id,
+                  const int offset,
+                  bool infer_shape) {
   PADDLE_ENFORCE(step_id < scopes.size(),
                  "step [%d] is out of range of step scopes' size [%d]",
                  step_id,
@@ -97,18 +104,14 @@ void LinkMemories(std::vector<std::shared_ptr<Scope>>& scopes,
   std::shared_ptr<Scope> scope = scopes[step_id];
   std::shared_ptr<Scope> linked_scope = scopes[step_id + offset];
   for (auto& attr : memories) {
-    auto mem = scope->CreateVariable(attr.pre_var)->GetMutable<Tensor>();
+    auto mem = scope->GetVariable(attr.pre_var)->GetMutable<Tensor>();
     // maybe share variable is better?
     auto linked_mem = linked_scope->GetVariable(attr.var)->GetMutable<Tensor>();
-    mem->ShareDataWith<float>(*linked_mem);
-
-    // TODO(qingqing) remove following code
-    // the memory of current step should be allocated in step net
-    auto m = scope->CreateVariable(attr.var)->GetMutable<Tensor>();
-    // for unit test, as addOp and mulOp are null currently, if not
-    // mutable_data, mem.data() in output will be error. We will
-    // remove this line after merge the correct addOp and mulOp.
-    m->mutable_data<float>(mem->dims(), platform::CPUPlace());
+    if (infer_shape) {
+      mem->Resize(linked_mem->dims());
+    } else {
+      mem->ShareDataWith<float>(*linked_mem);
+    }
   }
 }
 
@@ -176,61 +179,43 @@ void RecurrentAlgorithm::InferShape(const std::shared_ptr<Scope>& scope) const {
                  ->GetMutable<Tensor>()
                  ->dims()[0];
   CreateScopes(scope);
+
   auto step_scopes = GetStepScopes(scope);
+  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_, true);
 
-  // SegmentInputs is called in InferShape. The input must hold memory in
-  // SegmentInputs. But the other op only set dimension for the output in
-  // InferShape. That's a problem. Wether the RNN op needs InferShape or not?
-  // Wether the following functions (SegmentInputs, InitMemories, ...) need
-  // to rewrite for RNN op?
-  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_);
-
-  InitMemories(step_scopes[0]);
+  InitMemories(step_scopes[0], true);
 
   PADDLE_ENFORCE(scope->HasVariable(arg_->step_net),
                  "stepnet [%s] is not in scope.",
                  arg_->step_net);
   Variable* net = scope->GetVariable(arg_->step_net);
   PADDLE_ENFORCE(net != nullptr, "failed to get step net");
-  // If the InferShape is called in OperatorBase's run function,
-  // the rnn op only needs to do InferShape for the first time step
   for (size_t i = 0; i < seq_len_; i++) {
     if (i > 0) {
-      rnn::LinkMemories(step_scopes, arg_->memories, i, -1);
+      rnn::LinkMemories(step_scopes, arg_->memories, i, -1, true);
     }
     net->GetMutable<NetOp>()->InferShape(step_scopes[i]);
   }
-
-  auto outlinks = arg_->outlinks;
-  for (size_t i = 0; i < outlinks.size(); i++) {
-    DDim step_dims = step_scopes[0]
-                         ->GetVariable(outlinks[i].internal)
-                         ->GetMutable<Tensor>()
-                         ->dims();
-    std::vector<int> dims_vec = vectorize(step_dims);
-    // now only support fixed length
-    dims_vec.insert(dims_vec.begin(), seq_len_);
-    Tensor* output =
-        step_scopes[0]->GetVariable(outlinks[i].external)->GetMutable<Tensor>();
-    output->Resize(make_ddim(dims_vec));
-  }
+  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_, true);
 }
 
 void RecurrentAlgorithm::Run(const std::shared_ptr<Scope>& scope,
                              const platform::DeviceContext& dev_ctx) const {
   auto step_scopes = GetStepScopes(scope);
 
+  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_, false);
+
+  InitMemories(step_scopes[0], false);
+
   Variable* net = scope->GetVariable(arg_->step_net);
   for (size_t step_id = 0; step_id < seq_len_; step_id++) {
-    // the link memory is done in InferShape
-    // maybe remove following code after testing
     if (step_id > 0) {
-      rnn::LinkMemories(step_scopes, arg_->memories, step_id, -1);
+      rnn::LinkMemories(step_scopes, arg_->memories, step_id, -1, false);
     }
     net->GetMutable<NetOp>()->Run(step_scopes[step_id], dev_ctx);
   }
 
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_);
+  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_, false);
 }
 
 void RecurrentAlgorithm::CreateScopes(std::shared_ptr<Scope> scope) const {
@@ -246,6 +231,7 @@ void RecurrentAlgorithm::CreateScopes(std::shared_ptr<Scope> scope) const {
       // Now all variables in scope must be created outside of op.
       auto net_op = scope->GetVariable(arg_->step_net)->GetMutable<NetOp>();
       for (auto& input : net_op->inputs_) {
+        // the weight are located in parent scope
         step_scope->CreateVariable(input);
       }
       for (auto& output : net_op->outputs_) {
@@ -257,7 +243,8 @@ void RecurrentAlgorithm::CreateScopes(std::shared_ptr<Scope> scope) const {
   }
 }
 
-void RecurrentAlgorithm::InitMemories(std::shared_ptr<Scope> step_scope) const {
+void RecurrentAlgorithm::InitMemories(std::shared_ptr<Scope> step_scope,
+                                      bool infer_shape) const {
   for (auto& attr : arg_->memories) {
     Tensor* pre_mem =
         step_scope->CreateVariable(attr.pre_var)->GetMutable<Tensor>();
@@ -267,14 +254,11 @@ void RecurrentAlgorithm::InitMemories(std::shared_ptr<Scope> step_scope) const {
                    attr.boot_var);
     Tensor* boot_mem =
         step_scope->GetVariable(attr.boot_var)->GetMutable<Tensor>();
-    pre_mem->ShareDataWith<float>(*boot_mem);
-
-    // TODO(qingqing) remove following code
-    // the memory of current step should be allocated in step net
-    // here for unit test
-    auto cur_step_mem =
-        step_scope->CreateVariable(attr.var)->GetMutable<Tensor>();
-    cur_step_mem->mutable_data<float>(boot_mem->dims(), platform::CPUPlace());
+    if (infer_shape) {
+      pre_mem->Resize(boot_mem->dims());
+    } else {
+      pre_mem->ShareDataWith<float>(*boot_mem);
+    }
   }
 }
 
@@ -336,35 +320,37 @@ void RecurrentGradientAlgorithm::Run(
     const std::shared_ptr<Scope>& scope,
     const platform::DeviceContext& dev_ctx) const {
   auto step_scopes = GetStepScopes(scope);
-  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_);
+  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_, false);
   PADDLE_ENFORCE(scope->HasVariable(arg_->step_net),
                  "step net is not in scope.");
   Variable* net = scope->GetVariable(arg_->step_net);
   PADDLE_ENFORCE(net != nullptr, "failed to get step net");
   for (int step_id = seq_len_ - 1; step_id >= 0; --step_id) {
     if (static_cast<size_t>(step_id) != seq_len_ - 1) {
-      rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1);
+      rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1, false);
     }
     net->GetMutable<NetOp>()->Run(step_scopes[step_id], dev_ctx);
   }
-  LinkBootMemoryGradients(step_scopes[0]);
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_);
+  LinkBootMemoryGradients(step_scopes[0], false);
+  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_, false);
 }
 
 void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
-    std::shared_ptr<Scope> step_scope) const {
+    std::shared_ptr<Scope> step_scope, bool infer_shape) const {
   for (auto& attr : arg_->memories) {
     Tensor* mem_grad =
         step_scope->CreateVariable(attr.var)->GetMutable<Tensor>();
-    PADDLE_ENFORCE(mem_grad != nullptr,
-                   "boot_tensor should be retrieved before");
     PADDLE_ENFORCE(step_scope->HasVariable(attr.boot_var),
                    "memory [%s]'s boot variable [%s] not exists",
                    attr.var,
                    attr.boot_var);
     Tensor* boot_mem_grad =
         step_scope->CreateVariable(attr.boot_var)->GetMutable<Tensor>();
-    boot_mem_grad->ShareDataWith<float>(*mem_grad);
+    if (infer_shape) {
+      boot_mem_grad->Resize(mem_grad->dims());
+    } else {
+      boot_mem_grad->ShareDataWith<float>(*mem_grad);
+    }
   }
 }
 
@@ -374,7 +360,7 @@ void RecurrentGradientAlgorithm::InferShape(
                  ->GetMutable<Tensor>()
                  ->dims()[0];
   auto step_scopes = GetStepScopes(scope);
-  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_);
+  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_, true);
 
   PADDLE_ENFORCE(scope->HasVariable(arg_->step_net),
                  "step net is not in scope.");
@@ -383,25 +369,12 @@ void RecurrentGradientAlgorithm::InferShape(
 
   for (int step_id = seq_len_ - 1; step_id >= 0; --step_id) {
     if (static_cast<size_t>(step_id) != seq_len_ - 1) {
-      rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1);
+      rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1, true);
     }
     net->GetMutable<NetOp>()->InferShape(step_scopes[step_id]);
   }
-
-  auto outlinks = arg_->outlinks;
-  for (size_t i = 0; i < outlinks.size(); i++) {
-    DDim step_dims = step_scopes[0]
-                         ->GetVariable(outlinks[i].internal)
-                         ->GetMutable<Tensor>()
-                         ->dims();
-    std::vector<int> dims_vec = vectorize(step_dims);
-    // now only support fixed length
-    dims_vec.insert(dims_vec.begin(), seq_len_);
-    Tensor* output =
-        step_scopes[0]->GetVariable(outlinks[i].external)->GetMutable<Tensor>();
-    output->Resize(make_ddim(dims_vec));
-  }
-  LinkBootMemoryGradients(step_scopes[0]);
+  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_, true);
+  LinkBootMemoryGradients(step_scopes[0], true);
 }
 
 void RecurrentGradientOp::Init() {
