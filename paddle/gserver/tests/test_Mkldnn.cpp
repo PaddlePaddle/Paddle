@@ -41,6 +41,7 @@ void testFcLayer(const testFCDesc& pm) {
        /* size of weight= */ size_t(pm.oc * pm.ic * pm.ih * pm.iw)});
   cfg.layerConfig.add_inputs();
 
+  MkldnnTester tester;
   for (auto dnnWgt : {false, true}) {
     cfg.layerConfig.set_init_wgt_from_mkldnn(dnnWgt);
     for (auto biasSize : {pm.oc, 0}) {
@@ -48,7 +49,6 @@ void testFcLayer(const testFCDesc& pm) {
       TestConfig ref = cfg;
       ref.layerConfig.set_type(compareTypes[1]);
       for (auto bs : {pm.bs, 1}) {
-        MkldnnTester tester;  // TODO(TJ): move out
         tester.run(cfg, ref, bs, pm.ih, pm.iw);
       }
     }

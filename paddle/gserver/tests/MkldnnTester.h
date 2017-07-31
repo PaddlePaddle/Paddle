@@ -44,6 +44,8 @@ protected:
 
   /// run some iterations, all the result should pass
   size_t iter_;
+  /// whether to print out the details
+  bool log_;
   /// vlog level to print the matrix details datas
   int lvl_;
   /// epsilon
@@ -55,6 +57,7 @@ public:
   explicit MkldnnTester(size_t iter = 3, float epsilon = 1e-4) {
     iter_ = iter;
     eps_ = epsilon;
+    log_ = false;
     lvl_ = DNN_TESTS_MORE;
   }
 
@@ -68,6 +71,7 @@ public:
            size_t inputImgW = 1,
            size_t iter = 3,
            float epsilon = 1e-4,
+           bool log = false,
            int level = DNN_TESTS_MORE);
   void setLogLevel(int lvl) { lvl_ = lvl; }
 

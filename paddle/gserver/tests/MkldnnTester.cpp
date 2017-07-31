@@ -219,6 +219,10 @@ void MkldnnTester::clearTopDatas() {
 }
 
 void MkldnnTester::printTopDatas() {
+  if (!log_) {
+    return;
+  }
+
   for (int n = 0; n < NUM; ++n) {
     VLOG(lvl_) << testLayers_[n]->getType() << " forward output TopData: ";
     printMatrix(testLayers_[n]->getOutputValue());
@@ -226,6 +230,10 @@ void MkldnnTester::printTopDatas() {
 }
 
 void MkldnnTester::printMatrix(const MatrixPtr& m) {
+  if (!log_) {
+    return;
+  }
+
   CHECK(m);
   CHECK(m->getData());
   const real* pd = m->getData();
@@ -241,6 +249,10 @@ void MkldnnTester::printMatrix(const MatrixPtr& m) {
 }
 
 void MkldnnTester::printVector(const VectorPtr& v) {
+  if (!log_) {
+    return;
+  }
+
   CHECK(v);
   CHECK(v->getData());
   const real* pd = v->getData();
@@ -318,6 +330,7 @@ void MkldnnTester::run(const TestConfig& dnn,
                        size_t inputImgW,
                        size_t iter,
                        float epsilon,
+                       bool log,
                        int level) {
   VLOG(DNN_TESTS) << "Test MKLDNN functionality: " << dnn.layerConfig.type()
                   << " vs " << ref.layerConfig.type();
@@ -325,6 +338,7 @@ void MkldnnTester::run(const TestConfig& dnn,
   iw_ = inputImgW;
   iter_ = iter;
   eps_ = epsilon;
+  log_ = log;
   lvl_ = level;
 
   // Firstly always set flag false to initial from paddle weight
