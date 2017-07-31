@@ -8,8 +8,8 @@ class TestAddOp(unittest.TestCase):
 
     def setUp(self):
         self.type = "add_two"
-        self.X = numpy.random.random((342, 345)).astype("float32")
-        self.Y = numpy.random.random((342, 345)).astype("float32")
+        self.X = numpy.random.random((102, 105)).astype("float32")
+        self.Y = numpy.random.random((102, 105)).astype("float32")
         self.Out = self.X + self.Y
 
 
