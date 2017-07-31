@@ -225,7 +225,8 @@ message ProjectionConfig {
   optional PoolConfig pool_conf = 12;
 
   // For slice
-  repeated SliceConfig slice = 13;
+  // Each slice output is the input[start, end)
+  repeated SliceConfig slices = 13;
 }
 
 message OperatorConfig {
