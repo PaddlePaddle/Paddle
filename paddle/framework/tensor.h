@@ -19,7 +19,6 @@ limitations under the License. */
 #include <memory>
 #include <typeindex>
 #include "paddle/framework/ddim.h"
-#include "paddle/memory/memcpy.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
@@ -109,8 +108,6 @@ class Tensor {
  private:
   template <typename T>
   inline void check_memory_size() const;
-
-  paddle::platform::Place place() const { return holder_->place(); }
 
  private:
   /**
