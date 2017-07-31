@@ -102,7 +102,7 @@ if(WITH_TESTING)
             BUILD_COMMAND       ""
             INSTALL_COMMAND     env ${py_env} ${PYTHON_EXECUTABLE} setup.py install
             BUILD_IN_SOURCE     1
-            DEPENDS python setuptools python_api_wheel
+            #DEPENDS python setuptools python_api_wheel
         )
     ENDIF()
     add_subdirectory(test)

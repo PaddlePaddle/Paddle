@@ -30,7 +30,7 @@ if [ $USE_VIRTUALENV_FOR_TEST -ne 0 ]; then
    PYTHON=python
 fi
 
-$PYTHON -m pip install $SCRIPTPATH/../dist/*.whl
+$PYTHON -m pip install $SCRIPTPATH/../../build/python/dist/*.whl
 
 if [ "X${PADDLE_PACKAGE_DIR}" != "X" ]; then
    $PYTHON -m pip install ${PADDLE_PACKAGE_DIR}/*.whl
