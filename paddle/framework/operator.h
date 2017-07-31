@@ -90,15 +90,17 @@ class OperatorBase {
   virtual void Run(const std::shared_ptr<Scope>& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
-  // Get a input with argument's name described in `op_proto`
+  virtual bool IsNetOp() const { return false; }
+
+  //! Get a input with argument's name described in `op_proto`
   const std::string& Input(const std::string& name) const;
-  // Get a input which has multiple variables.
-  // TODO add a vector_view to prevent memory copy.
+  //! Get a input which has multiple variables.
+  //! TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Inputs(const std::string& name) const;
-  // Get a output with argument's name described in `op_proto`
+  //! Get a output with argument's name described in `op_proto`
   const std::string& Output(const std::string& name) const;
-  // Get an output which has multiple variables.
-  // TODO add a vector_view to prevent memory copy.
+  //! Get an output which has multiple variables.
+  //! TODO add a vector_view to prevent memory copy.
   std::vector<std::string> Outputs(const std::string& name) const;
 
  public:
@@ -199,8 +201,6 @@ class OperatorWithKernel : public OperatorBase {
       place_ = dev_ctx.GetPlace();
     }
 
-    // bool operator==(const OpKernelKey& o) const { return place_ == o.place_;
-    // }
     bool operator==(const OpKernelKey& o) const {
       return platform::places_are_same_class(place_, o.place_);
     }

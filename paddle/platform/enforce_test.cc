@@ -23,7 +23,7 @@ TEST(ENFORCE, FAILED) {
   bool in_catch = false;
   try {
     PADDLE_ENFORCE(false, "Enforce is not ok %d at all", 123);
-  } catch (const std::runtime_error& error) {
+  } catch (paddle::platform::EnforceNotMet error) {
     // your error handling code here
     in_catch = true;
     std::string msg = "Enforce is not ok 123 at all";

@@ -16,7 +16,6 @@ package master
 
 import (
 	"os"
-	"sync"
 	"time"
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
@@ -27,9 +26,9 @@ import (
 
 // Client is the client of the master server.
 type Client struct {
-	conn       *connection.Conn
-	ch         chan record
-	initChOnce sync.Once
+	conn    *connection.Conn
+	ch      chan record
+	bufSize int
 }
 
 type record struct {
@@ -46,11 +45,7 @@ func WithBuffer(bufSize int) func(*Client) error {
 		if bufSize <= 0 {
 			return nil
 		}
-
-		c.initChOnce.Do(func() {
-			c.ch = make(chan record, bufSize)
-			go c.getRecords()
-		})
+		c.bufSize = bufSize
 		return nil
 	}
 }
@@ -104,25 +99,41 @@ func NewClient(opts ...func(*Client) error) (*Client, error) {
 		if err != nil {
 			return nil, err
 		}
-
 	}
-
+	c.ch = make(chan record, c.bufSize)
+	// FIXME: connection is created asyncrosly in monitorMaster go routine,
+	//        ensure the connection is ready for use before calling c.addClient.
+	time.Sleep(time.Second)
 	return c, nil
 }
 
-func (c *Client) getRecords() {
+// StartGetRecords must be called at beginning of each pass
+func (c *Client) StartGetRecords(passID int) {
+	go c.getRecords(passID)
+}
+
+func (c *Client) getRecords(passID int) {
 	for {
-		t, err := c.getTask()
+		t, err := c.getTask(passID)
 		if err != nil {
-			log.Errorf("Get task failed, sleep 3 seconds and continue, %s", err)
-			time.Sleep(3 * time.Second)
-			continue
+			if err.Error() == ErrPassBefore.Error() ||
+				err.Error() == ErrNoMoreAvailable.Error() ||
+				err.Error() == ErrAllTaskFailed.Error() {
+				c.ch <- record{nil, err}
+				break
+			}
+			if err.Error() == ErrPassAfter.Error() {
+				// wait util last pass finishes
+				time.Sleep(time.Second * 3)
+				continue
+			}
+			log.Errorf("getTask error: %s", err)
 		}
 
 		for _, chunk := range t.Chunks {
-			f, err := os.Open(chunk.Path)
-			if err != nil {
-				log.Errorln(err)
+			f, e := os.Open(chunk.Path)
+			if e != nil {
+				log.Errorln(e)
 				continue
 			}
 
@@ -178,18 +189,21 @@ func (c *Client) monitorMaster(addrCh <-chan string) {
 	}
 }
 
-// SetDataset set dataset for the master server to dispatch.
+// SetDataset sets dataset to dispatch for the master server.
 //
-// SetDataset can be call multiple times from different nodes. But
-// only the first call will be honored.
+// SetDataset can be call multiple times at one pass. But only the first call
+// will be honored.
+//
+// After all tasks are done, another call of SetDataset will start another pass.
 func (c *Client) SetDataset(globPaths []string) error {
-	return c.conn.Call("Service.SetDataset", globPaths, nil)
+	err := c.conn.Call("Service.SetDataset", globPaths, nil)
+	return err
 }
 
 // getTask gets a new task from the master server.
-func (c *Client) getTask() (Task, error) {
+func (c *Client) getTask(passID int) (Task, error) {
 	var t Task
-	err := c.conn.Call("Service.GetTask", 0, &t)
+	err := c.conn.Call("Service.GetTask", passID, &t)
 	return t, err
 }
 
@@ -208,12 +222,6 @@ func (c *Client) taskFailed(meta TaskMeta) error {
 // NextRecord will block until the next record is available. It is
 // thread-safe.
 func (c *Client) NextRecord() ([]byte, error) {
-	c.initChOnce.Do(func() {
-		// initialize with in case WithBuffer is not used.
-		c.ch = make(chan record, 0)
-		go c.getRecords()
-	})
-
 	r := <-c.ch
 	return r.r, r.err
 }
