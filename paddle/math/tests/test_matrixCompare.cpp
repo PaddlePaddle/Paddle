@@ -1152,16 +1152,9 @@ void testBatch2seqPadding(int batchSize, int inputDim) {
   IVectorPtr gpuSequence = IVector::create(cpuSequence->getSize(), true);
   gpuSequence->copyFrom(*cpuSequence);
 
-  int newBatchSize = cpuSequence->getSize() - 1;
-  MatrixPtr cpuOutput = std::make_shared<CpuMatrix>(newBatchSize, inputDim);
-  MatrixPtr gpuOutput = std::make_shared<GpuMatrix>(newBatchSize, inputDim);
-  cpuOutput->zero();
-  gpuOutput->zero();
-
-  size_t maxSeqLen = 0;
   size_t numSeq = cpuSequence->getSize() - 1;
-  maxSeqLen = *std::max_element(cpuSequence->getData(),
-                                cpuSequence->getData() + numSeq);
+  size_t maxSeqLen = *std::max_element(cpuSequence->getData(),
+                                       cpuSequence->getData() + numSeq);
 
   MatrixPtr cBatch = std::make_shared<CpuMatrix>(numSeq * maxSeqLen, inputDim);
   MatrixPtr gBatch = std::make_shared<GpuMatrix>(numSeq * maxSeqLen, inputDim);
@@ -1200,8 +1193,8 @@ void testBatch2seqPadding(int batchSize, int inputDim) {
 }
 
 TEST(Matrix, warpCTC) {
-  for (auto batchSize : {51, 1285, 3884}) {
-    for (auto inputDim : {32, 512, 3026}) {
+  for (auto batchSize : {51, 526, 2884}) {
+    for (auto inputDim : {32, 512, 2026}) {
       VLOG(3) << " batchSize=" << batchSize << " inputDim=" << inputDim;
       testBatch2seqPadding(batchSize, inputDim);
     }
