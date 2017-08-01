@@ -26,8 +26,8 @@ public:
     auto output = context.Output(0)->GetMutable<Tensor>();
 
     output->mutable_data<T>(context.GetPlace());
-    EigenVector<T>::Flatten(*output).device(
-        *(context.GetEigenDevice<Place>())) =
+
+    EigenScalar<T>::From(*output).device(*(context.GetEigenDevice<Place>())) =
         EigenVector<T>::Flatten(input).mean();
   }
 };
