@@ -108,11 +108,11 @@ class OperatorContext {
 
   size_t OutputSize() const { return op_.outputs_.size(); }
 
-  const Variable* InputVar(size_t index) const {
+  const Variable* InputVar(const size_t& index) const {
     return scope_->GetVariable(op_.inputs_.at(index));
   }
 
-  Variable* OutputVar(size_t index) const {
+  Variable* OutputVar(const size_t& index) const {
     return scope_->GetVariable(op_.outputs_.at(index));
   }
 
@@ -146,12 +146,12 @@ class OperatorContext {
   }
 
   template <typename T>
-  const T* Input(size_t index) const {
+  const T* Input(const size_t& index) const {
     return &(InputVar(index)->Get<T>());
   }
 
   template <typename T>
-  T* Output(size_t index) const {
+  T* Output(const size_t& index) const {
     return OutputVar(index)->GetMutable<T>();
   }
 
