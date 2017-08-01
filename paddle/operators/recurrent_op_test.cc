@@ -18,7 +18,7 @@
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/tensor.h"
-#include "paddle/operators/recurrent_network_op.h"
+#include "paddle/operators/recurrent_op.h"
 
 namespace paddle {
 namespace operators {

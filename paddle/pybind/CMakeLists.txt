@@ -1,2 +1,2 @@
 cc_library(paddle_pybind SHARED SRCS pybind.cc DEPS pybind python
-        add_op fc_op sgd_op cross_entropy_op recurrent_network_op)
+        add_op fc_op sgd_op cross_entropy_op recurrent_op)
