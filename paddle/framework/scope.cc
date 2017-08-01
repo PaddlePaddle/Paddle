@@ -19,11 +19,11 @@ namespace paddle {
 namespace framework {
 
 Scope::~Scope() {
+  DropKids();
   for (auto& kv : vars_) delete kv.second;
-  for (Scope* s : kids_) delete s;
 }
 
-Scope& Scope::NewScope() {
+Scope& Scope::NewScope() const {
   kids_.push_back(new Scope(this));
   return *kids_.back();
 }
@@ -49,13 +49,17 @@ Variable* Scope::FindVar(const std::string& name) const {
   return (parent_ == nullptr) ? nullptr : parent_->FindVar(name);
 }
 
-Scope* Scope::FindScope(const Variable* var) {
+const Scope* Scope::FindScope(const Variable* var) const {
   for (auto& kv : vars_) {
     if (kv.second == var) {
       return this;
     }
   }
   return (parent_ == nullptr) ? nullptr : parent_->FindScope(var);
+}
+void Scope::DropKids() {
+  for (Scope* s : kids_) delete s;
+  kids_.clear();
 }
 
 }  // namespace framework

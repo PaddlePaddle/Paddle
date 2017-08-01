@@ -84,10 +84,10 @@ class OperatorBase {
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  virtual void InferShape(const std::shared_ptr<Scope>& scope) const = 0;
+  virtual void InferShape(const Scope& scope) const = 0;
 
   /// Net will call this function to Run an op.
-  virtual void Run(const std::shared_ptr<Scope>& scope,
+  virtual void Run(const Scope& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
   virtual bool IsNetOp() const { return false; }
@@ -114,24 +114,24 @@ class OperatorBase {
 
 class KernelContext {
  public:
-  KernelContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
+  KernelContext(const OperatorBase* op, const Scope& scope,
                 const platform::DeviceContext& device_context)
       : op_(*op), scope_(scope), device_context_(device_context) {}
 
   const Variable* Input(int index) const {
-    return scope_->FindVar(op_.inputs_[index]);
+    return scope_.FindVar(op_.inputs_[index]);
   }
 
   Variable* Output(int index) const {
-    return scope_->FindVar(op_.outputs_[index]);
+    return scope_.FindVar(op_.outputs_[index]);
   }
 
   const Variable* Input(const std::string& name) const {
-    return scope_->FindVar(op_.Input(name));
+    return scope_.FindVar(op_.Input(name));
   }
 
   const Variable* Output(const std::string& name) const {
-    return scope_->FindVar(op_.Output(name));
+    return scope_.FindVar(op_.Output(name));
   }
 
   const std::vector<const Variable*> Inputs(const std::string& name) const {
@@ -139,7 +139,7 @@ class KernelContext {
     std::vector<const Variable*> res;
     std::transform(
         names.begin(), names.end(), res.begin(),
-        [this](const std::string& name) { return scope_->FindVar(name); });
+        [this](const std::string& name) { return scope_.FindVar(name); });
     return res;
   }
 
@@ -148,7 +148,7 @@ class KernelContext {
     std::vector<const Variable*> res;
     std::transform(
         names.begin(), names.end(), res.begin(),
-        [this](const std::string& name) { return scope_->FindVar(name); });
+        [this](const std::string& name) { return scope_.FindVar(name); });
     return res;
   }
 
@@ -160,7 +160,7 @@ class KernelContext {
   platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
   const OperatorBase& op_;
-  const std::shared_ptr<Scope>& scope_;
+  const Scope& scope_;
   const platform::DeviceContext& device_context_;
 };
 
@@ -216,7 +216,7 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
-  void Run(const std::shared_ptr<Scope>& scope,
+  void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
     opKernel->Compute(KernelContext(this, scope, dev_ctx));
@@ -228,7 +228,7 @@ class OperatorWithKernel : public OperatorBase {
     return g_all_op_kernels;
   }
 
-  void InferShape(const std::shared_ptr<Scope>& scope) const final {
+  void InferShape(const Scope& scope) const final {
     std::vector<const Tensor*> ins;
     VarNamesToTensors(scope, inputs_, &ins);
     std::vector<Tensor*> outs;
@@ -238,13 +238,13 @@ class OperatorWithKernel : public OperatorBase {
 
  private:
   template <typename T>
-  void VarNamesToTensors(const std::shared_ptr<Scope>& scope,
+  void VarNamesToTensors(const Scope& scope,
                          const std::vector<std::string>& var_names,
                          std::vector<T>* container) const {
     container->reserve(var_names.size());
     VarToTensor<T> convert;
     for (auto& name : var_names) {
-      auto var = scope->FindVar(name);
+      auto var = scope.FindVar(name);
       if (var != nullptr) {
         container->push_back(convert(var));
       } else {

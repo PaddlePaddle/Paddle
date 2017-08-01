@@ -16,7 +16,7 @@
 #include <typeindex>
 #include <typeinfo>
 
-#include "paddle/platform/assert.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -25,7 +25,7 @@ class Variable {
  public:
   template <typename T>
   const T& Get() const {
-    PADDLE_ASSERT(IsType<T>());
+    PADDLE_ENFORCE(IsType<T>(), "Variable must be type %s", typeid(T).name());
     return *static_cast<const T*>(holder_->Ptr());
   }
 

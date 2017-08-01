@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <glog/logging.h>
 #include <paddle/string/printf.h>
 #include <sstream>
 #include <stdexcept>
@@ -126,17 +127,6 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
 }
 
 #endif  // PADDLE_ONLY_CPU
-
-template <typename T, typename... Args>
-inline typename std::enable_if<std::is_pointer<T>::value, void>::type
-throw_on_error(T stat, const Args&... args) {
-  if (stat == nullptr) {
-    return;
-  } else {
-    throw std::runtime_error("Pointer value is nullptr: " +
-                             string::Sprintf(args...));
-  }
-}
 
 template <typename T>
 inline void throw_on_error(T e) {

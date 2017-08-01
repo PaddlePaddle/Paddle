@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <list>
-#include <map>
 #include <string>
+#include <unordered_map>
 
 #include "paddle/framework/variable.h"
 
@@ -38,30 +38,39 @@ class Scope {
   Scope() {}
   ~Scope();
 
-  // Create a sub-scope. Returns a reference other than a pointer so
-  // to prevent from manual deletion.
-  Scope& NewScope();
+  // Disable Copy, Assign, Move.
+  Scope(const Scope& other) = delete;
+  Scope& operator=(const Scope& other) = delete;
+  Scope(Scope&& other) = delete;
 
-  // Create a variable with given name if it doesn't exist.
+  /// Create a sub-scope. Returns a reference other than a pointer so
+  /// to prevent from manual deletion.
+  /// Mark it to const because that new kid scope cannot change parent scope.
+  Scope& NewScope() const;
+
+  /// Create a variable with given name if it doesn't exist.
   Variable* NewVar(const std::string& name);
 
-  // Create a variable with a scope-unique name.
+  /// Create a variable with a scope-unique name.
   Variable* NewVar();
 
-  // Find a variable in the scope or any of its ancestors.  Returns
-  // nullptr if cannot find.
+  /// Find a variable in the scope or any of its ancestors.  Returns
+  /// nullptr if cannot find.
   Variable* FindVar(const std::string& name) const;
 
-  // Find the scope or an ancestor scope that contains the given variable.
-  Scope* FindScope(const Variable* var);
+  /// Find the scope or an ancestor scope that contains the given variable.
+  const Scope* FindScope(const Variable* var) const;
+
+  /// Drop all kids scopes belonged to this scope.
+  void DropKids();
 
  private:
   // Call Scope::NewScope for a sub-scope.
-  explicit Scope(Scope* parent) : parent_(parent) {}
+  explicit Scope(Scope const* parent) : parent_(parent) {}
 
-  std::map<std::string, Variable*> vars_;
-  std::list<Scope*> kids_;
-  Scope* parent_{nullptr};
+  std::unordered_map<std::string, Variable*> vars_;
+  mutable std::list<Scope*> kids_;
+  Scope const* parent_{nullptr};
 };
 
 }  // namespace framework

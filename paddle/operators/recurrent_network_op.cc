@@ -27,7 +27,7 @@ namespace operators {
 
 namespace rnn {
 
-void SegmentInputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
+void SegmentInputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<Link>& inlinks,
                    const size_t seq_len) {
   PADDLE_ENFORCE(!inlinks.empty(), "no in links are provided.");
@@ -47,7 +47,7 @@ void SegmentInputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
   }
 }
 
-void ConcatOutputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
+void ConcatOutputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<Link>& outlinks,
                    const size_t seq_len) {
   for (size_t i = 0; i < outlinks.size(); i++) {
@@ -75,7 +75,7 @@ void ConcatOutputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
   }
 }
 
-void LinkMemories(std::vector<std::shared_ptr<Scope>>& scopes,
+void LinkMemories(const std::vector<Scope*>& scopes,
                   const std::vector<rnn::MemoryAttr>& memories,
                   size_t step_id,
                   int offset) {
@@ -92,8 +92,8 @@ void LinkMemories(std::vector<std::shared_ptr<Scope>>& scopes,
                  offset,
                  scopes.size(),
                  step_id);
-  std::shared_ptr<Scope> scope = scopes[step_id];
-  std::shared_ptr<Scope> linked_scope = scopes[step_id + offset];
+  auto scope = scopes[step_id];
+  auto linked_scope = scopes[step_id + offset];
   for (auto& attr : memories) {
     auto mem = scope->NewVar(attr.pre_var)->GetMutable<Tensor>();
     // maybe share variable is better?
@@ -169,8 +169,8 @@ void InitArgument(const ArgumentName& name,
 
 }  // namespace rnn
 
-void RecurrentAlgorithm::InferShape(const std::shared_ptr<Scope>& scope) const {
-  seq_len_ = scope->FindVar((arg_->inlinks[0]).external)
+void RecurrentAlgorithm::InferShape(const Scope& scope) const {
+  seq_len_ = scope.FindVar((arg_->inlinks[0]).external)
                  ->GetMutable<Tensor>()
                  ->dims()[0];
   CreateScopes(scope);
@@ -185,10 +185,10 @@ void RecurrentAlgorithm::InferShape(const std::shared_ptr<Scope>& scope) const {
 
   InitMemories(step_scopes[0]);
 
-  PADDLE_ENFORCE(scope->FindVar(arg_->step_net),
+  PADDLE_ENFORCE(scope.FindVar(arg_->step_net) != nullptr,
                  "stepnet [%s] is not in scope.",
                  arg_->step_net);
-  Variable* net = scope->FindVar(arg_->step_net);
+  Variable* net = scope.FindVar(arg_->step_net);
   PADDLE_ENFORCE(net != nullptr, "failed to get step net");
   // If the InferShape is called in OperatorBase's run function,
   // the rnn op only needs to do InferShape for the first time step
@@ -196,7 +196,7 @@ void RecurrentAlgorithm::InferShape(const std::shared_ptr<Scope>& scope) const {
     if (i > 0) {
       rnn::LinkMemories(step_scopes, arg_->memories, i, -1);
     }
-    net->GetMutable<NetOp>()->InferShape(step_scopes[i]);
+    net->GetMutable<NetOp>()->InferShape(*step_scopes[i]);
   }
 
   auto outlinks = arg_->outlinks;
@@ -214,51 +214,51 @@ void RecurrentAlgorithm::InferShape(const std::shared_ptr<Scope>& scope) const {
   }
 }
 
-void RecurrentAlgorithm::Run(const std::shared_ptr<Scope>& scope,
+void RecurrentAlgorithm::Run(const Scope& scope,
                              const platform::DeviceContext& dev_ctx) const {
   auto step_scopes = GetStepScopes(scope);
 
-  Variable* net = scope->FindVar(arg_->step_net);
+  Variable* net = scope.FindVar(arg_->step_net);
   for (size_t step_id = 0; step_id < seq_len_; step_id++) {
     // the link memory is done in InferShape
     // maybe remove following code after testing
     if (step_id > 0) {
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, -1);
     }
-    net->GetMutable<NetOp>()->Run(step_scopes[step_id], dev_ctx);
+    net->GetMutable<NetOp>()->Run(*step_scopes[step_id], dev_ctx);
   }
 
   rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_);
 }
 
-void RecurrentAlgorithm::CreateScopes(std::shared_ptr<Scope> scope) const {
+void RecurrentAlgorithm::CreateScopes(const Scope& scope) const {
   // TODO(xxx) Only two scopes are needed for inference, this case will be
   // supported later.
-  auto step_scopes = scope->FindVar(arg_->step_scopes)
-                         ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
+  auto step_scopes =
+      scope.FindVar(arg_->step_scopes)->GetMutable<std::vector<Scope*>>();
 
   if (seq_len_ > step_scopes->size()) {
     for (size_t i = step_scopes->size(); i < seq_len_; ++i) {
-      std::shared_ptr<Scope> step_scope = std::make_shared<Scope>(scope);
+      auto& step_scope = scope.NewScope();
 
       // Now all variables in scope must be created outside of op.
-      auto net_op = scope->FindVar(arg_->step_net)->GetMutable<NetOp>();
+      auto net_op = scope.FindVar(arg_->step_net)->GetMutable<NetOp>();
       for (auto& input : net_op->inputs_) {
-        step_scope->NewVar(input);
+        if (!step_scope.FindVar(input)) step_scope.NewVar(input);
       }
       for (auto& output : net_op->outputs_) {
-        step_scope->NewVar(output);
+        step_scope.NewVar(output);
       }
 
-      step_scopes->push_back(std::make_shared<Scope>(step_scope));
+      step_scopes->emplace_back(&step_scope);
     }
   }
 }
 
-void RecurrentAlgorithm::InitMemories(std::shared_ptr<Scope> step_scope) const {
+void RecurrentAlgorithm::InitMemories(Scope* step_scope) const {
   for (auto& attr : arg_->memories) {
     Tensor* pre_mem = step_scope->NewVar(attr.pre_var)->GetMutable<Tensor>();
-    PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var),
+    PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
                    "memory [%s]'s boot variable [%s] not exists",
                    attr.var,
                    attr.boot_var);
@@ -328,30 +328,30 @@ public:
 };
 
 void RecurrentGradientAlgorithm::Run(
-    const std::shared_ptr<Scope>& scope,
-    const platform::DeviceContext& dev_ctx) const {
+    const Scope& scope, const platform::DeviceContext& dev_ctx) const {
   auto step_scopes = GetStepScopes(scope);
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_);
-  PADDLE_ENFORCE(scope->FindVar(arg_->step_net), "step net is not in scope.");
-  Variable* net = scope->FindVar(arg_->step_net);
+  PADDLE_ENFORCE(scope.FindVar(arg_->step_net) != nullptr,
+                 "step net is not in scope.");
+  Variable* net = scope.FindVar(arg_->step_net);
   PADDLE_ENFORCE(net != nullptr, "failed to get step net");
   for (int step_id = seq_len_ - 1; step_id >= 0; --step_id) {
     if (static_cast<size_t>(step_id) != seq_len_ - 1) {
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1);
     }
-    net->GetMutable<NetOp>()->Run(step_scopes[step_id], dev_ctx);
+    net->GetMutable<NetOp>()->Run(*step_scopes[step_id], dev_ctx);
   }
   LinkBootMemoryGradients(step_scopes[0]);
   rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len_);
 }
 
 void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
-    std::shared_ptr<Scope> step_scope) const {
+    Scope* step_scope) const {
   for (auto& attr : arg_->memories) {
     Tensor* mem_grad = step_scope->NewVar(attr.var)->GetMutable<Tensor>();
     PADDLE_ENFORCE(mem_grad != nullptr,
                    "boot_tensor should be retrieved before");
-    PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var),
+    PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
                    "memory [%s]'s boot variable [%s] not exists",
                    attr.var,
                    attr.boot_var);
@@ -361,23 +361,23 @@ void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
   }
 }
 
-void RecurrentGradientAlgorithm::InferShape(
-    const std::shared_ptr<Scope>& scope) const {
-  seq_len_ = scope->FindVar((arg_->inlinks[0]).external)
+void RecurrentGradientAlgorithm::InferShape(const Scope& scope) const {
+  seq_len_ = scope.FindVar((arg_->inlinks[0]).external)
                  ->GetMutable<Tensor>()
                  ->dims()[0];
   auto step_scopes = GetStepScopes(scope);
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len_);
 
-  PADDLE_ENFORCE(scope->FindVar(arg_->step_net), "step net is not in scope.");
-  Variable* net = scope->FindVar(arg_->step_net);
+  PADDLE_ENFORCE(scope.FindVar(arg_->step_net) != nullptr,
+                 "step net is not in scope.");
+  Variable* net = scope.FindVar(arg_->step_net);
   PADDLE_ENFORCE(net != nullptr, "failed to get step net");
 
   for (int step_id = seq_len_ - 1; step_id >= 0; --step_id) {
     if (static_cast<size_t>(step_id) != seq_len_ - 1) {
       rnn::LinkMemories(step_scopes, arg_->memories, step_id, 1);
     }
-    net->GetMutable<NetOp>()->InferShape(step_scopes[step_id]);
+    net->GetMutable<NetOp>()->InferShape(*step_scopes[step_id]);
   }
 
   auto outlinks = arg_->outlinks;
