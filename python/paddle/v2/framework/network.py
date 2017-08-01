@@ -1,6 +1,6 @@
 import paddle.v2.framework.core as core
 from paddle.v2.framework.create_op_creation_methods import op_creations
-from default_scope_funcs import create_var, get_var, get_cur_scope
+from default_scope_funcs import new_var, find_var, get_cur_scope
 
 __all__ = ['Network']  # Only expose Network
 
@@ -29,12 +29,15 @@ class NetworkFunctor(object):
             if ipt in kwargs:
                 var = kwargs[ipt]
                 if isinstance(var, basestring):
-                    var = create_var(var)
+                    tmp = new_var(var)
+                    self.net.var_names[tmp] = var
+                    var = tmp
+
                 if not isinstance(var, core.Variable):
                     raise TypeError(
                         "Input of op creation must be string or variable")
 
-                kwargs[ipt] = get_cur_scope().get_var_name(var)
+                kwargs[ipt] = self.net.var_names[var]
 
         notemp_outputs = self.func.all_not_temp_output_args
 
@@ -49,17 +52,20 @@ class NetworkFunctor(object):
             if opt in kwargs:
                 var = kwargs[opt]
                 if isinstance(var, basestring):
-                    var = create_var(var)
+                    tmp = new_var(var)
+                    self.net.var_names[tmp] = var
+                    var = tmp
+
                 if not isinstance(var, core.Variable):
                     raise TypeError(
                         "Output of op creation must be string or variable")
-                kwargs[opt] = get_cur_scope().get_var_name(var)
+                kwargs[opt] = self.net.var_names[var]
 
         op = self.func(**kwargs)
 
         self.net.net.add_op(op)
 
-        lst = [get_var(kwargs[opt]) for opt in notemp_outputs]
+        lst = [find_var(kwargs[opt]) for opt in notemp_outputs]
         if len(lst) == 1:
             return lst[0]
         elif len(lst) == 0:
@@ -89,6 +95,7 @@ class Network(object):
         self.net = core.Net.create()
         funcs = (func_name for func_name in dir(op_creations)
                  if not func_name.startswith("__"))
+        self.var_names = dict()
 
         # TODO(yuyang18): This code can work, but do not generate a good
         # docstring, try to give a better way generate function in runtime
