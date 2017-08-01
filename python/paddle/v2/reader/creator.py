@@ -84,39 +84,31 @@ def recordio_local(paths, buf_size=100):
 pass_num = 0
 
 
-def recordio(paths, buf_size=100):
+def cloud_reader(paths, etcd_endpoints, timeout_sec=5, buf_size=64):
     """
-    Creates a data reader that outputs record one one by one
-        from given local or cloud recordio path.
+    Create a data reader that yield a record one bye one from
+        the paths
     :path: path of recordio files.
+    :etcd_endpoints: the endpoints for etcd cluster
     :returns: data reader of recordio files.
     """
     import os
-    import paddle.v2.master.client as cloud
     import cPickle as pickle
-
-    if "KUBERNETES_SERVICE_HOST" not in os.environ.keys():
-        return recordio_local(paths)
-
-    host_name = "MASTER_SERVICE_HOST"
-    if host_name not in os.environ.keys():
-        raise Exception('not find ' + host_name + ' in environment variable.')
-
-    addr = os.getenv(host_name)
+    import paddle.v2.master as master
+    c = master.client(etcd_endpoints, timeout_sec, buf_size)
+    c.set_dataset(paths)
 
     def reader():
-        c = cloud(addr, buf_size)
-        c.set_dataset(paths)
-        c.paddle_start_get_records(pass_id)
         global pass_num
+        c.paddle_start_get_records(pass_num)
         pass_num += 1
 
         while True:
-            r, err = c.next_record()
-            if err < 0:
+            r, e = c.next_record()
+            if not r:
+                if e != -2:
+                    print "get record error: ", e
                 break
-            yield r
-
-        c.release()
+            yield pickle.loads(r)
 
     return reader
