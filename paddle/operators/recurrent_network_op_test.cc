@@ -298,7 +298,10 @@ protected:
     std::vector<std::shared_ptr<Scope>>* step_scopes =
         scope_->GetVariable("step_scopes")
             ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
-    rnn::SegmentInputs(*step_scopes, std::vector<rnn::Link>{inlink}, 10, true);
+    rnn::SegmentInputs(*step_scopes,
+                       std::vector<rnn::Link>{inlink},
+                       10,
+                       true /*infer_shape_mode*/);
   }
 
   void LinkeMemories() {
@@ -313,7 +316,8 @@ protected:
         scope_->GetVariable("step_scopes")
             ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
     for (int i = 1; i < 10; ++i) {
-      rnn::LinkMemories(*step_scopes, memories, i, -1, true);
+      rnn::LinkMemories(
+          *step_scopes, memories, i, -1, true /*infer_shape_mode*/);
     }
   }
 
@@ -343,7 +347,7 @@ TEST(RecurrentOp, LinkMemories) {
     auto tensor = scope->CreateVariable("h")->GetMutable<Tensor>();
     float* data = tensor->mutable_data<float>(make_ddim({15, 20}), CPUPlace());
     for (int j = 0; j < 15 * 20; ++j) {
-      data[i] = rand() * (1. / (double)RAND_MAX);
+      data[j] = rand() * (1. / (double)RAND_MAX);
     }
     step_scopes.push_back(scope);
   }
@@ -357,7 +361,7 @@ TEST(RecurrentOp, LinkMemories) {
   memories.push_back(mem_attr);
 
   for (int i = 1; i < len; ++i) {
-    rnn::LinkMemories(step_scopes, memories, i, -1, false);
+    rnn::LinkMemories(step_scopes, memories, i, -1, false /*infer_shape_mode*/);
   }
   // check
   for (int i = 0; i < len - 1; ++i) {
@@ -373,7 +377,7 @@ TEST(RecurrentOp, LinkMemories) {
   }
 
   for (int i = len - 2; i >= 0; --i) {
-    rnn::LinkMemories(step_scopes, memories, i, 1, false);
+    rnn::LinkMemories(step_scopes, memories, i, 1, false /*infer_shape_mode*/);
   }
   // check
   for (int i = len - 2; i >= 0; --i) {

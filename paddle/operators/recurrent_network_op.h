@@ -73,7 +73,7 @@ struct ArgumentName {
 void SegmentInputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
                    const std::vector<Link>& inlinks,
                    const size_t seq_len,
-                   bool infer_shape);
+                   bool infer_shape_mode);
 
 /**
  * Process outputs of step nets and merge to variables.
@@ -81,13 +81,13 @@ void SegmentInputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
 void ConcatOutputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
                    const std::vector<Link>& outlinks,
                    const size_t seq_len,
-                   bool infer_shape);
+                   bool infer_shape_mode);
 
 void LinkMemories(std::vector<std::shared_ptr<Scope>>& step_scopes,
                   const std::vector<MemoryAttr>& memories,
                   const size_t step_id,
                   const int offset,
-                  bool infer_shape);
+                  bool infer_shape_mode);
 
 void InitArgument(const ArgumentName& name, Argument* arg);
 
@@ -128,7 +128,8 @@ protected:
                 ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
   }
 
-  void InitMemories(std::shared_ptr<Scope> step_scopes, bool infer_shape) const;
+  void InitMemories(std::shared_ptr<Scope> step_scopes,
+                    bool infer_shape_mode) const;
 
 private:
   std::unique_ptr<rnn::Argument> arg_;
@@ -153,7 +154,7 @@ public:
            const platform::DeviceContext& dev_ctx) const;
 
   void LinkBootMemoryGradients(std::shared_ptr<Scope> step_scopes,
-                               bool infer_shape) const;
+                               bool infer_shape_mode) const;
 
   /**
    * InferShape must be called before Run.
