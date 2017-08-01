@@ -16,7 +16,7 @@ Creator package contains some simple reader creator, which could
 be used in user program.
 """
 
-__all__ = ['np_array', 'text_file', "recordio"]
+__all__ = ['np_array', 'text_file', "cloud_reader"]
 
 
 def np_array(x):
@@ -87,10 +87,17 @@ pass_num = 0
 def cloud_reader(paths, etcd_endpoints, timeout_sec=5, buf_size=64):
     """
     Create a data reader that yield a record one bye one from
-        the paths
+        the paths:
     :path: path of recordio files.
     :etcd_endpoints: the endpoints for etcd cluster
     :returns: data reader of recordio files.
+
+    ..  code-block:: python
+        from paddle.v2.reader.creator import cloud_reader
+        etcd_endpoints = "http://127.0.0.1:2379"
+        trainer.train.(
+            reader=cloud_reader(["/work/dataset/uci_housing/uci_housing*"], etcd_endpoints),
+        )
     """
     import os
     import cPickle as pickle
