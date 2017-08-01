@@ -55,9 +55,6 @@ op_library(softmax_op SRCS softmax_op.cc softmax_op.cu)
 op_library(cross_entropy_op SRCS cross_entropy_op.cc cross_entropy_op.cu)
 op_library(fill_zeros_like_op SRCS fill_zeros_like_op.cc fill_zeros_like_op.cu)
 
-op_library(fc_op SRCS fc_op.cc DEPS mul_op rowwise_add_op sigmoid_op
-        softmax_op net)
-
 op_library(sgd_op SRCS sgd_op.cc sgd_op.cu)
 
 op_library(fc_op
