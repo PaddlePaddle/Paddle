@@ -70,7 +70,7 @@ struct ArgumentName {
 /**
  * Prepare inputs for each step net.
  */
-void SegmentInputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
+void SegmentInputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<Link>& inlinks,
                    const size_t seq_len,
                    bool infer_shape_mode);
@@ -78,12 +78,12 @@ void SegmentInputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
 /**
  * Process outputs of step nets and merge to variables.
  */
-void ConcatOutputs(std::vector<std::shared_ptr<Scope>>& step_scopes,
+void ConcatOutputs(const std::vector<Scope*>& step_scopes,
                    const std::vector<Link>& outlinks,
                    const size_t seq_len,
                    bool infer_shape_mode);
 
-void LinkMemories(std::vector<std::shared_ptr<Scope>>& step_scopes,
+void LinkMemories(const std::vector<Scope*>& step_scopes,
                   const std::vector<MemoryAttr>& memories,
                   const size_t step_id,
                   const int offset,
@@ -103,15 +103,14 @@ void InitArgument(const ArgumentName& name, Argument* arg);
 
 class RecurrentAlgorithm {
 public:
-  void Run(const std::shared_ptr<Scope>& scope,
-           const platform::DeviceContext& dev_ctx) const;
+  void Run(const Scope& scope, const platform::DeviceContext& dev_ctx) const;
 
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
 
   /**
    * InferShape must be called before Run.
    */
-  void InferShape(const std::shared_ptr<Scope>& scope) const;
+  void InferShape(const Scope& scope) const;
 
 protected:
   /*
@@ -120,16 +119,13 @@ protected:
    * NOTE the scopes are reused in both the forward and backward, so just
    * create once and expand its size if more steps need.
    */
-  void CreateScopes(std::shared_ptr<Scope> scope) const;
+  void CreateScopes(const Scope& scope) const;
 
-  inline const std::vector<std::shared_ptr<Scope>>& GetStepScopes(
-      std::shared_ptr<Scope> scope) const {
-    return *(scope->GetVariable(arg_->step_scopes))
-                ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
+  const std::vector<Scope*>& GetStepScopes(const Scope& scope) const {
+    return *scope.FindVar(arg_->step_scopes)->GetMutable<std::vector<Scope*>>();
   }
 
-  void InitMemories(std::shared_ptr<Scope> step_scopes,
-                    bool infer_shape_mode) const;
+  void InitMemories(Scope* step_scopes, bool infer_shape_mode) const;
 
 private:
   std::unique_ptr<rnn::Argument> arg_;
@@ -150,22 +146,18 @@ class RecurrentGradientAlgorithm {
 public:
   void Init(std::unique_ptr<rnn::Argument> arg) { arg_ = std::move(arg); }
 
-  void Run(const std::shared_ptr<Scope>& scope,
-           const platform::DeviceContext& dev_ctx) const;
+  void Run(const Scope& scope, const platform::DeviceContext& dev_ctx) const;
 
-  void LinkBootMemoryGradients(std::shared_ptr<Scope> step_scopes,
-                               bool infer_shape_mode) const;
+  void LinkBootMemoryGradients(Scope* step_scopes, bool infer_shape_mode) const;
 
   /**
    * InferShape must be called before Run.
    */
-  void InferShape(const std::shared_ptr<Scope>& scope) const;
+  void InferShape(const Scope& scope) const;
 
 protected:
-  inline const std::vector<std::shared_ptr<Scope>>& GetStepScopes(
-      std::shared_ptr<Scope> scope) const {
-    return *(scope->GetVariable(arg_->step_scopes))
-                ->GetMutable<std::vector<std::shared_ptr<Scope>>>();
+  inline const std::vector<Scope*>& GetStepScopes(const Scope& scope) const {
+    return *scope.FindVar(arg_->step_scopes)->GetMutable<std::vector<Scope*>>();
   }
 
 private:
@@ -180,11 +172,11 @@ public:
   /**
    * InferShape must be called before Run.
    */
-  virtual void InferShape(const std::shared_ptr<Scope>& scope) const override {
+  virtual void InferShape(const Scope& scope) const override {
     alg_.InferShape(scope);
   }
 
-  virtual void Run(const std::shared_ptr<Scope>& scope,
+  virtual void Run(const Scope& scope,
                    const platform::DeviceContext& dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
   }
@@ -202,11 +194,11 @@ public:
   /**
    * InferShape must be called before Run.
    */
-  virtual void InferShape(const std::shared_ptr<Scope>& scope) const override {
+  virtual void InferShape(const Scope& scope) const override {
     alg_.InferShape(scope);
   }
 
-  virtual void Run(const std::shared_ptr<Scope>& scope,
+  virtual void Run(const Scope& scope,
                    const platform::DeviceContext& dev_ctx) const override {
     alg_.Run(scope, dev_ctx);
   }
