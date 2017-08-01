@@ -22,8 +22,8 @@ class TestOp : public OperatorBase {
 
 class EmptyOp : public OperatorBase {
  public:
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
-  void Run(const std::shared_ptr<Scope>& scope,
+  void InferShape(const Scope& scope) const override {}
+  void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
 };
 
