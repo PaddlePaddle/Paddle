@@ -87,7 +87,7 @@ void SliceProjection::backward(const UpdateCallback& callback) {
     size_t offset = 0;
     for (auto& slice : slices_) {
       auto slice_out = in_->grad->subColMatrix(slice.first, slice.second);
-      slice_out->addAtOffset(*out_->grad, config_.offset());
+      slice_out->addAtOffset(*out_->grad, offset);
       offset += slice_out->getWidth();
     }
   }

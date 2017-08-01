@@ -167,7 +167,7 @@ TEST(Projection, slice) {
     testProjectionGrad(conf,
                        INPUT_DATA,
                        /* parameterSize */ 0,
-                       /* batchSize */ 100,
+                       /* batchSize */ 10,
                        useGpu);
   }
 }
