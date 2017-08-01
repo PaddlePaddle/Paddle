@@ -29,7 +29,7 @@ class GradOpBuilder {
   using VarIndexMap = std::unordered_map<std::string, int>;
 
  public:
-  GradOpBuilder(const OperatorBase* op) : op_(op) {}
+  GradOpBuilder(const OperatorBase& op) : op_(op) {}
   OperatorBase* Build();
 
  private:
@@ -40,7 +40,7 @@ class GradOpBuilder {
                         std::vector<int>& format, VarIndexMap* varmap, int& idx,
                         bool is_grad) const;
   void CompleteGradOp(OperatorBase* grad_op) const;
-  const OperatorBase* op_;
+  const OperatorBase& op_;
   std::vector<std::shared_ptr<OpInOutArg>> arg_list_;
 };
 
