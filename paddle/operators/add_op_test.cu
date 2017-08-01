@@ -41,7 +41,7 @@ TEST(AddOpKernel, Kernel) {
   paddle::platform::CUDADeviceContext* dd =
       new paddle::platform::CUDADeviceContext(0);
 
-  paddle::framework::EigenVector<T>::Flatten(t3).device(*(dd->eigen_device())) =
-      paddle::framework::EigenVector<T>::Flatten(t1) +
-      paddle::framework::EigenVector<T>::Flatten(t1);
+  paddle::framework::EigenVector<float>::Flatten(t3).device(*(dd->eigen_device())) =
+      paddle::framework::EigenVector<float>::Flatten(t1) +
+      paddle::framework::EigenVector<float>::Flatten(t1);
 }
