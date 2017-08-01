@@ -43,6 +43,7 @@ endfunction()
 
 op_library(add_op SRCS add_op.cc add_op.cu)
 cc_test(add_op_test SRCS add_op_test.cc DEPS add_op)
+nv_test(add_op_kernel_test SRCS add_op_test.cu DEPS add_op)
 
 op_library(mul_op SRCS mul_op.cc mul_op.cu)
 op_library(rowwise_add_op SRCS rowwise_add_op.cu rowwise_add_op.cc)
