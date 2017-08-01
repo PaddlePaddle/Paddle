@@ -539,11 +539,11 @@ def identity_projection(input, offset=None, size=None):
 
 def slice_projection(input, slices):
     """
-    slice_projection can get multiple outputs, and each output is a slice
-    of the input.
+    slice_projection can slice the input value into multiple parts,
+    and then select some of them to merge into a new output.
 
     .. math::
-       output[i] = input.slice(slices[i])
+       output = [input.slices()]
 
     The example usage is:
 
