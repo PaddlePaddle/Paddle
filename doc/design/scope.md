@@ -37,8 +37,8 @@ Scope is an association of a name to variable. All variables belong to `Scope`. 
 ```cpp
 class Scope {
  public:
-  Variable* CreateVariable(const std::string& name);
-  const Variable* GetVariable(const std::string& name) const;
+  Variable* NewVar(const std::string& name);
+  const Variable* FindVar(const std::string& name) const;
 
  private:
     std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
@@ -58,12 +58,12 @@ class Scope {
  public:
   Scope(const std::shared_ptr<Scope>& scope): parent_(scope) {}
 
-  Variable* GetVariable(const std::string& name) const {
+  Variable* FindVar(const std::string& name) const {
     auto it = vars_.find(name);
     if (it != vars_.end()) {
       return it->second.get();
     } else if (parent_ != nullptr) {
-      return parent_->GetVariable(name);
+      return parent_->FindVar(name);
     } else {
       return nullptr;
     }
@@ -95,10 +95,10 @@ class Scope {
   static std::shared_ptr<Scope> Create(const std::shared_ptr<Scope>& parent = nullptr);
 
   // return nullptr if not found.
-  Variable* GetVariable(const std::string& name) const;
+  Variable* FindVar(const std::string& name) const;
 
   // return if already contains same name variable.
-  Variable* CreateVariable(const std::string& name);
+  Variable* NewVar(const std::string& name);
 
  private:
   std::shared_ptr<Scope> parent_;
@@ -107,11 +107,11 @@ class Scope {
 ```
 ## Only scope can create a variable
 
-To ensure `only scope can create a variable`, we should mark `Variable`'s constructor as a private member function, and Scope is a friend class of Variable. And then only `CreateVariable` can construct `Variable`.
+To ensure `only scope can create a variable`, we should mark `Variable`'s constructor as a private member function, and Scope is a friend class of Variable. And then only `NewVar` can construct `Variable`.
 
 ## When scope destroyed, all variables inside this scope should be destroyed together
 
-The scope hold unique pointers for all variables. User can `GetVariable` from scope, but he should not hold this pointer as a member variable. Because when scope is destroyed, all variables inside this scope will be destroyed together.
+The scope hold unique pointers for all variables. User can `FindVar` from scope, but he should not hold this pointer as a member variable. Because when scope is destroyed, all variables inside this scope will be destroyed together.
 
 ## Sharing a parent scope
 
@@ -121,4 +121,4 @@ Also, as the parent scope is a `shared_ptr`, we can only `Create()` a scope shar
 
 ## Orthogonal interface
 
-`GetVariable` will return `nullptr` when `name` is not found. It can be used as `Contains` method. `CreateVariable` will return a `Error` when there is a name conflict locally. Combine `GetVariable` and `CreateVariable`, we can implement `CreateOrGetVariable` easily.
+`FindVar` will return `nullptr` when `name` is not found. It can be used as `Contains` method. `NewVar` will return a `Error` when there is a name conflict locally. Combine `FindVar` and `NewVar`, we can implement `NewVar` easily.
