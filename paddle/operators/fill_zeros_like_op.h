@@ -13,24 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/operators/type_alias.h"
+#include "glog/logging.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/operator.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class SGDOpKernel : public OpKernel {
+class FillZerosLikeKernel : public framework::OpKernel {
 public:
-  void Compute(const ExecutionContext& ctx) const override {
-    auto param = ctx.Input<Tensor>("param");
-    auto grad = ctx.Input<Tensor>("grad");
-    auto param_out = ctx.Output<Tensor>(0);
-    float lr = ctx.op_.GetAttr<float>("learning_rate");
-
-    param_out->mutable_data<T>(ctx.GetPlace());
-
-    EigenVector<T>::Flatten(*param_out).device(*(ctx.GetEigenDevice<Place>())) =
-        EigenVector<T>::Flatten(*param) - lr * EigenVector<T>::Flatten(*grad);
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* output = context.Output<framework::Tensor>(0);
+    output->mutable_data<T>(context.GetPlace());
+    framework::EigenVector<T>::Flatten(*output).setZero();
   }
 };
 

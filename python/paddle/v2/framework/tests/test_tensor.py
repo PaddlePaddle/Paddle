@@ -5,8 +5,8 @@ import numpy
 
 class TestScope(unittest.TestCase):
     def test_int_tensor(self):
-        scope = core.Scope(None)
-        var = scope.create_var("test_tensor")
+        scope = core.Scope()
+        var = scope.new_var("test_tensor")
         tensor = var.get_tensor()
 
         tensor.set_dims([1000, 784])
@@ -23,8 +23,8 @@ class TestScope(unittest.TestCase):
         self.assertEqual(2.0, tensor_array_2[19, 11])
 
     def test_float_tensor(self):
-        scope = core.Scope(None)
-        var = scope.create_var("test_tensor")
+        scope = core.Scope()
+        var = scope.new_var("test_tensor")
         tensor = var.get_tensor()
 
         tensor.set_dims([1000, 784])

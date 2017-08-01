@@ -18,11 +18,10 @@ namespace operators {
 
 class SigmoidOp : public OperatorWithKernel {
 protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 1, "Sigmoid Op only have one input");
-    PADDLE_ENFORCE(outputs.size() == 1, "Sigmoid Op only have one output");
-    outputs[0]->Resize(inputs[0]->dims());
+  void InferShape(const InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE(ctx.InputSize() == 1, "Sigmoid Op only have one input");
+    PADDLE_ENFORCE(ctx.OutputSize() == 1, "Sigmoid Op only have one output");
+    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
   }
 };
 
@@ -38,8 +37,7 @@ public:
 
 class SigmoidOpGrad : public OperatorWithKernel {
 protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {}
+  void InferShape(const InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "SigmoidGrad";
     return "";

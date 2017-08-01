@@ -22,7 +22,13 @@ namespace paddle {
 namespace operators {
 
 using OpKernel = framework::OpKernel;
-using KernelContext = framework::KernelContext;
+using InferShapeContext = framework::InferShapeContext;
+using ExecutionContext = framework::ExecutionContext;
+using Variable = framework::Variable;
+template <typename T,
+          int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
