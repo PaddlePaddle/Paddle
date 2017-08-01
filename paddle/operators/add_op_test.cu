@@ -7,25 +7,25 @@
 
 TEST(AddOpKernel, Kernel) {
   paddle::framework::Tensor t;
-  float* p = t.mutable_data<float>(paddle::platform::make_ddim({6}), paddle::platform::CPUPlace());
+  float* p = t.mutable_data<float>(paddle::framework::make_ddim({6}), paddle::platform::CPUPlace());
   for (int i = 0; i < 6; i++) {
     p[i] = static_cast<float>(i);
   }
 
   paddle::framework::Tensor t1;
-  float* p1 = t1.mutable_data<float>(paddle::platform::make_ddim({6}), paddle::platform::CPUPlace());
+  float* p1 = t1.mutable_data<float>(paddle::framework::make_ddim({6}), paddle::platform::CPUPlace());
   for (int i = 0; i < 6; i++) {
     p1[i] = static_cast<float>(i);
   }
 
   paddle::framework::Tensor t2;
-  float* p2 = t2.mutable_data<float>(paddle::platform::make_ddim({6}), paddle::platform::CPUPlace());
+  float* p2 = t2.mutable_data<float>(paddle::framework::make_ddim({6}), paddle::platform::CPUPlace());
   for (int i = 0; i < 6; i++) {
     p2[i] = static_cast<float>(i);
   }
 
   paddle::framework::Tensor t3;
-  float* p3 = t3.mutable_data<float>(paddle::platform::make_ddim({6}), paddle::platform::CPUPlace());
+  float* p3 = t3.mutable_data<float>(paddle::framework::make_ddim({6}), paddle::platform::CPUPlace());
   for (int i = 0; i < 6; i++) {
     p3[i] = static_cast<float>(i);
   }
@@ -33,8 +33,8 @@ TEST(AddOpKernel, Kernel) {
   t1.mutable_data<float>(paddle::platform::GPUPlace(0));
   t2.mutable_data<float>(paddle::platform::GPUPlace(0));
 
-  t1.CopyFrom<T>(t, paddle::platform::GPUPlace(0));
-  t2.CopyFrom<T>(t, paddle::platform::GPUPlace(0));
+  t1.CopyFrom<float>(t, paddle::platform::GPUPlace(0));
+  t2.CopyFrom<float>(t, paddle::platform::GPUPlace(0));
 
   t3.mutable_data<float>(paddle::platform::GPUPlace(0));
 
