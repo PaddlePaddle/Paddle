@@ -20,13 +20,39 @@ limitations under the License. */
 namespace paddle {
 namespace memory {
 
+/**
+ * \brief   Copy memory from one place to another place.
+ *
+ * \param[in]  DstPlace Destination allocation place (CPU).
+ * \param[in]  dst      Destination memory address.
+ * \param[in]  SrcPlace Source allocation place (CPU).
+ * \param[in]  src      Source memory address.
+ * \param[in]  num      memory size in bytes to copy.
+ *
+ */
 template <typename DstPlace, typename SrcPlace>
 void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
 
 #ifndef PADDLE_ONLY_CPU
+
+/**
+ * \brief   Copy memory from one place to another place.
+ *
+ * \param[in]  DstPlace Destination allocation place (CPU or GPU).
+ * \param[in]  dst      Destination memory address.
+ * \param[in]  SrcPlace Source allocation place (CPU or GPU).
+ * \param[in]  src      Source memory address.
+ * \param[in]  num      memory size in bytes to copy.
+ * \param[in]  stream   CUDA stream.
+ *
+ * \note    For GPU memory copy, CUDA stream need to be specified
+ *          for asynchronously memory copy.
+ *
+ */
 template <typename DstPlace, typename SrcPlace>
 void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
           cudaStream_t stream);
+
 #endif  // PADDLE_ONLY_CPU
 
 }  // namespace memory

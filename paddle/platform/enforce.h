@@ -58,11 +58,6 @@ struct EnforceNotMet : public std::exception {
 // For more details, please check https://stackoverflow.com/a/43870188/724872.
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
 
-template <typename T>
-inline void throw_on_error(T e) {
-  throw_on_error(e, "");
-}
-
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     int stat, const Args&... args) {
@@ -131,6 +126,11 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
 }
 
 #endif  // PADDLE_ONLY_CPU
+
+template <typename T>
+inline void throw_on_error(T e) {
+  throw_on_error(e, "");
+}
 
 #define PADDLE_THROW(...)                                      \
   do {                                                         \

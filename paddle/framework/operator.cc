@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 
 template <>
-Eigen::DefaultDevice* KernelContext::GetEigenDevice<
+Eigen::DefaultDevice* ExecutionContext::GetEigenDevice<
     platform::CPUPlace, Eigen::DefaultDevice>() const {
   return device_context_.get_eigen_device<Eigen::DefaultDevice>();
 }
@@ -28,7 +28,7 @@ Eigen::DefaultDevice* KernelContext::GetEigenDevice<
 #ifndef PADDLE_ONLY_CPU
 template <>
 Eigen::GpuDevice*
-KernelContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
+ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
   return device_context_.get_eigen_device<Eigen::GpuDevice>();
 }
 #endif

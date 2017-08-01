@@ -11,8 +11,7 @@ static int run_cnt = 0;
 
 class TestOp : public OperatorBase {
  public:
-  void InferShape(
-      const std::shared_ptr<framework::Scope>& scope) const override {
+  void InferShape(const std::shared_ptr<Scope>& scope) const override {
     ++infer_shape_cnt;
   }
   void Run(const std::shared_ptr<framework::Scope>& scope,

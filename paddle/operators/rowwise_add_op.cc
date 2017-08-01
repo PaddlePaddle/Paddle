@@ -18,17 +18,17 @@ namespace operators {
 
 class RowWiseAddOp : public OperatorWithKernel {
 protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 2UL, "Two inputs is needed by rowwise add");
-    auto dim0 = inputs[0]->dims();
-    auto dim1 = inputs[1]->dims();
+  void InferShape(const InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE(ctx.InputSize() == 2UL,
+                   "Two inputs is needed by rowwise add");
+    auto dim0 = ctx.Input<Tensor>(0)->dims();
+    auto dim1 = ctx.Input<Tensor>(1)->dims();
 
     PADDLE_ENFORCE(dim0.size() == 2, "Input 0 must be matrix");
     PADDLE_ENFORCE(dim1.size() == 1, "The second input must be vector");
     PADDLE_ENFORCE(dim0[1] == dim1[0], "The width of two input must be same");
-    PADDLE_ENFORCE(outputs.size() == 1, "The output size must be 1");
-    outputs[0]->Resize(inputs[0]->dims());
+    PADDLE_ENFORCE(ctx.OutputSize() == 1, "The output size must be 1");
+    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
   }
 };
 

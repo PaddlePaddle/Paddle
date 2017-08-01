@@ -55,10 +55,10 @@ var curHandle C.paddle_pserver_client
 func add(c *client.Client) C.paddle_pserver_client {
 	mu.Lock()
 	defer mu.Unlock()
-	client := curHandle
+	cli := curHandle
 	curHandle++
-	handleMap[client] = c
-	return client
+	handleMap[cli] = c
+	return cli
 }
 
 func get(client C.paddle_pserver_client) *client.Client {
