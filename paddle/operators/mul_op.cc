@@ -19,18 +19,17 @@ namespace operators {
 
 class MulOp : public OperatorWithKernel {
 protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 2, "The mul op must take two inputs");
-    auto dim0 = inputs[0]->dims();
-    auto dim1 = inputs[1]->dims();
+  void InferShape(const InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE(ctx.InputSize() == 2, "The mul op must take two inputs");
+    auto dim0 = ctx.Input<Tensor>(0)->dims();
+    auto dim1 = ctx.Input<Tensor>(1)->dims();
     PADDLE_ENFORCE(dim0.size() == 2 && dim1.size() == 2,
                    "The input of mul op must be matrix");
     PADDLE_ENFORCE(
         dim0[1] == dim1[0],
         "First matrix's width must be equal with second matrix's height.");
-    PADDLE_ENFORCE(outputs.size() == 1, "The mul op must take one output");
-    outputs[0]->Resize({dim0[0], dim1[1]});
+    PADDLE_ENFORCE(ctx.OutputSize() == 1, "The mul op must take one output");
+    ctx.Output<Tensor>(0)->Resize({dim0[0], dim1[1]});
   }
 };
 
@@ -51,8 +50,7 @@ The equation is: Out = X * Y
 
 class MulOpGrad : public OperatorWithKernel {
 protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {}
+  void InferShape(const InferShapeContext &ctx) const override {}
   std::string DebugString() const override {
     LOG(INFO) << "MulGrad";
     return "";

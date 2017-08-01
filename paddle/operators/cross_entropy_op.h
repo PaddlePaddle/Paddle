@@ -23,18 +23,18 @@ class OnehotCrossEntropyOpKernel : public OpKernel {
 public:
   constexpr T LOG_THRESHOLD() const { return static_cast<T>(1e-20); }
 
-  void Compute(const KernelContext& context) const override {
-    auto X = context.Input(0)->Get<Tensor>();
-    const T* X_data = X.data<T>();
-    const int* label_data = context.Input(1)->Get<Tensor>().data<int>();
-    auto* Y = context.Output(0)->GetMutable<Tensor>();
+  void Compute(const ExecutionContext& ctx) const override {
+    auto X = ctx.Input<Tensor>(0);
+    const T* X_data = X->data<T>();
+    const int* label_data = ctx.Input<Tensor>(1)->data<int>();
+    auto Y = ctx.Output<Tensor>(0);
 
-    Y->mutable_data<T>(context.GetPlace());
+    Y->mutable_data<T>(ctx.GetPlace());
 
     T* Y_data = Y->data<T>();
 
-    int batch_size = X.dims()[0];
-    int class_num = X.dims()[1];
+    int batch_size = X->dims()[0];
+    int class_num = X->dims()[1];
 
     // Y[i] = -log(X[i][j])
     for (int i = 0; i < batch_size; ++i) {

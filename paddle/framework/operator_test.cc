@@ -24,7 +24,8 @@ static int op_run_num = 0;
 class OpWithoutKernelTest : public OperatorBase {
  public:
   void Init() override { x = 1; }
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
+  void InferShape(
+      const std::shared_ptr<framework::Scope>& scope) const override {}
   void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const override {
     op_run_num++;
@@ -73,6 +74,7 @@ TEST(OperatorBase, all) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   scope->CreateVariable("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
+  op->InferShape(scope);
   op->Run(scope, device_context);
   ASSERT_EQ(paddle::framework::op_run_num, 1);
 }
@@ -97,14 +99,13 @@ static int cpu_kernel_run_num = 0;
 
 class OpWithKernelTest : public OperatorWithKernel {
  protected:
-  void InferShape(const std::vector<const Tensor*>& inputs,
-                  const std::vector<Tensor*>& outputs) const override {}
+  void InferShape(const framework::InferShapeContext& ctx) const override {}
 };
 
 template <typename T1, typename T2>
 class CPUKernelTest : public OpKernel {
  public:
-  void Compute(const KernelContext& ctx) const {
+  void Compute(const ExecutionContext& ctx) const {
     std::cout << "this is cpu kernel" << std::endl;
     std::cout << ctx.op_.DebugString() << std::endl;
     cpu_kernel_run_num++;
@@ -117,7 +118,8 @@ class CPUKernelTest : public OpKernel {
 class OperatorMultiInputsTest : public OperatorBase {
  public:
   void Init() override { x = 1; }
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {}
+  void InferShape(
+      const std::shared_ptr<framework::Scope>& scope) const override {}
   void Run(const std::shared_ptr<Scope>& scope,
            const platform::DeviceContext& dev_ctx) const override {
     ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
@@ -149,12 +151,30 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
 
 class CPUKernalMultiInputsTest : public OpKernel {
  public:
-  void Compute(const KernelContext& ctx) const {
+  void Compute(const ExecutionContext& ctx) const {
     auto xs = ctx.op_.Inputs("xs");
     ASSERT_EQ(xs.size(), 3UL);
     ASSERT_EQ(xs[0], "x0");
     ASSERT_EQ(xs[1], "x1");
     ASSERT_EQ(xs[2], "x2");
+
+    auto inVar0 = ctx.MultiInputVar("xs");
+    ASSERT_EQ(inVar0.size(), 3);
+
+    auto intVar1 = ctx.InputVar("k");
+    ASSERT_NE(intVar1, nullptr);
+
+    auto outVar0 = ctx.MultiOutputVar("ys");
+    ASSERT_EQ(outVar0.size(), 2);
+
+    auto inTensor0 = ctx.MultiInput<Tensor>("xs");
+    ASSERT_EQ(inTensor0.size(), 3);
+
+    auto intTensor1 = ctx.Input<Tensor>("k");
+    ASSERT_NE(intTensor1, nullptr);
+
+    auto outTensor0 = ctx.MultiOutput<Tensor>("ys");
+    ASSERT_EQ(outTensor0.size(), 2);
 
     auto k = ctx.op_.Input("k");
     ASSERT_EQ(k, "k0");
@@ -233,6 +253,12 @@ TEST(OpKernel, multi_inputs) {
 
   paddle::platform::CPUDeviceContext cpu_device_context;
   auto scope = std::make_shared<Scope>();
+  scope->CreateVariable("x0")->GetMutable<Tensor>();
+  scope->CreateVariable("x1")->GetMutable<Tensor>();
+  scope->CreateVariable("x2")->GetMutable<Tensor>();
+  scope->CreateVariable("k0")->GetMutable<Tensor>();
+  scope->CreateVariable("y0")->GetMutable<Tensor>();
+  scope->CreateVariable("y1")->GetMutable<Tensor>();
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);
