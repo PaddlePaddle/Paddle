@@ -40,7 +40,17 @@ public:
 
 class SoftmaxOpGrad : public OperatorWithKernel {
 protected:
-  void InferShape(const InferShapeContext &ctx) const override {}
+  void InferShape(const InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE(ctx.InputSize() == 2, "Input of SoftmaxOpGrad should be 2");
+    PADDLE_ENFORCE(ctx.OutputSize() == 1,
+                   "Output of SoftmaxOpGrad should be 1");
+    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr, "Input(0) should not be null");
+    PADDLE_ENFORCE(ctx.InputVar(1) != nullptr, "Input(1) should not be null");
+    PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims() == ctx.Input<Tensor>(1)->dims(),
+                   "the shape of Input(0) and Input(1) should be the same");
+    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
+  }
+
   std::string DebugString() const override {
     LOG(INFO) << "SoftmaxOpGrad";
     return "";
@@ -51,5 +61,7 @@ protected:
 }  // namespace paddle
 
 REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker);
-REGISTER_GRADIENT_OP(softmax, softmax_grad, ops::SoftmaxOpGrad);
 REGISTER_OP_CPU_KERNEL(softmax, ops::SoftmaxKernel<ops::CPUPlace, float>);
+REGISTER_GRADIENT_OP(softmax, softmax_grad, ops::SoftmaxOpGrad);
+REGISTER_OP_CPU_KERNEL(softmax_grad,
+                       ops::SoftmaxGradKernel<ops::CPUPlace, float>);

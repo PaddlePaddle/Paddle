@@ -57,5 +57,17 @@ public:
              .broadcast(one_by_class));
   }
 };
+
+template <typename Place, typename T>
+class SoftmaxGradKernel : public OpKernel {
+public:
+  void Compute(const ExecutionContext& context) const override {
+    //      auto Y = context.Input<Tensor>(0);
+    //      auto dY = context.Input<Tensor>(0);
+    //      auto dX = context.Output<Tensor>(0);
+    //      dX->mutable_data<T>(context.GetPlace());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
