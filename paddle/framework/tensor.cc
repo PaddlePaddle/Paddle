@@ -15,16 +15,5 @@
 #include "paddle/framework/tensor.h"
 
 namespace paddle {
-namespace framework {
-
-LODTensor LODTensor::Slice(uint32_t level) const {
-  LODTensor res;
-  auto new_lod = std::make_shared<lod_t>(lod_start_pos_->begin() + level,
-                                         lod_start_pos_->end());
-  res.set_tensor(tensor_);
-  res.set_lod(new_lod);
-  return res;
-}
-
-}  // namespace framework
+namespace framework {}  // namespace framework
 }  // namespace paddle

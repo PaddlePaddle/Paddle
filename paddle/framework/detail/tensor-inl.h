@@ -138,33 +138,5 @@ inline void Tensor::Resize(const DDim& dims) { dims_ = dims; }
 
 inline const DDim& Tensor::dims() const { return dims_; }
 
-template <typename T>
-LODTensor LODTensor::Slice(uint32_t level, uint32_t elem_begin,
-                           uint32_t elem_end) const {
-  PADDLE_ENFORCE(level < Levels(), "level [%d] out of range [%d]", level,
-                 Levels());
-  PADDLE_ENFORCE(elem_begin < Elements(level),
-                 "element begin [%d] out of range [%d]", elem_begin,
-                 Elements(level));
-  PADDLE_ENFORCE(elem_end < Elements(level),
-                 "element end [%d] out of range [%d]", elem_begin,
-                 Elements(level));
-  // slice the lod.
-  auto new_lod = std::make_shared<lod_t>();
-  auto start = lod_start_pos_->at(level)[elem_begin];
-  auto end = lod_start_pos_->at(level)[elem_end];
-  for (const auto& l : *lod_start_pos_) {
-    auto it_begin = std::find(l.begin(), l.end(), start);
-    auto it_end = std::find(it_begin, l.end(), end);
-    new_lod->emplace_back(it_begin, it_end);
-  }
-  auto new_tensor = tensor_->Slice<T>(start, end);
-
-  LODTensor res;
-  res.set_tensor(new_tensor);
-  res.set_lod(new_lod);
-  return res;
-}
-
 }  // namespace framework
 }  // namespace paddle

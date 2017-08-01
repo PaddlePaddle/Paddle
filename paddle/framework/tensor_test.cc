@@ -19,7 +19,7 @@ TEST(Tensor, Dims) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   Tensor tt;
-  tt.Resize(make_ddim({2, 3, 4}));
+  tt.Resize({2, 3, 4});
   DDim dims = tt.dims();
   ASSERT_EQ(arity(dims), 3);
   for (int i = 0; i < 3; ++i) {
@@ -260,42 +260,3 @@ TEST(Tensor, CopyFrom) {
   }
 #endif
 }
-
-namespace paddle {
-namespace framework {
-
-class LODTensorTester : public ::testing::Test {
- public:
-  virtual void SetUp() override {
-    lod_tensor = decltype(lod_tensor)(new LODTensor);
-    // tensor's batch_size: 30
-    // 3 levels
-    // 0 10 20
-    // 0 5 10 15 20
-    // 0 2 5 7 10 12 15 20
-    auto lod = std::make_shared<LODTensor::lod_t>();
-    lod->emplace_back(LODTensor::level_t{0, 10, 20});
-    lod->emplace_back(LODTensor::level_t{0, 5, 10, 15, 20});
-    lod->emplace_back(LODTensor::level_t{0, 2, 5, 7, 10, 12, 15, 17, 20});
-
-    auto tensor = std::make_shared<Tensor>();
-    DDim dims = make_ddim({20 /*batch size*/, 128 /*dim*/});
-    tensor->Resize(dims);
-
-    lod_tensor->set_tensor(tensor);
-    lod_tensor->set_lod(lod);
-  }
-
- protected:
-  std::unique_ptr<LODTensor> lod_tensor;
-};
-
-TEST_F(LODTensorTester, Levels) { ASSERT_EQ(lod_tensor->Levels(), 3UL); }
-
-TEST_F(LODTensorTester, Elements) {
-  ASSERT_EQ(lod_tensor->Elements(0), 3UL);
-  ASSERT_EQ(lod_tensor->Elements(1), 5UL);
-  ASSERT_EQ(lod_tensor->Elements(2), 9UL);
-}
-}  // namespace framework
-}  // namespace paddle
