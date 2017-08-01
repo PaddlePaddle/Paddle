@@ -1,3 +1,4 @@
+#define EIGEN_USE_GPU
 #include "gtest/gtest.h"
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/tensor.h"
