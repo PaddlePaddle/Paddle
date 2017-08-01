@@ -1,13 +1,12 @@
 import unittest
 import paddle.v2.framework.create_op_creation_methods as creation
 import paddle.v2.framework.core as core
-from op_test_util import OpTestMeta
 import numpy
 
 
 class TestFillZerosLikeOp(unittest.TestCase):
     def test_fill(self):
-        scope = core.Scope(None)
+        scope = core.Scope()
         a = scope.create_var("input")
         a_tensor = a.get_tensor()
         a_tensor.set_dims([546, 291])
