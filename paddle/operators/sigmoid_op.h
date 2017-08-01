@@ -22,15 +22,14 @@ namespace operators {
 template <typename Place, typename T>
 class SigmoidKernel : public OpKernel {
 public:
-  void Compute(const KernelContext& context) const override {
-    auto input = context.Input(0)->Get<Tensor>();
-    auto* output = context.Output(0)->GetMutable<Tensor>();
-
+  void Compute(const ExecutionContext& context) const override {
+    auto input = context.Input<Tensor>(0);
+    auto output = context.Output<Tensor>(0);
     output->mutable_data<T>(context.GetPlace());
 
     EigenVector<T>::Flatten(*output).device(
         *(context.GetEigenDevice<Place>())) =
-        1.0 / (1.0 + (-1.0 * EigenVector<T>::Flatten(input)).exp());
+        1.0 / (1.0 + (-1.0 * EigenVector<T>::Flatten(*input)).exp());
   }
 };
 }  // namespace operators

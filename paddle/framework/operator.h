@@ -31,22 +31,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <typename T>
-struct EigenDeviceConverter;
-
-template <>
-struct EigenDeviceConverter<platform::CPUPlace> {
-  using EigenDeviceType = Eigen::DefaultDevice;
-};
-
-#ifndef PADDLE_ONLY_CPU
-template <>
-struct EigenDeviceConverter<platform::GPUPlace> {
-  using EigenDeviceType = Eigen::GpuDevice;
-};
-#endif
-
 class OperatorBase;
+class InferShapeContext;
+class ExecutionContext;
 /**
  * OperatorBase has the basic element that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
@@ -112,45 +99,126 @@ class OperatorBase {
   std::shared_ptr<std::unordered_map<std::string, int>> in_out_idxs_;
 };
 
-class KernelContext {
+class OperatorContext {
  public:
-  KernelContext(const OperatorBase* op, const Scope& scope,
-                const platform::DeviceContext& device_context)
-      : op_(*op), scope_(scope), device_context_(device_context) {}
+  OperatorContext(const OperatorBase* op, const Scope& scope)
+      : op_(*op), scope_(scope) {}
 
-  const Variable* Input(int index) const {
-    return scope_.FindVar(op_.inputs_[index]);
+  size_t InputSize() const { return op_.inputs_.size(); }
+
+  size_t OutputSize() const { return op_.outputs_.size(); }
+
+  const Variable* InputVar(const size_t index) const {
+    return scope_.FindVar(op_.inputs_.at(index));
   }
 
-  Variable* Output(int index) const {
-    return scope_.FindVar(op_.outputs_[index]);
+  Variable* OutputVar(const size_t index) const {
+    return scope_.FindVar(op_.outputs_.at(index));
   }
 
-  const Variable* Input(const std::string& name) const {
+  const Variable* InputVar(const std::string& name) const {
     return scope_.FindVar(op_.Input(name));
   }
 
-  const Variable* Output(const std::string& name) const {
+  Variable* OutputVar(const std::string& name) const {
     return scope_.FindVar(op_.Output(name));
   }
 
-  const std::vector<const Variable*> Inputs(const std::string& name) const {
+  const std::vector<const Variable*> MultiInputVar(
+      const std::string& name) const {
     auto names = op_.Inputs(name);
     std::vector<const Variable*> res;
+    res.reserve(names.size());
     std::transform(
-        names.begin(), names.end(), res.begin(),
+        names.begin(), names.end(), std::back_inserter(res),
         [this](const std::string& name) { return scope_.FindVar(name); });
     return res;
   }
 
-  const std::vector<const Variable*> Outputs(const std::string& name) const {
+  std::vector<const Variable*> MultiOutputVar(const std::string& name) const {
     auto names = op_.Outputs(name);
     std::vector<const Variable*> res;
+    res.reserve(names.size());
     std::transform(
-        names.begin(), names.end(), res.begin(),
+        names.begin(), names.end(), std::back_inserter(res),
         [this](const std::string& name) { return scope_.FindVar(name); });
     return res;
   }
+
+  template <typename T>
+  const T* Input(const size_t index) const {
+    return &(InputVar(index)->Get<T>());
+  }
+
+  template <typename T>
+  T* Output(const size_t index) const {
+    return OutputVar(index)->GetMutable<T>();
+  }
+
+  template <typename T>
+  const T* Input(const std::string& name) const {
+    return &(InputVar(name)->Get<T>());
+  }
+
+  template <typename T>
+  T* Output(const std::string& name) const {
+    return OutputVar(name)->GetMutable<T>();
+  }
+
+  template <typename T>
+  const std::vector<const T*> MultiInput(const std::string& name) const {
+    auto names = op_.Inputs(name);
+    std::vector<const T*> res;
+    res.reserve(names.size());
+    std::transform(names.begin(), names.end(), std::back_inserter(res),
+                   [this](const std::string& name) {
+                     return &scope_.FindVar(name)->Get<T>();
+                   });
+    return res;
+  }
+
+  template <typename T>
+  std::vector<const T*> MultiOutput(const std::string& name) const {
+    auto names = op_.Outputs(name);
+    std::vector<const T*> res;
+    res.reserve(names.size());
+    std::transform(names.begin(), names.end(), std::back_inserter(res),
+                   [this](const std::string& name) {
+                     return scope_.FindVar(name)->GetMutable<T>();
+                   });
+    return res;
+  }
+
+  const OperatorBase& op_;
+  const Scope& scope_;
+};
+
+class InferShapeContext : public OperatorContext {
+ public:
+  InferShapeContext(const OperatorBase* op, const Scope& scope)
+      : OperatorContext(op, scope) {}
+};
+
+template <typename T>
+struct EigenDeviceConverter;
+
+template <>
+struct EigenDeviceConverter<platform::CPUPlace> {
+  using EigenDeviceType = Eigen::DefaultDevice;
+};
+
+#ifndef PADDLE_ONLY_CPU
+template <>
+struct EigenDeviceConverter<platform::GPUPlace> {
+  using EigenDeviceType = Eigen::GpuDevice;
+};
+#endif
+
+class ExecutionContext : public OperatorContext {
+ public:
+  ExecutionContext(const OperatorBase* op, const Scope& scope,
+                   const platform::DeviceContext& device_context)
+      : OperatorContext(op, scope), device_context_(device_context) {}
 
   template <typename PlaceType,
             typename DeviceType =
@@ -159,36 +227,21 @@ class KernelContext {
 
   platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
-  const OperatorBase& op_;
-  const Scope& scope_;
   const platform::DeviceContext& device_context_;
 };
 
 class OpKernel {
  public:
   /**
-   * KernelContext is the only parameter of Kernel Run function.
+   * ExecutionContext is the only parameter of Kernel Run function.
    * Run will get input/output variables, state such as momentum and
    * device resource such as CUDA stream, cublas handle, etc. from
-   * KernelContext. User should construct it before run the Operator.
+   * ExecutionContext. User should construct it before run the Operator.
    */
 
-  virtual void Compute(const KernelContext& context) const = 0;
+  virtual void Compute(const ExecutionContext& context) const = 0;
 
   virtual ~OpKernel() {}
-};
-
-template <typename T>
-struct VarToTensor {};
-
-template <>
-struct VarToTensor<Tensor*> {
-  Tensor* operator()(Variable* var) { return var->GetMutable<Tensor>(); }
-};
-
-template <>
-struct VarToTensor<const Tensor*> {
-  const Tensor* operator()(Variable* var) { return &var->Get<Tensor>(); }
 };
 
 class OperatorWithKernel : public OperatorBase {
@@ -216,10 +269,14 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
+  void InferShape(const Scope& scope) const {
+    InferShape(InferShapeContext(this, scope));
+  }
+
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
-    opKernel->Compute(KernelContext(this, scope, dev_ctx));
+    opKernel->Compute(ExecutionContext(this, scope, dev_ctx));
   }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
@@ -228,34 +285,8 @@ class OperatorWithKernel : public OperatorBase {
     return g_all_op_kernels;
   }
 
-  void InferShape(const Scope& scope) const final {
-    std::vector<const Tensor*> ins;
-    VarNamesToTensors(scope, inputs_, &ins);
-    std::vector<Tensor*> outs;
-    VarNamesToTensors(scope, outputs_, &outs);
-    InferShape(ins, outs);
-  };
-
- private:
-  template <typename T>
-  void VarNamesToTensors(const Scope& scope,
-                         const std::vector<std::string>& var_names,
-                         std::vector<T>* container) const {
-    container->reserve(var_names.size());
-    VarToTensor<T> convert;
-    for (auto& name : var_names) {
-      auto var = scope.FindVar(name);
-      if (var != nullptr) {
-        container->push_back(convert(var));
-      } else {
-        container->push_back(nullptr);
-      }
-    }
-  }
-
  protected:
-  virtual void InferShape(const std::vector<const Tensor*>& inputs,
-                          const std::vector<Tensor*>& outputs) const = 0;
+  virtual void InferShape(const InferShapeContext& ctx) const = 0;
 };
 
 }  // namespace framework
