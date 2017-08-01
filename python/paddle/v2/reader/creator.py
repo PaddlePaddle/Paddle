@@ -86,7 +86,7 @@ pass_num = 0
 
 def cloud_reader(paths, etcd_endpoints, timeout_sec=5, buf_size=64):
     """
-    Create a data reader that yield a record one bye one from
+    Create a data reader that yield a record one by one from
         the paths:
     :path: path of recordio files.
     :etcd_endpoints: the endpoints for etcd cluster
