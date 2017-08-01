@@ -36,6 +36,7 @@ USE_OP(mul);
 USE_OP(sigmoid);
 USE_OP(softmax);
 USE_OP(rowwise_add);
+USE_OP(fill_zeros_like);
 
 template <typename ClassType>
 void ExposeOperator(ClassType& m) {
