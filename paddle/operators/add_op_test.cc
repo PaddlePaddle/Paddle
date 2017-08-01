@@ -26,3 +26,7 @@ TEST(AddOp, GetOpProto) {
   auto it1 = op_creators.find("add_two_grad");
   ASSERT_NE(it1, op_creators.end());
 }
+TEST(AddOp, Kernel) {
+  
+
+}
