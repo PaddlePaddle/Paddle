@@ -26,10 +26,14 @@ struct EigenDim {
   using Type = Eigen::DSizes<Eigen::DenseIndex, D>;
 
   static Type From(const DDim& dims) {
-    PADDLE_ENFORCE(arity(dims) == D, "D must match arity(DDim)");
     Type ret;
-    for (int d = 0; d < arity(dims); d++) {
-      ret[d] = dims[d];
+    if (arity(dims) == 1 && dims[0] == 1) {
+      ret[0] = 0;
+    } else {
+      PADDLE_ENFORCE(arity(dims) == D, "D must match arity(DDim)");
+      for (int d = 0; d < arity(dims); d++) {
+        ret[d] = dims[d];
+      }
     }
     return ret;
   }
@@ -79,6 +83,10 @@ struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
         tensor, make_ddim({static_cast<int>(product(tensor.dims_))}));
   }
 };
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+struct EigenScalar : public EigenTensor<T, 0, MajorType, IndexType> {};
 
 }  // namespace framework
 }  // namespace paddle
