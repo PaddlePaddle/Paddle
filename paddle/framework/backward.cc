@@ -120,7 +120,7 @@ std::shared_ptr<OperatorBase> BackwardRecursive(
            OpRegistry::CreateOp(
                "add", {dup_outputs}, {name},
                {{"input_format",
-                 std::vector<int>{0, (int)dup_outputs.size()}}})});
+                 std::vector<int>{0, static_cast<int>(dup_outputs.size())}}})});
     }
 
     insert_position.sort(
