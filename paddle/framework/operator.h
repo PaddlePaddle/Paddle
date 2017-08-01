@@ -75,10 +75,10 @@ class OperatorBase {
 
   /// InferShape infer the size of Variables used by this Operator with
   /// information inside scope
-  virtual void InferShape(const std::shared_ptr<Scope>& scope) const = 0;
+  virtual void InferShape(const Scope& scope) const = 0;
 
   /// Net will call this function to Run an op.
-  virtual void Run(const std::shared_ptr<Scope>& scope,
+  virtual void Run(const Scope& scope,
                    const platform::DeviceContext& dev_ctx) const = 0;
 
   virtual bool IsNetOp() const { return false; }
@@ -115,27 +115,27 @@ class OperatorBase {
 
 class OperatorContext {
  public:
-  OperatorContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope)
+  OperatorContext(const OperatorBase* op, const Scope& scope)
       : op_(*op), scope_(scope) {}
 
   size_t InputSize() const { return op_.inputs_.size(); }
 
   size_t OutputSize() const { return op_.outputs_.size(); }
 
-  const Variable* InputVar(const size_t& index) const {
-    return scope_->GetVariable(op_.inputs_.at(index));
+  const Variable* InputVar(const size_t index) const {
+    return scope_.FindVar(op_.inputs_.at(index));
   }
 
-  Variable* OutputVar(const size_t& index) const {
-    return scope_->GetVariable(op_.outputs_.at(index));
+  Variable* OutputVar(const size_t index) const {
+    return scope_.FindVar(op_.outputs_.at(index));
   }
 
   const Variable* InputVar(const std::string& name) const {
-    return scope_->GetVariable(op_.Input(name));
+    return scope_.FindVar(op_.Input(name));
   }
 
   Variable* OutputVar(const std::string& name) const {
-    return scope_->GetVariable(op_.Output(name));
+    return scope_.FindVar(op_.Output(name));
   }
 
   const std::vector<const Variable*> MultiInputVar(
@@ -145,7 +145,7 @@ class OperatorContext {
     res.reserve(names.size());
     std::transform(
         names.begin(), names.end(), std::back_inserter(res),
-        [this](const std::string& name) { return scope_->GetVariable(name); });
+        [this](const std::string& name) { return scope_.FindVar(name); });
     return res;
   }
 
@@ -155,17 +155,17 @@ class OperatorContext {
     res.reserve(names.size());
     std::transform(
         names.begin(), names.end(), std::back_inserter(res),
-        [this](const std::string& name) { return scope_->GetVariable(name); });
+        [this](const std::string& name) { return scope_.FindVar(name); });
     return res;
   }
 
   template <typename T>
-  const T* Input(const size_t& index) const {
+  const T* Input(const size_t index) const {
     return &(InputVar(index)->Get<T>());
   }
 
   template <typename T>
-  T* Output(const size_t& index) const {
+  T* Output(const size_t index) const {
     return OutputVar(index)->GetMutable<T>();
   }
 
@@ -186,7 +186,7 @@ class OperatorContext {
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [this](const std::string& name) {
-                     return &scope_->GetVariable(name)->Get<T>();
+                     return &scope_.FindVar(name)->Get<T>();
                    });
     return res;
   }
@@ -198,18 +198,18 @@ class OperatorContext {
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [this](const std::string& name) {
-                     return scope_->GetVariable(name)->GetMutable<T>();
+                     return scope_.FindVar(name)->GetMutable<T>();
                    });
     return res;
   }
 
   const OperatorBase& op_;
-  const std::shared_ptr<Scope>& scope_;
+  const Scope& scope_;
 };
 
 class InferShapeContext : public OperatorContext {
  public:
-  InferShapeContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope)
+  InferShapeContext(const OperatorBase* op, const Scope& scope)
       : OperatorContext(op, scope) {}
 };
 
@@ -230,7 +230,7 @@ struct EigenDeviceConverter<platform::GPUPlace> {
 
 class ExecutionContext : public OperatorContext {
  public:
-  ExecutionContext(const OperatorBase* op, const std::shared_ptr<Scope>& scope,
+  ExecutionContext(const OperatorBase* op, const Scope& scope,
                    const platform::DeviceContext& device_context)
       : OperatorContext(op, scope), device_context_(device_context) {}
 
@@ -283,11 +283,11 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelKey, std::unique_ptr<OpKernel>, OpKernelHash>;
 
-  void InferShape(const std::shared_ptr<Scope>& scope) const {
+  void InferShape(const Scope& scope) const {
     InferShape(InferShapeContext(this, scope));
   }
 
-  void Run(const std::shared_ptr<Scope>& scope,
+  void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final {
     auto& opKernel = AllOpKernels().at(type_).at(OpKernelKey(dev_ctx));
     opKernel->Compute(ExecutionContext(this, scope, dev_ctx));

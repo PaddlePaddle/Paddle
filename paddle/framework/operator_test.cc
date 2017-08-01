@@ -24,16 +24,15 @@ static int op_run_num = 0;
 class OpWithoutKernelTest : public OperatorBase {
  public:
   void Init() override { x = 1; }
-  void InferShape(
-      const std::shared_ptr<framework::Scope>& scope) const override {}
-  void Run(const std::shared_ptr<Scope>& scope,
+  void InferShape(const Scope& scope) const override {}
+  void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     op_run_num++;
     ASSERT_EQ((int)inputs_.size(), 1);
     ASSERT_EQ((int)outputs_.size(), 1);
-    ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
+    ASSERT_EQ(scope.FindVar(inputs_[0]), nullptr);
     ASSERT_EQ(x, 1);
-    ASSERT_NE(scope->GetVariable(outputs_[0]), nullptr);
+    ASSERT_NE(scope.FindVar(outputs_[0]), nullptr);
   }
 
  public:
@@ -69,10 +68,10 @@ TEST(OperatorBase, all) {
   attr->set_f(3.14);
 
   paddle::platform::CPUDeviceContext device_context;
-  auto scope = std::make_shared<paddle::framework::Scope>();
+  paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  scope->CreateVariable("OUT1");
+  scope.NewVar("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
   op->InferShape(scope);
   op->Run(scope, device_context);
@@ -118,13 +117,12 @@ class CPUKernelTest : public OpKernel {
 class OperatorMultiInputsTest : public OperatorBase {
  public:
   void Init() override { x = 1; }
-  void InferShape(
-      const std::shared_ptr<framework::Scope>& scope) const override {}
-  void Run(const std::shared_ptr<Scope>& scope,
+  void InferShape(const Scope& scope) const override {}
+  void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
-    ASSERT_EQ(scope->GetVariable(inputs_[0]), nullptr);
+    ASSERT_EQ(scope.FindVar(inputs_[0]), nullptr);
     ASSERT_EQ(x, 1);
-    ASSERT_NE(scope->GetVariable(outputs_[0]), nullptr);
+    ASSERT_NE(scope.FindVar(outputs_[0]), nullptr);
     ASSERT_EQ(Input("x"), "IN1");
     ASSERT_EQ(Input("y"), "OUT1");
   }
@@ -206,7 +204,7 @@ TEST(OpKernel, all) {
   attr->set_f(3.14);
 
   paddle::platform::CPUDeviceContext cpu_device_context;
-  auto scope = std::make_shared<paddle::framework::Scope>();
+  paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
@@ -252,13 +250,13 @@ TEST(OpKernel, multi_inputs) {
   output_format->Add(2);  // y1
 
   paddle::platform::CPUDeviceContext cpu_device_context;
-  auto scope = std::make_shared<Scope>();
-  scope->CreateVariable("x0")->GetMutable<Tensor>();
-  scope->CreateVariable("x1")->GetMutable<Tensor>();
-  scope->CreateVariable("x2")->GetMutable<Tensor>();
-  scope->CreateVariable("k0")->GetMutable<Tensor>();
-  scope->CreateVariable("y0")->GetMutable<Tensor>();
-  scope->CreateVariable("y1")->GetMutable<Tensor>();
+  paddle::framework::Scope scope;
+  scope.NewVar("x0")->GetMutable<Tensor>();
+  scope.NewVar("x1")->GetMutable<Tensor>();
+  scope.NewVar("x2")->GetMutable<Tensor>();
+  scope.NewVar("k0")->GetMutable<Tensor>();
+  scope.NewVar("y0")->GetMutable<Tensor>();
+  scope.NewVar("y1")->GetMutable<Tensor>();
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);

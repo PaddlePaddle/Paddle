@@ -11,10 +11,10 @@ static int run_cnt = 0;
 
 class TestOp : public OperatorBase {
  public:
-  void InferShape(const std::shared_ptr<Scope>& scope) const override {
+  void InferShape(const framework::Scope& scope) const override {
     ++infer_shape_cnt;
   }
-  void Run(const std::shared_ptr<framework::Scope>& scope,
+  void Run(const framework::Scope& scope,
            const paddle::platform::DeviceContext& dev_ctx) const override {
     ++run_cnt;
   }
@@ -63,7 +63,7 @@ TEST(OpKernel, all) {
   ASSERT_EQ(1UL, tmp_idx.size());
   ASSERT_EQ("y", net->outputs_[tmp_idx[0]]);
 
-  auto scope = std::make_shared<Scope>();
+  Scope scope;
   platform::CPUDeviceContext dev_ctx;
 
   net->InferShape(scope);

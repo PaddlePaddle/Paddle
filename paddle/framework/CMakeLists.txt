@@ -8,7 +8,9 @@ cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
 cc_test(variable_test SRCS variable_test.cc)
-cc_test(scope_test SRCS scope_test.cc)
+
+cc_library(scope SRCS scope.cc)
+cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
 proto_library(attr_type SRCS attr_type.proto)
 proto_library(op_proto SRCS op_proto.proto DEPS attr_type)
@@ -16,7 +18,7 @@ proto_library(op_desc SRCS op_desc.proto DEPS attr_type)
 cc_test(op_proto_test SRCS op_proto_test.cc DEPS op_proto protobuf)
 cc_test(op_desc_test SRCS op_desc_test.cc DEPS op_desc protobuf)
 
-cc_library(operator SRCS operator.cc DEPS op_desc device_context tensor)
+cc_library(operator SRCS operator.cc DEPS op_desc device_context tensor scope)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
 
 cc_library(grad_op_builder SRCS grad_op_builder.cc DEPS op_proto operator)
