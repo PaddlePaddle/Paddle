@@ -28,6 +28,10 @@ using Variable = framework::Variable;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
+using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
+template <typename T,
+          int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 template <typename T,
           int MajorType = Eigen::RowMajor,

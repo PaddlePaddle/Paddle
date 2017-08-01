@@ -46,6 +46,17 @@ TEST(Eigen, Tensor) {
   }
 }
 
+TEST(Eigen, ScalarFrom) {
+  Tensor t;
+  int* p = t.mutable_data<int>(make_ddim({1}), platform::CPUPlace());
+  *p = static_cast<int>(100);
+
+  EigenScalar<int>::Type es = EigenScalar<int>::From(t);
+
+  ASSERT_EQ(0, es.dimension(0));
+  ASSERT_EQ(100, es(0));
+}
+
 TEST(Eigen, VectorFrom) {
   Tensor t;
   float* p = t.mutable_data<float>(make_ddim({6}), platform::CPUPlace());
