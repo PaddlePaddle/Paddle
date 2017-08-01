@@ -18,12 +18,8 @@
 namespace paddle {
 namespace framework {
 
-/**
- * @brief
- * @param forwardOp
- * @param no_grad_vars ignored input name of forward
- * @return
- */
+// Create the backward operator from a forward operator.
+// TODO(yuyang18): Add more API reference comment.
 extern std::shared_ptr<OperatorBase> Backward(
     const OperatorBase& forwardOp,
     const std::unordered_set<std::string>& no_grad_vars);
