@@ -52,7 +52,7 @@ std::vector<std::string> OperatorBase::Inputs(const std::string& name) const {
   PADDLE_ENFORCE(in_out_idxs_ != nullptr, "IO Idx could not be nullptr");
   auto input_format = GetAttr<std::vector<int>>("input_format");
   auto offset = in_out_idxs_->at(name);
-  PADDLE_ENFORCE(input_format.at((size_t)offset + 1) <= inputs_.size(),
+  PADDLE_ENFORCE(input_format.at((size_t)offset + 1) <= (int)inputs_.size(),
                  "Input Out Of Range");
 
   return std::vector<std::string>{
@@ -78,7 +78,7 @@ std::vector<std::string> OperatorBase::Outputs(const std::string& name) const {
   PADDLE_ENFORCE(in_out_idxs_ != nullptr, "InOut Indice could not be nullptr");
   auto output_format = GetAttr<std::vector<int>>("output_format");
   auto offset = in_out_idxs_->at(name);
-  PADDLE_ENFORCE(output_format.at((size_t)offset + 1) <= outputs_.size(),
+  PADDLE_ENFORCE(output_format.at((size_t)offset + 1) <= (int)outputs_.size(),
                  "Output Out of Range");
   return std::vector<std::string>{
       outputs_.begin() + output_format.at(offset),
@@ -103,6 +103,12 @@ std::string OperatorBase::DebugString() const {
   }
   ss << ").";
   return ss.str();
+}
+
+void OperatorBase::Rename(const std::string& old_name,
+                          const std::string& new_name) {
+  std::replace(inputs_.begin(), inputs_.end(), old_name, new_name);
+  std::replace(outputs_.begin(), outputs_.end(), old_name, new_name);
 }
 
 }  // namespace framework
