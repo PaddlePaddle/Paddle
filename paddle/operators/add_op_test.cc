@@ -15,6 +15,9 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #define private public
 #include <paddle/framework/op_registry.h>
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/tensor.h"
+#include "paddle/platform/device_context.h"
 USE_OP(add_two);
 // USE_OP(add_two_grad);
 
@@ -28,25 +31,25 @@ TEST(AddOp, GetOpProto) {
 }
 #ifndef PADDLE_ONLY_CPU
 TEST(AddOp, Kernel) {
-  Tensor t;
+  paddle::framework::Tensor t;
   float* p = t.mutable_data<float>(make_ddim({6}), platform::CPUPlace());
   for (int i = 0; i < 6; i++) {
     p[i] = static_cast<float>(i);
   }
 
-  Tensor t1;
+  paddle::framework::Tensor t1;
   float* p1 = t1.mutable_data<float>(make_ddim({6}), platform::CPUPlace());
   for (int i = 0; i < 6; i++) {
     p1[i] = static_cast<float>(i);
   }
 
-  Tensor t2;
+  paddle::framework::Tensor t2;
   float* p2 = t2.mutable_data<float>(make_ddim({6}), platform::CPUPlace());
   for (int i = 0; i < 6; i++) {
     p2[i] = static_cast<float>(i);
   }
 
-  Tensor t3;
+  paddle::framework::Tensor t3;
   float* p3 = t3.mutable_data<float>(make_ddim({6}), platform::CPUPlace());
   for (int i = 0; i < 6; i++) {
     p3[i] = static_cast<float>(i);
@@ -60,9 +63,11 @@ TEST(AddOp, Kernel) {
 
   t3.mutable_data<float>(platform::GPUPlace(0));
 
-  CUDADeviceContext* dd = new CUDADeviceContext(0);
+  paddle::platform::CUDADeviceContext* dd =
+      new paddle::platform::CUDADeviceContext(0);
 
-  EigenVector<T>::Flatten(t3).device(*(dd->eigen_device())) =
-      EigenVector<T>::Flatten(t1) + EigenVector<T>::Flatten(t1);
+  paddle::framework::EigenVector<T>::Flatten(t3).device(*(dd->eigen_device())) =
+      paddle::framework::EigenVector<T>::Flatten(t1) +
+      paddle::framework::EigenVector<T>::Flatten(t1);
 }
 #endif
