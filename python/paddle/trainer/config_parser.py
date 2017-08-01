@@ -565,6 +565,35 @@ class IdentityOffsetProjection(Projection):
         return []
 
 
+@config_class
+class SliceProjection(Projection):
+    type = 'slice'
+
+    def __init__(self, input_layer_name, slices, **xargs):
+        super(SliceProjection, self).__init__(input_layer_name, **xargs)
+        input = g_layer_map[input_layer_name]
+        if input.type in ["exconv", "cudnn_conv"]:
+            # the slice operator is for the channel dimension
+            assert input.num_filters is not None
+            channels = input.num_filters
+            image_size = input.size / channels
+            assert slices[len(slices) - 1][1] <= channels
+            for i in xrange(len(slices)):
+                slice = self.proj_conf.slices.add()
+                slice.start = slices[i][0] * image_size
+                slice.end = slices[i][1] * image_size
+                self.size += slice.end - slice.start
+        else:
+            config_assert(False,
+                          'Currently the input should be convolution layer')
+
+    def calc_parameter_size(self, input_size, output_size):
+        return 0
+
+    def calc_parameter_dims(self, input_size, output_size):
+        return []
+
+
 # DotMulProjection performs element-wise multiplication with weight
 @config_class
 class DotMulProjection(Projection):

@@ -198,6 +198,10 @@ identity_projection
 ..  autoclass:: paddle.v2.layer.identity_projection
     :noindex:
 
+slice_projection
+-------------------
+..  autoclass:: paddle.v2.layer.slice_projection
+    :noindex:
 
 table_projection
 ----------------
