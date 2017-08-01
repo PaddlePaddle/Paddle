@@ -558,7 +558,7 @@ def slice_projection(input, slices):
     :param slices: An array of slice parameters.
                    Each slice contains the start and end offsets based
                    on the input.
-    :type offset: pair of int
+    :type slices: pair of int
     :return: A SliceProjection object
     :rtype: SliceProjection
     """
