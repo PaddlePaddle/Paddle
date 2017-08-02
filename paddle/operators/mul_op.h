@@ -29,7 +29,7 @@ public:
     auto output = context.Output<Tensor>(0);
     output->mutable_data<T>(context.GetPlace());
 
-    EigenMatrix<T>::From(*output).device(*(context.GetEigenDevice<Place>())) =
+    EigenMatrix<T>::From(*output).device(context.GetEigenDevice<Place>()) =
         EigenMatrix<T>::From(*context.Input<Tensor>("X"))
             .contract(EigenMatrix<T>::From(*context.Input<Tensor>("Y")),
                       dim_pair);
