@@ -104,6 +104,11 @@ cross_channel_norm
 ------------------
 ..  autoclass:: paddle.v2.layer.cross_channel_norm
     :noindex:
+
+row_l2_norm
+-----------
+..  autoclass:: paddle.v2.layer.row_l2_norm
+    :noindex:
     
 Recurrent Layers
 ================
