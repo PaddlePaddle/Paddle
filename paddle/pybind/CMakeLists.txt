@@ -1,6 +1,6 @@
 cc_library(paddle_pybind SHARED
     SRCS pybind.cc
-    DEPS pybind python
+    DEPS pybind python backward
 	fc_op
 	sgd_op
 	add_op
