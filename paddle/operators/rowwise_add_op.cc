@@ -51,5 +51,8 @@ for i in xrange(X.shape[0]):
 }  // namespace paddle
 
 REGISTER_OP(rowwise_add, ops::RowWiseAddOp, ops::RowWiseAddOpMaker);
+// REGISTER_GRADIENT_OP(rowwise_add, rowwise_add_grad, ops::RowWiseAddGradOp);
+NO_GRADIENT(rowwise_add);
+
 REGISTER_OP_CPU_KERNEL(rowwise_add,
                        ops::RowWiseAddKernel<ops::CPUPlace, float>);
