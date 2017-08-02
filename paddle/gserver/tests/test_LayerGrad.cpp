@@ -1887,8 +1887,8 @@ TEST(Layer, ClipLayer) {
   config.inputDefs.push_back({INPUT_DATA, "input", size, 0});
   LayerInputConfig* input = config.layerConfig.add_inputs();
   ClipConfig* layerConf = input->mutable_clip_conf();
-  layerConf->set_clip_threshold_low(std::rand() / (real)RAND_MAX);
-  layerConf->set_clip_threshold_high(std::rand() / (real)RAND_MAX);
+  layerConf->set_min(std::rand() / (double)RAND_MAX);
+  layerConf->set_max(std::rand() / (double)RAND_MAX);
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "clip", batchSize, false, useGpu, false);
   }

@@ -6011,7 +6011,7 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
 
 
 @wrap_name_default("clip")
-def clip_layer(input, clip_threshold_low, clip_threshold_high, name=None):
+def clip_layer(input, min, max, name=None):
     """
     A layer for clipping the input value by the threshold.
 
@@ -6021,23 +6021,23 @@ def clip_layer(input, clip_threshold_low, clip_threshold_high, name=None):
 
     .. code-block:: python
 
-        clip = clip_layer(input=input_layer, clip_threshold_low=-10, clip_threshold_high=10)
+        clip = clip_layer(input=input_layer, min=-10, max=10)
 
     :param name: The Layer Name.
     :type name: basestring
     :param input: The input layer.
     :type input: LayerOutput.
-    :param clip_threshold_low: The lower threshold for clipping.
-    :type clip_threshold_low: float
-    :param clip_threshold_high: The upper threshold for clipping.
-    :type clip_threshold_high: float
+    :param min: The lower threshold for clipping.
+    :type min: double
+    :param max: The upper threshold for clipping.
+    :type max: double
     :return: LayerOutput
     """
     Layer(
         name=name,
         type=LayerType.CLIP_LAYER,
         inputs=[input.name],
-        clip_threshold_low=clip_threshold_low,
-        clip_threshold_high=clip_threshold_high)
+        min=min,
+        max=max)
     return LayerOutput(
         name, LayerType.CLIP_LAYER, parents=[input], size=input.size)

@@ -290,8 +290,8 @@ message DetectionOutputConfig {
 }
 
 message ClipConfig {
-  required float clip_threshold_low = 1;
-  required float clip_threshold_high = 2;
+  required double min = 1;
+  required double max = 2;
 }
 
 message LayerInputConfig {

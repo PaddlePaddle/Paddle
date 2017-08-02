@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Layer.h"
-#include "paddle/math/Matrix.h"
 
 namespace paddle {
 
@@ -26,8 +25,8 @@ namespace paddle {
 
 class ClipLayer : public Layer {
 protected:
-  real clipThresholdLow_;
-  real clipThresholdHigh_;
+  double min_;
+  double max_;
 
 public:
   explicit ClipLayer(const LayerConfig& config) : Layer(config) {}
@@ -47,9 +46,9 @@ bool ClipLayer::init(const LayerMap& layerMap,
 
   CHECK_EQ(inputLayers_.size(), 1U);
   auto layerConf = config_.inputs(0).clip_conf();
-  clipThresholdLow_ = layerConf.clip_threshold_low();
-  clipThresholdHigh_ = layerConf.clip_threshold_high();
-  CHECK_LT(clipThresholdLow_, clipThresholdHigh_);
+  min_ = layerConf.min();
+  max_ = layerConf.max();
+  CHECK_LT(min_, max_);
   return true;
 }
 
@@ -60,19 +59,21 @@ void ClipLayer::forward(PassType passType) {
   resetOutput(inV->getHeight(), inV->getWidth());
   MatrixPtr outV = getOutputValue();
   outV->copyFrom(*inV);
-  outV->clip(clipThresholdLow_, clipThresholdHigh_);
+  outV->clip(min_, max_);
 }
 
 void ClipLayer::backward(const UpdateCallback& callback) {
   MatrixPtr inV = getInputValue(0);
   MatrixPtr inG = getInputGrad(0);
-  MatrixPtr outV = getOutputValue();
-  MatrixPtr outG = getOutputGrad();
-  MatrixPtr tmpMtx;
-  Matrix::resizeOrCreate(
-      tmpMtx, outG->getHeight(), outG->getWidth(), false, useGpu_);
-  tmpMtx->clipDerivative(*inV, clipThresholdLow_, clipThresholdHigh_);
-  inG->addDotMul(*outG, *tmpMtx, 1, 1);
+  if (inG) {
+    MatrixPtr outV = getOutputValue();
+    MatrixPtr outG = getOutputGrad();
+    MatrixPtr tmpMtx;
+    Matrix::resizeOrCreate(
+        tmpMtx, outG->getHeight(), outG->getWidth(), false, useGpu_);
+    tmpMtx->clipDerivative(*inV, min_, max_);
+    inG->addDotMul(*outG, *tmpMtx, 1, 1);
+  }
 }
 
 }  // namespace paddle
