@@ -32,5 +32,24 @@ public:
         1.0 / (1.0 + (-1.0 * EigenVector<T>::Flatten(*input)).exp());
   }
 };
+
+template <typename Place, typename T>
+class SigmoidGradKernel : public OpKernel {
+public:
+  void Compute(const ExecutionContext& context) const override {
+    // TODO(qingqing) maybe a helper funciton is needed fo the name x@GRAD
+    auto y_t = context.Input<Tensor>("Y");
+    auto dy_t = context.Input<Tensor>("Y@GRAD");
+    auto dx_t = context.Output<Tensor>("X@GRAD");
+
+    dx_t->mutable_data<T>(context.GetPlace());
+
+    auto dx = EigenVector<T>::Flatten(*dx_t);
+    auto y = EigenVector<T>::Flatten(*y_t);
+    auto dy = EigenVector<T>::Flatten(*dy_t);
+    dx.device(*(context.GetEigenDevice<Place>())) = dy * y * (1. - y);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
