@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Layer.h"
-#include "paddle/math/Matrix.h"
 
 namespace paddle {
 
@@ -29,7 +28,7 @@ namespace paddle {
 class RowL2NormLayer : public Layer {
 protected:
   MatrixPtr inSquare_;
-  MatrixPtr reciSqrtRowSquareSum_;
+  MatrixPtr l2NormReciprocal_;
   MatrixPtr dotSum_;
 
 public:
@@ -67,11 +66,11 @@ void RowL2NormLayer::forward(PassType passType) {
 
   Matrix::resizeOrCreate(inSquare_, batchSize, dataDim, false, useGpu_);
   inV->square2(*inSquare_);
-  Matrix::resizeOrCreate(reciSqrtRowSquareSum_, batchSize, 1, false, useGpu_);
-  inSquare_->rowSum(*reciSqrtRowSquareSum_);
-  reciSqrtRowSquareSum_->sqrt2(*reciSqrtRowSquareSum_);
-  reciSqrtRowSquareSum_->scalarDiv(*reciSqrtRowSquareSum_, 1.0);
-  outV->rowScale(0, *inV, *reciSqrtRowSquareSum_);
+  Matrix::resizeOrCreate(l2NormReciprocal_, batchSize, 1, false, useGpu_);
+  inSquare_->rowSum(*l2NormReciprocal_);
+  l2NormReciprocal_->sqrt2(*l2NormReciprocal_);
+  l2NormReciprocal_->scalarDiv(*l2NormReciprocal_, 1.0);
+  outV->rowScale(0, *inV, *l2NormReciprocal_);
 }
 
 void RowL2NormLayer::backward(const UpdateCallback& callback) {
@@ -81,18 +80,18 @@ void RowL2NormLayer::backward(const UpdateCallback& callback) {
   MatrixPtr outG = getOutputGrad();
   size_t batchSize = inV->getHeight();
 
-  // inG[ij] += outG[ij] / reciSqrtRowSquareSum
-  // inG[ij] += -inV[ij] * reciSqrtRowSquareSum * reciSqrtRowSquareSum *
-  // DotMul(outG[i], inV[i])
+  // inG[ij] += outG[ij] / l2NormReciprocal
+  // inG[ij] += -inV[ij] * l2NormReciprocal * l2NormReciprocal * DotMul(outG[i],
+  // inV[i])
   if (inG) {
     Matrix::resizeOrCreate(dotSum_, batchSize, 1, false, useGpu_);
     dotSum_->zeroMem();
     dotSum_->rowDotMul(0, *outG, *outV);
-    dotSum_->dotMul(*dotSum_, *reciSqrtRowSquareSum_);
-    dotSum_->dotMul(*dotSum_, *reciSqrtRowSquareSum_);
+    dotSum_->dotMul(*dotSum_, *l2NormReciprocal_);
+    dotSum_->dotMul(*dotSum_, *l2NormReciprocal_);
     inSquare_->rowScale(0, *inV, *dotSum_);
     inG->sub(*inSquare_);
-    inG->addRowScale(0, *outG, *reciSqrtRowSquareSum_);
+    inG->addRowScale(0, *outG, *l2NormReciprocal_);
   }
 }
 
