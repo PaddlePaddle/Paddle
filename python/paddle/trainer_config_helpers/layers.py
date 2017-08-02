@@ -76,6 +76,7 @@ __all__ = [
     'trans_layer',
     'rotate_layer',
     'sum_to_one_norm_layer',
+    'row_l2_norm_layer',
     'get_output_layer',
     'LayerType',
     'context_projection',
@@ -161,6 +162,7 @@ class LayerType(object):
     BATCH_NORM_LAYER = 'batch_norm'
     NORM_LAYER = 'norm'
     SUM_TO_ONE_NORM_LAYER = 'sum_to_one_norm'
+    ROW_L2_NORM_LAYER = 'row_l2_norm'
     ADDTO_LAYER = 'addto'
 
     CONCAT_LAYER = 'concat'
@@ -2889,6 +2891,42 @@ def sum_to_one_norm_layer(input, name=None, layer_attr=None):
         **ExtraAttr.to_kwargs(layer_attr))
     return LayerOutput(
         name, LayerType.SUM_TO_ONE_NORM_LAYER, parents=[input], size=input.size)
+
+
+@wrap_name_default()
+@layer_support()
+def row_l2_norm_layer(input, name=None, layer_attr=None):
+    """
+    A layer for L2-normalization in each row.
+
+    .. math::
+       out[i] = \frac{in[i]}{\sqrt{\sum_{k=1}^N in[k]^{2}}}
+
+    where the size of :math:`in` is (batchSize x dataDim) ,
+    and the size of :math:`out` is a (batchSize x dataDim) .
+
+    The example usage is:
+
+    .. code-block:: python
+
+       row_l2_norm_layer = row_l2_norm_layer(input=layer)
+
+    :param input: Input layer.
+    :type input: LayerOutput
+    :param name: Layer name.
+    :type name: basestring
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.ROW_L2_NORM_LAYER,
+        inputs=[input.name],
+        **ExtraAttr.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.ROW_L2_NORM_LAYER, parents=[input], size=input.size)
 
 
 @wrap_name_default("addto")

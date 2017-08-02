@@ -2768,6 +2768,16 @@ class SumToOneNormLayer(LayerBase):
         self.set_layer_size(input_layer0.size)
 
 
+@config_layer('row_l2_norm')
+class RowL2NormLayer(LayerBase):
+    def __init__(self, name, inputs, **xargs):
+        super(RowL2NormLayer, self).__init__(
+            name, 'row_l2_norm', 0, inputs=inputs, **xargs)
+        config_assert(len(self.inputs) == 1, 'RowL2NormLayer must have 1 input')
+        input_layer = self.get_input_layer(0)
+        self.set_layer_size(input_layer.size)
+
+
 @config_layer('cos_vm')
 class CosSimVecMatLayer(LayerBase):
     def __init__(self, name, size, inputs, cos_scale=1.0, device=None):

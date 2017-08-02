@@ -28,8 +28,7 @@ public:
 
     output->mutable_data<T>(context.GetPlace());
 
-    EigenVector<T>::Flatten(*output).device(
-        *(context.GetEigenDevice<Place>())) =
+    EigenVector<T>::Flatten(*output).device(context.GetEigenDevice<Place>()) =
         framework::EigenVector<T>::Flatten(*input0) +
         framework::EigenVector<T>::Flatten(*input1);
   }

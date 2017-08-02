@@ -8,8 +8,8 @@ class TestMulOp(unittest.TestCase):
 
     def setUp(self):
         self.type = "mul"
-        self.X = np.random.random((32, 784)).astype("float32")
-        self.Y = np.random.random((784, 100)).astype("float32")
+        self.X = np.random.random((32, 84)).astype("float32")
+        self.Y = np.random.random((84, 100)).astype("float32")
         self.Out = np.dot(self.X, self.Y)
 
 
