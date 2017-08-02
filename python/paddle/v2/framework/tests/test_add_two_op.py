@@ -19,10 +19,10 @@ class TestAddOp(unittest.TestCase):
 
 class TestAddGradOp(unittest.TestCase):
     def test_add_grad(self):
-        op = creation.op_creations.add_two(X="X", Y="Y")
+        op = creation.op_creations.add_two(X="X", Y="Y", Out="Out")
         backward_op = core.Operator.backward(op, set())
         self.assertEqual(backward_op.type(), "add_two_grad")
-        expected = '''Op(add_two_grad), inputs:(X, Y, @EMPTY@, @EMPTY@@GRAD), outputs:(X@GRAD, Y@GRAD).'''
+        expected = '''Op(add_two_grad), inputs:(X, Y, Out, Out@GRAD), outputs:(X@GRAD, Y@GRAD).'''
         self.assertEqual(expected, str(backward_op))
 
 
