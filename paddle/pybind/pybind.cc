@@ -77,8 +77,14 @@ PYBIND11_PLUGIN(core) {
            })
       .def("set", paddle::pybind::PyTensorSetFromArray<float>)
       .def("set", paddle::pybind::PyTensorSetFromArray<int>)
-      .def("shape",
-           [](pd::Tensor& self) { return pd::vectorize(self.dims()); });
+      .def("shape", [](pd::Tensor& self) { return pd::vectorize(self.dims()); })
+      .def("set_float_element",
+           [](pd::Tensor& self, size_t offset, float f) {
+             self.data<float>()[offset] = f;
+           })
+      .def("get_float_element", [](pd::Tensor& self, size_t offset) -> float {
+        return self.data<float>()[offset];
+      });
 
   py::class_<pd::Variable>(m, "Variable", R"DOC(Variable Class.
 
