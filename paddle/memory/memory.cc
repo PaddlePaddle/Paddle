@@ -60,6 +60,7 @@ detail::BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
                                            platform::GpuMaxChunkSize());
     }
   }
+  platform::SetDeviceId(gpu_id);
   return as[gpu_id];
 }
 

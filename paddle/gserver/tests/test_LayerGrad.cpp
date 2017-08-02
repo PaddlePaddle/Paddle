@@ -152,6 +152,26 @@ TEST(Projection, identity) {
   }
 }
 
+TEST(Projection, slice) {
+  ProjectionConfig conf;
+  conf.set_type("slice");
+  conf.set_input_size(100);
+  SliceConfig& slice1 = *conf.add_slices();
+  slice1.set_start(10);
+  slice1.set_end(20);
+  SliceConfig& slice2 = *conf.add_slices();
+  slice2.set_start(50);
+  slice2.set_end(70);
+  conf.set_output_size(30);
+  for (auto useGpu : {false, true}) {
+    testProjectionGrad(conf,
+                       INPUT_DATA,
+                       /* parameterSize */ 0,
+                       /* batchSize */ 10,
+                       useGpu);
+  }
+}
+
 TEST(Projection, scaling) {
   ProjectionConfig conf;
   conf.set_type("scaling");

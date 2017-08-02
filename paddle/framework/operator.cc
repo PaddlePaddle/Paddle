@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 
 template <>
-Eigen::DefaultDevice* KernelContext::GetEigenDevice<
+Eigen::DefaultDevice* ExecutionContext::GetEigenDevice<
     platform::CPUPlace, Eigen::DefaultDevice>() const {
   return device_context_.get_eigen_device<Eigen::DefaultDevice>();
 }
@@ -28,28 +28,33 @@ Eigen::DefaultDevice* KernelContext::GetEigenDevice<
 #ifndef PADDLE_ONLY_CPU
 template <>
 Eigen::GpuDevice*
-KernelContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
+ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
   return device_context_.get_eigen_device<Eigen::GpuDevice>();
 }
 #endif
 
 const std::string& OperatorBase::Input(const std::string& name) const {
+  PADDLE_ENFORCE(in_out_idxs_ != nullptr,
+                 "Input Output Indices could not be nullptr");
   auto it = in_out_idxs_->find(name);
   PADDLE_ENFORCE(it != in_out_idxs_->end(), "no key [%s] in in_out_idxs_",
                  name);
-
   if (attrs_.count("input_format") == 0) {
-    return inputs_[it->second];
+    return inputs_.at((size_t)it->second);
   } else {
     const auto& input_format = GetAttr<std::vector<int>>("input_format");
     int idx = input_format[it->second];
-    return inputs_.at(idx);
+    return inputs_.at((size_t)idx);
   }
 }
 
 std::vector<std::string> OperatorBase::Inputs(const std::string& name) const {
+  PADDLE_ENFORCE(in_out_idxs_ != nullptr, "IO Idx could not be nullptr");
   auto input_format = GetAttr<std::vector<int>>("input_format");
   auto offset = in_out_idxs_->at(name);
+  PADDLE_ENFORCE(input_format.at(static_cast<size_t>(offset) + 1) <=
+                     static_cast<int>(inputs_.size()),
+                 "Input Out Of Range");
 
   return std::vector<std::string>{
       inputs_.begin() + input_format.at(offset),
@@ -57,23 +62,26 @@ std::vector<std::string> OperatorBase::Inputs(const std::string& name) const {
 }
 
 const std::string& OperatorBase::Output(const std::string& name) const {
+  PADDLE_ENFORCE(in_out_idxs_ != nullptr, "InOut Indice could not be nullptr");
   auto it = in_out_idxs_->find(name);
   PADDLE_ENFORCE(it != in_out_idxs_->end(), "no key [%s] in in_out_idxs_",
                  name);
-
   if (attrs_.count("output_format") == 0) {
-    return outputs_[it->second];
+    return outputs_.at((size_t)it->second);
   } else {
     const auto& output_format = GetAttr<std::vector<int>>("output_format");
     int idx = output_format[it->second];
-    return outputs_.at(idx);
+    return outputs_.at((size_t)idx);
   }
 }
 
 std::vector<std::string> OperatorBase::Outputs(const std::string& name) const {
+  PADDLE_ENFORCE(in_out_idxs_ != nullptr, "InOut Indice could not be nullptr");
   auto output_format = GetAttr<std::vector<int>>("output_format");
   auto offset = in_out_idxs_->at(name);
-
+  PADDLE_ENFORCE(output_format.at(static_cast<size_t>(offset) + 1) <=
+                     static_cast<int>(outputs_.size()),
+                 "Output Out of Range");
   return std::vector<std::string>{
       outputs_.begin() + output_format.at(offset),
       outputs_.begin() + output_format.at(offset + 1)};
@@ -97,6 +105,12 @@ std::string OperatorBase::DebugString() const {
   }
   ss << ").";
   return ss.str();
+}
+
+void OperatorBase::Rename(const std::string& old_name,
+                          const std::string& new_name) {
+  std::replace(inputs_.begin(), inputs_.end(), old_name, new_name);
+  std::replace(outputs_.begin(), outputs_.end(), old_name, new_name);
 }
 
 }  // namespace framework

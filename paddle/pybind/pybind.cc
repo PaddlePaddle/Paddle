@@ -33,9 +33,11 @@ USE_OP(onehot_cross_entropy);
 USE_OP_WITHOUT_KERNEL(fc);
 USE_OP(sgd);
 USE_OP(mul);
+USE_OP(mean);
 USE_OP(sigmoid);
 USE_OP(softmax);
 USE_OP(rowwise_add);
+USE_OP_WITHOUT_KERNEL(recurrent_op);
 
 template <typename ClassType>
 void ExposeOperator(ClassType& m) {
@@ -94,17 +96,25 @@ All parameter, weight, gradient are variables in Paddle.
            [](pd::Variable& self) -> pd::Tensor* {
              return self.GetMutable<pd::Tensor>();
            },
+           py::return_value_policy::reference)
+      .def("get_net",
+           [](pd::Variable& self) -> pd::NetOp* {
+             return self.GetMutable<pd::NetOp>();
+           },
            py::return_value_policy::reference);
 
-  py::class_<pd::Scope, std::shared_ptr<pd::Scope>>(m, "Scope")
-      .def(py::init<const std::shared_ptr<pd::Scope>&>())
-      .def("get_var",
-           &pd::Scope::GetVariable,
+  py::class_<pd::Scope>(m, "Scope", "")
+      .def("new_var",
+           [](pd::Scope& self, const std::string& name) -> pd::Variable* {
+             return self.NewVar(name);
+           },
            py::return_value_policy::reference)
-      .def("create_var",
-           &pd::Scope::CreateVariable,
+      .def("find_var", &pd::Scope::FindVar, py::return_value_policy::reference)
+      .def(py::init<>())
+      .def("new_scope",
+           [](pd::Scope& self) -> pd::Scope* { return &self.NewScope(); },
            py::return_value_policy::reference)
-      .def("get_var_name", &pd::Scope::GetVariableName);
+      .def("drop_kids", &pd::Scope::DropKids);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.

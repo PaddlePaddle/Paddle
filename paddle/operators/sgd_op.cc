@@ -19,16 +19,15 @@ namespace operators {
 
 class SGDOp : public OperatorWithKernel {
 protected:
-  void InferShape(const std::vector<const Tensor *> &inputs,
-                  const std::vector<Tensor *> &outputs) const override {
-    PADDLE_ENFORCE(inputs.size() == 2, "Input size of SGDOp must be two");
-    PADDLE_ENFORCE(outputs.size() == 1, "Output size of SGDOp must be one");
-    PADDLE_ENFORCE(inputs[0] != nullptr, "inputs[0] mast be set");
-    PADDLE_ENFORCE(inputs[1] != nullptr, "inputs[1] mast be set");
-    PADDLE_ENFORCE(outputs[0] != nullptr, "outputs[0] mast be set");
-    PADDLE_ENFORCE(inputs[0]->dims() == inputs[1]->dims(),
+  void InferShape(const InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE(ctx.InputSize() == 2, "Input size of SGDOp must be two");
+    PADDLE_ENFORCE(ctx.OutputSize() == 1, "Output size of SGDOp must be one");
+    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr, "inputs[0] mast be set");
+    PADDLE_ENFORCE(ctx.InputVar(1) != nullptr, "inputs[1] mast be set");
+    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr, "outputs[0] mast be set");
+    PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims() == ctx.Input<Tensor>(1)->dims(),
                    "Two input of SGD Op's dimension must be same.");
-    outputs[0]->Resize(inputs[0]->dims());
+    ctx.Output<Tensor>(0)->Resize(ctx.Input<Tensor>(0)->dims());
   }
 };
 
