@@ -21,16 +21,17 @@ namespace operators {
 template <typename Place, typename T>
 class AddKernel : public OpKernel {
 public:
-  void Compute(const KernelContext& context) const override {
-    auto input0 = context.Input(0)->Get<Tensor>();
-    auto input1 = context.Input(1)->Get<Tensor>();
-    auto output = context.Output(0)->GetMutable<Tensor>();
+  void Compute(const ExecutionContext& context) const override {
+    auto input0 = context.Input<Tensor>(0);
+    auto input1 = context.Input<Tensor>(1);
+    auto output = context.Output<Tensor>(0);
 
     output->mutable_data<T>(context.GetPlace());
 
     EigenVector<T>::Flatten(*output).device(
         *(context.GetEigenDevice<Place>())) =
-        EigenVector<T>::Flatten(input0) + EigenVector<T>::Flatten(input1);
+        framework::EigenVector<T>::Flatten(*input0) +
+        framework::EigenVector<T>::Flatten(*input1);
   }
 };
 

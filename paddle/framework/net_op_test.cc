@@ -3,11 +3,6 @@
 #include <paddle/framework/op_registry.h>
 #include <paddle/framework/operator.h>
 
-USE_OP(add_two);
-USE_OP(mul);
-USE_OP(sigmoid);
-USE_OP(softmax);
-
 namespace paddle {
 namespace framework {
 
@@ -16,14 +11,20 @@ static int run_cnt = 0;
 
 class TestOp : public OperatorBase {
  public:
-  void InferShape(
-      const std::shared_ptr<framework::Scope>& scope) const override {
+  void InferShape(const framework::Scope& scope) const override {
     ++infer_shape_cnt;
   }
-  void Run(const std::shared_ptr<framework::Scope>& scope,
+  void Run(const framework::Scope& scope,
            const paddle::platform::DeviceContext& dev_ctx) const override {
     ++run_cnt;
   }
+};
+
+class EmptyOp : public OperatorBase {
+ public:
+  void InferShape(const Scope& scope) const override {}
+  void Run(const Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {}
 };
 
 template <typename T>
@@ -62,7 +63,7 @@ TEST(OpKernel, all) {
   ASSERT_EQ(1UL, tmp_idx.size());
   ASSERT_EQ("y", net->outputs_[tmp_idx[0]]);
 
-  auto scope = std::make_shared<Scope>();
+  Scope scope;
   platform::CPUDeviceContext dev_ctx;
 
   net->InferShape(scope);
@@ -72,20 +73,17 @@ TEST(OpKernel, all) {
   ASSERT_THROW(net->AddOp(op2), paddle::platform::EnforceNotMet);
 }
 
-//! TODO(yuyang18): Refine Backward Op.
-// TEST(AddBackwardOp, TestGradOp) {
-//  auto net = std::make_shared<NetOp>();
-//  ASSERT_NE(net, nullptr);
-//  net->AddOp(framework::OpRegistry::CreateOp("mul", {"X", "Y"}, {"Out"}, {}));
-//  net->AddOp(
-//      framework::OpRegistry::CreateOp("add_two", {"X", "Y"}, {"Out"}, {}));
-//  net->AddOp(framework::OpRegistry::CreateOp("add_two", {"X", "Y"}, {""},
-//  {}));
-//  auto grad_ops = AddBackwardOp(net);
-//  for (auto& op : grad_ops->ops_) {
-//    op->DebugString();
-//  }
-//}
+TEST(Net, insert_op) {
+  NetOp net;
+  auto op1 = std::make_shared<EmptyOp>();
+  op1->inputs_ = {"x", "w1", "b1"};
+  op1->outputs_ = {"y"};
+  net.AddOp(op1);
+  net.InsertOp(0, op1);
+  ASSERT_EQ(2UL, net.ops_.size());
+  net.InsertOp(2, op1);
+  ASSERT_EQ(3UL, net.ops_.size());
+}
 
 }  // namespace framework
 }  // namespace paddle
