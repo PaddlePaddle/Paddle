@@ -137,8 +137,6 @@ inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
 
 inline void Tensor::Resize(const DDim& dims) { dims_ = dims; }
 
-inline void Tensor::ResizeLike(const Tensor& src) { dims_ = src.dims(); }
-
 inline const DDim& Tensor::dims() const { return dims_; }
 
 }  // namespace framework

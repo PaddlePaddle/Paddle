@@ -51,7 +51,8 @@ protected:
     PADDLE_ENFORCE(ctx.Input<Tensor>("Y")->dims() ==
                        ctx.Input<Tensor>(GRAD_VAR_NAME("Y"))->dims(),
                    "the shape of Input(0) and Input(1) should be the same");
-    ctx.Output<Tensor>(0)->ResizeLike(*ctx.Input<Tensor>("Y"));
+    ctx.Output<Tensor>(GRAD_VAR_NAME("X"))
+        ->Resize(ctx.Input<Tensor>("Y")->dims());
   }
 };
 
