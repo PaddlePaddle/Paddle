@@ -3,6 +3,8 @@ from paddle.v2.framework.create_op_creation_methods import op_creations
 import numpy
 import unittest
 
+__all__ = ['get_numeric_gradient']
+
 
 def get_numeric_gradient(op,
                          input_values,
