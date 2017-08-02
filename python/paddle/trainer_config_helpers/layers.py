@@ -16,11 +16,13 @@ import functools
 import collections
 import inspect
 
+import paddle.trainer.config_parser as cp
 from paddle.trainer.config_parser import *
 from .activations import LinearActivation, SigmoidActivation, TanhActivation, \
     ReluActivation, IdentityActivation, SoftmaxActivation, BaseActivation
 from .evaluators import *
-from .poolings import MaxPooling, AvgPooling, BasePoolingType
+from .poolings import MaxPooling, AvgPooling, BasePoolingType, \
+    CudnnAvgPooling, CudnnMaxPooling
 from .attrs import *
 from .default_decorators import *
 
@@ -329,6 +331,14 @@ class LayerOutput(object):
             outputs = ['default']
         self.outputs = outputs
         self.reverse = reverse
+
+    @property
+    def width(self):
+        return cp.g_layer_map[self.full_name].width
+
+    @property
+    def height(self):
+        return cp.g_layer_map[self.full_name].height
 
     def set_input(self, input):
         """
@@ -911,7 +921,13 @@ def data_layer(name, size, height=None, width=None, layer_attr=None):
         width=width,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
-    return LayerOutput(name, LayerType.DATA, size=size)
+    num_filters = None
+    if height is not None and width is not None:
+        num_filters = size / (width * height)
+        assert num_filters * width * height == size, \
+            "size=%s width=%s height=%s" % (size, width, height)
+
+    return LayerOutput(name, LayerType.DATA, size=size, num_filters=num_filters)
 
 
 @wrap_name_default("embedding")
@@ -2571,6 +2587,10 @@ def img_pool_layer(input,
         assert input.num_filters is not None
         num_channels = input.num_filters
 
+    assert type(pool_type) in [AvgPooling, MaxPooling, CudnnAvgPooling,
+                               CudnnMaxPooling], \
+        "only AvgPooling and MaxPooling are supported"
+
     if pool_type is None:
         pool_type = MaxPooling()
     elif isinstance(pool_type, AvgPooling):
@@ -2580,7 +2600,6 @@ def img_pool_layer(input,
         if (
         isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
         else pool_type.name
-
     pool_size_y = pool_size if pool_size_y is None else pool_size_y
     stride_y = stride if stride_y is None else stride_y
     padding_y = padding if padding_y is None else padding_y
@@ -4204,8 +4223,7 @@ def conv_operator(img,
         num_channels = img.num_filters
 
     assert isinstance(filter, LayerOutput)
-    if filter.size is not None:
-        filter.size = filter_size * filter_size_y * num_filters * num_channels
+    assert filter.size is not None
 
     opCls = ConvTransOperator if trans else ConvOperator
 
@@ -4916,7 +4934,6 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
-    assert input.layer_type == LayerType.CONV_LAYER
     assert isinstance(input.activation, LinearActivation)
     assert groups > 1
     if num_channels is None:
