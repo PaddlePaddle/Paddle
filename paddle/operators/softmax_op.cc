@@ -41,19 +41,17 @@ public:
 class SoftmaxOpGrad : public OperatorWithKernel {
 protected:
   void InferShape(const InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE(ctx.InputSize() == 2, "Input of SoftmaxOpGrad should be 2");
+    PADDLE_ENFORCE(ctx.InputSize() == 3,
+                   "Input of SoftmaxOpGrad should be 3, X, Y, YG");
     PADDLE_ENFORCE(ctx.OutputSize() == 1,
                    "Output of SoftmaxOpGrad should be 1");
-    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr, "Input(0) should not be null");
-    PADDLE_ENFORCE(ctx.InputVar(1) != nullptr, "Input(1) should not be null");
-    PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims() == ctx.Input<Tensor>(1)->dims(),
+    PADDLE_ENFORCE(ctx.InputVar("Y") != nullptr, "Input(0) should not be null");
+    PADDLE_ENFORCE(ctx.InputVar(GRAD_VAR_NAME("Y")) != nullptr,
+                   "Input(Y@GRAD) should not be null");
+    PADDLE_ENFORCE(ctx.Input<Tensor>("Y")->dims() ==
+                       ctx.Input<Tensor>(GRAD_VAR_NAME("Y"))->dims(),
                    "the shape of Input(0) and Input(1) should be the same");
-    ctx.Output<Tensor>(0)->ResizeLike(*ctx.Input<Tensor>(0));
-  }
-
-  std::string DebugString() const override {
-    LOG(INFO) << "SoftmaxOpGrad";
-    return "";
+    ctx.Output<Tensor>(0)->ResizeLike(*ctx.Input<Tensor>("Y"));
   }
 };
 

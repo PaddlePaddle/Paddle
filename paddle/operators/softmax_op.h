@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/framework/ddim.h"
+#include "paddle/framework/operator.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/operators/type_alias.h"
 
@@ -66,9 +67,9 @@ public:
   void Compute(const ExecutionContext& context) const override {
     std::shared_ptr<Tensor> scale_ = std::make_shared<Tensor>();
 
-    auto Y = context.Input<Tensor>(0);
-    auto dY = context.Input<Tensor>(0);
-    auto dX = context.Output<Tensor>(0);
+    auto Y = context.Input<Tensor>("Y");
+    auto dY = context.Input<Tensor>(OperatorBase::GRAD_VAR_NAME("Y"));
+    auto dX = context.Output<Tensor>(OperatorBase::GRAD_VAR_NAME("X"));
     dX->mutable_data<T>(context.GetPlace());
 
     const int batch_size = Y->dims()[0];
@@ -77,15 +78,16 @@ public:
     scale_->mutable_data<T>(context.GetPlace());
 
     for (int i = 0; i < batch_size; ++i) {
+      scale_->data<T>()[i] = 0.0;
       for (int j = 0; j < class_num; ++j) {
-        auto index = i * batch_size + j;
+        auto index = i * class_num + j;
         scale_->data<T>()[i] += Y->data<T>()[index] * dY->data<T>()[index];
       }
     }
 
     for (int i = 0; i < batch_size; ++i) {
       for (int j = 0; j < class_num; ++j) {
-        auto index = i * batch_size + j;
+        auto index = i * class_num + j;
         dX->data<T>()[index] =
             Y->data<T>()[index] * (dY->data<T>()[index] - scale_->data<T>()[i]);
       }

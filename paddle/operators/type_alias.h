@@ -22,6 +22,7 @@ namespace paddle {
 namespace operators {
 
 using OpKernel = framework::OpKernel;
+using OperatorBase = framework::OperatorBase;
 using InferShapeContext = framework::InferShapeContext;
 using ExecutionContext = framework::ExecutionContext;
 using Variable = framework::Variable;
