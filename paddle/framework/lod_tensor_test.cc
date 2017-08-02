@@ -126,6 +126,13 @@ TEST_F(LODTensorTester, SliceCopied_Element) {
   ASSERT_EQ(new_lod_tensor.Elements(0), 2UL);
   ASSERT_EQ(new_lod_tensor.Elements(1), 4UL);
   ASSERT_NE(new_lod_tensor.raw_tensor(), lod_tensor->raw_tensor());
+
+  new_lod_tensor = lod_tensor->SliceCopied<float>(level, 1, 3, place);
+  ASSERT_EQ(new_lod_tensor.lod_element(0, 0), 0UL);
+  ASSERT_EQ(new_lod_tensor.lod_element(0, 1), 5UL);
+  ASSERT_EQ(new_lod_tensor.lod_element(1, 0), 0UL);
+  ASSERT_EQ(new_lod_tensor.lod_element(1, 1), 5UL);
+
   // TODO(superjom) compare the content of these tensors
 }
 

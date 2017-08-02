@@ -55,11 +55,23 @@ class LODTensor {
   }
 
   /*
+   * Get a element from LOD.
+   */
+  size_t lod_element(size_t level, size_t elem) const {
+    PADDLE_ENFORCE(level < Levels(), "level [%d] out of range [%d]", level,
+                   Levels());
+    PADDLE_ENFORCE(elem < Elements(level),
+                   "element begin [%d] out of range [%d]", elem,
+                   Elements(level));
+    return lod_start_pos_->at(level)[elem];
+  }
+
+  /*
    * Number of LODTensor's levels, each level has units of data, for example,
    * in the sentence's view, article, paragraph, sentence are 3 levels.
    */
   size_t Levels() const {
-    return lod_start_pos_.get() ? lod_start_pos_->size() : 0UL;
+    return lod_start_pos_ ? lod_start_pos_->size() : 0UL;
   }
   /*
    * Number of elements in a level.
@@ -128,13 +140,28 @@ class LODTensor {
 
 namespace details {
 
+/*
+ * Slice levels from LOD.
+ *
+ * @lod: LOD to slice.
+ * @level_begin: level to begin slice.
+ * @level_end: level to end slice.
+ */
 std::shared_ptr<LODTensor::lod_t> SliceLOD(const LODTensor::lod_t &lod,
                                            size_t level_begin,
                                            size_t level_end);
 
+/*
+ * Slice elements from a level of LOD.
+ *
+ * @lod: LOD to slice.
+ * @level: which level to slice.
+ * @elem_begin: element's index to begin slice.
+ * @elem_end: element's index to end slice.
+ */
 std::shared_ptr<LODTensor::lod_t> SliceLOD(const LODTensor::lod_t &lod,
                                            size_t level, size_t elem_begin,
-                                           size_t elem_end);
+                                           size_t elem_end, bool tensor_shared);
 }  // namespace details
 
 template <typename T>
@@ -161,9 +188,11 @@ LODTensor LODTensor::SliceShared(size_t level, size_t elem_begin,
                  "element end [%d] out of range [%d]", elem_end,
                  Elements(level));
 
-  auto new_lod =
-      details::SliceLOD(*lod_start_pos_, level, elem_begin, elem_end);
+  auto new_lod = details::SliceLOD(*lod_start_pos_, level, elem_begin, elem_end,
+                                   true /*tensor_shared*/);
 
+  // slice elements just need to update LOD info, because offsets are not
+  // changed, so the original tensor_ can be reused.
   return LODTensor(tensor_, new_lod);
 }
 
@@ -181,8 +210,8 @@ LODTensor LODTensor::SliceCopied(size_t level, size_t elem_begin,
                  "element end [%d] out of range [%d]", elem_end,
                  Elements(level));
 
-  auto new_lod =
-      details::SliceLOD(*lod_start_pos_, level, elem_begin, elem_end);
+  auto new_lod = details::SliceLOD(*lod_start_pos_, level, elem_begin, elem_end,
+                                   false /*tensor_shared*/);
 
   auto start_idx = new_lod->front().front();
   auto end_idx = new_lod->front().back() - 1 /*the next element's start*/;

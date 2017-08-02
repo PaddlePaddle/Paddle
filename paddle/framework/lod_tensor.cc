@@ -22,6 +22,8 @@ namespace framework {
 LODTensor LODTensor::SliceShared(size_t level_begin, size_t level_end) const {
   PADDLE_ENFORCE(has_lod(), "has no LOD info, can't be sliced.");
   auto new_lod = details::SliceLOD(*lod_start_pos_, level_begin, level_end);
+  // slice levels just need to update LOD info, each level will contains the
+  // whole tensor_, so no need to modify tensor_.
   return LODTensor(tensor_, new_lod);
 }
 
@@ -39,13 +41,12 @@ std::shared_ptr<LODTensor::lod_t> SliceLOD(const LODTensor::lod_t &lod,
 
 std::shared_ptr<LODTensor::lod_t> SliceLOD(const LODTensor::lod_t &lod,
                                            size_t level, size_t elem_begin,
-                                           size_t elem_end) {
+                                           size_t elem_end,
+                                           bool tensor_shared) {
   // slice the lod.
   auto new_lod = std::make_shared<LODTensor::lod_t>();
   auto start = lod.at(level)[elem_begin];
   auto end = lod.at(level)[elem_end];
-
-  LOG(INFO) << "start: " << start << " end: " << end;
 
   for (auto it = lod.begin() + level; it != lod.end(); it++) {
     auto it_begin = std::find(it->begin(), it->end(), start);
@@ -53,6 +54,13 @@ std::shared_ptr<LODTensor::lod_t> SliceLOD(const LODTensor::lod_t &lod,
     PADDLE_ENFORCE(it_begin != it->end(), "error in parsing lod info");
     PADDLE_ENFORCE(it_end != it->end(), "error in parsing lod info");
     new_lod->emplace_back(it_begin, it_end + 1);
+    if (!tensor_shared) {
+      // reset offset if tensor is copyed and sliced.
+      std::transform(new_lod->back().begin(), new_lod->back().end(),
+                     new_lod->back().begin(),
+                     [start](int v) { return v - start; });
+      PADDLE_ENFORCE(new_lod->back().front() == 0, "error in slice LOD");
+    }
   }
   return new_lod;
 }
