@@ -2,7 +2,4 @@
 Language:        Cpp
 BasedOnStyle:  Google
 Standard:  Cpp11 
-AlignTrailingComments: true
-#FixNamespaceComments: true
-SpacesBeforeTrailingComments: 2
 ...
