@@ -44,5 +44,11 @@ public:
   }
 };
 
+template <typename Place, typename T>
+class OnehotCrossEntropyGradientOpKernel : public OpKernel {
+public:
+  void Compute(const ExecutionContext& ctx) const override {}
+};
+
 }  // namespace operators
 }  // namespace paddle

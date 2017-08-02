@@ -36,6 +36,25 @@ protected:
   }
 };
 
+class OnehotCrossEntropyGradientOp : public OperatorWithKernel {
+protected:
+  void InferShape(const InferShapeContext &ctx) const override {
+    PADDLE_ENFORCE(ctx.InputSize() == 2,
+                   "Input size of OnehotCrossEntropyOp must be two");
+    PADDLE_ENFORCE(ctx.OutputSize() == 1,
+                   "Output size of OnehotCrossEntropyOp must be one");
+    PADDLE_ENFORCE(ctx.InputVar(0) != nullptr && ctx.InputVar(1) != nullptr,
+                   "Inputs of OnehotCrossEntropyOp must all be set");
+    PADDLE_ENFORCE(ctx.OutputVar(0) != nullptr,
+                   "Outputs of OnehotCrossEntropyOp must all be set");
+    PADDLE_ENFORCE(ctx.Input<Tensor>(0)->dims().size() == 2,
+                   "X's dimension must be 2.");
+    PADDLE_ENFORCE(ctx.Output<Tensor>(0)->dims().size() == 1,
+                   "label's dimension must be 1.");
+    ctx.Output<Tensor>(0)->Resize({ctx.Input<Tensor>(0)->dims()[0]});
+  }
+};
+
 class OnehotCrossEntropyOpMaker : public OpProtoAndCheckerMaker {
 public:
   OnehotCrossEntropyOpMaker(OpProto *proto, OpAttrChecker *op_checker)
